@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
-    "test": "vp test"
+    "test": "vp test",
+    "types": "wrangler types",
+    "types:check": "wrangler types --check"
   },
   "dependencies": {
     "@hollware/server": "workspace:*"

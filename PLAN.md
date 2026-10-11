@@ -42,47 +42,55 @@ before the first feature.
 - [x] `vp create vite:monorepo --no-interactive --package-manager pnpm --directory hollware --git --hooks --no-agent --no-editor`; template samples removed
 - [x] Pins: `.node-version` = 24.21.0; `packageManager` = `pnpm@12.11.2+sha512…` (hash from the registry); `engines.node >=24.11.0`
 - [x] `pnpm-workspace.yaml`: globs `apps/* examples/* packages/* templates/*`, exact catalog (versions ≥ 24 h old; `vitest` 5.0.3 is the one vite-plus depends on), `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`, `allowBuilds` with reasons
-- [x] Root `vite.config.ts`: strict lint (`no-floating-promises`, `no-misused-promises`, `no-explicit-any`, `node/no-process-env` in `packages/*/src`, no type assertions in tests — each rule verified to fire), `fmt` (no semicolons, single quotes), tasks `check:commit` / `check:push`
+- [x] Root `vite.config.ts`: strict lint (each rule verified to fire), `fmt` (no semicolons, single quotes, generated files ignored), lint override for `*.workerd.test.ts`, `test.projects` (packages, worker test configs, a `repo` project for `scripts/` and `tests/`), tasks `check:commit` / `check:push` (check → test → build → publint → types)
+- [x] `tsconfig.base.json` (strict, `erasableSyntaxOnly`) and a root `tsconfig.json` for `scripts/` and `tests/`
 - [x] `.vite-hooks/pre-commit`: `vp staged` + `vp run check:commit`
 - [x] `.claude/settings.local.json` (git-ignored): `ask` rules for deploy, `--remote`, publish/stage, trust
-- [x] Skeleton manifests for the six packages, `apps/playground` and `templates/starter`; one install
-- [ ] First local commit
+- [x] Skeleton manifests for the six packages, `apps/playground` (depends on `@hollware/server`) and `templates/starter`; `publint` and `types:check` scripts; `packages/server/migrations/0000_init.sql` shipped through `files`; one install
+- [x] `scripts/break-line.ts` + 8 tests (moved here from F0-5, review H2); two self-mutations reported `CAUGHT`
+- [x] Root `AGENTS.md` with the test bar (moved here from F0-5, review H2)
+- [x] First local commit
 - [ ] **Maintainer:** reserve the six npm names before the repo is public (placeholders `0.0.0`)
+- [ ] **Maintainer:** require 2FA for the `hollware` GitHub org; install the pkg.pr.new GitHub App on it before CI lands (review H1, M2)
 - [ ] `gh repo create hollware/hollware --public` and push
-- [ ] Repo settings via `gh api`: private vulnerability reporting, secret scanning + push protection, CodeQL default setup, Dependabot alerts (no PRs), read-only workflow token that may create PRs, `main` ruleset (no force-push, no deletion), tag ruleset `*@*`, immutable releases, environment `npm` (only `main`, maintainer approval)
+- [ ] Repo settings via `gh api`: private vulnerability reporting, secret scanning + push protection, CodeQL default setup, Dependabot alerts (no PRs), Actions `sha_pinning_required`, fork PRs need approval, read-only workflow token that may create PRs, `main` ruleset on the default branch only (no force-push, no deletion), tag ruleset `*@*` and `@*/*@*`, immutable releases, environment `npm` (only `main`, maintainer approval, `prevent_self_review: false`)
 
 ### Wave 1 (parallel)
 
-- [ ] **F0-1 Governance** — owns root `*.md` except `AGENTS.md`/`PLAN.md`, `LICENSE`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/CODEOWNERS`
-  - `LICENSE` (MIT, "Copyright (c) 2026-present Sergio Azócar and Hollware contributors"), `README.md` (thesis, principles, status, roadmap), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (GitHub private vulnerability reporting only)
+- [ ] **F0-1 Governance** — owns root `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/CODEOWNERS`
+  - MIT `LICENSE` ("Copyright (c) 2026-present Sergio Azócar and Hollware contributors"); `README.md` (thesis, principles, status, roadmap); `CONTRIBUTING.md`; `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1 with a real contact, no `[INSERT` left); `SECURITY.md` (GitHub private vulnerability reporting only)
 - [ ] **F0-2 Design and ADRs** — owns `docs/`
-  - `docs/design.md` (English adaptation of design v0.2, without the EmDash spike, with the execution decisions)
-  - `docs/adr/0001…0014-*.md` (Status, Context, Decision, Consequences, Alternatives) + `docs/adr/README.md` (index, template). ADR-014 = release pipeline (Changesets + `pnpm stage publish`)
+  - `docs/design.md`: English adaptation of design v0.2 (source path and ADR titles are given in the dispatch), without the EmDash spike, with the execution decisions
+  - `docs/adr/0001…0014-*.md` (Status, Context, Decision, Consequences, Alternatives) + `docs/adr/README.md` (index and template). ADR-014 = the release pipeline
 - [ ] **F0-3a Packages** — owns `packages/*`
-  - Complete manifests (`exports`, `files`, `license`, `engines`, `repository {url, directory}`, `publishConfig {access, provenance}`), `src/index.ts`, `vite.config.ts` with `pack` (tsgo dts, exports), per-package `tsconfig.json`, `README.md`, `AGENTS.md`, a smoke test; `hollware` and `create-hollware` bins answer `--version` and `--help`
+  - Complete manifests (`exports` with `types`, `files`, `license`, `engines`, `repository {url, directory}`, `publishConfig {access, provenance}`); an identical copy of the root `LICENSE` in each package; `src/index.ts`; `vite.config.ts` with `pack: { dts: { generator: 'tsgo' }, exports: true }`; `tsconfig.json` extending `tsconfig.base.json`; `README.md`; `AGENTS.md`; smoke tests that never need `dist`; `hollware` and `create-hollware` bins answer `--version` and `--help`
 - [ ] **F0-3b Cloudflare walking skeleton** — owns `apps/playground`, `templates/starter`, `examples/`
-  - Worker via `@cloudflare/vite-plugin`: `vp dev` serves `/health`; workerd test via `@cloudflare/vitest-plugin`
-  - A named `WorkerEntrypoint` called by a second Worker over a service binding, tested with wrangler's `createTestHarness`
-  - D1 with `migrations_dir` inside `node_modules`; `wrangler types`; one `wrangler check startup`; `wrangler deploy --dry-run` without an account
+  - Worker via `@cloudflare/vite-plugin` (compatibility date ≤ 2026-10-06, the bundled workerd): `vp dev` from the package directory serves `/health`
+  - Tests through `apps/playground/vitest.config.ts` (workerd, `@cloudflare/vitest-plugin`) and `vitest.*.config.ts` (Node, wrangler's `createTestHarness`)
+  - A named `WorkerEntrypoint` called over a service binding by a second Worker that also lives in the playground (review H5)
+  - D1 with `migrations_dir: node_modules/@hollware/server/migrations`; `wrangler types` + `types:check`; one `wrangler check startup`; `wrangler deploy --dry-run` without an account
 - [ ] **F0-4 CI and releases** — owns `.github/workflows/`, `.changeset/`, `.github/AGENTS.md`
-  - `ci.yml`: `voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2`, `vp run check:push`, `wrangler types --check`, `publint`, changeset check (PR: against `origin/main`; push: `before..sha`), `pnpm exec pkg-pr-new publish --pnpm './packages/*'`
-  - `security.yml`: dependency review (PRs), OpenSSF Scorecard, zizmor, weekly `pnpm audit --prod --audit-level=high`
-  - `release.yml` (`changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2`), `permissions: {}`, concurrency `release`, `if: github.repository == 'hollware/hollware'`: `select-mode` → `version` (Version Packages PR) → `pack` (tarballs as artifact) → `stage` (environment `npm`, `id-token: write`, no repo code, `pnpm stage publish <tgz> --provenance`) → maintainer approves with 2FA → `finalize` (wait until live, check `dist.attestations`, `changeset git-tag`, GitHub Releases). Release jobs use `setup-vp` with `cache: false`
-  - `.changeset/config.json`: `fixed: [[six packages]]`, `access: public`, `privatePackages: {version: false, tag: false}`; version script `changeset version && pnpm install --lockfile-only`; spike: Changesets 3 on pnpm 12
+  - `ci.yml` (push to `main`, PRs): `voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2` (exact `version`, Node from `.node-version`), `vp run check:push`; changeset check with `fetch-depth: 0` (PRs: `changeset status --since=origin/main`; pushes: `--since=<before>`, skipped when `before` is all zeros or the commit is the Version Packages merge — review C2); `pnpm exec pkg-pr-new publish --pnpm './packages/*'`
+  - `security.yml`: dependency review (PRs), OpenSSF Scorecard (its job may hold `id-token: write`), zizmor, weekly `pnpm audit --prod --audit-level=high`
+  - `release.yml` (`changesets/action/*@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2`), `permissions: {}`, concurrency `release`, `if: github.repository == 'hollware/hollware'`, `workflow_dispatch` with a finalize-only path:
+    - `select-mode` → `version` (Version Packages PR) → `pack` (tarballs + their sha256 as an artifact)
+    - `stage` (environment `npm`, `id-token: write`, **no checkout and no repo code**; `actions/setup-node` pinned to Node 24.21.0, whose npm supports staging; verifies each tarball's sha256, then `npm stage publish <tgz> --provenance --access public`; prints the hashes for the maintainer — review C3)
+    - maintainer approves on npm with 2FA
+    - `finalize` (`timeout-minutes`; waits until the versions are live, checks `dist.attestations`, creates tags and GitHub Releases with an explicit token, never persisted credentials — review H6)
+  - `.changeset/config.json`: `fixed: [[six packages]]`, `access: public`, `privatePackages: {version: false, tag: false}`; version script `changeset version && pnpm install --lockfile-only && vp fmt`; spike: Changesets 3 on pnpm 12
 
 ### Wave 2
 
-- [ ] **F0-5 Verification surface** — owns root `AGENTS.md`, `tests/`, `scripts/break-line.ts`
-  - Root `AGENTS.md`: repo map, commands, conventions, the `PLAN.md` protocol, the dependency-update routine, "never create `CLAUDE.md`", the **test bar**, and the doctrine that `AGENTS.md` orients while rules live in tests, lint or types
-  - `scripts/break-line.ts` + its tests (exact replace → run command → byte-identical restore → `CAUGHT` / `NOT CAUGHT` / `ERROR`)
-  - Convention tests: manifest fields; no `CLAUDE.md`; `core` has no Cloudflare imports; every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, `permissions: {}` at the top, `id-token: write` only in `release.yml` job `stage`, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); ADR headings
-  - Meta-tests: backtick paths in `AGENTS.md`/`README.md` exist; `AGENTS.md` cites only real scripts and tasks; `AGENTS.md` ≤ 12,000 characters; every test file runs in a CI gate; exception lists may only shrink; every patch has a reason and a test; each guard has a self-test proving it can fail
+- [ ] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
+  - Convention tests: manifest fields; identical `LICENSE` copies; no `CLAUDE.md`; `core` has no Cloudflare imports (regex scan: TypeScript 7 has no JS compiler API); every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, subpath actions allowed, `permissions: {}` at the top, `id-token: write` only in `release.yml` `stage` and the Scorecard job, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); the ADR index matches the ADR files
+  - Meta-tests: backtick paths in `AGENTS.md`/`README.md` exist; `AGENTS.md` cites only real scripts and tasks; `AGENTS.md` ≤ 12,000 characters; every test file belongs to a test project; exception lists may only shrink; every patch has a reason and a test; each guard has a self-test proving it can fail
+  - A failing cross-file check in a file F0-5 doesn't own is reported, and the orchestrator routes the fix
 
 ### F0-6 First CI release (maintainer + orchestrator)
 
-- [ ] **Maintainer:** install the pkg.pr.new GitHub App on the org
-- [ ] **Maintainer:** right before the first release, `npm trust github <pkg> --file release.yml --repo hollware/hollware --env npm --allow-stage-publish` ×6 (2FA; expires if unused for 2 days)
-- [ ] Ship `0.0.1` through CI: changeset → Version Packages PR → merge → `npm` environment click → 2FA approval → tags and releases
+- [ ] The orchestrator adds the first changeset (`patch` for all six) in the same commit as the packages, so CI's changeset check passes from the first push
+- [ ] **Maintainer:** right before the first release, `npm trust github <pkg> --file release.yml --repo hollware/hollware --env npm --allow-stage-publish` ×6 (2FA), then set each package to "require 2FA and disallow tokens"
+- [ ] Ship `0.0.1` through CI: Version Packages PR → merge → `npm` environment click → 2FA approval → tags and releases
 
 ### F0-7 Close
 
@@ -90,21 +98,26 @@ before the first feature.
 
 ### Acceptance criteria
 
-| #       | Criterion                   | Verification                                                                                                           |
-| ------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| AC-F0-1 | Public repo with governance | `gh api repos/hollware/hollware --jq .visibility` → `public`; private vulnerability reporting enabled                  |
-| AC-F0-2 | Design and 14 ADRs          | convention test (required headings)                                                                                    |
-| AC-F0-3 | Clean clone works           | temp dir: `pnpm install --frozen-lockfile && vp run check:push` → exit 0                                               |
-| AC-F0-4 | Walking skeleton            | `vp dev` + `curl /health` → 200; workerd test passes; harness RPC test passes; `wrangler deploy --dry-run` succeeds    |
-| AC-F0-5 | Publishable packages        | `publint` clean; `pnpm pack` contains only `dist`, README, LICENSE, `package.json`                                     |
-| AC-F0-6 | Guards bite                 | guards pass; deliberate violations (e.g. adding a `CLAUDE.md`) fail them                                               |
-| AC-F0-7 | CI green on `main`          | `gh run list --branch main --json conclusion`                                                                          |
-| AC-F0-8 | Single version              | a trial `changeset version` in a temp worktree bumps all six to the same version                                       |
-| AC-F0-9 | Release pipeline proven     | `npm view @hollware/core@0.0.1 dist.attestations` shows provenance (all six); tags `*@0.0.1` and GitHub Releases exist |
+| #       | Criterion                   | Verification                                                                                                                                              |
+| ------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-F0-1 | Public repo with governance | `gh api repos/hollware/hollware --jq .visibility` → `public`; private vulnerability reporting enabled; the governance files exist                         |
+| AC-F0-2 | Design and ADRs             | convention tests: required headings in every ADR, and the index matches the files                                                                         |
+| AC-F0-3 | Clean clone works           | `git clone` into a temp dir, `pnpm install --frozen-lockfile && vp run check:push` → exit 0, with the expected number of tests per project                |
+| AC-F0-4 | Walking skeleton            | `vp dev` in `apps/playground` + `curl /health` → 200; the workerd and harness tests pass; `wrangler deploy --dry-run` succeeds                            |
+| AC-F0-5 | Publishable packages        | `publint --strict` clean; `pnpm pack --dry-run --json` lists only `dist` (plus `migrations` for the server), README, LICENSE and `package.json`           |
+| AC-F0-6 | Guards bite                 | guards pass; deliberate violations (e.g. adding a `CLAUDE.md`) fail them                                                                                  |
+| AC-F0-7 | CI green on `main`          | every workflow run for `HEAD` concluded `success`                                                                                                         |
+| AC-F0-8 | Single version              | a trial `changeset version` (with `changelog: false`) in a temp worktree bumps all six to the same version                                                |
+| AC-F0-9 | Release pipeline proven     | `npm view <pkg>@0.0.1 dist.attestations` shows provenance for all six; `npm audit signatures` passes in a scratch project; tags and GitHub Releases exist |
+
+### Adversarial review (2026-10-11)
+
+C1 root `vp test` had no projects → `test.projects` added. C2 the changeset check would redden `main` → skip rules and a first changeset with the packages. C3 the `stage` job was unpinned → pinned Node/npm, no repo code, sha256 check. H1 pkg.pr.new before the App exists → the maintainer installs it first. H2 wave order inverted → `break-line` and the test bar moved to F0-0. H3 root gaps → `fmt.ignorePatterns`, script interface, `yaml`, `vp fmt` after versioning. H4 per-package `LICENSE` copies. H5 second Worker inside the playground, server ships its migrations, compatibility date, workerd lint override. H6 finalize uses an explicit token, a tag pattern for scoped packages, a timeout and a finalize-only path. H7 F0-2 gets its inputs, ADR index test, real Code of Conduct contact. M1 acceptance wording tightened. M2 org 2FA, SHA pinning, fork approvals, self-review allowed, npm "disallow tokens". M3 `dts.generator`, subpath actions in the SHA test. M4 `tsconfig.base.json`, `*.tgz` and `.vitest/` ignored; v0.1 tasks come with v0.1.
 
 ### Verification log
 
 - 2026-10-11 — F0-0: `vp --version` → 1.1.0; install passes supply-chain policies (199 entries); a probe file triggered `no-explicit-any`, `node/no-process-env`, `consistent-type-assertions` and `no-floating-promises`.
+- 2026-10-11 — F0-0: `vp test --project repo` → 8 passed; `break-line` on its own restore block and on its exit-code map → both `CAUGHT`, file restored byte for byte.
 
 ---
 

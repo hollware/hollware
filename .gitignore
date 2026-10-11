@@ -44,3 +44,5 @@ dist-ssr
 coverage/
 *.tsbuildinfo
 *.cpuprofile
+*.tgz
+.vitest/

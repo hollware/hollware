@@ -24,6 +24,7 @@ catalog:
   # needs it as a real peer dependency.
   vitest: 5.0.3
   wrangler: 4.149.0
+  yaml: 2.9.1
 
 overrides:
   vite@*: 'catalog:'
