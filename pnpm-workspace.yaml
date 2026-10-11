@@ -1,0 +1,46 @@
+packages:
+  - apps/*
+  - examples/*
+  - packages/*
+  - templates/*
+
+catalogMode: prefer
+
+# Exact versions only. Each one was published at least 24 hours before it was
+# pinned, so it already passes minimumReleaseAge. Keep the list sorted.
+catalog:
+  '@changesets/changelog-github': 1.0.1
+  '@changesets/cli': 3.0.3
+  '@cloudflare/vite-plugin': 1.63.1
+  '@cloudflare/vitest-plugin': 1.4.0
+  '@types/node': 24.19.2
+  pkg-pr-new: 0.0.91
+  publint: 0.3.25
+  typescript: 7.0.2
+  # Vite+ ships Vite as @voidzero-dev/vite-plus-core; every package resolves `vite` to it.
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vite-plus: 1.1.0
+  # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
+  # needs it as a real peer dependency.
+  vitest: 5.0.3
+  wrangler: 4.149.0
+
+overrides:
+  vite@*: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
+  allowedVersions:
+    vite: '*'
+
+# Supply-chain policy. Never lower minimumReleaseAge; an urgent fix gets an
+# exact minimumReleaseAgeExclude entry with a reason and an expiry date.
+minimumReleaseAge: 1440
+trustPolicy: no-downgrade
+
+# Build scripts are denied unless listed here with a reason. pnpm 12 fails the
+# install on any unlisted build script.
+allowBuilds:
+  esbuild: true # platform binary used by wrangler
+  workerd: false # the binary arrives through optionalDependencies (@cloudflare/workerd-*)
