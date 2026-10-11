@@ -59,19 +59,19 @@ before the first feature.
 
 ### Wave 1 (parallel)
 
-- [ ] **F0-1 Governance** — owns root `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/CODEOWNERS`
+- [x] **F0-1 Governance** — owns root `LICENSE`, `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`, `.github/CODEOWNERS`
   - MIT `LICENSE` ("Copyright (c) 2026-present Sergio Azócar and Hollware contributors"); `README.md` (thesis, principles, status, roadmap); `CONTRIBUTING.md`; `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1 with a real contact, no `[INSERT` left); `SECURITY.md` (GitHub private vulnerability reporting only)
-- [ ] **F0-2 Design and ADRs** — owns `docs/`
+- [x] **F0-2 Design and ADRs** — owns `docs/`
   - `docs/design.md`: English adaptation of design v0.2 (source path and ADR titles are given in the dispatch), without the EmDash spike, with the execution decisions
   - `docs/adr/0001…0014-*.md` (Status, Context, Decision, Consequences, Alternatives) + `docs/adr/README.md` (index and template). ADR-014 = the release pipeline
-- [ ] **F0-3a Packages** — owns `packages/*`
+- [x] **F0-3a Packages** — owns `packages/*`
   - Complete manifests (`exports` with `types`, `files`, `license`, `engines`, `repository {url, directory}`, `publishConfig {access, provenance}`); an identical copy of the root `LICENSE` in each package; `src/index.ts`; `vite.config.ts` with `pack: { dts: { generator: 'tsgo' }, exports: true }`; `tsconfig.json` extending `tsconfig.base.json`; `README.md`; `AGENTS.md`; smoke tests that never need `dist`; `hollware` and `create-hollware` bins answer `--version` and `--help`
-- [ ] **F0-3b Cloudflare walking skeleton** — owns `apps/playground`, `templates/starter`, `examples/`
+- [x] **F0-3b Cloudflare walking skeleton** — owns `apps/playground`, `templates/starter`, `examples/`
   - Worker via `@cloudflare/vite-plugin` (compatibility date ≤ 2026-10-06, the bundled workerd): `vp dev` from the package directory serves `/health`
   - Tests through `apps/playground/vitest.config.ts` (workerd, `@cloudflare/vitest-plugin`) and `vitest.*.config.ts` (Node, wrangler's `createTestHarness`)
   - A named `WorkerEntrypoint` called over a service binding by a second Worker that also lives in the playground (review H5)
   - D1 with `migrations_dir: node_modules/@hollware/server/migrations`; `wrangler types` + `types:check`; one `wrangler check startup`; `wrangler deploy --dry-run` without an account
-- [ ] **F0-4 CI and releases** — owns `.github/workflows/`, `.changeset/`, `.github/AGENTS.md`
+- [x] **F0-4 CI and releases** — owns `.github/workflows/`, `.changeset/`, `.github/AGENTS.md`
   - `ci.yml` (push to `main`, PRs): `voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2` (exact `version`, Node from `.node-version`), `vp run check:push`; changeset check with `fetch-depth: 0` (PRs: `changeset status --since=origin/main`; pushes: `--since=<before>`, skipped when `before` is all zeros or the commit is the Version Packages merge — review C2); `pnpm exec pkg-pr-new publish --pnpm './packages/*'`
   - `security.yml`: dependency review (PRs), OpenSSF Scorecard (its job may hold `id-token: write`), zizmor, weekly `pnpm audit --prod --audit-level=high`
   - `release.yml` (`changesets/action/*@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2`), `permissions: {}`, concurrency `release`, `if: github.repository == 'hollware/hollware'`, `workflow_dispatch` with a finalize-only path:
@@ -83,14 +83,14 @@ before the first feature.
 
 ### Wave 2
 
-- [ ] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
+- [~] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
   - Convention tests: manifest fields; identical `LICENSE` copies; no `CLAUDE.md`; `core` has no Cloudflare imports (regex scan: TypeScript 7 has no JS compiler API); every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, subpath actions allowed, `permissions: {}` at the top, `id-token: write` only in `release.yml` `stage` and the Scorecard job, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); the ADR index matches the ADR files
   - Meta-tests: backtick paths in `AGENTS.md`/`README.md` exist; `AGENTS.md` cites only real scripts and tasks; `AGENTS.md` ≤ 12,000 characters; every test file belongs to a test project; exception lists may only shrink; every patch has a reason and a test; each guard has a self-test proving it can fail
   - A failing cross-file check in a file F0-5 doesn't own is reported, and the orchestrator routes the fix
 
 ### F0-6 First CI release (maintainer + orchestrator)
 
-- [ ] The orchestrator adds the first changeset (`patch` for all six) in the same commit as the packages, so CI's changeset check passes from the first push
+- [x] The orchestrator adds the first changeset (`patch` for all six) in the same commit as the packages, so CI's changeset check passes from the first push
 - [ ] **Maintainer:** right before the first release, `npm trust github <pkg> --file release.yml --repo hollware/hollware --env npm --allow-stage-publish` ×6 (2FA), then set each package to "require 2FA and disallow tokens"
 - [ ] Ship `0.0.1` through CI: Version Packages PR → merge → `npm` environment click → 2FA approval → tags and releases
 
@@ -121,6 +121,11 @@ C1 root `vp test` had no projects → `test.projects` added. C2 the changeset ch
 - 2026-10-11 — F0-0: `vp --version` → 1.1.0; install passes supply-chain policies (199 entries); a probe file triggered `no-explicit-any`, `node/no-process-env`, `consistent-type-assertions` and `no-floating-promises`.
 - 2026-10-11 — F0-0: `vp test --project repo` → 8 passed; `break-line` on its own restore block and on its exit-code map → both `CAUGHT`, file restored byte for byte.
 - 2026-10-11 — F0-1 accepted: governance files reviewed; `grep -rIn "sergioazoc@"` → nothing; Code of Conduct contact `conduct@hollware.com`.
+- 2026-10-11 — F0-2 accepted: 14 ADRs + index (structure check: 14 files, 14 rows, 0 failures; 4 break-line mutations CAUGHT); `docs/design.md` 750 lines with the validation table; the only `sergioazocar` mention is the out-of-scope note. Note for the maintainer: several "Alternatives considered" were inferred by the writer (ADR 006, 008–011, 013 and parts of 002, 004, 005, 007).
+- 2026-10-11 — F0-3a accepted: 34 package tests; `publint --strict` clean ×6; LICENSE copies byte-identical; two builds leave manifests unchanged; orchestrator mutations on the CLI message and the core name → CAUGHT.
+- 2026-10-11 — F0-3b accepted: 11 tests (`playground:workerd` 7, `playground:harness` 1, `starter:workerd` 3); `types:check` up to date; `deploy:dry` without an account; startup 0.82 KiB, ~2.5 ms sampled; S6 (harness over Vite output) and S9 (dev and `d1 --local` share state) de-risked; vite-plus#2481 not reproduced; workers-sdk#15618 only with `fsModuleCache: true`. Orchestrator mutation on `ping` → CAUGHT.
+- 2026-10-11 — F0-4 accepted: every `uses:` pinned by SHA; `id-token: write` only in `stage` and `scorecard`; `permissions: {}` ×3; 10/10 checkouts without persisted credentials; logic suites 13 + 30 + 29 green; actionlint, shellcheck and zizmor (online, pedantic) clean; trial `changeset version` moved all six to 0.0.1.
+- 2026-10-11 — Integration: `vp run check:push` green (111 files formatted, 53 tests, publint ×6, types up to date, 19 tasks); six commits, one per WP.
 
 ---
 
