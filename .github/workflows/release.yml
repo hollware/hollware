@@ -1,0 +1,268 @@
+name: Release
+
+# The release pipeline (ADR-014). Nothing reaches npm without the maintainer:
+#
+#   select-mode -> version -> (merge the Version Packages pull request)
+#   select-mode -> pack -> stage -> (the maintainer approves on npm with 2FA) -> finalize
+#
+# `stage` is the only job that may request an OIDC token. It checks out nothing and
+# runs no repository code: it verifies the tarballs that `pack` built and hands
+# them to npm.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      finalize_only:
+        description: Only tag and release what was already approved on npm (skips versioning, packing and staging)
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  select-mode:
+    name: Select mode
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' && !inputs.finalize_only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select.outputs.publish-plan-artifact-id }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: false
+
+      - name: Select the mode
+        id: select
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
+  version:
+    name: Version Packages pull request
+    needs: select-mode
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' && needs.select-mode.outputs.mode == 'version'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # push the changeset-release/main branch
+      pull-requests: write # open or update the Version Packages pull request
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the action pushes through the GitHub API with its own token
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: false
+
+      # The script is `changeset version && pnpm install --lockfile-only && vp fmt`.
+      # The commit and the pull request keep the title "Version Packages": the
+      # changeset check in ci.yml recognizes the merge by it.
+      - name: Version the packages
+        uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          script: pnpm run version-packages
+          commit-message: Version Packages
+          pr-title: Version Packages
+
+  pack:
+    name: Pack tarballs
+    needs: select-mode
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' && needs.select-mode.outputs.mode == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: false
+
+      - name: Build the packages
+        run: vp run -r build
+
+      # Writes the tarballs and publish-plan.json (name, version, tarball path and
+      # sha256 of every release) and uploads them as one artifact.
+      - name: Pack the tarballs
+        id: pack
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  stage:
+    name: Stage on npm
+    needs: pack
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main'
+    environment: npm # the maintainer approves this job; the npm trusted publisher is bound to it
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read # nothing is checked out
+      id-token: write # trusted publishing and provenance: the only job in this repository that gets it, besides Scorecard
+    steps:
+      # No registry-url: it writes an .npmrc that stops npm from using the OIDC token.
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+
+      - name: Check the npm version
+        run: |
+          set -euo pipefail
+          echo "node $(node --version), npm $(npm --version)"
+          if ! printf '%s\n' 11.15.0 "$(npm --version)" | sort -V -C; then
+            echo "::error::npm stage needs npm 11.15.0 or newer." >&2
+            exit 1
+          fi
+
+      - name: Download the tarballs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.pack.outputs.artifact-id }}
+          path: ${{ runner.temp }}/pack
+
+      - name: Verify the tarballs and stage them
+        env:
+          PACK_DIR: ${{ runner.temp }}/pack
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$*" >&2
+            exit 1
+          }
+
+          plan="$PACK_DIR/publish-plan.json"
+          [[ -f "$plan" ]] || fail "publish-plan.json is missing from the downloaded artifact."
+          jq -e '.version == 1 and (.plan | type == "array")' "$plan" >/dev/null || fail "publish-plan.json is not a version 1 publish plan."
+
+          name_re='^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$'
+          version_re='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+          tag_re='^[A-Za-z0-9][A-Za-z0-9._-]*$'
+          path_re='^packages/[A-Za-z0-9][A-Za-z0-9._-]*\.tgz$'
+          integrity_re='^sha256-[A-Za-z0-9+/]{43}=$'
+
+          # One tab-separated line per release, dependencies first.
+          releases="$(jq -r '.plan[][] | select(.kind == "publish") | [.name, .version, .tarball.path, .tarball.integrity, .tag, .access] | @tsv' "$plan")"
+          [[ -n "$releases" ]] || fail "The publish plan has nothing to stage."
+
+          # 1. Verify every tarball before staging any of them.
+          paths=()
+          while IFS=$'\t' read -r name version path integrity tag access; do
+            [[ "$name" =~ $name_re ]] || fail "Unexpected package name in the publish plan: ${name}"
+            [[ "$version" =~ $version_re ]] || fail "Unexpected version of ${name}: ${version}"
+            [[ "$path" =~ $path_re ]] || fail "Unexpected tarball path of ${name}: ${path}"
+            [[ "$integrity" =~ $integrity_re ]] || fail "Unexpected sha256 of ${name}: ${integrity}"
+            [[ "$tag" =~ $tag_re ]] || fail "Unexpected dist-tag of ${name}: ${tag}"
+            [[ "$access" == "public" || "$access" == "restricted" ]] || fail "Unexpected access of ${name}: ${access}"
+
+            file="$PACK_DIR/$path"
+            [[ -f "$file" ]] || fail "The tarball of ${name}@${version} is missing: ${path}"
+            actual="sha256-$(openssl dgst -sha256 -binary "$file" | base64 | tr -d '\n')"
+            [[ "$actual" == "$integrity" ]] || fail "The sha256 of ${path} does not match the publish plan."
+            inside="$(tar -xzOf "$file" package/package.json | jq -r '"\(.name)@\(.version)"')"
+            [[ "$inside" == "${name}@${version}" ]] || fail "${path} holds ${inside}, the publish plan says ${name}@${version}."
+            paths+=("$path")
+          done <<<"$releases"
+
+          unexpected="$(comm -13 <(printf '%s\n' "${paths[@]}" | sort) <(cd "$PACK_DIR" && find packages -type f | sort))"
+          [[ -z "$unexpected" ]] || fail "The artifact holds files that are not in the publish plan: ${unexpected//$'\n'/, }"
+
+          # 2. Stage them. The summary grows with every package, so the stage ids of a
+          #    partial run are not lost.
+          {
+            echo "## Staged on npm"
+            echo
+            echo "| Package | Version | sha256 | Stage ID |"
+            echo "| --- | --- | --- | --- |"
+          } >>"$GITHUB_STEP_SUMMARY"
+
+          index=0
+          while IFS=$'\t' read -r name version path integrity tag access; do
+            index=$((index + 1))
+            file="$PACK_DIR/$path"
+            result="$RUNNER_TEMP/staged-${index}.json"
+            if ! npm stage publish "$file" --tag "$tag" --access "$access" --provenance --json >"$result" </dev/null; then
+              cat "$result" >&2 || true
+              fail "npm stage publish failed for ${name}@${version}. Reject what was already staged (the job summary lists it) with npm stage reject <id>, then run the job again."
+            fi
+            stage_id="$(jq -r --arg name "$name" '.[$name].stageId // empty' "$result")"
+            [[ -n "$stage_id" ]] || { cat "$result" >&2; fail "npm did not report a stage id for ${name}@${version}."; }
+            hex="$(openssl dgst -sha256 -r "$file" | cut -d' ' -f1)"
+            echo "| \`${name}\` | ${version} | \`${hex}\` | \`${stage_id}\` |" >>"$GITHUB_STEP_SUMMARY"
+          done <<<"$releases"
+
+          cat >>"$GITHUB_STEP_SUMMARY" <<'EOF'
+
+          Review each package, then approve it with your 2FA, dependencies first (the table is in that order):
+
+          - `npm stage view <stage id>` shows what was staged. `npm stage download <stage id>` fetches the tarball: its `sha256sum` must match the table.
+          - `npm stage approve <stage id>` publishes it. The same is possible on npmjs.com, under the package's staged versions.
+          - `npm stage reject <stage id>` discards it.
+
+          The `finalize` job waits until every version is live, checks its provenance attestation, then creates the tags and the GitHub Releases. If it times out, approve what is left and run this workflow again with `finalize_only`.
+          EOF
+
+  finalize:
+    name: Tag and release
+    needs: stage
+    # `stage` is skipped on a finalize-only run, so a status function is needed to run after it.
+    if: >-
+      ${{ !cancelled() && github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' &&
+      (needs.stage.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.finalize_only)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150 # the script gives up on npm after two hours
+    permissions:
+      contents: write # create the tags and the GitHub Releases
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the release commit is found in the history
+          persist-credentials: false # gh authenticates with GH_TOKEN, git is never used to push
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Wait for npm, then tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The commit this run built. A finalize-only run has no build of its own, so the
+          # script looks for the latest "Version Packages" commit in the history.
+          RELEASE_SHA: ${{ inputs.finalize_only != true && github.sha || '' }}
+          WAIT_SECONDS: '7200'
+        run: bash .github/scripts/finalize-release.sh

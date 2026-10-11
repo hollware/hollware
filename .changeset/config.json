@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "baseBranch": "main",
+  "access": "public",
+  "format": false,
+  "changelog": ["@changesets/changelog-github", { "repo": "hollware/hollware" }],
+  "commit": false,
+  "ignore": [],
+  "fixed": [
+    [
+      "@hollware/core",
+      "@hollware/server",
+      "@hollware/client",
+      "@hollware/admin",
+      "hollware",
+      "create-hollware"
+    ]
+  ],
+  "linked": [],
+  "updateInternalDependencies": "patch",
+  "privatePackages": { "version": false, "tag": false }
+}

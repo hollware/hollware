@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the changeset check compares with an earlier commit
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: true
+
+      - name: Check changesets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: bash .github/scripts/changeset-check.sh
+
+      - name: Check, test, build, publint and types
+        run: vp run check:push
+
+  preview:
+    name: Preview packages
+    if: github.repository == 'hollware/hollware'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read # pkg.pr.new needs no token: its GitHub App verifies the run and comments on the pull request
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: true
+
+      - name: Build the packages
+        run: vp run -r build
+
+      # Previews go to pkg.pr.new, not to npm, so trusted publishing does not apply.
+      - name: Publish previews to pkg.pr.new
+        run: pnpm exec pkg-pr-new publish --pnpm './packages/*' # zizmor: ignore[use-trusted-publishing]
