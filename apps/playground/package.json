@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
-    "test": "vp test",
-    "types": "wrangler types",
-    "types:check": "wrangler types --check"
+    "test": "vp test --root ../.. --project 'playground:*'",
+    "types": "wrangler types && wrangler types site/worker-configuration.d.ts -c site/wrangler.jsonc -c wrangler.jsonc --env-interface SiteEnv --no-include-runtime",
+    "types:check": "wrangler types --check && wrangler types site/worker-configuration.d.ts -c site/wrangler.jsonc -c wrangler.jsonc --env-interface SiteEnv --no-include-runtime --check",
+    "deploy:dry": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "check:startup": "vp build && wrangler check startup --outfile .wrangler/worker-startup.cpuprofile"
   },
   "dependencies": {
     "@hollware/server": "workspace:*"

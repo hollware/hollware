@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "hollware-playground-site",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  "services": [
+    // The same shape a site uses to read Hollware: a service binding to a named entrypoint.
+    { "binding": "PLAYGROUND", "service": "hollware-playground", "entrypoint": "Playground" },
+  ],
+}

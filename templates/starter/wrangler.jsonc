@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-hollware",
+  "main": "src/worker.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-hollware",
+      // Placeholder for local development. Replace it with the id of the database that
+      // `wrangler d1 create my-hollware` prints before you deploy.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      // The server package ships its migrations; the project applies them as they are.
+      "migrations_dir": "node_modules/@hollware/server/migrations",
+    },
+  ],
+}

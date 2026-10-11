@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-playground",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hollware-playground",
+      // Placeholder: local development, tests and dry runs never contact Cloudflare.
+      // A real deploy needs the id of a database created with `wrangler d1 create`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      // The server package ships its migrations; the playground applies them as they are.
+      "migrations_dir": "node_modules/@hollware/server/migrations",
+    },
+  ],
+}
