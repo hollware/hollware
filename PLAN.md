@@ -50,7 +50,9 @@ before the first feature.
 - [x] `scripts/break-line.ts` + 8 tests (moved here from F0-5, review H2); two self-mutations reported `CAUGHT`
 - [x] Root `AGENTS.md` with the test bar (moved here from F0-5, review H2)
 - [x] First local commit
+- [x] Repo-local git identity uses the GitHub noreply address (`6147546+sergioazoc@users.noreply.github.com`); the local commits were re-authored before the first push, so no personal email reaches the public history
 - [ ] **Maintainer:** reserve the six npm names before the repo is public (placeholders `0.0.0`)
+- [ ] **Maintainer (not blocking):** Cloudflare Email Routing on hollware.com so `conduct@hollware.com` (Code of Conduct contact) reaches you
 - [ ] **Maintainer:** require 2FA for the `hollware` GitHub org; install the pkg.pr.new GitHub App on it before CI lands (review H1, M2)
 - [ ] `gh repo create hollware/hollware --public` and push
 - [ ] Repo settings via `gh api`: private vulnerability reporting, secret scanning + push protection, CodeQL default setup, Dependabot alerts (no PRs), Actions `sha_pinning_required`, fork PRs need approval, read-only workflow token that may create PRs, `main` ruleset on the default branch only (no force-push, no deletion), tag ruleset `*@*` and `@*/*@*`, immutable releases, environment `npm` (only `main`, maintainer approval, `prevent_self_review: false`)
@@ -118,6 +120,7 @@ C1 root `vp test` had no projects → `test.projects` added. C2 the changeset ch
 
 - 2026-10-11 — F0-0: `vp --version` → 1.1.0; install passes supply-chain policies (199 entries); a probe file triggered `no-explicit-any`, `node/no-process-env`, `consistent-type-assertions` and `no-floating-promises`.
 - 2026-10-11 — F0-0: `vp test --project repo` → 8 passed; `break-line` on its own restore block and on its exit-code map → both `CAUGHT`, file restored byte for byte.
+- 2026-10-11 — F0-1 accepted: governance files reviewed; `grep -rIn "sergioazoc@"` → nothing; Code of Conduct contact `conduct@hollware.com`.
 
 ---
 

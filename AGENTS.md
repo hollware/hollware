@@ -31,6 +31,19 @@ global `vp` of another version breaks the Cloudflare plugin. Supervised servers 
 started with their local binary, never with `pnpm dev`: pnpm 12 runs scripts in a
 new process group, so the child outlives its supervisor.
 
+## Workers in this repo
+
+- The playground has two test projects: `playground:workerd` (inside workerd, through
+  `@cloudflare/vitest-plugin`) and `playground:harness` (Node, through wrangler's
+  `createTestHarness` over the Vite build). Run both with
+  `pnpm --filter @hollware/playground run test`.
+- Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
+- Keep `fsModuleCache: false` in workerd test configs: with `true`, Vitest 5 and
+  `@cloudflare/vitest-plugin` fail to read their module cache (workers-sdk#15618).
+- `vp dev` starts through a launcher: stopping the launcher leaves the dev server and
+  workerd running. Stop the process that listens on the port instead.
+- `compatibility_date` must not be newer than the workerd that wrangler bundles.
+
 ## Layout
 
 - `packages/core` — contracts, schemas, Markdown pipeline. No Cloudflare imports.
