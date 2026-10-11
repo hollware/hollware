@@ -1,0 +1,78 @@
+name: Bug report
+description: Something does not work the way it should.
+title: '[Bug]: '
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Hollware is pre-alpha, so some things are expected not to work yet.
+
+        **Do not report security vulnerabilities here.** Report them privately through [private vulnerability reporting](https://github.com/hollware/hollware/security/advisories/new) instead.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this bug has not been reported.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Hollware version
+      description: The version of the Hollware packages you use (for example from `hollware --version`), or the commit SHA if you run a clone of the repository.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Where does it run?
+      options:
+        - Local development (vp dev or wrangler dev)
+        - Tests (Miniflare or workerd)
+        - Deployed to Cloudflare Workers
+        - The hollware CLI on my machine
+        - Somewhere else (describe it below)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Anything about your setup that could matter, such as the versions of Node.js, pnpm and Wrangler, your operating system and the bindings you use.
+      placeholder: Node.js 24.21.0, pnpm 12.11.2, Wrangler 4.149.0, macOS
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Ideally a minimal reproduction, such as a repository, or the exact commands and content you used.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead. Include the exact error message if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant output, such as a stack trace, test output or `wrangler tail`. Remove tokens, secrets and personal data before you paste it.
+      render: shell

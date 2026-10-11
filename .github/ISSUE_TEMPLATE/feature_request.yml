@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a change or an addition to Hollware.
+title: '[Feature]: '
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Hollware keeps a deliberately narrow scope. The [README](https://github.com/hollware/hollware#readme) lists the five principles it is built around and what is out of scope: a proposal that needs a site renderer, a page builder or a plugin marketplace is unlikely to be accepted.
+
+        Start from the problem you want solved, not from the solution you have in mind.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What would you like Hollware to do? Describe the behavior you would expect, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve the problem, including solving it outside Hollware or not solving it at all.
+  - type: dropdown
+    id: principle
+    attributes:
+      label: Related principle
+      description: Which of the five principles does this proposal relate to?
+      multiple: true
+      options:
+        - Headless, always
+        - The agent is the primary editor
+        - Contracts at write time
+        - Markdown is the source of truth
+        - Cloudflare-native, close to zero cost
+        - None of them, or I am not sure
+    validations:
+      required: true
