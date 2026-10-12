@@ -1,11 +1,12 @@
 # Tests
 
-What lives in `tests/`: the guards of what this repository claims about itself, and the tests of its CI scripts. The tests of a package or an app sit next to their code.
+What lives in `tests/`: the guards of what this repository claims about itself, the tests of its CI scripts, and the fixtures that the tests of every package share. The tests of a package or an app sit next to their code.
 
 - `tests/guards/` holds the guards. A guard is a pure function, `check...(input): Violation[]`, that gets the facts of the repository as arguments and holds no exception list of its own.
 - `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each test runs its guard on this repository, where it finds no violation, and in a `describe('self-test: ...')` block on bad fixtures, where it asserts the exact violation.
 - `tests/support/` holds what the guards stand on: the file list of the repository, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
+- `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
 Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
 

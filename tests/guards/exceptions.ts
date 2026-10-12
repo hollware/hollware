@@ -34,13 +34,8 @@ export interface ExceptionList {
  * (guard `agents-paths`). The value is the text between the backticks.
  */
 export const MISSING_DOC_PATHS: ExceptionList = {
-  max: 7,
+  max: 6,
   entries: [
-    {
-      value: 'hollware.config.ts',
-      reason:
-        'The config file of a Hollware project, which lives in user projects and the v0.1 playground, not here.',
-    },
     {
       value: 'examples/worker-site',
       reason: 'Arrives in v0.1; examples/README.md announces it.',

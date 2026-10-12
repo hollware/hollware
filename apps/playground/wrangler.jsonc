@@ -9,6 +9,11 @@
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
+  "vars": {
+    // The only Host and Origin Hollware answers. This is the URL `vp dev` serves; the harness
+    // tests override it with http://hollware.test (test/harness/workers.ts).
+    "HOLLWARE_PUBLIC_URL": "http://localhost:5173",
+  },
   "d1_databases": [
     {
       "binding": "DB",

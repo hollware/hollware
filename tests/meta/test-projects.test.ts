@@ -82,6 +82,7 @@ describe('test projects', () => {
         .map((entry) => entry.file)
         .sort()
     expect(inProject('playground:workerd')).toEqual([
+      'apps/playground/test/workerd/config.workerd.test.ts',
       'apps/playground/test/workerd/database.workerd.test.ts',
       'apps/playground/test/workerd/health.workerd.test.ts',
       'apps/playground/test/workerd/node-globals.workerd.test.ts',

@@ -275,13 +275,13 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
   - the schema guard (`id`, timestamps, `site_id`, `UNIQUE(id, site_id)`, composite keys; `_hollware_meta`, `sites` and `users` as reasoned exceptions);
   - the trigger test `server/tests/append-only.workerd.test.ts`: the nine triggers after all migrations, every column of the three tables sorted into immutable and derived, and `INSERT OR REPLACE` on every unique key;
   - `drizzle-kit generate` yields no diff: a Node test of the server (`server/tests/migrations.test.ts`), so `vp test` runs it in CI with no step of its own
-- [ ] 0.7 Test support:
-  - synthetic fixtures: bilingual posts, one of 2,027 words, hostile Markdown, and rows of a second site;
-  - a loader through Vite (`import.meta.glob` with `?raw`) that works in Node and in workerd;
-  - `fmt.ignorePatterns` for the fixtures;
-  - `packages/core/bench/` outside `src`;
-  - one harness pattern: requests to `http://hollware.test` with `HOLLWARE_PUBLIC_URL` set to it;
-  - a bilingual blog config in `apps/playground/hollware.config.ts`
+- [x] 0.7 Test support:
+  - synthetic fixtures in `tests/fixtures/content` (`tests/fixtures/README.md`): the corpus of the playground's blog (ten entries in five translation groups, with tags, links, a component, code and an image), the 2,027-word post of the benchmark, hostile Markdown (raw HTML inline and in blocks, `::youtub`, disallowed attributes, unsafe URLs, 5,000 nested emphasis marks, broken frontmatter, a byte order mark) and invalid variants; rows of a second site from `packages/server/tests/support/sites.ts`, with the same natural keys as the first;
+  - the loader `tests/fixtures/content.ts` (`import.meta.glob` with `?raw`), tested in Node and in workerd, the byte order mark included;
+  - `fmt.ignorePatterns` keeps the formatter off `tests/fixtures/content`, which stays byte for byte;
+  - `packages/core/bench/`: WP2 writes it, on `content/bench/long-post.md`, and its task and CI step land with it (item 0.8);
+  - one harness pattern: `createPlaygroundHarness()` (`apps/playground/test/harness/workers.ts`) sends requests to `http://hollware.test` and gives the Worker that URL as `HOLLWARE_PUBLIC_URL`; `vp dev` keeps `http://localhost:5173`;
+  - a bilingual blog config in `apps/playground/hollware.config.ts` (site `playground`, collection `blog`, routes `/blog/:slug/` and `/en/blog/:slug/`, `callout` and `youtube`, the `seo-title-length` warning), tested in workerd
 - [ ] 0.8 Root tasks and CI steps: each lands with the first test it runs (`test:conformance` with WP10, `check:budgets` with WP11, `test:acceptance` in Wave 4), so the guard `test-projects` never sees a test that nothing runs
 
 ### Operations: outcomes and effects (pinned in `core/src/operations`)
@@ -407,6 +407,7 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
   With every `dist` deleted, `vp run check:push` exits 0 with 67 files and 642 tests.
 
 - 2026-10-12 — Wave 0 item 0.5: the interfaces of `core` and `server` compile, and the tests that pin them pass in Node and in workerd: the operation table and the JSON Schema of every input (a strict object) and output (an object whose `outcome` enum lists the spec's outcomes), the token format against SHA-256 vectors, the scopes, the error codes, the MCP hints per effect, the limits, the typed handler table (a missing or an unknown handler is a type error) and the frontmatter type reaching the contracts of a collection. A probe showed that `defineContract` inside a collection's array loses the frontmatter type, so contracts are plain objects there. Mutations → CAUGHT: `blocked` made a non-error and `unpublish`'s input made non-strict and the order of `OPERATIONS` swapped and the default format changed (`operations`), `& 31` turned into `% 31` and the token pattern loosened (`tokens`), `schema:admin` dropped (`scopes`), the destructive hint made non-idempotent (`annotations`).
+- 2026-10-12 — Wave 0 item 0.7: the fixtures load through Vite in Node and in workerd (8 tests over both), and `vp fmt` leaves them byte-identical to their generator's output. `seedSite` writes two sites with the same natural keys that the schema accepts (checks, composite keys, triggers). The harness reaches Hollware at `http://hollware.test` with that URL as its public URL. The playground config takes the corpus's frontmatter. Comark parses YAML with js-yaml's `JSON_SCHEMA`, so dates stay strings. Mutations → CAUGHT: the fixtures dropped from `fmt.ignorePatterns` (`vp check`), `?raw` turned into `?url` (the loader test), the harness without its `vars` (the harness test), the description limit raised to 200 (the config test). A publication written for every English entry instead of every published one was NOT CAUGHT at first, because the count stayed at two; the seed test now checks which entries are live and published.
 
 ---
 

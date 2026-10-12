@@ -2,7 +2,8 @@ import { exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
 // Fails when: src/index.ts stops answering GET /health with 200, application/json and the literal
-// body, or stops answering 404 to a path or method it does not serve (GET /health/, POST /health).
+// body, which names the public URL that wrangler.jsonc sets for `vp dev`, or stops answering 404 to
+// a path or method it does not serve (GET /health/, POST /health).
 
 describe('the playground Worker over HTTP', () => {
   it('answers GET /health with the literal JSON body', async () => {
@@ -10,7 +11,9 @@ describe('the playground Worker over HTTP', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toBe('application/json')
-    expect(await response.text()).toBe('{"ok":true,"name":"hollware-playground"}')
+    expect(await response.text()).toBe(
+      '{"ok":true,"name":"hollware-playground","publicUrl":"http://localhost:5173"}',
+    )
   })
 
   it.each([

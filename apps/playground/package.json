@@ -13,6 +13,7 @@
     "check:startup": "vp build && wrangler check startup --outfile .wrangler/worker-startup.cpuprofile"
   },
   "dependencies": {
+    "@hollware/core": "workspace:*",
     "@hollware/server": "workspace:*",
     "zod": "catalog:"
   },

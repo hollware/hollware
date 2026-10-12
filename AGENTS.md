@@ -51,6 +51,13 @@ new process group, so the child outlives its supervisor.
 - The test runner of `@cloudflare/vitest-plugin` keeps Node.js compatibility on whatever
   the flags say, so a workerd test never proves that code runs without Node.js. The
   playground's harness test proves it on the built Workers.
+- Harness tests reach Hollware at `http://hollware.test` and give the Worker that URL as
+  its `HOLLWARE_PUBLIC_URL`: build the harness with `createPlaygroundHarness()` from
+  `apps/playground/test/harness/workers.ts`.
+- Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, which
+  works in Node and inside workerd (`tests/fixtures/README.md`). Rows of a second site,
+  for the tests that one site cannot reach another, come from
+  `packages/server/tests/support/sites.ts`.
 
 ## Layout
 

@@ -1,23 +1,18 @@
-import { createTestHarness } from 'wrangler'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+
+import { createPlaygroundHarness, HOLLWARE_URL, HOLLWARE_WORKER, SITE_URL } from './workers.ts'
 
 // Fails when: site/src/index.ts stops answering with what Playground.ping() makes of the request
 // path (a hard-coded answer, always the same message, another status), Playground.ping() in
 // src/index.ts changes its answer, or the service binding in site/wrangler.jsonc stops reaching
 // the Playground entrypoint; or when either built Worker has Node.js globals, which happens
-// when its wrangler.jsonc drops `no_nodejs_compat` or `no_nodejs_compat_v2`.
+// when its wrangler.jsonc drops `no_nodejs_compat` or `no_nodejs_compat_v2`; or when the harness
+// stops reaching Hollware at HOLLWARE_URL with that URL as its HOLLWARE_PUBLIC_URL (workers.ts).
 
-// The Vite build writes one directory per Worker under dist/, named after the Worker.
-// The first Worker is the primary one: `server.fetch()` goes to the site.
-const server = createTestHarness({
-  workers: [
-    { configPath: new URL('../../dist/hollware_playground_site/wrangler.json', import.meta.url) },
-    { configPath: new URL('../../dist/hollware_playground/wrangler.json', import.meta.url) },
-  ],
-})
+const server = createPlaygroundHarness()
 
 async function answerFor(path: string) {
-  const response = await server.fetch(path)
+  const response = await server.fetch(`${SITE_URL}${path}`)
   return { status: response.status, text: await response.text() }
 }
 
@@ -40,7 +35,16 @@ describe('the built site Worker', () => {
   it('runs both Workers without Node.js: no process, Buffer or setImmediate', async () => {
     // This is the only place that can prove it. The vitest plugin turns Node.js compatibility
     // on in its own runner whatever wrangler.jsonc says; the harness runs the built Workers.
-    const response = await server.fetch('/__node-globals')
+    const response = await server.fetch(`${SITE_URL}/__node-globals`)
     expect(await response.json()).toEqual({ site: [], playground: [] })
+  })
+
+  it('reaches Hollware at HOLLWARE_URL, which the Worker gets as its public URL', async () => {
+    const response = await server.getWorker(HOLLWARE_WORKER).fetch(`${HOLLWARE_URL}/health`)
+    expect(await response.json()).toEqual({
+      ok: true,
+      name: 'hollware-playground',
+      publicUrl: HOLLWARE_URL,
+    })
   })
 })

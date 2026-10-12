@@ -9,6 +9,9 @@ const generated = [
   '**/migrations/meta/**',
 ]
 
+// Test fixtures whose bytes matter: the formatter would rewrite the Markdown under test.
+const fixtures = ['tests/fixtures/content/**']
+
 export default defineConfig({
   staged: {
     '*': 'vp check --fix',
@@ -16,7 +19,7 @@ export default defineConfig({
   fmt: {
     semi: false,
     singleQuote: true,
-    ignorePatterns: generated,
+    ignorePatterns: [...generated, ...fixtures],
   },
   lint: {
     plugins: ['typescript', 'unicorn', 'oxc', 'import', 'node'],

@@ -277,6 +277,9 @@ importers:
 
   apps/playground:
     dependencies:
+      '@hollware/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@hollware/server':
         specifier: workspace:*
         version: link:../../packages/server

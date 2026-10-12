@@ -21,6 +21,8 @@ serve them (ADR-017). Boundary rules for this package:
   import it and never `src/db`, so their tests run on fakes. `src/ops/types.ts` pairs one handler
   with each spec of `@hollware/core`, by type.
 - Every method of the store takes the site first, and reads and writes only that site's rows.
+- `tests/support/sites.ts` seeds a whole site with SQL, with the same natural keys every
+  time; the tests that check one site cannot reach another seed two.
 - `src/mcp/annotations.ts` maps each effect to its MCP hints, and `src/limits.ts` holds the output
   cap, the timeout and the store's limits under D1's.
 - `src` type-checks with the Workers runtime types that `wrangler types` generates for

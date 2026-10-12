@@ -1,10 +1,14 @@
 import { WorkerEntrypoint } from 'cloudflare:workers'
 
 export default {
-  fetch(request) {
+  fetch(request, env) {
     const { pathname } = new URL(request.url)
     if (request.method === 'GET' && pathname === '/health') {
-      return Response.json({ ok: true, name: 'hollware-playground' })
+      return Response.json({
+        ok: true,
+        name: 'hollware-playground',
+        publicUrl: env.HOLLWARE_PUBLIC_URL,
+      })
     }
     return new Response('Not Found', { status: 404 })
   },
