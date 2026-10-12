@@ -1,0 +1,37 @@
+plan-sized registry: tools/list answer is 33907 bytes, identical for Zod and precomputed
+node v24.19.0, jitless=true, conditions=--expose-gc --conditions=workerd, label=workerd-run3
+scenario                                                                    median       p95      mean  cpu/iter   (µs)
+build McpServer + 3 tools (Zod schemas at module scope)                        1.8       3.4       3.4      10.4
+build McpServer + 3 tools (Zod schemas rebuilt per request)                   42.3      48.8      60.3     113.5
+build McpServer + 3 tools (precomputed, wrappers at module scope)              1.6       2.2       3.0       8.0
+build McpServer + 3 tools (precomputed, fromJsonSchema per request)            8.8       9.7      11.7      20.2
+McpServer constructor alone (no tools)                                         0.5       0.7       0.6       1.1
+createSchemas() alone (6 Zod objects)                                         37.9      42.4      51.3      90.7
+createPrecomputedWrappers() alone (6 fromJsonSchema)                           7.0       7.5       7.5       9.1
+Zod -> JSON Schema, 3 inputs + 3 outputs (what tools/list converts)           48.8      52.8      49.9      51.0
+Zod -> JSON Schema, echo input only                                            7.0       7.6       7.2       7.7
+Zod -> JSON Schema, create_note input only (largest)                          19.8      24.1      20.6      22.3
+request server/discover (2026) [Zod server]                                   36.4      49.3      42.8      80.6
+request tools/list (2026) [Zod server]                                        93.8     130.2     106.4     152.3
+request tools/list (2025, SSE) [Zod server]                                   95.5     123.7     109.3     157.3
+request tools/call echo (2026) [Zod server]                                   49.0      63.4      57.6      96.3
+request tools/call create_note (2026) [Zod server]                            66.5      94.5      80.6     126.3
+request tools/list (2026) [Zod schemas rebuilt per request]                  141.8     202.0     171.8     277.1
+request server/discover (2026) [precomputed server]                           30.2      39.6      36.5      68.9
+request tools/list (2026) [precomputed server]                                38.9      51.8      47.1      82.9
+request tools/list (2025, SSE) [precomputed server]                           40.6      61.5      52.5     106.3
+request tools/call echo (2026) [precomputed server]                           38.2      52.7      45.7      88.8
+request tools/call create_note (2026) [precomputed server]                    40.7      55.3      48.6      90.0
+request server/discover (2026) [memoized-Zod server]                          31.8      45.0      39.5      79.4
+request tools/list (2026) [memoized-Zod server]                               40.0      54.2      48.6      90.5
+request tools/call echo (2026) [memoized-Zod server]                          34.6      45.8      41.7      80.2
+request tools/call create_note (2026) [memoized-Zod server]                   36.8      51.3      44.6      85.8
+request tools/list (2026) [precomputed, wrappers per request]                 47.3      61.0      55.9      98.2
+PLAN-SIZED (9 tools x 12-field schemas): build server [Zod, module-scope schemas]       3.5       4.2       6.7      19.0
+PLAN-SIZED: Zod -> JSON Schema for all 9 inputs + 9 outputs                 1292.9    1537.3    1321.1    1328.4
+PLAN-SIZED: request tools/list (2026) [Zod server]                          1416.9    1949.0    1477.3    1688.3
+PLAN-SIZED: request tools/list (2026) [precomputed server]                   128.0     282.0     150.6     305.7
+PLAN-SIZED: request tools/list (2026) [memoized-Zod server]                  139.5     282.8     171.4     346.5
+PLAN-SIZED: request tools/call, 12-field in/out (2026) [Zod server, 10 tools registered]     192.7     223.3     208.9     258.9
+PLAN-SIZED: request tools/call, 12-field in/out (2026) [memoized-Zod server]      46.4      60.1      53.6     100.0
+PLAN-SIZED: request server/discover (2026) [Zod server, 9 tools]              33.3      45.3      41.7      83.5

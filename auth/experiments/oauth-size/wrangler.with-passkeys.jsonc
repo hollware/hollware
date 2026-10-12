@@ -1,0 +1,12 @@
+{
+  "name": "hollware-spike-with-passkeys",
+  "main": "with-passkeys.ts",
+  "compatibility_date": "2026-10-06",
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  "vars": {
+    "RP_ID": "cms.example.test",
+    "RP_NAME": "Hollware Spike",
+    "ORIGIN": "https://cms.example.test",
+  },
+}

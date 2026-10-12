@@ -1,0 +1,227 @@
+{
+  "node": "v24.19.0",
+  "v8": "13.6.233.17-node.51",
+  "platform": "darwin-arm64",
+  "2000 words": {
+    "words": 2000,
+    "proseWords": 1805,
+    "markdownBytes": 13640,
+    "documentJsonBytes": 17642,
+    "parse, new parser per call (parseMarkdown)": {
+      "medianMs": 0.49183400000003985,
+      "p95Ms": 0.6922920000000659,
+      "minMs": 0.45820800000001327,
+      "meanCpuMs": 0.575588,
+      "iterations": 1000
+    },
+    "parse, parser reused": {
+      "medianMs": 0.31883399999992434,
+      "p95Ms": 0.4312919999999849,
+      "minMs": 0.2996250000001055,
+      "meanCpuMs": 0.34974400000000005,
+      "iterations": 1000
+    },
+    "parse, parser reused, autoClose: false": {
+      "medianMs": 0.301290999999992,
+      "p95Ms": 0.4552920000000995,
+      "minMs": 0.28662499999995816,
+      "meanCpuMs": 0.335941,
+      "iterations": 1000
+    },
+    "parse, safe config (no html, allow-list, autoClose: false)": {
+      "medianMs": 0.46325000000024374,
+      "p95Ms": 0.5747919999998885,
+      "minMs": 0.43724999999994907,
+      "meanCpuMs": 0.489948,
+      "iterations": 1000
+    },
+    "parse + render, safe config": {
+      "medianMs": 0.6552910000000338,
+      "p95Ms": 0.8608329999997295,
+      "minMs": 0.6182920000001104,
+      "meanCpuMs": 0.69828,
+      "iterations": 1000
+    },
+    "render only (renderHtmlFromDocument)": {
+      "medianMs": 0.17908299999999144,
+      "p95Ms": 0.1930409999999938,
+      "minMs": 0.17129100000011022,
+      "meanCpuMs": 0.184598,
+      "iterations": 1000
+    },
+    "parse + render, parser reused": {
+      "medianMs": 0.5067920000001322,
+      "p95Ms": 0.6880000000001019,
+      "minMs": 0.4793330000002243,
+      "meanCpuMs": 0.534693,
+      "iterations": 1000
+    },
+    "parse + render, new parser per call (renderHtml)": {
+      "medianMs": 0.6786670000001322,
+      "p95Ms": 0.8670000000001892,
+      "minMs": 0.6366250000000946,
+      "meanCpuMs": 0.727038,
+      "iterations": 1000
+    },
+    "parse + render, createHtmlRenderer reused": {
+      "medianMs": 0.5007919999998194,
+      "p95Ms": 0.6657090000007884,
+      "minMs": 0.4759169999997539,
+      "meanCpuMs": 0.5444840000000001,
+      "iterations": 1000
+    },
+    "extract (headings, links, images, components)": {
+      "medianMs": 0.1045830000002752,
+      "p95Ms": 0.10966700000062701,
+      "minMs": 0.0995840000005046,
+      "meanCpuMs": 0.10710800000000001,
+      "iterations": 1000
+    },
+    "JSON.stringify(document)": {
+      "medianMs": 0.018332999999984168,
+      "p95Ms": 0.0187500000001819,
+      "minMs": 0.01766700000007404,
+      "meanCpuMs": 0.018786,
+      "iterations": 1000
+    },
+    "JSON.parse(stored document)": {
+      "medianMs": 0.02920799999992596,
+      "p95Ms": 0.029875000000174623,
+      "minMs": 0.027541999999812106,
+      "meanCpuMs": 0.029524,
+      "iterations": 1000
+    },
+    "render from stored JSON (parse JSON + render)": {
+      "medianMs": 0.2072920000000522,
+      "p95Ms": 0.23229199999968841,
+      "minMs": 0.1986669999996593,
+      "meanCpuMs": 0.21748599999999998,
+      "iterations": 1000
+    },
+    "write path: parse + extract + stringify": {
+      "medianMs": 0.4477500000002692,
+      "p95Ms": 0.5669580000003407,
+      "minMs": 0.4205419999998412,
+      "meanCpuMs": 0.46819099999999997,
+      "iterations": 1000
+    },
+    "write path + render HTML": {
+      "medianMs": 0.6348330000000715,
+      "p95Ms": 0.8100000000004002,
+      "minMs": 0.5996670000004087,
+      "meanCpuMs": 0.660259,
+      "iterations": 1000
+    }
+  },
+  "10000 words": {
+    "words": 10000,
+    "proseWords": 9293,
+    "markdownBytes": 68327,
+    "documentJsonBytes": 87561,
+    "parse, new parser per call (parseMarkdown)": {
+      "medianMs": 1.7264580000010028,
+      "p95Ms": 2.145834000000832,
+      "minMs": 1.5852500000000873,
+      "meanCpuMs": 1.8093066666666668,
+      "iterations": 300
+    },
+    "parse, parser reused": {
+      "medianMs": 1.5502919999998994,
+      "p95Ms": 1.7874160000010306,
+      "minMs": 1.4197089999997843,
+      "meanCpuMs": 1.5934066666666666,
+      "iterations": 300
+    },
+    "parse, parser reused, autoClose: false": {
+      "medianMs": 1.4620409999988624,
+      "p95Ms": 1.7682500000009895,
+      "minMs": 1.361417000000074,
+      "meanCpuMs": 1.5184033333333333,
+      "iterations": 300
+    },
+    "parse, safe config (no html, allow-list, autoClose: false)": {
+      "medianMs": 2.1847500000003492,
+      "p95Ms": 2.518625000000611,
+      "minMs": 2.053125000000364,
+      "meanCpuMs": 2.2702766666666667,
+      "iterations": 300
+    },
+    "parse + render, safe config": {
+      "medianMs": 3.181292000001122,
+      "p95Ms": 3.560124999999971,
+      "minMs": 2.8932499999991705,
+      "meanCpuMs": 3.28524,
+      "iterations": 300
+    },
+    "render only (renderHtmlFromDocument)": {
+      "medianMs": 0.857958000000508,
+      "p95Ms": 1.0270419999997102,
+      "minMs": 0.8111660000013217,
+      "meanCpuMs": 0.8765266666666668,
+      "iterations": 300
+    },
+    "parse + render, parser reused": {
+      "medianMs": 2.4439170000005106,
+      "p95Ms": 2.819958999998562,
+      "minMs": 2.2411250000004657,
+      "meanCpuMs": 2.5401733333333336,
+      "iterations": 300
+    },
+    "parse + render, new parser per call (renderHtml)": {
+      "medianMs": 2.6559159999997064,
+      "p95Ms": 2.973667000000205,
+      "minMs": 2.475166000000172,
+      "meanCpuMs": 2.7323000000000004,
+      "iterations": 300
+    },
+    "parse + render, createHtmlRenderer reused": {
+      "medianMs": 2.470500000003085,
+      "p95Ms": 2.852208000000246,
+      "minMs": 2.242833000000246,
+      "meanCpuMs": 2.5540266666666667,
+      "iterations": 300
+    },
+    "extract (headings, links, images, components)": {
+      "medianMs": 0.5191660000018601,
+      "p95Ms": 0.5464999999967404,
+      "minMs": 0.49799999999959255,
+      "meanCpuMs": 0.5270133333333333,
+      "iterations": 300
+    },
+    "JSON.stringify(document)": {
+      "medianMs": 0.08383300000059535,
+      "p95Ms": 0.08599999999933061,
+      "minMs": 0.08316600000034668,
+      "meanCpuMs": 0.08410666666666666,
+      "iterations": 300
+    },
+    "JSON.parse(stored document)": {
+      "medianMs": 0.13550000000032014,
+      "p95Ms": 0.1421249999984866,
+      "minMs": 0.13183300000309828,
+      "meanCpuMs": 0.13776000000000002,
+      "iterations": 300
+    },
+    "render from stored JSON (parse JSON + render)": {
+      "medianMs": 0.9958340000011958,
+      "p95Ms": 1.266250000000582,
+      "minMs": 0.9414170000018203,
+      "meanCpuMs": 1.02931,
+      "iterations": 300
+    },
+    "write path: parse + extract + stringify": {
+      "medianMs": 2.172707999998238,
+      "p95Ms": 2.466959000001225,
+      "minMs": 2.038250000001426,
+      "meanCpuMs": 2.2445033333333333,
+      "iterations": 300
+    },
+    "write path + render HTML": {
+      "medianMs": 3.1312920000018494,
+      "p95Ms": 3.4875000000029104,
+      "minMs": 2.908792000001995,
+      "meanCpuMs": 3.21389,
+      "iterations": 300
+    }
+  }
+}

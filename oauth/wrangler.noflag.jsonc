@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-oauth-noflag",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-06",
+  // The same Worker as wrangler.jsonc without global_fetch_strictly_public: what the provider does
+  // when CIMD is enabled and the flag is forgotten.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  "vars": { "HOLLWARE_PUBLIC_URL": "https://hollware.test" },
+}

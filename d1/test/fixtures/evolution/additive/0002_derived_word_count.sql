@@ -1,0 +1,1 @@
+ALTER TABLE `revisions` ADD `word_count` integer;

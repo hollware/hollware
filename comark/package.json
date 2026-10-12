@@ -1,0 +1,29 @@
+{
+  "name": "@hollware/spike-comark",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "test": "vp test --root ../.. --project 'spike-comark:*'",
+    "types": "wrangler types",
+    "types:check": "wrangler types --check",
+    "check:startup": "vp build && wrangler check startup",
+    "bench": "node scripts/bench.ts",
+    "bench:cold": "node scripts/bench-cold.ts"
+  },
+  "dependencies": {
+    "@comark/html": "0.7.0",
+    "comark": "0.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

@@ -1,0 +1,28 @@
+# Expected failures of the stub Worker against the 2025-11-25 requirement set.
+server:
+  - completion-complete
+  - elicitation-sep1034-defaults
+  - elicitation-sep1330-enums
+  - logging-set-level
+  - prompts-get-embedded-resource
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-with-image
+  - prompts-list
+  - resources-list
+  - resources-read-binary
+  - resources-read-text
+  - resources-subscribe
+  - resources-templates-read
+  - resources-unsubscribe
+  - server-sse-multiple-streams
+  - tools-call-audio
+  - tools-call-elicitation
+  - tools-call-embedded-resource
+  - tools-call-error
+  - tools-call-image
+  - tools-call-mixed-content
+  - tools-call-sampling
+  - tools-call-simple-text
+  - tools-call-with-logging
+  - tools-call-with-progress

@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-comark",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  // From 2026-08-04 on, Node.js compatibility is ON by default in this wrangler/workerd, so a Worker
+  // with no flags at this date already has `process`, `Buffer` and `setImmediate`. Running WITHOUT
+  // Node needs BOTH opt-outs: `no_nodejs_compat` alone leaves `nodejs_compat_v2` on (probed in
+  // test/node/built-worker.test.ts). wrangler.node.jsonc is the same Worker with no flags, for contrast.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+}

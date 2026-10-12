@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-comark-node",
+  "main": "src/index.ts",
+  // CONTRAST for wrangler.jsonc: the same Worker and date with NO compatibility flags. At this date
+  // that means Node.js compatibility is on by default.
+  "compatibility_date": "2026-10-06",
+}

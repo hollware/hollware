@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-auth-compat",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-06",
+  // The same Worker as wrangler.jsonc, with Node.js compatibility on. Only for the comparison of
+  // size and startup: at this date it is the same as having no flag at all.
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "RP_ID": "cms.example.test",
+    "RP_NAME": "Hollware Spike",
+    "ORIGIN": "https://cms.example.test",
+  },
+}

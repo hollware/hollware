@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-auth-literal",
+  "main": "src/index.ts",
+  // Exactly what the brief asked for: compatibility_date 2026-10-06 and NO flags. At this date
+  // workerd turns nodejs_compat ON by itself, so this is NOT "without nodejs_compat" (see GET /runtime).
+  "compatibility_date": "2026-10-06",
+  "vars": {
+    "RP_ID": "cms.example.test",
+    "RP_NAME": "Hollware Spike",
+    "ORIGIN": "https://cms.example.test",
+  },
+}

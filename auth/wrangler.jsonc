@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-auth",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  // WITHOUT Node.js compatibility. From 2026-08-04 workerd turns nodejs_compat AND nodejs_compat_v2
+  // ON by default, so a date alone is not enough. Checked with `GET /runtime` in workerd 1.20261006.1:
+  // no_nodejs_compat alone leaves v2 on (process, Buffer and node: imports); no_nodejs_compat_v2
+  // alone leaves v1 on (node: imports); both together leave neither (see scripts/measure-all.sh).
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  "vars": {
+    "RP_ID": "cms.example.test",
+    "RP_NAME": "Hollware Spike",
+    "ORIGIN": "https://cms.example.test",
+  },
+}

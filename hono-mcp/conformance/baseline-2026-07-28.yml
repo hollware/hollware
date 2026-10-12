@@ -1,0 +1,34 @@
+# Expected failures of the stub Worker against the 2026-07-28 requirement set.
+server:
+  - caching
+  - completion-complete
+  - input-required-result-basic-elicitation
+  - input-required-result-basic-list-roots
+  - input-required-result-basic-sampling
+  - input-required-result-capability-check
+  - input-required-result-ignore-extra-params
+  - input-required-result-missing-input-response
+  - input-required-result-multi-round
+  - input-required-result-multiple-input-requests
+  - input-required-result-non-tool-request
+  - input-required-result-request-state
+  - input-required-result-result-type
+  - input-required-result-tampered-state
+  - prompts-get-embedded-resource
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-with-image
+  - prompts-list
+  - resources-list
+  - resources-read-binary
+  - resources-read-text
+  - resources-templates-read
+  - sep-2164-resource-not-found
+  - server-stateless
+  - tools-call-audio
+  - tools-call-embedded-resource
+  - tools-call-error
+  - tools-call-image
+  - tools-call-mixed-content
+  - tools-call-simple-text
+  - tools-call-with-progress

@@ -1,0 +1,34 @@
+{
+  "name": "@hollware/spike-auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "WRANGLER_SEND_METRICS=false vp build",
+    "test": "WRANGLER_SEND_METRICS=false vp test --root ../.. --project 'spike-auth:*'",
+    "types": "WRANGLER_SEND_METRICS=false wrangler types",
+    "types:check": "WRANGLER_SEND_METRICS=false wrangler types --check",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "bench:cpu": "node --disable-warning=ExperimentalWarning bench/cpu.ts",
+    "check:startup": "WRANGLER_SEND_METRICS=false vp build && WRANGLER_SEND_METRICS=false wrangler check startup --outfile .wrangler/worker-startup.cpuprofile",
+    "report:bundle": "WRANGLER_SEND_METRICS=false vp build && node scripts/bundle-report.ts dist/hollware_spike_auth/index.js --packages",
+    "e2e:built": "WRANGLER_SEND_METRICS=false vp build && scripts/with-dev-server.sh 5240 /runtime '-c dist/hollware_spike_auth/wrangler.json' -- node scripts/e2e-built-worker.ts off",
+    "measure:all": "scripts/measure-all.sh",
+    "e2e:dev": "WRANGLER_SEND_METRICS=false SPIKE_SERVER=vp scripts/with-dev-server.sh 5242 /runtime '' -- node scripts/e2e-built-worker.ts off"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "1.2.3",
+    "@simplewebauthn/server": "14.0.3",
+    "hono": "5.0.0-rc.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

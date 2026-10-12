@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-oauth",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  "compatibility_flags": [
+    // From 2026-08-04 on, nodejs_compat and nodejs_compat_v2 are ON by default. Leaving the
+    // flags out does not mean "no Node APIs": the two opt-outs below do.
+    "no_nodejs_compat",
+    "no_nodejs_compat_v2",
+    // The provider fetches Client ID Metadata Documents with the global fetch() and refuses to
+    // do it (and does not advertise CIMD) unless this flag is set.
+    "global_fetch_strictly_public",
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      // Placeholder: local development, tests and dry runs never contact Cloudflare.
+      "id": "00000000000000000000000000000000",
+    },
+  ],
+  "vars": {
+    // The one public URL of the deployment: the issuer and the resource come from here, never
+    // from the Host header of a request.
+    "HOLLWARE_PUBLIC_URL": "https://hollware.test",
+  },
+}

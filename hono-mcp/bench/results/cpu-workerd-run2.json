@@ -1,0 +1,316 @@
+{
+  "header": "node v24.19.0, jitless=true, conditions=--expose-gc --conditions=workerd, label=workerd-run2",
+  "nodeVersion": "v24.19.0",
+  "execArgv": [
+    "--expose-gc",
+    "--conditions=workerd"
+  ],
+  "results": [
+    {
+      "name": "build McpServer + 3 tools (Zod schemas at module scope)",
+      "iterations": 20000,
+      "medianUs": 1.75,
+      "p95Us": 3.459,
+      "meanUs": 3.6044959000000016,
+      "minUs": 1.5,
+      "cpuPerIterationUs": 10.07845
+    },
+    {
+      "name": "build McpServer + 3 tools (Zod schemas rebuilt per request)",
+      "iterations": 20000,
+      "medianUs": 41.708,
+      "p95Us": 45.291,
+      "meanUs": 56.714319450000254,
+      "minUs": 38.791,
+      "cpuPerIterationUs": 101.3097
+    },
+    {
+      "name": "build McpServer + 3 tools (precomputed, wrappers at module scope)",
+      "iterations": 20000,
+      "medianUs": 1.584,
+      "p95Us": 2.167,
+      "meanUs": 2.6507757500001876,
+      "minUs": 1.417,
+      "cpuPerIterationUs": 7.73775
+    },
+    {
+      "name": "build McpServer + 3 tools (precomputed, fromJsonSchema per request)",
+      "iterations": 20000,
+      "medianUs": 8.875,
+      "p95Us": 9.625,
+      "meanUs": 11.013420249999939,
+      "minUs": 8.333,
+      "cpuPerIterationUs": 18.8326
+    },
+    {
+      "name": "McpServer constructor alone (no tools)",
+      "iterations": 20000,
+      "medianUs": 0.5,
+      "p95Us": 0.625,
+      "meanUs": 0.5402721000000396,
+      "minUs": 0.416,
+      "cpuPerIterationUs": 1.1066
+    },
+    {
+      "name": "createSchemas() alone (6 Zod objects)",
+      "iterations": 20000,
+      "medianUs": 37,
+      "p95Us": 40.625,
+      "meanUs": 48.92264850000025,
+      "minUs": 35.042,
+      "cpuPerIterationUs": 85.7389
+    },
+    {
+      "name": "createPrecomputedWrappers() alone (6 fromJsonSchema)",
+      "iterations": 20000,
+      "medianUs": 7.041,
+      "p95Us": 7.709,
+      "meanUs": 7.545961350000163,
+      "minUs": 6.541,
+      "cpuPerIterationUs": 9.0663
+    },
+    {
+      "name": "Zod -> JSON Schema, 3 inputs + 3 outputs (what tools/list converts)",
+      "iterations": 20000,
+      "medianUs": 47.625,
+      "p95Us": 51,
+      "meanUs": 48.445097249999904,
+      "minUs": 45.5,
+      "cpuPerIterationUs": 49.5694
+    },
+    {
+      "name": "Zod -> JSON Schema, echo input only",
+      "iterations": 20000,
+      "medianUs": 6.792,
+      "p95Us": 7.375,
+      "meanUs": 6.922454849999961,
+      "minUs": 6.5,
+      "cpuPerIterationUs": 7.3587
+    },
+    {
+      "name": "Zod -> JSON Schema, create_note input only (largest)",
+      "iterations": 20000,
+      "medianUs": 19.208,
+      "p95Us": 22.5,
+      "meanUs": 19.84910315000051,
+      "minUs": 18.375,
+      "cpuPerIterationUs": 21.3964
+    },
+    {
+      "name": "request server/discover (2026) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 35.25,
+      "p95Us": 44.833,
+      "meanUs": 39.99044666666663,
+      "minUs": 29.667,
+      "cpuPerIterationUs": 75.6375
+    },
+    {
+      "name": "request tools/list (2026) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 89.875,
+      "p95Us": 107.958,
+      "meanUs": 98.5787313333335,
+      "minUs": 83.084,
+      "cpuPerIterationUs": 140.88783333333333
+    },
+    {
+      "name": "request tools/list (2025, SSE) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 94.25,
+      "p95Us": 113.75,
+      "meanUs": 108.35892183333338,
+      "minUs": 87.75,
+      "cpuPerIterationUs": 150.84683333333334
+    },
+    {
+      "name": "request tools/call echo (2026) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 48.458,
+      "p95Us": 60,
+      "meanUs": 55.658100499999804,
+      "minUs": 44.084,
+      "cpuPerIterationUs": 92.88833333333334
+    },
+    {
+      "name": "request tools/call create_note (2026) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 66.208,
+      "p95Us": 83.708,
+      "meanUs": 75.48974883333322,
+      "minUs": 59.917,
+      "cpuPerIterationUs": 120.6015
+    },
+    {
+      "name": "request tools/list (2026) [Zod schemas rebuilt per request]",
+      "iterations": 6000,
+      "medianUs": 141.375,
+      "p95Us": 203.625,
+      "meanUs": 173.57527099999996,
+      "minUs": 129.542,
+      "cpuPerIterationUs": 284.1911666666667
+    },
+    {
+      "name": "request server/discover (2026) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 30.333,
+      "p95Us": 40.292,
+      "meanUs": 38.505185333333266,
+      "minUs": 25.667,
+      "cpuPerIterationUs": 72.05866666666667
+    },
+    {
+      "name": "request tools/list (2026) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 38.833,
+      "p95Us": 51.167,
+      "meanUs": 46.842404999999914,
+      "minUs": 34.584,
+      "cpuPerIterationUs": 83.601
+    },
+    {
+      "name": "request tools/list (2025, SSE) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 41.042,
+      "p95Us": 61.416,
+      "meanUs": 57.13598166666668,
+      "minUs": 34.917,
+      "cpuPerIterationUs": 118.58066666666667
+    },
+    {
+      "name": "request tools/call echo (2026) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 38.292,
+      "p95Us": 58.459,
+      "meanUs": 50.55503249999998,
+      "minUs": 33.208,
+      "cpuPerIterationUs": 95.4445
+    },
+    {
+      "name": "request tools/call create_note (2026) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 40.458,
+      "p95Us": 56.625,
+      "meanUs": 48.20790350000002,
+      "minUs": 35.167,
+      "cpuPerIterationUs": 90.39766666666667
+    },
+    {
+      "name": "request server/discover (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 32,
+      "p95Us": 44.167,
+      "meanUs": 39.75408083333332,
+      "minUs": 26.709,
+      "cpuPerIterationUs": 80.67683333333333
+    },
+    {
+      "name": "request tools/list (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 39.417,
+      "p95Us": 52.25,
+      "meanUs": 46.51415783333336,
+      "minUs": 34.417,
+      "cpuPerIterationUs": 87.82033333333334
+    },
+    {
+      "name": "request tools/call echo (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 34.125,
+      "p95Us": 46.375,
+      "meanUs": 41.14037500000004,
+      "minUs": 29.375,
+      "cpuPerIterationUs": 79.54483333333333
+    },
+    {
+      "name": "request tools/call create_note (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 36.125,
+      "p95Us": 48,
+      "meanUs": 42.656549333333224,
+      "minUs": 31.083,
+      "cpuPerIterationUs": 83.5655
+    },
+    {
+      "name": "request tools/list (2026) [precomputed, wrappers per request]",
+      "iterations": 6000,
+      "medianUs": 47.667,
+      "p95Us": 63.584,
+      "meanUs": 56.921153499999896,
+      "minUs": 42.292,
+      "cpuPerIterationUs": 99.26266666666666
+    },
+    {
+      "name": "PLAN-SIZED (9 tools x 12-field schemas): build server [Zod, module-scope schemas]",
+      "iterations": 20000,
+      "medianUs": 3.5,
+      "p95Us": 4.125,
+      "meanUs": 6.498747249999773,
+      "minUs": 3.25,
+      "cpuPerIterationUs": 18.2766
+    },
+    {
+      "name": "PLAN-SIZED: Zod -> JSON Schema for all 9 inputs + 9 outputs",
+      "iterations": 5000,
+      "medianUs": 1312.125,
+      "p95Us": 1631.667,
+      "meanUs": 1374.1386164000014,
+      "minUs": 1215.208,
+      "cpuPerIterationUs": 1361.7222
+    },
+    {
+      "name": "PLAN-SIZED: request tools/list (2026) [Zod server]",
+      "iterations": 6000,
+      "medianUs": 1499.666,
+      "p95Us": 2258.834,
+      "meanUs": 1602.3820588333317,
+      "minUs": 1361.959,
+      "cpuPerIterationUs": 1811.878
+    },
+    {
+      "name": "PLAN-SIZED: request tools/list (2026) [precomputed server]",
+      "iterations": 6000,
+      "medianUs": 130.334,
+      "p95Us": 272.083,
+      "meanUs": 156.8195471666664,
+      "minUs": 121.5,
+      "cpuPerIterationUs": 309.15816666666666
+    },
+    {
+      "name": "PLAN-SIZED: request tools/list (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 141.708,
+      "p95Us": 285.083,
+      "meanUs": 173.38637983333348,
+      "minUs": 131.5,
+      "cpuPerIterationUs": 344.81333333333333
+    },
+    {
+      "name": "PLAN-SIZED: request tools/call, 12-field in/out (2026) [Zod server, 10 tools registered]",
+      "iterations": 6000,
+      "medianUs": 194.084,
+      "p95Us": 239.042,
+      "meanUs": 211.68203033333313,
+      "minUs": 183.291,
+      "cpuPerIterationUs": 262.63233333333335
+    },
+    {
+      "name": "PLAN-SIZED: request tools/call, 12-field in/out (2026) [memoized-Zod server]",
+      "iterations": 6000,
+      "medianUs": 47.417,
+      "p95Us": 71.209,
+      "meanUs": 62.61450366666671,
+      "minUs": 43.417,
+      "cpuPerIterationUs": 109.10583333333334
+    },
+    {
+      "name": "PLAN-SIZED: request server/discover (2026) [Zod server, 9 tools]",
+      "iterations": 6000,
+      "medianUs": 33.25,
+      "p95Us": 46,
+      "meanUs": 41.55482833333321,
+      "minUs": 27.875,
+      "cpuPerIterationUs": 83.81583333333333
+    }
+  ]
+}

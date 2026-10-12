@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-spike-oauth-roles",
+  "main": "src/roles.ts",
+  "compatibility_date": "2026-10-06",
+  "compatibility_flags": [
+    "no_nodejs_compat",
+    "no_nodejs_compat_v2",
+    "global_fetch_strictly_public",
+  ],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  "vars": { "HOLLWARE_PUBLIC_URL": "https://hollware.test" },
+}

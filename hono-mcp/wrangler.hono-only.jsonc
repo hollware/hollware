@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spike-hono-only",
+  "main": "src/hono-only.ts",
+  "compatibility_date": "2026-10-06",
+  // At this date workerd turns Node.js compatibility ON by default (wrangler:
+  // NODEJS_COMPAT_DEFAULT_ON_DATE = 2026-08-04). These two flags opt out of both generations, so the
+  // Worker has no process, Buffer or setImmediate: what the library must run on.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  "vars": {
+    "APP_NAME": "spike-hono-mcp",
+    "ALLOWED_HOSTS": "",
+  },
+}
