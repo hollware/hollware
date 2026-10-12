@@ -554,6 +554,9 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)              | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              |
 | [ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)           | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              |
 | [ADR-020](adr/0020-content-safety-is-a-contract.md)                           | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              |
+| [ADR-021](adr/0021-append-only-revisions-and-publications.md)                 | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              |
+| [ADR-022](adr/0022-mcp-conformance-with-a-shrinking-baseline.md)              | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Proposed              |
+| [ADR-023](adr/0023-forward-only-migrations.md)                                | Migrations only move forward, and a shipped migration never changes                                         | Accepted              |
 
 ## Roadmap
 
@@ -601,13 +604,13 @@ Oct–Nov 2026 · 3 weeks.
 
 - `hollware.config.ts` with sites, collections, contracts and allowed components
 - The operation registry: the specs in `core`, the handlers and the MCP and RPC adapters in `server`
-- D1 with Drizzle: entries, revisions and optimistic concurrency
+- D1 with Drizzle: entries, append-only revisions and publications, and optimistic concurrency ([ADR-021](adr/0021-append-only-revisions-and-publications.md)); migrations that only move forward ([ADR-023](adr/0023-forward-only-migrations.md))
 - Comark on write, and the contracts: schema, components, translation pair, internal links and custom rules
 - MCP with SDK v2: `describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish` and `unpublish`
 - Personal tokens; OAuth and passkeys arrive with the admin in v0.3 ([ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md))
 - Content safety as contracts: raw HTML, unknown components and unsafe attributes are errors at write time ([ADR-020](adr/0020-content-safety-is-a-contract.md))
 - CLI: `hollware init`, `migrate`, `token` and `import`
-- The MCP conformance suite and a size budget in CI
+- The MCP conformance suite, against a baseline that only shrinks ([ADR-022](adr/0022-mcp-conformance-with-a-shrinking-baseline.md)), and a size budget in CI
 - An example site in `examples/` that reads published entries over RPC
 
 **Exit criterion.** The v0.1 acceptance suite is green: an agent drafts, fixes, publishes and handles a version conflict over MCP, and the example site serves the published HTML over RPC while drafts return 404.

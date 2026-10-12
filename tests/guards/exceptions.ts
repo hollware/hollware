@@ -122,6 +122,39 @@ export const OTHER_TEST_RUNNERS: TestRunnerList = {
   ],
 }
 
+/**
+ * Tables of the D1 schema without `site_id` (guard `schema`). Every other table belongs to a
+ * site, with `UNIQUE(id, site_id)` and composite foreign keys.
+ */
+export const TABLES_WITHOUT_SITE: ExceptionList = {
+  max: 3,
+  entries: [
+    {
+      value: '_hollware_meta',
+      reason:
+        'Created by the shipped migration 0000_init.sql, which is never edited: metadata of the deployment, not of a site.',
+    },
+    { value: 'sites', reason: 'The table that `site_id` points at: its id is the site.' },
+    {
+      value: 'users',
+      reason:
+        'A user belongs to the deployment and may work on several sites; the tokens carry the site (ADR-019).',
+    },
+  ],
+}
+
+/** Tables without the shared `id`, `created_at` and `updated_at` columns (guard `schema`). */
+export const TABLES_WITHOUT_SHARED_COLUMNS: ExceptionList = {
+  max: 1,
+  entries: [
+    {
+      value: '_hollware_meta',
+      reason:
+        'Created by the shipped migration 0000_init.sql, which is never edited: a key and a value.',
+    },
+  ],
+}
+
 /** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
 function byValue(list: TestRunnerList): ExceptionList {
   return {
@@ -135,6 +168,8 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   MISSING_DOC_PATHS,
   ZIZMOR_IGNORES,
   OTHER_TEST_RUNNERS: byValue(OTHER_TEST_RUNNERS),
+  TABLES_WITHOUT_SITE,
+  TABLES_WITHOUT_SHARED_COLUMNS,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

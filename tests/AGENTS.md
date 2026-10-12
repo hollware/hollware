@@ -19,6 +19,8 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
 - `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency; its `src` type-checks against the web platform only, and every one of its tests runs in Node and in workerd.
 - `tests/conventions/server-types.test.ts`: `packages/server/src` type-checks with the generated Workers runtime types only, so a Node global is a type error.
+- `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and its timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to another site's table carry `site_id`.
+- `tests/conventions/shipped-migrations.test.ts`: no migration that a `@hollware/server@*` release tag holds is edited or removed, and the release tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
 - `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in what the workspace packages and apps install.

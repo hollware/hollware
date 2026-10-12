@@ -1,0 +1,970 @@
+{
+  "id": "da5b0bb7-751e-401b-909a-91b84d243b64",
+  "prevId": "c11ad51a-b1f5-438a-91fb-dbfac22bf4a1",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "entries": {
+      "name": "entries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "collection": {
+          "name": "collection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "translation_group": {
+          "name": "translation_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "head_rev": {
+          "name": "head_rev",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "published_rev": {
+          "name": "published_rev",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_sort_key": {
+          "name": "published_sort_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "entries_published": {
+          "name": "entries_published",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "published_sort_key"
+          ],
+          "where": "\"entries\".\"status\" = 'published'",
+          "isUnique": false
+        },
+        "entries_id_site": {
+          "name": "entries_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "entries_slug": {
+          "name": "entries_slug",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "slug"
+          ],
+          "isUnique": true
+        },
+        "entries_translation": {
+          "name": "entries_translation",
+          "columns": [
+            "site_id",
+            "collection",
+            "translation_group",
+            "locale"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "entries_site": {
+          "name": "entries_site",
+          "tableFrom": "entries",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "sites",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "entries_status": {
+          "name": "entries_status",
+          "value": "\"entries\".\"status\" IN ('draft', 'scheduled', 'published')"
+        },
+        "entries_version": {
+          "name": "entries_version",
+          "value": "\"entries\".\"version\" >= 1"
+        },
+        "entries_draft": {
+          "name": "entries_draft",
+          "value": "\"entries\".\"status\" <> 'draft' OR (\"entries\".\"published_rev\" IS NULL AND \"entries\".\"scheduled_at\" IS NULL)"
+        },
+        "entries_published": {
+          "name": "entries_published",
+          "value": "\"entries\".\"status\" <> 'published' OR (\"entries\".\"published_rev\" IS NOT NULL AND \"entries\".\"published_at\" IS NOT NULL)"
+        },
+        "entries_scheduled": {
+          "name": "entries_scheduled",
+          "value": "\"entries\".\"status\" <> 'scheduled' OR \"entries\".\"scheduled_at\" IS NOT NULL"
+        }
+      }
+    },
+    "_hollware_meta": {
+      "name": "_hollware_meta",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "publications": {
+      "name": "publications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision_id": {
+          "name": "revision_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "acknowledged": {
+          "name": "acknowledged",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_kind": {
+          "name": "actor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_token_id": {
+          "name": "actor_token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_meta": {
+          "name": "actor_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "publications_entry": {
+          "name": "publications_entry",
+          "columns": [
+            "entry_id",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "publications_id_site": {
+          "name": "publications_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "publications_site": {
+          "name": "publications_site",
+          "tableFrom": "publications",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "sites",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "publications_entry": {
+          "name": "publications_entry",
+          "tableFrom": "publications",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "tableTo": "entries",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "publications_revision": {
+          "name": "publications_revision",
+          "tableFrom": "publications",
+          "columnsFrom": [
+            "revision_id",
+            "site_id"
+          ],
+          "tableTo": "revisions",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "publications_user": {
+          "name": "publications_user",
+          "tableFrom": "publications",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "publications_token": {
+          "name": "publications_token",
+          "tableFrom": "publications",
+          "columnsFrom": [
+            "actor_token_id",
+            "site_id"
+          ],
+          "tableTo": "tokens",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "publications_action": {
+          "name": "publications_action",
+          "value": "\"publications\".\"action\" IN ('publish', 'unpublish')"
+        },
+        "publications_shape": {
+          "name": "publications_shape",
+          "value": "(\"publications\".\"action\" = 'publish' AND \"publications\".\"revision_id\" IS NOT NULL AND \"publications\".\"verdict\" IS NOT NULL) OR (\"publications\".\"action\" = 'unpublish' AND \"publications\".\"revision_id\" IS NULL AND \"publications\".\"verdict\" IS NULL)"
+        },
+        "publications_actor_kind": {
+          "name": "publications_actor_kind",
+          "value": "\"publications\".\"actor_kind\" IN ('token', 'user', 'oauth_client')"
+        },
+        "publications_json": {
+          "name": "publications_json",
+          "value": "json_valid(\"publications\".\"acknowledged\") AND json_type(\"publications\".\"acknowledged\") = 'array' AND (\"publications\".\"verdict\" IS NULL OR json_valid(\"publications\".\"verdict\")) AND (\"publications\".\"actor_meta\" IS NULL OR json_valid(\"publications\".\"actor_meta\"))"
+        }
+      }
+    },
+    "revision_tags": {
+      "name": "revision_tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision_id": {
+          "name": "revision_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "revision_tags_by_tag": {
+          "name": "revision_tags_by_tag",
+          "columns": [
+            "site_id",
+            "tag"
+          ],
+          "isUnique": false
+        },
+        "revision_tags_id_site": {
+          "name": "revision_tags_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "revision_tags_tag": {
+          "name": "revision_tags_tag",
+          "columns": [
+            "revision_id",
+            "tag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "revision_tags_site": {
+          "name": "revision_tags_site",
+          "tableFrom": "revision_tags",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "sites",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "revision_tags_revision": {
+          "name": "revision_tags_revision",
+          "tableFrom": "revision_tags",
+          "columnsFrom": [
+            "revision_id",
+            "site_id"
+          ],
+          "tableTo": "revisions",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "revisions": {
+      "name": "revisions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "markdown": {
+          "name": "markdown",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "frontmatter": {
+          "name": "frontmatter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "document": {
+          "name": "document",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comark_version": {
+          "name": "comark_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "pipeline_version": {
+          "name": "pipeline_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "word_count": {
+          "name": "word_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_kind": {
+          "name": "actor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_token_id": {
+          "name": "actor_token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_meta": {
+          "name": "actor_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "revisions_entry": {
+          "name": "revisions_entry",
+          "columns": [
+            "entry_id",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "revisions_id_site": {
+          "name": "revisions_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "revisions_site": {
+          "name": "revisions_site",
+          "tableFrom": "revisions",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "sites",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "revisions_entry": {
+          "name": "revisions_entry",
+          "tableFrom": "revisions",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "tableTo": "entries",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "revisions_user": {
+          "name": "revisions_user",
+          "tableFrom": "revisions",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "revisions_token": {
+          "name": "revisions_token",
+          "tableFrom": "revisions",
+          "columnsFrom": [
+            "actor_token_id",
+            "site_id"
+          ],
+          "tableTo": "tokens",
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "revisions_actor_kind": {
+          "name": "revisions_actor_kind",
+          "value": "\"revisions\".\"actor_kind\" IN ('token', 'user', 'oauth_client')"
+        },
+        "revisions_json": {
+          "name": "revisions_json",
+          "value": "json_valid(\"revisions\".\"frontmatter\") AND json_valid(\"revisions\".\"document\") AND json_valid(\"revisions\".\"verdict\") AND (\"revisions\".\"actor_meta\" IS NULL OR json_valid(\"revisions\".\"actor_meta\"))"
+        },
+        "revisions_word_count": {
+          "name": "revisions_word_count",
+          "value": "\"revisions\".\"word_count\" >= 0"
+        }
+      }
+    },
+    "sites": {
+      "name": "sites",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "tokens": {
+      "name": "tokens",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scopes": {
+          "name": "scopes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tokens_id_site": {
+          "name": "tokens_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "tokens_hash": {
+          "name": "tokens_hash",
+          "columns": [
+            "hash"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "tokens_site": {
+          "name": "tokens_site",
+          "tableFrom": "tokens",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "tableTo": "sites",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "tokens_user": {
+          "name": "tokens_user",
+          "tableFrom": "tokens",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tokens_scopes": {
+          "name": "tokens_scopes",
+          "value": "json_valid(\"tokens\".\"scopes\") AND json_type(\"tokens\".\"scopes\") = 'array'"
+        }
+      }
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "users_role": {
+          "name": "users_role",
+          "value": "\"users\".\"role\" IN ('owner', 'editor', 'reviewer')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

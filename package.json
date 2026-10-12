@@ -12,6 +12,7 @@
     "@changesets/cli": "catalog:",
     "@modelcontextprotocol/conformance": "catalog:",
     "@types/node": "catalog:",
+    "drizzle-orm": "catalog:",
     "pkg-pr-new": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",

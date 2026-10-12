@@ -19,6 +19,8 @@ describe('exception lists', () => {
     expect(Object.keys(EXCEPTION_LISTS).sort()).toEqual([
       'MISSING_DOC_PATHS',
       'OTHER_TEST_RUNNERS',
+      'TABLES_WITHOUT_SHARED_COLUMNS',
+      'TABLES_WITHOUT_SITE',
       'ZIZMOR_IGNORES',
     ])
     expect(describeViolations(checkExceptionLists(EXCEPTION_LISTS))).toEqual([])
