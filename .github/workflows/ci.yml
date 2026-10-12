@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, release]
   pull_request:
   workflow_dispatch:
 
@@ -33,7 +33,10 @@ jobs:
           node-version-file: .node-version
           cache: true
 
+      # The gate judges what lands on main. `release` only takes commits of main that already
+      # passed it and whose changesets are consumed, so the check would fail there.
       - name: Check changesets
+        if: github.ref != 'refs/heads/release'
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}

@@ -64,7 +64,7 @@ before the first feature.
   - MIT `LICENSE` ("Copyright (c) 2026-present Sergio Azócar and Hollware contributors"); `README.md` (thesis, principles, status, roadmap); `CONTRIBUTING.md`; `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1 with a real contact, no `[INSERT` left); `SECURITY.md` (GitHub private vulnerability reporting only)
 - [x] **F0-2 Design and ADRs** — owns `docs/`
   - `docs/design.md`: English adaptation of design v0.2 (source path and ADR titles are given in the dispatch), without the EmDash spike, with the execution decisions
-  - `docs/adr/0001…0014-*.md` (Status, Context, Decision, Consequences, Alternatives) + `docs/adr/README.md` (index and template). ADR-014 = the release pipeline
+  - `docs/adr/0001…0015-*.md` (Status, Context, Decision, Consequences, Alternatives) + `docs/adr/README.md` (index and template). ADR-014 = the release pipeline (superseded by ADR-015: `release` branch and direct publishing)
 - [x] **F0-3a Packages** — owns `packages/*`
   - Complete manifests (`exports` with `types`, `files`, `license`, `engines`, `repository {url, directory}`, `publishConfig {access, provenance}`); an identical copy of the root `LICENSE` in each package; `src/index.ts`; `vite.config.ts` with `pack: { dts: { generator: 'tsgo' }, exports: true }`; `tsconfig.json` extending `tsconfig.base.json`; `README.md`; `AGENTS.md`; smoke tests that never need `dist`; `hollware` and `create-hollware` bins answer `--version` and `--help`
 - [x] **F0-3b Cloudflare walking skeleton** — owns `apps/playground`, `templates/starter`, `examples/`
@@ -77,7 +77,7 @@ before the first feature.
   - `security.yml`: dependency review (PRs), OpenSSF Scorecard (its job may hold `id-token: write`), zizmor, weekly `pnpm audit --prod --audit-level=high`
   - `release.yml` (`changesets/action/*@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2`), `permissions: {}`, concurrency `release`, `if: github.repository == 'hollware/hollware'`, `workflow_dispatch` with a finalize-only path:
     - `select-mode` → `version` (Version Packages PR) → `pack` (tarballs + their sha256 as an artifact)
-    - `stage` (environment `npm`, `id-token: write`, **no checkout and no repo code**; `actions/setup-node` pinned to Node 24.21.0, whose npm supports staging; verifies each tarball's sha256, then `npm stage publish <tgz> --provenance --access public`; prints the hashes for the maintainer — review C3)
+    - `stage` (superseded on 2026-10-12 by ADR-015: the job is now `publish`, see F0-6) (environment `npm`, `id-token: write`, **no checkout and no repo code**; `actions/setup-node` pinned to Node 24.21.0, whose npm supports staging; verifies each tarball's sha256, then `npm stage publish <tgz> --provenance --access public`; prints the hashes for the maintainer — review C3)
     - maintainer approves on npm with 2FA
     - `finalize` (`timeout-minutes`; waits until the versions are live, checks `dist.attestations`, creates tags and GitHub Releases with an explicit token, never persisted credentials — review H6)
   - `.changeset/config.json`: `fixed: [[six packages]]`, `access: public`, `privatePackages: {version: false, tag: false}`; version script `changeset version && pnpm install --lockfile-only && vp fmt`; spike: Changesets 3 on pnpm 12
@@ -85,15 +85,17 @@ before the first feature.
 ### Wave 2
 
 - [x] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
-  - Convention tests: manifest fields; identical `LICENSE` copies; no `CLAUDE.md`; `core` has no Cloudflare imports (regex scan: TypeScript 7 has no JS compiler API); every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, subpath actions allowed, `permissions: {}` at the top, `id-token: write` only in `release.yml` `stage` and the Scorecard job, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); the ADR index matches the ADR files
+  - Convention tests: manifest fields; identical `LICENSE` copies; no `CLAUDE.md`; `core` has no Cloudflare imports (regex scan: TypeScript 7 has no JS compiler API); every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, subpath actions allowed, `permissions: {}` at the top, `id-token: write` only in `release.yml` `stage` (now `publish`) and the Scorecard job, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); the ADR index matches the ADR files
   - Meta-tests: backtick paths in `AGENTS.md`/`README.md` exist; `AGENTS.md` cites only real scripts and tasks; `AGENTS.md` ≤ 12,000 characters; every test file belongs to a test project; exception lists may only shrink; every patch has a reason and a test; each guard has a self-test proving it can fail
   - A failing cross-file check in a file F0-5 doesn't own is reported, and the orchestrator routes the fix
 
 ### F0-6 First CI release (maintainer + orchestrator)
 
 - [x] The orchestrator adds the first changeset (`patch` for all six) in the same commit as the packages, so CI's changeset check passes from the first push
-- [ ] **Maintainer:** right before the first release, `npm trust github <pkg> --file release.yml --repo hollware/hollware --env npm --allow-stage-publish` ×6 (2FA), then set each package to "require 2FA and disallow tokens"
-- [ ] Ship `0.0.1` through CI: Version Packages PR → merge → `npm` environment click → 2FA approval → tags and releases
+- [x] **Maintainer:** stage-only trust for the six packages; `0.0.1` shipped through the staging pipeline (Version Packages PR #1 → environment approval → six staged versions approved with 2FA → tags and releases)
+- [x] **Decision (2026-10-11, ADR-015):** no more npm staging; a `release` branch for production. `main` only versions (Version Packages PR); `release` moves by fast-forward to a commit on `main` and publishes directly with OIDC and provenance after the maintainer approves the `npm` environment
+- [x] **Maintainer:** trusted publishers replaced with `--allow-publish` (environment `npm`)
+- [ ] Ship `0.0.2` through the new pipeline: changeset → Version Packages PR → merge → `git push origin <version commit>:release` → environment approval → publish → tags and releases
 
 ### F0-7 Close
 
@@ -129,6 +131,8 @@ C1 root `vp test` had no projects → `test.projects` added. C2 the changeset ch
 - 2026-10-11 — Integration: `vp run check:push` green (111 files formatted, 53 tests, publint ×6, types up to date, 19 tasks); six commits, one per WP.
 - 2026-10-11 — F0-5 accepted: 36 guard files in the `repo` project (309 tests), each guard with a self-test on a bad fixture; 58 break-line mutations by the writer and 3 by the orchestrator → CAUGHT; `check:push` now also runs `scripts/check-bins.ts` (20 tasks, 354 tests, green). `break-line` now reports argument errors as ERROR (exit 2) instead of crashing with exit 1.
 - 2026-10-11 — npm: the six names hold `0.0.0` placeholders. GitHub: `hollware/hollware` created public with private vulnerability reporting, Dependabot alerts, secret scanning + push protection, squash-only merges titled by the PR, SHA pinning required, read-only workflow token, fork approval for external contributors, environment `npm` (maintainer review, `main` only), rulesets for `main` and release tags, immutable releases.
+- 2026-10-12 — `0.0.1` released through the staging pipeline: the six staged tarballs matched the CI pack byte for byte (sha1), `dist.attestations` show SLSA v1 provenance for all six, tags and GitHub Releases exist (`hollware` marked Latest), `npm audit signatures` → 6 verified registry signatures and 6 verified attestations. The changeset check had to skip the Version Packages PR (fixed in `5a55713`, bound by `tests/ci/changeset-check.test.ts`).
+- 2026-10-12 — ADR-015 implemented: `release.yml` versions on `main` and promotes/packs/publishes/finalizes on `release`; 418 tests, `check:push` green, actionlint/shellcheck/zizmor clean; orchestrator mutations on the environment and the ancestor check → CAUGHT.
 
 ---
 
@@ -199,7 +203,7 @@ and an example site reads what was published over RPC.
 | AC-0.1-12 | Tests can fail          | `break-line` on the version predicate, scope gate, publish gate, DNS guard and RPC read-only filter turns each matching AC red                                                                                                                      |
 | AC-0.1-13 | Release 0.1.0           | published through the pipeline with provenance, approved by the maintainer                                                                                                                                                                          |
 
-New ADRs: 015 operation/outcome shapes · 016 auth topology · 017 append-only revisions with derived columns · 018 conformance baseline policy · 019 fix-forward migrations.
+New ADRs: 016 operation/outcome shapes · 017 auth topology · 018 append-only revisions with derived columns · 019 conformance baseline policy · 020 fix-forward migrations.
 
 ---
 

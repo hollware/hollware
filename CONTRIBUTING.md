@@ -14,6 +14,7 @@ Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT
 
 - **Node.js 24.21.0**, the version pinned in `.node-version`. Any version manager that reads that file will pick it up.
 - **pnpm 12**, at the exact version pinned in the `packageManager` field of `package.json` (see the [pnpm installation guide](https://pnpm.io/installation)).
+- **jq**, which the tests of the CI scripts run. GitHub's runners have it, and so do most systems: install it with your package manager if `jq --version` fails.
 
 You do not need a Cloudflare account: development and tests run locally. You do not need a global install of [Vite+](https://viteplus.dev) either: the repository depends on it, and the `pnpm exec vp ...` commands below run the installed copy.
 
@@ -78,6 +79,10 @@ Use the issue forms. A bug report asks for the Hollware version, where it runs, 
 4. Open a pull request against `main` and fill in the template.
 
 CI must pass before a pull request can be merged. Keep each pull request to one concern: small changes are reviewed faster. Hollware has a single maintainer, [Sergio Azócar](https://github.com/sergioazoc), so reviews take time. Please be patient.
+
+## Releases
+
+Only the maintainer releases. `main` is where development happens and the branch every pull request targets. `release` is what ships: it only moves by fast-forward to a commit that is on `main`, so never open a pull request against it. The flow, from the Version Packages pull request to the approval of the `npm` environment, is in [`.github/AGENTS.md`](.github/AGENTS.md).
 
 ## Licensing
 

@@ -1,5 +1,5 @@
 import { isMap, isScalar, isSeq, mapEntry, plain, readYaml, scalarString } from '../support/yaml.ts'
-import { isRecord } from '../support/values.ts'
+import { isRecord, isStringArray } from '../support/values.ts'
 import type { TextFile } from './types.ts'
 
 /** A `uses:` reference, with the comment that follows it. */
@@ -16,13 +16,22 @@ export interface WorkflowStep {
   /** 0-based position in the job. */
   index: number
   name: string | undefined
+  /** `if:` of the step, as written. */
+  condition: unknown
   uses: UsesRef | undefined
   /** The `with:` inputs. Empty when there are none. */
   inputs: Record<string, unknown>
+  /** The shell of a `run:` step, as the runner receives it. */
+  run: string | undefined
 }
 
 export interface WorkflowJob {
   id: string
+  /** 1-based line of the job's key, and of the last line of its body. */
+  startLine: number
+  endLine: number
+  /** The jobs it waits for (`needs:`), whether the file writes one name or a list. */
+  needs: string[]
   /** `if:` of the job, as written. */
   condition: unknown
   /** Whether the job has a `permissions:` key at all. */
@@ -45,6 +54,8 @@ export interface Workflow {
   permissions: unknown
   /** The top-level keys, in file order. */
   topLevelKeys: string[]
+  /** The value of `on:` (the triggers). */
+  triggers: unknown
   jobs: WorkflowJob[]
 }
 
@@ -62,6 +73,7 @@ export function parseWorkflow(file: TextFile): Workflow {
     hasPermissions: false,
     permissions: undefined,
     topLevelKeys: [],
+    triggers: undefined,
     jobs: [],
   }
   if (yaml.hasAliases) {
@@ -93,6 +105,7 @@ export function parseWorkflow(file: TextFile): Workflow {
   const permissions = mapEntry(root, 'permissions')
   workflow.hasPermissions = permissions !== undefined
   workflow.permissions = permissions === undefined ? undefined : plain(permissions.value)
+  workflow.triggers = plain(mapEntry(root, 'on')?.value)
 
   const jobs = mapEntry(root, 'jobs')?.value
   if (isMap(jobs)) {
@@ -109,14 +122,22 @@ export function parseWorkflow(file: TextFile): Workflow {
           steps.push({
             index,
             name: scalarString(mapEntry(stepNode, 'name')?.value),
+            condition: plain(mapEntry(stepNode, 'if')?.value),
             uses: usesOf(stepNode),
             inputs: isRecord(inputs) ? inputs : {},
+            run: scalarString(mapEntry(stepNode, 'run')?.value),
           })
         }
       }
       const jobPermissions = mapEntry(job, 'permissions')
+      const needs = plain(mapEntry(job, 'needs')?.value)
+      const keyStart = isScalar(jobPair.key) ? (jobPair.key.range?.[0] ?? 0) : 0
+      const bodyEnd = job.range?.[1] ?? keyStart + 1
       workflow.jobs.push({
         id,
+        startLine: yaml.lineOf(keyStart),
+        endLine: yaml.lineOf(Math.max(bodyEnd - 1, keyStart)),
+        needs: typeof needs === 'string' ? [needs] : isStringArray(needs) ? needs : [],
         condition: plain(mapEntry(job, 'if')?.value),
         hasPermissions: jobPermissions !== undefined,
         permissions: jobPermissions === undefined ? undefined : plain(jobPermissions.value),

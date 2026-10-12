@@ -1,6 +1,6 @@
 # ADR-013: Releases with Changesets, one version for all packages, OIDC and staged publishing with maintainer approval
 
-Status: Accepted (2026-10-11)
+Status: Superseded by ADR-015 (2026-10-11)
 
 ## Context
 

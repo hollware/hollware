@@ -1,6 +1,6 @@
 # ADR-014: Release pipeline: Changesets versions, `npm stage publish` publishes
 
-Status: Accepted (2026-10-11)
+Status: Superseded by ADR-015 (2026-10-11)
 
 ## Context
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Finalizes a release once the maintainer has approved the staged packages on npm.
+# Finalizes a release once its packages are live on npm.
 #
 # The release is what the release commit changed: the public packages whose
 # version differs from the one in its first parent. For each of them that still
@@ -20,11 +20,13 @@
 # Environment:
 #   GH_TOKEN           token for `gh`, needs contents: write (required)
 #   GITHUB_REPOSITORY  owner/repo (set by Actions)
-#   RELEASE_SHA        the commit this run built. It is the release commit when it
-#                      bumped a public package. Otherwise, and when empty, the
-#                      release commit is the latest "Version Packages" commit on
-#                      the first-parent history of HEAD.
-#   WAIT_SECONDS       how long to wait for npm before failing (default 7200)
+#   RELEASE_SHA        the commit this run published: the head of the release branch.
+#                      It is the release commit when it bumped a public package, which
+#                      is the case when the promoted commit is the Version Packages
+#                      merge. Otherwise, and when empty, the release commit is the
+#                      latest "Version Packages" commit on the first-parent history of
+#                      HEAD.
+#   WAIT_SECONDS       how long to wait for npm before failing (default 1800)
 #   LATEST_PACKAGE     the package whose Release is marked Latest (default hollware)
 #   DRY_RUN            "true" prints what would be created and creates nothing
 set -euo pipefail
@@ -32,7 +34,7 @@ set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
 
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
-wait_seconds="${WAIT_SECONDS:-7200}"
+wait_seconds="${WAIT_SECONDS:-1800}"
 latest_package="${LATEST_PACKAGE:-hollware}"
 dry_run="${DRY_RUN:-false}"
 npm_registry="https://registry.npmjs.org/"
@@ -200,7 +202,7 @@ while true; do
     break
   fi
   if ((waited >= wait_seconds)); then
-    echo "::error::Gave up after ${waited}s. Not ready on npm: ${not_ready[*]}. Approve the staged packages (npm stage approve <id>) and run the Release workflow again with finalize_only." >&2
+    echo "::error::Gave up after ${waited}s. Not ready on npm: ${not_ready[*]}. Check the publish job, then run the Release workflow again on the release branch with finalize_only." >&2
     exit 1
   fi
   echo "Waiting for npm (${waited}s of ${wait_seconds}s): ${not_ready[*]}"

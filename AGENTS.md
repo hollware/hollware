@@ -109,9 +109,9 @@ line here. Run them with `pnpm exec vp test --project repo`. After `vp run -r bu
 - `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds and excludes, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
-- `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` in two jobs, no kept credentials, Scorecard rules.
-- `tests/conventions/workflow-forbidden.test.ts`: no npm token, direct publish, `git push`, `npx` or `dlx`; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: release jobs gated to this repository and `main`; `stage` isolated.
+- `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
+- `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`; each job gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes, finalizes) and chained by `needs`; `publish` isolated; `ci.yml` runs on `release` without the changeset gate.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
@@ -134,6 +134,8 @@ line here. Run them with `pnpm exec vp test --project repo`. After `vp run -r bu
 - `tests/meta/self-tests.test.ts`: every guard is run by a test with a `self-test` block feeding it a bad fixture.
 - `tests/meta/scanners.test.ts`: the JSONC, Markdown, source and workspace readers the guards stand on.
 - `tests/ci/changeset-check.test.ts`: the changeset gate checks pull requests and pushes, and skips only the branch creation, the Version Packages pull request from github-actions[bot] and its merge.
+- `tests/ci/promotion-check.test.ts`: the promotion gate refuses a commit that is not on `main`, a push that is not a fast-forward and a commit with a pending changeset.
+- `tests/ci/verify-and-publish.test.ts`: the shell of the `publish` job, run from `release.yml` with a stub `npm`, verifies the plan and every tarball before any publish, skips versions npm has and publishes with `--provenance`.
 
 ## Updating dependencies
 

@@ -158,7 +158,7 @@ export function checkManifests(input: ManifestsInput): Violation[] {
   const published = manifests.filter((manifest) => /^packages\/[^/]+$/.test(manifest.dir))
   for (const manifest of published) violations.push(...checkPublished(manifest, files))
 
-  // One version for the whole fixed group (ADR-013).
+  // One version for the whole fixed group (ADR-015, which keeps ADR-013's decision).
   const versions = new Set(published.map((manifest) => show(manifest.json.version)))
   if (versions.size > 1) {
     for (const manifest of published) {

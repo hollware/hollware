@@ -5,7 +5,7 @@ import { file } from '../support/fixtures.ts'
 import { isWorkflowPath, readRepoFiles } from '../support/repo.ts'
 
 // Fails when: a workflow lacks a top-level `permissions: {}`, a job grants permissions as
-// write-all, `id-token: write` appears anywhere but release.yml `stage` and security.yml
+// write-all, `id-token: write` appears anywhere but release.yml `publish` and security.yml
 // `scorecard`, an actions/checkout step does not set persist-credentials: false, or security.yml
 // gets a top-level env or defaults.
 
@@ -24,12 +24,12 @@ const goodRelease = [
   CHECKOUT,
   '        with:',
   '          persist-credentials: false',
-  '  stage:',
+  '  publish:',
   '    permissions:',
   '      contents: read',
   '      id-token: write',
   '    steps:',
-  '      - run: echo staged',
+  '      - run: echo published',
 ].join('\n')
 
 describe('workflow permissions', () => {
@@ -40,7 +40,7 @@ describe('workflow permissions', () => {
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
-    it('accepts a release with id-token only in stage', () => {
+    it('accepts a release with id-token only in publish', () => {
       expect(check('release.yml', goodRelease)).toEqual([])
     })
 
@@ -83,18 +83,29 @@ describe('workflow permissions', () => {
           rule: 'workflow-permissions/id-token',
           file: '.github/workflows/release.yml',
           message:
-            'job "pack" grants "id-token: write", which only release.yml#stage and security.yml#scorecard may: it lets a job mint OIDC tokens',
+            'job "pack" grants "id-token: write", which only release.yml#publish and security.yml#scorecard may: it lets a job mint OIDC tokens',
         },
       ])
     })
 
-    it('reports the job named stage in another workflow, and scorecard in release.yml', () => {
+    it('reports the job named publish in another workflow, and scorecard in release.yml', () => {
       expect(check('ci.yml', goodRelease).map((violation) => violation.message)).toEqual([
-        'job "stage" grants "id-token: write", which only release.yml#stage and security.yml#scorecard may: it lets a job mint OIDC tokens',
+        'job "publish" grants "id-token: write", which only release.yml#publish and security.yml#scorecard may: it lets a job mint OIDC tokens',
       ])
-      const scorecardInRelease = goodRelease.replace('  stage:', '  scorecard:')
+      const scorecardInRelease = goodRelease.replace('  publish:', '  scorecard:')
       expect(check('release.yml', scorecardInRelease)).toHaveLength(1)
       expect(check('security.yml', scorecardInRelease)).toEqual([])
+    })
+
+    it('reports the old stage job of release.yml: only publish may hold the token now', () => {
+      expect(check('release.yml', goodRelease.replace('  publish:', '  stage:'))).toEqual([
+        {
+          rule: 'workflow-permissions/id-token',
+          file: '.github/workflows/release.yml',
+          message:
+            'job "stage" grants "id-token: write", which only release.yml#publish and security.yml#scorecard may: it lets a job mint OIDC tokens',
+        },
+      ])
     })
 
     it('reports a job that grants write-all', () => {
@@ -107,7 +118,7 @@ describe('workflow permissions', () => {
           rule: 'workflow-permissions/job-permissions',
           file: '.github/workflows/release.yml',
           message:
-            'job "stage": "permissions" must be a mapping of the scopes it needs, found "write-all"',
+            'job "publish": "permissions" must be a mapping of the scopes it needs, found "write-all"',
         },
       ])
     })
@@ -137,7 +148,7 @@ describe('workflow permissions', () => {
         'permissions: {}\nenv:\n  A: b\ndefaults:\n  run:\n    shell: bash\n',
       )
       expect(
-        check('security.yml', withEnv.replace('  stage:', '  scorecard:')).map(
+        check('security.yml', withEnv.replace('  publish:', '  scorecard:')).map(
           (violation) => violation.message,
         ),
       ).toEqual([

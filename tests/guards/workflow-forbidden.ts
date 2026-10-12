@@ -1,14 +1,19 @@
 import type { TextFile, Violation } from './types.ts'
+import { parseWorkflow } from './workflow-model.ts'
 
 /**
  * Guard `workflow-forbidden`: nothing in a workflow or a workflow script can publish with a
- * token or run code nobody pinned.
+ * token, publish from the wrong place or run code nobody pinned.
  *
- * Forbidden in `.github/workflows/*.yml` and `.github/scripts/*`: `NPM_TOKEN` and
- * `NODE_AUTH_TOKEN` (publishing is OIDC trusted publishing), `npm publish`, `pnpm publish`,
- * `yarn publish` and `changeset publish` (only `npm stage publish` publishes), `git push`
- * (nothing pushes with git credentials; the API does), `npx`, `pnpx`, `bunx` and `dlx` (a
- * command fetched at run time is not the one in the lockfile).
+ * Forbidden in `.github/workflows/*.yml` and `.github/scripts/*`:
+ *
+ * - `NPM_TOKEN` and `NODE_AUTH_TOKEN` (publishing is OIDC trusted publishing),
+ * - `pnpm publish`, `yarn publish`, `changeset publish` and `npm stage` (the only command that
+ *   publishes is `npm publish`),
+ * - `npm publish` anywhere but in the `publish` job of `.github/workflows/release.yml`, and
+ *   there without `--provenance` on the same line (ADR-015),
+ * - `git push` (nothing pushes with git credentials; the API does), `npx`, `pnpx`, `bunx` and
+ *   `dlx` (a command fetched at run time is not the one in the lockfile).
  *
  * `zizmor: ignore[...]` comments switch off a finding of the workflow linter. Each one must be
  * in the allowlist, which may only shrink, and so must be no zizmor config file, which would
@@ -25,6 +30,10 @@ export interface WorkflowForbiddenInput {
   zizmorConfigs: readonly string[]
 }
 
+/** The only place `npm publish` may appear: this job of this workflow. */
+export const PUBLISH_FILE = '.github/workflows/release.yml'
+export const PUBLISH_JOB = 'publish'
+
 const FORBIDDEN: readonly { rule: string; pattern: RegExp; what: string }[] = [
   {
     rule: 'npm-token',
@@ -33,8 +42,8 @@ const FORBIDDEN: readonly { rule: string; pattern: RegExp; what: string }[] = [
   },
   {
     rule: 'publish',
-    pattern: /\b(?:npm|pnpm|yarn)\s+(?:-\S+\s+)*publish\b|\bchangeset\s+publish\b/,
-    what: 'a direct publish: only "npm stage publish" publishes',
+    pattern: /\b(?:pnpm|yarn)\s+(?:-\S+\s+)*publish\b|\bchangeset\s+publish\b|\bnpm\s+stage\b/,
+    what: `a publish that is not "npm publish --provenance" in the "${PUBLISH_JOB}" job of ${PUBLISH_FILE}`,
   },
   {
     rule: 'git-push',
@@ -53,12 +62,24 @@ const FORBIDDEN: readonly { rule: string; pattern: RegExp; what: string }[] = [
   },
 ]
 
+const NPM_PUBLISH = /\bnpm\s+(?:-\S+\s+)*publish\b/
+const PROVENANCE = /(?:^|\s)--provenance(?=\s|$)/
 const ZIZMOR_IGNORE = /zizmor:\s*ignore(?:\[[^\]]*\])?/g
+
+/** The 1-based lines of the publish job in `.github/workflows/release.yml`, if it has one. */
+function publishJobLines(file: TextFile): { start: number; end: number } | undefined {
+  if (file.path !== PUBLISH_FILE) return undefined
+  const workflow = parseWorkflow(file)
+  if (workflow.errors.length > 0) return undefined
+  const job = workflow.jobs.find((candidate) => candidate.id === PUBLISH_JOB)
+  return job === undefined ? undefined : { start: job.startLine, end: job.endLine }
+}
 
 export function checkWorkflowForbidden(input: WorkflowForbiddenInput): Violation[] {
   const violations: Violation[] = []
   const remaining = [...input.zizmorIgnores]
   for (const file of input.files) {
+    const publishJob = publishJobLines(file)
     for (const [index, line] of file.text.split('\n').entries()) {
       for (const { rule, pattern, what } of FORBIDDEN) {
         const found = pattern.exec(line)
@@ -67,6 +88,24 @@ export function checkWorkflowForbidden(input: WorkflowForbiddenInput): Violation
             rule: `workflow-forbidden/${rule}`,
             file: file.path,
             message: `line ${index + 1} has "${found[0].trim()}": ${what}`,
+          })
+        }
+      }
+      const publish = NPM_PUBLISH.exec(line)
+      if (publish !== null) {
+        const inPublishJob =
+          publishJob !== undefined && index + 1 >= publishJob.start && index + 1 <= publishJob.end
+        if (!inPublishJob) {
+          violations.push({
+            rule: 'workflow-forbidden/publish',
+            file: file.path,
+            message: `line ${index + 1} has "${publish[0].trim()}": npm publish belongs in the "${PUBLISH_JOB}" job of ${PUBLISH_FILE} and nowhere else`,
+          })
+        } else if (!PROVENANCE.test(line)) {
+          violations.push({
+            rule: 'workflow-forbidden/provenance',
+            file: file.path,
+            message: `line ${index + 1} has "${publish[0].trim()}" without --provenance on the same line: every release carries its provenance attestation`,
           })
         }
       }

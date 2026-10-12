@@ -1,28 +1,32 @@
 name: Release
 
-# The release pipeline (ADR-014). Nothing reaches npm without the maintainer:
+# The release pipeline (ADR-015). `main` is for development and `release` is what ships:
+# `release` only moves by fast-forward to a commit that is on `main`.
 #
-#   select-mode -> version -> (merge the Version Packages pull request)
-#   select-mode -> pack -> stage -> (the maintainer approves on npm with 2FA) -> finalize
+#   push to main:     select-mode -> version -> (merge the Version Packages pull request)
+#   push to release:  promotion-check -> pack -> publish -> finalize
 #
-# `stage` is the only job that may request an OIDC token. It checks out nothing and
-# runs no repository code: it verifies the tarballs that `pack` built and hands
-# them to npm.
+# A push to `main` never packs or publishes. `publish` is the only job that may request an
+# OIDC token. It waits for the maintainer to approve the environment `npm`, checks out
+# nothing and runs no repository code: it verifies the tarballs that `pack` built and hands
+# them to npm with provenance.
 
 on:
   push:
-    branches: [main]
+    branches: [main, release]
   workflow_dispatch:
     inputs:
       finalize_only:
-        description: Only tag and release what was already approved on npm (skips versioning, packing and staging)
+        description: Only tag and release what is already live on npm. Run it on the release branch (skips the promotion check, packing and publishing)
         type: boolean
         default: false
 
 permissions: {}
 
+# One run at a time per branch. The two branches have separate groups: a run of `release`
+# that waits for the approval of `publish` must never be replaced by a later push to `main`.
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +39,6 @@ jobs:
       contents: read
     outputs:
       mode: ${{ steps.select.outputs.mode }}
-      publish-plan-artifact-id: ${{ steps.select.outputs.publish-plan-artifact-id }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -85,10 +88,32 @@ jobs:
           commit-message: Version Packages
           pr-title: Version Packages
 
+  promotion-check:
+    name: Check the promotion
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' && !inputs.finalize_only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # origin/main, and the history between the two tips of release
+          persist-credentials: false
+
+      # Fails unless the pushed commit is on main, release moved by fast-forward and
+      # .changeset/ holds no pending changeset. Nothing below runs before it passes.
+      - name: Check the promotion
+        env:
+          PROMOTED_SHA: ${{ github.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: bash .github/scripts/promotion-check.sh
+
   pack:
     name: Pack tarballs
-    needs: select-mode
-    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' && needs.select-mode.outputs.mode == 'publish'
+    needs: promotion-check
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -108,21 +133,36 @@ jobs:
           node-version-file: .node-version
           cache: false
 
+      # `publish` when some public package has a version that npm does not have yet.
+      # `none` when every version is on npm, which makes this run a no-op.
+      - name: Select the mode
+        id: select
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
       - name: Build the packages
+        if: steps.select.outputs.mode == 'publish'
         run: vp run -r build
 
       # Writes the tarballs and publish-plan.json (name, version, tarball path and
       # sha256 of every release) and uploads them as one artifact.
       - name: Pack the tarballs
         id: pack
+        if: steps.select.outputs.mode == 'publish'
         uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+          publish-plan-artifact-id: ${{ steps.select.outputs.publish-plan-artifact-id }}
 
-  stage:
-    name: Stage on npm
+      - name: Say why nothing is published
+        if: steps.select.outputs.mode != 'publish'
+        env:
+          MODE: ${{ steps.select.outputs.mode }}
+        run: |
+          echo "Nothing to publish. select-mode answered ${MODE}, which on the release branch means that every public package version is already on npm." | tee -a "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish to npm
     needs: pack
-    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main'
+    if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' && needs.pack.outputs.artifact-id != ''
     environment: npm # the maintainer approves this job; the npm trusted publisher is bound to it
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -137,22 +177,15 @@ jobs:
           node-version: 24.21.0
           package-manager-cache: false
 
-      - name: Check the npm version
-        run: |
-          set -euo pipefail
-          echo "node $(node --version), npm $(npm --version)"
-          if ! printf '%s\n' 11.15.0 "$(npm --version)" | sort -V -C; then
-            echo "::error::npm stage needs npm 11.15.0 or newer." >&2
-            exit 1
-          fi
-
       - name: Download the tarballs
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.pack.outputs.artifact-id }}
           path: ${{ runner.temp }}/pack
 
-      - name: Verify the tarballs and stage them
+      # Nothing is checked out here, so this shell cannot live in .github/scripts: it is
+      # inline, and tests/ci/verify-and-publish.test.ts runs this very text with a stub npm.
+      - name: Verify the tarballs and publish them
         env:
           PACK_DIR: ${{ runner.temp }}/pack
         run: |
@@ -162,6 +195,16 @@ jobs:
             echo "::error::$*" >&2
             exit 1
           }
+
+          registry='https://registry.npmjs.org/'
+          summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+
+          # Trusted publishing over OIDC needs npm 11.5.1 or newer.
+          npm_version="$(npm --version)"
+          echo "npm ${npm_version}"
+          printf '%s\n' 11.5.1 "$npm_version" | sort -V -C || fail "Trusted publishing needs npm 11.5.1 or newer, found ${npm_version}."
 
           plan="$PACK_DIR/publish-plan.json"
           [[ -f "$plan" ]] || fail "publish-plan.json is missing from the downloaded artifact."
@@ -173,11 +216,13 @@ jobs:
           path_re='^packages/[A-Za-z0-9][A-Za-z0-9._-]*\.tgz$'
           integrity_re='^sha256-[A-Za-z0-9+/]{43}=$'
 
-          # One tab-separated line per release, dependencies first.
-          releases="$(jq -r '.plan[][] | select(.kind == "publish") | [.name, .version, .tarball.path, .tarball.integrity, .tag, .access] | @tsv' "$plan")"
-          [[ -n "$releases" ]] || fail "The publish plan has nothing to stage."
+          # One tab-separated line per release, dependencies first. A missing or empty value
+          # becomes <empty>: read would merge two tabs in a row and shift the fields.
+          releases="$(jq -r '.plan[][] | select(.kind == "publish") | [.name, .version, .tarball.path, .tarball.integrity, .tag, .access] | map(if . == null or . == "" then "<empty>" else . end) | @tsv' "$plan")" || fail "publish-plan.json does not have the shape of a publish plan."
+          [[ -n "$releases" ]] || fail "The publish plan has nothing to publish."
 
-          # 1. Verify every tarball before staging any of them.
+          # 1. Verify the plan and every tarball before anything leaves this job.
+          rows=()
           paths=()
           while IFS=$'\t' read -r name version path integrity tag access; do
             [[ "$name" =~ $name_re ]] || fail "Unexpected package name in the publish plan: ${name}"
@@ -188,61 +233,80 @@ jobs:
             [[ "$access" == "public" || "$access" == "restricted" ]] || fail "Unexpected access of ${name}: ${access}"
 
             file="$PACK_DIR/$path"
-            [[ -f "$file" ]] || fail "The tarball of ${name}@${version} is missing: ${path}"
+            [[ -f "$file" && ! -L "$file" ]] || fail "The tarball of ${name}@${version} is missing: ${path}"
             actual="sha256-$(openssl dgst -sha256 -binary "$file" | base64 | tr -d '\n')"
             [[ "$actual" == "$integrity" ]] || fail "The sha256 of ${path} does not match the publish plan."
-            inside="$(tar -xzOf "$file" package/package.json | jq -r '"\(.name)@\(.version)"')"
+            # The name and version inside, and what is left of publishConfig once access and
+            # provenance, which the command line overrides anyway, are taken out: npm would
+            # apply the rest (a registry, a tag) to the publish.
+            manifest="$(tar -xzOf "$file" package/package.json | jq -r '"\(.name)@\(.version)", (.publishConfig // {} | if type == "object" then del(.access, .provenance) else . end | tojson)')" || fail "${path} is not a package tarball."
+            { IFS= read -r inside; IFS= read -r config; } <<<"$manifest"
             [[ "$inside" == "${name}@${version}" ]] || fail "${path} holds ${inside}, the publish plan says ${name}@${version}."
+            [[ "$config" == '{}' ]] || fail "${path} sets publishConfig keys besides access and provenance: ${config}"
+
+            rows+=("${name}"$'\t'"${version}"$'\t'"${path}"$'\t'"${tag}"$'\t'"${access}")
             paths+=("$path")
           done <<<"$releases"
 
-          unexpected="$(comm -13 <(printf '%s\n' "${paths[@]}" | sort) <(cd "$PACK_DIR" && find packages -type f | sort))"
+          unexpected="$(comm -13 <(printf '%s\n' publish-plan.json "${paths[@]}" | sort) <(cd "$PACK_DIR" && find . ! -type d | sed 's|^\./||' | sort))"
           [[ -z "$unexpected" ]] || fail "The artifact holds files that are not in the publish plan: ${unexpected//$'\n'/, }"
 
-          # 2. Stage them. The summary grows with every package, so the stage ids of a
-          #    partial run are not lost.
+          # 2. Ask npm which versions it already has, still before anything is published: a
+          #    registry error here costs nothing.
+          states=()
+          for row in "${rows[@]}"; do
+            IFS=$'\t' read -r name version _ <<<"$row"
+            status=0
+            answer="$(npm view "${name}@${version}" version --json --prefer-online --registry "$registry" 2>"$work/view.err" </dev/null)" || status=$?
+            if ((status == 0)); then
+              [[ "$(jq -r '.' <<<"$answer")" == "$version" ]] || fail "npm answered ${answer} when asked for ${name}@${version}."
+              states+=(published)
+            elif jq -e '.error.code == "E404"' <<<"$answer" >/dev/null 2>&1; then
+              states+=(missing)
+            else
+              cat "$work/view.err" >&2
+              fail "Could not tell whether ${name}@${version} is on npm: ${answer}"
+            fi
+          done
+
+          # 3. Publish, dependencies first. The summary grows with every package, so a run
+          #    that stops half-way leaves a record of what went out.
           {
-            echo "## Staged on npm"
+            echo "## Published on npm"
             echo
-            echo "| Package | Version | sha256 | Stage ID |"
+            echo "| Package | Version | sha256 | Result |"
             echo "| --- | --- | --- | --- |"
-          } >>"$GITHUB_STEP_SUMMARY"
+          } >>"$summary"
 
           index=0
-          while IFS=$'\t' read -r name version path integrity tag access; do
-            index=$((index + 1))
+          for row in "${rows[@]}"; do
+            IFS=$'\t' read -r name version path tag access <<<"$row"
             file="$PACK_DIR/$path"
-            result="$RUNNER_TEMP/staged-${index}.json"
-            if ! npm stage publish "$file" --tag "$tag" --access "$access" --provenance --json >"$result" </dev/null; then
-              cat "$result" >&2 || true
-              fail "npm stage publish failed for ${name}@${version}. Reject what was already staged (the job summary lists it) with npm stage reject <id>, then run the job again."
-            fi
-            stage_id="$(jq -r --arg name "$name" '.[$name].stageId // empty' "$result")"
-            [[ -n "$stage_id" ]] || { cat "$result" >&2; fail "npm did not report a stage id for ${name}@${version}."; }
             hex="$(openssl dgst -sha256 -r "$file" | cut -d' ' -f1)"
-            echo "| \`${name}\` | ${version} | \`${hex}\` | \`${stage_id}\` |" >>"$GITHUB_STEP_SUMMARY"
-          done <<<"$releases"
-
-          cat >>"$GITHUB_STEP_SUMMARY" <<'EOF'
-
-          Review each package, then approve it with your 2FA, dependencies first (the table is in that order):
-
-          - `npm stage view <stage id>` shows what was staged. `npm stage download <stage id>` fetches the tarball: its `sha256sum` must match the table.
-          - `npm stage approve <stage id>` publishes it. The same is possible on npmjs.com, under the package's staged versions.
-          - `npm stage reject <stage id>` discards it.
-
-          The `finalize` job waits until every version is live, checks its provenance attestation, then creates the tags and the GitHub Releases. If it times out, approve what is left and run this workflow again with `finalize_only`.
-          EOF
+            if [[ "${states[$index]}" == published ]]; then
+              result='already on npm'
+              echo "${name}@${version} is already on npm: skipped."
+            else
+              echo "Publishing ${name}@${version}"
+              if ! npm publish "$file" --registry "$registry" --provenance --access "$access" --tag "$tag" </dev/null; then
+                echo "| \`${name}\` | ${version} | \`${hex}\` | **failed** |" >>"$summary"
+                fail "Publishing ${name}@${version} failed. Run the job again once the cause is fixed: a version that is already on npm is skipped."
+              fi
+              result=published
+            fi
+            echo "| \`${name}\` | ${version} | \`${hex}\` | ${result} |" >>"$summary"
+            index=$((index + 1))
+          done
 
   finalize:
     name: Tag and release
-    needs: stage
-    # `stage` is skipped on a finalize-only run, so a status function is needed to run after it.
+    needs: publish
+    # `publish` is skipped on a finalize-only run, so a status function is needed to run after it.
     if: >-
-      ${{ !cancelled() && github.repository == 'hollware/hollware' && github.ref == 'refs/heads/main' &&
-      (needs.stage.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.finalize_only)) }}
+      ${{ !cancelled() && github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' &&
+      (needs.publish.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.finalize_only)) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 150 # the script gives up on npm after two hours
+    timeout-minutes: 45 # the script gives up on npm after half an hour
     permissions:
       contents: write # create the tags and the GitHub Releases
     steps:
@@ -261,8 +325,9 @@ jobs:
       - name: Wait for npm, then tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-          # The commit this run built. A finalize-only run has no build of its own, so the
-          # script looks for the latest "Version Packages" commit in the history.
+          # The commit this run published: the head of release. A finalize-only run has no
+          # build of its own, so the script looks for the latest "Version Packages" commit
+          # in the history.
           RELEASE_SHA: ${{ inputs.finalize_only != true && github.sha || '' }}
-          WAIT_SECONDS: '7200'
+          WAIT_SECONDS: '1800'
         run: bash .github/scripts/finalize-release.sh
