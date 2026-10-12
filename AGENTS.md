@@ -133,6 +133,7 @@ line here. Run them with `pnpm exec vp test --project repo`. After `vp run -r bu
 - `tests/meta/guards-registry.test.ts`: every guard file is cited here, once, with what it binds.
 - `tests/meta/self-tests.test.ts`: every guard is run by a test with a `self-test` block feeding it a bad fixture.
 - `tests/meta/scanners.test.ts`: the JSONC, Markdown, source and workspace readers the guards stand on.
+- `tests/ci/changeset-check.test.ts`: the changeset gate checks pull requests and pushes, and skips only the branch creation, the Version Packages pull request from github-actions[bot] and its merge.
 
 ## Updating dependencies
 

@@ -8,11 +8,15 @@
 #
 #   EVENT_NAME  github.event_name (required)
 #   BASE_REF    github.base_ref, the branch a pull request targets
+#   HEAD_REF    github.head_ref, the branch a pull request comes from
+#   PR_AUTHOR   the login of the pull request's author
 #   BEFORE_SHA  github.event.before, the tip of the branch before a push
 #   HEAD_SHA    github.sha, the head commit of a push
 #
-# A pull request is compared with its base branch and a push with the tip the
-# branch had before it. A push is not checked when
+# A pull request is compared with its base branch, except the Version Packages
+# pull request itself (branch changeset-release/<base>, opened by
+# github-actions[bot]): it consumes the changesets by design. A push is compared
+# with the tip the branch had before it. A push is not checked when
 #
 #   - `before` is all zeros: the push created the branch, so there is nothing to
 #     compare with,
@@ -28,7 +32,12 @@ event="${EVENT_NAME:?EVENT_NAME is required}"
 
 case "$event" in
   pull_request)
-    since="origin/${BASE_REF:?BASE_REF is required for pull_request events}"
+    base="${BASE_REF:?BASE_REF is required for pull_request events}"
+    if [[ "${HEAD_REF:-}" == "changeset-release/${base}" && "${PR_AUTHOR:-}" == "github-actions[bot]" ]]; then
+      echo "Skipping the changeset check: this is the Version Packages pull request."
+      exit 0
+    fi
+    since="origin/${base}"
     ;;
   push)
     before="${BEFORE_SHA:?BEFORE_SHA is required for push events}"
