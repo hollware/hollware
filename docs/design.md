@@ -497,13 +497,13 @@ The SQL above is the sketch from the design phase. The v0.1 implementation refin
 
 ## Repository and stack
 
-**One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare, so it can be tested in Node. The versions are those published as of 11 October 2026 and pinned in the pnpm catalog.
+**One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare, so it can be tested in Node. The versions are those published as of 11 October 2026. Each stage pins the ones it uses in the pnpm catalog when it starts.
 
 | Package            | What it is                                                                                                        | Phase |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------- | ----- |
 | `@hollware/core`   | Contracts, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                       | v0.1  |
 | `@hollware/server` | The Worker: operation registry, Hono, MCP, RPC, OAuth, D1 with Drizzle and Workflows. It includes the migrations. | v0.1  |
-| `hollware`         | The CLI: init, migrate, import, export and reparse.                                                               | v0.1  |
+| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                      | v0.1  |
 | `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                        | v0.1  |
 | `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                     | v0.2  |
 | `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                               | v0.3  |
@@ -600,7 +600,7 @@ Oct–Nov 2026 · 3 weeks.
 - Comark on write, and the contracts: schema, components, translation pair, internal links and custom rules
 - MCP with SDK v2: `describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish` and `unpublish`
 - OAuth, the owner's passkey and personal tokens
-- CLI: `hollware init`, `migrate` and `import`
+- CLI: `hollware init`, `migrate`, `token` and `import`
 - The MCP conformance suite and a size budget in CI
 - An example site in `examples/` that reads published entries over RPC
 
@@ -736,7 +736,15 @@ The author's own site, sergioazocar.com, is not a validation target of this road
 - **Tools in transition.** Hono 5 is a release candidate, Drizzle v1 is a release candidate, the `cf` CLI is in beta and the MCP SDK moves every week. Mitigation: exact versions in the catalog, thin adapters with the version isolated in one file, and a review of the stack at the start of every stage.
 - **10 ms of CPU on the Free plan.** A heavy bundle or a slow parse breaks requests. Mitigation: Comark measures under 3 ms for 10,000 words, a size and startup budget runs in CI, and heavy work goes to Workflows or to the queue.
 - **Comark is pre-1.0.** Its API and the shape of its document can change. Mitigation: `comark_version` on every revision and `hollware reparse`, which is possible because Markdown is the source of truth.
-- **Publishing rests on one account.** A release needs the maintainer's approval of the `npm` environment and no second factor on npm, and the direct publishing path has not run against the real registry yet. Mitigation: the organization enforces 2FA, only `release` can deploy to the environment, `release` takes only fast-forwards of commits on `main`, the trusted publisher is bound to one workflow and environment, every version carries provenance, the finalize step verifies the attestations, and the first release through this pipeline exercises it (ADR-015).
+- **Publishing rests on one account.** A release needs the maintainer's approval of the `npm` environment, and no second factor on npm. That approval is a human act only while the credentials the agents use cannot review deployments (ADR-015). Mitigation:
+  - the organization enforces 2FA;
+  - only `release` can deploy to the environment;
+  - `release` moves only by fast-forward, and `promotion-check` stops a commit that is not on `main`;
+  - the trusted publisher is bound to one workflow and one environment;
+  - every version carries provenance, and the finalize step verifies the attestations.
+
+  The direct path first ran for 0.0.2. Publishing under "require 2FA and disallow tokens" is first exercised by 0.1.0.
+
 - **SimpleWebAuthn on Workers.** SimpleWebAuthn 14 does not list Workers as an official platform. Mitigation: a spike in v0.1 runs it in workerd with a software authenticator, with `nodejs_compat` as the fallback.
 - **The brand.** A 2021 trademark application for "HOLOWARE" exists, for product visualization software. It is spelled differently and belongs to a different field, but its status at the USPTO has to be checked before v1.0.
 - **EmDash ships a real headless mode.** That is not a risk, it is information. If it covers the thesis, Hollware is evaluated against it and archived without drama if it loses.

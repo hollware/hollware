@@ -58,7 +58,7 @@ Six packages, planned to arrive in the order below. For now they are scaffolding
 | --------------------------------------------- | ------------------------------------------------------------------------- | ---------- |
 | [`@hollware/core`](packages/core)             | Contracts, schemas and the Markdown pipeline. No Cloudflare dependencies. | v0.1       |
 | [`@hollware/server`](packages/server)         | The Worker: operations, MCP, RPC, HTTP, auth and the D1 migrations.       | v0.1       |
-| [`hollware`](packages/cli)                    | The CLI: init, migrate, token, import and export.                         | v0.1       |
+| [`hollware`](packages/cli)                    | The CLI: init, migrate, token and import. Export arrives in v0.2.         | v0.1       |
 | [`@hollware/client`](packages/client)         | The same typed interface over a service binding or over HTTP.             | v0.2       |
 | [`@hollware/admin`](packages/admin)           | The review and approval UI, prebuilt and served by the Worker.            | v0.3       |
 | [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                           | v0.4       |

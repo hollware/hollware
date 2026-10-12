@@ -27,15 +27,24 @@ Dropping staging also removes what separated "a merge happened" from "a release 
 ## Consequences
 
 - A release is three acts: merge the Version Packages pull request, push its commit to `release`, and approve the `npm` environment. One approval per release replaces six 2FA approvals.
-- The security model has one factor where it had two. Before, shipping a malicious version took a compromised CI job and the maintainer's separate npm 2FA. Now it takes the maintainer's GitHub account, whose 2FA the organization enforces, to approve the environment. Whoever controls that account can approve a release, and a commit they get onto `main` and then `release` ships. What still holds is that CI cannot approve its own publish, that only `release` can deploy to the environment, that `release` takes only fast-forwards of commits already on `main`, that the trusted publisher is bound to one workflow and environment, and that every version carries a provenance attestation.
+- The security model has one factor where it had two. Before, shipping a malicious version took a compromised CI job and the maintainer's separate npm 2FA. Now it takes the maintainer's GitHub account, whose 2FA the organization enforces, to approve the environment. Whoever controls that account can approve a release, and a commit they get onto `main` and then `release` ships. Several things still hold:
+  - CI cannot approve its own publish.
+  - Only `release` can deploy to the environment.
+  - A ruleset lets `release` move only by fast-forward.
+  - The trusted publisher is bound to one workflow and environment.
+  - Every version carries a provenance attestation.
+
+  `promotion-check` checks that a promoted commit is on `main`. It runs from the promoted commit itself, so the place that really enforces this is the environment approval.
+
 - Agents can start a release if they can push to `release`, but the release goes out only when the maintainer approves the environment. That stays a human act as long as the credentials agents use cannot review deployments, so those credentials must not be able to.
+- A push to `release` cannot be taken back, because the ruleset forbids force pushes for everyone, admins included. If a commit lands there by mistake, nothing is published, because `promotion-check` fails. But the next promotion is rejected as a non-fast-forward until an admin relaxes the ruleset, moves the branch back and restores the rule. Checking the ancestry before promoting avoids this (`.github/AGENTS.md`).
 - A partial publish is possible. If the job fails half-way, some versions are on npm and the fixed group is inconsistent until the job is run again. Running it again publishes what is missing and skips what is there.
 - npm refuses to move `latest` to a lower version unless the tag is given explicitly, and `publish` always gives it. The fast-forward rule is what keeps promoted versions increasing.
 - `publish` trusts `pack` for what is inside the tarballs. It checks that nothing changed between the two jobs and that the plan holds no hostile value, not that the build was honest: the maintainer's approval of the environment is where a person vouches for the commit.
 - The shell of `publish` stays inline in the workflow, because the job checks out nothing. Its test extracts that text from `release.yml` and runs it with a stub `npm`.
 - The text of the Version Packages pull request is written by the action and says that merging it publishes. It does not: the maintainer promotes the commit.
 - `finalize` no longer waits for a person, so it gives up after thirty minutes instead of two hours.
-- The first release through this pipeline is the first run of the `publish` job. Until then its behavior against the real registry is unproven, and `finalize` checks the attestations afterwards.
+- Release `0.0.2` was the first run of `publish`. It stopped half-way, at a package whose trusted publisher still allowed only staging, and running the job again published the rest.
 
 ## Alternatives considered
 

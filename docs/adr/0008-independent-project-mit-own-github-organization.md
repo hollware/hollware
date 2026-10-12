@@ -20,7 +20,7 @@ Claude Code 2.1.277 and later reads `AGENTS.md` when a repository has no `CLAUDE
 
 - Anyone can read the whole history, send a pull request or fork the project.
 - There is nothing to sign before contributing, and the copyright line credits Hollware contributors next to the author.
-- An organization allows controls that a personal account does not: required two-factor authentication, an `npm` environment that needs maintainer approval, and rulesets for tags and releases (see [ADR-014](0014-release-pipeline.md)).
+- An organization allows controls that a personal account does not: required two-factor authentication, an `npm` environment that needs maintainer approval, and rulesets for tags and releases (see [ADR-015](0015-release-branch-and-direct-publishing.md)).
 - Agents get one source of instructions. `AGENTS.md` only orients: whatever a test, a lint rule or a type can enforce is enforced there, not written down as a request.
 - A single language for the whole repository keeps it readable for contributors and agents from anywhere.
 
