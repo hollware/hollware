@@ -29,16 +29,14 @@ dist-ssr
 *.sln
 *.sw?
 
-# AI agent worktrees
-.claude/worktrees/
+# Local agent configuration (never committed: AGENTS.md is the shared file)
+.claude/
+.mcp.json
 
 # Cloudflare
 .wrangler/
 .dev.vars*
 !.dev.vars.example
-
-# Local agent settings (never committed)
-.claude/settings.local.json
 
 # Tooling output
 coverage/
