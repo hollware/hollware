@@ -201,15 +201,28 @@ and an example site reads what was published over RPC.
 
 ### Spikes (orchestrator, before dispatch)
 
-- [~] S1 Hono 5 RC under `vp dev` and workerd (fallback: Hono 4.13.13; version-specific code isolated in `http/errors.ts`)
-- [~] S2 MCP SDK 2.3.1 in workerd, both eras; CPU of the per-request factory + Zod→JSON Schema (fallback: precomputed schemas via `fromJsonSchema`)
-- [~] S3 Comark + `@comark/html` in workerd; bundle size (fallback: `nodejs_compat`)
-- [~] S4 `withSession` in Miniflare; drizzle with a session; `INSERT…SELECT` + `UPDATE…RETURNING` in one batch (fallback: plain `env.DB` / raw `env.DB.batch`)
-- [~] S5 SimpleWebAuthn 14 + a soft authenticator in workerd (fallback: `nodejs_compat`); also workers-oauth-provider 1.2.3 with Hono 5 (metadata, PKCE flow, personal tokens, CIMD)
+Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and mutated by the orchestrator (verification log below). No fallback was needed.
+
+- [x] S1 Hono 5 RC under `vp dev` and workerd: keep 5.0.0-rc.1. `onError`/`notFound` became middleware, and a Hono 4 style handler silently answers a plain-text 500; that code lives in `http/errors.ts`, and a test asserts the JSON error body
+- [x] S2 MCP SDK 2.3.1 in workerd, both eras: `createMcpHandler(factory)` on a Hono route, cfworker validation, MRTR in the 2026 era only. Converting Zod to JSON Schema on every request costs ~1.4 ms for a registry of this plan's size, so the converted schemas are memoized per isolate (byte-identical `tools/list`)
+- [x] S3 Comark + `@comark/html` in workerd without Node: works, but the defaults are unsafe for stored content (raw HTML and props pass through, `autoClose` is quadratic on hostile input, heading ids drop non-ASCII letters); the safe parser configuration is in the log
+- [x] S4 D1 + drizzle 0.45.4: the optimistic write is one `db.batch` of `INSERT…SELECT` + `UPDATE…RETURNING`; drizzle runs on a session through a typed adapter; Miniflare does not enforce the 2 MB row limit
+- [x] S5 SimpleWebAuthn 14 + a software authenticator in workerd without Node: full ceremony and negative cases pass on the built Worker; the authenticator becomes the auth WP's test double. workers-oauth-provider 1.2.3 with Hono 5: works with its role-based API (see the log)
 - [x] S6 `createTestHarness` with Vite output, named entrypoint, `applyD1Migrations` from `node_modules` (de-risked in F0-3b, see the F0 verification log)
-- [ ] S7 `wrangler check startup` on built output → calibrate budgets
-- [~] S8 MCP conformance 0.2.0-alpha against a stub Worker → size the baseline
+- [~] S7 `wrangler check startup` on built output → calibrate budgets. Per-library startup and sizes are measured (log); the budgets are calibrated on the built server in Wave 3
+- [x] S8 MCP conformance 0.2.0-alpha.12 against a stub Worker: no stack problem; the stub fails only unimplemented capabilities and missing `test_*` fixture tools (baselines of 32 and 26 entries, one file per revision)
 - [x] S9 do `vp dev` and `wrangler d1 execute --local` share state? (yes, F0-3b)
+
+### Findings to fold into this plan (adversarial review)
+
+- **Node.js compatibility is on by default** for compatibility dates from 2026-08-04 (ours is 2026-10-06): every Wrangler config of Hollware adds `no_nodejs_compat` and `no_nodejs_compat_v2`, and a guard binds them. `@cloudflare/vitest-plugin` forces Node on in the test runner, so "no Node" is proven only on the built Worker under `wrangler dev` (a smoke in CI). ADR-005's "no Node compatibility flag" is corrected. Open: whether the user's starter opts out too
+- **Auth topology:** the role-based API of workers-oauth-provider (`OAuthAuthorizationServer` + one `OAuthResourceServer` per surface, `/mcp` and `/v1`), not the combined `OAuthProvider`; `validateToken` handles personal tokens and OAuth in one place. The provider neither enforces scopes nor guards Host/Origin and reflects any Origin in CORS: Hollware's guard wraps it and fails closed. Route before Hono and pass the real `ExecutionContext`
+- **KV write budget:** a token refresh costs 2 KV writes; with 1 h access tokens the Free plan's 1,000 writes a day covers ~20 always-connected clients. The access token TTL is a decision, and ADR-005's "KV Free is enough" is revised
+- **CIMD:** `global_fetch_strictly_public` does not block private addresses; a "public addresses only" rule is Hollware's own fetch filter
+- **Optimistic write:** an empty `RETURNING` cannot tell `conflict` from `not_found` (one extra read); `db.transaction()` does not work on D1; three triggers keep revisions append-only (`INSERT OR REPLACE` bypasses a DELETE trigger), and a guard lists them after all migrations, because a drizzle-kit table rebuild drops them silently
+- **Markdown pipeline:** `autoClose: false`, one parser per isolate, no `html` plugin, `security({ allowedTags })` with an explicit tag list, our own heading ids, our own checks before parsing (BOM, `maxMarkdownBytes`, `RangeError`/`YAMLException` as violations)
+- **MCP:** the registry sorts the tools (the SDK lists them in registration order); `listChanged: false`; `cacheHints` for `tools/list`; a request without `authInfo` gets 401 from the gateway; `acknowledgeWarnings` stays for 2025 clients, which cannot answer MRTR; conformance runs against `wrangler dev` of the build
+- **CPU risk on the Free plan:** library startup alone is ~20 ms (MCP SDK + zod), ~10 ms (SimpleWebAuthn) and ~9 ms (Comark), and a first write in a cold isolate measured ~10 ms of parsing in Node. Measured on Cloudflare with the demo in v0.2; the `@cloudflare/vite-plugin` build is not minified by default
 
 ### Settle before Wave 0 dispatch (F0-7 review)
 
@@ -281,6 +294,15 @@ New ADRs: 016 workspace packages resolve to their source (accepted) · 017 opera
   - The six packages build with `devExports`, and `vp pack` rewrote their manifests. The guard `manifests` pins the new shape and reads `pack.exports.devExports` from each package's real `vite.config.ts` (16 tests). The new guard `build-order` pins the order of `check:push` (5 tests). `check-bins` runs `publishConfig.bin`, and a test fails if it runs the source bin. The `publish` job's test refuses a tarball that still holds `publishConfig.exports`. An empty changeset covers the package change: the published manifests do not move.
   - With every `dist` deleted, `vp run check:push` exits 0: 55 files and 575 tests, both published bins answer `--version`, `publint --strict` is clean ×6, types up to date. The build leaves the manifests byte-identical.
   - Orchestrator mutations → CAUGHT by the test that names the line: `devExports: false` in `core`'s config (`manifests`), `check-bins` reading `bin` (`check-bins`), `check:push` building before `vp test` (`build-order`), and the `publish` job letting `publishConfig.exports` through (`verify-and-publish`).
+  - CI green on `18758b4` (CI, Release, Security, CodeQL). On `main`, `select-mode` skipped the Version Packages pull request: an empty changeset releases nothing.
+- 2026-10-12 — Node.js compatibility, checked by the orchestrator: wrangler 4.149.0 turns `nodejs_compat` and `nodejs_compat_v2` on for compatibility dates from 2026-08-04 (`NODEJS_COMPAT_DEFAULT_ON_DATE`; Cloudflare's docs agree). A probe Worker under `wrangler dev`: date 2026-10-06 without flags has `process`, `Buffer` and `setImmediate`; with `no_nodejs_compat` + `no_nodejs_compat_v2`, or with date 2026-08-03, none. `@cloudflare/vitest-plugin` 1.4.0 adds `nodejs_compat_v2` to the test runner whatever the config says.
+- 2026-10-12 — Spikes. Each ran in its own scratch clone with installed dependencies (hono 5.0.0-rc.1, `@modelcontextprotocol/server`/`client` 2.3.1, conformance 0.2.0-alpha.12, zod 4.6.5, comark/`@comark/html` 0.7.0, drizzle-orm 0.45.4, drizzle-kit 0.31.11, `@simplewebauthn/server` 14.0.3, `@cloudflare/workers-oauth-provider` 1.2.3). The orchestrator re-ran every suite and probed with `break-line`; every mutation was CAUGHT by the test that names it:
+  - S1/S2/S8: 87 tests (13 more run against a built Worker); the built Worker with both opt-outs answers `process: "undefined"` and an MCP `tools/call`, and the 6 HTTP tests pass against it. Mutations: Host guard bypassed, error handler falling back to a text 500. Sizes: Hono only 44 KB / 12 KB gzip; Hono + MCP + zod 793 KB / 186 KB gzip (minified 329 / 87), startup ~20 ms active. Conformance on the stub: 2026-07-28 99 checks passed / 70 failed, 2025-11-25 35 / 26, all from unimplemented capabilities or missing `test_*` tools, 0 wire-schema failures.
+  - S3: 210 tests; the built Worker with both opt-outs parses and renders. A probe confirms `<script>` passes through by default, `# Diseño del planificador` gets the id `diseo-del-planificador`, and 5,000 `*a ` throw `RangeError` unless `autoClose: false`. Mutation: the safe parser with the default plugins. CPU in Node 24: warm 0.50 ms parse + render for 2,000 words, 2.4 ms for 10,000; cold write path ~10 ms for 2,000 words. Parse + render Worker 572 KB / 159 KB gzip (minified 287 / 110); render only, minified, 31.5 KB gzip.
+  - S4: 76 tests. Mutations: version predicate dropped, the anti-`REPLACE` trigger disabled. Worker with drizzle 177 KiB / 34 KiB gzip.
+  - S5: 61 tests; the built Worker with both opt-outs runs a full ceremony (`node:crypto` not importable). The library mutates a module-level `authenticatorSelection` default and leaves `expectedRPID` optional for registration (both read in its code). Mutation: ECDSA signature sent raw instead of DER. 617 KB / 125 KB gzip, minified 287 / 78; verify 0.03 ms (registration) and 0.10 ms (authentication) in Node.
+  - OAuth: 104 tests across both topologies. Mutation: an expired personal token accepted. The hook names were read in `dist/oauth-provider.d.ts`, the single-resource `TypeError` in `dist/oauth-provider.js`. Provider + Hono minified 136 KiB / 38.6 KiB gzip.
+  - The sub-agents ran wrangler with its default telemetry until about 15:22 (-03); from then on, and in every orchestrator run, `WRANGLER_SEND_METRICS=false`.
 
 ---
 
