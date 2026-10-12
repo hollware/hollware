@@ -17,6 +17,12 @@ serve them (ADR-017). Boundary rules for this package:
   triggers again. A new column of them goes in its `_immutable` trigger or is listed as derived
   in `tests/append-only.workerd.test.ts`, and a new unique key goes in its `_no_replace` trigger.
 - Never read `process.env`: configuration and bindings arrive as arguments.
+- `src/ports.ts` is what the handlers need (`ContentStore`, `Clock`). Handlers (`src/ops`)
+  import it and never `src/db`, so their tests run on fakes. `src/ops/types.ts` pairs one handler
+  with each spec of `@hollware/core`, by type.
+- Every method of the store takes the site first, and reads and writes only that site's rows.
+- `src/mcp/annotations.ts` maps each effect to its MCP hints, and `src/limits.ts` holds the output
+  cap, the timeout and the store's limits under D1's.
 - `src` type-checks with the Workers runtime types that `wrangler types` generates for
   `wrangler.jsonc` (the test configuration, without Node.js), and nothing else.
 - Tests that need workerd (D1, `cloudflare:*`) are `*.workerd.test.ts` and run in
