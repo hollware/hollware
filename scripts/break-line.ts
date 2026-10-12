@@ -97,15 +97,24 @@ export function main(argv: string[]): number {
     console.error(usage)
     return EXIT_CODES.ERROR
   }
-  const { values } = parseArgs({
-    args: argv.slice(0, separator),
-    options: {
-      file: { type: 'string' },
-      find: { type: 'string' },
-      replace: { type: 'string' },
-    },
-    strict: true,
-  })
+  let values: { file?: string; find?: string; replace?: string }
+  try {
+    ;({ values } = parseArgs({
+      args: argv.slice(0, separator),
+      options: {
+        file: { type: 'string' },
+        find: { type: 'string' },
+        replace: { type: 'string' },
+      },
+      strict: true,
+    }))
+  } catch (error) {
+    // A crash would exit with 1, which reads as NOT CAUGHT. Report it as ERROR.
+    // A value that starts with "-" must be written as --find=<value>.
+    console.error(error instanceof Error ? error.message : String(error))
+    console.error(usage)
+    return EXIT_CODES.ERROR
+  }
   const [command, ...args] = argv.slice(separator + 1)
   if (
     values.file === undefined ||

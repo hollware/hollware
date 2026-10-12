@@ -74,6 +74,7 @@ export default defineConfig({
           'vp check',
           'vp test',
           'vp run -r build',
+          'node scripts/check-bins.ts',
           'vp run -r publint',
           'vp run -r types:check',
         ],

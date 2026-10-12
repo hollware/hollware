@@ -135,6 +135,35 @@ describe('CLI', () => {
     return run.status
   }
 
+  test('reports ERROR, not a crash, when a value starts with a dash', () => {
+    const run = spawnSync(
+      process.execPath,
+      [script, '--file', file, '--find', '-x', '--replace', 'y', '--', process.execPath, '-e', ''],
+      { stdio: 'pipe' },
+    )
+    expect(run.status).toBe(2)
+    expect(readFileSync(file).equals(source)).toBe(true)
+  })
+
+  test('accepts a value that starts with a dash in the --find= form', () => {
+    writeFileSync(file, 'let x = -1\n')
+    const run = spawnSync(
+      process.execPath,
+      [
+        script,
+        '--file',
+        file,
+        '--find=-1',
+        '--replace=1',
+        '--',
+        process.execPath,
+        ...guard(file, '-1'),
+      ],
+      { stdio: 'pipe' },
+    )
+    expect(run.status).toBe(0)
+  })
+
   test('exits 0 for CAUGHT, 1 for NOT CAUGHT and 2 for ERROR', () => {
     expect(cli('a + b', 'a + b')).toBe(0)
     expect(cli('add two', 'a + b')).toBe(1)

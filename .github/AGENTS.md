@@ -1,6 +1,6 @@
 # CI and releases
 
-Rules for `.github/` and `.changeset/`. A convention test (coming in F0-5) enforces the workflow rules; until it lands, review them by hand and run zizmor.
+Rules for `.github/` and `.changeset/`. Convention tests enforce them (`tests/conventions/workflow-pinning.test.ts`, `workflow-permissions.test.ts`, `workflow-forbidden.test.ts`, `release-workflow.test.ts`, `setup-vp-version.test.ts`); zizmor audits the rest in `security.yml`.
 
 ## Workflows
 
