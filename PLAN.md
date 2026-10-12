@@ -227,7 +227,7 @@ Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and muta
 ### Settle before Wave 0 dispatch (F0-7 review)
 
 - [x] Workspace resolution without a build (review S1, reproduced). Every package resolved only to `dist`, so on a clean checkout the first import of one workspace package by another failed, and a change to `core` stayed invisible to `server` until a rebuild. The maintainer chose source resolution on 2026-10-12: [ADR-016](docs/adr/0016-workspace-packages-resolve-to-source.md). Every package builds with tsdown's `devExports`; the guard `manifests` pins the source `exports`/`bin` and the `dist` ones in `publishConfig`; the new guard `build-order` keeps `check:push` checking and testing before it builds; `check-bins` runs the published bin
-- [ ] Where the operation specs live (review S3). This plan puts them in `core` (`core/src/operations/`, with the handlers in `server/src/ops`). `docs/design.md`, ADR-003, the README and the package descriptions say `server` holds the operation registry. ADR-017 settles it, and the docs follow in the same commit
+- [x] Where the operation specs live (review S3). The plan put them in `core` and the documents put the whole registry in `server`. The maintainer chose the specs in `core` and the handlers and adapters in `server` on 2026-10-12: [ADR-017](docs/adr/0017-operation-specs-in-core-handlers-in-server.md). The design, ADR-003 (a clarification), the README, `AGENTS.md` and the package descriptions follow in the same commit. A spec declares its effect and holds no MCP vocabulary: `server` derives the annotations
 - [ ] `core`'s type environment (review S8). `core` type-checks with Node types and its tests run only in Node, while the `core-purity` guard checks five Node globals. Either give `core` a runtime-neutral type environment (no Node types) and run its tests in workerd too, or narrow its "runs anywhere" claim
 
 ### Wave 0 (orchestrator): shared interfaces that compile before parallel work
@@ -235,7 +235,7 @@ Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and muta
 - [ ] `packages/core/src/config/types.ts` — `defineConfig`, `defineCollection`, `defineComponent`, `defineContract`; collection = `schema` (Standard Schema + JSON Schema), per-locale routes, `translations.groupBy`, `components`, `contracts`, `maxMarkdownBytes`
 - [ ] `packages/core/src/markdown/types.ts` — `processMarkdown()` → frontmatter, document, extracted (headings, classified links, images, components, words), `comarkVersion`; `renderHtml()`
 - [ ] `packages/core/src/contracts/types.ts` — `Violation {contract, severity, path (JSON Pointer), message, fix, line?}`, `Verdict`, `Contract`, `EntryLookup` port
-- [ ] `packages/core/src/operations/` — nine specs (`describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish`, `unpublish`) with Zod input/output, scopes, `effect`, annotations; flat outputs `{outcome, entry?, verdict?, conflict?}`
+- [ ] `packages/core/src/operations/` — nine specs (`describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish`, `unpublish`) with Zod input/output, scopes and `effect` (the MCP annotations are derived in `server`, ADR-017); flat outputs `{outcome, entry?, verdict?, conflict?}`
 - [ ] `packages/server/src/{ports.ts, db/schema.ts, db/columns.ts, index.ts}` — `createHollware(config) → {fetch, Hollware}`
 - [ ] Synthetic fixtures: `tests/fixtures/content/**`, `tests/fixtures/documents/*.json`, a bilingual blog config in `apps/playground/hollware.config.ts`
 - [ ] Stage dependencies in the catalog (≥ 24 h old)
@@ -280,7 +280,7 @@ Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and muta
 | AC-0.1-12 | Tests can fail          | `break-line` on the version predicate, scope gate, publish gate, DNS guard and RPC read-only filter turns each matching AC red                                                                                                                      |
 | AC-0.1-13 | Release 0.1.0           | published through the pipeline with provenance, approved by the maintainer                                                                                                                                                                          |
 
-New ADRs: 016 workspace packages resolve to their source (accepted) · 017 operation/outcome shapes and where the specs live · 018 auth topology · 019 append-only revisions with derived columns · 020 conformance baseline policy · 021 fix-forward migrations.
+New ADRs: 016 workspace packages resolve to their source (accepted) · 017 operation specs in `core`, handlers in `server` (accepted; the outcome shapes are pinned in Wave 0 code) · 018 auth topology · 019 append-only revisions with derived columns · 020 conformance baseline policy · 021 fix-forward migrations.
 
 ### Verification log
 
@@ -303,6 +303,7 @@ New ADRs: 016 workspace packages resolve to their source (accepted) · 017 opera
   - S5: 61 tests; the built Worker with both opt-outs runs a full ceremony (`node:crypto` not importable). The library mutates a module-level `authenticatorSelection` default and leaves `expectedRPID` optional for registration (both read in its code). Mutation: ECDSA signature sent raw instead of DER. 617 KB / 125 KB gzip, minified 287 / 78; verify 0.03 ms (registration) and 0.10 ms (authentication) in Node.
   - OAuth: 104 tests across both topologies. Mutation: an expired personal token accepted. The hook names were read in `dist/oauth-provider.d.ts`, the single-resource `TypeError` in `dist/oauth-provider.js`. Provider + Hono minified 136 KiB / 38.6 KiB gzip.
   - The sub-agents ran wrangler with its default telemetry until about 15:22 (-03); from then on, and in every orchestrator run, `WRANGLER_SEND_METRICS=false`.
+- 2026-10-12 — ADR-017 recorded and the documents aligned: the design (four places), ADR-003, the README table, `AGENTS.md`, the READMEs, `AGENTS.md` files and descriptions of `core` and `server`. An empty changeset covers the descriptions. `vp check` and the `repo` guards pass (43 files, 532 tests), the ADR guard with 18 files.
 
 ---
 

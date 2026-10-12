@@ -10,7 +10,7 @@ For a site in the same Cloudflare account, a service binding with Workers RPC is
 
 ## Decision
 
-Every operation is defined once, in a registry: its name, the Zod schemas of its input and output, the scopes it requires and its handler. Adapters expose the registry on three surfaces.
+Every operation is defined once, in a registry: its name, the Zod schemas of its input and output, the scopes it requires and its handler. Adapters expose the registry on three surfaces. The specs live in `@hollware/core`, and the handlers and adapters in `@hollware/server` ([ADR-017](0017-operation-specs-in-core-handlers-in-server.md)).
 
 - Native Workers RPC, through a `WorkerEntrypoint`, for sites in the same Cloudflare account. It is the main read path, and in v0.1 it exposes reads only.
 - HTTP with an OpenAPI 3.1 document generated from the registry (Zod to JSON Schema), without `@hono/zod-openapi`. Reads are `GET` requests that can be cached with `Cache-Control` and `ETag`.

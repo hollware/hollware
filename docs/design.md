@@ -127,11 +127,11 @@ Phase: v0.1.
 
 ### Core
 
-#### Operations (`@hollware/server`)
+#### Operations (`@hollware/core` and `@hollware/server`)
 
 Phase: v0.1.
 
-- **What it does:** The operation registry: name, Zod input and output schemas, permissions and handler. See [ADR-003](adr/0003-one-operation-registry-three-surfaces.md).
+- **What it does:** The operation registry. Each operation is specified once in `core` (name, Zod input and output schemas, scopes and effect) and implemented once in `server`, whose adapters expose it. See [ADR-003](adr/0003-one-operation-registry-three-surfaces.md) and [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md).
 - **Why this primitive:** One definition, three surfaces. The MCP, RPC and HTTP contracts cannot drift apart.
 - **Cost:** Worker CPU.
 
@@ -325,7 +325,7 @@ Each violation carries the id of its contract, a severity, a JSON Pointer to the
 
 ## Surfaces
 
-**Four ways to talk to Hollware.** MCP for agents, RPC for sites on Cloudflare, HTTP with OpenAPI for everything else, and a CLI to install and maintain. The first three come from one operation registry: each operation is defined once, with its input and output schemas and its permissions. See [ADR-003](adr/0003-one-operation-registry-three-surfaces.md).
+**Four ways to talk to Hollware.** MCP for agents, RPC for sites on Cloudflare, HTTP with OpenAPI for everything else, and a CLI to install and maintain. The first three come from one operation registry: each operation is specified once in `core`, with its input and output schemas and its scopes, and implemented once in `server`. See [ADR-003](adr/0003-one-operation-registry-three-surfaces.md) and [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md).
 
 ### MCP tools
 
@@ -499,17 +499,17 @@ The SQL above is the sketch from the design phase. The v0.1 implementation refin
 
 **One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare, so it can be tested in Node. The versions are those published as of 11 October 2026. Each stage pins the ones it uses in the pnpm catalog when it starts.
 
-| Package            | What it is                                                                                                        | Phase |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- | ----- |
-| `@hollware/core`   | Contracts, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                       | v0.1  |
-| `@hollware/server` | The Worker: operation registry, Hono, MCP, RPC, OAuth, D1 with Drizzle and Workflows. It includes the migrations. | v0.1  |
-| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                      | v0.1  |
-| `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                        | v0.1  |
-| `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                     | v0.2  |
-| `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                               | v0.3  |
-| `create-hollware`  | `npm create hollware` copies the thin project from `templates/starter`.                                           | v0.4  |
-| `apps/docs`        | Docus 5 in English, at hollware.com, with its own `llms.txt` and MCP.                                             | v0.4  |
-| `examples/`        | Sites that consume Hollware (Nuxt, Astro and others). They are not published.                                     | v0.1+ |
+| Package            | What it is                                                                                                                                   | Phase |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `@hollware/core`   | Contracts, operation specs, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                                 | v0.1  |
+| `@hollware/server` | The Worker: operation handlers and their MCP, RPC and HTTP adapters, Hono, OAuth, D1 with Drizzle and Workflows. It includes the migrations. | v0.1  |
+| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                                                 | v0.1  |
+| `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                                                   | v0.1  |
+| `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                                                | v0.2  |
+| `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                                                          | v0.3  |
+| `create-hollware`  | `npm create hollware` copies the thin project from `templates/starter`.                                                                      | v0.4  |
+| `apps/docs`        | Docus 5 in English, at hollware.com, with its own `llms.txt` and MCP.                                                                        | v0.4  |
+| `examples/`        | Sites that consume Hollware (Nuxt, Astro and others). They are not published.                                                                | v0.1+ |
 
 Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollware/astro` and `@hollware/next` (v1.0).
 
@@ -550,6 +550,7 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-014](adr/0014-release-pipeline.md)                                       | Release pipeline: Changesets versions, `npm stage publish` publishes                                        | Superseded by ADR-015 |
 | [ADR-015](adr/0015-release-branch-and-direct-publishing.md)                   | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              |
 | [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                   | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
+| [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md)             | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              |
 
 ## Roadmap
 
@@ -596,7 +597,7 @@ Oct–Nov 2026 · 3 weeks.
 **Scope**
 
 - `hollware.config.ts` with sites, collections, contracts and allowed components
-- The operation registry, with MCP and RPC adapters
+- The operation registry: the specs in `core`, the handlers and the MCP and RPC adapters in `server`
 - D1 with Drizzle: entries, revisions and optimistic concurrency
 - Comark on write, and the contracts: schema, components, translation pair, internal links and custom rules
 - MCP with SDK v2: `describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish` and `unpublish`

@@ -1,6 +1,7 @@
 # @hollware/server
 
-The Hollware Worker. Boundary rules for this package:
+The Hollware Worker: one handler per operation spec of `packages/core`, and the adapters that
+serve them (ADR-017). Boundary rules for this package:
 
 - It owns the D1 migrations in `migrations/` and ships them (`files` in `package.json`).
 - A shipped migration is never edited: fix forward with a new migration.

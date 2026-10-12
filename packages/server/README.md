@@ -8,9 +8,9 @@ for the agent era, native to Cloudflare Workers.
 
 ## What it will be
 
-The Hollware Worker: the operation registry behind MCP, Workers RPC and HTTP, authentication,
-and the D1 migrations that shape the database. The migrations ship inside the package, in
-`migrations/`.
+The Hollware Worker: the handlers of the operations that `@hollware/core` specifies, served
+over MCP, Workers RPC and HTTP, authentication, and the D1 migrations that shape the
+database. The migrations ship inside the package, in `migrations/`.
 
 ## Links
 

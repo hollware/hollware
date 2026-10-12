@@ -46,8 +46,8 @@ new process group, so the child outlives its supervisor.
 
 ## Layout
 
-- `packages/core` — contracts, schemas, Markdown pipeline. No Cloudflare imports.
-- `packages/server` — the Worker: operations, MCP, RPC, HTTP, auth, D1 migrations.
+- `packages/core` — contracts, operation specs, schemas, Markdown pipeline. No Cloudflare imports.
+- `packages/server` — the Worker: operation handlers, MCP, RPC, HTTP, auth, D1 migrations.
 - `packages/client` — the same interface over a service binding or HTTP.
 - `packages/admin` — the review and approval UI, prebuilt.
 - `packages/cli` — the `hollware` CLI.
