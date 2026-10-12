@@ -33,10 +33,17 @@ export function expectedVersionLine(bin: string, version: string): string {
   return `${bin} ${version}`
 }
 
-/** The `bin` entries of a manifest, as `name -> path`. A string `bin` is named after the package. */
+/**
+ * The bins npm installs from a manifest, as `name -> path`. Inside the workspace `bin` points at
+ * the source and `publishConfig.bin` at the build, which `pnpm pack` moves into `bin`
+ * (ADR-016), so `publishConfig.bin` wins when there is one. A string `bin` is named after the
+ * package.
+ */
 export function binsOf(manifest: unknown): Record<string, string> {
   if (!isRecord(manifest)) return {}
-  const { bin, name } = manifest
+  const { name } = manifest
+  const bin =
+    (isRecord(manifest.publishConfig) ? manifest.publishConfig.bin : undefined) ?? manifest.bin
   if (typeof bin === 'string' && typeof name === 'string') {
     return { [name.slice(name.lastIndexOf('/') + 1)]: bin }
   }

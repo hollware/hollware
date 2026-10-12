@@ -7,13 +7,14 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/support/` holds what the guards stand on: the file list of the repository, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
 
-Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each built bin with `--version`.
+Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
 
 ## Guards
 
 What each guard binds, one line per file of `tests/conventions/` and `tests/meta/`. A new guard adds its line here.
 
-- `tests/conventions/manifests.test.ts`: the six packages share one manifest shape and version; apps and templates are private.
+- `tests/conventions/manifests.test.ts`: the six packages share one manifest shape and version; `exports` and `bin` point at the source and `publishConfig` at `dist`; apps and templates are private.
+- `tests/conventions/build-order.test.ts`: `check:push` runs `vp check` and `vp test` before anything builds, so CI proves that no package needs another one built.
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
 - `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency.

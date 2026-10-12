@@ -549,6 +549,7 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-013](adr/0013-releases-with-changesets.md)                               | Releases with Changesets, one version for all packages, OIDC and staged publishing with maintainer approval | Superseded by ADR-015 |
 | [ADR-014](adr/0014-release-pipeline.md)                                       | Release pipeline: Changesets versions, `npm stage publish` publishes                                        | Superseded by ADR-015 |
 | [ADR-015](adr/0015-release-branch-and-direct-publishing.md)                   | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              |
+| [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                   | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
 
 ## Roadmap
 

@@ -1,22 +1,64 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { checkManifests } from '../guards/manifests.ts'
+import adminConfig from '../../packages/admin/vite.config.ts'
+import cliConfig from '../../packages/cli/vite.config.ts'
+import clientConfig from '../../packages/client/vite.config.ts'
+import coreConfig from '../../packages/core/vite.config.ts'
+import createHollwareConfig from '../../packages/create-hollware/vite.config.ts'
+import serverConfig from '../../packages/server/vite.config.ts'
+import { checkManifests, type ManifestsInput } from '../guards/manifests.ts'
 import { describeViolations } from '../guards/types.ts'
-import { file, goodWorkspace, json, publishedManifest } from '../support/fixtures.ts'
+import {
+  file,
+  goodWorkspace,
+  json,
+  PUBLISHED_DIRS,
+  publishedManifest,
+} from '../support/fixtures.ts'
 import { repoFiles } from '../support/repo.ts'
+import { recordAt } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
 // Fails when: a packages/*/package.json drops or changes name, version, license, repository,
-// type, files, exports, publishConfig, engines or the build and publint scripts, a published
-// package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md.
+// type, files, publishConfig, engines or the build and publint scripts; its `exports` or `bin`
+// stop pointing at the source, or the published ones in publishConfig at dist; a published
+// package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
+// or a package's vite.config.ts stops building with `pack.exports.devExports: true`.
+
+/** The published exports of every package, as the guard expects them. */
+const PUBLISHED_EXPORTS = {
+  '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
+  './package.json': './package.json',
+}
+
+/** `pack.exports.devExports` of a package's vite.config.ts: what `vp pack` writes the manifest from. */
+function devExportsOf(config: unknown): unknown {
+  return recordAt(recordAt(config, 'pack'), 'exports')?.devExports
+}
+
+/** Every published package builds with `devExports: true`, as the self-tests assume. */
+const GOOD_DEV_EXPORTS = Object.fromEntries(PUBLISHED_DIRS.map((dir) => [dir, true]))
 
 describe('package manifests', () => {
   it('hold for every package of the repository', () => {
-    const violations = checkManifests({ manifests: workspaceManifests(), files: repoFiles() })
+    const violations = checkManifests({
+      manifests: workspaceManifests(),
+      files: repoFiles(),
+      devExports: {
+        'packages/admin': devExportsOf(adminConfig),
+        'packages/cli': devExportsOf(cliConfig),
+        'packages/client': devExportsOf(clientConfig),
+        'packages/core': devExportsOf(coreConfig),
+        'packages/create-hollware': devExportsOf(createHollwareConfig),
+        'packages/server': devExportsOf(serverConfig),
+      },
+    })
     expect(describeViolations(violations)).toEqual([])
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
     const { manifests, files } = goodWorkspace()
+    const check = (input: Omit<ManifestsInput, 'devExports'>) =>
+      checkManifests({ ...input, devExports: GOOD_DEV_EXPORTS })
     const replace = (dir: string, overrides: Record<string, unknown>) =>
       manifests.map((manifest) =>
         manifest.path === `${dir}/package.json`
@@ -25,13 +67,35 @@ describe('package manifests', () => {
       )
 
     it('accepts the good fixture', () => {
-      expect(checkManifests({ manifests, files })).toEqual([])
+      expect(check({ manifests, files })).toEqual([])
+    })
+
+    it('reports a package whose vite.config.ts would point its manifest at dist again', () => {
+      const { 'packages/core': _core, ...withoutCore } = GOOD_DEV_EXPORTS
+      expect(
+        checkManifests({
+          manifests,
+          files,
+          devExports: { ...withoutCore, 'packages/server': false },
+        }),
+      ).toEqual([
+        {
+          rule: 'manifest/dev-exports',
+          file: 'packages/core/vite.config.ts',
+          message:
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found undefined',
+        },
+        {
+          rule: 'manifest/dev-exports',
+          file: 'packages/server/vite.config.ts',
+          message:
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found false',
+        },
+      ])
     })
 
     it('reports a package that is not MIT', () => {
-      expect(
-        checkManifests({ manifests: replace('packages/core', { license: 'ISC' }), files }),
-      ).toEqual([
+      expect(check({ manifests: replace('packages/core', { license: 'ISC' }), files })).toEqual([
         {
           rule: 'manifest/license',
           file: 'packages/core/package.json',
@@ -40,24 +104,60 @@ describe('package manifests', () => {
       ])
     })
 
-    it('reports exports with "default" before "types"', () => {
-      const bad = { '.': { default: './dist/index.mjs', types: './dist/index.d.mts' } }
+    it('reports a package that resolves to dist inside the workspace', () => {
       expect(
-        checkManifests({ manifests: replace('packages/client', { exports: bad }), files }),
+        check({
+          manifests: replace('packages/client', { exports: PUBLISHED_EXPORTS }),
+          files,
+        }),
       ).toEqual([
         {
           rule: 'manifest/exports',
           file: 'packages/client/package.json',
           message:
-            'exports["."] must be {"types":"./dist/index.d.mts","default":"./dist/index.mjs"} with "types" first, found {"default":"./dist/index.mjs","types":"./dist/index.d.mts"}',
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
+        },
+      ])
+    })
+
+    it('reports published exports with "default" before "types"', () => {
+      const publishConfig = {
+        exports: {
+          '.': { default: './dist/index.mjs', types: './dist/index.d.mts' },
+          './package.json': './package.json',
+        },
+        access: 'public',
+        provenance: true,
+      }
+      expect(check({ manifests: replace('packages/client', { publishConfig }), files })).toEqual([
+        {
+          rule: 'manifest/published-exports',
+          file: 'packages/client/package.json',
+          message:
+            '"publishConfig.exports" must be {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"} with "types" first, found {".":{"default":"./dist/index.mjs","types":"./dist/index.d.mts"},"./package.json":"./package.json"}',
+        },
+      ])
+    })
+
+    it('reports a publishConfig that would send the package to another registry', () => {
+      const publishConfig = {
+        exports: PUBLISHED_EXPORTS,
+        access: 'public',
+        provenance: true,
+        registry: 'https://evil.example/',
+      }
+      expect(check({ manifests: replace('packages/core', { publishConfig }), files })).toEqual([
+        {
+          rule: 'manifest/publish-config',
+          file: 'packages/core/package.json',
+          message:
+            '"publishConfig" must hold {"access":"public","provenance":true} and nothing else besides "exports" and "bin", found {"exports":{".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"},"access":"public","provenance":true,"registry":"https://evil.example/"}',
         },
       ])
     })
 
     it('reports a server that does not ship its migrations', () => {
-      expect(
-        checkManifests({ manifests: replace('packages/server', { files: ['dist'] }), files }),
-      ).toEqual([
+      expect(check({ manifests: replace('packages/server', { files: ['dist'] }), files })).toEqual([
         {
           rule: 'manifest/files',
           file: 'packages/server/package.json',
@@ -72,9 +172,7 @@ describe('package manifests', () => {
         url: 'git+https://github.com/hollware/hollware.git',
         directory: 'packages/server',
       }
-      expect(
-        checkManifests({ manifests: replace('packages/admin', { repository }), files }),
-      ).toEqual([
+      expect(check({ manifests: replace('packages/admin', { repository }), files })).toEqual([
         {
           rule: 'manifest/repository',
           file: 'packages/admin/package.json',
@@ -84,11 +182,15 @@ describe('package manifests', () => {
       ])
     })
 
-    it('reports a missing build script and a missing publishConfig', () => {
-      const result = checkManifests({
+    it('reports a missing build script and a publishConfig without provenance', () => {
+      const result = check({
         manifests: replace('packages/cli', {
           scripts: { publint: 'publint --strict' },
-          publishConfig: { access: 'public' },
+          publishConfig: {
+            bin: { hollware: './dist/index.mjs' },
+            exports: PUBLISHED_EXPORTS,
+            access: 'public',
+          },
         }),
         files,
       })
@@ -97,7 +199,7 @@ describe('package manifests', () => {
           rule: 'manifest/publish-config',
           file: 'packages/cli/package.json',
           message:
-            '"publishConfig" must be {"access":"public","provenance":true}, found {"access":"public"}',
+            '"publishConfig" must hold {"access":"public","provenance":true} and nothing else besides "exports" and "bin", found {"bin":{"hollware":"./dist/index.mjs"},"exports":{".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"},"access":"public"}',
         },
         {
           rule: 'manifest/scripts',
@@ -108,12 +210,11 @@ describe('package manifests', () => {
     })
 
     it('reports a bin where none belongs and a missing one where it does', () => {
-      const result = checkManifests({
-        manifests: replace('packages/core', { bin: { core: './dist/index.mjs' } }).map(
-          (manifest) =>
-            manifest.path === 'packages/cli/package.json'
-              ? file(manifest.path, json({ ...publishedManifest('packages/cli'), bin: undefined }))
-              : manifest,
+      const result = check({
+        manifests: replace('packages/core', { bin: { core: './src/index.ts' } }).map((manifest) =>
+          manifest.path === 'packages/cli/package.json'
+            ? file(manifest.path, json({ ...publishedManifest('packages/cli'), bin: undefined }))
+            : manifest,
         ),
         files,
       })
@@ -121,18 +222,40 @@ describe('package manifests', () => {
         {
           rule: 'manifest/bin',
           file: 'packages/cli/package.json',
-          message: '"bin" must be {"hollware":"./dist/index.mjs"}, found undefined',
+          message: '"bin" must be {"hollware":"./src/index.ts"}, found undefined',
         },
         {
           rule: 'manifest/bin',
           file: 'packages/core/package.json',
-          message: '"bin" must be absent, found {"core":"./dist/index.mjs"}',
+          message: '"bin" must be absent, found {"core":"./src/index.ts"}',
+        },
+      ])
+    })
+
+    it('reports a published bin that points at the source', () => {
+      const publishConfig = {
+        bin: { 'create-hollware': './src/index.ts' },
+        exports: PUBLISHED_EXPORTS,
+        access: 'public',
+        provenance: true,
+      }
+      expect(
+        check({
+          manifests: replace('packages/create-hollware', { publishConfig }),
+          files,
+        }),
+      ).toEqual([
+        {
+          rule: 'manifest/published-bin',
+          file: 'packages/create-hollware/package.json',
+          message:
+            '"publishConfig.bin" must be {"create-hollware":"./dist/index.mjs"}, found {"create-hollware":"./src/index.ts"}',
         },
       ])
     })
 
     it('reports a published package marked private and a private package that is not', () => {
-      const result = checkManifests({
+      const result = check({
         manifests: [
           ...replace('packages/admin', { private: true }).filter(
             (manifest) => manifest.path !== 'apps/playground/package.json',
@@ -156,7 +279,7 @@ describe('package manifests', () => {
     })
 
     it('reports packages that do not share one version', () => {
-      const result = checkManifests({
+      const result = check({
         manifests: replace('packages/core', { version: '0.1.0' }),
         files,
       })
@@ -169,7 +292,7 @@ describe('package manifests', () => {
     })
 
     it('reports a package without a README or an AGENTS.md', () => {
-      const result = checkManifests({
+      const result = check({
         manifests,
         files: files.filter((path) => path !== 'packages/cli/AGENTS.md'),
       })
@@ -183,7 +306,7 @@ describe('package manifests', () => {
     })
 
     it('reports a manifest that is not valid JSON', () => {
-      const result = checkManifests({
+      const result = check({
         manifests: [...manifests, file('packages/oops/package.json', '{ "name": ')],
         files,
       })

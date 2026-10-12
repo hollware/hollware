@@ -20,10 +20,7 @@ export function publishedManifest(
     'packages/cli': 'hollware',
     'packages/create-hollware': 'create-hollware',
   }
-  const bins: Record<string, Record<string, string>> = {
-    'packages/cli': { hollware: './dist/index.mjs' },
-    'packages/create-hollware': { 'create-hollware': './dist/index.mjs' },
-  }
+  const binName = unscoped[dir]
   const manifest: Record<string, unknown> = {
     name: unscoped[dir] ?? `@hollware/${dir.slice('packages/'.length)}`,
     version: '0.0.0',
@@ -36,14 +33,19 @@ export function publishedManifest(
       url: 'git+https://github.com/hollware/hollware.git',
       directory: dir,
     },
-    ...(bins[dir] === undefined ? {} : { bin: bins[dir] }),
+    ...(binName === undefined ? {} : { bin: { [binName]: './src/index.ts' } }),
     files: dir === 'packages/server' ? ['dist', 'migrations'] : ['dist'],
     type: 'module',
-    exports: {
-      '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
-      './package.json': './package.json',
+    exports: { '.': './src/index.ts', './package.json': './package.json' },
+    publishConfig: {
+      ...(binName === undefined ? {} : { bin: { [binName]: './dist/index.mjs' } }),
+      exports: {
+        '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
+        './package.json': './package.json',
+      },
+      access: 'public',
+      provenance: true,
     },
-    publishConfig: { access: 'public', provenance: true },
     scripts: { build: 'vp pack', publint: 'publint --strict' },
     devDependencies: { typescript: 'catalog:' },
     engines: { node: '>=24.11.0' },

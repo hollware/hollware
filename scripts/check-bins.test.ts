@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { binsOf, checkBins, expectedVersionLine, main } from './check-bins.ts'
 
 // Fails when: check-bins accepts a bin that prints another name or version, a bin whose file is
-// missing, or a bin that exits non-zero; or stops reading `bin` from the manifests.
+// missing, or a bin that exits non-zero; or stops reading the bin npm installs from the manifests:
+// `publishConfig.bin` (the build) over `bin` (the source, inside the workspace).
 
 let root: string
 
@@ -49,6 +50,25 @@ describe('check-bins', () => {
         ok: true,
         message: 'ok  create-hollware 1.2.3',
       },
+    ])
+  })
+
+  it('runs the published bin, not the source one the workspace links', () => {
+    addPackage(
+      'cli',
+      {
+        name: 'hollware',
+        version: '1.2.3',
+        bin: { hollware: './src/index.ts' },
+        publishConfig: { bin: { hollware: './dist/index.mjs' } },
+      },
+      {
+        'src/index.ts': 'console.error("the source ran"); process.exit(4)',
+        'dist/index.mjs': printing('hollware 1.2.3'),
+      },
+    )
+    expect(checkBins(root)).toEqual([
+      { dir: 'packages/cli', bin: 'hollware', ok: true, message: 'ok  hollware 1.2.3' },
     ])
   })
 
@@ -122,6 +142,19 @@ describe('check-bins', () => {
     })
     expect(binsOf({ name: 'x' })).toEqual({})
     expect(binsOf('not a manifest')).toEqual({})
+    expect(
+      binsOf({
+        name: 'x',
+        bin: { a: './src/a.ts' },
+        publishConfig: { bin: { a: './dist/a.mjs' } },
+      }),
+    ).toEqual({ a: './dist/a.mjs' })
+    expect(binsOf({ name: '@scope/tool', publishConfig: { bin: './dist/cli.mjs' } })).toEqual({
+      tool: './dist/cli.mjs',
+    })
+    expect(
+      binsOf({ name: 'x', bin: { a: './a.mjs' }, publishConfig: { access: 'public' } }),
+    ).toEqual({ a: './a.mjs' })
     expect(expectedVersionLine('hollware', '0.0.0')).toBe('hollware 0.0.0')
   })
 })

@@ -31,6 +31,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 013 | Releases with Changesets, one version for all packages, OIDC and staged publishing with maintainer approval | Superseded by ADR-015 | [0013-releases-with-changesets.md](0013-releases-with-changesets.md)                                                             |
 | 014 | Release pipeline: Changesets versions, `npm stage publish` publishes                                        | Superseded by ADR-015 | [0014-release-pipeline.md](0014-release-pipeline.md)                                                                             |
 | 015 | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              | [0015-release-branch-and-direct-publishing.md](0015-release-branch-and-direct-publishing.md)                                     |
+| 016 | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              | [0016-workspace-packages-resolve-to-source.md](0016-workspace-packages-resolve-to-source.md)                                     |
 
 ## Template
 

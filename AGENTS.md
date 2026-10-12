@@ -67,6 +67,10 @@ new process group, so the child outlives its supervisor.
   `minimumReleaseAge`; an urgent fix gets an exact `minimumReleaseAgeExclude` entry
   with a reason and an expiry date.
 - Every bare import is declared in the importing package's `package.json`.
+- Inside the workspace a package resolves to its source: `exports` and `bin` point at
+  the source, and only `publishConfig` points at the build (ADR-016). Nothing needs a
+  build to type-check or test; `vp pack` writes those fields from each package's
+  `vite.config.ts`, so change them there.
 - Packages never read `process.env`; configuration arrives as arguments.
 - A promise is always awaited or explicitly handled: Workers cancel the rest.
 

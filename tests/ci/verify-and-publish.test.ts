@@ -117,7 +117,11 @@ function sha256(bytes: Buffer): { base64: string; hex: string } {
   return { base64: hash.copy().digest('base64'), hex: hash.digest('hex') }
 }
 
-/** The `publishConfig` every package of the repository has (guard `manifests`). */
+/**
+ * The `publishConfig` inside every tarball: `pnpm pack` moves the repository's
+ * `publishConfig.exports` and `publishConfig.bin` into `exports` and `bin` (ADR-016), and leaves
+ * the settings the guard `manifests` allows.
+ */
 const PUBLISH_CONFIG = { access: 'public', provenance: true }
 
 /** A package tarball with the layout `npm pack` makes: everything under `package/`. */
@@ -467,6 +471,12 @@ describe('the publish job of release.yml', () => {
         ],
         [{ tag: 'beta', access: 'public' }, '{"tag":"beta"}'],
         [{ 'provenance-file': '/tmp/bundle.json' }, '{"provenance-file":"/tmp/bundle.json"}'],
+        // What an `npm pack` of a repository manifest leaves behind: npm does not move
+        // `publishConfig.exports` into `exports` the way `pnpm pack` does (ADR-016).
+        [
+          { ...PUBLISH_CONFIG, exports: { '.': { default: './dist/index.mjs' } } },
+          '{"exports":{".":{"default":"./dist/index.mjs"}}}',
+        ],
       ]
       for (const [publishConfig, shown] of cases) {
         const plan = goodPlan()

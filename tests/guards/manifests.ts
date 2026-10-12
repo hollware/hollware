@@ -9,10 +9,12 @@ import { parseManifests, type Manifest } from './workspace.ts'
  *
  * A published package (`packages/*`) has the same shape as the five others: a name that
  * follows its directory, one shared version, MIT, the repository with its directory,
- * ESM, the files that ship, the `types`-first `exports`, public provenance publishing, an
- * engine range and the `build` and `publint` scripts. The apps, templates and examples
- * are private. Each published package also has a README and an AGENTS.md next to its
- * manifest.
+ * ESM, the files that ship, public provenance publishing, an engine range and the `build`
+ * and `publint` scripts. Its `exports` (and `bin`) point at its source, so inside the
+ * workspace no package needs another one built; the published entry, `types` first, sits
+ * in `publishConfig`, which `pnpm pack` moves into `exports` and `bin` (ADR-016). The apps,
+ * templates and examples are private. Each published package also has a README and an
+ * AGENTS.md next to its manifest.
  */
 
 export interface ManifestsInput {
@@ -20,6 +22,12 @@ export interface ManifestsInput {
   manifests: readonly TextFile[]
   /** The repository files, to check what sits next to each manifest. */
   files: readonly string[]
+  /**
+   * `pack.exports.devExports` of the `vite.config.ts` of each published package, by directory
+   * (`packages/core`). `vp pack` writes the manifest from it, so a manifest can only stay on
+   * the source if its config says `true`.
+   */
+  devExports: Readonly<Record<string, unknown>>
 }
 
 /** Published packages whose name is not `@hollware/<directory>`. */
@@ -33,10 +41,19 @@ const SHIPPED_EXTRA: Readonly<Record<string, readonly string[]>> = {
   server: ['migrations'],
 }
 
-/** The executables a package installs. Only the two command-line packages have any. */
-const BINS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  cli: { hollware: './dist/index.mjs' },
-  'create-hollware': { 'create-hollware': './dist/index.mjs' },
+/** The executable a package installs, by directory. Only the two command-line packages have one. */
+const BIN_NAMES: Readonly<Record<string, string>> = {
+  cli: 'hollware',
+  'create-hollware': 'create-hollware',
+}
+
+/** `exports` inside the workspace: the source (ADR-016). */
+const SOURCE_EXPORTS = { '.': './src/index.ts', './package.json': './package.json' }
+
+/** `publishConfig.exports`, which `pnpm pack` moves into `exports`: the build, `types` first. */
+const PUBLISHED_EXPORTS = {
+  '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
+  './package.json': './package.json',
 }
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -102,31 +119,49 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
     report('files', `"files" must list exactly ${show(shipped)}, found ${show(json.files)}`)
   }
 
-  const exportsMap = recordAt(json, 'exports')
-  const root = exportsMap?.['.']
-  if (
-    !isRecord(root) ||
-    !isDeepStrictEqual(root, { types: './dist/index.d.mts', default: './dist/index.mjs' }) ||
-    !isDeepStrictEqual(Object.keys(root), ['types', 'default'])
-  ) {
+  if (!isDeepStrictEqual(json.exports, SOURCE_EXPORTS)) {
     report(
       'exports',
-      `exports["."] must be {"types":"./dist/index.d.mts","default":"./dist/index.mjs"} with "types" first, found ${show(root)}`,
+      `"exports" must be ${show(SOURCE_EXPORTS)}: inside the workspace a package resolves to its source (ADR-016), found ${show(json.exports)}`,
     )
   }
 
-  const bin = BINS[name]
-  if (bin === undefined ? json.bin !== undefined : !isDeepStrictEqual(json.bin, bin)) {
-    report(
-      'bin',
-      `"bin" must be ${bin === undefined ? 'absent' : show(bin)}, found ${show(json.bin)}`,
-    )
-  }
-
-  if (!isDeepStrictEqual(json.publishConfig, { access: 'public', provenance: true })) {
+  const {
+    exports: publishedExports,
+    bin: publishedBin,
+    ...settings
+  } = recordAt(json, 'publishConfig') ?? {}
+  if (!isDeepStrictEqual(settings, { access: 'public', provenance: true })) {
     report(
       'publish-config',
-      `"publishConfig" must be {"access":"public","provenance":true}, found ${show(json.publishConfig)}`,
+      `"publishConfig" must hold {"access":"public","provenance":true} and nothing else besides "exports" and "bin", found ${show(json.publishConfig)}`,
+    )
+  }
+  const publishedRoot = isRecord(publishedExports) ? publishedExports['.'] : undefined
+  if (
+    !isDeepStrictEqual(publishedExports, PUBLISHED_EXPORTS) ||
+    !isRecord(publishedRoot) ||
+    !isDeepStrictEqual(Object.keys(publishedRoot), ['types', 'default'])
+  ) {
+    report(
+      'published-exports',
+      `"publishConfig.exports" must be ${show(PUBLISHED_EXPORTS)} with "types" first, found ${show(publishedExports)}`,
+    )
+  }
+
+  const binName = BIN_NAMES[name]
+  const sourceBin = binName === undefined ? undefined : { [binName]: './src/index.ts' }
+  const builtBin = binName === undefined ? undefined : { [binName]: './dist/index.mjs' }
+  if (!isDeepStrictEqual(json.bin, sourceBin)) {
+    report(
+      'bin',
+      `"bin" must be ${sourceBin === undefined ? 'absent' : show(sourceBin)}, found ${show(json.bin)}`,
+    )
+  }
+  if (!isDeepStrictEqual(publishedBin, builtBin)) {
+    report(
+      'published-bin',
+      `"publishConfig.bin" must be ${builtBin === undefined ? 'absent' : show(builtBin)}, found ${show(publishedBin)}`,
     )
   }
 
@@ -156,7 +191,17 @@ export function checkManifests(input: ManifestsInput): Violation[] {
   const files = new Set(input.files)
 
   const published = manifests.filter((manifest) => /^packages\/[^/]+$/.test(manifest.dir))
-  for (const manifest of published) violations.push(...checkPublished(manifest, files))
+  for (const manifest of published) {
+    violations.push(...checkPublished(manifest, files))
+    const devExports = input.devExports[manifest.dir]
+    if (devExports !== true) {
+      violations.push({
+        rule: 'manifest/dev-exports',
+        file: `${manifest.dir}/vite.config.ts`,
+        message: `"pack.exports.devExports" must be true, or the next \`vp pack\` points the manifest at dist again (ADR-016), found ${show(devExports)}`,
+      })
+    }
+  }
 
   // One version for the whole fixed group (ADR-015, which keeps ADR-013's decision).
   const versions = new Set(published.map((manifest) => show(manifest.json.version)))

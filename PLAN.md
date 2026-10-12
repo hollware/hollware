@@ -213,8 +213,8 @@ and an example site reads what was published over RPC.
 
 ### Settle before Wave 0 dispatch (F0-7 review)
 
-- [~] Workspace resolution without a build (review S1, reproduced). Every package resolves only to `dist`, and `check:push` builds after `vp check` and `vp test`. So on a clean checkout, the first import of one workspace package by another fails, and a change to `core` stays invisible to `server` until a rebuild. Decide between building first and resolving to source inside the workspace (with `dist` only in the published manifest), and adjust the `manifests` guard to the choice. Researched on 2026-10-12 (verification log below); the proposal awaits the maintainer
-- [ ] Where the operation specs live (review S3). This plan puts them in `core` (`core/src/operations/`, with the handlers in `server/src/ops`). `docs/design.md`, ADR-003, the README and the package descriptions say `server` holds the operation registry. ADR-016 settles it, and the docs follow in the same commit
+- [x] Workspace resolution without a build (review S1, reproduced). Every package resolved only to `dist`, so on a clean checkout the first import of one workspace package by another failed, and a change to `core` stayed invisible to `server` until a rebuild. The maintainer chose source resolution on 2026-10-12: [ADR-016](docs/adr/0016-workspace-packages-resolve-to-source.md). Every package builds with tsdown's `devExports`; the guard `manifests` pins the source `exports`/`bin` and the `dist` ones in `publishConfig`; the new guard `build-order` keeps `check:push` checking and testing before it builds; `check-bins` runs the published bin
+- [ ] Where the operation specs live (review S3). This plan puts them in `core` (`core/src/operations/`, with the handlers in `server/src/ops`). `docs/design.md`, ADR-003, the README and the package descriptions say `server` holds the operation registry. ADR-017 settles it, and the docs follow in the same commit
 - [ ] `core`'s type environment (review S8). `core` type-checks with Node types and its tests run only in Node, while the `core-purity` guard checks five Node globals. Either give `core` a runtime-neutral type environment (no Node types) and run its tests in workerd too, or narrow its "runs anywhere" claim
 
 ### Wave 0 (orchestrator): shared interfaces that compile before parallel work
@@ -267,7 +267,7 @@ and an example site reads what was published over RPC.
 | AC-0.1-12 | Tests can fail          | `break-line` on the version predicate, scope gate, publish gate, DNS guard and RPC read-only filter turns each matching AC red                                                                                                                      |
 | AC-0.1-13 | Release 0.1.0           | published through the pipeline with provenance, approved by the maintainer                                                                                                                                                                          |
 
-New ADRs: 016 operation/outcome shapes · 017 auth topology · 018 append-only revisions with derived columns · 019 conformance baseline policy · 020 fix-forward migrations.
+New ADRs: 016 workspace packages resolve to their source (accepted) · 017 operation/outcome shapes and where the specs live · 018 auth topology · 019 append-only revisions with derived columns · 020 conformance baseline policy · 021 fix-forward migrations.
 
 ### Verification log
 
@@ -277,6 +277,10 @@ New ADRs: 016 operation/outcome shapes · 017 auth topology · 018 append-only r
   - A cross-package type error (`core`'s `name` turned into a number) fails `vp check` with TS2322 in `server`. Under `vp dev`, an edit to `core/src` reaches the running Worker through HMR, with no `dist`.
   - Publishing is unchanged: `pnpm pack`, the real `changeset pack` the release action runs, and `publint --strict` (which packs with pnpm) all produce `exports` (and `bin`) pointing at `dist`, with `publishConfig` holding only `access` and `provenance`, so the `publish` job's tarball check still passes. `server` gets `@hollware/core` as `0.0.2`, not `workspace:*`. A rebuild leaves the formatted manifests byte-identical.
   - The manifests guard fails on the new shape, as expected. `scripts/check-bins.ts` reads `bin`, so it would silently run the source bin (Node 24 strips the types) instead of the built one: it has to read `publishConfig.bin` first.
+- 2026-10-12 — ADR-016 applied to the repository:
+  - The six packages build with `devExports`, and `vp pack` rewrote their manifests. The guard `manifests` pins the new shape and reads `pack.exports.devExports` from each package's real `vite.config.ts` (16 tests). The new guard `build-order` pins the order of `check:push` (5 tests). `check-bins` runs `publishConfig.bin`, and a test fails if it runs the source bin. The `publish` job's test refuses a tarball that still holds `publishConfig.exports`. An empty changeset covers the package change: the published manifests do not move.
+  - With every `dist` deleted, `vp run check:push` exits 0: 55 files and 575 tests, both published bins answer `--version`, `publint --strict` is clean ×6, types up to date. The build leaves the manifests byte-identical.
+  - Orchestrator mutations → CAUGHT by the test that names the line: `devExports: false` in `core`'s config (`manifests`), `check-bins` reading `bin` (`check-bins`), `check:push` building before `vp test` (`build-order`), and the `publish` job letting `publishConfig.exports` through (`verify-and-publish`).
 
 ---
 

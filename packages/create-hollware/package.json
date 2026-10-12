@@ -13,20 +13,27 @@
     "directory": "packages/create-hollware"
   },
   "bin": {
-    "create-hollware": "./dist/index.mjs"
+    "create-hollware": "./src/index.ts"
   },
   "files": [
     "dist"
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
-    },
+    ".": "./src/index.ts",
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "bin": {
+      "create-hollware": "./dist/index.mjs"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
     "access": "public",
     "provenance": true
   },
