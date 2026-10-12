@@ -8,7 +8,9 @@
  * The guards that consume a list (`agents-paths`, `workflow-forbidden`) also fail on an
  * entry that no longer applies, so a fixed problem cannot leave its exception behind. The
  * directories of `OTHER_TEST_RUNNERS` are bound to the `exclude` of the `repo` project in
- * `vite.config.ts` instead.
+ * `vite.config.ts` instead, and each one names the task that runs its tests: `test-projects`
+ * fails once a test file exists there and that task is not a task of the root `vite.config.ts`
+ * that CI runs.
  *
  * Guards never hold exceptions of their own: they receive them as arguments, and the
  * `exceptions` meta-test reports a list declared anywhere else.
@@ -81,30 +83,58 @@ export const ZIZMOR_IGNORES: ExceptionList = {
   ],
 }
 
+/** A directory of tests that run through a task of their own, and not through `vp test`. */
+export interface TestRunner {
+  /** The directory, with a trailing `/`. The root `vite.config.ts` excludes it from `repo`. */
+  dir: string
+  /** The task of the root `vite.config.ts` that runs it: `vp run <task>`. */
+  task: string
+  /** Why it has a runner of its own. An exception without a reason is not accepted. */
+  reason: string
+}
+
+export interface TestRunnerList {
+  /** The recorded size of the list. Lower it when a directory goes away; never raise it. */
+  max: number
+  entries: readonly TestRunner[]
+}
+
 /**
- * Directories whose `*.test.ts` files run through a command of their own and not through a
- * project of `vp test` (guard `test-projects`). The value is the directory, with a trailing
- * `/`. The root `vite.config.ts` excludes the same directories from the `repo` project.
+ * Directories whose `*.test.ts` files run through a task of their own and not through a project
+ * of `vp test` (guard `test-projects`). The root `vite.config.ts` excludes the same directories
+ * from the `repo` project. While a directory holds no test file, its task need not exist; once
+ * it does, the task must be defined in the root `vite.config.ts` and run by CI, or the guard
+ * fails: an exemption must not hide tests that nothing runs.
  */
-export const OTHER_TEST_RUNNERS: ExceptionList = {
+export const OTHER_TEST_RUNNERS: TestRunnerList = {
   max: 2,
   entries: [
     {
-      value: 'tests/acceptance/',
+      dir: 'tests/acceptance/',
+      task: 'test:acceptance',
       reason: 'Stage acceptance suites run with `vp run test:acceptance` (arrives in v0.1).',
     },
     {
-      value: 'tests/conformance/',
+      dir: 'tests/conformance/',
+      task: 'test:conformance',
       reason: 'The MCP conformance suite runs with `vp run test:conformance` (arrives in v0.1).',
     },
   ],
+}
+
+/** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
+function byValue(list: TestRunnerList): ExceptionList {
+  return {
+    max: list.max,
+    entries: list.entries.map((entry) => ({ value: entry.dir, reason: entry.reason })),
+  }
 }
 
 /** Every list, by name, for the meta-test that keeps them honest. */
 export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   MISSING_DOC_PATHS,
   ZIZMOR_IGNORES,
-  OTHER_TEST_RUNNERS,
+  OTHER_TEST_RUNNERS: byValue(OTHER_TEST_RUNNERS),
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

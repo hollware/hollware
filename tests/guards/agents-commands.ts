@@ -1,4 +1,5 @@
 import { fencedLines, inlineCodeSpans } from '../support/markdown.ts'
+import { vpRunTask } from '../support/vp.ts'
 import type { TextFile, Violation } from './types.ts'
 
 /**
@@ -33,14 +34,6 @@ export interface AgentsCommandsInput {
   /** The repository files. */
   files: ReadonlySet<string>
 }
-
-/** The options of `vp run` that are followed by a value. The others take none. */
-const VP_RUN_VALUE_FLAGS: ReadonlySet<string> = new Set([
-  '-F',
-  '--filter',
-  '--log',
-  '--concurrency-limit',
-])
 
 const PLACEHOLDER = /^[<$]|[<>$]/
 
@@ -119,19 +112,6 @@ export function checkAgentsCommands(input: AgentsCommandsInput): Violation[] {
     }
   }
   return violations
-}
-
-/** The task specifier of `vp run`, skipping its options and their values. */
-function vpRunTask(words: readonly string[]): string | undefined {
-  for (let index = 0; index < words.length; index += 1) {
-    const word = words[index] ?? ''
-    if (word.startsWith('-')) {
-      if (VP_RUN_VALUE_FLAGS.has(word)) index += 1
-      continue
-    }
-    return word
-  }
-  return undefined
 }
 
 function checkPnpm(

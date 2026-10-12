@@ -52,6 +52,10 @@ const messages = (text: string) =>
 describe('commands in AGENTS.md', () => {
   it('every vp run task, pnpm script and node file they cite exists', () => {
     const docs = readRepoFiles(isAgentsFile)
+    // The orientation of tests/ cites commands too: it is judged like the root file.
+    expect(docs.map((doc) => doc.path)).toEqual(
+      expect.arrayContaining(['AGENTS.md', 'tests/AGENTS.md']),
+    )
     expect(rootTasks()).toEqual(new Set(['check:commit', 'check:push']))
     const violations = checkAgentsCommands({
       docs,

@@ -55,13 +55,20 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 
 Read the **Test bar** in [`AGENTS.md`](AGENTS.md) before you write a test. Its core rule: for every test, name the production line that must change for it to fail. If you cannot, the test is tautological, so strengthen it or delete it. There is no coverage threshold. Mutations are the measure.
 
-Check a test with the mutation probe, `scripts/break-line.ts`. It replaces one exact snippet, runs a command, and restores the file byte for byte:
+Check a test with the mutation probe, `scripts/break-line.ts`. It runs a command on the file as it is, then again with one exact snippet replaced, and restores the file byte for byte:
 
 ```bash
 node scripts/break-line.ts --file <file> --find '<exact snippet>' --replace '<broken version>' -- pnpm exec vp test --project <name>
 ```
 
-`CAUGHT` means the command failed with the line broken, which is what you want. `NOT CAUGHT` means nothing guards that line. `ERROR` means the snippet was missing or ambiguous, or the command could not run.
+`CAUGHT` means the command passed on the file as it is and failed with the line broken, which is what you want. `NOT CAUGHT` means it passed both ways, so nothing guards that line. `ERROR` means there is no verdict. It covers these cases:
+
+- the snippet was missing or ambiguous;
+- the command already fails without the mutation;
+- the command could not start, was killed by a signal or ran past the `--timeout` limit;
+- the file could not be restored.
+
+The last line the probe prints says which run produced the verdict. Ctrl-C kills the command and whatever it spawned, puts the file back and exits with 130. `--help` lists the options, the default timeout and the exit codes. Read the name of the failing test as well: a `CAUGHT` proves your test only when your test is the one that fails.
 
 ## Coding agents
 

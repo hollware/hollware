@@ -10,7 +10,11 @@ describe('AGENTS.md size', () => {
   it('every AGENTS.md fits in 12,000 characters', () => {
     const docs = readRepoFiles(isAgentsFile)
     expect(MAX_AGENTS_CHARACTERS).toBe(12_000)
-    expect(docs.length).toBeGreaterThanOrEqual(8)
+    // The registry of the guards lives in tests/AGENTS.md, which grows with every guard.
+    expect(docs.map((doc) => doc.path)).toEqual(
+      expect.arrayContaining(['AGENTS.md', 'tests/AGENTS.md', '.github/AGENTS.md']),
+    )
+    expect(docs.length).toBeGreaterThanOrEqual(9)
     expect(describeViolations(checkAgentsSize({ docs, max: MAX_AGENTS_CHARACTERS }))).toEqual([])
   })
 

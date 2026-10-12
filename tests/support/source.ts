@@ -63,7 +63,8 @@ const NODE_GLOBAL_NAMES: ReadonlySet<string> = new Set(NODE_GLOBALS)
 /** `globalThis.process` is the same global reached through its holder. */
 const GLOBAL_OBJECTS: ReadonlySet<string> = new Set(['globalThis', 'global', 'self'])
 
-function lineAt(text: string, offset: number): number {
+/** The 1-based line of a character offset. */
+export function lineAt(text: string, offset: number): number {
   let line = 1
   for (let i = 0; i < offset && i < text.length; i += 1) {
     if (text.charCodeAt(i) === 10) line += 1

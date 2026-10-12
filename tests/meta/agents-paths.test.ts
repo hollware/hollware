@@ -69,6 +69,7 @@ describe('paths in AGENTS.md and README.md', () => {
         'README.md',
         '.github/AGENTS.md',
         'packages/server/AGENTS.md',
+        'tests/AGENTS.md',
       ]),
     )
     const violations = checkAgentsPaths({
