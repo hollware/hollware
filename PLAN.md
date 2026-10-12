@@ -4,7 +4,7 @@
 > (together with its mention in `AGENTS.md`). The design lives in `docs/design.md`;
 > decisions live in `docs/adr/`.
 
-- **Status:** F0 in progress · **Started:** 2026-10-11
+- **Status:** v0.1 in progress (F0 closed on 2026-10-12) · **Started:** 2026-10-11
 - **Legend:** `[ ]` todo · `[~]` in progress · `[x]` done and verified · `[!]` blocked
 - **Cadence:** one stage at a time. Each stage ends with acceptance, reviewers, green CI,
   a clean-clone check and a pause for the maintainer's review.
@@ -121,13 +121,13 @@ before the first feature.
     - ADR-008's link, and ADR-015's consequences (what the rulesets enforce, recovering from a stray push);
     - `.github/AGENTS.md`: promote after an ancestry check, the recovery, the tag ruleset.
   - `.claude/` and `.mcp.json` are ignored (P5)
-- [ ] **Ask (maintainer):**
+- [x] **Ask (maintainer)**, delivered on 2026-10-12; the open ones moved to "Maintainer actions" in v0.1:
   - the credentials the agents use can approve the `npm` environment, which ADR-015 says they must not (P1);
   - DNS for hollware.com (S6/P3, see F0-0);
   - the npm account's personal email on the published manifests (P2);
   - optional: deprecate the `0.0.0-stage` and `0.0.0` versions (S7), and limit the creation of `*@*` tags to the workflows (P4).
-- [ ] Settle before v0.1 Wave 0, listed there: workspace resolution without a build (S1), where the operation specs live (S3), `core`'s type environment (S8)
-- [ ] CI green on the close commits, then the summary to the maintainer and the pause
+- [x] Listed under "Settle before Wave 0 dispatch" in v0.1: workspace resolution without a build (S1), where the operation specs live (S3), `core`'s type environment (S8)
+- [x] CI green on the close commits, then the summary to the maintainer and the pause
 
 ### Acceptance criteria
 
@@ -177,6 +177,7 @@ Each entry records what was verified on its date. Later entries supersede earlie
   - `vp run check:push` exit 0, with 54 files and 565 tests; actionlint, shellcheck and zizmor are clean.
   - Orchestrator mutations with the new `break-line`, each with a passing baseline and failing in the test that names the line → CAUGHT: 10 release mutations (scripts, `release.yml`, `ci.yml`), 4 guard and Worker mutations, and 2 on `break-line` itself.
   - The old `break-line` printed CAUGHT for a command that always fails (reproduced). So the mutation counts in the entries above were taken without a baseline run.
+- 2026-10-12 — F0 closed: every workflow on `70028e4` concluded `success` (CI 38220449987, Release 38220449979, Security 38220449957 and 38247703228, CodeQL 38220449882). The summary went to the maintainer, who resumed the work the same day.
 
 ---
 
@@ -185,21 +186,34 @@ Each entry records what was verified on its date. Later entries supersede earlie
 **Goal:** an agent writes and publishes over MCP with contracts validated at write time,
 and an example site reads what was published over RPC.
 
+### Stage start (2026-10-12)
+
+- [x] Stack check: nothing moved since the plan was written. Base: vite-plus 1.1.0 (Vite 8.3.3, Rolldown 1.2.12, tsdown 0.23.0, Vitest 5.0.3), Node 24.21.0 (Node 26 is not LTS yet), pnpm 12.11.2, wrangler 4.149.0, `@cloudflare/vite-plugin` 1.63.1, `@cloudflare/vitest-plugin` 1.4.0, TypeScript 7.0.2. Stage candidates: hono 5.0.0-rc.1 (stable: 4.13.13), `@modelcontextprotocol/server` and `client` 2.3.1, `@modelcontextprotocol/conformance` 0.2.0-alpha.12, comark / `@comark/html` / `@comark/vue` 0.7.0 (they pin markdown-exit 1.1.0-beta.2), drizzle-orm 0.45.4 and drizzle-kit 0.31.11 (v1 still in RC), `@cloudflare/workers-oauth-provider` 1.2.3, `@simplewebauthn/server` 14.0.3, `@standard-schema/spec` 1.1.0. zod: the lockfile already holds 4.6.5 through `@cloudflare/vitest-plugin`, and pinning 4.6.6 in a spike added a second copy, so the catalog pins the copy the lockfile has
+- [ ] Adversarial review of this section, answered before Wave 0
+
+### Maintainer actions (open)
+
+- [ ] Before the `0.1.0` release (AC-0.1-13), no credential an agent can reach may approve the `npm` environment (F0-7 P1): a fine-grained token for Hollware sessions without Administration, Deployments, Environments or Secrets; GitHub CLI denied in the org's OAuth app policy; `deny`/`ask` rules for `gh api` on `pending_deployments`, `environments` and `rulesets`
+- [ ] DNS for hollware.com: Email Routing (`conduct@`, `npm@`) and a 302 redirect to the repository
+- [ ] The npm account's email moves to an `@hollware.com` address once routing works
+- [ ] Optional: deprecate the `0.0.0-stage` and `0.0.0` placeholders; read the "Alternatives considered" the F0-2 writer inferred (ADR 006, 008–011, 013 and parts of 002, 004, 005, 007)
+- Deferred: limiting the creation of `*@*` tags to the workflows needs the Actions bot as a ruleset bypass actor, tested outside a release
+
 ### Spikes (orchestrator, before dispatch)
 
-- [ ] S1 Hono 5 RC under `vp dev` and workerd (fallback: Hono 4.13.13; version-specific code isolated in `http/errors.ts`)
-- [ ] S2 MCP SDK 2.3.1 in workerd, both eras; CPU of the per-request factory + Zod→JSON Schema (fallback: precomputed schemas via `fromJsonSchema`)
-- [ ] S3 Comark + `@comark/html` in workerd; bundle size (fallback: `nodejs_compat`)
-- [ ] S4 `withSession` in Miniflare; drizzle with a session; `INSERT…SELECT` + `UPDATE…RETURNING` in one batch (fallback: plain `env.DB` / raw `env.DB.batch`)
-- [ ] S5 SimpleWebAuthn 14 + a soft authenticator in workerd (fallback: `nodejs_compat`)
-- [ ] S6 `createTestHarness` with Vite output, named entrypoint, `applyD1Migrations` from `node_modules`
+- [~] S1 Hono 5 RC under `vp dev` and workerd (fallback: Hono 4.13.13; version-specific code isolated in `http/errors.ts`)
+- [~] S2 MCP SDK 2.3.1 in workerd, both eras; CPU of the per-request factory + Zod→JSON Schema (fallback: precomputed schemas via `fromJsonSchema`)
+- [~] S3 Comark + `@comark/html` in workerd; bundle size (fallback: `nodejs_compat`)
+- [~] S4 `withSession` in Miniflare; drizzle with a session; `INSERT…SELECT` + `UPDATE…RETURNING` in one batch (fallback: plain `env.DB` / raw `env.DB.batch`)
+- [~] S5 SimpleWebAuthn 14 + a soft authenticator in workerd (fallback: `nodejs_compat`); also workers-oauth-provider 1.2.3 with Hono 5 (metadata, PKCE flow, personal tokens, CIMD)
+- [x] S6 `createTestHarness` with Vite output, named entrypoint, `applyD1Migrations` from `node_modules` (de-risked in F0-3b, see the F0 verification log)
 - [ ] S7 `wrangler check startup` on built output → calibrate budgets
-- [ ] S8 MCP conformance 0.2.0-alpha against a stub Worker → size the baseline
-- [ ] S9 do `vp dev` and `wrangler d1 execute --local` share state?
+- [~] S8 MCP conformance 0.2.0-alpha against a stub Worker → size the baseline
+- [x] S9 do `vp dev` and `wrangler d1 execute --local` share state? (yes, F0-3b)
 
 ### Settle before Wave 0 dispatch (F0-7 review)
 
-- [ ] Workspace resolution without a build (review S1, reproduced). Every package resolves only to `dist`, and `check:push` builds after `vp check` and `vp test`. So on a clean checkout, the first import of one workspace package by another fails, and a change to `core` stays invisible to `server` until a rebuild. Decide between building first and resolving to source inside the workspace (with `dist` only in the published manifest), and adjust the `manifests` guard to the choice
+- [~] Workspace resolution without a build (review S1, reproduced). Every package resolves only to `dist`, and `check:push` builds after `vp check` and `vp test`. So on a clean checkout, the first import of one workspace package by another fails, and a change to `core` stays invisible to `server` until a rebuild. Decide between building first and resolving to source inside the workspace (with `dist` only in the published manifest), and adjust the `manifests` guard to the choice. Researched on 2026-10-12 (verification log below); the proposal awaits the maintainer
 - [ ] Where the operation specs live (review S3). This plan puts them in `core` (`core/src/operations/`, with the handlers in `server/src/ops`). `docs/design.md`, ADR-003, the README and the package descriptions say `server` holds the operation registry. ADR-016 settles it, and the docs follow in the same commit
 - [ ] `core`'s type environment (review S8). `core` type-checks with Node types and its tests run only in Node, while the `core-purity` guard checks five Node globals. Either give `core` a runtime-neutral type environment (no Node types) and run its tests in workerd too, or narrow its "runs anywhere" claim
 
@@ -254,6 +268,15 @@ and an example site reads what was published over RPC.
 | AC-0.1-13 | Release 0.1.0           | published through the pipeline with provenance, approved by the maintainer                                                                                                                                                                          |
 
 New ADRs: 016 operation/outcome shapes · 017 auth topology · 018 append-only revisions with derived columns · 019 conformance baseline policy · 020 fix-forward migrations.
+
+### Verification log
+
+- 2026-10-12 — Workspace resolution, in a scratch clone of `70028e4` where `server` imports `core` and the playground Worker imports `server`:
+  - Today, without `dist`: `vp check` fails with TS2307 (`Cannot find module '@hollware/core'`); the `server` tests and the three `playground:workerd` files fail with `Failed to resolve entry for package`.
+  - With tsdown's `exports.devExports: true` (shipped in vite-plus 1.1.0), `vp pack` writes `exports` pointing at `./src/index.ts` and `publishConfig.exports` (and `publishConfig.bin` for the CLI) pointing at `dist`. With every `dist` deleted, `vp check` passes, the `server` tests pass (2) and `playground:workerd` passes (8). The playground builds and `wrangler deploy --dry-run` reports 1.28 KiB, with `core` bundled from source.
+  - A cross-package type error (`core`'s `name` turned into a number) fails `vp check` with TS2322 in `server`. Under `vp dev`, an edit to `core/src` reaches the running Worker through HMR, with no `dist`.
+  - Publishing is unchanged: `pnpm pack`, the real `changeset pack` the release action runs, and `publint --strict` (which packs with pnpm) all produce `exports` (and `bin`) pointing at `dist`, with `publishConfig` holding only `access` and `provenance`, so the `publish` job's tarball check still passes. `server` gets `@hollware/core` as `0.0.2`, not `workspace:*`. A rebuild leaves the formatted manifests byte-identical.
+  - The manifests guard fails on the new shape, as expected. `scripts/check-bins.ts` reads `bin`, so it would silently run the source bin (Node 24 strips the types) instead of the built one: it has to read `publishConfig.bin` first.
 
 ---
 
