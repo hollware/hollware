@@ -1,6 +1,9 @@
 import { exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
+// Fails when: src/index.ts stops answering GET /health with 200, application/json and the literal
+// body, or stops answering 404 to a path or method it does not serve (GET /health/, POST /health).
+
 describe('the playground Worker over HTTP', () => {
   it('answers GET /health with the literal JSON body', async () => {
     const response = await exports.default.fetch('http://playground.test/health')

@@ -12,13 +12,16 @@ export default {
 
 /** The surface other Workers reach over a service binding (Workers RPC). */
 export class Playground extends WorkerEntrypoint<Env> {
-  ping(): string {
-    return 'pong'
+  /** Echoes the message after "pong": the answer depends on what the caller sent. */
+  ping(message: string): string {
+    return `pong ${message}`
   }
 
   async metaKeys(): Promise<string[]> {
+    // Descending on purpose: the primary-key index already yields ascending order, so an
+    // ascending ORDER BY could not be told apart from none at all.
     const { results } = await this.env.DB.prepare(
-      'SELECT key FROM _hollware_meta ORDER BY key',
+      'SELECT key FROM _hollware_meta ORDER BY key DESC',
     ).all<{ key: string }>()
     return results.map((row) => row.key)
   }

@@ -1,6 +1,10 @@
 import { env, exports } from 'cloudflare:workers'
 import { afterEach, describe, expect, it } from 'vitest'
 
+// Fails when: the migration that wrangler.jsonc points at stops creating _hollware_meta, or
+// Playground.metaKeys() (src/index.ts) stops answering the keys of that table, or its
+// `ORDER BY key DESC` is dropped or changed.
+
 describe('D1 after the shipped migrations', () => {
   it('has the _hollware_meta table', async () => {
     const table = await env.DB.prepare(
@@ -21,15 +25,21 @@ describe('Playground.metaKeys() over RPC', () => {
     expect(await exports.Playground.metaKeys()).toEqual([])
   })
 
-  it('lists the keys in alphabetical order', async () => {
+  it('lists the keys in descending order, whatever order they were written in', async () => {
+    // Written out of order on purpose: not ascending, not descending, and the values sort in a
+    // third order. So the order expected below can only come from sorting the keys descending.
+    // With no ORDER BY, SQLite walks the primary-key index and answers ascending.
+    const insert = env.DB.prepare('INSERT INTO _hollware_meta (key, value) VALUES (?, ?)')
     await env.DB.batch([
-      env.DB.prepare('INSERT INTO _hollware_meta (key, value) VALUES (?, ?)').bind('schema', '1'),
-      env.DB.prepare('INSERT INTO _hollware_meta (key, value) VALUES (?, ?)').bind(
-        'created_at',
-        'x',
-      ),
+      insert.bind('created_at', '2026-10-12'),
+      insert.bind('site_name', 'demo'),
+      insert.bind('schema_version', '1'),
     ])
 
-    expect(await exports.Playground.metaKeys()).toEqual(['created_at', 'schema'])
+    expect(await exports.Playground.metaKeys()).toEqual([
+      'site_name',
+      'schema_version',
+      'created_at',
+    ])
   })
 })
