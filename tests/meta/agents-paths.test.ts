@@ -9,7 +9,8 @@ import { workspaceManifests } from '../support/workspace.ts'
 
 // Fails when: an AGENTS.md or a README.md puts in backticks a path that is neither a file nor a
 // directory of the repository (relative to the document or to the root), and that no allowlisted
-// exception or .gitignore rule explains; or an allowed missing path starts to exist.
+// exception or .gitignore rule explains; or an allowed missing path starts to exist; or a route
+// such as `/mcp` is taken for a path of the repository.
 
 function knownPackages(): Set<string> {
   const names = new Set<string>()
@@ -170,6 +171,8 @@ describe('paths in AGENTS.md and README.md', () => {
       expect(claimedPath('node:fs', packages)).toBeUndefined()
       expect(claimedPath('--help', packages)).toBeUndefined()
       expect(claimedPath('a b/c.md', packages)).toBeUndefined()
+      expect(claimedPath('/mcp', packages)).toBeUndefined()
+      expect(claimedPath('/en/blog/:slug/', packages)).toBeUndefined()
     })
   })
 })

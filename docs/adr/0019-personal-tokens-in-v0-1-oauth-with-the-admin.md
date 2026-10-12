@@ -18,7 +18,7 @@ The adversarial review of the v0.1 plan found that OAuth needs a surface that a 
 
 - In v0.1, MCP requests authenticate with personal tokens only. A token looks like `hw_pat_…`, `hollware init` prints the owner's first one, and `hollware token create` makes the next ones. D1 stores its hash with its site, its scopes, an expiry (90 days by default) and a revocation date. Clients send it as a bearer token.
 - The effective scopes of a request are the token's scopes intersected with its user's current role; in v0.1 the only role is the owner. A missing scope is answered with `403 insufficient_scope`, which names every scope the operation needs in one challenge.
-- A Host and Origin guard runs in front of every route and fails closed. The allowed host comes from `HOLLWARE_PUBLIC_URL`, plus an explicit list; without that configuration the Worker answers 500 instead of skipping the check. A request whose Origin is present and not allowed gets 403.
+- A Host and Origin guard runs in front of every route and fails closed. The allowed host comes from `HOLLWARE_PUBLIC_URL`, plus an explicit list once a deployment needs a second host (v0.1 has none); without that configuration the Worker answers 500 instead of skipping the check. A request whose Origin is present and not allowed gets 403.
 - OAuth, passkeys, setup links, invitations, sign-in and the consent page arrive in v0.3 with the admin:
   - they use the provider's role-based API: an `OAuthAuthorizationServer` and one `OAuthResourceServer` for `/mcp`, with `/v1` joining when the HTTP API exists;
   - its `validateToken` sends personal tokens to D1;

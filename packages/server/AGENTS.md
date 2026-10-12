@@ -25,6 +25,21 @@ serve them (ADR-017). Boundary rules for this package:
   time; the tests that check one site cannot reach another seed two.
 - `src/mcp/annotations.ts` maps each effect to its MCP hints, and `src/limits.ts` holds the output
   cap, the timeout and the store's limits under D1's.
+- `src/auth` is what the gateway runs before the MCP endpoint, in this order:
+  `checkHostAndOrigin` (fails closed: no valid `HOLLWARE_PUBLIC_URL` is a 500; another Host or
+  Origin, port and scheme included, is a 403; `X-Forwarded-Host` counts for nothing),
+  `readBearerToken`, then `checkPersonalToken` on the `D1Database` binding, never a replica
+  session, so a revoked token stops at once. Hand its `touch` to `ctx.waitUntil`. A refused token
+  gets one answer whether it was unknown, expired or revoked: log the reason, never send it.
+  `ROLE_SCOPES` has one entry per role of the `users_role` check; owners get every scope, the
+  other roles none until v0.3.
+- `src/mcp` is the MCP adapter: `createMcpEndpoint` returns `{ fetch(request, call) }`, which
+  the gateway mounts at `/mcp` once per isolate, passing `{ principal, requestId, context }`.
+  It sets the view (`head`) and the client itself, asks for each tool's scopes before its
+  handler, answers errors as `{ code, message, fix }` without structured content (clients check
+  structured content against the output schema even with `isError`), and asks 2026 clients that
+  declared form elicitation to acknowledge the warnings of `publish` (MRTR). Do not read or
+  rewrite the body or the `Mcp-*` headers before it.
 - `src` type-checks with the Workers runtime types that `wrangler types` generates for
   `wrangler.jsonc` (the test configuration, without Node.js), and nothing else.
 - Tests that need workerd (D1, `cloudflare:*`) are `*.workerd.test.ts` and run in

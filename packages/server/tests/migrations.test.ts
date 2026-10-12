@@ -60,7 +60,9 @@ function generateOnCopy(name: string, schemaFile: string, extraArgs: string[] = 
   return { out, before, after: listFiles(out), stdout }
 }
 
-describe('migrations/ and src/db/schema.ts', () => {
+// Each test starts drizzle-kit, a CLI that takes seconds on a busy machine: the default 5 s
+// timeout failed under load (2026-10-12) while the test itself passed.
+describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
   it('describe the same schema: drizzle-kit finds nothing to migrate', () => {
     const run = generateOnCopy('no-change', join(packageDir, 'src/db/schema.ts'))
 

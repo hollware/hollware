@@ -53,6 +53,8 @@ const PATH_CHARACTERS = /^[\w.@+/-]+$/
 export function claimedPath(token: string, packages: ReadonlySet<string>): string | undefined {
   if (!PATH_CHARACTERS.test(token)) return undefined
   if (token.startsWith('@') || token.startsWith('-')) return undefined
+  // A route of a Worker (`/mcp`, `/health`) or an absolute path: never a path of the repository.
+  if (token.startsWith('/')) return undefined
   const looksLikePath =
     token.includes('/') || KNOWN_EXTENSIONS.test(token) || KNOWN_NAMES.has(token)
   if (!looksLikePath) return undefined

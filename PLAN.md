@@ -328,14 +328,14 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
 
 Every WP ships integration tests that are green in its own wave, owns disjoint directories, and is verified by the orchestrator with at least one `break-line` mutation per invariant it adds.
 
-- [ ] Wave 1 (parallel):
+- [~] Wave 1 (parallel), dispatched on 2026-10-12, one git worktree per WP (`../hollware-wave1/<wp>`, branch `wave1/<wp>`):
   - WP1 config (`core/src/config`);
   - WP2 Markdown and content safety (`core/src/markdown`, `core/bench`);
   - WP3 contracts, including content safety and `size-limit` (`core/src/contracts`);
   - WP4 the D1 store on the schema of Wave 0 (`server/src/db`): repository functions, the optimistic write, sessions, limits;
-  - WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
+  - [x] WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
   - WP6 CLI (`packages/cli`)
-- [ ] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`) · WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types
+- [~] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`), after Wave 1 · [x] WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types, dispatched on 2026-10-12 together with Wave 1 because it stands on Wave 0 alone
 - [ ] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`
 - [ ] Wave 3b (parallel):
   - WP11 playground, starter and `examples/worker-site`, with minified builds and the parser imported lazily on writes; `scripts/check-budgets.ts`;
@@ -408,6 +408,9 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 
 - 2026-10-12 — Wave 0 item 0.5: the interfaces of `core` and `server` compile, and the tests that pin them pass in Node and in workerd: the operation table and the JSON Schema of every input (a strict object) and output (an object whose `outcome` enum lists the spec's outcomes), the token format against SHA-256 vectors, the scopes, the error codes, the MCP hints per effect, the limits, the typed handler table (a missing or an unknown handler is a type error) and the frontmatter type reaching the contracts of a collection. A probe showed that `defineContract` inside a collection's array loses the frontmatter type, so contracts are plain objects there. Mutations → CAUGHT: `blocked` made a non-error and `unpublish`'s input made non-strict and the order of `OPERATIONS` swapped and the default format changed (`operations`), `& 31` turned into `% 31` and the token pattern loosened (`tokens`), `schema:admin` dropped (`scopes`), the destructive hint made non-idempotent (`annotations`).
 - 2026-10-12 — Wave 0 item 0.7: the fixtures load through Vite in Node and in workerd (8 tests over both), and `vp fmt` leaves them byte-identical to their generator's output. `seedSite` writes two sites with the same natural keys that the schema accepts (checks, composite keys, triggers). The harness reaches Hollware at `http://hollware.test` with that URL as its public URL. The playground config takes the corpus's frontmatter. Comark parses YAML with js-yaml's `JSON_SCHEMA`, so dates stay strings. Mutations → CAUGHT: the fixtures dropped from `fmt.ignorePatterns` (`vp check`), `?raw` turned into `?url` (the loader test), the harness without its `vars` (the harness test), the description limit raised to 200 (the config test). A publication written for every English entry instead of every published one was NOT CAUGHT at first, because the count stayed at two; the seed test now checks which entries are live and published.
+- 2026-10-12 — The seven agents of Wave 1 and WP8 stopped at the org's usage limit; at its reset (19:20) they were resumed with their context, and their partial work in the worktrees was kept.
+- 2026-10-12 — WP8 accepted (MCP adapter): only `src/mcp` and `tests/mcp` touched; `vp check` clean and the server's tests 255 of 256 under a load average of 45, the one failure being `migrations.test.ts`, whose drizzle-kit runs outgrew the 5 s default timeout (now 60 s). The agent reported 228 tests in both eras and in workerd, and every mutation CAUGHT; out of the repository, the conformance suite against the endpoint matched the spike's baselines except `dns-rebinding-protection`, which is the gateway's. Reviewed: the scope challenge (every scope of the tool, before the handler), the principal guard, errors without structured content (a v1 client validates it even with `isError`), answers parsed by the output schema, and the MRTR state, which is unsigned but grants nothing that `acknowledgeWarnings` does not. Orchestrator mutations → CAUGHT: every principal granted `content:write`, a `conflict` reported as success, an MRTR form accepted with the box empty.
+- 2026-10-12 — WP5 accepted (auth): only `src/auth` and `tests/auth` touched; 132 tests green, and 75 of 75 mutations CAUGHT by the agent. The MCP SDK's Host and Origin helpers compare hostnames only, so the guard compares whole values. Changed by the orchestrator: the Host may write out its scheme's default port (`cms.example.com:443`), which names the same server; another port is still a 403 (133 tests). ADR-019's explicit list of further hosts waits for a deployment that needs one. Orchestrator mutations → CAUGHT: the default-port branch removed, the default ports swapped, a revocation honoured only once its date has passed.
 
 ---
 
