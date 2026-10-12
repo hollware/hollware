@@ -19,7 +19,8 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
 - `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency; its `src` type-checks against the web platform only, and every one of its tests runs in Node and in workerd.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
-- `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`.
+- `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
+- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in what the workspace packages and apps install.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
 - `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds and excludes, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.

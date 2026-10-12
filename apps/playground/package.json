@@ -13,7 +13,8 @@
     "check:startup": "vp build && wrangler check startup --outfile .wrangler/worker-startup.cpuprofile"
   },
   "dependencies": {
-    "@hollware/server": "workspace:*"
+    "@hollware/server": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:",

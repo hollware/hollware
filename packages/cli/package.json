@@ -42,6 +42,11 @@
     "test": "vp test",
     "publint": "publint --strict"
   },
+  "dependencies": {
+    "@hollware/core": "workspace:*",
+    "@modelcontextprotocol/client": "catalog:",
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "publint": "catalog:",

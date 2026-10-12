@@ -5,7 +5,8 @@ import { file, json } from '../support/fixtures.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
 // Fails when: a dependency in any package.json (dependencies, devDependencies,
-// peerDependencies, optionalDependencies) is anything but `catalog:` or `workspace:*`.
+// peerDependencies, optionalDependencies) is anything but `catalog:` or `workspace:*`, except a
+// caret range in peerDependencies whose package is also a devDependency from the catalog.
 
 describe('catalog dependencies', () => {
   it('every dependency of every package.json comes from the catalog or the workspace', () => {
@@ -69,6 +70,42 @@ describe('catalog dependencies', () => {
         'devDependencies.b',
         'peerDependencies.c',
         'optionalDependencies.d',
+      ])
+    })
+
+    it('accepts a caret range in peerDependencies when the catalog provides the dev dependency', () => {
+      expect(
+        check({
+          peerDependencies: { zod: '^4.2.0' },
+          devDependencies: { zod: 'catalog:' },
+        }),
+      ).toEqual([])
+    })
+
+    it('reports a peer range without the dev dependency from the catalog', () => {
+      expect(check({ peerDependencies: { zod: '^4.2.0' } })).toEqual([
+        {
+          rule: 'catalog-deps/peer-without-dev',
+          file: 'packages/core/package.json',
+          message:
+            'peerDependencies.zod is the range "^4.2.0": list zod in devDependencies as "catalog:" too, so this repository builds and tests one exact version',
+        },
+      ])
+      expect(
+        check({ peerDependencies: { zod: '^4.2.0' }, devDependencies: { zod: 'workspace:*' } }),
+      ).toHaveLength(1)
+    })
+
+    it('reports a peer that is not a caret range on a full version', () => {
+      const result = check({
+        peerDependencies: { a: '*', b: '>=4', c: '4.2.0', d: '^4' },
+        devDependencies: { a: 'catalog:', b: 'catalog:', c: 'catalog:', d: 'catalog:' },
+      })
+      expect(result.map((violation) => violation.message)).toEqual([
+        'peerDependencies.a is "*": use "catalog:" and pin the version in pnpm-workspace.yaml, or "workspace:*" for a package of this repository; a peer dependency may also be a caret range such as "^4.2.0"',
+        'peerDependencies.b is ">=4": use "catalog:" and pin the version in pnpm-workspace.yaml, or "workspace:*" for a package of this repository; a peer dependency may also be a caret range such as "^4.2.0"',
+        'peerDependencies.c is "4.2.0": use "catalog:" and pin the version in pnpm-workspace.yaml, or "workspace:*" for a package of this repository; a peer dependency may also be a caret range such as "^4.2.0"',
+        'peerDependencies.d is "^4": use "catalog:" and pin the version in pnpm-workspace.yaml, or "workspace:*" for a package of this repository; a peer dependency may also be a caret range such as "^4.2.0"',
       ])
     })
 

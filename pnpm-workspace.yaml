@@ -13,7 +13,19 @@ catalog:
   '@changesets/cli': 3.0.3
   '@cloudflare/vite-plugin': 1.63.1
   '@cloudflare/vitest-plugin': 1.4.0
+  '@comark/html': 0.7.0
+  '@modelcontextprotocol/client': 2.3.1
+  # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
+  '@modelcontextprotocol/conformance': 0.2.0-alpha.12
+  '@modelcontextprotocol/server': 2.3.1
+  '@standard-schema/spec': 1.1.0
   '@types/node': 24.19.2
+  # comark 0.7.0 pins markdown-exit 1.1.0-beta.2 itself (see the v0.1 spike S3).
+  comark: 0.7.0
+  drizzle-kit: 0.31.11
+  drizzle-orm: 0.45.4
+  # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
+  hono: 5.0.0-rc.1
   pkg-pr-new: 0.0.91
   publint: 0.3.25
   typescript: 7.0.2
@@ -25,6 +37,9 @@ catalog:
   vitest: 5.0.3
   wrangler: 4.149.0
   yaml: 2.9.1
+  # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
+  # would install zod twice. core and server declare it as a peer, ^4.2.0 (ADR-017).
+  zod: 4.6.5
 
 overrides:
   vite@*: 'catalog:'
