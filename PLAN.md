@@ -51,11 +51,12 @@ before the first feature.
 - [x] Root `AGENTS.md` with the test bar (moved here from F0-5, review H2)
 - [x] First local commit
 - [x] Repo-local git identity uses the GitHub noreply address (`6147546+sergioazoc@users.noreply.github.com`); the local commits were re-authored before the first push, so no personal email reaches the public history
-- [ ] **Maintainer:** reserve the six npm names before the repo is public (placeholders `0.0.0`)
+- [x] **Maintainer:** reserve the six npm names before the repo is public (placeholders `0.0.0`)
 - [ ] **Maintainer (not blocking):** Cloudflare Email Routing on hollware.com so `conduct@hollware.com` (Code of Conduct contact) reaches you
+- [ ] **Maintainer:** org setting "Allow GitHub Actions to create and approve pull requests" (needed by the Version Packages PR; the org blocks it today)
 - [ ] **Maintainer:** require 2FA for the `hollware` GitHub org; install the pkg.pr.new GitHub App on it before CI lands (review H1, M2)
-- [ ] `gh repo create hollware/hollware --public` and push
-- [ ] Repo settings via `gh api`: private vulnerability reporting, secret scanning + push protection, CodeQL default setup, Dependabot alerts (no PRs), Actions `sha_pinning_required`, fork PRs need approval, read-only workflow token that may create PRs, `main` ruleset on the default branch only (no force-push, no deletion), tag ruleset `*@*` and `@*/*@*`, immutable releases, environment `npm` (only `main`, maintainer approval, `prevent_self_review: false`)
+- [~] `gh repo create hollware/hollware --public` (done) and push (waits for the org settings below)
+- [x] Repo settings via `gh api` (all applied except Actions creating PRs, which the org blocks): private vulnerability reporting, secret scanning + push protection, CodeQL default setup, Dependabot alerts (no PRs), Actions `sha_pinning_required`, fork PRs need approval, read-only workflow token that may create PRs, `main` ruleset on the default branch only (no force-push, no deletion), tag ruleset `*@*` and `@*/*@*`, immutable releases, environment `npm` (only `main`, maintainer approval, `prevent_self_review: false`)
 
 ### Wave 1 (parallel)
 
@@ -83,7 +84,7 @@ before the first feature.
 
 ### Wave 2
 
-- [~] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
+- [x] **F0-5 Verification surface** — owns root `AGENTS.md` (extends it) and `tests/`
   - Convention tests: manifest fields; identical `LICENSE` copies; no `CLAUDE.md`; `core` has no Cloudflare imports (regex scan: TypeScript 7 has no JS compiler API); every bare import is declared; every dependency uses `catalog:`; the `fixed` group equals the public packages; pnpm policy present and every `minimumReleaseAgeExclude` has a reason and an expiry; workflows (40-char SHA + `# vX.Y.Z`, subpath actions allowed, `permissions: {}` at the top, `id-token: write` only in `release.yml` `stage` and the Scorecard job, `persist-credentials: false`, no `NPM_TOKEN` / `npm publish` / `npx` / `dlx`); the ADR index matches the ADR files
   - Meta-tests: backtick paths in `AGENTS.md`/`README.md` exist; `AGENTS.md` cites only real scripts and tasks; `AGENTS.md` ≤ 12,000 characters; every test file belongs to a test project; exception lists may only shrink; every patch has a reason and a test; each guard has a self-test proving it can fail
   - A failing cross-file check in a file F0-5 doesn't own is reported, and the orchestrator routes the fix
@@ -126,6 +127,8 @@ C1 root `vp test` had no projects → `test.projects` added. C2 the changeset ch
 - 2026-10-11 — F0-3b accepted: 11 tests (`playground:workerd` 7, `playground:harness` 1, `starter:workerd` 3); `types:check` up to date; `deploy:dry` without an account; startup 0.82 KiB, ~2.5 ms sampled; S6 (harness over Vite output) and S9 (dev and `d1 --local` share state) de-risked; vite-plus#2481 not reproduced; workers-sdk#15618 only with `fsModuleCache: true`. Orchestrator mutation on `ping` → CAUGHT.
 - 2026-10-11 — F0-4 accepted: every `uses:` pinned by SHA; `id-token: write` only in `stage` and `scorecard`; `permissions: {}` ×3; 10/10 checkouts without persisted credentials; logic suites 13 + 30 + 29 green; actionlint, shellcheck and zizmor (online, pedantic) clean; trial `changeset version` moved all six to 0.0.1.
 - 2026-10-11 — Integration: `vp run check:push` green (111 files formatted, 53 tests, publint ×6, types up to date, 19 tasks); six commits, one per WP.
+- 2026-10-11 — F0-5 accepted: 36 guard files in the `repo` project (309 tests), each guard with a self-test on a bad fixture; 58 break-line mutations by the writer and 3 by the orchestrator → CAUGHT; `check:push` now also runs `scripts/check-bins.ts` (20 tasks, 354 tests, green). `break-line` now reports argument errors as ERROR (exit 2) instead of crashing with exit 1.
+- 2026-10-11 — npm: the six names hold `0.0.0` placeholders. GitHub: `hollware/hollware` created public with private vulnerability reporting, Dependabot alerts, secret scanning + push protection, squash-only merges titled by the PR, SHA pinning required, read-only workflow token, fork approval for external contributors, environment `npm` (maintainer review, `main` only), rulesets for `main` and release tags, immutable releases.
 
 ---
 
