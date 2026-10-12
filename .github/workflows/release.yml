@@ -20,6 +20,10 @@ on:
         description: Only tag and release what is already live on npm. Run it on the release branch (skips the promotion check, packing and publishing)
         type: boolean
         default: false
+      release_sha:
+        description: With finalize_only, the full hash of the commit to tag and release (the "Version Packages" merge). Leave it empty to use the latest "Version Packages" commit of the history; the run fails and names the commit to give here when the history says that is not the latest release
+        type: string
+        default: ''
 
 permissions: {}
 
@@ -327,7 +331,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # The commit this run published: the head of release. A finalize-only run has no
           # build of its own, so the script looks for the latest "Version Packages" commit
-          # in the history.
-          RELEASE_SHA: ${{ inputs.finalize_only != true && github.sha || '' }}
+          # in the history, unless release_sha names the commit.
+          RELEASE_SHA: ${{ inputs.finalize_only != true && github.sha || inputs.release_sha }}
           WAIT_SECONDS: '1800'
         run: bash .github/scripts/finalize-release.sh

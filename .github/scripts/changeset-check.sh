@@ -16,16 +16,20 @@
 # A pull request is compared with its base branch, except the Version Packages
 # pull request itself (branch changeset-release/<base>, opened by
 # github-actions[bot]): it consumes the changesets by design. A push is compared
-# with the tip the branch had before it. A push is not checked when
+# with the tip the branch had before it. Any other event (a manual run) is compared
+# with the base branch of .changeset/config.json. A push is not checked when
 #
 #   - `before` is all zeros: the push created the branch, so there is nothing to
-#     compare with,
-#   - `before` is not an ancestor of the head: the history was rewritten, or
+#     compare with, or
 #   - the head is the merge of the "Version Packages" pull request. That commit
 #     consumes the changesets and bumps every version, so `changeset status`
 #     would always fail on it. A squash or rebase merge keeps the title "Version
 #     Packages"; a merge commit is titled "Merge pull request #N from
 #     <owner>/changeset-release/<branch>".
+#
+# A push whose `before` is not an ancestor of the head fails: the branch was
+# rewritten, or the clone does not hold the previous tip (a shallow checkout), and
+# either way the script cannot tell what the push changed. It never skips quietly.
 set -euo pipefail
 
 event="${EVENT_NAME:?EVENT_NAME is required}"
@@ -56,8 +60,8 @@ case "$event" in
     fi
 
     if ! git merge-base --is-ancestor "$before" "$head_sha" 2>/dev/null; then
-      echo "::warning::Skipping the changeset check: ${before} is not an ancestor of ${head_sha}."
-      exit 0
+      echo "::error::Cannot check the changesets of this push: its previous tip ${before} is not an ancestor of ${head_sha}. Either the branch was rewritten or this clone does not hold the previous tip: check out the full history (fetch-depth: 0). Nothing was checked." >&2
+      exit 1
     fi
     since="$before"
     ;;

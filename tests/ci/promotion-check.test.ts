@@ -10,7 +10,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vite-plus/test'
 //
 // Fails when: the script stops refusing a commit that is not on main, a push that is not a
 // fast-forward or a commit that still holds a changeset; or it refuses what it should accept; or
-// it trusts the working tree instead of the commit, or an input that is not a commit hash.
+// it trusts the working tree instead of the commit, or an input that is not a commit hash; or it
+// skips the fast-forward check because BEFORE_SHA is empty on anything but a manual run.
 const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'promotion-check.sh')
 
 const ZEROS = '0000000000000000000000000000000000000000'
@@ -165,7 +166,7 @@ describe('promotion-check.sh', () => {
 
     test('an older commit is promoted too, while the later ones wait', () => {
       const { second } = history
-      const result = promote({ PROMOTED_SHA: second })
+      const result = promote({ PROMOTED_SHA: second, BEFORE_SHA: ZEROS })
       expect(result.status).toBe(0)
       expect(result.stdout).toContain(`${second} is on main.`)
     })
@@ -207,12 +208,50 @@ describe('promotion-check.sh', () => {
       const { third } = history
       const withoutBefore: Record<string, string>[] = [{}, { BEFORE_SHA: '' }]
       for (const before of withoutBefore) {
-        const result = promote({ PROMOTED_SHA: third, ...before })
+        const result = promote({
+          PROMOTED_SHA: third,
+          GITHUB_EVENT_NAME: 'workflow_dispatch',
+          ...before,
+        })
         expect(result.status).toBe(0)
         expect(result.stdout).toContain(
           'No previous tip (a manual run): the fast-forward check is skipped.',
         )
       }
+    })
+
+    test('a push without a previous tip is refused: a missing input must not switch the check off', () => {
+      const { third } = history
+      // Actions always sets `github.event.before` on a push, so an empty one is a workflow that
+      // stopped passing it. Only a manual run may go without one: any other event, an unknown or a
+      // missing one included, is refused.
+      const events: [Record<string, string>, string][] = [
+        [{ GITHUB_EVENT_NAME: 'push' }, 'push'],
+        [{ GITHUB_EVENT_NAME: 'push', BEFORE_SHA: '' }, 'push'],
+        [{ GITHUB_EVENT_NAME: 'pull_request' }, 'pull_request'],
+        [{ GITHUB_EVENT_NAME: '' }, ''],
+        [{}, ''],
+      ]
+      for (const [env, event] of events) {
+        const result = promote({ PROMOTED_SHA: third, ...env })
+        expect(result.status).toBe(1)
+        expect(result.errors).toEqual([
+          `BEFORE_SHA is empty and GITHUB_EVENT_NAME is "${event}", not "workflow_dispatch": only a manual run has no previous tip. A push always has github.event.before, so the workflow must pass it; without it the fast-forward check cannot run.`,
+        ])
+        expect(result.stdout).not.toContain('fast-forward check is skipped')
+      }
+    })
+
+    test('a manual run that does name a previous tip is held to it', () => {
+      const { second, third } = history
+      // The skip is for a run with nothing to compare with, not for the event.
+      const result = promote({
+        PROMOTED_SHA: second,
+        BEFORE_SHA: third,
+        GITHUB_EVENT_NAME: 'workflow_dispatch',
+      })
+      expect(result.status).toBe(1)
+      expect(result.errors).toEqual([notForward(third, second)])
     })
   })
 
@@ -229,28 +268,28 @@ describe('promotion-check.sh', () => {
     test('a commit that consumed them is promoted, whatever else the folder holds', () => {
       // The README, the config, pre mode and a subfolder are not changesets.
       const { versioned } = history
-      const result = promote({ PROMOTED_SHA: versioned })
+      const result = promote({ PROMOTED_SHA: versioned, BEFORE_SHA: ZEROS })
       expect(result.status).toBe(0)
       expect(result.stdout).toContain('No pending changesets.')
     })
 
     test('a commit from before the .changeset folder existed has nothing pending', () => {
       const { first } = history
-      expect(promote({ PROMOTED_SHA: first }).status).toBe(0)
+      expect(promote({ PROMOTED_SHA: first, BEFORE_SHA: ZEROS }).status).toBe(0)
     })
 
     test('they are read from the promoted commit, not from the working tree', () => {
       const { versioned, later } = history
       // The working tree has no changeset, but the commit promoted holds one.
       git('checkout', '-q', versioned)
-      const refused = promote({ PROMOTED_SHA: later })
+      const refused = promote({ PROMOTED_SHA: later, BEFORE_SHA: ZEROS })
       expect(refused.status).toBe(1)
       expect(refused.errors).toHaveLength(1)
       expect(refused.errors[0]).toContain('.changeset/tidy-foxes.md')
 
       // The working tree holds one, but the commit promoted does not.
       git('checkout', '-q', later)
-      expect(promote({ PROMOTED_SHA: versioned }).status).toBe(0)
+      expect(promote({ PROMOTED_SHA: versioned, BEFORE_SHA: ZEROS }).status).toBe(0)
     })
   })
 

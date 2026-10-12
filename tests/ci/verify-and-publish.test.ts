@@ -27,7 +27,8 @@ import { readText } from '../support/repo.ts'
 // Fails when: the job publishes before it has verified the plan and every tarball (hash, content,
 // unlisted files, hostile values), or publishes a version npm already has, or skips one it does
 // not have, or drops --provenance, --access, --tag or --registry from the publish, or goes on
-// after a failure or when it cannot tell what npm has.
+// after a failure or when it cannot tell what npm has, or takes an answer for another version as
+// proof that the version is on npm.
 
 const REGISTRY = 'https://registry.npmjs.org/'
 const STEP = 'Verify the tarballs and publish them'
@@ -78,6 +79,10 @@ case "$1" in
   view)
     echo "$*" >>"$NPM_LOG"
     spec="$2"
+    if [[ -n "\${STUB_VIEW_ANSWER:-}" ]]; then
+      echo "\${STUB_VIEW_ANSWER}"
+      exit 0
+    fi
     if [[ " \${STUB_PUBLISHED:-} " == *" \${spec} "* ]]; then
       echo "\\"\${spec##*@}\\""
       exit 0
@@ -377,6 +382,19 @@ describe('the publish job of release.yml', () => {
       )
       expect(result.calls).toHaveLength(1)
       expect(result.calls[0]).toMatch(/^view /)
+      expect(result.summary).toBe('')
+    })
+
+    test('an answer for another version than the one asked for stops the job before anything is published', () => {
+      writePlan(goodPlan())
+      const result = runJob({ STUB_VIEW_ANSWER: '"0.0.9"' })
+      expect(result.status).toBe(1)
+      expect(result.errors).toEqual([
+        `npm answered "0.0.9" when asked for @hollware/core@${VERSION}.`,
+      ])
+      expect(result.calls).toEqual([
+        `view @hollware/core@${VERSION} version --json --prefer-online --registry ${REGISTRY}`,
+      ])
       expect(result.summary).toBe('')
     })
 

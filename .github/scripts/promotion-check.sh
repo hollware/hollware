@@ -9,15 +9,22 @@
 #
 #   PROMOTED_SHA  the commit that was pushed to `release` (github.sha). Required.
 #   BEFORE_SHA    the tip `release` had before the push (github.event.before). All zeros
-#                 when the push created the branch. Empty on a manual run, which has no
-#                 previous tip, so the fast-forward check is skipped.
+#                 when the push created the branch. Empty only on a manual run
+#                 (workflow_dispatch), which has no previous tip: the fast-forward check is
+#                 skipped there. On any other event an empty value fails the script. A push
+#                 always has one, so a workflow that stops passing it must not turn the
+#                 check off.
+#   GITHUB_EVENT_NAME
+#                 the event that started the run. Actions sets it in every step and the
+#                 workflow does not pass it. Outside Actions, set it to workflow_dispatch
+#                 to run without BEFORE_SHA.
 #
 # The script fails when
 #
 #   1. the commit is not an ancestor of (or equal to) origin/main: only what is on main
 #      ships,
 #   2. BEFORE_SHA is not an ancestor of the commit: `release` was rewound or rewritten
-#      instead of moved forward, or
+#      instead of moved forward, or it is empty on anything but a manual run, or
 #   3. .changeset/ holds a changeset at that commit (any .md file but README.md): the
 #      versions are not bumped yet. Merge the Version Packages pull request on main
 #      first, then promote.
@@ -33,6 +40,7 @@ fail() {
 main_ref='origin/main'
 sha="${PROMOTED_SHA:?PROMOTED_SHA is required}"
 before="${BEFORE_SHA:-}"
+event="${GITHUB_EVENT_NAME:-}"
 
 [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail "PROMOTED_SHA is not a commit hash: ${sha}"
 if [[ -n "$before" && ! "$before" =~ ^[0-9a-f]{40}$ ]]; then
@@ -48,8 +56,10 @@ if ! git merge-base --is-ancestor "$sha" "$main_ref"; then
 fi
 echo "${sha} is on main."
 
-# 2. Only fast-forwards.
+# 2. Only fast-forwards. Only a manual run may have no previous tip: anywhere else an empty
+#    BEFORE_SHA is a workflow that stopped passing it, and skipping would fail open.
 if [[ -z "$before" ]]; then
+  [[ "$event" == "workflow_dispatch" ]] || fail "BEFORE_SHA is empty and GITHUB_EVENT_NAME is \"${event}\", not \"workflow_dispatch\": only a manual run has no previous tip. A push always has github.event.before, so the workflow must pass it; without it the fast-forward check cannot run."
   echo "No previous tip (a manual run): the fast-forward check is skipped."
 elif [[ "$before" =~ ^0+$ ]]; then
   echo "This push created the release branch."

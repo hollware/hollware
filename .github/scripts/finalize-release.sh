@@ -23,9 +23,14 @@
 #   RELEASE_SHA        the commit this run published: the head of the release branch.
 #                      It is the release commit when it bumped a public package, which
 #                      is the case when the promoted commit is the Version Packages
-#                      merge. Otherwise, and when empty, the release commit is the
-#                      latest "Version Packages" commit on the first-parent history of
-#                      HEAD.
+#                      merge, and it is then used as given. Otherwise, and when empty,
+#                      the release commit is the latest "Version Packages" commit on
+#                      the first-parent history of HEAD. The script then fails when HEAD
+#                      has other versions of a public package than that commit: a later
+#                      commit bumped them under a title the scan does not know (a merge
+#                      commit whose title was edited by hand), and finalizing the older
+#                      release would tag nothing and say so. Name the right commit in
+#                      RELEASE_SHA then.
 #   WAIT_SECONDS       how long to wait for npm before failing (default 1800)
 #   LATEST_PACKAGE     the package whose Release is marked Latest (default hollware)
 #   DRY_RUN            "true" prints what would be created and creates nothing
@@ -76,25 +81,61 @@ tag_commit() {
   printf '%s\n' "$sha"
 }
 
-# One line per public package whose version differs between the first parent of
-# commit `$1` and the commit itself: manifest, name and version at the commit.
+# One line per public package at commit `$1`: manifest, name and version.
 # Apps, templates and examples are private and never released.
-released_by() {
-  local commit="$1" listing manifest line name version before
+public_versions() {
+  local commit="$1" listing manifest line
   listing="$(git ls-tree -r --name-only "$commit" -- packages)" || return 1
   while IFS= read -r manifest; do
     [[ "$manifest" =~ ^packages/[^/]+/package\.json$ ]] || continue
     line="$(git show "${commit}:${manifest}" | jq -r 'select(.private != true) | [.name, .version] | @tsv')" || return 1
     [[ -n "$line" ]] || continue
-    IFS=$'\t' read -r name version <<<"$line"
+    printf '%s\t%s\n' "$manifest" "$line"
+  done <<<"$listing"
+}
+
+# One line per public package whose version differs between the first parent of
+# commit `$1` and the commit itself: manifest, name and version at the commit.
+released_by() {
+  local commit="$1" versions manifest name version before
+  versions="$(public_versions "$commit")" || return 1
+  while IFS=$'\t' read -r manifest name version; do
+    [[ -n "$manifest" ]] || continue
     before="$(git show "${commit}^:${manifest}" 2>/dev/null | jq -r '.version // empty' 2>/dev/null || true)"
     if [[ "$version" != "$before" ]]; then
       printf '%s\t%s\t%s\n' "$manifest" "$name" "$version"
     fi
-  done <<<"$listing"
+  done <<<"$versions"
 }
 
-# The release commit: see RELEASE_SHA above. Nothing when there is none.
+# Fails when HEAD has other versions of a public package than commit `$1`, the one the scan
+# of the history found by its title (`$2`). A later commit bumped them under a title the scan
+# does not know, and finalizing the older release would tag nothing and say so. A package that
+# commit does not have is not compared. The error names the latest commit that changed a
+# public version, which is the one to give as RELEASE_SHA.
+scan_is_latest() {
+  local release="$1" subject="$2" versions manifest name version at_release changed="" candidate latest=""
+  versions="$(public_versions HEAD)" || return 1
+  while IFS=$'\t' read -r manifest name version; do
+    [[ -n "$manifest" ]] || continue
+    at_release="$(git show "${release}:${manifest}" 2>/dev/null | jq -r '.version // empty' 2>/dev/null || true)"
+    if [[ -n "$at_release" && "$at_release" != "$version" ]]; then
+      changed+="${changed:+, }${name} ${at_release} -> ${version}"
+    fi
+  done <<<"$versions"
+  [[ -n "$changed" ]] || return 0
+  while IFS= read -r candidate; do
+    if [[ -n "$(released_by "$candidate")" ]]; then
+      latest="$candidate"
+      break
+    fi
+  done < <(git log --first-parent --format=%H -- 'packages/*/package.json')
+  echo "::error::The release commit cannot be told from the history: the latest \"Version Packages\" commit is ${release} (${subject}), but HEAD has other versions of the public packages (at that commit -> at HEAD): ${changed}. A later commit bumped them under a title the scan does not know, such as a merge commit whose title was edited by hand.${latest:+ The latest commit that changed a public version is ${latest}.} Name the release commit in RELEASE_SHA (the release_sha input of a finalize_only run of the Release workflow) and run it again." >&2
+  return 1
+}
+
+# The release commit: see RELEASE_SHA above. Nothing when there is none, and a failure when the
+# scan of the history settles on a release that is not the latest.
 release_commit() {
   local sha subject bumped
   if [[ -n "${RELEASE_SHA:-}" ]]; then
@@ -110,6 +151,7 @@ release_commit() {
   fi
   while IFS=$'\t' read -r sha subject; do
     if [[ "$subject" == "Version Packages"* || "$subject" =~ $version_merge ]]; then
+      scan_is_latest "$sha" "$subject" || return 1
       printf '%s\n' "$sha"
       return 0
     fi

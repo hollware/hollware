@@ -21,6 +21,8 @@ export interface WorkflowStep {
   uses: UsesRef | undefined
   /** The `with:` inputs. Empty when there are none. */
   inputs: Record<string, unknown>
+  /** The `env:` of the step, as written. Empty when there is none. */
+  env: Record<string, unknown>
   /** The shell of a `run:` step, as the runner receives it. */
   run: string | undefined
 }
@@ -34,6 +36,8 @@ export interface WorkflowJob {
   needs: string[]
   /** `if:` of the job, as written. */
   condition: unknown
+  /** `concurrency:` of the job, as written (a group name or a mapping). Undefined when it has none. */
+  concurrency: unknown
   /** Whether the job has a `permissions:` key at all. */
   hasPermissions: boolean
   permissions: unknown
@@ -56,6 +60,8 @@ export interface Workflow {
   topLevelKeys: string[]
   /** The value of `on:` (the triggers). */
   triggers: unknown
+  /** The top-level `concurrency:` as written (a group name or a mapping). Undefined when it has none. */
+  concurrency: unknown
   jobs: WorkflowJob[]
 }
 
@@ -74,6 +80,7 @@ export function parseWorkflow(file: TextFile): Workflow {
     permissions: undefined,
     topLevelKeys: [],
     triggers: undefined,
+    concurrency: undefined,
     jobs: [],
   }
   if (yaml.hasAliases) {
@@ -106,6 +113,7 @@ export function parseWorkflow(file: TextFile): Workflow {
   workflow.hasPermissions = permissions !== undefined
   workflow.permissions = permissions === undefined ? undefined : plain(permissions.value)
   workflow.triggers = plain(mapEntry(root, 'on')?.value)
+  workflow.concurrency = plain(mapEntry(root, 'concurrency')?.value)
 
   const jobs = mapEntry(root, 'jobs')?.value
   if (isMap(jobs)) {
@@ -119,12 +127,14 @@ export function parseWorkflow(file: TextFile): Workflow {
         for (const [index, stepNode] of stepsNode.items.entries()) {
           if (!isMap(stepNode)) continue
           const inputs = plain(mapEntry(stepNode, 'with')?.value)
+          const env = plain(mapEntry(stepNode, 'env')?.value)
           steps.push({
             index,
             name: scalarString(mapEntry(stepNode, 'name')?.value),
             condition: plain(mapEntry(stepNode, 'if')?.value),
             uses: usesOf(stepNode),
             inputs: isRecord(inputs) ? inputs : {},
+            env: isRecord(env) ? env : {},
             run: scalarString(mapEntry(stepNode, 'run')?.value),
           })
         }
@@ -139,6 +149,7 @@ export function parseWorkflow(file: TextFile): Workflow {
         endLine: yaml.lineOf(Math.max(bodyEnd - 1, keyStart)),
         needs: typeof needs === 'string' ? [needs] : isStringArray(needs) ? needs : [],
         condition: plain(mapEntry(job, 'if')?.value),
+        concurrency: plain(mapEntry(job, 'concurrency')?.value),
         hasPermissions: jobPermissions !== undefined,
         permissions: jobPermissions === undefined ? undefined : plain(jobPermissions.value),
         environment: plain(mapEntry(job, 'environment')?.value),
