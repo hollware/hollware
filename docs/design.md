@@ -141,7 +141,7 @@ Phase: v0.1.
 
 - **What it does:** Frontmatter schema, components allowed in the body and rules between entries, evaluated on every write. See [ADR-004](adr/0004-write-time-contracts-with-a-single-definition.md).
 - **Why this primitive:** It moves verification from CI to the point of writing. The agent gets the fix instruction in milliseconds.
-- **Cost:** Worker CPU. Comark parses 2,000 words in 0.6 ms.
+- **Cost:** Worker CPU. Comark parses 2,000 words in about 0.5 ms in a warm isolate, and the first write in a cold one costs about 10 ms (measured in Node on 2026-10-12).
 
 ### Data
 
@@ -519,10 +519,10 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | 02  | Cloudflare             | Vite plugin 1.x, `wrangler.jsonc` and `wrangler types`; tests with `@cloudflare/vitest-plugin`                 | plugin 1.63, wrangler 4.149, vitest-plugin 1.4 | Stable today, and the same pipeline the `cf` CLI uses, which we migrate to when it leaves beta.                       |
 | 03  | Persistence            | D1 with read replicas and Drizzle                                                                              | drizzle-orm 0.45                               | One data model and generated migrations. Without the relational API, to move to v1 easily.                            |
 | 04  | Schemas                | Zod 4, contracts open to Standard Schema                                                                       | zod 4.6                                        | The MCP SDK already ships it, and it exports JSON Schema natively.                                                    |
-| 05  | Markdown               | Comark                                                                                                         | comark 0.7                                     | 0.6 ms for 2,000 words, components compatible with MDC and renderers for four frameworks.                             |
+| 05  | Markdown               | Comark                                                                                                         | comark 0.7                                     | About 0.5 ms for 2,000 words once warm, components compatible with MDC and renderers for four frameworks.             |
 | 06  | API                    | Hono 5, native RPC and OpenAPI 3.1 from the registry                                                           | hono 5.0 RC                                    | One definition per operation, three surfaces. Hono 5 uses the same toolchain.                                         |
 | 07  | MCP                    | Official SDK v2, stateless                                                                                     | @modelcontextprotocol/server 2.3               | Up to date with the 2026-07-28 specification: Tasks, scopes per tool and validation without `eval`.                   |
-| 08  | Access                 | Cloudflare OAuth, passkeys and personal tokens; Access optional                                                | workers-oauth-provider 1.2, simplewebauthn 14  | 115 KB gzipped in the Worker, no Node APIs, and no external setup to start.                                           |
+| 08  | Access                 | Cloudflare OAuth, passkeys and personal tokens; Access optional                                                | workers-oauth-provider 1.2, simplewebauthn 14  | About 115 KB gzipped in a minified Worker, no Node APIs, and no external setup to start.                              |
 | 09  | Admin                  | Vue 3.5 + Nuxt UI 4 (without Nuxt) + Vue Router 5; editor with CodeMirror 6                                    | @nuxt/ui 4.11                                  | Dashboard, tables, forms with Standard Schema and chat, ready to use.                                                 |
 | 10  | Releases               | Changesets with a single version, a `release` branch and direct publishing over OIDC; previews with pkg.pr.new | @changesets/cli 3.0                            | Nothing reaches npm until the maintainer approves the `npm` environment, and `release` only takes commits of `main`.  |
 | 11  | Documentation          | Docus 5, in English                                                                                            | docus 5.14                                     | `llms.txt`, MCP and every page as Markdown, out of the box.                                                           |
@@ -552,6 +552,8 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                   | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
 | [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md)             | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              |
 | [ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)              | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              |
+| [ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)           | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              |
+| [ADR-020](adr/0020-content-safety-is-a-contract.md)                           | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              |
 
 ## Roadmap
 
@@ -602,7 +604,8 @@ Oct–Nov 2026 · 3 weeks.
 - D1 with Drizzle: entries, revisions and optimistic concurrency
 - Comark on write, and the contracts: schema, components, translation pair, internal links and custom rules
 - MCP with SDK v2: `describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish` and `unpublish`
-- OAuth, the owner's passkey and personal tokens
+- Personal tokens; OAuth and passkeys arrive with the admin in v0.3 ([ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md))
+- Content safety as contracts: raw HTML, unknown components and unsafe attributes are errors at write time ([ADR-020](adr/0020-content-safety-is-a-contract.md))
 - CLI: `hollware init`, `migrate`, `token` and `import`
 - The MCP conformance suite and a size budget in CI
 - An example site in `examples/` that reads published entries over RPC
@@ -644,7 +647,7 @@ Dec 2026 – Jan 2027 · 3 weeks.
 - A Markdown editor with CodeMirror 6 and a Comark preview
 - Forms generated from the contracts
 - A revision diff with the author, and an approval queue
-- Passkeys, invitations, tokens and the OAuth consent screen
+- OAuth with the provider's role-based API, passkeys, setup links, invitations, tokens and the OAuth consent screen ([ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md))
 
 **Exit criterion.** A new post written by an agent is reviewed and approved from the admin, and axe reports no serious or critical violations.
 
@@ -737,7 +740,7 @@ The author's own site, sergioazocar.com, is not a validation target of this road
 
 - **The project eats the author's time.** Building a CMS competes with producing videos and posts. Mitigation: every stage ends with a pause and a publishable milestone, and the process of building is itself the content.
 - **Tools in transition.** Hono 5 is a release candidate, Drizzle v1 is a release candidate, the `cf` CLI is in beta and the MCP SDK moves every week. Mitigation: exact versions in the catalog, thin adapters with the version isolated in one file, and a review of the stack at the start of every stage.
-- **10 ms of CPU on the Free plan.** A heavy bundle or a slow parse breaks requests. Mitigation: Comark measures under 3 ms for 10,000 words, a size and startup budget runs in CI, and heavy work goes to Workflows or to the queue.
+- **10 ms of CPU on the Free plan.** A heavy bundle or a slow parse breaks requests. Mitigation: Comark measures about 2.4 ms to parse and render 10,000 words once warm, but a cold isolate pays about 10 ms for the first write of 2,000 words (measured in Node on 2026-10-12). A size budget runs in CI, builds are minified, reads render stored documents without the parser, heavy work goes to Workflows or to the queue, and the demo of v0.2 measures it on Cloudflare.
 - **Comark is pre-1.0.** Its API and the shape of its document can change. Mitigation: `comark_version` on every revision and `hollware reparse`, which is possible because Markdown is the source of truth.
 - **Publishing rests on one account.** A release needs the maintainer's approval of the `npm` environment, and no second factor on npm. That approval is a human act only while the credentials the agents use cannot review deployments (ADR-015). Mitigation:
   - the organization enforces 2FA;
@@ -748,7 +751,7 @@ The author's own site, sergioazocar.com, is not a validation target of this road
 
   The direct path first ran for 0.0.2. Publishing under "require 2FA and disallow tokens" is first exercised by 0.1.0.
 
-- **SimpleWebAuthn on Workers.** SimpleWebAuthn 14 does not list Workers as an official platform. Mitigation: a spike in v0.1 runs it in workerd with a software authenticator, with `nodejs_compat` as the fallback.
+- **SimpleWebAuthn on Workers.** SimpleWebAuthn 14 does not list Workers as an official platform. Mitigation: the v0.1 spike ran a full ceremony with a software authenticator on a built Worker without Node.js compatibility (2026-10-12), so `nodejs_compat` is not needed. Passkeys ship in v0.3.
 - **The brand.** A 2021 trademark application for "HOLOWARE" exists, for product visualization software. It is spelled differently and belongs to a different field, but its status at the USPTO has to be checked before v1.0.
 - **EmDash ships a real headless mode.** That is not a risk, it is information. If it covers the thesis, Hollware is evaluated against it and archived without drama if it loses.
 

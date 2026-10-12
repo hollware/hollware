@@ -183,13 +183,13 @@ Each entry records what was verified on its date. Later entries supersede earlie
 
 ## v0.1 — Core
 
-**Goal:** an agent writes and publishes over MCP with contracts validated at write time,
-and an example site reads what was published over RPC.
+**Goal:** an agent, authenticated with a personal token, writes and publishes over MCP with
+contracts validated at write time, and an example site reads what was published over RPC.
 
 ### Stage start (2026-10-12)
 
 - [x] Stack check: nothing moved since the plan was written. Base: vite-plus 1.1.0 (Vite 8.3.3, Rolldown 1.2.12, tsdown 0.23.0, Vitest 5.0.3), Node 24.21.0 (Node 26 is not LTS yet), pnpm 12.11.2, wrangler 4.149.0, `@cloudflare/vite-plugin` 1.63.1, `@cloudflare/vitest-plugin` 1.4.0, TypeScript 7.0.2. Stage candidates: hono 5.0.0-rc.1 (stable: 4.13.13), `@modelcontextprotocol/server` and `client` 2.3.1, `@modelcontextprotocol/conformance` 0.2.0-alpha.12, comark / `@comark/html` / `@comark/vue` 0.7.0 (they pin markdown-exit 1.1.0-beta.2), drizzle-orm 0.45.4 and drizzle-kit 0.31.11 (v1 still in RC), `@cloudflare/workers-oauth-provider` 1.2.3, `@simplewebauthn/server` 14.0.3, `@standard-schema/spec` 1.1.0. zod: the lockfile already holds 4.6.5 through `@cloudflare/vitest-plugin`, and pinning 4.6.6 in a spike added a second copy, so the catalog pins the copy the lockfile has
-- [ ] Adversarial review of this section, answered before Wave 0
+- [x] Adversarial review of this section, answered before Wave 0 (below; 1 critical, 10 high, 11 medium, 3 low)
 
 ### Maintainer actions (open)
 
@@ -213,16 +213,35 @@ Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and muta
 - [x] S8 MCP conformance 0.2.0-alpha.12 against a stub Worker: no stack problem; the stub fails only unimplemented capabilities and missing `test_*` fixture tools (baselines of 32 and 26 entries, one file per revision)
 - [x] S9 do `vp dev` and `wrangler d1 execute --local` share state? (yes, F0-3b)
 
-### Findings to fold into this plan (adversarial review)
+### Adversarial review (2026-10-12)
 
-- **Node.js compatibility is on by default** for compatibility dates from 2026-08-04 (ours is 2026-10-06): every Wrangler config of Hollware adds `no_nodejs_compat` and `no_nodejs_compat_v2`, and a guard binds them. `@cloudflare/vitest-plugin` forces Node on in the test runner, so "no Node" is proven only on the built Worker under `wrangler dev` (a smoke in CI). ADR-005's "no Node compatibility flag" is corrected. Open: whether the user's starter opts out too
-- **Auth topology:** the role-based API of workers-oauth-provider (`OAuthAuthorizationServer` + one `OAuthResourceServer` per surface, `/mcp` and `/v1`), not the combined `OAuthProvider`; `validateToken` handles personal tokens and OAuth in one place. The provider neither enforces scopes nor guards Host/Origin and reflects any Origin in CORS: Hollware's guard wraps it and fails closed. Route before Hono and pass the real `ExecutionContext`
-- **KV write budget:** a token refresh costs 2 KV writes; with 1 h access tokens the Free plan's 1,000 writes a day covers ~20 always-connected clients. The access token TTL is a decision, and ADR-005's "KV Free is enough" is revised
-- **CIMD:** `global_fetch_strictly_public` does not block private addresses; a "public addresses only" rule is Hollware's own fetch filter
-- **Optimistic write:** an empty `RETURNING` cannot tell `conflict` from `not_found` (one extra read); `db.transaction()` does not work on D1; three triggers keep revisions append-only (`INSERT OR REPLACE` bypasses a DELETE trigger), and a guard lists them after all migrations, because a drizzle-kit table rebuild drops them silently
-- **Markdown pipeline:** `autoClose: false`, one parser per isolate, no `html` plugin, `security({ allowedTags })` with an explicit tag list, our own heading ids, our own checks before parsing (BOM, `maxMarkdownBytes`, `RangeError`/`YAMLException` as violations)
-- **MCP:** the registry sorts the tools (the SDK lists them in registration order); `listChanged: false`; `cacheHints` for `tools/list`; a request without `authInfo` gets 401 from the gateway; `acknowledgeWarnings` stays for 2025 clients, which cannot answer MRTR; conformance runs against `wrangler dev` of the build
-- **CPU risk on the Free plan:** library startup alone is ~20 ms (MCP SDK + zod), ~10 ms (SimpleWebAuthn) and ~9 ms (Comark), and a first write in a cold isolate measured ~10 ms of parsing in Node. Measured on Cloudflare with the demo in v0.2; the `@cloudflare/vite-plugin` build is not minified by default
+A read-only reviewer criticized this section after the spikes and the three settled decisions. The orchestrator checked the key findings against the repository and the libraries (the conformance CLI has no credential option; Comark's `security` drops a disallowed tag unless `tagFallback` is given; `packages/server` has no Workers types, dependencies or test project). The maintainer took three decisions the same day: personal tokens only in v0.1 (ADR-019), content safety as write-time contracts (ADR-020), and the starter opts out of Node.js compatibility too. Each finding and its answer:
+
+- **C1** OAuth needs a setup link, a sign-in and a consent page that nobody owned or tested → v0.1 authenticates with personal tokens only; OAuth, passkeys, setup links, sign-in and consent move to v0.3 with the admin (ADR-019).
+- **H1** Wave 0 did not compile (`server` without Workers types, dependencies or test project; root tasks and CI steps unowned) → Wave 0 items 0.2–0.4 and 0.8, owned by the orchestrator; Wave 0 files are frozen and change only through the orchestrator.
+- **H2** An acceptance suite "written first" breaks `disabled-tests` and `test-projects` and cannot be probed by `break-line` → every WP ships integration tests that are green in its own wave; the acceptance suite is written in Wave 4, with its task, runner and CI step, in one commit.
+- **H3** Wave 1 and Wave 3 dependencies → Wave 0 ships the schema and migrations, the personal token format in `core`, and the test support; Wave 3 is split into 3a (composition) and 3b (playground and conformance).
+- **H4** Conformance cannot send credentials, and baselines can hide anything → a proxy in `tests/conformance` adds a personal token and keeps Host and Origin, in front of `wrangler dev` of the built playground; ADR-022 before WP10: one baseline entry per check with a class and a reason, a shrink-only count, and a must-pass profile that no baseline may list.
+- **H5** `security({ allowedTags })` deletes unknown components before the contract sees them → ADR-020: a disallowed node becomes a marker through `tagFallback`, and the contracts report it; one parser per isolate and allowed tag set; `allowedTags` is never empty; a `::youtub` case in WP2 and WP3.
+- **H6** A child row in the optimistic batch turns a stale write into a foreign key error; D1 limits missing → child rows are inserted only `WHERE EXISTS` their revision; lookups go in chunks of at most 90 parameters; `size-limit` counts the UTF-8 bytes of the whole row; `maxMarkdownBytes` defaults to 512 KiB; tests: a stale write with 30 tags is a `conflict`, 150 tags, 60 internal links.
+- **H7** `migrations/0000_init.sql` is published on npm, and drizzle-kit would start its own `0000` → the shipped file stays byte for byte; drizzle-kit starts from a seeded baseline and generates from `0001`; `_hollware_meta` keeps a reasoned exception in the schema guard; a lock file holds the sha256 of every shipped migration (ADR-023).
+- **H8** The Node.js opt-out had no owner, test or type environment in `server` → Wave 0 item 0.3: the flags in every Wrangler config, the starter included, a guard, and a probe on the built playground; `server/src` type-checks with the generated Workers runtime types and without Node's (item 0.4).
+- **H9** The budget was calibrated against itself, and two CPU limits were mixed → three measures: bytes (minified and gzipped, under an absolute ceiling set before measuring; hard), startup (median of five runs; logged) and CPU per write (cold and warm, logged); minified builds and a lazily imported parser are WP11 deliverables; the Cloudflare measurement stays with the v0.2 demo.
+- **H10** Site isolation had no test → fixtures with rows of a second site, a stranger test per operation and per RPC method, a `site_id` mutation; `defineConfig` accepts one site per deployment in v0.1, and `tokens` carries `site_id` from the start.
+- **M1** OAuth abuse surface and token policy → moved to v0.3 with OAuth (ADR-019); in v0.1 a personal token expires after 90 days by default, one challenge names every missing scope, and `/v1` is not registered before the HTTP API exists.
+- **M2** Acknowledged warnings had nowhere to live → an append-only `publications` table in v0.1 records the verdict of each publish, the acknowledged warnings and who published (ADR-021).
+- **M3** Enum `CHECK`s would force rebuilds in v0.2, and the third trigger looked only at `id` → the `CHECK` lists include the values the design already plans (`scheduled`); the append-only triggers cover every unique key of `revisions`, and the guard tests `INSERT OR REPLACE` per key; ADR-023 tells additive migrations from rebuilds.
+- **M4** Outcomes, errors and views were not fixed → Wave 0 item 0.5 pins, in code and in this plan: outcomes per operation and which are `isError`, the HTTP and RPC equivalents, violations that refuse a write versus those that only block publishing, `get_entry`'s view (`head` or `published`), an output cap that answers `output_too_large` and never truncates, and the full map from effect to MCP hints.
+- **M5** WebAuthn and setup link traps → moved to v0.3 with passkeys (ADR-019); the spike's software authenticator and negative tests are kept on the `spikes/v0.1` branch.
+- **M6** Spike evidence lived in `/tmp`, and public documents were stale → the spike code and its results are on the `spikes/v0.1` branch; ADR-005, ADR-012 and the design are corrected in the commit of this plan.
+- **M7** zod could be installed twice in a user's project → `zod` is a peer dependency of `core` with the range `^4.2.0` (the floor of the MCP SDK) and a dev dependency from the catalog; `catalog-deps` allows a range only in `peerDependencies`; AC-0.1-11 installs the packed tarballs into an empty project and finds one copy.
+- **M8** Acceptance criteria that could not fail → rewritten below, each with its observables and the mutation that turns it red.
+- **M9** Shared test support → Wave 0 item 0.7: fixtures loaded through Vite in Node and workerd, format ignores for fixtures, `core/bench/` outside `src`, one harness pattern on `http://hollware.test`.
+- **M10** The Host and Origin guard was open by default in the spike → it fails closed (ADR-019), and its tests join AC-0.1-6.
+- **M11** Attribute policy, `pipelineVersion` and log noise → ADR-020: an allowlist per tag, strict component props, `pipelineVersion` next to `comarkVersion`, the sanitizer's warnings silenced.
+- **L1** Wrangler telemetry was off only by hand → `send_metrics: false` in every Wrangler config, under the same guard as the Node.js opt-out, and `WRANGLER_SEND_METRICS=false` in CI.
+- **L2** The CLI and secrets, and `import`'s semantics → `import` reads the token from `--token-file` or stdin; token commands use fixed SQL templates with validated values; `import` validates everything first and writes second; `update_draft` answers `unchanged` for identical Markdown and creates no revision.
+- **L3** Loose ends → `last_used_at` is written at most once an hour per token; `defineConfig` has a style guide field for `describe_site`; a site key that disappears from the config is reported at startup; ADR-006 and ADR-009 are confirmed or revised at the close, together with the README status.
 
 ### Settle before Wave 0 dispatch (F0-7 review)
 
@@ -230,57 +249,121 @@ Run on 2026-10-12 in isolated scratch clones by sub-agents, then re-run and muta
 - [x] Where the operation specs live (review S3). The plan put them in `core` and the documents put the whole registry in `server`. The maintainer chose the specs in `core` and the handlers and adapters in `server` on 2026-10-12: [ADR-017](docs/adr/0017-operation-specs-in-core-handlers-in-server.md). The design, ADR-003 (a clarification), the README, `AGENTS.md` and the package descriptions follow in the same commit. A spec declares its effect and holds no MCP vocabulary: `server` derives the annotations
 - [x] `core`'s type environment (review S8). `core` type-checked with Node types and ran its tests only in Node, while the `core-purity` guard knew five Node globals. The maintainer chose a runtime-neutral environment on 2026-10-12: [ADR-018](docs/adr/0018-core-type-checks-against-the-web-platform.md). `src` type-checks against `lib` es2024 + webworker with no `types`, the tests and configs have their own `tsconfig` with Node, every test runs in Node and in `core:workerd`, and `core-purity` checks all three
 
-### Wave 0 (orchestrator): shared interfaces that compile before parallel work
+### Wave 0 (orchestrator): what the parallel work stands on
 
-- [ ] `packages/core/src/config/types.ts` — `defineConfig`, `defineCollection`, `defineComponent`, `defineContract`; collection = `schema` (Standard Schema + JSON Schema), per-locale routes, `translations.groupBy`, `components`, `contracts`, `maxMarkdownBytes`
-- [ ] `packages/core/src/markdown/types.ts` — `processMarkdown()` → frontmatter, document, extracted (headings, classified links, images, components, words), `comarkVersion`; `renderHtml()`
-- [ ] `packages/core/src/contracts/types.ts` — `Violation {contract, severity, path (JSON Pointer), message, fix, line?}`, `Verdict`, `Contract`, `EntryLookup` port
-- [ ] `packages/core/src/operations/` — nine specs (`describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish`, `unpublish`) with Zod input/output, scopes and `effect` (the MCP annotations are derived in `server`, ADR-017); flat outputs `{outcome, entry?, verdict?, conflict?}`
-- [ ] `packages/server/src/{ports.ts, db/schema.ts, db/columns.ts, index.ts}` — `createHollware(config) → {fetch, Hollware}`
-- [ ] Synthetic fixtures: `tests/fixtures/content/**`, `tests/fixtures/documents/*.json`, a bilingual blog config in `apps/playground/hollware.config.ts`
-- [ ] Stage dependencies in the catalog (≥ 24 h old)
+Every item is done, verified and committed by the orchestrator before Wave 1. Afterwards the files of Wave 0 are frozen: a WP that needs a change asks the orchestrator.
+
+- [ ] 0.1 ADRs written with this plan: 019 (personal tokens in v0.1, OAuth in v0.3) and 020 (content safety). Written in Wave 0, before the WPs that build on them: 021 (append-only revisions, conditional child rows, `publications`), 022 (conformance baseline policy) and 023 (fix-forward migrations and the shipped `0000_init.sql`)
+- [ ] 0.2 One install of the stage's dependencies, all at least 24 hours old: hono 5.0.0-rc.1, `@modelcontextprotocol/server` and `client` 2.3.1, `@modelcontextprotocol/conformance` 0.2.0-alpha.12, zod 4.6.5 (the copy the lockfile already has), comark and `@comark/html` 0.7.0, drizzle-orm 0.45.4, drizzle-kit 0.31.11, `@standard-schema/spec` 1.1.0. The OAuth provider and SimpleWebAuthn wait for v0.3. `zod` is a peer dependency of `core` (`^4.2.0`), and `catalog-deps` allows a range in `peerDependencies` only
+- [ ] 0.3 Runtime flags: `no_nodejs_compat`, `no_nodejs_compat_v2` and `send_metrics: false` in every Wrangler config (playground and its site, starter, examples). A guard binds them, with its line in `tests/AGENTS.md`. A test-only probe route answers `typeof globalThis.process` on the built playground; CI sets `WRANGLER_SEND_METRICS=false`
+- [ ] 0.4 `packages/server` as a Workers package:
+  - a Wrangler config for its tests (D1 binding, the flags of 0.3);
+  - runtime types generated by `wrangler types`, and `src` type-checked with them and without Node's types;
+  - `tests/tsconfig.json`, `vitest.workerd.config.ts` (`server:workerd`), and the `build` and `types:check` scripts that `worker-projects` requires
+- [ ] 0.5 Interfaces that compile, with no logic:
+  - `core/src/config`: `defineConfig` (exactly one site per deployment in v0.1), `defineCollection`, `defineComponent`, `defineContract`. A collection holds `schema` (Standard Schema with JSON Schema), routes per locale, `translations.groupBy`, `components` (strict prop schemas), `contracts`, `maxMarkdownBytes` (default 512 KiB) and `styleGuide`
+  - `core/src/markdown`: `processMarkdown()` returns frontmatter, document, extracted data (headings, classified links, images, components, words, and markers for disallowed content), `comarkVersion` and `pipelineVersion`; `renderHtml()` renders a stored document
+  - `core/src/contracts`: `Violation {contract, severity, path (JSON Pointer), message, fix, line?}`, `Verdict` (ok, errors, warnings, phase `write` or `publish`, `contractsHash`), `Contract`, and the `EntryLookup` port with `lookupMany` in chunks
+  - `core/src/operations`: the nine specs (`describe_site`, `list_entries`, `get_entry`, `get_translations`, `create_draft`, `update_draft`, `validate`, `publish`, `unpublish`) with Zod input and output, scopes and effect. The outcome table below is pinned there in code
+  - `core/src/tokens`: the personal token format (`hw_pat_` prefix, SHA-256 hash, `tok_` id, scopes, expiry), shared by `server`, which checks tokens, and the CLI, which makes them
+  - `server/src`: `ports.ts`, `db/schema.ts`, `db/columns.ts`, the handler type and the typed pairing of specs and handlers (ADR-017), and `index.ts` with `createHollware(config) → {fetch, Hollware}`
+- [ ] 0.6 The database baseline:
+  - the Drizzle schema of v0.1;
+  - drizzle-kit seeded from the shipped `0000_init.sql`, then `0001_*` generated and `0002_*` with the append-only triggers written by hand;
+  - `migrations.lock.json` with the sha256 of every shipped migration, and its test;
+  - the schema guard (`site_id`, timestamps, composite keys; `_hollware_meta` as a reasoned exception);
+  - the trigger guard, which lists them after all migrations and tries `INSERT OR REPLACE` on every unique key of `revisions`;
+  - a CI step: `drizzle-kit generate` yields no diff
+- [ ] 0.7 Test support:
+  - synthetic fixtures: bilingual posts, one of 2,027 words, hostile Markdown, and rows of a second site;
+  - a loader through Vite (`import.meta.glob` with `?raw`) that works in Node and in workerd;
+  - `fmt.ignorePatterns` for the fixtures;
+  - `packages/core/bench/` outside `src`;
+  - one harness pattern: requests to `http://hollware.test` with `HOLLWARE_PUBLIC_URL` set to it;
+  - a bilingual blog config in `apps/playground/hollware.config.ts`
+- [ ] 0.8 Root tasks and CI steps: each lands with the first test it runs (`test:conformance` with WP10, `check:budgets` with WP11, `test:acceptance` in Wave 4), so the guard `test-projects` never sees a test that nothing runs
+
+### Operations: outcomes and effects (pinned in `core/src/operations`)
+
+| Operation          | Effect      | Outcomes                                                                 | `isError` outcomes                 |
+| ------------------ | ----------- | ------------------------------------------------------------------------ | ---------------------------------- |
+| `describe_site`    | read        | `ok`                                                                     | —                                  |
+| `list_entries`     | read        | `ok` (keyset cursor)                                                     | —                                  |
+| `get_entry`        | read        | `ok`, `not_found`; `view: head` (MCP) or `published` (RPC)               | `not_found`                        |
+| `get_translations` | read        | `ok`, `not_found`                                                        | `not_found`                        |
+| `create_draft`     | write       | `saved` (verdict may hold errors), `refused`                             | `refused`                          |
+| `update_draft`     | edit        | `saved`, `unchanged`, `conflict`, `not_found`, `refused`                 | `conflict`, `not_found`, `refused` |
+| `validate`         | read        | `ok` (verdict; the version does not change)                              | —                                  |
+| `publish`          | write       | `published`, `blocked`, `needs_acknowledgement`, `conflict`, `not_found` | `blocked`, `conflict`, `not_found` |
+| `unpublish`        | destructive | `unpublished`, `not_found`                                               | `not_found`                        |
+
+- `refused` is kept for content that cannot be stored or listed: a `size-limit` breach, or frontmatter that does not parse. Every other error is saved with the draft and only blocks publishing (ADR-004, ADR-020).
+- Hints from the effect: `read` is read-only and idempotent; `edit` and `write` are neither read-only nor destructive; `destructive` is destructive. Every tool is closed-world (`openWorldHint: false`).
+- An answer over the output cap is the error `output_too_large`, never truncated content. Every call has a timeout and one log line with its `requestId`.
+- The HTTP equivalents follow the same table when the HTTP API arrives in v0.2. RPC exposes `getEntry` (published view), `listEntries`, `getTranslations` and `describeSite`, and nothing that writes.
 
 ### Data model and rules
 
-- `columns.ts`: `id(prefix)` (prefixed ULIDs: `ent_`, `rev_`, `usr_`, `tok_`…), UTC `created_at`/`updated_at` with `$onUpdate`; every table uses it and only repository functions write
-- `site_id` on every table including children, `UNIQUE(id, site_id)` + composite FKs, coherence CHECKs; schema guard test via `getTableConfig` (shrink-only exceptions; user FKs classified); CI: `drizzle-kit generate` yields no diff
-- `entries`: `published_at`, `published_sort_key`, `UNIQUE(site_id, collection, translation_group, locale)`, partial index for published listings; `version` increments on every mutation
-- `revisions`: full file Markdown (byte-identical export); triggers block `DELETE` and updates of immutable columns; derived columns updatable by `reparse`; `revision_tags`
-- Auth tables: `users`, `passkeys`, `tokens` (hash, scopes, expiry, revocation, last use), `setup_links` (single use via atomic `UPDATE … RETURNING`), `auth_challenges`
-- Optimistic write = one `db.batch`: `INSERT INTO revisions … SELECT … WHERE version = ?` + `UPDATE entries … WHERE version = ? RETURNING version`; empty `RETURNING` = conflict; rows over 1.9 MB = `size-limit` violation
-- Reads: MCP on the primary; RPC through `withSession('first-unconstrained')` via one `readDb()`
-- Publish re-runs contracts in phase `publish` → `blocked` on errors; `needs_acknowledgement` on unacknowledged warnings (MRTR when the client declares elicitation)
-- Auth: workers-oauth-provider 1.2.3 authorization + resource servers in one Worker; `validateToken` routes `hw_pat_…` to D1; effective scopes = token ∩ current role; 403 `insufficient_scope` step-up; CIMD with `global_fetch_strictly_public`; issuer from `HOLLWARE_PUBLIC_URL`; Host/Origin guards in front of MCP
-- `tools/list` identical for everyone, sorted and cacheable; scopes checked at call time; `HollwareError {code, message, fix, internal cause}`; each operation declares `effect` → MCP annotations, output cap, timeout, one log line with `requestId`
-- RPC `Hollware` is read-only: `getEntry`, `listEntries`, `getTranslations`, `describeSite`
-- CLI never loads `hollware.config.ts`: `init`, `migrate` (`--check`, backup before `--remote`), `token create|list|revoke` run SQL through the project's `wrangler d1`; `import` talks MCP with a personal token in two phases and is idempotent
+- `columns.ts`: `id(prefix)` (prefixed ULIDs: `ent_`, `rev_`, `usr_`, `tok_`, `pub_`…), UTC `created_at`/`updated_at` with `$onUpdate`; every table uses it and only repository functions write
+- `site_id` on every table, children included, with `UNIQUE(id, site_id)` and composite foreign keys; `CHECK` lists include the values the design already plans (`scheduled` for v0.2); one site per deployment in v0.1, and a site key that leaves the config is reported at startup
+- `entries`: `version` (bumped by every mutation), `head_rev`, `published_rev`, `published_at`, `published_sort_key`, `UNIQUE(site_id, collection, translation_group, locale)`, a partial index for published listings
+- `revisions`: the whole file as Markdown (a byte-identical export) and the derived columns that `reparse` may rewrite (`document`, `comark_version`, `pipeline_version`, `word_count`); three triggers keep it append-only across every unique key; `revision_tags` as a child table
+- `publications` (append-only): entry, revision, the verdict of the publish phase, the acknowledged warnings, the actor (user and token) and the time
+- `users` (the owner in v0.1) and `tokens` (hash, `site_id`, scopes, expiry with a default of 90 days, revocation, `last_used_at` written at most once an hour). Passkeys, setup links and challenges come with v0.3
+- Optimistic write, one `db.batch`: `INSERT INTO revisions … SELECT … WHERE version = ?`, then child rows `INSERT … SELECT … WHERE EXISTS` their revision, then `UPDATE entries … WHERE version = ? RETURNING version`. An empty `RETURNING` is followed by one read that tells `conflict` from `not_found`. D1 runs a batch as one transaction, and `db.transaction()` is not available
+- D1 limits, enforced in code: at most 100 bound parameters per statement (lookups and multi-row inserts in chunks of 90), statements under 100 KB (the Markdown is always bound), rows under 2 MB counted in UTF-8 bytes across all columns before writing (Miniflare does not enforce it), and the 50 queries per invocation of the Free plan
+- Reads: MCP reads the primary; RPC reads through `withSession('first-unconstrained')` with the typed session adapter from the spike
+- Publish runs the contracts in the `publish` phase: errors → `blocked`; unacknowledged warnings → `needs_acknowledgement`, answered with MRTR by 2026 clients that declare elicitation and with `acknowledgeWarnings` by every client; the `publications` row records what was acknowledged
+- Content safety (ADR-020): raw HTML, unknown components, disallowed attributes and unsafe URLs are contract errors with a fix; the parser runs with `autoClose: false`, without the `html` plugin, with `tagFallback` markers and an allowlist of attributes per tag, memoized per isolate and tag set; heading ids are Hollware's own; checks before parsing (a string, BOM removed, `maxMarkdownBytes`; `RangeError` and `YAMLException` become violations)
+- Auth (ADR-019): personal tokens only; effective scopes are the token's scopes intersected with the owner role; a missing scope is `403 insufficient_scope` naming every scope the operation needs; the Host and Origin guard fails closed
+- MCP: `tools/list` sorted by name, the same for every client, `listChanged: false`, a cache hint, schemas converted once per isolate; scopes checked at call time; `HollwareError {code, message, fix, internal cause}`
+- CLI (never loads `hollware.config.ts`):
+  - `init` creates the site, the owner and a first token printed once, and refuses when an owner exists;
+  - `migrate` has `--check`, and backs up before `--remote`;
+  - `token create|list|revoke` use fixed SQL templates with validated values;
+  - `import` reads the token from `--token-file` or stdin, validates everything before writing, and is idempotent through `unchanged`
 
 ### Waves
 
-- [ ] Wave 1: WP1 config (`core/src/{config,schema}`) · WP2 Markdown/Comark (`core/src/markdown`, bench) · WP3 contracts (`core/src/contracts`) · WP4 D1 + Store (`server/src/db`, `server/migrations`) · WP5 auth (`server/src/auth`) · WP6 CLI (`packages/cli`)
-- [ ] Wave 2: WP7 operation handlers (`server/src/ops`) · WP8 MCP adapter (`server/src/mcp`) · WP12a acceptance suite written first (`tests/acceptance/v0.1`)
-- [ ] Wave 3: WP9 Hono composition + RPC (`server/src/{http,rpc}`) · WP10 conformance (`tests/conformance`) · WP11 playground, starter, `examples/worker-site`, budgets (`scripts/check-budgets.ts`)
-- [ ] Wave 4: acceptance green (fixes return to the owning WP), reviewers, close
+Every WP ships integration tests that are green in its own wave, owns disjoint directories, and is verified by the orchestrator with at least one `break-line` mutation per invariant it adds.
 
-### Acceptance criteria (`tests/acceptance/v0.1/`, via `createTestHarness`, the built playground and `examples/worker-site`)
+- [ ] Wave 1 (parallel):
+  - WP1 config (`core/src/config`);
+  - WP2 Markdown and content safety (`core/src/markdown`, `core/bench`);
+  - WP3 contracts, including content safety and `size-limit` (`core/src/contracts`);
+  - WP4 the D1 store on the schema of Wave 0 (`server/src/db`): repository functions, the optimistic write, sessions, limits;
+  - WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
+  - WP6 CLI (`packages/cli`)
+- [ ] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`) · WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types
+- [ ] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`
+- [ ] Wave 3b (parallel):
+  - WP11 playground, starter and `examples/worker-site`, with minified builds and the parser imported lazily on writes; `scripts/check-budgets.ts`;
+  - WP10 conformance (`tests/conformance`): the proxy that adds a token, the baselines of ADR-022 and the task `test:conformance`
+- [ ] Wave 4: the acceptance suite `tests/acceptance/v0.1` with its task, runner and CI step in one commit (orchestrator); fixes go back to the owning WP; three reviewers; close (ADR-006 and ADR-009 confirmed or revised, README status)
 
-| #         | Criterion               | Verification                                                                                                                                                                                                                                        |
-| --------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AC-0.1-1  | Static checks and build | `vp check && vp run -r build && vp run -r publint && vp run -r types:check`                                                                                                                                                                         |
-| AC-0.1-2  | Unit and integration    | `vp test`                                                                                                                                                                                                                                           |
-| AC-0.1-3  | Agent flow (2026-07-28) | `vp run test:acceptance -- agent-flow`: describe_site → invalid draft saved with fixes → publish blocked → fixed update v2 → stale v1 conflict (no new revision) → validate keeps version → publish with warnings via MRTR or `acknowledgeWarnings` |
-| AC-0.1-4  | 2025 clients            | initialize → tools/list → get_entry                                                                                                                                                                                                                 |
-| AC-0.1-5  | RPC from another Worker | published HTML served, drafts 404, `listEntries` with tag + cursor, `getTranslations` ES/EN pair                                                                                                                                                    |
-| AC-0.1-6  | Auth                    | 401 with `resource_metadata`; metadata endpoints; OAuth with the soft passkey; `content:read` token → 403 naming missing scopes; personal token valid/expired/revoked; setup link single use                                                        |
-| AC-0.1-7  | MCP conformance         | `vp run test:conformance` with `--requirements 2026-07-28` and `2025-11-25` → exit 0                                                                                                                                                                |
-| AC-0.1-8  | Budgets                 | `vp run check:budgets` vs `budgets.json` (S7 + 15 %); raising it needs an ADR note                                                                                                                                                                  |
-| AC-0.1-9  | Import                  | synthetic corpus: 10 entries, 5 groups, tags; a second run creates 0 revisions                                                                                                                                                                      |
-| AC-0.1-10 | Migrations              | fresh migrate; re-run is a no-op; `migrate --check`; lock test                                                                                                                                                                                      |
-| AC-0.1-11 | Clean clone             | clone + `pnpm install --frozen-lockfile && vp run check:push && vp run test:acceptance`                                                                                                                                                             |
-| AC-0.1-12 | Tests can fail          | `break-line` on the version predicate, scope gate, publish gate, DNS guard and RPC read-only filter turns each matching AC red                                                                                                                      |
-| AC-0.1-13 | Release 0.1.0           | published through the pipeline with provenance, approved by the maintainer                                                                                                                                                                          |
+### Acceptance criteria (`tests/acceptance/v0.1/`, over the built playground and `examples/worker-site`)
 
-New ADRs: 016 workspace packages resolve to their source (accepted) · 017 operation specs in `core`, handlers in `server` (accepted; the outcome shapes are pinned in Wave 0 code) · 018 `core`'s type environment (accepted) · 019 auth topology · 020 append-only revisions with derived columns · 021 conformance baseline policy · 022 fix-forward migrations.
+| #         | Criterion                      | Verification                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-0.1-1  | Static checks and build        | `vp run check:push` (check, test, build, bins, publint, types)                                                                                                                                                                                                                                                                                                                                                  |
+| AC-0.1-2  | Unit and integration           | `vp test`, with the workerd projects of `core`, `server` and the playground                                                                                                                                                                                                                                                                                                                                     |
+| AC-0.1-3  | Agent flow, 2026 era           | `describe_site` (schema, style guide) → invalid `create_draft`: `saved`, version 1, errors with fixes → `publish`: `blocked` → fixed `update_draft`: `saved`, version 2 → `update_draft` at version 1: `conflict` with `currentVersion` 2, `head_rev` unchanged → `validate`: version still 2 → `publish` with a warning: MRTR elicitation accepted → `published`; `get_entry` returns the acknowledged warning |
+| AC-0.1-4  | Agent flow without MRTR        | the same writes from a 2025 client and from a 2026 client without elicitation: `publish` → `needs_acknowledgement` → `publish` with `acknowledgeWarnings` → `published`                                                                                                                                                                                                                                         |
+| AC-0.1-5  | RPC from another Worker        | `examples/worker-site` serves the published HTML from the stored document; a draft's path is 404; `listEntries` by tag over two cursor pages; `getTranslations` returns the ES/EN pair; after `unpublish` the page is 404; the binding has no write method                                                                                                                                                      |
+| AC-0.1-6  | Auth                           | no token, unknown, expired or revoked token → 401; a `content:read` token on `create_draft` → 403 naming `content:write`; a foreign Host → 403; a foreign Origin → 403; no `HOLLWARE_PUBLIC_URL` → 500                                                                                                                                                                                                          |
+| AC-0.1-7  | MCP conformance                | `vp run test:conformance` (through the token proxy, against `wrangler dev` of the build) with `--requirements 2026-07-28` and `2025-11-25` → exit 0; the must-pass scenarios (initialize or discover, tools-list, json-schema-2020-12, header validation, DNS rebinding protection, caching of `tools/list`, wire schema) have no baseline entry                                                                |
+| AC-0.1-8  | Budgets                        | the built playground Worker, minified and gzipped, stays under the ceiling of `budgets.json` (fixed before measuring; hard); startup (median of five) and CPU per write of the 2,027-word fixture, cold and warm, are logged                                                                                                                                                                                    |
+| AC-0.1-9  | Import                         | the synthetic corpus (10 entries, 5 translation groups, tags) is created; a second run answers `unchanged` for every entry, and no version moves                                                                                                                                                                                                                                                                |
+| AC-0.1-10 | Migrations                     | `hollware migrate` from empty applies all; a second run is a no-op; `migrate --check` lists pending ones; the lock test fails on a changed or missing shipped migration; the triggers exist after all migrations; `drizzle-kit generate` yields no diff                                                                                                                                                         |
+| AC-0.1-11 | Clean clone and packed install | a clean clone runs `pnpm install --frozen-lockfile`, `vp run check:push`, `vp run test:acceptance`, `vp run test:conformance` and `vp run check:budgets`; the six packed tarballs installed into an empty project with zod leave one copy of zod                                                                                                                                                                |
+| AC-0.1-12 | Tests can fail                 | `break-line`, each mutation turning the named AC red: the version predicate (3), the publish gate (3), the scope check (6), the token revocation check (6), the Host guard (6), the RPC read-only surface (5), the `site_id` predicate (13), the content-safety contract (14), the Node.js opt-out flags (15)                                                                                                   |
+| AC-0.1-13 | Site isolation                 | with rows of a second site in the database, every operation and RPC method called with the other site's ids answers `not_found`                                                                                                                                                                                                                                                                                 |
+| AC-0.1-14 | Content safety                 | a draft with raw HTML, `::youtub`, a disallowed attribute and a `javascript:` link is saved with one error for each, every one with a fix; `publish` → `blocked`; the stored Markdown is unchanged; a published entry's HTML holds no raw HTML                                                                                                                                                                  |
+| AC-0.1-15 | No Node.js                     | the built playground answers the probe with `typeof process` `undefined`, and AC-0.1-3 runs against that build                                                                                                                                                                                                                                                                                                  |
+| AC-0.1-16 | CLI                            | `hollware init` on an empty local D1 creates the site, the owner and a token printed once; a second `init` is refused; `token create`, `list` and `revoke`, and the revoked token gets 401                                                                                                                                                                                                                      |
+| AC-0.1-17 | Release 0.1.0                  | published through the pipeline with provenance, after the maintainer action on the agents' credentials is closed, with the maintainer's approval of the `npm` environment                                                                                                                                                                                                                                       |
+
+New ADRs: 016 workspace packages resolve to their source · 017 operation specs in `core`, handlers in `server` · 018 `core`'s type environment · 019 personal tokens in v0.1, OAuth and passkeys with the admin · 020 content safety is a contract (all accepted) · 021 append-only revisions, conditional child rows and `publications` · 022 conformance baseline policy · 023 fix-forward migrations and the shipped `0000_init.sql`.
 
 ### Verification log
 

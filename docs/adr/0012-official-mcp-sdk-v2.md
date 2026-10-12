@@ -22,7 +22,7 @@ Use the official SDK, `@modelcontextprotocol/server` 2.3.x.
 
 - Hollware stays current with the MCP specification. Tasks, scopes per tool and audience validation arrive with the SDK, not with the release schedule of a wrapper.
 - Conformance is verified on every change, so a regression against either specification era fails CI.
-- The SDK moves quickly. Its version is exact in the catalog, and a spike in v0.1 measures the CPU cost of creating a server per request and of converting Zod to JSON Schema. If that is too costly, schemas are precomputed and registered with `fromJsonSchema`.
+- The SDK moves quickly. Its version is exact in the catalog, and a spike in v0.1 measures the CPU cost of creating a server per request and of converting Zod to JSON Schema. If that is too costly, schemas are precomputed and registered with `fromJsonSchema`. The spike (2026-10-12) measured about 2 µs to create the server and about 1.4 ms to convert the schemas of a registry the size of v0.1 on every `tools/list`. Memoizing the converted schemas per isolate brings that to about 0.14 ms and keeps Zod as the only definition, so that is what Hollware does; `fromJsonSchema` stays the fallback.
 - Two SDK lines coexist in the repository, one for the MCP server and one for the agents, and living in separate Workers is what prevents a version clash. The agents package pins `agents` at 0.28.0 in isolation, because that version pins the MCP SDK at 2.0.0.
 - Own agents get a principal with `content:read` and `content:write` and never `content:publish`.
 

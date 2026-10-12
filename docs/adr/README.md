@@ -34,6 +34,8 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 016 | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              | [0016-workspace-packages-resolve-to-source.md](0016-workspace-packages-resolve-to-source.md)                                     |
 | 017 | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              | [0017-operation-specs-in-core-handlers-in-server.md](0017-operation-specs-in-core-handlers-in-server.md)                         |
 | 018 | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              | [0018-core-type-checks-against-the-web-platform.md](0018-core-type-checks-against-the-web-platform.md)                           |
+| 019 | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              | [0019-personal-tokens-in-v0-1-oauth-with-the-admin.md](0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)                     |
+| 020 | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              | [0020-content-safety-is-a-contract.md](0020-content-safety-is-a-contract.md)                                                     |
 
 ## Template
 
