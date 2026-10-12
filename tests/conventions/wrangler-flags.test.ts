@@ -15,6 +15,7 @@ describe('wrangler flags', () => {
     expect(configs.map((config) => config.path)).toEqual([
       'apps/playground/site/wrangler.jsonc',
       'apps/playground/wrangler.jsonc',
+      'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',
     ])
     expect(describeViolations(checkWranglerFlags({ configs }))).toEqual([])

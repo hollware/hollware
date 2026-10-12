@@ -35,7 +35,9 @@
   "scripts": {
     "build": "vp pack",
     "test": "vp test",
-    "publint": "publint --strict"
+    "publint": "publint --strict",
+    "types": "wrangler types",
+    "types:check": "wrangler types --check"
   },
   "dependencies": {
     "@hollware/core": "workspace:*",

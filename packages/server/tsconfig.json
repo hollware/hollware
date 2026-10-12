@@ -1,7 +1,10 @@
 {
+  // src is Workers code. It type-checks with the runtime types that wrangler generates for the
+  // test configuration, where Node.js compatibility is off, and without Node's own types, so a
+  // Node global in src is a type error. The tests and configs use tests/tsconfig.json.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["./worker-configuration.d.ts"]
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["worker-configuration.d.ts", "src"]
 }

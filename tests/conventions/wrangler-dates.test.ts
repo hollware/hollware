@@ -16,6 +16,7 @@ describe('wrangler compatibility dates', () => {
     expect(configs.map((config) => config.path)).toEqual([
       'apps/playground/site/wrangler.jsonc',
       'apps/playground/wrangler.jsonc',
+      'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',
     ])
     const violations = checkWranglerDates({

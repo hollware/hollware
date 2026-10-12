@@ -18,6 +18,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
 - `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency; its `src` type-checks against the web platform only, and every one of its tests runs in Node and in workerd.
+- `tests/conventions/server-types.test.ts`: `packages/server/src` type-checks with the generated Workers runtime types only, so a Node global is a type error.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
 - `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in what the workspace packages and apps install.
