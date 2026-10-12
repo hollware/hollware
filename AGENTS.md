@@ -45,6 +45,12 @@ new process group, so the child outlives its supervisor.
 - `vp dev` starts through a launcher: stopping the launcher leaves the dev server and
   workerd running. Stop the process that listens on the port instead.
 - `compatibility_date` must not be newer than the workerd that wrangler bundles.
+- Workers turn Node.js compatibility on by default from the 2026-08-04 compatibility date.
+  Every `wrangler.jsonc` here opts out with `no_nodejs_compat` and `no_nodejs_compat_v2`,
+  and Hollware's own set `send_metrics: false`.
+- The test runner of `@cloudflare/vitest-plugin` keeps Node.js compatibility on whatever
+  the flags say, so a workerd test never proves that code runs without Node.js. The
+  playground's harness test proves it on the built Workers.
 
 ## Layout
 

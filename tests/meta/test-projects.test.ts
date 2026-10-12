@@ -84,6 +84,7 @@ describe('test projects', () => {
     expect(inProject('playground:workerd')).toEqual([
       'apps/playground/test/workerd/database.workerd.test.ts',
       'apps/playground/test/workerd/health.workerd.test.ts',
+      'apps/playground/test/workerd/node-globals.workerd.test.ts',
     ])
     expect(inProject('playground:harness')).toEqual(['apps/playground/test/harness/site.test.ts'])
   }, 60_000)

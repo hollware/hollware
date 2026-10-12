@@ -8,6 +8,11 @@ on:
 
 permissions: {}
 
+# Wrangler sends anonymous telemetry unless told not to; the Wrangler configs of this
+# repository say so too, with send_metrics: false.
+env:
+  WRANGLER_SEND_METRICS: 'false'
+
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

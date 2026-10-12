@@ -4,6 +4,10 @@
   "main": "src/worker.ts",
   // The latest compatibility date the workerd bundled with wrangler supports.
   "compatibility_date": "2026-10-06",
+  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
+  // Hollware runs and is tested without it. Remove both flags only if your own code needs
+  // Node.js APIs.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
   "d1_databases": [
     {
       "binding": "DB",

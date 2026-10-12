@@ -17,6 +17,14 @@ export class Playground extends WorkerEntrypoint<Env> {
     return `pong ${message}`
   }
 
+  /**
+   * The Node.js globals this isolate has. Empty in a built Worker that opts out of Node.js
+   * compatibility; the tests read it to tell where Node.js is on.
+   */
+  nodeGlobals(): string[] {
+    return ['process', 'Buffer', 'setImmediate'].filter((name) => name in globalThis)
+  }
+
   async metaKeys(): Promise<string[]> {
     // Descending on purpose: the primary-key index already yields ascending order, so an
     // ascending ORDER BY could not be told apart from none at all.
