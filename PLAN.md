@@ -94,8 +94,9 @@ before the first feature.
 - [x] The orchestrator adds the first changeset (`patch` for all six) in the same commit as the packages, so CI's changeset check passes from the first push
 - [x] **Maintainer:** stage-only trust for the six packages; `0.0.1` shipped through the staging pipeline (Version Packages PR #1 → environment approval → six staged versions approved with 2FA → tags and releases)
 - [x] **Decision (2026-10-11, ADR-015):** no more npm staging; a `release` branch for production. `main` only versions (Version Packages PR); `release` moves by fast-forward to a commit on `main` and publishes directly with OIDC and provenance after the maintainer approves the `npm` environment
-- [x] **Maintainer:** trusted publishers replaced with `--allow-publish` (environment `npm`)
-- [ ] Ship `0.0.2` through the new pipeline: changeset → Version Packages PR → merge → `git push origin <version commit>:release` → environment approval → publish → tags and releases
+- [x] **Maintainer:** trusted publishers replaced with `--allow-publish` (environment `npm`). The first pass missed `@hollware/core`: the helper script piped `npm trust list`, and npm asks for 2FA only on a terminal, so nothing was revoked. Fixed on 2026-10-12, and `.github/AGENTS.md` now says how to run `npm trust`
+- [x] Ship `0.0.2` through the new pipeline: changeset → Version Packages PR #2 → merge → `git push origin <version commit>:release` → environment approval → publish → tags and releases (run 38198863769, two attempts, see the verification log)
+- [ ] **Maintainer:** set the six packages to "Require two-factor authentication and disallow tokens" (`npm access set mfa=publish <package>` or the package's settings page), which ADR-015 counts on. npm has no command that reads it back, so the settings page is the check
 
 ### F0-7 Close
 
@@ -133,6 +134,7 @@ C1 root `vp test` had no projects → `test.projects` added. C2 the changeset ch
 - 2026-10-11 — npm: the six names hold `0.0.0` placeholders. GitHub: `hollware/hollware` created public with private vulnerability reporting, Dependabot alerts, secret scanning + push protection, squash-only merges titled by the PR, SHA pinning required, read-only workflow token, fork approval for external contributors, environment `npm` (maintainer review, `main` only), rulesets for `main` and release tags, immutable releases.
 - 2026-10-12 — `0.0.1` released through the staging pipeline: the six staged tarballs matched the CI pack byte for byte (sha1), `dist.attestations` show SLSA v1 provenance for all six, tags and GitHub Releases exist (`hollware` marked Latest), `npm audit signatures` → 6 verified registry signatures and 6 verified attestations. The changeset check had to skip the Version Packages PR (fixed in `5a55713`, bound by `tests/ci/changeset-check.test.ts`).
 - 2026-10-12 — ADR-015 implemented: `release.yml` versions on `main` and promotes/packs/publishes/finalizes on `release`; 418 tests, `check:push` green, actionlint/shellcheck/zizmor clean; orchestrator mutations on the environment and the ancestor check → CAUGHT.
+- 2026-10-12 — `0.0.2` released from `release` (run 38198863769). Attempt 1 published `@hollware/admin`, `hollware` and `@hollware/client`, then npm refused `@hollware/core` with `403 OIDC permission denied for this action`: its trusted publisher was still stage-only. Once the maintainer fixed it, attempt 2 skipped those three and published `@hollware/core`, `create-hollware` and `@hollware/server`. `finalize` tagged `b297541` six times and created six immutable releases (`hollware@0.0.2` Latest). All six: `latest` is 0.0.2; SLSA v1 provenance built from `refs/heads/release` by `.github/workflows/release.yml`; the tarballs on npm equal the CI pack (sha512 and sha1); `npm audit signatures` → 6 verified registry signatures and 6 verified attestations.
 
 ---
 
