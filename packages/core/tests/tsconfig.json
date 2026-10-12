@@ -1,0 +1,9 @@
+{
+  // The tests and the configs of core run in Node, so they type-check with Node types. The
+  // source they import keeps its own, stricter environment in ../tsconfig.json (ADR-018).
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [".", "../vite.config.ts", "../vitest.workerd.config.ts"]
+}

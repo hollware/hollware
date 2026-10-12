@@ -37,6 +37,8 @@ new process group, so the child outlives its supervisor.
   `@cloudflare/vitest-plugin`) and `playground:harness` (Node, through wrangler's
   `createTestHarness` over the Vite build). Run both with
   `pnpm --filter @hollware/playground run test`.
+- The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
+  its `src` type-checks against the web platform only (ADR-018).
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
 - Keep `fsModuleCache: false` in workerd test configs: with `true`, Vitest 5 and
   `@cloudflare/vitest-plugin` fail to read their module cache (workers-sdk#15618).

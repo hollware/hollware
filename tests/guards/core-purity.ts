@@ -1,5 +1,8 @@
 import { builtinModules } from 'node:module'
+import { isDeepStrictEqual } from 'node:util'
+import { parseJsonc } from '../support/jsonc.ts'
 import { analyzeSource } from '../support/source.ts'
+import { isRecord, recordAt } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { dependencySpecs, parseManifests } from './workspace.ts'
 
@@ -18,6 +21,11 @@ import { dependencySpecs, parseManifests } from './workspace.ts'
  * The manifest of core may not depend on Cloudflare either: its `dependencies`,
  * `peerDependencies` and `optionalDependencies` hold no `@cloudflare/*` package and no
  * `wrangler` ("No Cloudflare dependencies", as its README says). Dev dependencies are tools.
+ *
+ * Two more facts keep the claim true beyond those names (ADR-018). `packages/core/tsconfig.json`
+ * covers only `src`, with the web platform as its type environment (`lib` es2024 and webworker,
+ * no `types`), so `vp check` rejects any other Node or browser global. And every test file of
+ * `packages/core/tests` runs twice: in Node and inside workerd.
  */
 
 export interface CorePurityInput {
@@ -25,7 +33,19 @@ export interface CorePurityInput {
   files: readonly TextFile[]
   /** `packages/core/package.json`. */
   manifest: TextFile
+  /** `packages/core/tsconfig.json`: the type environment of `src`. */
+  tsconfig: TextFile
+  /** The test files under `packages/core/tests`. */
+  testFiles: readonly string[]
+  /** Where Vitest runs each test file of the repository, as `vp test list` reports it. */
+  testRuns: readonly { file: string; project: string }[]
 }
+
+/** The type environment of core's `src`: the web platform, no Node and no DOM (ADR-018). */
+const SOURCE_TYPES = { include: ['src'], lib: ['es2024', 'webworker'], types: [] }
+
+/** The projects each test of core runs in: Node, then workerd. */
+const CORE_TEST_PROJECTS = ['@hollware/core', 'core:workerd']
 
 const BARE_BUILTINS: ReadonlySet<string> = new Set(builtinModules)
 
@@ -39,8 +59,46 @@ export function forbiddenSpecifierReason(specifier: string): string | undefined 
   return undefined
 }
 
+function checkTypeEnvironment(tsconfig: TextFile): Violation[] {
+  const report = (message: string): Violation[] => [
+    { rule: 'core-purity/types', file: tsconfig.path, message },
+  ]
+  const parsed = parseJsonc(tsconfig.text)
+  if (!parsed.ok) return report(`the file does not parse, so it cannot be checked: ${parsed.error}`)
+  const options = recordAt(parsed.value, 'compilerOptions')
+  const found = {
+    include: isRecord(parsed.value) ? parsed.value.include : undefined,
+    lib: options?.lib,
+    types: options?.types,
+  }
+  return isDeepStrictEqual(found, SOURCE_TYPES)
+    ? []
+    : report(
+        `must type-check only src against the web platform, ${JSON.stringify(SOURCE_TYPES)}, so that a Node or browser global is a type error (ADR-018); found ${JSON.stringify(found)}`,
+      )
+}
+
+function checkTestRuntimes(input: CorePurityInput): Violation[] {
+  const violations: Violation[] = []
+  for (const file of input.testFiles) {
+    const projects = input.testRuns
+      .filter((run) => run.file === file)
+      .map((run) => run.project)
+      .sort()
+    if (!isDeepStrictEqual(projects, [...CORE_TEST_PROJECTS].sort())) {
+      violations.push({
+        rule: 'core-purity/runtimes',
+        file,
+        message: `runs in ${JSON.stringify(projects)}: every test of core runs in Node and inside workerd, ${JSON.stringify(CORE_TEST_PROJECTS)} (ADR-018)`,
+      })
+    }
+  }
+  return violations
+}
+
 export function checkCorePurity(input: CorePurityInput): Violation[] {
   const { manifests, violations } = parseManifests([input.manifest])
+  violations.push(...checkTypeEnvironment(input.tsconfig), ...checkTestRuntimes(input))
   for (const manifest of manifests) {
     for (const { field, name } of dependencySpecs(manifest, [
       'dependencies',

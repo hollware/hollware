@@ -497,7 +497,7 @@ The SQL above is the sketch from the design phase. The v0.1 implementation refin
 
 ## Repository and stack
 
-**One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare, so it can be tested in Node. The versions are those published as of 11 October 2026. Each stage pins the ones it uses in the pnpm catalog when it starts.
+**One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare: its source type-checks against the web platform only, and its tests run in Node and inside workerd ([ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)). The versions are those published as of 11 October 2026. Each stage pins the ones it uses in the pnpm catalog when it starts.
 
 | Package            | What it is                                                                                                                                   | Phase |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
@@ -551,6 +551,7 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-015](adr/0015-release-branch-and-direct-publishing.md)                   | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              |
 | [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                   | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
 | [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md)             | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              |
+| [ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)              | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              |
 
 ## Roadmap
 

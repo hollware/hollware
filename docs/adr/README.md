@@ -33,6 +33,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 015 | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              | [0015-release-branch-and-direct-publishing.md](0015-release-branch-and-direct-publishing.md)                                     |
 | 016 | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              | [0016-workspace-packages-resolve-to-source.md](0016-workspace-packages-resolve-to-source.md)                                     |
 | 017 | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              | [0017-operation-specs-in-core-handlers-in-server.md](0017-operation-specs-in-core-handlers-in-server.md)                         |
+| 018 | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              | [0018-core-type-checks-against-the-web-platform.md](0018-core-type-checks-against-the-web-platform.md)                           |
 
 ## Template
 

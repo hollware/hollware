@@ -1,28 +1,60 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { checkCorePurity, forbiddenSpecifierReason } from '../guards/core-purity.ts'
 import { isScannedSource } from '../guards/declared-imports.ts'
+import { isTestFile } from '../guards/test-projects.ts'
 import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
-import { readRepoFiles } from '../support/repo.ts'
+import { readRepoFiles, repoFiles } from '../support/repo.ts'
+import { listedTestFiles } from '../support/vitest-list.ts'
 
 // Fails when: a file under packages/core/src imports cloudflare:*, @cloudflare/*, wrangler,
-// node:* or a Node built-in, or uses process, Buffer, __dirname, __filename or require.
+// node:* or a Node built-in, or uses process, Buffer, __dirname, __filename or require; when
+// packages/core/tsconfig.json stops type-checking only src against the web platform (lib es2024
+// and webworker, no types); or when a test of core stops running both in Node and in workerd.
 
 const MANIFEST = file('packages/core/package.json', json({ name: '@hollware/core' }))
+const TSCONFIG = file(
+  'packages/core/tsconfig.json',
+  json({
+    extends: '../../tsconfig.base.json',
+    compilerOptions: { lib: ['es2024', 'webworker'], types: [] },
+    include: ['src'],
+  }),
+)
+const TEST = 'packages/core/tests/index.test.ts'
+const RUNS = {
+  testFiles: [TEST],
+  testRuns: [
+    { file: TEST, project: '@hollware/core' },
+    { file: TEST, project: 'core:workerd' },
+  ],
+}
 const core = (text: string) => [{ path: 'packages/core/src/index.ts', text }]
-const violationsOf = (text: string) => checkCorePurity({ files: core(text), manifest: MANIFEST })
+const violationsOf = (text: string) =>
+  checkCorePurity({ files: core(text), manifest: MANIFEST, tsconfig: TSCONFIG, ...RUNS })
 
 describe('core purity', () => {
-  it('packages/core/src imports nothing from Cloudflare or Node and uses no Node global', () => {
+  it('packages/core keeps to the web platform: imports, globals, dependencies, types and runtimes', () => {
     const files = readRepoFiles(
       (path) => path.startsWith('packages/core/src/') && isScannedSource(path),
     )
     expect(files.map((source) => source.path)).toContain('packages/core/src/index.ts')
     const manifest = readRepoFiles((path) => path === 'packages/core/package.json')[0]
     expect(manifest?.path).toBe('packages/core/package.json')
-    expect(describeViolations(checkCorePurity({ files, manifest: manifest ?? MANIFEST }))).toEqual(
-      [],
+    const tsconfig = readRepoFiles((path) => path === 'packages/core/tsconfig.json')[0]
+    expect(tsconfig?.path).toBe('packages/core/tsconfig.json')
+    const testFiles = repoFiles().filter(
+      (path) => path.startsWith('packages/core/tests/') && isTestFile(path),
     )
+    expect(testFiles).toContain(TEST)
+    const violations = checkCorePurity({
+      files,
+      manifest: manifest ?? MANIFEST,
+      tsconfig: tsconfig ?? TSCONFIG,
+      testFiles,
+      testRuns: listedTestFiles(),
+    })
+    expect(describeViolations(violations)).toEqual([])
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
@@ -136,7 +168,7 @@ describe('core purity', () => {
           devDependencies: { wrangler: 'catalog:', '@cloudflare/vitest-plugin': 'catalog:' },
         }),
       )
-      expect(checkCorePurity({ files: [], manifest })).toEqual([
+      expect(checkCorePurity({ files: [], manifest, tsconfig: TSCONFIG, ...RUNS })).toEqual([
         {
           rule: 'core-purity/dependency',
           file: 'packages/core/package.json',
@@ -156,6 +188,84 @@ describe('core purity', () => {
             'optionalDependencies lists @cloudflare/vite-plugin: core has no Cloudflare dependency (a tool belongs in devDependencies)',
         },
       ])
+    })
+
+    it('reports a tsconfig that gives src the Node types, or that covers more than src', () => {
+      const check = (compilerOptions: object, include: string[]) =>
+        checkCorePurity({
+          files: [],
+          manifest: MANIFEST,
+          tsconfig: file('packages/core/tsconfig.json', json({ compilerOptions, include })),
+          ...RUNS,
+        })
+      const expected = (found: object) => [
+        {
+          rule: 'core-purity/types',
+          file: 'packages/core/tsconfig.json',
+          message: `must type-check only src against the web platform, {"include":["src"],"lib":["es2024","webworker"],"types":[]}, so that a Node or browser global is a type error (ADR-018); found ${JSON.stringify(found)}`,
+        },
+      ]
+      expect(check({ lib: ['es2024', 'webworker'], types: ['node'] }, ['src'])).toEqual(
+        expected({ include: ['src'], lib: ['es2024', 'webworker'], types: ['node'] }),
+      )
+      expect(check({ lib: ['es2024', 'dom'], types: [] }, ['src'])).toEqual(
+        expected({ include: ['src'], lib: ['es2024', 'dom'], types: [] }),
+      )
+      expect(check({ lib: ['es2024', 'webworker'], types: [] }, ['src', 'tests'])).toEqual(
+        expected({ include: ['src', 'tests'], lib: ['es2024', 'webworker'], types: [] }),
+      )
+    })
+
+    it('reads a tsconfig with comments, and reports one that does not parse', () => {
+      const tsconfig = (text: string) =>
+        checkCorePurity({
+          files: [],
+          manifest: MANIFEST,
+          tsconfig: file('packages/core/tsconfig.json', text),
+          ...RUNS,
+        })
+      const commented = [
+        '{',
+        '  // The web platform only.',
+        '  "compilerOptions": { "lib": ["es2024", "webworker"], "types": [] },',
+        '  "include": ["src"]',
+        '}',
+      ].join('\n')
+      expect(tsconfig(commented)).toEqual([])
+      const broken = tsconfig('{ "include": ')
+      expect(broken.map((violation) => violation.rule)).toEqual(['core-purity/types'])
+      expect(broken[0]?.message).toMatch(/^the file does not parse, so it cannot be checked: /)
+    })
+
+    it('reports a test of core that does not run both in Node and inside workerd', () => {
+      const runs = (projects: string[]) =>
+        checkCorePurity({
+          files: [],
+          manifest: MANIFEST,
+          tsconfig: TSCONFIG,
+          testFiles: [TEST],
+          testRuns: [
+            ...projects.map((project) => ({ file: TEST, project })),
+            { file: 'packages/core/tests/other.test.ts', project: 'core:workerd' },
+          ],
+        })
+      expect(runs(['@hollware/core'])).toEqual([
+        {
+          rule: 'core-purity/runtimes',
+          file: TEST,
+          message:
+            'runs in ["@hollware/core"]: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+        },
+      ])
+      expect(runs([])).toEqual([
+        {
+          rule: 'core-purity/runtimes',
+          file: TEST,
+          message:
+            'runs in []: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+        },
+      ])
+      expect(runs(['core:workerd', '@hollware/core'])).toEqual([])
     })
 
     it('knows which specifiers are forbidden', () => {

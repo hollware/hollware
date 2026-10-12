@@ -46,10 +46,12 @@ export default defineConfig({
     ],
   },
   test: {
-    // Each package folder is a project (its own vite.config.ts, if any, applies).
+    // Each package folder is a project (its own vite.config.ts, if any, applies). A package
+    // whose tests also run in workerd adds vitest.workerd.config.ts (core, ADR-018).
     // Worker apps expose their test configs as vitest.config.ts or vitest.*.config.ts.
     projects: [
       'packages/*',
+      'packages/*/vitest.*.config.ts',
       'apps/*/vitest.config.ts',
       'apps/*/vitest.*.config.ts',
       'templates/*/vitest.config.ts',

@@ -17,7 +17,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/build-order.test.ts`: `check:push` runs `vp check` and `vp test` before anything builds, so CI proves that no package needs another one built.
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
-- `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency.
+- `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency; its `src` type-checks against the web platform only, and every one of its tests runs in Node and in workerd.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
