@@ -90,6 +90,50 @@ fails when the claim stops being true. When a change adds a source of truth, an
 invariant or a convention, bind it to a test, a lint rule or a type in the same
 change, and mention it here. Never weaken or delete a guard to make a change pass.
 
+## Guards
+
+What each guard binds. A guard is a pure function in `tests/guards/<name>.ts`; its test runs it on
+this repository (no violation) and on a bad fixture (the exact violation). Facts of the repository
+live in `tests/conventions/`, claims about docs and tests in `tests/meta/`. Exceptions live only in
+`tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. A new guard adds its
+line here. Run them with `pnpm exec vp test --project repo`. After `vp run -r build`,
+`node scripts/check-bins.ts` runs each built bin with `--version`.
+
+- `tests/conventions/manifests.test.ts`: the six packages share one manifest shape and version; apps and templates are private.
+- `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
+- `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
+- `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency.
+- `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
+- `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`.
+- `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
+- `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds and excludes, exact catalog.
+- `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
+- `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
+- `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` in two jobs, no kept credentials, Scorecard rules.
+- `tests/conventions/workflow-forbidden.test.ts`: no npm token, direct publish, `git push`, `npx` or `dlx`; zizmor ignores allowlisted.
+- `tests/conventions/release-workflow.test.ts`: release jobs gated to this repository and `main`; `stage` isolated.
+- `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
+- `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
+- `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
+- `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address across the docs.
+- `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
+- `tests/conventions/code-of-conduct.test.ts`: no template placeholder, one contact address.
+- `tests/conventions/personal-email.test.ts`: no personal email address in any file.
+- `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`.
+- `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
+- `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.
+- `tests/meta/agents-commands.test.ts`: the `vp run`, `pnpm --filter` and `node` commands `AGENTS.md` cites exist.
+- `tests/meta/markdown-links.test.ts`: relative links and anchors in every Markdown file lead somewhere.
+- `tests/meta/package-lists.test.ts`: Layout, README table and changeset README list the real packages.
+- `tests/meta/agents-size.test.ts`: every `AGENTS.md` stays within 12,000 characters.
+- `tests/meta/test-projects.test.ts`: every test file belongs to a project that `vp test` lists.
+- `tests/meta/contributing.test.ts`: `CONTRIBUTING.md` agrees on Node.js, pnpm and the commands table.
+- `tests/meta/exceptions.test.ts`: exception lists keep their recorded size; none lives outside the registry file.
+- `tests/meta/patches.test.ts`: a dependency patch starts with `PATCHED (reason)` and a test mentions it.
+- `tests/meta/guards-registry.test.ts`: every guard file is cited here, once, with what it binds.
+- `tests/meta/self-tests.test.ts`: every guard is run by a test with a `self-test` block feeding it a bad fixture.
+- `tests/meta/scanners.test.ts`: the JSONC, Markdown, source and workspace readers the guards stand on.
+
 ## Updating dependencies
 
 1. Check what is outdated with `pnpm outdated -r`.
