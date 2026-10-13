@@ -86,12 +86,16 @@ export default defineConfig({
           "vp test bench --project '@hollware/core (bench)' packages/core/bench/markdown.bench.ts",
         cache: false,
       },
+      // The size budget of the Hollware Worker, built minified (budgets.json), and its startup and
+      // write cost, which are logged and have no ceiling.
+      'check:budgets': { command: 'node scripts/check-budgets.ts', cache: false },
       'check:push': {
         command: [
           'vp check',
           'vp test',
           'vp run bench',
           'vp run -r build',
+          'vp run check:budgets',
           'node scripts/check-bins.ts',
           'vp run -r publint',
           'vp run -r types:check',

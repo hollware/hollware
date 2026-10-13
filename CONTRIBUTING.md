@@ -37,7 +37,8 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp test`                                                       | Run every test project; `--project <name>` runs one                               |
 | `pnpm exec vp run -r build`                                               | Build every package                                                               |
 | `pnpm exec vp run bench`                                                  | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
-| `pnpm exec vp run check:push`                                             | Everything CI runs: check, test, bench, build, publint, types                     |
+| `pnpm exec vp run check:budgets`                                          | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
+| `pnpm exec vp run check:push`                                             | Everything CI runs: check, test, bench, build, budgets, publint, types            |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 `vp` is Vite+. Always run the copy installed in the repository, through `pnpm exec`: a global `vp` of another version breaks the Cloudflare plugin. `AGENTS.md` writes `vp` as shorthand for `pnpm exec vp`.

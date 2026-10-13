@@ -51,7 +51,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: bash .github/scripts/changeset-check.sh
 
-      - name: Check, test, build, publint and types
+      - name: Check, test, bench, build, budgets, publint and types
         run: vp run check:push
 
   preview:

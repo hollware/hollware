@@ -24,7 +24,8 @@ deleted when v1.0 ships, together with this section.
 | `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                       |
 | `vp run -r build`                                                         | Build every package                                                               |
 | `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
-| `vp run check:push`                                                       | Everything CI runs: check, test, bench, build, publint, types                     |
+| `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
+| `vp run check:push`                                                       | Everything CI runs: check, test, bench, build, budgets, publint, types            |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A
@@ -34,10 +35,11 @@ new process group, so the child outlives its supervisor.
 
 ## Workers in this repo
 
-- The playground has two test projects: `playground:workerd` (inside workerd, through
-  `@cloudflare/vitest-plugin`) and `playground:harness` (Node, through wrangler's
-  `createTestHarness` over the Vite build). Run both with
-  `pnpm --filter @hollware/playground run test`.
+- The playground is a Hollware project (`apps/playground/src/index.ts` is `createHollware(config)`),
+  and `examples/worker-site` is the site that reads it over a service binding. The playground has
+  two test projects: `playground:workerd` (inside workerd, through `@cloudflare/vitest-plugin`) and
+  `playground:harness` (Node, through wrangler's `createTestHarness` over the Vite builds of both
+  Workers). Run both with `pnpm --filter @hollware/playground run test`.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
   its `src` type-checks against the web platform only (ADR-018).
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
@@ -54,7 +56,23 @@ new process group, so the child outlives its supervisor.
   playground's harness test proves it on the built Workers.
 - Harness tests reach Hollware at `http://hollware.test` and give the Worker that URL as
   its `HOLLWARE_PUBLIC_URL`: build the harness with `createPlaygroundHarness()` from
-  `apps/playground/test/harness/workers.ts`.
+  `apps/playground/test/harness/workers.ts`. Hollware is its primary Worker, so
+  `server.fetch('http://hollware.test/...')` carries the Host its guard compares; a request sent
+  straight to a Worker (`server.getWorker(name).fetch`) carries the harness's own Host, so only the
+  site is reached that way (`siteFetch`). Content is created as an agent creates it, through
+  `agentWith(...)` and MCP; the personal token that lets it in (`seedOwnerToken(...)`, in
+  `apps/playground/test/harness/support.ts`) is the one thing a test writes to D1 itself.
+- Cloudflare's `Service<...>` turns every RPC answer that holds `unknown` (an entry's frontmatter,
+  its document) into `never`: read a binding through `HollwareRpc` of `@hollware/server`, as
+  `examples/worker-site/src/env.ts` does.
+- The `Probe` entrypoint of the playground (`apps/playground/src/probe.ts`) and of the example
+  (`examples/worker-site/src/probe.ts`), each bound to itself as `PROBE`, is how a Node.js test asks
+  a built Worker which Node.js globals it has. It is no route, so the gateway's guard has no
+  exception for it.
+- `budgets.json` holds the ceilings of the built playground Worker, minified and gzipped (main
+  module 250 KiB, all modules 400 KiB, fixed before measuring); raising one needs a note in an ADR.
+  `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
+  (read from the source maps of the build), and logs startup and the cost of a write.
 - Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, which
   works in Node and inside workerd (`tests/fixtures/README.md`). Rows of a second site,
   for the tests that one site cannot reach another, come from
