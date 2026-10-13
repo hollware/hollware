@@ -57,7 +57,14 @@ describe('commands in AGENTS.md', () => {
       expect.arrayContaining(['AGENTS.md', 'tests/AGENTS.md']),
     )
     expect(rootTasks()).toEqual(
-      new Set(['bench', 'check:budgets', 'check:commit', 'check:push', 'test:conformance']),
+      new Set([
+        'bench',
+        'check:budgets',
+        'check:commit',
+        'check:push',
+        'test:acceptance',
+        'test:conformance',
+      ]),
     )
     const violations = checkAgentsCommands({
       docs,

@@ -296,7 +296,9 @@ const blog = defineCollection({
   },
   contracts: [
     contracts.translationPair(), // every locale of the site has its entry in the group
-    contracts.internalLinksResolve(), // internal links point at published entries
+    // internal links point at published entries; a warning, because as an error two drafts that
+    // link to each other could never be published, each waiting for the other
+    contracts.internalLinksResolve({ severity: 'warning' }),
     contracts.imagesHaveAlt(),
     {
       // a rule of the site, as a plain object: its check gets the type of the schema

@@ -147,10 +147,31 @@ export async function createDraft(agent: Agent, draft: Draft) {
   return entryOf(answer)
 }
 
-/** Creates an entry and publishes it, and returns its id. */
+/** The warnings of a `needs_acknowledgement` answer, as `publish` takes them back. */
+function warningsOf(answer: ToolAnswer): { contract: unknown; path: unknown }[] {
+  const { verdict } = answer.output
+  const warnings = isRecord(verdict) ? verdict['warnings'] : undefined
+  if (!Array.isArray(warnings)) {
+    throw new Error(`the answer lists no warnings: ${JSON.stringify(answer.output)}`)
+  }
+  return warnings.map((warning: unknown) => ({
+    contract: isRecord(warning) ? warning['contract'] : undefined,
+    path: isRecord(warning) ? warning['path'] : undefined,
+  }))
+}
+
+/**
+ * Creates an entry and publishes it, and returns its id. When publish asks to acknowledge
+ * warnings, this acknowledges them: these tests are about what a site reads, and the playground's
+ * contracts warn about a missing translation and a link to an entry that is not published yet.
+ * The acceptance suite (tests/acceptance) holds the contracts themselves.
+ */
 export async function publishNew(agent: Agent, draft: Draft): Promise<string> {
   const { id, version } = await createDraft(agent, draft)
-  const answer = await agent.call('publish', { id, version })
+  let answer = await agent.call('publish', { id, version })
+  if (answer.output['outcome'] === 'needs_acknowledgement') {
+    answer = await agent.call('publish', { id, version, acknowledgeWarnings: warningsOf(answer) })
+  }
   if (answer.output['outcome'] !== 'published') {
     throw new Error(
       `${draft.locale}/${draft.slug} was not published: ${JSON.stringify(answer.output)}`,

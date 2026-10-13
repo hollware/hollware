@@ -78,8 +78,8 @@ export default defineConfig({
   run: {
     cache: { scripts: false, tasks: true },
     tasks: {
-      // The pre-commit hook runs check:commit; CI runs check:push, and test:conformance in a job
-      // of its own.
+      // The pre-commit hook runs check:commit; CI runs check:push, and test:conformance and
+      // test:acceptance in jobs of their own.
       'check:commit': { command: 'vp check', cache: false },
       // The Markdown pipeline's budget: the p95 CPU time of a write of the 2,027-word fixture.
       bench: {
@@ -90,6 +90,12 @@ export default defineConfig({
       // The size budget of the Hollware Worker, built minified (budgets.json), and its startup and
       // write cost, which are logged and have no ceiling.
       'check:budgets': { command: 'node scripts/check-budgets.ts', cache: false },
+      // The acceptance suites of the stages, against the built playground and example site
+      // (PLAN.md lists what each criterion checks).
+      'test:acceptance': {
+        command: 'vp test run --config tests/acceptance/vitest.config.ts',
+        cache: false,
+      },
       // The MCP conformance run (ADR-022): the tests of its runner, then the suite against
       // `wrangler dev` of tests/conformance/worker, through the token proxy, for both revisions.
       'test:conformance': {

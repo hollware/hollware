@@ -6,6 +6,7 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each test runs its guard on this repository, where it finds no violation, and in a `describe('self-test: ...')` block on bad fixtures, where it asserts the exact violation.
 - `tests/support/` holds what the guards stand on: the file list of the repository, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
+- `tests/acceptance/` holds the acceptance suite of each stage (`vp run test:acceptance`), named after the criteria of `PLAN.md` it checks. It runs the built playground and example site in process, through `tests/acceptance/v0.1/support/harness.ts`, and as a user's project under `wrangler dev` with the real CLI, through `tests/acceptance/v0.1/support/project.ts`.
 - `tests/conformance/` runs the MCP conformance suite against the Worker of `tests/conformance/worker` (`vp run test:conformance`, ADR-022): its runner, its token proxy, its probes, its baselines and its must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 

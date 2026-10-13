@@ -27,6 +27,7 @@ deleted when v1.0 ships, together with this section.
 | `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
 | `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types              |
 | `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
+| `vp run test:acceptance`                                                  | The acceptance suite of the stage, against the built playground and example site  |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A

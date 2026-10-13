@@ -40,6 +40,7 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp run check:budgets`                                          | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
 | `pnpm exec vp run check:push`                                             | The CI check job: check, test, bench, build, budgets, publint, types              |
 | `pnpm exec vp run test:conformance`                                       | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
+| `pnpm exec vp run test:acceptance`                                        | The acceptance suite of the stage, against the built playground and example site  |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 `vp` is Vite+. Always run the copy installed in the repository, through `pnpm exec`: a global `vp` of another version breaks the Cloudflare plugin. `AGENTS.md` writes `vp` as shorthand for `pnpm exec vp`.

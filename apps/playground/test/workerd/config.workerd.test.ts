@@ -4,8 +4,9 @@ import config from '../../hollware.config.ts'
 
 // Fails when: hollware.config.ts stops describing one site with a bilingual blog whose schema
 // takes the frontmatter of the corpus (tests/fixtures/content/blog) and refuses a description over
-// 160 characters, whose components refuse props they do not declare, or whose seo-title-length
-// contract stops warning about a title over 60 characters.
+// 160 characters, whose components refuse props they do not declare, whose opt-in contracts change
+// (a missing translation and an unresolved link warn, an image without alt text is an error), or
+// whose seo-title-length contract stops warning about a title over 60 characters.
 
 const site = config.sites['playground']
 const blog = site?.collections['blog']
@@ -45,6 +46,17 @@ describe('the playground config', () => {
     expect(await callout?.validate({ type: 'tip' })).toEqual({ value: { type: 'tip' } })
     const unknown = await callout?.validate({ type: 'tip', onclick: 'alert(1)' })
     expect(unknown?.issues?.map((issue) => issue.message)).toEqual(['Unrecognized key: "onclick"'])
+  })
+
+  it('warns about a missing translation and an unresolved link, and refuses an image without alt text', () => {
+    expect(
+      blog?.contracts?.map((contract) => [contract.id, contract.severity, contract.phases]),
+    ).toEqual([
+      ['translation-pair', 'warning', ['publish']],
+      ['internal-links-resolve', 'warning', ['publish']],
+      ['images-have-alt', 'error', ['write', 'publish']],
+      ['seo-title-length', 'warning', undefined],
+    ])
   })
 
   it('warns about a title over 60 characters without a seoTitle', async () => {

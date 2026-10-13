@@ -1,10 +1,10 @@
-import { defineCollection, defineComponent, defineConfig } from '@hollware/core'
+import { contracts, defineCollection, defineComponent, defineConfig } from '@hollware/core'
 import * as z from 'zod'
 
 /**
  * The playground's config: one site with a bilingual blog, the site the tests of v0.1 write to
  * and read from. Its corpus is tests/fixtures/content/blog, and its broken variants are
- * tests/fixtures/content/invalid. The built-in contracts join `contracts` when they exist.
+ * tests/fixtures/content/invalid, each of which breaks one of the contracts below.
  */
 
 const blog = defineCollection({
@@ -33,6 +33,12 @@ const blog = defineCollection({
     }),
   },
   contracts: [
+    // A post may go out in one language first: publishing it asks to acknowledge the other.
+    contracts.translationPair({ severity: 'warning' }),
+    // A warning, not an error: two drafts that link to each other could never be published, since
+    // each would wait for the other to be published first.
+    contracts.internalLinksResolve({ severity: 'warning' }),
+    contracts.imagesHaveAlt(),
     {
       id: 'seo-title-length',
       severity: 'warning',
