@@ -21,6 +21,21 @@ serve them (ADR-017). Boundary rules for this package:
   import it and never `src/db`, so their tests run on fakes. `src/ops/types.ts` pairs one handler
   with each spec of `@hollware/core`, by type.
 - Every method of the store takes the site first, and reads and writes only that site's rows.
+- `src/db/` is the D1 store: `createD1Store(db, { clock? })` implements `ContentStore` over a
+  `D1Database` or a D1 session, without a cast. A write is one `db.batch`: the revision or
+  publication is inserted only while the entry is at `expectedVersion`, its tags only `WHERE
+  EXISTS` their revision, and the entry is updated with the same predicate and `RETURNING`; an
+  empty `RETURNING` is followed by one read that tells `conflict` from `not_found`
+  (`tests/db/append-revision.workerd.test.ts` pins the SQL of the batch).
+- Every statement of the store carries `site_id`, the follow-up reads included
+  (`tests/db/isolation.workerd.test.ts` runs every method against two seeded sites).
+- D1's limits are kept in code: at most 90 bound values per statement (`src/db/chunks.ts`),
+  compound `SELECT`s of at most 5 terms (tags go in a `VALUES` list), and rows under
+  `MAX_ROW_BYTES`, refused as `too_large` before they are written.
+- Listings read summaries (the revision's id, frontmatter and tags) from an index of `entries`
+  and sort nothing: the published view names the literal `'published'`, and the cursor is the
+  row value `(sort key, id) < (?, ?)` (`tests/db/list-plans.workerd.test.ts` reads
+  `EXPLAIN QUERY PLAN`).
 - `tests/support/sites.ts` seeds a whole site with SQL, with the same natural keys every
   time; the tests that check one site cannot reach another seed two.
 - `src/mcp/annotations.ts` maps each effect to its MCP hints, and `src/limits.ts` holds the output
