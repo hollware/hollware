@@ -25,7 +25,8 @@ deleted when v1.0 ships, together with this section.
 | `vp run -r build`                                                         | Build every package                                                               |
 | `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
 | `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
-| `vp run check:push`                                                       | Everything CI runs: check, test, bench, build, budgets, publint, types            |
+| `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types              |
+| `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A
@@ -73,6 +74,9 @@ new process group, so the child outlives its supervisor.
   module 250 KiB, all modules 400 KiB, fixed before measuring); raising one needs a note in an ADR.
   `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
   (read from the source maps of the build), and logs startup and the cost of a write.
+- The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:
+  Vite's host check would answer first and hide a missing DNS-rebinding guard. The run resets
+  its local D1 and seeds it with the CLI; CI runs it in a job of its own.
 - Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, which
   works in Node and inside workerd (`tests/fixtures/README.md`). Rows of a second site,
   for the tests that one site cannot reach another, come from
@@ -89,6 +93,7 @@ new process group, so the child outlives its supervisor.
 - `apps/playground` — a local Hollware instance for development.
 - `templates/starter` — the thin project users get.
 - `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
+- `tests/conformance/worker` — the Hollware Worker that the MCP conformance suite runs against.
 
 ## Conventions
 

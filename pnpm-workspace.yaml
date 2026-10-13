@@ -3,6 +3,8 @@ packages:
   - examples/*
   - packages/*
   - templates/*
+  # The Worker that the MCP conformance suite runs against (ADR-022).
+  - tests/conformance/*
 
 catalogMode: prefer
 

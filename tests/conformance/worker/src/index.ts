@@ -1,4 +1,4 @@
-import { createHollware } from '../../../../packages/server/src/index.ts'
+import { createHollware } from '@hollware/server'
 import config from '../hollware.config.ts'
 
 /**

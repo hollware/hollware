@@ -6,6 +6,7 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each test runs its guard on this repository, where it finds no violation, and in a `describe('self-test: ...')` block on bad fixtures, where it asserts the exact violation.
 - `tests/support/` holds what the guards stand on: the file list of the repository, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
+- `tests/conformance/` runs the MCP conformance suite against the Worker of `tests/conformance/worker` (`vp run test:conformance`, ADR-022): its runner, its token proxy, its probes, its baselines and its must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
 Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
@@ -30,6 +31,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
 - `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` lists `no_nodejs_compat` and `no_nodejs_compat_v2` and no positive Node.js flag; outside `templates/`, `send_metrics` is false.
 - `tests/conventions/worker-projects.test.ts`: every Wrangler config sits in a workspace package that defines `build` and `types:check`, and `types:check` names a config below the package directory.
+- `tests/conventions/conformance-baselines.test.ts`: each revision's baseline of the MCP conformance suite (`tests/conformance/baselines/`) names single checks with a class and a reason, never one of the must-pass profile, and keeps its recorded size; the profile keeps its claims.
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.

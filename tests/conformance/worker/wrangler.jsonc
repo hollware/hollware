@@ -25,7 +25,7 @@
       // Placeholder: the conformance run uses the local database and never contacts Cloudflare.
       "database_id": "00000000-0000-0000-0000-000000000000",
       // The migrations of the server package, as a project that depends on it applies them.
-      "migrations_dir": "../../../packages/server/migrations",
+      "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
 }

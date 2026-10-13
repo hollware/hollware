@@ -18,6 +18,7 @@ describe('wrangler compatibility dates', () => {
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',
+      'tests/conformance/worker/wrangler.jsonc',
     ])
     const violations = checkWranglerDates({
       configs,

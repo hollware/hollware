@@ -8,6 +8,11 @@
     "types": "wrangler types",
     "types:check": "wrangler types --check"
   },
+  "dependencies": {
+    "@hollware/core": "workspace:*",
+    "@hollware/server": "workspace:*",
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "typescript": "catalog:",
     "wrangler": "catalog:"

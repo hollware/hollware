@@ -12,17 +12,18 @@ import { workspaceManifests } from '../support/workspace.ts'
 describe('Worker projects', () => {
   it('every Wrangler config sits in a package that builds it and checks its types', () => {
     const configs = repoFiles().filter(isWorkerConfig)
-    // Both sides must be real: the playground's Hollware Worker, the example site and the starter.
-    // A Worker added later is judged like these.
+    // Both sides must be real: the playground's Hollware Worker, the example site, the starter and
+    // the Worker of the conformance run. A Worker added later is judged like these.
     expect(configs).toEqual(
       expect.arrayContaining([
         'apps/playground/wrangler.jsonc',
         'examples/worker-site/wrangler.jsonc',
         'templates/starter/wrangler.jsonc',
+        'tests/conformance/worker/wrangler.jsonc',
       ]),
     )
     const manifests = workspaceManifests()
-    expect(manifests.length).toBeGreaterThanOrEqual(9)
+    expect(manifests.length).toBeGreaterThanOrEqual(10)
     expect(describeViolations(checkWorkerProjects({ configs, manifests }))).toEqual([])
   })
 

@@ -17,6 +17,7 @@ describe('wrangler flags', () => {
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',
+      'tests/conformance/worker/wrangler.jsonc',
     ])
     expect(describeViolations(checkWranglerFlags({ configs }))).toEqual([])
   })
