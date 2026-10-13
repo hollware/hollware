@@ -1,45 +1,27 @@
-import { env, exports } from 'cloudflare:workers'
-import { afterEach, describe, expect, it } from 'vitest'
+import { env } from 'cloudflare:workers'
+import { expect, it } from 'vitest'
 
-// Fails when: the migration that wrangler.jsonc points at stops creating _hollware_meta, or
-// Playground.metaKeys() (src/index.ts) stops answering the keys of that table, or its
-// `ORDER BY key DESC` is dropped or changed.
+// Fails when: the D1 binding of wrangler.jsonc stops pointing `migrations_dir` at the migrations
+// that @hollware/server ships (node_modules/@hollware/server/migrations), so that the database the
+// playground gets is not the one Hollware's store expects; or a shipped migration stops creating,
+// or starts creating, one of these tables. The list is the schema of v0.1.
 
-describe('D1 after the shipped migrations', () => {
-  it('has the _hollware_meta table', async () => {
-    const table = await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_hollware_meta'",
-    ).first<{ name: string }>()
+it('has the tables of the @hollware/server migrations, and no others', async () => {
+  const { results } = await env.DB.prepare(
+    `SELECT name FROM sqlite_master
+      WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'
+        AND name NOT IN ('d1_migrations', 'sqlite_sequence')
+      ORDER BY name`,
+  ).all<{ name: string }>()
 
-    expect(table).toEqual({ name: '_hollware_meta' })
-  })
-})
-
-describe('Playground.metaKeys() over RPC', () => {
-  // Storage is isolated per test file, not per test: leave the table as the migration made it.
-  afterEach(async () => {
-    await env.DB.prepare('DELETE FROM _hollware_meta').run()
-  })
-
-  it('is empty on a fresh database', async () => {
-    expect(await exports.Playground.metaKeys()).toEqual([])
-  })
-
-  it('lists the keys in descending order, whatever order they were written in', async () => {
-    // Written out of order on purpose: not ascending, not descending, and the values sort in a
-    // third order. So the order expected below can only come from sorting the keys descending.
-    // With no ORDER BY, SQLite walks the primary-key index and answers ascending.
-    const insert = env.DB.prepare('INSERT INTO _hollware_meta (key, value) VALUES (?, ?)')
-    await env.DB.batch([
-      insert.bind('created_at', '2026-10-12'),
-      insert.bind('site_name', 'demo'),
-      insert.bind('schema_version', '1'),
-    ])
-
-    expect(await exports.Playground.metaKeys()).toEqual([
-      'site_name',
-      'schema_version',
-      'created_at',
-    ])
-  })
+  expect(results.map((row) => row.name)).toEqual([
+    '_hollware_meta',
+    'entries',
+    'publications',
+    'revision_tags',
+    'revisions',
+    'sites',
+    'tokens',
+    'users',
+  ])
 })

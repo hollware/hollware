@@ -1,40 +1,13 @@
-import { WorkerEntrypoint } from 'cloudflare:workers'
+import { createHollware } from '@hollware/server'
+import config from '../hollware.config.ts'
 
-export default {
-  fetch(request, env) {
-    const { pathname } = new URL(request.url)
-    if (request.method === 'GET' && pathname === '/health') {
-      return Response.json({
-        ok: true,
-        name: 'hollware-playground',
-        publicUrl: env.HOLLWARE_PUBLIC_URL,
-      })
-    }
-    return new Response('Not Found', { status: 404 })
-  },
-} satisfies ExportedHandler<Env>
+// A Hollware project is this file: the config goes in, the Worker comes out.
+const hollware = createHollware(config)
 
-/** The surface other Workers reach over a service binding (Workers RPC). */
-export class Playground extends WorkerEntrypoint<Env> {
-  /** Echoes the message after "pong": the answer depends on what the caller sent. */
-  ping(message: string): string {
-    return `pong ${message}`
-  }
+export default { fetch: hollware.fetch } satisfies ExportedHandler<Env>
 
-  /**
-   * The Node.js globals this isolate has. Empty in a built Worker that opts out of Node.js
-   * compatibility; the tests read it to tell where Node.js is on.
-   */
-  nodeGlobals(): string[] {
-    return ['process', 'Buffer', 'setImmediate'].filter((name) => name in globalThis)
-  }
+/** What sites reach over a service binding: the four read-only methods of `HollwareRpc`. */
+export class Hollware extends hollware.Hollware {}
 
-  async metaKeys(): Promise<string[]> {
-    // Descending on purpose: the primary-key index already yields ascending order, so an
-    // ascending ORDER BY could not be told apart from none at all.
-    const { results } = await this.env.DB.prepare(
-      'SELECT key FROM _hollware_meta ORDER BY key DESC',
-    ).all<{ key: string }>()
-    return results.map((row) => row.key)
-  }
-}
+// Not part of a Hollware project: a probe for the tests of this repository (see probe.ts).
+export { Probe } from './probe.ts'

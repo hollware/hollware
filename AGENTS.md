@@ -70,7 +70,7 @@ new process group, so the child outlives its supervisor.
 - `packages/create-hollware` — `npm create hollware`.
 - `apps/playground` — a local Hollware instance for development.
 - `templates/starter` — the thin project users get.
-- `examples/` — sites that consume Hollware.
+- `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
 
 ## Conventions
 

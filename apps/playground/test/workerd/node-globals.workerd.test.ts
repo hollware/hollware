@@ -6,5 +6,5 @@ import { expect, it } from 'vitest'
 // the warning in AGENTS.md can go; until then only the built Worker (test/harness) can.
 
 it('has the Node.js globals in the test runner, whatever wrangler.jsonc says', async () => {
-  expect(await exports.Playground.nodeGlobals()).toEqual(['process', 'Buffer', 'setImmediate'])
+  expect(await exports.Probe.nodeGlobals()).toEqual(['process', 'Buffer', 'setImmediate'])
 })

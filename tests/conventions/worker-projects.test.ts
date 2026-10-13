@@ -7,17 +7,17 @@ import { workspaceManifests } from '../support/workspace.ts'
 
 // Fails when: a wrangler.json, wrangler.jsonc or wrangler.toml belongs to no workspace package; the
 // package lacks a `build` or a `types:check` script; or the config is below the package directory
-// (apps/playground/site/wrangler.jsonc) and the `types:check` script does not name its path.
+// (such as apps/a/site/wrangler.jsonc) and the `types:check` script does not name its path.
 
 describe('Worker projects', () => {
   it('every Wrangler config sits in a package that builds it and checks its types', () => {
     const configs = repoFiles().filter(isWorkerConfig)
-    // Both sides must be real: the two Workers of the playground, one of them below its package
-    // directory, and the starter. A Worker added later is judged like these.
+    // Both sides must be real: the playground's Hollware Worker, the example site and the starter.
+    // A Worker added later is judged like these.
     expect(configs).toEqual(
       expect.arrayContaining([
-        'apps/playground/site/wrangler.jsonc',
         'apps/playground/wrangler.jsonc',
+        'examples/worker-site/wrangler.jsonc',
         'templates/starter/wrangler.jsonc',
       ]),
     )

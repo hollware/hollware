@@ -34,12 +34,8 @@ export interface ExceptionList {
  * (guard `agents-paths`). The value is the text between the backticks.
  */
 export const MISSING_DOC_PATHS: ExceptionList = {
-  max: 6,
+  max: 5,
   entries: [
-    {
-      value: 'examples/worker-site',
-      reason: 'Arrives in v0.1; examples/README.md announces it.',
-    },
     {
       value: 'NNNN-kebab-case-title.md',
       reason: 'The ADR file-name template in docs/adr/README.md.',

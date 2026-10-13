@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hollware-worker-site",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
+  // A site that reads Hollware needs no Node.js either.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  // No anonymous wrangler telemetry from this repository.
+  "send_metrics": false,
+  "vars": {
+    // The site of the Hollware deployment that this Worker reads: its key in hollware.config.ts.
+    "HOLLWARE_SITE": "playground",
+    // The entries on a page of the blog index.
+    "PAGE_SIZE": 5,
+  },
+  "services": [
+    // Hollware over a service binding: no network and no token, and only the four read-only
+    // methods of its `Hollware` entrypoint. `service` is the name of the Hollware Worker.
+    { "binding": "HOLLWARE", "service": "hollware-playground", "entrypoint": "Hollware" },
+    // Only for the tests of this repository: a binding of the Worker to its own `Probe`
+    // entrypoint (src/probe.ts), which is how a Node.js test asks the isolate which Node.js
+    // globals it has. A site of your own has neither the binding nor the class.
+    { "binding": "PROBE", "service": "hollware-worker-site", "entrypoint": "Probe" },
+  ],
+}

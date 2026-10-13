@@ -31,7 +31,7 @@ describe('disabled tests', () => {
         'scripts/break-line.test.ts',
         'tests/meta/disabled-tests.test.ts',
         'packages/core/tests/index.test.ts',
-        'apps/playground/test/workerd/health.workerd.test.ts',
+        'apps/playground/test/workerd/gateway.workerd.test.ts',
         'apps/playground/test/harness/site.test.ts',
         'templates/starter/test/worker.workerd.test.ts',
       ]),

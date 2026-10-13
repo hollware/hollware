@@ -13,8 +13,8 @@ describe('wrangler flags', () => {
   it('every Worker opts out of Node.js compatibility, and Hollware sends no wrangler telemetry', () => {
     const configs = readRepoFiles(isWranglerConfig)
     expect(configs.map((config) => config.path)).toEqual([
-      'apps/playground/site/wrangler.jsonc',
       'apps/playground/wrangler.jsonc',
+      'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',
     ])

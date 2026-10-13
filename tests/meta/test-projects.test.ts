@@ -57,7 +57,7 @@ describe('test projects', () => {
         'scripts/break-line.test.ts',
         'tests/meta/test-projects.test.ts',
         'packages/core/tests/index.test.ts',
-        'apps/playground/test/workerd/health.workerd.test.ts',
+        'apps/playground/test/workerd/gateway.workerd.test.ts',
         'templates/starter/test/worker.workerd.test.ts',
       ]),
     )
@@ -84,10 +84,16 @@ describe('test projects', () => {
     expect(inProject('playground:workerd')).toEqual([
       'apps/playground/test/workerd/config.workerd.test.ts',
       'apps/playground/test/workerd/database.workerd.test.ts',
-      'apps/playground/test/workerd/health.workerd.test.ts',
+      'apps/playground/test/workerd/entrypoint.workerd.test.ts',
+      'apps/playground/test/workerd/gateway.workerd.test.ts',
       'apps/playground/test/workerd/node-globals.workerd.test.ts',
     ])
-    expect(inProject('playground:harness')).toEqual(['apps/playground/test/harness/site.test.ts'])
+    expect(inProject('playground:harness')).toEqual([
+      'apps/playground/test/harness/gateway.test.ts',
+      'apps/playground/test/harness/node-globals.test.ts',
+      'apps/playground/test/harness/rpc.test.ts',
+      'apps/playground/test/harness/site.test.ts',
+    ])
   }, 60_000)
 
   it('the directories with their own runner are exactly those the repo project excludes', () => {

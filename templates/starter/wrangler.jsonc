@@ -8,6 +8,12 @@
   // Hollware runs and is tested without it. Remove both flags only if your own code needs
   // Node.js APIs.
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  "vars": {
+    // The only Host and Origin your Hollware answers; any other request is refused. This is the
+    // URL `pnpm dev` serves. Set it to the public URL of the Worker before you deploy, such as
+    // https://cms.example.com.
+    "HOLLWARE_PUBLIC_URL": "http://localhost:5173",
+  },
   "d1_databases": [
     {
       "binding": "DB",

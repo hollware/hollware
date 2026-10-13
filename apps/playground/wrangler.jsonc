@@ -25,4 +25,10 @@
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
+  "services": [
+    // Only for the tests of this repository: a binding of the Worker to its own `Probe`
+    // entrypoint (src/probe.ts), which is how a Node.js test asks the isolate which Node.js
+    // globals it has. A Hollware project has neither the binding nor the class.
+    { "binding": "PROBE", "service": "hollware-playground", "entrypoint": "Probe" },
+  ],
 }

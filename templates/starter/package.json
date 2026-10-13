@@ -11,7 +11,9 @@
     "types:check": "wrangler types --check"
   },
   "dependencies": {
-    "@hollware/server": "workspace:*"
+    "@hollware/core": "workspace:*",
+    "@hollware/server": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:",

@@ -1,0 +1,15 @@
+{
+  "policy": "Hard ceilings for the built playground Worker (apps/playground), minified, every module gzipped one by one. They were fixed on 2026-10-13, before the first measurement (PLAN.md, v0.1, finding H9). Raising one needs a note in an ADR (docs/adr) in the same change. scripts/check-budgets.ts reads this file and fails above a ceiling.",
+  "main": {
+    "gzipKiB": 250,
+    "reason": "The main module, and the chunks it imports statically, are evaluated at every cold start, and the first request of a fresh isolate pays for them: the Free plan gives a request 10 ms of CPU (docs/design.md, risks)."
+  },
+  "total": {
+    "gzipKiB": 400,
+    "reason": "Every module is uploaded with the Worker, and the first write loads the lazy ones as well: the Markdown parser is imported on the first write, so what it weighs is the cost of a cold write."
+  },
+  "lazyPackages": {
+    "packages": ["comark", "@comark/html"],
+    "reason": "Comark parses Markdown on a write and @comark/html renders a stored document. Both load when the first Markdown arrives (ADR-001, ADR-020), so an isolate that only reads or answers a token check never evaluates them."
+  }
+}
