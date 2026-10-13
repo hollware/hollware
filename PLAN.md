@@ -334,7 +334,7 @@ Every WP ships integration tests that are green in its own wave, owns disjoint d
   - WP3 contracts, including content safety and `size-limit` (`core/src/contracts`);
   - WP4 the D1 store on the schema of Wave 0 (`server/src/db`): repository functions, the optimistic write, sessions, limits;
   - [x] WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
-  - WP6 CLI (`packages/cli`)
+  - [x] WP6 CLI (`packages/cli`) — open: token defaults (read and write, 90 days, at most 365) to confirm; align the site-key rule with WP1's; export the refusal contract ids from core; fix the `hollware init` example in docs/design.md (a token, not a passkey link)
 - [~] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`), after Wave 1 · [x] WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types, dispatched on 2026-10-12 together with Wave 1 because it stands on Wave 0 alone
 - [ ] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`
 - [ ] Wave 3b (parallel):
