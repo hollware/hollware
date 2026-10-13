@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const SOURCE_DIR = fileURLToPath(new URL('../../src', import.meta.url))
+const NODE_MODULES = fileURLToPath(new URL('../../node_modules', import.meta.url))
 
 export interface Install {
   /** The copy of `src/index.ts`, at `<root>/src/index.ts`. */
@@ -15,12 +16,14 @@ export interface Install {
 
 /**
  * A throwaway install of the CLI: `src/` copied next to a `package.json` the test
- * controls, so the version the CLI must read is known, plus a bin symlink.
+ * controls, so the version the CLI must read is known, plus a bin symlink, and the
+ * dependencies of the package linked in, so the commands load.
  */
 export function install(manifest: object): Install {
   const root = mkdtempSync(join(tmpdir(), 'hollware-cli-'))
   cpSync(SOURCE_DIR, join(root, 'src'), { recursive: true })
   writeFileSync(join(root, 'package.json'), JSON.stringify({ type: 'module', ...manifest }))
+  symlinkSync(NODE_MODULES, join(root, 'node_modules'))
   mkdirSync(join(root, 'bin'))
   const module = join(root, 'src', 'index.ts')
   const bin = join(root, 'bin', 'hollware')

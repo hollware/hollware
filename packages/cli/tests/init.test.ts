@@ -1,0 +1,286 @@
+// Fails when:
+// - "creates the site, the owner and the first token in one script and prints the token once":
+//   the SQL of `initScript` changes (a column, a value, the order of the three statements),
+//   the token is not the one whose SHA-256 is stored, the stored value is the token and not its
+//   hash, the scopes are not all four, the expiry is not 90 days, the wrangler arguments change,
+//   or the output stops saying the token once.
+// - "uses the target of the flag …" rows: `--remote` or the local default is not passed to
+//   wrangler in both calls, or the message names the wrong database.
+// - "refuses a second init and writes nothing": the owner check is removed or ignored, so a
+//   second `init` goes on to write; or the refusal asks for a directory, or writes a file.
+// - "says to migrate first when the tables are missing": a database without tables is reported
+//   with the raw error of SQLite.
+// - "takes the database from --database …": `--database` is not passed to wrangler as it is.
+// - "does not reach wrangler when the project has no binding DB …": a project without the
+//   binding DB reaches wrangler.
+// - "writes the owner name as a string literal": the name is put in the SQL without `quote`.
+// - "stores no name for the owner when none is given": the missing name becomes a string
+//   (such as `'undefined'`) instead of NULL.
+// - "rejects … before it touches wrangler" rows: a bad `--site`, `--owner-name`, a repeated
+//   target flag, an unknown option or a stray argument reaches wrangler.
+// - "writes the SQL file for its owner only and removes it": the file is created with the
+//   default permissions, or is left behind.
+// - "removes the SQL file and prints no token when wrangler fails": the `finally` that removes
+//   the directory is gone, or the token is printed before the script succeeded.
+import { existsSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vite-plus/test'
+
+import { d1, d1Failed, fakeWrangler, type FakeWrangler } from './support/fake-wrangler.ts'
+import { run } from './support/io.ts'
+import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
+
+const temp = tempDirs()
+
+const OWNER_ID = 'usr_01M4QZQSG0040G2081040G2081'
+const TOKEN_ID = 'tok_01M4QZQSG0081040G2081040G2'
+const SECRET = `hw_pat_${'3'.repeat(52)}`
+const HASH = 'b07c83868ce651218676f8ab9a47188f183db88ea929168941c3f8f20afa6a7a'
+const OWNER_QUERY = "SELECT id FROM users WHERE role = 'owner' LIMIT 1"
+
+/** A project with the starter's wrangler.jsonc, and a scratch directory for the SQL file. */
+function setup(
+  wrangler: FakeWrangler,
+  files: Record<string, string> = { 'wrangler.jsonc': WRANGLER_JSONC },
+) {
+  const cwd = temp.make(files)
+  const scratch = temp.make()
+  let requests = 0
+  return {
+    cwd,
+    scratch,
+    sqlFile: join(scratch, 'init.sql'),
+    requests: () => requests,
+    run: (argv: string[]) =>
+      run(argv, {
+        cwd,
+        wrangler: wrangler.run,
+        tempDir: () => {
+          requests += 1
+          return scratch
+        },
+      }),
+  }
+}
+
+const SCRIPT = [
+  "INSERT INTO sites (id, created_at, updated_at) VALUES ('blog', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
+  `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  '',
+].join('\n')
+
+describe('hollware init', () => {
+  it('creates the site, the owner and the first token in one script and prints the token once', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run([
+      'init',
+      '--site',
+      'blog',
+      '--owner-name',
+      'Sergio',
+    ])
+
+    expect(err).toEqual([])
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args)).toEqual([
+      ['d1', 'execute', 'DB', '--local', '--json', '--command', OWNER_QUERY],
+      ['d1', 'execute', 'DB', '--local', '--json', '--file', project.sqlFile],
+    ])
+    expect(wrangler.calls[1]?.sql).toBe(SCRIPT)
+    expect(wrangler.calls[1]?.sql).not.toContain(SECRET)
+    expect(out).toEqual([
+      [
+        'Hollware is ready on the local database "DB".',
+        '',
+        'Site     blog',
+        `Owner    ${OWNER_ID}`,
+        `Token    ${TOKEN_ID}`,
+        'Scopes   content:read content:write content:publish schema:admin',
+        'Expires  2027-01-10T12:00:00.000Z (in 90 days)',
+        '',
+        'Your personal token. It is shown only once: Hollware keeps just its hash.',
+        '',
+        SECRET,
+        '',
+        'Next:',
+        '  Save the token in a file only you can read, then import content:',
+        '    hollware import <directory> --url <your Hollware URL> --token-file <file>',
+        '  An MCP client sends it as the header "Authorization: Bearer <token>" to <your Hollware URL>/mcp.',
+        '  More tokens: hollware token create --label <text>',
+      ].join('\n'),
+    ])
+    expect(out.join('\n').split(SECRET)).toHaveLength(2)
+  })
+
+  it.each([
+    [['--local'], '--local', 'local'],
+    [['--remote'], '--remote', 'remote'],
+    [[], '--local', 'local'],
+  ])('uses the target of the flag %j in both calls', async (flags, flag, name) => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    const { code, out } = await project.run(['init', '--site', 'blog', ...flags])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args[3])).toEqual([flag, flag])
+    expect(out[0]?.split('\n')[0]).toBe(`Hollware is ready on the ${name} database "DB".`)
+  })
+
+  it('refuses a second init and writes nothing', async () => {
+    const wrangler = fakeWrangler(d1([{ id: OWNER_ID }]))
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+
+    expect(code).toBe(1)
+    expect(out).toEqual([])
+    expect(err).toEqual([
+      `hollware init: the database already has an owner (${OWNER_ID}), so there is nothing to set up. Create another token with "hollware token create --label <text>".`,
+    ])
+    expect(wrangler.calls.map((call) => call.args)).toEqual([
+      ['d1', 'execute', 'DB', '--local', '--json', '--command', OWNER_QUERY],
+    ])
+    expect(project.requests()).toBe(0)
+    expect(readdirSync(project.scratch)).toEqual([])
+  })
+
+  it('says to migrate first when the tables are missing', async () => {
+    const wrangler = fakeWrangler(d1Failed('no such table: users: SQLITE_ERROR'))
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+
+    expect(code).toBe(1)
+    expect(out).toEqual([])
+    expect(err).toEqual([
+      'hollware init: the database has no Hollware tables yet. Run "hollware migrate --local" first.',
+    ])
+    expect(wrangler.calls).toHaveLength(1)
+  })
+
+  it('takes the database from --database, as it is, and needs no wrangler.jsonc', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler, {})
+
+    const { code, out } = await project.run(['init', '--site', 'blog', '--database', 'blog-db'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args)).toEqual([
+      ['d1', 'execute', 'blog-db', '--local', '--json', '--command', OWNER_QUERY],
+      ['d1', 'execute', 'blog-db', '--local', '--json', '--file', project.sqlFile],
+    ])
+    expect(out[0]?.split('\n')[0]).toBe('Hollware is ready on the local database "blog-db".')
+  })
+
+  it('does not reach wrangler when the project has no binding DB and --database is not given', async () => {
+    const wrangler = fakeWrangler()
+    const project = setup(wrangler, {
+      'wrangler.jsonc': '{ "d1_databases": [{ "binding": "CONTENT" }] }',
+    })
+
+    const { code, err } = await project.run(['init', '--site', 'blog'])
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      `hollware init: ${project.cwd}/wrangler.jsonc has no D1 binding named "DB" (it has CONTENT). Rename the binding, or choose one with --database <name or binding>.`,
+    ])
+    expect(wrangler.calls).toEqual([])
+  })
+
+  it('writes the owner name as a string literal', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    const { code } = await project.run([
+      'init',
+      '--site',
+      'blog',
+      '--owner-name',
+      `Sergio's "ops" team; --`,
+    ])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls[1]?.sql?.split('\n')[1]).toBe(
+      `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio''s "ops" team; --', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+    )
+  })
+
+  it('stores no name for the owner when none is given', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    await project.run(['init', '--site', 'blog'])
+
+    expect(wrangler.calls[1]?.sql?.split('\n')[1]).toBe(
+      `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', NULL, 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+    )
+  })
+
+  it.each([
+    [
+      [],
+      /^hollware init: --site is required: name the site, as in hollware\.config\.ts\. Run "hollware init --help" for the options\.$/,
+    ],
+    [['--site', 'Blog'], /^hollware init: invalid --site "Blog": a site key is lowercase letters/],
+    [
+      ['--site', "x'; DROP TABLE users; --"],
+      /^hollware init: invalid --site "x'; DROP TABLE users; --": /,
+    ],
+    [['--site', 'blog', '--owner-name', 'a\nb'], /^hollware init: invalid --owner-name "a\\nb": /],
+    [
+      ['--site', 'blog', '--local', '--remote'],
+      /^hollware init: --local and --remote cannot be used together: choose one\./,
+    ],
+    [
+      ['--site', 'blog', '--frob'],
+      /^hollware init: unknown option '--frob'\. Run "hollware init --help"/,
+    ],
+    [
+      ['--site', 'blog', 'extra'],
+      /^hollware init: unexpected argument 'extra'\. Run "hollware init --help"/,
+    ],
+    [['--site', 'blog', '--database=--local'], /^hollware init: invalid --database "--local": /],
+  ])('rejects %j before it touches wrangler', async (args, message) => {
+    const wrangler = fakeWrangler()
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run(['init', ...args])
+
+    expect(code).toBe(1)
+    expect(out).toEqual([])
+    expect(err).toEqual([expect.stringMatching(message)])
+    expect(wrangler.calls).toEqual([])
+    expect(project.requests()).toBe(0)
+  })
+
+  it('writes the SQL file for its owner only and removes it', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    await project.run(['init', '--site', 'blog'])
+
+    expect(wrangler.calls[1]?.mode).toBe(0o600)
+    expect(existsSync(project.scratch)).toBe(false)
+  })
+
+  it('removes the SQL file and prints no token when wrangler fails', async () => {
+    const wrangler = fakeWrangler(
+      d1([]),
+      d1Failed('UNIQUE constraint failed: users.id: SQLITE_CONSTRAINT'),
+    )
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run(['init', '--site', 'blog'])
+
+    expect(code).toBe(1)
+    expect(out).toEqual([])
+    expect(err).toEqual([
+      'hollware init: wrangler could not run the SQL: UNIQUE constraint failed: users.id: SQLITE_CONSTRAINT',
+    ])
+    expect(existsSync(project.scratch)).toBe(false)
+  })
+})
