@@ -18,8 +18,22 @@ serve them (ADR-017). Boundary rules for this package:
   in `tests/append-only.workerd.test.ts`, and a new unique key goes in its `_no_replace` trigger.
 - Never read `process.env`: configuration and bindings arrive as arguments.
 - `src/ports.ts` is what the handlers need (`ContentStore`, `Clock`). Handlers (`src/ops`)
-  import it and never `src/db`, so their tests run on fakes. `src/ops/types.ts` pairs one handler
-  with each spec of `@hollware/core`, by type.
+  import it and never `src/db`, so an adapter can hand them any store; their tests run on D1.
+  `src/ops/types.ts` pairs one handler with each spec of `@hollware/core`, by type.
+- `src/ops` has one module per operation and exports `handlers`. A handler imports the ports,
+  `@hollware/core` and its siblings, never `src/db`, `src/mcp` or a `cloudflare:` module
+  (`tests/ops/boundary.test.ts`). Adapters parse the input with the spec's schema, check the
+  scopes and build the context; every store call takes `context.site.key` and every read
+  `context.view` (`tests/ops/isolation.workerd.test.ts`).
+- A draft is saved whatever its contracts say. Only a file the pipeline cannot store, a slug or
+  translation group another entry holds, and a row over D1's limit are `refused`, with
+  `contractsHash: ''`. `update_draft` and `publish` check the version first; `unchanged` writes
+  nothing. `publish` runs the pipeline and the contracts again in the publish phase, blocks on
+  errors, asks for every warning by contract and path, and records them
+  (`tests/ops/publishing.workerd.test.ts`, `tests/ops/flow.workerd.test.ts`).
+- `createHollware(config)` in `src/index.ts` is `createHollwareWith(config, handlers)`. The entry
+  imports `cloudflare:workers`, so whatever imports it runs in workerd
+  (`tests/index.workerd.test.ts`).
 - Every method of the store takes the site first, and reads and writes only that site's rows.
 - `src/db/` is the D1 store: `createD1Store(db, { clock? })` implements `ContentStore` over a
   `D1Database` or a D1 session, without a cast. A write is one `db.batch`: the revision or

@@ -7,6 +7,8 @@ import type {
 } from '@hollware/core'
 import type { WorkerEntrypoint } from 'cloudflare:workers'
 import type * as z from 'zod'
+import { createHollwareWith } from './compose.ts'
+import { handlers } from './ops/index.ts'
 
 export const name = '@hollware/server'
 
@@ -84,3 +86,10 @@ export interface HollwareWorker {
 
 /** Builds the Worker from the config. The config is resolved once, when the Worker starts. */
 export type CreateHollware = (config: HollwareConfig) => HollwareWorker
+
+/**
+ * Builds the Worker from the config: `const hollware = createHollware(config)`, then
+ * `export default { fetch: hollware.fetch }` and `export class Hollware extends hollware.Hollware {}`.
+ * The config is resolved once, here; a broken one throws its `ConfigError`.
+ */
+export const createHollware: CreateHollware = (config) => createHollwareWith(config, handlers)

@@ -64,7 +64,7 @@ describe('the version of the pipeline', () => {
       'hostile/unknown-component.md': 'ffce425055e68cd2',
       'hostile/unsafe-url.md': '66605dca19d85c0f',
       'invalid/broken-internal-link.md': 'c2156a774f670d96',
-      'invalid/description-too-long.md': 'c94c3a49a5827e91',
+      'invalid/description-too-long.md': 'c04bd29e73059753',
       'invalid/image-without-alt.md': 'efbcc6cf9ed3cf3c',
       'invalid/missing-translation.md': 'dfe840f1f7c73b3c',
       'invalid/seo-title-too-long.md': 'af96d5eebcc3cc22',
