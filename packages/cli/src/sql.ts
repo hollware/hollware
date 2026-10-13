@@ -1,4 +1,4 @@
-import { isId, isScope, SCOPES, type Scope } from '@hollware/core'
+import { isId, isScope, isSiteKey, SCOPES, SITE_KEY_MAX_LENGTH, type Scope } from '@hollware/core'
 import { UsageError } from './errors.ts'
 import { printable } from './format.ts'
 
@@ -20,14 +20,11 @@ function shown(value: string): string {
   return printable(JSON.stringify(value))
 }
 
-const SITE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const SITE_KEY_MAX = 64
-
 /** A site key: lowercase letters and digits joined by single hyphens, like a slug. */
 export function parseSiteKey(value: string): string {
-  if (value.length > SITE_KEY_MAX || !SITE_KEY.test(value)) {
+  if (!isSiteKey(value)) {
     throw new UsageError(
-      `invalid --site ${shown(value)}: a site key is lowercase letters and digits joined by single hyphens, up to ${SITE_KEY_MAX} characters, such as "blog" or "my-site".`,
+      `invalid --site ${shown(value)}: a site key is lowercase letters and digits joined by single hyphens, up to ${SITE_KEY_MAX_LENGTH} characters, such as "blog" or "my-site".`,
     )
   }
   return value

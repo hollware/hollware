@@ -1,18 +1,6 @@
 export const name = '@hollware/core'
 
-export { defineCollection, defineComponent, defineConfig, defineContract } from './config/define.ts'
-export type {
-  CollectionDefinition,
-  ComponentDefinition,
-  DescribedSchema,
-  HollwareConfig,
-  ResolveConfig,
-  ResolvedCollection,
-  ResolvedConfig,
-  ResolvedSite,
-  SchemaOutput,
-  SiteDefinition,
-} from './config/types.ts'
+export * from './config/index.ts'
 export * from './contracts/index.ts'
 export { ERROR_CODES, HollwareError, type ErrorCode } from './errors.ts'
 export { ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'

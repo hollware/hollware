@@ -17,9 +17,24 @@ Where things are:
   which MCP lists the tools. A new operation adds its spec there, its handler in `packages/server/src/ops`, and
   its row in the table of `tests/operations.test.ts`. Inputs are strict objects; outputs are flat
   objects with an `outcome`, whose values match the spec's `outcomes`.
-- `src/config/`: the types of `hollware.config.ts` and the `define*` helpers. Inside
-  `defineCollection`, write contracts as plain objects: their `check` then gets the frontmatter
-  type of the schema. `defineContract<Frontmatter>` is for a contract shared by collections.
+- `src/config/`: the types of `hollware.config.ts`, the `define*` helpers, `resolveConfig`,
+  `describeResolvedSite` and the site key rule. Inside `defineCollection`, write contracts as
+  plain objects: their `check` then gets the frontmatter type of the schema.
+  `defineContract<Frontmatter>` is for a contract shared by collections.
+  - `resolveConfig` takes `unknown`, because the config is user code, and throws one
+    `ConfigError` and nothing else: a line per problem, `<path>: <message>. <fix>`, and the same
+    as `problems` data. A new rule adds its case, with the exact path, message and fix, to the
+    tables of `tests/config/*-problems.test.ts`.
+  - A contract takes the id of a built-in one (`BUILT_IN_CONTRACT_IDS`) only if Hollware made
+    it (`isBuiltInContract`); a plain object or a copy is refused.
+  - A site key is `isSiteKey`, which the CLI uses too. `maxMarkdownBytes` stops at
+    `MAX_MARKDOWN_BYTES_CEILING` (768 KiB): a revision row is about 2.3 times the file and the
+    store refuses rows over 1.9 MB. `sortBy` names a string with the JSON Schema format `date` or
+    `date-time`, because listings sort it as text.
+  - `describeResolvedSite(site, { builtInContracts })` makes the `site` of `describe_site` once
+    per `ResolvedSite` and per array of built-in descriptions (pass the same array), and freezes
+    it. `tests/config/entry.ts` exports the config, contracts and operations modules whole, as
+    the package entry does, so a name in two of them fails `vp check`.
 - `src/contracts/types.ts` and `src/markdown/types.ts`: the shapes the contracts and the Markdown
   pipeline share with the server.
 - `src/tokens.ts`, `src/scopes.ts`, `src/ids.ts` and `src/errors.ts`: the personal token format,
