@@ -48,6 +48,21 @@ serve them (ADR-017). Boundary rules for this package:
   gets one answer whether it was unknown, expired or revoked: log the reason, never send it.
   `ROLE_SCOPES` has one entry per role of the `users_role` check; owners get every scope, the
   other roles none until v0.3.
+- `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
+  when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
+  there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one
+  JSON line through `console.log`.
+- `src/http` is the gateway, a Hono 5 app: a request id, then `checkHostAndOrigin` before every
+  route, then `GET /health`, `/mcp` (401 before the endpoint, `touch` to `ctx.waitUntil`, a store
+  on the primary) and a JSON 404. Whatever a route throws is a JSON 500 with the request id in its
+  fix; a D1 failure is never a 401. Hono 5's `onError` and `notFound` are middleware `(c, next)`;
+  the Hono 4 form answers a plain-text 500, so everything version-specific stays in
+  `src/http/errors.ts`.
+- `src/rpc` is what sites call over a service binding: the class has the four methods of
+  `HollwareRpc` and nothing else, because everything on its prototype is callable. Each call checks
+  its site, parses its input with the spec, and runs on the published view with a binding
+  principal and a replica session. An error crosses a binding with its `cause`, so a failure
+  reaches the caller rebuilt without it, or as `internal`, and the cause goes to the log.
 - `src/mcp` is the MCP adapter: `createMcpEndpoint` returns `{ fetch(request, call) }`, which
   the gateway mounts at `/mcp` once per isolate, passing `{ principal, requestId, context }`.
   It sets the view (`head`) and the client itself, asks for each tool's scopes before its
