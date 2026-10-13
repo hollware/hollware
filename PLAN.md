@@ -337,7 +337,7 @@ Every WP ships integration tests that are green in its own wave, owns disjoint d
   - [x] WP6 CLI (`packages/cli`). Decided at integration: `token create` gives `content:read` and `content:write` by default (publishing is asked for explicitly), for 90 days, at most 365; WP1 adopts the CLI's site-key rule and exports it, and WP3 exports the refusal contract ids, for the CLI to import once they land
 - [x] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`), dispatched on 2026-10-13 after Wave 1 landed (branch `wave2/wp7-handlers`) · [x] WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types, dispatched on 2026-10-12 together with Wave 1 because it stands on Wave 0 alone
 - [x] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`. Dispatched on 2026-10-13 together with WP7, against fake handlers, since it stands on frozen types alone (branch `wave3/wp9-gateway`); `createHollware` gets the real handlers at integration
-- [ ] Wave 3b (parallel):
+- [~] Wave 3b (parallel), dispatched on 2026-10-13 (branches `wave3/wp10-conformance` and `wave3/wp11-playground`); ADR-022 accepted as WP10 starts:
   - WP11 playground, starter and `examples/worker-site`, with minified builds and the parser imported lazily on writes; `scripts/check-budgets.ts`;
   - WP10 conformance (`tests/conformance`): the proxy that adds a token, the baselines of ADR-022 and the task `test:conformance`
 - [ ] Wave 4: the acceptance suite `tests/acceptance/v0.1` with its task, runner and CI step in one commit (orchestrator); fixes go back to the owning WP; three reviewers; close (ADR-006 and ADR-009 confirmed or revised, README status)

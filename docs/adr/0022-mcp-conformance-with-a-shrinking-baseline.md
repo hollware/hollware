@@ -1,6 +1,6 @@
 # ADR-022: MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims
 
-Status: Proposed (2026-10-12)
+Status: Accepted (2026-10-13)
 
 ## Context
 

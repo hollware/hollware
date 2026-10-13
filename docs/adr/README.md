@@ -37,7 +37,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 019 | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              | [0019-personal-tokens-in-v0-1-oauth-with-the-admin.md](0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)                     |
 | 020 | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              | [0020-content-safety-is-a-contract.md](0020-content-safety-is-a-contract.md)                                                     |
 | 021 | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              | [0021-append-only-revisions-and-publications.md](0021-append-only-revisions-and-publications.md)                                 |
-| 022 | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Proposed              | [0022-mcp-conformance-with-a-shrinking-baseline.md](0022-mcp-conformance-with-a-shrinking-baseline.md)                           |
+| 022 | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Accepted              | [0022-mcp-conformance-with-a-shrinking-baseline.md](0022-mcp-conformance-with-a-shrinking-baseline.md)                           |
 | 023 | Migrations only move forward, and a shipped migration never changes                                         | Accepted              | [0023-forward-only-migrations.md](0023-forward-only-migrations.md)                                                               |
 
 ## Template
