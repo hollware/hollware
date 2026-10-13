@@ -13,19 +13,7 @@ export type {
   SchemaOutput,
   SiteDefinition,
 } from './config/types.ts'
-export type {
-  AcknowledgedWarning,
-  Contract,
-  ContractContext,
-  ContractFinding,
-  EntryFacts,
-  EntryLookup,
-  EntryRef,
-  Phase,
-  Severity,
-  Verdict,
-  Violation,
-} from './contracts/types.ts'
+export * from './contracts/index.ts'
 export { ERROR_CODES, HollwareError, type ErrorCode } from './errors.ts'
 export { ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
 export type {

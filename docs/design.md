@@ -269,42 +269,57 @@ Contract errors never block a draft. The revision is saved, and the verdict says
 
 ### Configuration
 
-The configuration below is illustrative. The exact options are settled in v0.1, together with the interfaces of `@hollware/core`: `defineConfig`, `defineCollection`, `defineComponent` and `defineContract`.
+This is the configuration of v0.1, in `hollware.config.ts`; the playground's is a complete example.
 
 ```ts
-import { contracts, defineCollection, defineConfig } from '@hollware/core'
+import { contracts, defineCollection, defineComponent, defineConfig } from '@hollware/core'
 import * as z from 'zod'
+
+const blog = defineCollection({
+  // Zod by default; any Standard Schema with JSON Schema works
+  schema: z.object({
+    title: z.string(),
+    description: z.string().max(160),
+    tags: z.array(z.string()).min(1),
+    translationGroup: z.string(),
+    cta: z.enum(['newsletter', 'docs', 'github']).optional(),
+  }),
+  routes: { es: '/blog/:slug/', en: '/en/blog/:slug/' },
+  translations: { groupBy: 'translationGroup' },
+  tags: 'tags',
+  // components allowed in the body, with props that refuse unknown keys
+  components: {
+    callout: defineComponent({
+      props: z.strictObject({ type: z.enum(['info', 'warning', 'tip']) }),
+    }),
+    youtube: defineComponent({ props: z.strictObject({ id: z.string() }) }),
+  },
+  contracts: [
+    contracts.translationPair(), // every locale of the site has its entry in the group
+    contracts.internalLinksResolve(), // internal links point at published entries
+    contracts.imagesHaveAlt(),
+    {
+      // a rule of the site, as a plain object: its check gets the type of the schema
+      id: 'seo-title-length',
+      severity: 'warning',
+      description: 'A title of at most 60 characters.',
+      check: ({ frontmatter }) =>
+        frontmatter.title.length <= 60
+          ? []
+          : [
+              {
+                path: '/frontmatter/title',
+                message: 'The title is longer than 60 characters.',
+                fix: 'Shorten the title to 60 characters or add seoTitle.',
+              },
+            ],
+    },
+  ],
+})
 
 export default defineConfig({
   sites: {
-    acme: { locales: ['es', 'en'], defaultLocale: 'es' },
-  },
-  collections: {
-    blog: defineCollection({
-      // Zod by default; any Standard Schema with JSON Schema works
-      schema: z.object({
-        title: z.string(),
-        description: z.string().max(160),
-        tags: z.array(z.string()).min(1),
-        cta: z.enum(['newsletter', 'docs', 'github']).optional(),
-      }),
-      // components allowed in the body, with their props
-      components: {
-        callout: z.object({ type: z.enum(['info', 'warning', 'tip']) }),
-        youtube: z.object({ id: z.string() }),
-      },
-      contracts: [
-        contracts.translationPair(), // the ES/EN pair publishes together
-        contracts.internalLinksResolve(), // internal links must exist
-        contracts.imagesHaveAlt(),
-        contracts.custom({
-          id: 'seo-title-length',
-          severity: 'warning',
-          check: ({ frontmatter }) => frontmatter.title.length <= 60,
-          fix: 'Shorten the title to 60 characters or add seoTitle.',
-        }),
-      ],
-    }),
+    acme: { locales: ['es', 'en'], defaultLocale: 'es', collections: { blog } },
   },
 })
 ```

@@ -1,4 +1,5 @@
 import {
+  REFUSAL_CONTRACT_IDS,
   createDraft,
   getEntry,
   isPersonalToken,
@@ -36,16 +37,6 @@ export const IMPORT_USAGE = [
   '',
   'The token needs content:read and content:write, and content:publish for --publish.',
 ].join('\n')
-
-/**
- * The contracts that make a write `refused`: Hollware cannot store a file that is too large or
- * whose frontmatter or syntax does not parse. Any other violation is saved with the draft.
- */
-export const REFUSAL_CONTRACTS: readonly string[] = [
-  'size-limit',
-  'frontmatter-syntax',
-  'comark-parse',
-]
 
 type Violation = z.output<typeof schemas.violation>
 type Verdict = z.output<typeof schemas.verdict>
@@ -295,7 +286,7 @@ async function validateAll(session: Session, files: readonly ContentFile[]): Pro
         file,
         verdict: answer.verdict,
         refusals: answer.verdict.errors.filter((violation) =>
-          REFUSAL_CONTRACTS.includes(violation.contract),
+          REFUSAL_CONTRACT_IDS.includes(violation.contract),
         ),
         failure: undefined,
       })

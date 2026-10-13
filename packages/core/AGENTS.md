@@ -45,3 +45,20 @@ Where things are:
 - Tests that process Markdown call `warmUpComark()` from `tests/markdown/support.ts`: the first
   import of Comark in workerd takes seconds. `vp run bench` fails when the p95 CPU time of a
   write of the 2,027-word fixture is over 3 ms.
+- `src/contracts/`: the runner and the built-in contracts (ADR-004, ADR-020). `runContracts` is
+  the one entry: `schema` runs first, and the collection's own contracts run only once it passed,
+  with the schema's output; a contract that throws becomes an error of that contract; violations
+  come in a fixed order. `write` runs the contracts declared for it, `publish` every contract
+  (`tests/contracts/runner.test.ts`).
+- Every violation has a non-empty `fix`, which the runner enforces. Fixes are what agents learn
+  from: specific, imperative, naming the field and what is allowed; a schema's fix comes from its
+  JSON Schema (`src/contracts/schema-fix.ts`).
+- `BUILT_IN_CONTRACT_IDS` are reserved. `REFUSAL_CONTRACT_IDS` are the violations that make a
+  write `refused` (the pipeline and the store make them, never `runContracts`). The opt-in
+  built-ins are `contracts.translationPair()`, `internalLinksResolve()` and `imagesHaveAlt()`;
+  `contracts.custom<Frontmatter>(…)` is for yes-or-no rules, and inside `defineCollection` it needs
+  the frontmatter type given. `isBuiltInContract` tells Hollware's contracts from a site's own,
+  whatever their id (`tests/contracts/describe.test.ts`).
+- `contractsHash` is the SHA-256 of the canonical JSON of the input JSON Schemas and the id,
+  severity and phases of the contracts of the run: it names rules, not content
+  (`tests/contracts/hash.test.ts`).
