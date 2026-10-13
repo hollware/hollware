@@ -17,6 +17,7 @@ const list = (max: number, ...values: string[]): ExceptionList => ({
 describe('exception lists', () => {
   it('every list is exactly as long as its recorded size, and each entry has a reason', () => {
     expect(Object.keys(EXCEPTION_LISTS).sort()).toEqual([
+      'INVISIBLE_CHARACTER_FILES',
       'MISSING_DOC_PATHS',
       'OTHER_TEST_RUNNERS',
       'TABLES_WITHOUT_SHARED_COLUMNS',

@@ -89,5 +89,5 @@ The `hollware` command. Boundary rules for this package:
 - `tests/support/install.ts` copies `src` next to a manifest the test controls, to run the bin as a
   process and read its version.
 - No source file holds an invisible character (a byte order mark, a zero-width mark, a
-  bidirectional control). Write one as an escape (`\u202E`) or with `String.fromCharCode`. Bound by
-  `tests/boundary.test.ts`.
+  bidirectional control). Write one as an escape or with `String.fromCodePoint`. The guard
+  `invisible-characters` of the repository checks every file.

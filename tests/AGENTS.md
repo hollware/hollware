@@ -41,6 +41,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
 - `tests/conventions/code-of-conduct.test.ts`: no template placeholder, one contact address.
 - `tests/conventions/personal-email.test.ts`: no personal email address in any file.
+- `tests/conventions/invisible-characters.test.ts`: no text file holds a bidirectional control, a zero-width mark, a byte order mark or a line or paragraph separator, outside `INVISIBLE_CHARACTER_FILES`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`.
 - `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
 - `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.

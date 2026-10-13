@@ -5,13 +5,11 @@
 // - "--help and --version do not load the commands": `src/index.ts` imports a command, a
 //   helper that needs `zod` or `@hollware/core`, or a dependency, at the top, so `--help` and
 //   `--version` load the MCP client.
-// - "no source file holds an invisible character": a byte order mark, a zero-width mark or a
-//   bidirectional control sits in a source or test file, where a reader cannot see it.
 // - "never loads hollware.config.ts": a command reads or imports the config of the project
 //   (the CLI works through wrangler and MCP only); the file is made unreadable and its
 //   evaluation would leave a marker, so reading it fails the command and loading it is seen.
 import { chmodSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
@@ -69,27 +67,6 @@ describe('--help and --version do not load the commands', () => {
     )
     expect(specifiers).toContain('./version.ts')
     expect(heavy).toEqual([])
-  })
-})
-
-describe('no source file holds an invisible character', () => {
-  const INVISIBLE = /[\p{Cf}\p{Zl}\p{Zp}]/u
-  const PACKAGE = fileURLToPath(new URL('..', import.meta.url))
-  const files = [...sourceFiles(SRC), ...sourceFiles(join(PACKAGE, 'tests'))].map((file) =>
-    relative(PACKAGE, file),
-  )
-
-  it('sees the sources and the tests', () => {
-    expect(files).toContain('src/index.ts')
-    expect(files).toContain('tests/boundary.test.ts')
-  })
-
-  it.each(files.map((file) => [file]))('in %s', (file) => {
-    let found: string | undefined
-    for (const character of readFileSync(join(PACKAGE, file ?? ''), 'utf8')) {
-      if (INVISIBLE.test(character)) found ??= character.codePointAt(0)?.toString(16)
-    }
-    expect(found).toBeUndefined()
   })
 })
 

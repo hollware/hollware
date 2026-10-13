@@ -150,6 +150,18 @@ export const TABLES_WITHOUT_SHARED_COLUMNS: ExceptionList = {
   ],
 }
 
+/** Files that hold an invisible character on purpose (guard `invisible-characters`). */
+export const INVISIBLE_CHARACTER_FILES: ExceptionList = {
+  max: 1,
+  entries: [
+    {
+      value: 'tests/fixtures/content/hostile/bom.md',
+      reason:
+        'A fixture that starts with a byte order mark on purpose: the Markdown pipeline must remove it.',
+    },
+  ],
+}
+
 /** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
 function byValue(list: TestRunnerList): ExceptionList {
   return {
@@ -165,6 +177,7 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   OTHER_TEST_RUNNERS: byValue(OTHER_TEST_RUNNERS),
   TABLES_WITHOUT_SITE,
   TABLES_WITHOUT_SHARED_COLUMNS,
+  INVISIBLE_CHARACTER_FILES,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

@@ -403,7 +403,7 @@ GET /openapi.json
 The CLI installs and maintains an instance.
 
 ```bash
-hollware init              # single-use link for the owner's passkey
+hollware init              # the site, its owner and a first personal token (v0.1)
 hollware migrate           # applies the D1 migrations of the installed version
 hollware import ./content/blog --site acme
 hollware export --to markdown   # v0.2
