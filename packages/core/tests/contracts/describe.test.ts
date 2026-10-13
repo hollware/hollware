@@ -41,16 +41,24 @@ describe('BUILT_IN_CONTRACT_IDS', () => {
       'size-limit',
       'frontmatter-syntax',
       'comark-parse',
+      'unique-slug',
+      'unique-translation',
     ])
   })
 })
 
 describe('REFUSAL_CONTRACT_IDS', () => {
   it('lists the violations that make a write refused instead of saved', () => {
-    expect(REFUSAL_CONTRACT_IDS).toStrictEqual(['size-limit', 'frontmatter-syntax', 'comark-parse'])
+    expect(REFUSAL_CONTRACT_IDS).toStrictEqual([
+      'size-limit',
+      'frontmatter-syntax',
+      'comark-parse',
+      'unique-slug',
+      'unique-translation',
+    ])
   })
 
-  it('are built-in ids that no verdict holds: the last three, which the pipeline and the store make', () => {
+  it('are built-in ids that no verdict holds: the last ones, which the pipeline and the store make', () => {
     expect(BUILT_IN_CONTRACT_IDS.slice(-REFUSAL_CONTRACT_IDS.length)).toStrictEqual(
       REFUSAL_CONTRACT_IDS,
     )
@@ -131,6 +139,19 @@ describe('describeBuiltInContracts', () => {
         phases: BOTH,
         description: 'The Markdown parses.',
       },
+      {
+        id: 'unique-slug',
+        severity: 'error',
+        phases: BOTH,
+        description: 'No other entry of the collection and locale has the slug.',
+      },
+      {
+        id: 'unique-translation',
+        severity: 'error',
+        phases: BOTH,
+        description:
+          'No other entry of the collection and locale belongs to the translation group.',
+      },
     ])
   })
 
@@ -148,7 +169,7 @@ describe('describeBuiltInContracts', () => {
   it('answers with a new list each time', () => {
     const first = describeBuiltInContracts()
     first.pop()
-    expect(describeBuiltInContracts()).toHaveLength(9)
+    expect(describeBuiltInContracts()).toHaveLength(11)
   })
 })
 
@@ -256,6 +277,8 @@ describe('the module', () => {
       'isBuiltInContract',
       'runContracts',
       'sizeLimitViolation',
+      'uniqueSlugViolation',
+      'uniqueTranslationViolation',
     ])
   })
 })

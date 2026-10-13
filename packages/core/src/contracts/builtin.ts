@@ -13,8 +13,10 @@ import type { Contract } from './types.ts'
  *   and `images-have-alt`.
  * - Always on, found before the contracts run: `size-limit` (made by the pipeline for
  *   `maxMarkdownBytes` and by the store for the row, with `sizeLimitViolation`),
- *   `frontmatter-syntax` and `comark-parse` (made by the pipeline). A file with one of them is
- *   `refused`, so no verdict is made for it: they are `REFUSAL_CONTRACT_IDS`.
+ *   `frontmatter-syntax` and `comark-parse` (made by the pipeline), and `unique-slug` and
+ *   `unique-translation` (made when the store finds the slug or the translation group taken). A
+ *   write with one of them is `refused`, so no verdict is made for it: they are
+ *   `REFUSAL_CONTRACT_IDS`.
  */
 export const BUILT_IN_CONTRACT_IDS = [
   'schema',
@@ -29,6 +31,8 @@ export const BUILT_IN_CONTRACT_IDS = [
   'size-limit',
   'frontmatter-syntax',
   'comark-parse',
+  'unique-slug',
+  'unique-translation',
 ] as const
 
 export type BuiltInContractId = (typeof BUILT_IN_CONTRACT_IDS)[number]
@@ -36,13 +40,15 @@ export type BuiltInContractId = (typeof BUILT_IN_CONTRACT_IDS)[number]
 /**
  * The ids of the violations that make a write `refused` instead of saving it: a file that cannot
  * be stored, because it is over a size limit, its frontmatter is not YAML or its Markdown does not
- * parse. Every other violation is saved with the draft and only blocks publishing (ADR-004,
+ * parse, or whose slug or translation group another entry holds. Every other violation is saved with the draft and only blocks publishing (ADR-004,
  * ADR-020). Plain strings, so that a violation's `contract` can be looked up in the list.
  */
 export const REFUSAL_CONTRACT_IDS: readonly string[] = [
   'size-limit',
   'frontmatter-syntax',
   'comark-parse',
+  'unique-slug',
+  'unique-translation',
 ]
 
 /** The built-in contract that the schema of the collection stands for. It runs before the others. */
@@ -78,6 +84,16 @@ const PIPELINE_CONTRACTS: readonly Omit<Contract<unknown>, 'check'>[] = [
     id: 'comark-parse',
     severity: 'error',
     description: 'The Markdown parses.',
+  },
+  {
+    id: 'unique-slug',
+    severity: 'error',
+    description: 'No other entry of the collection and locale has the slug.',
+  },
+  {
+    id: 'unique-translation',
+    severity: 'error',
+    description: 'No other entry of the collection and locale belongs to the translation group.',
   },
 ]
 

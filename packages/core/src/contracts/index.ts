@@ -32,3 +32,4 @@ export type {
   Verdict,
   Violation,
 } from './types.ts'
+export { uniqueSlugViolation, uniqueTranslationViolation } from './unique.ts'
