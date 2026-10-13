@@ -1,0 +1,92 @@
+import type { ResolvedCollection } from '../config/types.ts'
+import type { DisallowedMarker } from '../markdown/types.ts'
+import { registerBuiltIn } from './registry.ts'
+import { runtimeOf } from './runtime.ts'
+import { clip, quote } from './text.ts'
+import type { Contract } from './types.ts'
+
+/**
+ * The four content-safety contracts (ADR-020). The Markdown pipeline never drops what it does not
+ * allow: it leaves a marker, and each contract reports the markers of its own kind, one error for
+ * each, with the line. They never block a draft, only publishing.
+ */
+
+interface Wording {
+  readonly message: string
+  readonly fix: string
+}
+
+/** The components a collection allows, sorted: what a fix offers instead. */
+function allowedComponents(collection: ResolvedCollection): string[] {
+  return [...collection.components.keys()].toSorted()
+}
+
+function markerContract(
+  kind: DisallowedMarker['kind'],
+  description: string,
+  wording: (marker: DisallowedMarker, collection: ResolvedCollection) => Wording,
+): Contract<unknown> {
+  return registerBuiltIn(
+    {
+      id: kind,
+      severity: 'error',
+      description,
+      check(context) {
+        const { collection } = runtimeOf(kind, context)
+        return context.markdown.extracted.disallowed
+          .filter((marker) => marker.kind === kind)
+          .map((marker) => ({
+            path: '/body',
+            ...wording(marker, collection),
+            line: marker.line,
+          }))
+      },
+    },
+    { readsFrontmatter: false },
+  )
+}
+
+export const RAW_HTML = markerContract(
+  'raw-html',
+  'The body holds Markdown and the components of the collection, never raw HTML.',
+  (marker, collection) => {
+    const components = allowedComponents(collection)
+    return {
+      message: `Raw HTML is not allowed: the body has a <${clip(marker.name)}> tag.`,
+      fix: `Remove the HTML and use Markdown${components.length === 0 ? '' : ` or one of the allowed components: ${components.join(', ')}`}.`,
+    }
+  },
+)
+
+export const UNKNOWN_COMPONENT = markerContract(
+  'unknown-component',
+  'The body uses only the components that the collection declares.',
+  (marker, collection) => {
+    const components = allowedComponents(collection)
+    return {
+      message: `The component ${quote(marker.name)} does not exist in this collection.`,
+      fix:
+        components.length === 0
+          ? 'This collection allows no components: remove it and use Markdown.'
+          : `Use one of the allowed components: ${components.join(', ')}.`,
+    }
+  },
+)
+
+export const DISALLOWED_ATTRIBUTE = markerContract(
+  'disallowed-attribute',
+  'Links, images and code carry only the attributes Markdown produces, and a component only the props its schema declares.',
+  (marker) => ({
+    message: `The attribute ${quote(marker.name)} is not allowed.`,
+    fix: `Remove the attribute ${quote(marker.name)}. Links keep href and title, images keep src, alt, title, width and height, and a component takes only the props its schema declares.`,
+  }),
+)
+
+export const UNSAFE_URL = markerContract(
+  'unsafe-url',
+  'Links and images use an https:, http: or mailto: URL, a path of the site or an anchor.',
+  (marker) => ({
+    message: `The URL ${quote(marker.name)} is not allowed.`,
+    fix: 'Use an https: or http: URL, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.',
+  }),
+)
