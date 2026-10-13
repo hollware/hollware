@@ -94,19 +94,23 @@ export const entries = sqliteTable(
     unique('entries_id_site').on(t.id, t.siteId),
     unique('entries_slug').on(t.siteId, t.collection, t.locale, t.slug),
     unique('entries_translation').on(t.siteId, t.collection, t.translationGroup, t.locale),
+    // Each listing reads its order from an index, the id breaking ties, so a page costs its own
+    // rows and not a sort of the whole collection.
+    index('entries_head').on(t.siteId, t.collection, t.updatedAt, t.id),
+    index('entries_head_locale').on(t.siteId, t.collection, t.locale, t.updatedAt, t.id),
     index('entries_published')
-      .on(t.siteId, t.collection, t.locale, t.publishedSortKey)
+      .on(t.siteId, t.collection, t.locale, t.publishedSortKey, t.id)
       .where(sql`${t.status} = 'published'`),
     foreignKey({ name: 'entries_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     check('entries_status', sql`${t.status} IN ('draft', 'scheduled', 'published')`),
     check('entries_version', sql`${t.version} >= 1`),
     check(
       'entries_draft',
-      sql`${t.status} <> 'draft' OR (${t.publishedRev} IS NULL AND ${t.scheduledAt} IS NULL)`,
+      sql`${t.status} <> 'draft' OR (${t.publishedRev} IS NULL AND ${t.publishedSortKey} IS NULL AND ${t.scheduledAt} IS NULL)`,
     ),
     check(
       'entries_published',
-      sql`${t.status} <> 'published' OR (${t.publishedRev} IS NOT NULL AND ${t.publishedAt} IS NOT NULL)`,
+      sql`${t.status} <> 'published' OR (${t.publishedRev} IS NOT NULL AND ${t.publishedAt} IS NOT NULL AND ${t.publishedSortKey} IS NOT NULL)`,
     ),
     check('entries_scheduled', sql`${t.status} <> 'scheduled' OR ${t.scheduledAt} IS NOT NULL`),
   ],

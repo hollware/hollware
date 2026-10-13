@@ -17,12 +17,14 @@ CREATE TABLE `entries` (
 	FOREIGN KEY (`site_id`) REFERENCES `sites`(`id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "entries_status" CHECK("entries"."status" IN ('draft', 'scheduled', 'published')),
 	CONSTRAINT "entries_version" CHECK("entries"."version" >= 1),
-	CONSTRAINT "entries_draft" CHECK("entries"."status" <> 'draft' OR ("entries"."published_rev" IS NULL AND "entries"."scheduled_at" IS NULL)),
-	CONSTRAINT "entries_published" CHECK("entries"."status" <> 'published' OR ("entries"."published_rev" IS NOT NULL AND "entries"."published_at" IS NOT NULL)),
+	CONSTRAINT "entries_draft" CHECK("entries"."status" <> 'draft' OR ("entries"."published_rev" IS NULL AND "entries"."published_sort_key" IS NULL AND "entries"."scheduled_at" IS NULL)),
+	CONSTRAINT "entries_published" CHECK("entries"."status" <> 'published' OR ("entries"."published_rev" IS NOT NULL AND "entries"."published_at" IS NOT NULL AND "entries"."published_sort_key" IS NOT NULL)),
 	CONSTRAINT "entries_scheduled" CHECK("entries"."status" <> 'scheduled' OR "entries"."scheduled_at" IS NOT NULL)
 );
 --> statement-breakpoint
-CREATE INDEX `entries_published` ON `entries` (`site_id`,`collection`,`locale`,`published_sort_key`) WHERE "entries"."status" = 'published';--> statement-breakpoint
+CREATE INDEX `entries_head` ON `entries` (`site_id`,`collection`,`updated_at`,`id`);--> statement-breakpoint
+CREATE INDEX `entries_head_locale` ON `entries` (`site_id`,`collection`,`locale`,`updated_at`,`id`);--> statement-breakpoint
+CREATE INDEX `entries_published` ON `entries` (`site_id`,`collection`,`locale`,`published_sort_key`,`id`) WHERE "entries"."status" = 'published';--> statement-breakpoint
 CREATE UNIQUE INDEX `entries_id_site` ON `entries` (`id`,`site_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `entries_slug` ON `entries` (`site_id`,`collection`,`locale`,`slug`);--> statement-breakpoint
 CREATE UNIQUE INDEX `entries_translation` ON `entries` (`site_id`,`collection`,`translation_group`,`locale`);--> statement-breakpoint

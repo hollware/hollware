@@ -1,6 +1,6 @@
 {
-  "id": "da5b0bb7-751e-401b-909a-91b84d243b64",
-  "prevId": "c11ad51a-b1f5-438a-91fb-dbfac22bf4a1",
+  "id": "c750134b-3d18-4d2d-93a7-18fdaf34b800",
+  "prevId": "cc8461ec-4147-46d9-9cb2-f236c0eac2cf",
   "version": "6",
   "dialect": "sqlite",
   "tables": {
@@ -114,13 +114,35 @@
         }
       },
       "indexes": {
+        "entries_head": {
+          "name": "entries_head",
+          "columns": [
+            "site_id",
+            "collection",
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "entries_head_locale": {
+          "name": "entries_head_locale",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
         "entries_published": {
           "name": "entries_published",
           "columns": [
             "site_id",
             "collection",
             "locale",
-            "published_sort_key"
+            "published_sort_key",
+            "id"
           ],
           "where": "\"entries\".\"status\" = 'published'",
           "isUnique": false
@@ -182,11 +204,11 @@
         },
         "entries_draft": {
           "name": "entries_draft",
-          "value": "\"entries\".\"status\" <> 'draft' OR (\"entries\".\"published_rev\" IS NULL AND \"entries\".\"scheduled_at\" IS NULL)"
+          "value": "\"entries\".\"status\" <> 'draft' OR (\"entries\".\"published_rev\" IS NULL AND \"entries\".\"published_sort_key\" IS NULL AND \"entries\".\"scheduled_at\" IS NULL)"
         },
         "entries_published": {
           "name": "entries_published",
-          "value": "\"entries\".\"status\" <> 'published' OR (\"entries\".\"published_rev\" IS NOT NULL AND \"entries\".\"published_at\" IS NOT NULL)"
+          "value": "\"entries\".\"status\" <> 'published' OR (\"entries\".\"published_rev\" IS NOT NULL AND \"entries\".\"published_at\" IS NOT NULL AND \"entries\".\"published_sort_key\" IS NOT NULL)"
         },
         "entries_scheduled": {
           "name": "entries_scheduled",

@@ -65,6 +65,22 @@ export interface EntryView {
   readonly revision: StoredRevision
 }
 
+/**
+ * What a listing needs of a revision: its frontmatter and tags, never the Markdown or the
+ * document, which can weigh megabytes on a page of a hundred entries.
+ */
+export interface RevisionSummary {
+  readonly id: string
+  readonly frontmatter: Readonly<Record<string, unknown>>
+  readonly tags: readonly string[]
+}
+
+/** An entry with the summary of the revision of the view that was asked for. */
+export interface EntrySummaryView {
+  readonly entry: StoredEntry
+  readonly revision: RevisionSummary
+}
+
 /** A publish or an unpublish, as `publications` keeps it (ADR-021). */
 export interface StoredPublication {
   readonly id: string
@@ -122,14 +138,14 @@ export interface ContentStore {
   listEntries(
     site: string,
     query: ListQuery,
-  ): Promise<{ readonly entries: readonly EntryView[]; readonly nextCursor: string | null }>
+  ): Promise<{ readonly entries: readonly EntrySummaryView[]; readonly nextCursor: string | null }>
   /** The entries of a translation group, one per locale, in the given view. */
   listTranslations(
     site: string,
     collection: string,
     translationGroup: string,
     view: View,
-  ): Promise<readonly EntryView[]>
+  ): Promise<readonly EntrySummaryView[]>
   /** What cross-entry contracts read, scoped to the site. */
   lookup(site: string): EntryLookup
   /** The latest publish or unpublish of an entry, or `null`. */
