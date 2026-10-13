@@ -17,14 +17,15 @@ deleted when v1.0 ships, together with this section.
 
 ## Commands
 
-| Command                                                                   | What it does                                                    |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`) |
-| `vp check`                                                                | Format, lint and type-check the whole repo                      |
-| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one     |
-| `vp run -r build`                                                         | Build every package                                             |
-| `vp run check:push`                                                       | Everything CI runs: check, test, build, publint, types          |
-| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`        |
+| Command                                                                   | What it does                                                                      |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                   |
+| `vp check`                                                                | Format, lint and type-check the whole repo                                        |
+| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                       |
+| `vp run -r build`                                                         | Build every package                                                               |
+| `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
+| `vp run check:push`                                                       | Everything CI runs: check, test, bench, build, publint, types                     |
+| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A
 global `vp` of another version breaks the Cloudflare plugin. Supervised servers are

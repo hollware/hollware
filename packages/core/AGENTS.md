@@ -24,3 +24,24 @@ Where things are:
   pipeline share with the server.
 - `src/tokens.ts`, `src/scopes.ts`, `src/ids.ts` and `src/errors.ts`: the personal token format,
   the scopes, prefixed ULIDs and `HollwareError`.
+- `src/markdown/`: the Markdown pipeline (ADR-001, ADR-020). `processMarkdown` answers for any
+  string and never throws: a file it cannot store comes back as a `size-limit`,
+  `frontmatter-syntax` or `comark-parse` violation (`tests/markdown/limits.test.ts`,
+  `tests/markdown/frontmatter.test.ts`, `tests/markdown/fuzz.test.ts`).
+- Comark and `@comark/html` are imported lazily, the first time a file is processed or rendered,
+  so a Worker that only reads never loads them (`tests/markdown/lazy.test.ts`, which lists the
+  files of the folder: a new module must be added there).
+- `src/markdown/analyze.ts` is the one walk that judges a document and extracts its headings,
+  links, images, components, words and `disallowed`; `src/markdown/policy.ts` holds the tags, the
+  attributes each tag may carry and the URL schemes. Nothing Comark cannot represent is dropped
+  silently: raw HTML, unknown components, attributes outside the allowlist, unsafe URLs, braces in
+  prose and text after the parameters of a component's opening line each leave a marker or a
+  `disallowed` entry. `renderHtml` sanitizes any document before `@comark/html` prints it.
+- A change that gives some Markdown another document bumps `PIPELINE_VERSION` and re-pins the
+  output of the shared fixtures; `COMARK_VERSION` is bound to the installed package. A Comark
+  upgrade re-runs the hostile and braces tests: the parser turns off the markdown-it rule
+  `comark_block_yaml` (an alias bomb in a component's YAML props took tens of seconds) and wraps
+  `comark_inline_props` by name.
+- Tests that process Markdown call `warmUpComark()` from `tests/markdown/support.ts`: the first
+  import of Comark in workerd takes seconds. `vp run bench` fails when the p95 CPU time of a
+  write of the 2,027-word fixture is over 3 ms.

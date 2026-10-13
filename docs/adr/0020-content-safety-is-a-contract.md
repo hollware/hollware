@@ -19,7 +19,7 @@ Hollware's thesis is that an agent learns what it may write from errors that car
 - The Markdown of an entry holds Markdown and the components its collection declares. Raw HTML, unknown components, attributes outside the allowlist and unsafe URLs are contract errors (`raw-html`, `unknown-component`, `disallowed-attribute`, `unsafe-url`), and each one carries a `fix`.
 - These errors never block saving a draft (ADR-004). They block publishing, so published content never carries them.
 - Native tags have an allowlist of attributes, for example `href` and `title` on links, `src`, `alt`, `title`, `width` and `height` on images, and only `language-*` classes on code. `class` and `style` exist only as props that a component declares, and component props are validated with strict schemas that reject unknown keys.
-- Nothing is dropped silently. The parser replaces a disallowed node with a marker that the contracts report, through Comark's `tagFallback`, and the stored Markdown is never changed.
+- Nothing is dropped silently. The parser replaces a disallowed node with a marker that the contracts report, and the stored Markdown is never changed. (Clarified on 2026-10-13: the markers come from Hollware's own walk of the document, not from Comark's `security` plugin and `tagFallback`, which remove attributes and whole blocks with nothing to report.)
 - The pipeline parses with `autoClose: false`, without Comark's `html` plugin, and computes heading ids of its own that keep non-ASCII letters.
 - The allowlist and the pipeline settings belong to `pipelineVersion`, which every derived document records.
 

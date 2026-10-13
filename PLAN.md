@@ -282,7 +282,7 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
   - `packages/core/bench/`: WP2 writes it, on `content/bench/long-post.md`, and its task and CI step land with it (item 0.8);
   - one harness pattern: `createPlaygroundHarness()` (`apps/playground/test/harness/workers.ts`) sends requests to `http://hollware.test` and gives the Worker that URL as `HOLLWARE_PUBLIC_URL`; `vp dev` keeps `http://localhost:5173`;
   - a bilingual blog config in `apps/playground/hollware.config.ts` (site `playground`, collection `blog`, routes `/blog/:slug/` and `/en/blog/:slug/`, `callout` and `youtube`, the `seo-title-length` warning), tested in workerd
-- [ ] 0.8 Root tasks and CI steps: each lands with the first test it runs (`test:conformance` with WP10, `check:budgets` with WP11, `test:acceptance` in Wave 4), so the guard `test-projects` never sees a test that nothing runs
+- [ ] 0.8 Root tasks and CI steps: each lands with the first test it runs (`test:conformance` with WP10, `check:budgets` with WP11, `test:acceptance` in Wave 4), so the guard `test-projects` never sees a test that nothing runs — `bench` landed with WP2 and runs inside `check:push`
 
 ### Operations: outcomes and effects (pinned in `core/src/operations`)
 
@@ -330,7 +330,7 @@ Every WP ships integration tests that are green in its own wave, owns disjoint d
 
 - [~] Wave 1 (parallel), dispatched on 2026-10-12, one git worktree per WP (`../hollware-wave1/<wp>`, branch `wave1/<wp>`):
   - WP1 config (`core/src/config`);
-  - WP2 Markdown and content safety (`core/src/markdown`, `core/bench`);
+  - [x] WP2 Markdown and content safety (`core/src/markdown`, `core/bench`);
   - WP3 contracts, including content safety and `size-limit` (`core/src/contracts`);
   - WP4 the D1 store on the schema of Wave 0 (`server/src/db`): repository functions, the optimistic write, sessions, limits;
   - [x] WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
@@ -414,6 +414,7 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 - 2026-10-12 — WP6 accepted (CLI): only `packages/cli` touched; `vp check` clean and 407 tests green (149 s; the integration test drives the real wrangler on a local D1 with the server's migrations). Reviewed: SQL only through fixed templates with validated values quoted as literals, `'` doubled and NUL refused; the token read from a file or stdin, https only (http for localhost), no credentials in the URL, no redirect to another origin, every output redacted. Orchestrator mutations → CAUGHT: control characters allowed in labels, a token file without the shape of a token accepted.
 - 2026-10-13 — The four remaining agents stopped again at the usage limit and were resumed after its reset (00:53). The integrated work was pushed (`61b6c96`). This repository has no pre-push hook: `check:push` runs in CI.
 - 2026-10-13 — New guard `invisible-characters`: WP6 found that its writing tool turned `\u202E`-style escapes into the invisible characters themselves, the Trojan Source class. Every text file of the repository (415) is scanned for the categories Cf, Zl and Zp; only `tests/fixtures/content/hostile/bom.md` holds one, on purpose (`INVISIBLE_CHARACTER_FILES`). The CLI's own scan, which the same mutation would kill, was removed. Mutation → CAUGHT: Cf dropped from the pattern.
+- 2026-10-13 — WP2 accepted (Markdown pipeline): only `src/markdown`, `bench` and `tests/markdown` touched; `vp check` clean, core 976 tests in Node and workerd, 46 mutations CAUGHT by the agent; the benchmark's CPU p95 per write of the 2,027-word post is 0.35 to 0.39 ms (budget 3 ms). Deviation, accepted and recorded in ADR-020: the markers come from Hollware's own walk of the document, because Comark's `security` plugin removes attributes and whole blocks (`::tip`) with nothing left to report. Comark 0.7.0 findings: `@comark/html` leaves `&#106;avascript:` unescaped in attributes (the renderer now escapes `&`), an alias bomb in a component's YAML props block takes tens of seconds (the rule is off), and braces in prose vanish (they are reported). Open: no cap on the number of elements, so a hostile 512 KiB file can cost far more than 10 ms of CPU; the first import of Comark in workerd tests takes seconds (`warmUpComark()`). Orchestrator mutations → CAUGHT: the renderer's URL check removed, `iframe` dropped from its dangerous tags. The `bench` task (item 0.8) runs inside `check:push`.
 
 ---
 

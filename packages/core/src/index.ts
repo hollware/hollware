@@ -43,6 +43,7 @@ export type {
   ProcessResult,
   RenderHtml,
 } from './markdown/types.ts'
+export { COMARK_VERSION, PIPELINE_VERSION, processMarkdown, renderHtml } from './markdown/index.ts'
 export * from './operations/index.ts'
 export { isScope, SCOPES, type Scope } from './scopes.ts'
 export {

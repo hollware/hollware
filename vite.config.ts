@@ -80,10 +80,17 @@ export default defineConfig({
     tasks: {
       // The pre-commit hook runs check:commit; CI runs check:push.
       'check:commit': { command: 'vp check', cache: false },
+      // The Markdown pipeline's budget: the p95 CPU time of a write of the 2,027-word fixture.
+      bench: {
+        command:
+          "vp test bench --project '@hollware/core (bench)' packages/core/bench/markdown.bench.ts",
+        cache: false,
+      },
       'check:push': {
         command: [
           'vp check',
           'vp test',
+          'vp run bench',
           'vp run -r build',
           'node scripts/check-bins.ts',
           'vp run -r publint',
