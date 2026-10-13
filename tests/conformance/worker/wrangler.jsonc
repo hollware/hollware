@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The Worker the MCP conformance suite runs against (ADR-022): Hollware as a user deploys it,
+  // under `wrangler dev` and never under `vp dev`, so that the Host check of the Worker is the
+  // one that answers. Nothing here is deployed.
+  "name": "hollware-conformance",
+  "main": "src/index.ts",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
+  // Hollware runs without it, and so does everything that tests Hollware.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  // No anonymous wrangler telemetry from this repository.
+  "send_metrics": false,
+  "vars": {
+    // The only Host and Origin the Worker answers: the URL the proxy of tests/conformance serves
+    // (tests/conformance/proxy.ts), which passes the Host of the suite through. The runner picks
+    // free ports and gives the real value with `--var`; this one is for a run by hand.
+    "HOLLWARE_PUBLIC_URL": "http://127.0.0.1:8790",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hollware-conformance",
+      // Placeholder: the conformance run uses the local database and never contacts Cloudflare.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      // The migrations of the server package, as a project that depends on it applies them.
+      "migrations_dir": "../../../packages/server/migrations",
+    },
+  ],
+}

@@ -1,0 +1,93 @@
+# Expected failures of the MCP conformance suite against Hollware, for the 2025-11-25 revision
+# (ADR-022). Every entry is one failing check, <scenario>:<check id>, with its class and why it
+# fails. The suite reads the list (tests/conformance/run.ts turns this file into its format) and
+# exits non-zero for a failure that is not here, and for an entry that now passes.
+#
+# Classes: not-offered is a capability Hollware does not offer in v0.1, fixture is a test_* tool or
+# prompt the suite expects that is not an operation of Hollware, and upstream is a defect of the
+# suite and links its issue. A check of the must-pass profile (../must-pass.yaml) can never be
+# listed: the guard conformance-baselines fails on it.
+#
+# The list only shrinks. Implementing a capability removes its entries in the same change and
+# lowers recordedSize; adding an entry is a reviewed change that raises it and states why.
+revision: '2025-11-25'
+recordedSize: 26
+entries:
+  - check: logging-set-level:logging-set-level
+    class: not-offered
+    reason: 'Hollware offers no logging capability, so logging/setLevel is not a method of the server and answers method not found.'
+  - check: completion-complete:completion-complete
+    class: not-offered
+    reason: 'Hollware offers no completion capability, so completion/complete is not a method of the server and answers method not found.'
+  - check: tools-call-simple-text:tools-call-simple-text
+    class: fixture
+    reason: 'The suite calls the fixture tool test_simple_text, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-image:tools-call-image
+    class: fixture
+    reason: 'The suite calls the fixture tool test_image_content, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-audio:tools-call-audio
+    class: fixture
+    reason: 'The suite calls the fixture tool test_audio_content, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-embedded-resource:tools-call-embedded-resource
+    class: fixture
+    reason: 'The suite calls the fixture tool test_embedded_resource, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-mixed-content:tools-call-mixed-content
+    class: fixture
+    reason: 'The suite calls the fixture tool test_multiple_content_types, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-with-logging:tools-call-with-logging
+    class: not-offered
+    reason: 'Hollware offers no logging capability, so logging/setLevel is not a method of the server and answers method not found. The suite sets the log level before it calls the fixture tool test_tool_with_logging.'
+  - check: tools-call-error:tools-call-error
+    class: fixture
+    reason: 'The suite calls the fixture tool test_error_handling, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-with-progress:tools-call-with-progress
+    class: fixture
+    reason: 'The suite calls the fixture tool test_tool_with_progress, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: tools-call-sampling:tools-call-sampling
+    class: fixture
+    reason: 'The suite calls the fixture tool test_sampling, which is not an operation of Hollware, so the call fails with tool not found, and the 2025 revision of Hollware is stateless, so the server could not ask the client to sample anyway.'
+  - check: tools-call-elicitation:tools-call-elicitation
+    class: fixture
+    reason: 'The suite calls the fixture tool test_elicitation, which is not an operation of Hollware, so the call fails with tool not found, and the 2025 revision of Hollware is stateless, so the server could not ask the client anyway.'
+  - check: elicitation-sep1034-defaults:elicitation-sep1034-general
+    class: fixture
+    reason: 'The suite calls the fixture tool test_elicitation_sep1034_defaults, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: elicitation-sep1330-enums:elicitation-sep1330-general
+    class: fixture
+    reason: 'The suite calls the fixture tool test_elicitation_sep1330_enums, which is not an operation of Hollware, so the call fails with tool not found.'
+  - check: server-sse-multiple-streams:server-sse-multiple-streams-session
+    class: not-offered
+    reason: 'The 2025 revision of Hollware is stateless and issues no Mcp-Session-Id, which the multiple streams test warns about. A warning counts as a failure in baseline mode.'
+  - check: resources-list:resources-list
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/list is not a method of the server and answers method not found.'
+  - check: resources-read-text:resources-read-text
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/read is not a method of the server and answers method not found.'
+  - check: resources-read-binary:resources-read-binary
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/read is not a method of the server and answers method not found.'
+  - check: resources-templates-read:resources-templates-read
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/templates/list is not a method of the server and answers method not found.'
+  - check: resources-subscribe:resources-subscribe
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/subscribe is not a method of the server and answers method not found.'
+  - check: resources-unsubscribe:resources-unsubscribe
+    class: not-offered
+    reason: 'Hollware offers no resources, so resources/unsubscribe is not a method of the server and answers method not found.'
+  - check: prompts-list:prompts-list
+    class: not-offered
+    reason: 'Hollware offers no prompts, so prompts/list is not a method of the server and answers method not found.'
+  - check: prompts-get-simple:prompts-get-simple
+    class: not-offered
+    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+  - check: prompts-get-with-args:prompts-get-with-args
+    class: not-offered
+    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+  - check: prompts-get-embedded-resource:prompts-get-embedded-resource
+    class: not-offered
+    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+  - check: prompts-get-with-image:prompts-get-with-image
+    class: not-offered
+    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'

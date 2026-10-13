@@ -1,0 +1,132 @@
+# The must-pass profile of the MCP conformance run (ADR-022): the checks of what Hollware claims.
+# Each one must pass, in the revisions it names, whatever a baseline says: tests/conformance/run.ts
+# fails when one is not SUCCESS or is not reported at all (the suite tolerates a baselined check
+# that it never reports), also in the scenarios that a requirement set does not score, which the
+# suite runs and cannot fail on. The guard conformance-baselines fails when a baseline entry
+# excuses a check listed here, and when a revision loses its last check of a claim.
+#
+# An entry names a scenario of the suite and, under "checks", the ids that must pass. Without
+# "checks" every check of the scenario must, so a check that a later version of the suite adds to it
+# joins the profile. The scenario "*" is every scenario that reports the ids. An id that repeats
+# within a scenario counts as one, as it does for the suite: the most severe occurrence decides.
+#
+# Claims:
+#   lifecycle      initialize (2025-11-25) and server/discover (2026-07-28), the negotiation of the
+#                  version, the metadata of each request and the methods a server must not serve
+#   tools          tools/list: its structure, tool names and a stable order
+#   tool-errors    tools/call answers an input or protocol error as a JSON-RPC error, not a result
+#   json-schema    the JSON Schema 2020-12 of the tools, as far as the suite can reach it (below)
+#   caching        the ttlMs and cacheScope hints of tools/list (SEP-2549)
+#   transport      Streamable HTTP: the validation of its headers (SEP-2243) and its streams
+#   dns-rebinding  the Host and Origin checks of the Worker, as it runs under wrangler dev
+#   authorization  the 401 with its challenge and the 403 with the missing scope
+#   wire-schema    every message of every scenario validates against the schema of the revision
+#
+# The scenario "hollware-claims" is not a scenario of the suite: it holds the probes of
+# tests/conformance/claims.ts, which the runner writes in the shape of a scenario so that this
+# file can name their checks. The suite cannot reach what they probe:
+#   - The proxy gives every request the token of the owner, so the suite never meets a 401, and
+#     it has no scenario for the 403 of a missing scope (its auth/* scenarios play the server for
+#     a client). The probes send the request without a token, with a token nobody issued, and with
+#     a token that has content:read for create_draft, and read the challenge of each answer.
+#   - The scenario dns-rebinding-protection sends a foreign Host and a foreign Origin together, so
+#     it goes red only when both checks of the Worker are gone. The probes send each alone.
+#
+# What the suite cannot reach at all, so that no entry can name it:
+#   - The tools of Hollware. The scenarios that call a tool use fixtures (test_simple_text,
+#     json_schema_2020_12_tool, ...), which are not operations of Hollware: those checks are
+#     baselined as fixture. json-schema-2020-12-tool-found is one of them, so the scenario
+#     json-schema-2020-12 can only be held to its wire-schema-valid check, which proves that what
+#     Hollware sends validates, but not that its tools keep $schema, $defs and the other keywords.
+#     The tests of tools/list in packages/server/tests/mcp hold those.
+#
+# The checks of lifecycle for 2026-07-28 are those of server-stateless that Hollware passes. The
+# ones that need a fixture tool, and the two that the suite skips because Hollware says it sends no
+# list changes, are not here: the first are baselined, the others are skipped.
+entries:
+  - claim: lifecycle
+    revisions: ['2026-07-28']
+    scenario: server-stateless
+    checks:
+      - sep-2575-request-meta-invalid-missing-meta
+      - sep-2575-http-server-meta-invalid-400
+      - sep-2575-request-meta-invalid-missing-protocol-version
+      - sep-2575-request-meta-invalid-missing-client-capabilities
+      - sep-2575-request-meta-client-info-optional
+      - sep-2575-server-implements-discover
+      - sep-2575-server-identifies-in-result-meta
+      - sep-2575-server-declares-prompts-in-discover
+      - sep-2575-discover-capabilities-match-handlers
+      - sep-2575-server-unsupported-version-error
+      - sep-2575-http-server-unsupported-version-400
+      - sep-2575-http-server-header-mismatch-400
+      - sep-2575-http-server-method-not-found-404-initialize
+      - sep-2575-http-server-method-not-found-404-ping
+      - sep-2575-http-server-method-not-found-404-logging-setlevel
+      - sep-2575-http-server-method-not-found-404-resources-subscribe
+      - sep-2575-http-server-method-not-found-404-resources-unsubscribe
+      - sep-2575-http-server-method-not-found-404
+      - sep-2575-server-sends-subscription-ack
+      - sep-2575-server-tags-subscription-id
+      - sep-2575-server-honors-notification-filter
+      - sep-2575-http-server-error-jsonrpc-id
+  - claim: lifecycle
+    revisions: ['2025-11-25']
+    scenario: server-initialize
+    checks:
+      - server-initialize
+  - claim: lifecycle
+    revisions: ['2025-11-25']
+    scenario: ping
+  - claim: tools
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: tools-list
+  - claim: tool-errors
+    revisions: ['2026-07-28']
+    scenario: input-required-result-validate-input
+  - claim: tool-errors
+    revisions: ['2026-07-28']
+    scenario: input-required-result-unsupported-methods
+  - claim: json-schema
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: json-schema-2020-12
+    checks:
+      - wire-schema-valid
+  - claim: caching
+    revisions: ['2026-07-28']
+    scenario: caching
+    checks:
+      - sep-2549-tools-list-caching-hints
+      - sep-2549-ttl-non-negative
+      - sep-2549-cache-scope-valid
+  - claim: transport
+    revisions: ['2026-07-28']
+    scenario: http-header-validation
+  - claim: transport
+    revisions: ['2026-07-28']
+    scenario: server-sse-multiple-streams
+    checks:
+      - server-accepts-multiple-post-streams
+  - claim: dns-rebinding
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: dns-rebinding-protection
+  - claim: wire-schema
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: '*'
+    checks:
+      - wire-schema-valid
+  - claim: dns-rebinding
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: hollware-claims
+    checks:
+      - public-host-is-accepted
+      - host-check-rejects-a-foreign-host
+      - origin-check-rejects-a-foreign-origin
+  - claim: authorization
+    revisions: ['2026-07-28', '2025-11-25']
+    scenario: hollware-claims
+    checks:
+      - no-token-is-401-with-challenge
+      - unknown-token-is-401-invalid-token
+      - missing-scope-is-403-with-challenge
+      - granted-scope-is-served

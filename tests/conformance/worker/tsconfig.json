@@ -1,0 +1,9 @@
+{
+  // The Worker type-checks with the runtime types that wrangler generates for wrangler.jsonc,
+  // where Node.js compatibility is off, and without Node's own types.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["./worker-configuration.d.ts"]
+  },
+  "include": ["worker-configuration.d.ts", "hollware.config.ts", "src"]
+}

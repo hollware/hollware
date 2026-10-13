@@ -1,0 +1,5 @@
+# What a conformance run writes (tests/conformance/run.ts): the output and the checks of the
+# suite, the baselines in its format, the log of wrangler dev and of the proxy. Each run starts
+# by deleting this folder. The state of the Worker is in worker/.wrangler, which the root
+# .gitignore already covers.
+results/
