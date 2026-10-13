@@ -328,15 +328,15 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
 
 Every WP ships integration tests that are green in its own wave, owns disjoint directories, and is verified by the orchestrator with at least one `break-line` mutation per invariant it adds.
 
-- [~] Wave 1 (parallel), dispatched on 2026-10-12, one git worktree per WP (`../hollware-wave1/<wp>`, branch `wave1/<wp>`):
+- [x] Wave 1 (parallel), dispatched on 2026-10-12, one git worktree per WP (`../hollware-wave1/<wp>`, branch `wave1/<wp>`), accepted and integrated on 2026-10-13:
   - [x] WP1 config (`core/src/config`);
   - [x] WP2 Markdown and content safety (`core/src/markdown`, `core/bench`);
   - [x] WP3 contracts, including content safety and `size-limit` (`core/src/contracts`);
   - [x] WP4 the D1 store on the schema of Wave 0 (`server/src/db`): repository functions, the optimistic write, sessions, limits;
   - [x] WP5 auth (`server/src/auth`): token check, scopes, the Host and Origin guard;
   - [x] WP6 CLI (`packages/cli`). Decided at integration: `token create` gives `content:read` and `content:write` by default (publishing is asked for explicitly), for 90 days, at most 365; WP1 adopts the CLI's site-key rule and exports it, and WP3 exports the refusal contract ids, for the CLI to import once they land
-- [~] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`), after Wave 1 · [x] WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types, dispatched on 2026-10-12 together with Wave 1 because it stands on Wave 0 alone
-- [ ] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`
+- [~] Wave 2 (parallel): WP7 operation handlers (`server/src/ops`), dispatched on 2026-10-13 after Wave 1 landed (branch `wave2/wp7-handlers`) · [x] WP8 MCP adapter (`server/src/mcp`), tested against fake handlers of the Wave 0 types, dispatched on 2026-10-12 together with Wave 1 because it stands on Wave 0 alone
+- [~] Wave 3a: WP9 composition (`server/src/{http,rpc}` and `index.ts`): the gateway, the MCP route, the RPC entrypoint, `createHollware`. Dispatched on 2026-10-13 together with WP7, against fake handlers, since it stands on frozen types alone (branch `wave3/wp9-gateway`); `createHollware` gets the real handlers at integration
 - [ ] Wave 3b (parallel):
   - WP11 playground, starter and `examples/worker-site`, with minified builds and the parser imported lazily on writes; `scripts/check-budgets.ts`;
   - WP10 conformance (`tests/conformance`): the proxy that adds a token, the baselines of ADR-022 and the task `test:conformance`
