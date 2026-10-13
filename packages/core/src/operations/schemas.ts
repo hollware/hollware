@@ -148,6 +148,12 @@ export const collectionDescription = z.object({
     .nullable()
     .describe('The frontmatter field that the translations of an entry share, or null.'),
   tagsField: z.string().nullable().describe('The frontmatter field with the tags, or null.'),
+  sortByField: z
+    .string()
+    .nullable()
+    .describe(
+      'The frontmatter field, a date, that orders published listings, newest first; null when they follow the date of first publication.',
+    ),
   components: z.array(componentDescription),
   contracts: z.array(contractDescription),
   maxMarkdownBytes: z.number().int(),
