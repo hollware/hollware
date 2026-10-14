@@ -2,6 +2,8 @@ import type { HollwareRpc } from '@hollware/server'
 import { env, exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
+import worker from '../src/worker.ts'
+
 // Fails when: src/worker.ts stops exporting `{ fetch: hollware.fetch }` of createHollware(config)
 // as the Worker, so that GET /health for the public URL of wrangler.jsonc (localhost:5199) stops
 // answering 200, or another Host stops being a 403; when it stops exporting the class `Hollware`
@@ -16,6 +18,12 @@ const asHost = (host: string) => ({ headers: { host } })
 // Cloudflare's `Service<...>` types every answer that holds `unknown` as `never`, so the stub is
 // read through the interface it implements.
 const rpc: HollwareRpc = exports.Hollware
+
+describe('the module', () => {
+  it('exports the fetch, queue and scheduled handlers of Hollware', () => {
+    expect(Object.keys(worker).sort()).toEqual(['fetch', 'queue', 'scheduled'])
+  })
+})
 
 describe('the Worker over HTTP', () => {
   it('answers GET /health at its public URL', async () => {

@@ -7,6 +7,7 @@ const hollware = createHollware(config)
 export default {
   fetch: hollware.fetch,
   scheduled: hollware.scheduled,
+  queue: hollware.queue,
 } satisfies ExportedHandler<Env>
 
 /** What sites reach over a service binding: the four read-only methods of `HollwareRpc`. */

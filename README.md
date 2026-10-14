@@ -3,7 +3,7 @@
 A headless CMS for the agent era, native to Cloudflare.
 
 > [!WARNING]
-> **Pre-alpha. Under construction. Do not use it for anything real.** Hollware is being built in the open, one stage at a time. The core of v0.1 works on a local machine: an agent writes and publishes over MCP, contracts check every write, and a site reads what was published over a service binding. It is not on npm yet, and it has no admin, no publishing pipeline and no way to deploy. What is done and what comes next is tracked in [`PLAN.md`](PLAN.md).
+> **Pre-alpha. Under construction. Do not use it for anything real.** Hollware is being built in the open, one stage at a time. The core of v0.1 works on a local machine: an agent writes and publishes over MCP, contracts check every write, and a site reads what was published over a service binding. Since v0.2, publishing can be scheduled and grouped, its events reach webhooks and IndexNow, sites can read over HTTP too, and a demo runs at demo.hollware.com. It has no admin yet. What is done and what comes next is tracked in [`PLAN.md`](PLAN.md).
 
 Hollware is designed for teams that already have a frontend and want their AI agents to write the content. Agents write Markdown over [MCP](https://modelcontextprotocol.io), contracts check every write, and sites read what was published from Hollware, which runs in your own Cloudflare account.
 

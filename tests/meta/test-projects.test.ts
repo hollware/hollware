@@ -58,6 +58,7 @@ describe('test projects', () => {
         'tests/meta/test-projects.test.ts',
         'packages/core/tests/index.test.ts',
         'apps/playground/test/workerd/gateway.workerd.test.ts',
+        'apps/playground/test/workerd/handlers.workerd.test.ts',
         'templates/starter/test/worker.workerd.test.ts',
       ]),
     )
@@ -86,6 +87,7 @@ describe('test projects', () => {
       'apps/playground/test/workerd/database.workerd.test.ts',
       'apps/playground/test/workerd/entrypoint.workerd.test.ts',
       'apps/playground/test/workerd/gateway.workerd.test.ts',
+      'apps/playground/test/workerd/handlers.workerd.test.ts',
       'apps/playground/test/workerd/node-globals.workerd.test.ts',
     ])
     expect(inProject('playground:harness')).toEqual([

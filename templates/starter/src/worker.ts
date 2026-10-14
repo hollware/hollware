@@ -8,6 +8,7 @@ const hollware = createHollware(config)
 export default {
   fetch: hollware.fetch,
   scheduled: hollware.scheduled,
+  queue: hollware.queue,
 } satisfies ExportedHandler<Env>
 
 // What your sites read over a service binding: four read-only methods, no network, no token.

@@ -53,11 +53,13 @@
       "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com" },
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
       "triggers": { "crons": ["* * * * *"] },
+      // No test probe in the demo.
+      "services": [],
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "hollware-demo",
-          "database_id": "DEMO_DATABASE_ID",
+          "database_id": "c11a42ee-5cf6-4809-911b-bd941affca6e",
           "migrations_dir": "node_modules/@hollware/server/migrations",
         },
       ],
