@@ -9,7 +9,7 @@ import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
-import { createEntrypoint } from './rpc/index.ts'
+import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { runDueSchedules } from './schedule/run.ts'
 
 export interface ComposeOptions {
@@ -73,7 +73,13 @@ export function createHollwareWith(
     },
   })
   return {
-    fetch: createGateway({ site, mcp, clock, log: writeLog }),
+    fetch: createGateway({
+      site,
+      mcp,
+      clock,
+      log: writeLog,
+      read: (env) => createRpc({ site, handlers, clock, log: writeLog }, env),
+    }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025).
     scheduled: async (_controller, env, ctx) => {
       const deps = deliveryDeps(env)

@@ -48,7 +48,7 @@ describe('a path with no route', () => {
   it.each([
     ['GET', '/'],
     ['GET', '/nowhere'],
-    ['GET', '/v1/entries'],
+    ['GET', '/v2/entries'],
     ['GET', '/health/'],
     ['POST', '/health'],
     ['GET', '/mcp/'],

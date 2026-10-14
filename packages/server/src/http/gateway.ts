@@ -9,10 +9,11 @@ import {
 import { connect } from '../db/d1.ts'
 import { createD1Store } from '../db/index.ts'
 import { enqueue } from '../events/run.ts'
-import type { HollwareEnv } from '../index.ts'
+import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
+import { installReadApi } from './read-api.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 
 export interface GatewayOptions {
@@ -23,6 +24,8 @@ export interface GatewayOptions {
   /** The time of a request: the expiry of a token and every write are read from it. */
   readonly clock: Clock
   readonly log: (entry: GatewayLogEntry) => void
+  /** The read methods for the HTTP read API at `/v1`; without them there is no `/v1`. */
+  readonly read?: (env: HollwareEnv) => HollwareRpc
 }
 
 /** The `fetch` of the Worker. */
@@ -109,6 +112,10 @@ export function createGateway(options: GatewayOptions): Gateway {
       },
     })
   })
+
+  if (options.read !== undefined) {
+    installReadApi(app, { read: options.read, site: site.key, clock, log })
+  }
 
   installErrorHandling(app, log)
 

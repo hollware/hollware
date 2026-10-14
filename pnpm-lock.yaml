@@ -296,6 +296,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 'catalog:'
         version: 1.4.1(@types/node@24.19.2)(vitest@5.0.3)
+      '@hollware/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -387,6 +390,10 @@ importers:
         version: 4.150.0(@types/node@24.19.2)
 
   packages/client:
+    dependencies:
+      '@hollware/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -400,6 +407,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 1.1.0(@types/node@24.19.2)(@vitest/ui@5.0.3)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
 
   packages/core:
     dependencies:
