@@ -435,9 +435,47 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 
 ---
 
+## v0.2 — Publishing (proposed 2026-10-14, waiting for the maintainer's go)
+
+**Goal:** publishing is a durable, observable process, and on the demo a post published over MCP is live in under 60 s, with no CI.
+
+### Stage start (2026-10-14)
+
+- [x] Stack check: only patch releases since v0.1 (wrangler 4.150.0, `@cloudflare/vite-plugin` 1.63.2, `@cloudflare/vitest-plugin` 1.4.1, Vitest 5.0.4, zod 4.6.7); Hono 5 is still an RC, the MCP SDK still 2.3.1, Comark still 0.7.0. The patches land with the first wave, through `check:push`.
+- [x] `vp dev` of the playground and the starter moved to port 5199 (`strictPort`), apart from Vite's default 5173, which a frontend next to Hollware usually takes; bound by the guard `dev-port`.
+- [ ] The maintainer confirms the split below.
+
+### Split, to fit the budget (sub-agents one at a time, `subagent-budget`)
+
+The original v0.2 holds about twelve work packages. Only the publishing path is needed for the exit criterion, so the stage is split:
+
+- **v0.2 (this stage)**, the publishing path:
+  1. **P1 publish Workflow**: `publish` runs as a Workflow (`pub_<entry>_<rev>`, the revision pinned) that validates, commits, purges and records `liveAt`, tracked as an MCP Task; scheduling is the same Workflow with `sleepUntil`. A group of entries publishes in one step (ADR-024, accepted with P1); `internal-links-resolve` splits into "missing" (error) and "unpublished" (the contract's severity).
+  2. **P2 events**: an outbox in D1 written in the publish batch → Queue → HMAC-signed webhooks (URL or service binding), with a DLQ and idempotent deliveries; IndexNow as one built-in subscriber.
+  3. **P3 HTTP read API and cache**: `GET /v1/...` generated from the read operations, with ETag/304, Workers Cache with `Cache-Tag` per site, collection and entry, and the purge P1 calls; OpenAPI 3.1 of those routes; `@hollware/client` over a binding or HTTP, one suite for both.
+  4. **P4 demo**: the playground's `demo` environment (`cms.demo.hollware.com`) and `examples/worker-site` on `demo.hollware.com`, deployed with the maintainer's OK; `vp run probe -- --target demo` measures publish-to-live five times.
+- **v0.3a (moved out)**: revision diff, restore and the trash; media in R2 and Images; FTS5 search; `export`, `reparse`, `reindex` and cron backups; `audit_log`; write-time highlighting. None of them is on the path of the exit criterion, and each stands alone.
+
+### Acceptance criteria (v0.2)
+
+| #        | Criterion                                | Verification                                                                                                                                                                       |
+| -------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-0.2-1 | Static, unit, acceptance and conformance | `vp run check:push`, `vp run test:acceptance`, `vp run test:conformance`                                                                                                           |
+| AC-0.2-2 | Publish is a Workflow                    | a publish over MCP returns a Task that completes with `liveAt`; a contract error fails the Task with its fixes; a scheduled publish fires (`disableSleeps`, plus one real 5 s run) |
+| AC-0.2-3 | Group publish (ADR-024)                  | the ten entries of the corpus, which link in a cycle, publish in one step with `internal-links-resolve` as an error; one member with an error publishes none                       |
+| AC-0.2-4 | Events                                   | a publish delivers one signed webhook that `verifyWebhook` accepts, exactly once under injected failures, and IndexNow gets the URLs                                               |
+| AC-0.2-5 | Read API and cache                       | `GET /v1/...` answers 304 to its ETag; a publish purges the entry's tags; `@hollware/client` passes one suite over a binding and over HTTP                                         |
+| AC-0.2-6 | Deployable                               | `wrangler deploy --dry-run` of the starter and of the demo                                                                                                                         |
+| AC-0.2-7 | **< 60 s with no CI, in production**     | `vp run probe -- --target demo`: five runs, each live on `demo.hollware.com` in under 60 s                                                                                         |
+| AC-0.2-8 | Cost                                     | after a week the demo is on the free tier, or what needs Paid is written down                                                                                                      |
+
+### Maintainer actions
+
+- [ ] Confirm the split.
+- [ ] Before P4: `wrangler login`, confirm the subdomains (`demo.hollware.com`, `cms.demo.hollware.com`), and OK each first deploy.
+
 ## Later stages (detailed at the start of each stage)
 
-- **v0.2 Publishing** — publish Workflow tracked as an MCP Task + scheduling; outbox → Queue → HMAC webhooks, IndexNow, custom subscribers, DLQ; revision diff, restore and trash (`delete_entry`/`restore_entry`); media in R2 + Images; FTS5 search; HTTP API + OpenAPI 3.1 + ETag + Workers Cache + purge; `@hollware/client` (binding or HTTP); `export`, `reparse`, `reindex`, cron backups; `audit_log`; optional write-time highlighting. **Exit:** on the demo (`demo.hollware.com`), publish over MCP is live in < 60 s with no CI.
 - **v0.3 Admin** — Vue 3.5 + Nuxt UI 4 + Vue Router 5 SPA shipped in `@hollware/admin`; PKCE first-party client; editor (CodeMirror 6 + Comark preview), contract-driven forms, review queue with diff, approval via Workflow `waitForEvent`; identity screens. **Exit:** an agent's post approved from the admin; axe clean.
 - **v0.4 Distribution** — `create-hollware` + starter + `hollware deploy`/`doctor`; read tokens and site isolation; Docus docs on hollware.com written in Hollware; `@hollware/nuxt`. **Exit:** a docs-only sub-agent and an external person install Hollware from the docs.
 - **v0.5 Intelligence** — embeddings (Workers AI + Vectorize), semantic/hybrid search, related entries, Analytics Engine + `content_stats`, `@hollware/agents` (Agents SDK, never `content:publish`). **Exit:** an agent picks what to update from metrics and publishes it through the contracts.
