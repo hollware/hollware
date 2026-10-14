@@ -39,6 +39,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 021 | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              | [0021-append-only-revisions-and-publications.md](0021-append-only-revisions-and-publications.md)                                 |
 | 022 | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Accepted              | [0022-mcp-conformance-with-a-shrinking-baseline.md](0022-mcp-conformance-with-a-shrinking-baseline.md)                           |
 | 023 | Migrations only move forward, and a shipped migration never changes                                         | Accepted              | [0023-forward-only-migrations.md](0023-forward-only-migrations.md)                                                               |
+| 024 | Entries that link to each other are published together, in one step                                         | Proposed              | [0024-publish-a-group-of-entries-in-one-step.md](0024-publish-a-group-of-entries-in-one-step.md)                                 |
 
 ## Template
 

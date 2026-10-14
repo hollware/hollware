@@ -574,6 +574,7 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 | [ADR-021](adr/0021-append-only-revisions-and-publications.md)                 | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              |
 | [ADR-022](adr/0022-mcp-conformance-with-a-shrinking-baseline.md)              | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Accepted              |
 | [ADR-023](adr/0023-forward-only-migrations.md)                                | Migrations only move forward, and a shipped migration never changes                                         | Accepted              |
+| [ADR-024](adr/0024-publish-a-group-of-entries-in-one-step.md)                 | Entries that link to each other are published together, in one step                                         | Proposed              |
 
 ## Roadmap
 
