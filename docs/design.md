@@ -64,7 +64,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 
 ## Architecture
 
-**One Cloudflare primitive per responsibility.** D1 is the single source of truth, with read replicas. An operation registry exposes the same core over MCP, RPC and HTTP. Publishing is a durable Workflow. The layers below run from the clients down to storage and intelligence, and every node says what it does, why it is that primitive, the phase in which it arrives and what it costs.
+**One Cloudflare primitive per responsibility.** D1 is the single source of truth, with read replicas. An operation registry exposes the same core over MCP, RPC and HTTP. Publishing commits in one D1 batch, and its effects go through an outbox and a Queue ([ADR-025](adr/0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md)). The layers below run from the clients down to storage and intelligence, and every node says what it does, why it is that primitive, the phase in which it arrives and what it costs.
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)
@@ -75,7 +75,7 @@ Core           Operations (registry) · Contracts
                                          ↓
 Data           D1 (source of truth) · KV (OAuth) · Edge cache (v0.2)
                                          ↓
-Publishing     Publish Workflow (v0.2) · Events: Queues (v0.2) · Maintenance: Cron (v0.2)
+Publishing     Publish batch + outbox (v0.2) · Events: Queues (v0.2) · Schedule and maintenance: Cron (v0.2) · Approval: Workflow (v0.3)
                                          ↓
 Assets and AI  Media: R2 + Images (v0.2) · Semantic: Vectorize + Workers AI (v0.5)
                Metrics: Analytics Engine (v0.5) · Own agents: Agents SDK (v0.5)
@@ -166,18 +166,18 @@ Phase: v0.1.
 Phase: v0.2.
 
 - **What it does:** `GET` responses of the HTTP API, close to the reader.
-- **Why this primitive:** Repeated external reads do not touch D1. The publish Workflow purges what changes.
+- **Why this primitive:** Repeated external reads do not touch D1. The outbox consumer purges what a publication changes.
 - **Cost:** No additional cost.
 
 ### Publishing
 
-#### Publish (Workflow)
+#### Publish (one batch and an outbox)
 
-Phase: v0.2. In v0.1, `publish` runs its steps inline and answers with the outcome.
+Phase: v0.2 ([ADR-025](adr/0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md)). A Workflow joins in v0.3, to wait for a person's approval.
 
-- **What it does:** Marks the revision as published, purges the cache, generates embeddings and queues events, as durable steps. It also schedules publications.
-- **Why this primitive:** Each step retries on its own, and the agent follows the progress as an MCP Task.
-- **Cost:** Free tier: 3,000 steps a day.
+- **What it does:** Marks the revisions of one entry or of a group as published in one D1 batch, and writes in the same batch one outbox row per effect: purge, webhooks, IndexNow. A cron trigger publishes scheduled entries every minute.
+- **Why this primitive:** The commit is atomic and instant; the effects, which can fail, retry from the Queue without being lost.
+- **Cost:** Free tier: the Queue and the cron trigger fit in it.
 
 #### Events (Queues)
 
@@ -248,12 +248,12 @@ Contract errors never block a draft. The revision is saved, and the verdict says
 
 1. **Gateway · OAuth.** `publish` requires the `content:publish` scope and zero contracts in error. Warnings are accepted, but they have to be acknowledged and they are recorded.
 2. **MCP · MRTR.** If the site asks for human approval, the server answers `input_required` (a multi round-trip request, MRTR) and the client retries with the answer.
-3. **Workflow · Tasks (v0.2).** A Workflow starts, with durable steps and retries, and the agent follows its progress as an MCP Task. In v0.1, `publish` performs the steps inline and answers with the outcome.
-4. **D1.** Step 1: the revision is marked as published in D1, and the read replicas receive it on their own.
-5. **Cache (v0.2).** Step 2: the edge cache is purged for the entry and for the listings it affects.
-6. **Workers AI · Vectorize (v0.5).** Step 3: embeddings are generated for semantic search.
-7. **Queues (v0.2).** Step 4: `entry.published` events are queued for webhooks, IndexNow and custom subscribers, a newsletter draft for example.
-8. **Workflow (v0.2).** A scheduled publication is the same Workflow, which sleeps until the given date.
+3. **D1 batch · outbox (v0.2).** The publication of the entry, or of its group, commits in one batch together with one outbox row per effect, and the agent gets `published`. A Workflow followed as an MCP Task comes in v0.3, for approvals.
+4. **D1.** The read replicas receive the publication on their own.
+5. **Cache (v0.2).** The outbox consumer purges the edge cache for the entry and for the listings it affects.
+6. **Workers AI · Vectorize (v0.5).** The consumer generates embeddings for semantic search.
+7. **Queues (v0.2).** `entry.published` events go to webhooks, IndexNow and custom subscribers, a newsletter draft for example.
+8. **Cron (v0.2).** A scheduled publication waits in status `scheduled`, and a cron trigger publishes it within a minute of its date.
 
 ### Read
 
@@ -352,7 +352,7 @@ Each violation carries the id of its contract, a severity, a JSON Pointer to the
 | `list_entries`, `get_entry`, `get_translations` | Reads with filters by collection, locale, tag and status, and the translations of a group.                     | `content:read`    | 0.1       |
 | `create_draft`, `update_draft`                  | Writes Markdown. Returns the verdict of the contracts, or a conflict if the entry changed.                     | `content:write`   | 0.1       |
 | `validate`                                      | Runs the contracts without saving.                                                                             | `content:read`    | 0.1       |
-| `publish`, `unpublish`                          | Publishes if there are no errors. From v0.2 it starts the Workflow, which the agent follows as a Task.         | `content:publish` | 0.1       |
+| `publish`, `unpublish`                          | Publishes if there are no errors. From v0.2 it takes a group of entries, and the effects run from an outbox.   | `content:publish` | 0.1       |
 | `schedule`                                      | Schedules the publication for a date.                                                                          | `content:publish` | 0.2       |
 | `list_revisions`, `restore`                     | History with author and a Markdown diff.                                                                       | `content:write`   | 0.2       |
 | `upload_asset`                                  | Uploads to R2 and returns the transformable URL.                                                               | `content:write`   | 0.2       |
@@ -516,17 +516,17 @@ The SQL above is the sketch from the design phase. The v0.1 implementation refin
 
 **One monorepo, twelve decisions.** Hollware ships as a library: the user has a Worker of a few lines, and upgrades by bumping a version and running the migrations. `core` does not depend on Cloudflare: its source type-checks against the web platform only, and its tests run in Node and inside workerd ([ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)). The versions are those published as of 11 October 2026. Each stage pins the ones it uses in the pnpm catalog when it starts.
 
-| Package            | What it is                                                                                                                                   | Phase |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `@hollware/core`   | Contracts, operation specs, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                                 | v0.1  |
-| `@hollware/server` | The Worker: operation handlers and their MCP, RPC and HTTP adapters, Hono, OAuth, D1 with Drizzle and Workflows. It includes the migrations. | v0.1  |
-| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                                                 | v0.1  |
-| `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                                                   | v0.1  |
-| `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                                                | v0.2  |
-| `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                                                          | v0.3  |
-| `create-hollware`  | `npm create hollware` copies the thin project from `templates/starter`.                                                                      | v0.4  |
-| `apps/docs`        | Docus 5 in English, at hollware.com, with its own `llms.txt` and MCP.                                                                        | v0.4  |
-| `examples/`        | Sites that consume Hollware (Nuxt, Astro and others). They are not published.                                                                | v0.1+ |
+| Package            | What it is                                                                                                                                                       | Phase |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `@hollware/core`   | Contracts, operation specs, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                                                     | v0.1  |
+| `@hollware/server` | The Worker: operation handlers and their MCP, RPC and HTTP adapters, Hono, OAuth, D1 with Drizzle, Queues and, from v0.3, Workflows. It includes the migrations. | v0.1  |
+| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                                                                     | v0.1  |
+| `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                                                                       | v0.1  |
+| `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                                                                    | v0.2  |
+| `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                                                                              | v0.3  |
+| `create-hollware`  | `npm create hollware` copies the thin project from `templates/starter`.                                                                                          | v0.4  |
+| `apps/docs`        | Docus 5 in English, at hollware.com, with its own `llms.txt` and MCP.                                                                                            | v0.4  |
+| `examples/`        | Sites that consume Hollware (Nuxt, Astro and others). They are not published.                                                                                    | v0.1+ |
 
 Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollware/astro` and `@hollware/next` (v1.0).
 
@@ -549,32 +549,33 @@ Later stages add `@hollware/nuxt` (v0.4), `@hollware/agents` (v0.5), and `@hollw
 
 **Decision records (ADR).** Every structural decision is recorded as an ADR in [`docs/adr/`](adr/README.md), from phase 0. The accepted ones come out of the research of 11 October 2026. The proposed ones carry over from the original design and are confirmed when the code that depends on them starts. Decisions change only through a new or superseding ADR.
 
-| ADR                                                                           | Title                                                                                                       | Status                |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------- |
-| [ADR-001](adr/0001-markdown-is-the-source-of-truth.md)                        | Markdown is the source of truth; the Comark document is derived                                             | Accepted              |
-| [ADR-002](adr/0002-d1-is-the-single-source-of-truth.md)                       | D1 is the single source of truth                                                                            | Accepted              |
-| [ADR-003](adr/0003-one-operation-registry-three-surfaces.md)                  | One operation registry, three surfaces (RPC, HTTP + OpenAPI 3.1, MCP)                                       | Accepted              |
-| [ADR-004](adr/0004-write-time-contracts-with-a-single-definition.md)          | Write-time contracts with a single definition                                                               | Accepted              |
-| [ADR-005](adr/0005-cloudflare-oauth-provider-passkeys-and-personal-tokens.md) | Cloudflare OAuth provider, passkeys and personal tokens                                                     | Accepted              |
-| [ADR-006](adr/0006-one-deployment-per-account-several-sites-inside.md)        | One deployment per account, several sites inside                                                            | Accepted              |
-| [ADR-007](adr/0007-admin-in-vue-with-nuxt-ui-without-nuxt.md)                 | Admin in Vue 3.5 with Nuxt UI 4, without Nuxt                                                               | Accepted              |
-| [ADR-008](adr/0008-independent-project-mit-own-github-organization.md)        | Independent project, MIT, own GitHub organization                                                           | Accepted              |
-| [ADR-009](adr/0009-cloudflare-only-until-v1.md)                               | Cloudflare only until v1                                                                                    | Accepted              |
-| [ADR-010](adr/0010-vite-plus-with-pnpm-distributed-as-a-library.md)           | Vite+ with pnpm 12, distributed as a library (thin user project)                                            | Accepted              |
-| [ADR-011](adr/0011-cloudflare-vite-plugin-today-cf-cli-later.md)              | Cloudflare's Vite plugin today, the `cf` CLI later                                                          | Accepted              |
-| [ADR-012](adr/0012-official-mcp-sdk-v2.md)                                    | Official MCP SDK v2; the Agents SDK only for Hollware's own agents                                          | Accepted              |
-| [ADR-013](adr/0013-releases-with-changesets.md)                               | Releases with Changesets, one version for all packages, OIDC and staged publishing with maintainer approval | Superseded by ADR-015 |
-| [ADR-014](adr/0014-release-pipeline.md)                                       | Release pipeline: Changesets versions, `npm stage publish` publishes                                        | Superseded by ADR-015 |
-| [ADR-015](adr/0015-release-branch-and-direct-publishing.md)                   | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              |
-| [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                   | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
-| [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md)             | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              |
-| [ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)              | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              |
-| [ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)           | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              |
-| [ADR-020](adr/0020-content-safety-is-a-contract.md)                           | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              |
-| [ADR-021](adr/0021-append-only-revisions-and-publications.md)                 | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              |
-| [ADR-022](adr/0022-mcp-conformance-with-a-shrinking-baseline.md)              | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Accepted              |
-| [ADR-023](adr/0023-forward-only-migrations.md)                                | Migrations only move forward, and a shipped migration never changes                                         | Accepted              |
-| [ADR-024](adr/0024-publish-a-group-of-entries-in-one-step.md)                 | Entries that link to each other are published together, in one step                                         | Proposed              |
+| ADR                                                                                  | Title                                                                                                       | Status                |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | --------------------- |
+| [ADR-001](adr/0001-markdown-is-the-source-of-truth.md)                               | Markdown is the source of truth; the Comark document is derived                                             | Accepted              |
+| [ADR-002](adr/0002-d1-is-the-single-source-of-truth.md)                              | D1 is the single source of truth                                                                            | Accepted              |
+| [ADR-003](adr/0003-one-operation-registry-three-surfaces.md)                         | One operation registry, three surfaces (RPC, HTTP + OpenAPI 3.1, MCP)                                       | Accepted              |
+| [ADR-004](adr/0004-write-time-contracts-with-a-single-definition.md)                 | Write-time contracts with a single definition                                                               | Accepted              |
+| [ADR-005](adr/0005-cloudflare-oauth-provider-passkeys-and-personal-tokens.md)        | Cloudflare OAuth provider, passkeys and personal tokens                                                     | Accepted              |
+| [ADR-006](adr/0006-one-deployment-per-account-several-sites-inside.md)               | One deployment per account, several sites inside                                                            | Accepted              |
+| [ADR-007](adr/0007-admin-in-vue-with-nuxt-ui-without-nuxt.md)                        | Admin in Vue 3.5 with Nuxt UI 4, without Nuxt                                                               | Accepted              |
+| [ADR-008](adr/0008-independent-project-mit-own-github-organization.md)               | Independent project, MIT, own GitHub organization                                                           | Accepted              |
+| [ADR-009](adr/0009-cloudflare-only-until-v1.md)                                      | Cloudflare only until v1                                                                                    | Accepted              |
+| [ADR-010](adr/0010-vite-plus-with-pnpm-distributed-as-a-library.md)                  | Vite+ with pnpm 12, distributed as a library (thin user project)                                            | Accepted              |
+| [ADR-011](adr/0011-cloudflare-vite-plugin-today-cf-cli-later.md)                     | Cloudflare's Vite plugin today, the `cf` CLI later                                                          | Accepted              |
+| [ADR-012](adr/0012-official-mcp-sdk-v2.md)                                           | Official MCP SDK v2; the Agents SDK only for Hollware's own agents                                          | Accepted              |
+| [ADR-013](adr/0013-releases-with-changesets.md)                                      | Releases with Changesets, one version for all packages, OIDC and staged publishing with maintainer approval | Superseded by ADR-015 |
+| [ADR-014](adr/0014-release-pipeline.md)                                              | Release pipeline: Changesets versions, `npm stage publish` publishes                                        | Superseded by ADR-015 |
+| [ADR-015](adr/0015-release-branch-and-direct-publishing.md)                          | A `release` branch for production, and direct publishing behind the `npm` environment approval              | Accepted              |
+| [ADR-016](adr/0016-workspace-packages-resolve-to-source.md)                          | Workspace packages resolve to their source; `dist` only in the published manifest                           | Accepted              |
+| [ADR-017](adr/0017-operation-specs-in-core-handlers-in-server.md)                    | Operation specs live in `core`; handlers and adapters in `server`                                           | Accepted              |
+| [ADR-018](adr/0018-core-type-checks-against-the-web-platform.md)                     | `core` type-checks against the web platform and runs its tests in Node and workerd                          | Accepted              |
+| [ADR-019](adr/0019-personal-tokens-in-v0-1-oauth-with-the-admin.md)                  | Personal tokens in v0.1; OAuth and passkeys arrive with the admin                                           | Accepted              |
+| [ADR-020](adr/0020-content-safety-is-a-contract.md)                                  | Content safety is a contract: raw HTML, unknown components and unsafe attributes are errors at write time   | Accepted              |
+| [ADR-021](adr/0021-append-only-revisions-and-publications.md)                        | Revisions, their tags and publications are append-only; child rows are written only with their revision     | Accepted              |
+| [ADR-022](adr/0022-mcp-conformance-with-a-shrinking-baseline.md)                     | MCP conformance runs in CI against a baseline that only shrinks and never covers what Hollware claims       | Accepted              |
+| [ADR-023](adr/0023-forward-only-migrations.md)                                       | Migrations only move forward, and a shipped migration never changes                                         | Accepted              |
+| [ADR-024](adr/0024-publish-a-group-of-entries-in-one-step.md)                        | Entries that link to each other are published together, in one step                                         | Accepted              |
+| [ADR-025](adr/0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md) | Publishing commits in one batch, and its effects go through an outbox                                       | Accepted              |
 
 ## Roadmap
 

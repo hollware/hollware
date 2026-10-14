@@ -1,6 +1,6 @@
 # ADR-024: Entries that link to each other are published together, in one step
 
-Status: Proposed (2026-10-14)
+Status: Accepted (2026-10-14)
 
 ## Context
 
@@ -11,9 +11,10 @@ Both readings of the rule are worth keeping. A link to an entry that does not ex
 ## Decision
 
 - `publish` takes one entry or a group of entries of one site, each with the version it was read at. The contracts of the publish phase run on every entry of the group as if the whole group were published, so a link to another member resolves. The group is published in one D1 batch, all or none: one conflict, one error or one unacknowledged warning publishes nothing, and the answer names the member and the problem.
-- `internal-links-resolve` reports two things. A link to an entry that does not exist is an error at write and at publish. A link to an entry that exists but is not published, inside or outside the group, is reported with the contract's severity at publish only.
+- An acknowledgement names a contract and a path, and it holds for every member of the group that reports that warning.
+- Later, `internal-links-resolve` may report a link to an entry that does not exist as an error at write and at publish, apart from a link to an entry that exists but is not published. It is not part of this decision.
 - `hollware import --publish` publishes everything it imported as one group, in groups of at most 100 entries, the limit of a `list_entries` page.
-- It lands in v0.2 with the publish Workflow, which takes a group as its input. Until then the playground keeps the contract as a warning.
+- It lands in v0.2. The playground keeps the contract as a warning.
 
 ## Consequences
 
