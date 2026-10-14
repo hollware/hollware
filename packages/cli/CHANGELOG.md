@@ -1,5 +1,12 @@
 # hollware
 
+## 0.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`705aabf`](https://github.com/hollware/hollware/commit/705aabf95c83ef7ddb2b2c0b2b633a25f03dabe4), [`24faa62`](https://github.com/hollware/hollware/commit/24faa62acd99f961885adb76fe05813df1d9adcb), [`58b2bb1`](https://github.com/hollware/hollware/commit/58b2bb135ab37f295c4043331f914ba2d3bd78f8)]:
+  - @hollware/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
