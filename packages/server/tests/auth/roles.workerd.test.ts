@@ -14,7 +14,7 @@ it('lists every role the users table allows, and no other', async () => {
   const list = /"users_role" CHECK\("users"\."role" IN \(([^)]*)\)\)/.exec(table?.sql ?? '')?.[1]
   const allowed = (list ?? '').split(',').map((role) => role.trim().replaceAll("'", ''))
 
-  expect([...allowed].sort()).toEqual(['editor', 'owner', 'reviewer'])
-  expect([...ROLES].sort()).toEqual(['editor', 'owner', 'reviewer'])
-  expect(Object.keys(ROLE_SCOPES).sort()).toEqual(['editor', 'owner', 'reviewer'])
+  expect([...allowed].sort()).toEqual(['author', 'editor', 'owner'])
+  expect([...ROLES].sort()).toEqual(['author', 'editor', 'owner'])
+  expect(Object.keys(ROLE_SCOPES).sort()).toEqual(['author', 'editor', 'owner'])
 })

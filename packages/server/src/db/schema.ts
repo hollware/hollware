@@ -42,7 +42,7 @@ export const users = sqliteTable(
     role: text('role').notNull(),
     ...timestamps(),
   },
-  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`)],
+  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'author')`)],
 )
 
 /** Personal tokens (ADR-019): only the hash is stored. */
@@ -345,5 +345,107 @@ export const deliveries = sqliteTable(
       foreignColumns: [outbox.id, outbox.siteId],
     }),
     check('deliveries_attempts', sql`${t.attempts} >= 0`),
+  ],
+)
+
+/** The passkeys of a person (ADR-026): WebAuthn credentials, by their id, with their public key. */
+export const passkeys = sqliteTable(
+  'passkeys',
+  {
+    id: id('pky'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    /** The credential id, base64url, as the authenticator gives it. */
+    credentialId: text('credential_id').notNull(),
+    /** The COSE public key, base64url. */
+    publicKey: text('public_key').notNull(),
+    counter: integer('counter').notNull(),
+    /** A JSON array of the transports the authenticator reported. */
+    transports: text('transports').notNull(),
+    /** What the person calls it, such as "MacBook". */
+    label: text('label').notNull(),
+    lastUsedAt: text('last_used_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('passkeys_id_site').on(t.id, t.siteId),
+    unique('passkeys_credential').on(t.credentialId),
+    index('passkeys_user').on(t.userId),
+    foreignKey({ name: 'passkeys_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'passkeys_user_fk', columns: [t.userId], foreignColumns: [users.id] }),
+    check('passkeys_counter', sql`${t.counter} >= 0`),
+    check(
+      'passkeys_json',
+      sql`json_valid(${t.transports}) AND json_type(${t.transports}) = 'array'`,
+    ),
+  ],
+)
+
+/**
+ * Links that let a person in, once: the owner's setup link that `hollware init` prints (it names
+ * the owner) and invitations (they carry a role, and the person they make is new). Only the hash
+ * of the link's secret is stored.
+ */
+export const invitations = sqliteTable(
+  'invitations',
+  {
+    id: id('inv'),
+    siteId: siteId(),
+    hash: text('hash').notNull(),
+    role: text('role').notNull(),
+    /** The existing person the link is for, or null for an invitation that makes a new one. */
+    userId: text('user_id'),
+    expiresAt: text('expires_at').notNull(),
+    usedAt: text('used_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('invitations_id_site').on(t.id, t.siteId),
+    unique('invitations_hash').on(t.hash),
+    foreignKey({ name: 'invitations_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'invitations_user', columns: [t.userId], foreignColumns: [users.id] }),
+    check('invitations_role', sql`${t.role} IN ('owner', 'editor', 'author')`),
+  ],
+)
+
+/** WebAuthn challenges, each used once and briefly (ADR-026). */
+export const authChallenges = sqliteTable(
+  'auth_challenges',
+  {
+    id: id('chl'),
+    siteId: siteId(),
+    challenge: text('challenge').notNull(),
+    /** `register` or `authenticate`. */
+    purpose: text('purpose').notNull(),
+    /** The invitation a registration redeems, or null for a sign-in. */
+    invitationId: text('invitation_id'),
+    /** The person a registration makes or adds a passkey to: the id the passkey is bound to. */
+    userId: text('user_id'),
+    expiresAt: text('expires_at').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('auth_challenges_id_site').on(t.id, t.siteId),
+    foreignKey({ name: 'auth_challenges_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`),
+  ],
+)
+
+/** Signed-in people (ADR-026): the session cookie that `/authorize` reads, by its hash. */
+export const sessions = sqliteTable(
+  'sessions',
+  {
+    id: id('ses'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    hash: text('hash').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('sessions_id_site').on(t.id, t.siteId),
+    unique('sessions_hash').on(t.hash),
+    foreignKey({ name: 'sessions_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'sessions_user', columns: [t.userId], foreignColumns: [users.id] }),
   ],
 )

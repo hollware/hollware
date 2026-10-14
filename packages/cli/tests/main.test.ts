@@ -54,7 +54,7 @@ async function runWith(cli: typeof main, argv: string[]): Promise<Outcome> {
 }
 
 const COMMANDS_HELP = [
-  ['init', ['--site', '--local', '--remote', '--owner-name', '--database']],
+  ['init', ['--site', '--local', '--remote', '--owner-name', '--url', '--database']],
   ['migrate', ['--local', '--remote', '--check', '--database']],
   ['token', ['create', 'list', 'revoke']],
   [
@@ -63,6 +63,7 @@ const COMMANDS_HELP = [
   ],
   ['token list', ['--site', '--local', '--remote', '--database']],
   ['token revoke', ['<id>', '--site', '--local', '--remote', '--database']],
+  ['invite', ['--role', '--days', '--url', '--site', '--local', '--remote', '--database']],
   ['import', ['<directory>', '--url', '--token-file', '--publish', '--dry-run']],
 ] as const
 
@@ -83,11 +84,12 @@ describe('hollware --help', () => {
 
   it('lists every command with what it does', async () => {
     const [usage] = (await run(['--help'])).out
-    expect(usage?.split('\n').slice(2, 8)).toEqual([
+    expect(usage?.split('\n').slice(2, 9)).toEqual([
       'Commands:',
       "  init     Set up a site, its owner and a first token in the project's D1 database",
       '  migrate  Apply D1 migrations',
       '  token    Create, list and revoke personal tokens',
+      '  invite   Invite a person to the admin, as an editor or an author',
       '  import   Import Markdown files over MCP',
       '  export   Export entries as Markdown files (planned for v0.2, not implemented yet)',
     ])

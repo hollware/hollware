@@ -1,11 +1,10 @@
 import type { Scope } from '@hollware/core'
 
 /**
- * The roles of a user, as the `users_role` CHECK of the schema lists them. In v0.1 only the owner
- * exists: `hollware init` creates it. The other two are in the CHECK already, so that v0.3 can
- * invite people without a rebuild of the table (ADR-023).
+ * The roles of a user, as the `users_role` CHECK of the schema lists them (ADR-026): the owner,
+ * whom `hollware init` creates, and the editors and authors whom invitations bring in.
  */
-export const ROLES = ['owner', 'editor', 'reviewer'] as const
+export const ROLES = ['owner', 'editor', 'author'] as const
 
 export type Role = (typeof ROLES)[number]
 
@@ -20,15 +19,13 @@ export function isRole(value: string): value is Role {
  * scopes, never for a role.
  *
  * - `owner` may do everything: all four scopes.
- * - `editor` and `reviewer` allow none in v0.1. Nothing creates such a user yet, and which scopes
- *   each one gets (an editor writes, a reviewer approves) is for v0.3 to decide, together with
- *   the admin that invites them. Until then a token of such a user authenticates, but every
- *   operation answers 403 `insufficient_scope`.
+ * - `editor` reads, writes and publishes.
+ * - `author` reads and writes; what an author publishes goes through review (v0.3).
  */
 export const ROLE_SCOPES: Readonly<Record<Role, readonly Scope[]>> = {
   owner: ['content:read', 'content:write', 'content:publish', 'schema:admin'],
-  editor: [],
-  reviewer: [],
+  editor: ['content:read', 'content:write', 'content:publish'],
+  author: ['content:read', 'content:write'],
 }
 
 /**

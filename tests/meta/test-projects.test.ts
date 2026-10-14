@@ -93,6 +93,7 @@ describe('test projects', () => {
     expect(inProject('playground:harness')).toEqual([
       'apps/playground/test/harness/client.test.ts',
       'apps/playground/test/harness/gateway.test.ts',
+      'apps/playground/test/harness/identity.test.ts',
       'apps/playground/test/harness/node-globals.test.ts',
       'apps/playground/test/harness/rpc.test.ts',
       'apps/playground/test/harness/site.test.ts',

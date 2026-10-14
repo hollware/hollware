@@ -67,6 +67,7 @@ const SCRIPT = [
   "INSERT INTO sites (id, created_at, updated_at) VALUES ('blog', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
   `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',
 ].join('\n')
 
@@ -104,6 +105,9 @@ describe('hollware init', () => {
         'Your personal token. It is shown only once: Hollware keeps just its hash.',
         '',
         SECRET,
+        '',
+        'Set up your passkey for the admin, once, by 2026-10-19T12:00:00.000Z:',
+        '  <your Hollware URL>/setup?invitation=hw_inv_BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ',
         '',
         'Next:',
         '  Save the token in a file only you can read, then import content:',

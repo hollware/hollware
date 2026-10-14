@@ -18,3 +18,13 @@ const DAY_MS = 86_400_000
 export function inDays(from: Date, days: number): string {
   return new Date(from.getTime() + days * DAY_MS).toISOString()
 }
+
+/** A new invitation secret (`hw_inv_` and 43 base64url characters) from the random source of `io`. */
+export function newInvitationSecret(io: Pick<Io, 'randomBytes'>): string {
+  let binary = ''
+  for (const byte of io.randomBytes(32)) binary += String.fromCharCode(byte)
+  return `hw_inv_${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`
+}
+
+/** How long a setup link or an invitation stays valid, by default. */
+export const INVITATION_TTL_DAYS = 7

@@ -516,6 +516,18 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 | AC-0.3-4 | Accessibility                              | axe finds nothing serious or critical on every route of the admin                                                                                                                                                                          |
 | AC-0.3-5 | Human test                                 | the maintainer does AC-0.3-2 and AC-0.3-3 on the demo with a real passkey, on a computer and a phone                                                                                                                                       |
 
+### Blocks
+
+- [x] 1 Identity: passkeys, invitations and sessions. Migration `0004_identity.sql` (tables `passkeys`, `invitations`, `auth_challenges`, `sessions`; the role CHECK of `users` is `owner`, `editor`, `author`); `/setup` and `/signin` pages rendered by the Worker with the WebAuthn ceremonies of `@simplewebauthn/server`, a one-use challenge and a one-use invitation; the session cookie is `HttpOnly; Secure; SameSite=Lax; Path=/authorize`. `hollware init` prints the owner's setup link, and `hollware invite --role editor|author` makes one for a person
+- [ ] 2 OAuth (ADR-026): the authorization server, `/mcp` and `/v1` as resource servers, `/authorize` on the session, personal tokens through `validateToken`, `OAUTH_KV`
+- [ ] 3 Review: `pending_review` for an author, approve or request changes, a new revision cancels the review
+- [ ] 4 The admin SPA at `/admin`
+- [ ] 5 Playwright e2e with virtual passkeys, axe, the acceptance suite of v0.3, the human test, release 0.3.0
+
+### Verification log (v0.3)
+
+- 2026-10-14, block 1: `vp run check:push` exit 0 (3942 tests); `vp run test:acceptance` exit 0 (48 tests); the ceremonies run in workerd against a software ES256 authenticator (`packages/server/tests/identity/ceremonies.workerd.test.ts`, 7 tests) and over the built playground (`apps/playground/test/harness/identity.test.ts`: an owner sets up a passkey from the link of `init`, and the link does not work twice). Mutations CAUGHT: a challenge read instead of taken (`DELETE … RETURNING` → `SELECT`), the redemption without its `used_at IS NULL` (first NOT CAUGHT; caught after a test where two registrations start from one invitation), and sign-in without the check of `verified` (first NOT CAUGHT; caught after a test with a signature off by one bit)
+
 ## Later stages (detailed at the start of each stage)
 
 - **v0.3 Admin** — Vue 3.5 + Nuxt UI 4 + Vue Router 5 SPA shipped in `@hollware/admin`; PKCE first-party client; editor (CodeMirror 6 + Comark preview), contract-driven forms, review queue with diff, approval via Workflow `waitForEvent`; identity screens. **Exit:** an agent's post approved from the admin; axe clean.

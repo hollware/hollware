@@ -14,6 +14,7 @@ import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
 import { installReadApi } from './read-api.ts'
+import { installIdentity } from '../identity/routes.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 
 export interface GatewayOptions {
@@ -112,6 +113,8 @@ export function createGateway(options: GatewayOptions): Gateway {
       },
     })
   })
+
+  installIdentity(app, { site: site.key, clock })
 
   if (options.read !== undefined) {
     installReadApi(app, { read: options.read, site: site.key, clock, log })

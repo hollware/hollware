@@ -3,16 +3,24 @@ import { rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { chooseTarget, describeDatabase, query, resolveDatabase, runFile } from '../d1.ts'
-import { inDays, newId, newPersonalToken } from '../entropy.ts'
+import {
+  inDays,
+  INVITATION_TTL_DAYS,
+  newId,
+  newInvitationSecret,
+  newPersonalToken,
+} from '../entropy.ts'
 import { CliError, UsageError } from '../errors.ts'
 import type { Io } from '../io.ts'
-import { initScript, ownerQuery, parseOwnerName, parseSiteKey } from '../sql.ts'
+import { publicUrlOf, setupLink } from '../public-url.ts'
+import { initScript, insertInvitation, ownerQuery, parseOwnerName, parseSiteKey } from '../sql.ts'
 
 export const INIT_USAGE = [
-  'Usage: hollware init --site <key> [--local | --remote] [--owner-name <name>] [--database <name>]',
+  'Usage: hollware init --site <key> [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
   '',
   "Creates a site, its owner and the owner's first personal token in the project's D1 database,",
-  'in one step, and prints the token once. It does nothing when the database already has an owner.',
+  'in one step, and prints the token once, with a link to set up the passkey of the admin (valid',
+  'for 7 days). It does nothing when the database already has an owner.',
   'Run "hollware migrate" first: the database needs its tables.',
   '',
   'Options:',
@@ -21,6 +29,7 @@ export const INIT_USAGE = [
   '  --remote             Use the database in Cloudflare',
   '  --owner-name <name>  The name of the owner',
   '  --database <name>    The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
+  '  --url <url>          The public URL of Hollware, for the link (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
   '  --help               Show this help',
 ].join('\n')
 
@@ -37,6 +46,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       remote: { type: 'boolean' },
       'owner-name': { type: 'string' },
       database: { type: 'string' },
+      url: { type: 'string' },
       help: { type: 'boolean' },
     },
   })
@@ -52,6 +62,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     values['owner-name'] === undefined ? undefined : parseOwnerName(values['owner-name'])
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
+  const url = publicUrlOf(io.cwd, values.url)
 
   const [owners = []] = await query(io.wrangler, database, target, ownerQuery())
   const [existing] = owners
@@ -68,6 +79,17 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   const tokenId = newId(io, 'token')
   const secret = newPersonalToken(io)
   const expiresAt = inDays(now, PERSONAL_TOKEN_TTL_DAYS)
+  const setupSecret = newInvitationSecret(io)
+  const setupExpiresAt = inDays(now, INVITATION_TTL_DAYS)
+  const setup = insertInvitation({
+    id: newId(io, 'invitation'),
+    site,
+    hash: await hashPersonalToken(setupSecret),
+    role: 'owner',
+    userId: ownerId,
+    expiresAt: setupExpiresAt,
+    now: timestamp,
+  })
   const script = initScript({
     site,
     ownerId,
@@ -82,7 +104,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       expiresAt,
       now: timestamp,
     },
-  })
+  }).concat(`${setup}\n`)
 
   const directory = io.tempDir()
   try {
@@ -106,6 +128,9 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       'Your personal token. It is shown only once: Hollware keeps just its hash.',
       '',
       secret,
+      '',
+      `Set up your passkey for the admin, once, by ${setupExpiresAt}:`,
+      `  ${setupLink(url, setupSecret)}`,
       '',
       'Next:',
       '  Save the token in a file only you can read, then import content:',

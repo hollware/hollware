@@ -161,9 +161,12 @@ describe('checkPersonalToken: a token that stopped working', () => {
 })
 
 describe('checkPersonalToken: the scopes of the role', () => {
-  it.each<'editor' | 'reviewer'>(['editor', 'reviewer'])(
-    'accepts the token of a user whose role is %s, with every scope, and leaves it none',
-    async (role) => {
+  it.each<['editor' | 'author', string[]]>([
+    ['editor', ['content:read', 'content:write', 'content:publish']],
+    ['author', ['content:read', 'content:write']],
+  ])(
+    'accepts the token of a user whose role is %s, with every scope, and leaves it what the role allows',
+    async (role, scopes) => {
       const site = newSite()
       const seeded = await seedToken(env.DB, site, { role })
 
@@ -171,7 +174,7 @@ describe('checkPersonalToken: the scopes of the role', () => {
 
       expect(check).toMatchObject({
         ok: true,
-        principal: { kind: 'token', tokenId: seeded.tokenId, scopes: [] },
+        principal: { kind: 'token', tokenId: seeded.tokenId, scopes },
       })
       await settle(check)
     },
@@ -182,14 +185,17 @@ describe('checkPersonalToken: the scopes of the role', () => {
     const seeded = await seedToken(env.DB, site)
 
     const before = await checkPersonalToken(env.DB, seeded.token, at(site))
-    await env.DB.prepare("UPDATE users SET role = 'editor' WHERE id = ?1").bind(seeded.userId).run()
+    await env.DB.prepare("UPDATE users SET role = 'author' WHERE id = ?1").bind(seeded.userId).run()
     const after = await checkPersonalToken(env.DB, seeded.token, at(site))
 
     expect(before).toMatchObject({
       ok: true,
       principal: { scopes: ['content:read', 'content:write', 'content:publish', 'schema:admin'] },
     })
-    expect(after).toMatchObject({ ok: true, principal: { scopes: [] } })
+    expect(after).toMatchObject({
+      ok: true,
+      principal: { scopes: ['content:read', 'content:write'] },
+    })
     await settle(before)
     await settle(after)
   })

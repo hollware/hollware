@@ -20,6 +20,7 @@ const COMMANDS = [
   },
   { name: 'migrate', summary: 'Apply D1 migrations' },
   { name: 'token', summary: 'Create, list and revoke personal tokens' },
+  { name: 'invite', summary: 'Invite a person to the admin, as an editor or an author' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
   {
     name: 'export',
@@ -40,7 +41,7 @@ const USAGE = [
   '  --version  Print the version',
   '',
   'Run "hollware <command> --help" for the options of a command.',
-  'init, migrate and token work on the project in the current directory, through its wrangler.',
+  'init, migrate, token and invite work on the project in the current directory, through its wrangler.',
 ].join('\n')
 
 const TOKEN_COMMANDS = ['create', 'list', 'revoke']
@@ -65,7 +66,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.err('hollware export: not implemented yet (planned for v0.2)')
     return 1
   }
-  if (!['init', 'migrate', 'token', 'import'].includes(first)) {
+  if (!['init', 'migrate', 'token', 'invite', 'import'].includes(first)) {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
     return 1
   }
@@ -91,6 +92,8 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/migrate.ts')).migrate(args, io)
     case 'token':
       return (await import('./commands/token.ts')).token(args, io)
+    case 'invite':
+      return (await import('./commands/invite.ts')).invite(args, io)
     default:
       return (await import('./commands/import.ts')).importContent(args, io)
   }

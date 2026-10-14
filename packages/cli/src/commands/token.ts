@@ -92,7 +92,7 @@ export async function token(argv: readonly string[], io: Io): Promise<number> {
   }
 }
 
-const WHERE_OPTIONS = {
+export const WHERE_OPTIONS = {
   site: { type: 'string' },
   local: { type: 'boolean' },
   remote: { type: 'boolean' },
@@ -254,7 +254,7 @@ async function revokeTokenById(argv: readonly string[], io: Io): Promise<number>
 }
 
 /** The site a command acts on: the one `--site` names (already checked), or the only one of the database. */
-function chooseSite(rows: readonly Row[], site: string | undefined): string {
+export function chooseSite(rows: readonly Row[], site: string | undefined): string {
   const sites = rows.map((row) => row.id).filter((id): id is string => typeof id === 'string')
   if (site !== undefined) {
     if (!sites.includes(site)) {

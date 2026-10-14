@@ -162,6 +162,23 @@ export function initScript({ site, ownerId, ownerName, token }: FirstSite): stri
   ].join('\n')
 }
 
+export interface NewInvitation {
+  id: string
+  site: string
+  hash: string
+  role: 'owner' | 'editor' | 'author'
+  /** The person the link is for, or null for an invitation that makes a new one. */
+  userId: string | null
+  expiresAt: string
+  now: string
+}
+
+/** The row of an invitation (ADR-026): the owner's setup link, or an invitation with a role. */
+export function insertInvitation(invitation: NewInvitation): string {
+  const user = invitation.userId === null ? 'NULL' : quote(invitation.userId)
+  return `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
+}
+
 /** The tokens of a site. It never selects the hash. */
 export function listTokens(site: string): string {
   return `SELECT id, label, scopes, expires_at, revoked_at, last_used_at, created_at FROM tokens WHERE site_id = ${quote(site)} ORDER BY created_at, id;`

@@ -8,7 +8,7 @@ import { generatePersonalToken, hashPersonalToken, newId } from '@hollware/core'
 
 export interface SeedTokenOptions {
   /** The role of the token's user. Default `owner`. */
-  readonly role?: 'owner' | 'editor' | 'reviewer'
+  readonly role?: 'owner' | 'editor' | 'author'
   /** The scopes the token carries. Default all four. */
   readonly scopes?: readonly string[]
   readonly expiresAt?: string | null
