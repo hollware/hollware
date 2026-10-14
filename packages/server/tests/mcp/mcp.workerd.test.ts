@@ -124,8 +124,8 @@ describe('the MCP endpoint in workerd', () => {
     expect(result.structuredContent).toEqual(CANNED.publish.published)
     expect(questions).toHaveLength(1)
     expect(seen.map((call) => call.input)).toEqual([
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [] },
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT], group: [] },
     ])
     await client.close()
   })

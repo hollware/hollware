@@ -29,6 +29,7 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     createEntry: (site, entry) => writes.createEntry(database, clock, site, entry),
     appendRevision: (site, write) => writes.appendRevision(database, clock, site, write),
     publish: (site, write) => writes.publish(database, clock, site, write),
+    publishGroup: (site, group) => writes.publishGroup(database, clock, site, group),
     unpublish: (site, write) => writes.unpublish(database, clock, site, write),
   }
 }

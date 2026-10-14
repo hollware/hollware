@@ -1,6 +1,7 @@
 import { newId } from '@hollware/core'
 import type { AcknowledgedWarning, EntryRef, Verdict } from '@hollware/core'
-import { and, eq, ne, or, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, or, sql } from 'drizzle-orm'
+import type { BatchItem } from 'drizzle-orm/batch'
 import { alias } from 'drizzle-orm/sqlite-core'
 
 import type {
@@ -8,6 +9,7 @@ import type {
   Clock,
   EntryView,
   NewRevision,
+  PublishWrite,
   StoredRevision,
   WriteRefusal,
 } from '../ports.ts'
@@ -15,7 +17,7 @@ import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
 import { entryFields, toEntry } from './rows.ts'
-import { entries, revisions } from './schema.ts'
+import { entries, publications, revisions, sites } from './schema.ts'
 import { tooLarge } from './size.ts'
 import {
   distinctTags,
@@ -332,6 +334,103 @@ export async function publish(
     throw new Error(`The revision that entry ${entry.id} was published at is not there`)
   }
   return { outcome: 'published', view: { entry, revision } }
+}
+
+/** The message of the statement that aborts a group publish: SQLite fails to parse it as JSON. */
+const GROUP_MOVED = 'hollware: an entry of the group is not at its version'
+
+/**
+ * Publishes a group of entries in one batch, all or none (ADR-024). Each entry gets the two
+ * statements of `publish`; a last statement fails the batch, which D1 then rolls back, when fewer
+ * publications landed than the group has entries: `json()` of a text that is not JSON raises an
+ * error, and it runs only then. A refusal names the entry.
+ */
+export async function publishGroup(
+  db: Db,
+  clock: Clock,
+  site: string,
+  group: readonly PublishWrite[],
+): Promise<
+  | { readonly outcome: 'published'; readonly views: readonly EntryView[] }
+  | (WriteRefusal & { readonly entryId: string })
+> {
+  const now = clock.now().toISOString()
+  const statements: BatchItem<'sqlite'>[] = []
+  // The publications this batch appends: each lands only if its entry was at its version.
+  const appended: string[] = []
+  for (const write of group) {
+    const row = publicationRow({
+      site,
+      entryId: write.entryId,
+      now,
+      actor: write.actor,
+      publish: {
+        revisionId: newId('rev'),
+        verdict: write.verdict,
+        acknowledged: write.acknowledged,
+      },
+    })
+    const refusal = tooLarge(row)
+    if (refusal !== null) return { ...refusal, entryId: write.entryId }
+    appended.push(row.id)
+    statements.push(
+      insertPublishAtVersion(db, row, write.expectedVersion),
+      db
+        .update(entries)
+        .set({
+          status: 'published',
+          publishedRev: entries.headRev,
+          publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
+          publishedSortKey: write.sortKey,
+          version: sql`${entries.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(entries.id, write.entryId),
+            eq(entries.siteId, site),
+            eq(entries.version, write.expectedVersion),
+          ),
+        ),
+    )
+  }
+  // A select on the site's own row, which is there, so its condition is evaluated once.
+  const guard = db
+    .select({ moved: sql`json(${GROUP_MOVED})` })
+    .from(sites)
+    .where(
+      and(
+        eq(sites.id, site),
+        sql`(select count(*) from ${publications} where ${and(eq(publications.siteId, site), inArray(publications.id, appended))}) < ${group.length}`,
+      ),
+    )
+  try {
+    const [first, ...rest]: BatchItem<'sqlite'>[] = [...statements, guard]
+    if (first !== undefined) await db.batch([first, ...rest])
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/malformed JSON/i.test(`${error.message} ${String(error.cause)}`)
+    ) {
+      throw error
+    }
+    for (const write of group) {
+      const why = await whyNothingChanged(db, site, write.entryId)
+      if (why.outcome === 'not_found' || why.currentVersion !== write.expectedVersion) {
+        return { ...why, entryId: write.entryId }
+      }
+    }
+    throw new Error('A group publish failed, and every entry of the group is at its version', {
+      cause: error,
+    })
+  }
+  const views: EntryView[] = []
+  for (const write of group) {
+    const view = await findEntryById(db, site, write.entryId, 'published')
+    if (view === null) throw new Error(`Entry ${write.entryId} is not published after its group`)
+    views.push(view)
+  }
+  return { outcome: 'published', views }
 }
 
 export async function unpublish(

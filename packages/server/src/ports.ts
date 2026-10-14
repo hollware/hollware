@@ -126,6 +126,17 @@ export type WriteRefusal =
   /** The row would be over `MAX_ROW_BYTES` (`limits.ts`); nothing was written. */
   | { readonly outcome: 'too_large'; readonly bytes: number; readonly limit: number }
 
+/** One entry of a publication: what `publish` and `publishGroup` write for it. */
+export interface PublishWrite {
+  readonly entryId: string
+  readonly expectedVersion: number
+  readonly verdict: Verdict
+  readonly acknowledged: readonly AcknowledgedWarning[]
+  readonly actor: Actor
+  /** What orders the entry in published listings. */
+  readonly sortKey: string
+}
+
 export interface ContentStore {
   /** The entry with that collection, locale and slug, in the given view, or `null`. */
   findEntry(site: string, ref: EntryRef, view: View): Promise<EntryView | null>
@@ -184,6 +195,17 @@ export interface ContentStore {
       readonly sortKey: string
     },
   ): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal>
+  /**
+   * Publishes the head revisions of a group of entries in one batch, all or none (ADR-024): every
+   * entry must still be at its `expectedVersion`. A refusal names the entry that caused it.
+   */
+  publishGroup(
+    site: string,
+    writes: readonly PublishWrite[],
+  ): Promise<
+    | { readonly outcome: 'published'; readonly views: readonly EntryView[] }
+    | (WriteRefusal & { readonly entryId: string })
+  >
   /** Takes the entry off the public site and appends the unpublish. */
   unpublish(
     site: string,

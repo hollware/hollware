@@ -79,8 +79,8 @@ describe('a 2026 client that can show a form', () => {
     expect(result.structuredContent).toEqual(CANNED.publish.published)
     expect(questions).toEqual([QUESTION])
     expect(seen.map((call) => call.input)).toEqual([
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [] },
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT], group: [] },
     ])
     expect(exchanges.map((exchange) => exchange.body?.method)).toEqual([
       'server/discover',
@@ -194,8 +194,8 @@ describe('a 2026 client that can show a form', () => {
 
     expect(result.structuredContent).toEqual(CANNED.publish.published)
     expect(seen.map((call) => call.input)).toEqual([
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [ALT] },
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [ALT, TITLE] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [ALT], group: [] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [ALT, TITLE], group: [] },
     ])
     await client.close()
   })
@@ -255,7 +255,7 @@ describe('a 2026 client that can show a form', () => {
 
     expect(answer.result.resultType).toBe('input_required')
     expect(seen.map((call) => call.input)).toEqual([
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
     ])
   })
 })
@@ -277,8 +277,8 @@ describe('a client that cannot be asked', () => {
     expect(second.structuredContent).toEqual(CANNED.publish.published)
     expect(questions).toEqual([])
     expect(seen.map((call) => call.input)).toEqual([
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [] },
-      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
+      { id: ENTRY_ID, version: 1, acknowledgeWarnings: [TITLE, ALT], group: [] },
     ])
     await client.close()
   })
@@ -351,7 +351,7 @@ describe('the question', () => {
 
 describe('the acknowledged warnings', () => {
   it('are those the client sent, then those it was shown, each contract and path once', () => {
-    const input = { id: ENTRY_ID, version: 4, acknowledgeWarnings: [ALT] }
+    const input = { id: ENTRY_ID, version: 4, acknowledgeWarnings: [ALT], group: [] }
     const shown: PublishOutput = {
       outcome: 'needs_acknowledgement',
       entry: SUMMARY,
@@ -362,11 +362,12 @@ describe('the acknowledged warnings', () => {
       id: ENTRY_ID,
       version: 4,
       acknowledgeWarnings: [ALT, TITLE],
+      group: [],
     })
   })
 
   it('are those the client sent when it was shown no verdict', () => {
-    const input = { id: ENTRY_ID, version: 4, acknowledgeWarnings: [ALT] }
+    const input = { id: ENTRY_ID, version: 4, acknowledgeWarnings: [ALT], group: [] }
 
     expect(withAcknowledged(input, { outcome: 'needs_acknowledgement' })).toEqual(input)
   })

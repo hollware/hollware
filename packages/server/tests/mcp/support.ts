@@ -55,6 +55,7 @@ export const STORE: ContentStore = {
   createEntry: unused,
   appendRevision: unused,
   publish: unused,
+  publishGroup: unused,
   unpublish: unused,
 }
 

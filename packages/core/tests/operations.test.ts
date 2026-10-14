@@ -132,6 +132,7 @@ describe('operation specs', () => {
       id: ENTRY_ID,
       version: 3,
       acknowledgeWarnings: [],
+      group: [],
     })
     expect(getEntry.input.parse({ collection: 'blog', locale: 'en', slug: 'hello-world' })).toEqual(
       { collection: 'blog', locale: 'en', slug: 'hello-world', formats: ['markdown'] },

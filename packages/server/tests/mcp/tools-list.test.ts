@@ -225,7 +225,7 @@ describe('the cached schemas', () => {
     const standard = memoizeJsonSchema(publish.input)['~standard']
 
     expect(await standard.validate({ id: ENTRY_ID, version: 3 })).toEqual({
-      value: { id: ENTRY_ID, version: 3, acknowledgeWarnings: [] },
+      value: { id: ENTRY_ID, version: 3, acknowledgeWarnings: [], group: [] },
     })
     const refused = await standard.validate({ id: 'nope', version: 3 })
     expect(refused.issues?.map((issue) => issue.path)).toEqual([['id']])
@@ -246,7 +246,7 @@ describe('the cached schemas', () => {
     expect(olderInput).toEqual(zod.input(older))
     // A field with a default is optional in what a client sends and always there in what it reads.
     expect(input.required).toEqual(['id', 'version'])
-    expect(output.required).toEqual(['id', 'version', 'acknowledgeWarnings'])
+    expect(output.required).toEqual(['id', 'version', 'acknowledgeWarnings', 'group'])
     expect(olderInput).not.toEqual(input)
   })
 

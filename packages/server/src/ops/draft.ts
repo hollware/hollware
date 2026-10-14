@@ -1,5 +1,6 @@
 import {
   processMarkdown,
+  type EntryLookup,
   runContracts,
   type Phase,
   type ProcessedMarkdown,
@@ -59,6 +60,8 @@ export function judge(
   target: Target,
   markdown: ProcessedMarkdown,
   phase: Phase,
+  /** What the contracts see of the other entries; the store's own view when absent. */
+  entries: EntryLookup = context.store.lookup(context.site.key),
 ): Promise<Verdict> {
   return runContracts({
     site: context.site,
@@ -68,7 +71,7 @@ export function judge(
     entryId: target.entryId,
     phase,
     markdown,
-    entries: context.store.lookup(context.site.key),
+    entries,
   })
 }
 

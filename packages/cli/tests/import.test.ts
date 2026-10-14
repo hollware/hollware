@@ -305,7 +305,12 @@ describe('hollware import writes the drafts in phase one, then publishes in phas
       'publish',
       'publish',
     ])
-    expect(stub.calls.at(-2)?.args).toEqual({ id: id(1), version: 1, acknowledgeWarnings: [] })
+    expect(stub.calls.at(-2)?.args).toEqual({
+      id: id(1),
+      version: 1,
+      acknowledgeWarnings: [],
+      group: [],
+    })
     expect([...stub.entries.values()].map((entry) => [entry.slug, entry.published])).toEqual([
       ['a', 0],
       ['b', 0],
@@ -500,7 +505,12 @@ describe('hollware import --publish', () => {
       `published              blog/en/a  ${id(1)}`,
       'Publishing: 1 published, 0 need acknowledgement, 0 blocked.',
     ])
-    expect(stub.calls.at(-1)?.args).toEqual({ id: id(1), version: 3, acknowledgeWarnings: [] })
+    expect(stub.calls.at(-1)?.args).toEqual({
+      id: id(1),
+      version: 3,
+      acknowledgeWarnings: [],
+      group: [],
+    })
   })
 
   it('publishes nothing when a draft failed, and still imports the others', async () => {

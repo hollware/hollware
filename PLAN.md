@@ -450,7 +450,7 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 The original v0.2 holds about twelve work packages. Only the publishing path is needed for the exit criterion, so the stage is split:
 
 - **v0.2 (this stage)**, the publishing path:
-  1. **P1 publish** (ADR-025, chosen by the maintainer on 2026-10-14 over a Workflow tracked as an MCP Task, which moves to v0.3): `publish` commits one entry or a group (ADR-024) in one D1 batch, all or none; a scheduled publication waits in status `scheduled` and a cron trigger publishes it within a minute; `hollware import --publish` publishes what it imported as one group.
+  1. **P1 publish** (ADR-025, chosen by the maintainer on 2026-10-14 over a Workflow tracked as an MCP Task, which moves to v0.3): `publish` commits one entry or a group (ADR-024) in one D1 batch, all or none; a scheduled publication waits in status `scheduled` and a cron trigger publishes it within a minute; `hollware import --publish` publishing what it imported as one group is a follow-up of P1 (its stub server and about ten CLI tests have to change).
   2. **P2 events** (ADR-025): an outbox in D1 written in the publish batch → Queue → HMAC-signed webhooks (URL or service binding), with a DLQ and idempotent deliveries; IndexNow as one built-in subscriber.
   3. **P3 HTTP read API and cache**: `GET /v1/...` generated from the read operations, with ETag/304, Workers Cache with `Cache-Tag` per site, collection and entry, and the purge P1 calls; OpenAPI 3.1 of those routes; `@hollware/client` over a binding or HTTP, one suite for both.
   4. **P4 demo**: the playground's `demo` environment (`cms.demo.hollware.com`) and `examples/worker-site` on `demo.hollware.com`, deployed with the maintainer's OK; `vp run probe -- --target demo` measures publish-to-live five times.
@@ -473,6 +473,10 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 
 - [ ] Confirm the split.
 - [ ] Before P4: `wrangler login`, confirm the subdomains (`demo.hollware.com`, `cms.demo.hollware.com`), and OK each first deploy.
+
+### Verification log (v0.2)
+
+- 2026-10-14 — P1, group publish (ADR-024): `publish` takes `group`, and the store's `publishGroup` writes every member in one D1 batch whose last statement, a `select` that calls `json()` on a text that is not JSON when fewer publications landed than the group has entries, fails the batch so D1 rolls it back; a refusal names the member in `failedEntry`. The handler shows the members as published to the contracts, so two drafts that link to each other publish together (`tests/ops/publish-group.workerd.test.ts`, `tests/db/publish-group.workerd.test.ts`). Found while testing: a guard on versions alone passed a member that was already at the expected next version without being written, so the guard counts the publications of the batch by id. `check:push`: 3,878 tests; budgets 134.27 KiB and 241.09 KiB. Mutations → CAUGHT: the guard dropped from the batch, the members no longer seen as published.
 
 ## Later stages (detailed at the start of each stage)
 

@@ -152,7 +152,7 @@ export const publish = defineOperation({
   name: 'publish',
   title: 'Publish an entry',
   description:
-    'Publishes the latest revision of an entry, if the entry is still at the version you read. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings.',
+    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group.',
   input: z.strictObject({
     id: entryId,
     version,
@@ -160,12 +160,22 @@ export const publish = defineOperation({
       .array(acknowledgedWarning)
       .default([])
       .describe('The warnings you accept, as needs_acknowledgement listed them.'),
+    group: z
+      .array(z.strictObject({ id: entryId, version }))
+      .max(99)
+      .default([])
+      .describe(
+        'Other entries to publish in the same step, each with the version you read: all of them are published, or none. A link between two of them counts as published, and an acknowledged warning holds for every entry that reports it.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['published', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found']),
     entry: entrySummary.optional(),
     verdict: verdict.optional(),
     conflict: conflict.optional(),
+    failedEntry: entryId
+      .optional()
+      .describe('In a group, the entry that kept the group from being published.'),
   }),
   scopes: ['content:publish'],
   effect: 'write',

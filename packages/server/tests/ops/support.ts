@@ -319,5 +319,6 @@ export const UNTOUCHED: ContentStore = {
   createEntry: () => touched('createEntry'),
   appendRevision: () => touched('appendRevision'),
   publish: () => touched('publish'),
+  publishGroup: () => touched('publishGroup'),
   unpublish: () => touched('unpublish'),
 }
