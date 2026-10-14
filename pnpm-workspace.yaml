@@ -13,8 +13,8 @@ catalogMode: prefer
 catalog:
   '@changesets/changelog-github': 1.0.1
   '@changesets/cli': 3.0.3
-  '@cloudflare/vite-plugin': 1.63.1
-  '@cloudflare/vitest-plugin': 1.4.0
+  '@cloudflare/vite-plugin': 1.63.2
+  '@cloudflare/vitest-plugin': 1.4.1
   '@comark/html': 0.7.0
   '@modelcontextprotocol/client': 2.3.1
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
@@ -37,7 +37,7 @@ catalog:
   # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
   # needs it as a real peer dependency.
   vitest: 5.0.3
-  wrangler: 4.149.0
+  wrangler: 4.150.0
   yaml: 2.9.1
   # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
   # would install zod twice. core and server declare it as a peer, ^4.2.0 (ADR-017).

@@ -435,7 +435,7 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 
 ---
 
-## v0.2 — Publishing (proposed 2026-10-14, waiting for the maintainer's go)
+## v0.2 — Publishing (started 2026-10-14)
 
 **Goal:** publishing is a durable, observable process, and on the demo a post published over MCP is live in under 60 s, with no CI.
 
@@ -443,7 +443,7 @@ New ADRs: 016 workspace packages resolve to their source · 017 operation specs 
 
 - [x] Stack check: only patch releases since v0.1 (wrangler 4.150.0, `@cloudflare/vite-plugin` 1.63.2, `@cloudflare/vitest-plugin` 1.4.1, Vitest 5.0.4, zod 4.6.7); Hono 5 is still an RC, the MCP SDK still 2.3.1, Comark still 0.7.0. The patches land with the first wave, through `check:push`.
 - [x] `vp dev` of the playground and the starter moved to port 5199 (`strictPort`), apart from Vite's default 5173, which a frontend next to Hollware usually takes; bound by the guard `dev-port`.
-- [ ] The maintainer confirms the split below.
+- [x] The maintainer confirmed the split below (2026-10-14).
 
 ### Split, to fit the budget (sub-agents one at a time, `subagent-budget`)
 
