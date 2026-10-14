@@ -38,6 +38,8 @@ export const SITE: ResolvedSite = {
   defaultLocale: 'en',
   styleGuide: null,
   collections: new Map(),
+  url: null,
+  events: { webhooks: [], indexNow: null },
 }
 
 const unused = (): never => {

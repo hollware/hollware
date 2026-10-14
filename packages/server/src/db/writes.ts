@@ -1,6 +1,6 @@
 import { newId } from '@hollware/core'
-import type { AcknowledgedWarning, EntryRef, Verdict } from '@hollware/core'
-import { and, eq, inArray, ne, or, sql } from 'drizzle-orm'
+import type { EntryRef } from '@hollware/core'
+import { and, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { alias } from 'drizzle-orm/sqlite-core'
 
@@ -9,6 +9,7 @@ import type {
   Clock,
   EntryView,
   NewRevision,
+  OutboxEvent,
   PublishWrite,
   StoredRevision,
   WriteRefusal,
@@ -18,8 +19,9 @@ import { isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
 import { dropSchedule } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
-import { entries, publications, revisions, schedules, sites } from './schema.ts'
+import { entries, outbox, publications, revisions, schedules, sites } from './schema.ts'
 import { tooLarge } from './size.ts'
+import { valuesOf } from './statements.ts'
 import {
   distinctTags,
   insertPublishAtVersion,
@@ -284,14 +286,7 @@ export async function publish(
   db: Db,
   clock: Clock,
   site: string,
-  write: {
-    readonly entryId: string
-    readonly expectedVersion: number
-    readonly verdict: Verdict
-    readonly acknowledged: readonly AcknowledgedWarning[]
-    readonly actor: Actor
-    readonly sortKey: string
-  },
+  write: PublishWrite,
 ): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal> {
   const now = clock.now().toISOString()
   const row = publicationRow({
@@ -308,6 +303,9 @@ export async function publish(
   const results = await db.batch([
     insertPublishAtVersion(db, row, write.expectedVersion),
     dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
+    insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
+      eq(entries.version, write.expectedVersion),
+    ]),
     db
       .update(entries)
       .set({
@@ -328,7 +326,7 @@ export async function publish(
       )
       .returning(entryFields),
   ])
-  const [changed] = results[2]
+  const [changed] = results[3]
   if (changed === undefined) return whyNothingChanged(db, site, write.entryId)
   const entry = toEntry(changed)
   const revision =
@@ -379,6 +377,9 @@ export async function publishGroup(
     statements.push(
       insertPublishAtVersion(db, row, write.expectedVersion),
       dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
+      insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
+        eq(entries.version, write.expectedVersion),
+      ]),
       db
         .update(entries)
         .set({
@@ -442,7 +443,7 @@ export async function unpublish(
   db: Db,
   clock: Clock,
   site: string,
-  write: { readonly entryId: string; readonly actor: Actor },
+  write: { readonly entryId: string; readonly actor: Actor; readonly event?: OutboxEvent | null },
 ): Promise<{ readonly outcome: 'unpublished'; readonly view: EntryView } | WriteRefusal> {
   const now = clock.now().toISOString()
   const row = publicationRow({
@@ -458,6 +459,9 @@ export async function unpublish(
   // stays as it is and gets no publication, and the answer below is its current view.
   await db.batch([
     insertUnpublishIfPublished(db, row),
+    insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.unpublished', now, [
+      eq(entries.status, 'published'),
+    ]),
     dropSchedule(db, site, write.entryId),
     db
       .update(entries)
@@ -491,5 +495,36 @@ function dropScheduleAtVersion(db: Db, site: string, entryId: string, version: n
         eq(schedules.entryId, entryId),
         sql`exists (select 1 from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), eq(entries.version, version))})`,
       ),
+    )
+}
+
+/**
+ * Writes the event of a write to the outbox in its batch, only where the entry is in the state the
+ * write expects, so that an event is there exactly when its write is. Nothing when there is no
+ * event: a statement that selects nothing, to keep the batch the same shape.
+ */
+function insertEventWhere(
+  db: Db,
+  site: string,
+  entryId: string,
+  event: OutboxEvent | null,
+  kind: 'entry.published' | 'entry.unpublished',
+  now: string,
+  conditions: SQL[],
+) {
+  const row = {
+    id: event?.id ?? 'evt_none',
+    siteId: site,
+    kind,
+    entryId,
+    payload: event?.payload ?? '{}',
+    sentAt: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  return db
+    .insert(outbox)
+    .select(
+      sql`select ${valuesOf(outbox, row)} from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), sql`${event === null ? 0 : 1} = 1`, ...conditions)}`,
     )
 }

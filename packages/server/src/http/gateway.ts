@@ -6,7 +6,9 @@ import {
   readBearerToken,
   unauthorized,
 } from '../auth/index.ts'
+import { connect } from '../db/d1.ts'
 import { createD1Store } from '../db/index.ts'
+import { enqueue } from '../events/run.ts'
 import type { HollwareEnv } from '../index.ts'
 import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock } from '../ports.ts'
@@ -85,10 +87,26 @@ export function createGateway(options: GatewayOptions): Gateway {
       return unauthorized(check.reason)
     }
     if (check.touch !== null) c.executionCtx.waitUntil(check.touch)
+    const db = c.env.DB
     return await mcp.fetch(c.req.raw, {
       principal: check.principal,
       requestId,
-      context: { site, store: createD1Store(c.env.DB, { clock }), clock },
+      context: {
+        site,
+        store: createD1Store(db, { clock }),
+        clock,
+        // The events a write committed go to the Queue after the answer (ADR-025); the cron
+        // trigger's sweep catches any that this misses.
+        notify: (ids) => {
+          c.executionCtx.waitUntil(
+            enqueue({ queue: c.env.EVENTS, db: connect(db), site: site.key, ids, clock }).catch(
+              (error: unknown) => {
+                log({ kind: 'enqueue_failed', requestId, message: String(error) })
+              },
+            ),
+          )
+        },
+      },
     })
   })
 

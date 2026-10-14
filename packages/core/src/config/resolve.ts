@@ -1,5 +1,6 @@
 import { readCollection, type SiteContext } from './collection.ts'
 import { ConfigError, Problems } from './config-error.ts'
+import { readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
 import type { ResolvedCollection, ResolvedConfig, ResolvedSite } from './types.ts'
@@ -148,7 +149,9 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
     'Write the guidance as a Markdown string, or remove it.',
     problems,
   )
-  return { key, locales, defaultLocale, styleGuide, collections }
+  const url = readSiteUrl(keyPath(path, 'url'), raw['url'], problems)
+  const events = readEvents(keyPath(path, 'events'), raw['events'], url, problems)
+  return { key, locales, defaultLocale, styleGuide, collections, url, events }
 }
 
 function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> {

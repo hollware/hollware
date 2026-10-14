@@ -71,6 +71,19 @@ export interface SiteDefinition {
   readonly collections: Readonly<Record<string, CollectionDefinition>>
   /** Guidance for whoever writes anywhere in the site, in Markdown. */
   readonly styleGuide?: string
+  /** The public origin of the site, such as `https://example.com`: entries' URLs start with it. */
+  readonly url?: string
+  /** Who hears about publications (ADR-025). */
+  readonly events?: {
+    /** Each gets every event, signed with HMAC-SHA256 by the Worker secret named in `secret`. */
+    readonly webhooks?: readonly {
+      readonly name: string
+      readonly url: string
+      readonly secret: string
+    }[]
+    /** Tells IndexNow the URLs that changed; `key` names the Worker secret with the key. */
+    readonly indexNow?: { readonly key: string }
+  }
 }
 
 /** What `hollware.config.ts` exports. */
@@ -104,6 +117,22 @@ export interface ResolvedSite {
   readonly defaultLocale: string
   readonly styleGuide: string | null
   readonly collections: ReadonlyMap<string, ResolvedCollection>
+  /** The public origin of the site, or `null`. */
+  readonly url: string | null
+  readonly events: ResolvedEvents
+}
+
+/** A webhook of a site; `secret` names the Worker secret that signs its deliveries. */
+export interface ResolvedWebhook {
+  readonly name: string
+  readonly url: string
+  readonly secret: string
+}
+
+/** Who hears about the publications of a site. */
+export interface ResolvedEvents {
+  readonly webhooks: readonly ResolvedWebhook[]
+  readonly indexNow: { readonly key: string } | null
 }
 
 /** The config once resolved, at the start of the Worker. v0.1 holds exactly one site. */

@@ -96,6 +96,8 @@ describe('resolveConfig', () => {
       locales: ['es', 'en'],
       defaultLocale: 'es',
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',
+      url: null,
+      events: { webhooks: [], indexNow: null },
       collections: new Map([
         [
           'blog',
@@ -188,6 +190,8 @@ describe('resolveConfig', () => {
       locales: ['en'],
       defaultLocale: 'en',
       styleGuide: null,
+      url: null,
+      events: { webhooks: [], indexNow: null },
       collections: new Map([
         [
           'posts',

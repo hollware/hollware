@@ -19,6 +19,11 @@ export interface OperationContext {
   /** What the client said about itself; writes record it as the actor's meta. */
   readonly client: Readonly<Record<string, unknown>> | null
   readonly requestId: string
+  /**
+   * Called with the ids of the events that a write committed to the outbox, so that they reach
+   * the Queue now rather than at the next sweep of the cron trigger (ADR-025). Absent in tests.
+   */
+  readonly notify?: (eventIds: readonly string[]) => void
 }
 
 /** The handler of one operation: its parsed input in, its output out. */

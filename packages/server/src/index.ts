@@ -8,6 +8,7 @@ import type {
 import type { WorkerEntrypoint } from 'cloudflare:workers'
 import type * as z from 'zod'
 import { createHollwareWith } from './compose.ts'
+import type { EventDelivery, EventQueue } from './events/run.ts'
 import { handlers } from './ops/index.ts'
 
 export const name = '@hollware/server'
@@ -26,6 +27,7 @@ export {
   OUTPUT_CAP_BYTES,
 } from './limits.ts'
 export type * from './ports.ts'
+export type { EventMessage } from './events/run.ts'
 
 /** The bindings and variables of the Worker, as its `wrangler.jsonc` declares them. */
 export interface HollwareEnv {
@@ -36,6 +38,8 @@ export interface HollwareEnv {
    * Origin the Worker answers; without it, every request fails.
    */
   readonly HOLLWARE_PUBLIC_URL: string
+  /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
+  readonly EVENTS?: EventQueue
 }
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>
@@ -77,6 +81,12 @@ export interface HollwareRpc {
 export interface HollwareWorker {
   /** MCP at `/mcp`, and the other routes of the gateway. */
   readonly fetch: (request: Request, env: HollwareEnv, ctx: ExecutionContext) => Promise<Response>
+  /** The consumer of the events Queue (`queues.consumers` in wrangler.jsonc). */
+  readonly queue: (
+    batch: { readonly messages: readonly EventDelivery[] },
+    env: HollwareEnv,
+    ctx: ExecutionContext,
+  ) => Promise<void>
   /** The cron trigger of the project (`triggers.crons` in wrangler.jsonc, every minute). */
   readonly scheduled: (
     controller: ScheduledController,

@@ -31,5 +31,12 @@ export interface RequestErrorLog {
   readonly detail: string
 }
 
+/** Events a write committed that could not be put on the Queue; the cron trigger sweeps them. */
+export interface EnqueueFailedLog {
+  readonly kind: 'enqueue_failed'
+  readonly requestId: string
+  readonly message: string
+}
+
 /** What the gateway writes to the log, besides the lines of the MCP endpoint. */
-export type GatewayLogEntry = AuthRefusedLog | RequestErrorLog
+export type GatewayLogEntry = AuthRefusedLog | RequestErrorLog | EnqueueFailedLog

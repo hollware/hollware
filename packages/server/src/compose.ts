@@ -1,11 +1,14 @@
 import { resolveConfig, type HollwareConfig } from '@hollware/core'
 import manifest from '../package.json' with { type: 'json' }
 import { createGateway } from './http/index.ts'
-import type { HollwareWorker } from './index.ts'
+import type { HollwareEnv, HollwareWorker } from './index.ts'
 import { createMcpEndpoint } from './mcp/index.ts'
 import type { Handlers } from './ops/types.ts'
 import type { Clock } from './ports.ts'
+import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
+import type { DeliveryDeps } from './events/deliver.ts'
+import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint } from './rpc/index.ts'
 import { runDueSchedules } from './schedule/run.ts'
 
@@ -59,10 +62,21 @@ export function createHollwareWith(
   }
   const clock = options.clock ?? systemClock
   const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
+  const deliveryDeps = (env: HollwareEnv): DeliveryDeps => ({
+    db: connect(env.DB),
+    site,
+    clock,
+    fetch: (request) => fetch(request),
+    secret: (name) => {
+      const value: unknown = Reflect.get(env, name)
+      return typeof value === 'string' ? value : undefined
+    },
+  })
   return {
     fetch: createGateway({ site, mcp, clock, log: writeLog }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025).
     scheduled: async (_controller, env, ctx) => {
+      const deps = deliveryDeps(env)
       ctx.waitUntil(
         runDueSchedules({
           site,
@@ -70,13 +84,20 @@ export function createHollwareWith(
           handlers,
           clock,
           log: writeLog,
-        }).then(
-          () => undefined,
-          (error: unknown) => {
-            writeLog({ kind: 'schedule_failed', message: String(error) })
-          },
-        ),
+        })
+          // Then the outbox, which holds the events of what was just published, too.
+          .then(() => sweepOutbox({ queue: env.EVENTS, deps }))
+          .then(
+            () => undefined,
+            (error: unknown) => {
+              writeLog({ kind: 'cron_failed', message: String(error) })
+            },
+          ),
       )
+    },
+    // The consumer of the events Queue: delivers each event to the subscribers of the site.
+    queue: async (batch, env) => {
+      await consumeEvents(batch.messages, deliveryDeps(env))
     },
     Hollware: createEntrypoint({ site, handlers, clock, log: writeLog }),
   }

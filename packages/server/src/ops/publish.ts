@@ -1,5 +1,6 @@
 import { HollwareError, type EntryLookup, type Verdict } from '@hollware/core'
 import type { PublishWrite } from '../ports.ts'
+import { eventFor } from './event.ts'
 import { actorOf } from './actor.ts'
 import { conflictAt, entrySummary, refusalVerdict, verdictView, violationOf } from './answers.ts'
 import { collectionOfEntry } from './collections.ts'
@@ -89,7 +90,21 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
         throw unexpectedAnswer(context, 'publish', scheduled)
     }
   }
+  const event = eventFor({
+    kind: 'entry.published',
+    site: context.site,
+    collection,
+    entry: {
+      id: entry.id,
+      collection: entry.collection,
+      locale: entry.locale,
+      slug: entry.slug,
+      translationGroup: entry.translationGroup,
+    },
+    at: context.clock.now().toISOString(),
+  })
   const written = await context.store.publish(context.site.key, {
+    event,
     entryId: entry.id,
     expectedVersion: input.version,
     verdict,
@@ -103,6 +118,7 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
   })
   switch (written.outcome) {
     case 'published':
+      context.notify?.([event.id])
       return {
         outcome: 'published',
         entry: entrySummary(written.view),
@@ -213,6 +229,19 @@ async function publishGroup(input: PublishInput, context: PublishContext) {
       collection,
       verdict,
       write: {
+        event: eventFor({
+          kind: 'entry.published',
+          site: context.site,
+          collection,
+          entry: {
+            id: entry.id,
+            collection: entry.collection,
+            locale: entry.locale,
+            slug: entry.slug,
+            translationGroup: entry.translationGroup,
+          },
+          at: context.clock.now().toISOString(),
+        }),
         entryId: entry.id,
         expectedVersion: member.version,
         verdict,
@@ -249,6 +278,7 @@ async function publishGroup(input: PublishInput, context: PublishContext) {
     case 'published': {
       const [view] = written.views
       if (view === undefined) throw unexpectedAnswer(context, 'publish', written)
+      context.notify?.(checked.flatMap(({ write }) => (write.event ? [write.event.id] : [])))
       return {
         outcome: 'published' as const,
         entry: entrySummary(view),

@@ -55,10 +55,10 @@ describe('createHollwareWith', () => {
     )
   })
 
-  it('returns the fetch, the scheduled handler and the Hollware class, and nothing else', () => {
+  it('returns the fetch, the scheduled and queue handlers and the Hollware class, and nothing else', () => {
     const { worker } = boot()
 
-    expect(Object.keys(worker).sort()).toEqual(['Hollware', 'fetch', 'scheduled'])
+    expect(Object.keys(worker).sort()).toEqual(['Hollware', 'fetch', 'queue', 'scheduled'])
     expect(typeof worker.fetch).toBe('function')
     expect(typeof worker.Hollware).toBe('function')
   })

@@ -120,6 +120,8 @@ export function siteOf(
     defaultLocale: locales[0] ?? 'es',
     styleGuide: null,
     collections: new Map([[collection.name, collection]]),
+    url: null,
+    events: { webhooks: [], indexNow: null },
   }
 }
 

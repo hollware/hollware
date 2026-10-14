@@ -145,6 +145,14 @@ export interface PublishWrite {
   readonly actor: Actor
   /** What orders the entry in published listings. */
   readonly sortKey: string
+  /** The event of the publication, written to the outbox in the same batch (ADR-025). */
+  readonly event?: OutboxEvent | null
+}
+
+/** An event for the outbox: its id and what subscribers get, as JSON. */
+export interface OutboxEvent {
+  readonly id: string
+  readonly payload: string
 }
 
 export interface ContentStore {
@@ -195,15 +203,7 @@ export interface ContentStore {
    */
   publish(
     site: string,
-    write: {
-      readonly entryId: string
-      readonly expectedVersion: number
-      readonly verdict: Verdict
-      readonly acknowledged: readonly AcknowledgedWarning[]
-      readonly actor: Actor
-      /** What orders the entry in published listings. */
-      readonly sortKey: string
-    },
+    write: PublishWrite,
   ): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal>
   /**
    * Publishes the head revisions of a group of entries in one batch, all or none (ADR-024): every
@@ -238,7 +238,7 @@ export interface ContentStore {
   /** Takes the entry off the public site and appends the unpublish. */
   unpublish(
     site: string,
-    write: { readonly entryId: string; readonly actor: Actor },
+    write: { readonly entryId: string; readonly actor: Actor; readonly event?: OutboxEvent | null },
   ): Promise<{ readonly outcome: 'unpublished'; readonly view: EntryView } | WriteRefusal>
 }
 
