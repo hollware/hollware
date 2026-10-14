@@ -16,8 +16,9 @@ import type {
 import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
+import { dropSchedule } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
-import { entries, publications, revisions, sites } from './schema.ts'
+import { entries, publications, revisions, schedules, sites } from './schema.ts'
 import { tooLarge } from './size.ts'
 import {
   distinctTags,
@@ -306,10 +307,12 @@ export async function publish(
   if (refusal !== null) return refusal
   const results = await db.batch([
     insertPublishAtVersion(db, row, write.expectedVersion),
+    dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
     db
       .update(entries)
       .set({
         status: 'published',
+        scheduledAt: null,
         publishedRev: entries.headRev,
         publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
         publishedSortKey: write.sortKey,
@@ -325,7 +328,7 @@ export async function publish(
       )
       .returning(entryFields),
   ])
-  const [changed] = results[1]
+  const [changed] = results[2]
   if (changed === undefined) return whyNothingChanged(db, site, write.entryId)
   const entry = toEntry(changed)
   const revision =
@@ -375,10 +378,12 @@ export async function publishGroup(
     appended.push(row.id)
     statements.push(
       insertPublishAtVersion(db, row, write.expectedVersion),
+      dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
       db
         .update(entries)
         .set({
           status: 'published',
+          scheduledAt: null,
           publishedRev: entries.headRev,
           publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
           publishedSortKey: write.sortKey,
@@ -453,10 +458,12 @@ export async function unpublish(
   // stays as it is and gets no publication, and the answer below is its current view.
   await db.batch([
     insertUnpublishIfPublished(db, row),
+    dropSchedule(db, site, write.entryId),
     db
       .update(entries)
       .set({
         status: 'draft',
+        scheduledAt: null,
         publishedRev: null,
         publishedSortKey: null,
         version: sql`${entries.version} + 1`,
@@ -466,10 +473,23 @@ export async function unpublish(
         and(
           eq(entries.id, write.entryId),
           eq(entries.siteId, site),
-          eq(entries.status, 'published'),
+          inArray(entries.status, ['published', 'scheduled']),
         ),
       ),
   ])
   const view = await findEntryById(db, site, write.entryId, 'head')
   return view === null ? { outcome: 'not_found' } : { outcome: 'unpublished', view }
+}
+
+/** Drops the schedule of an entry in the batch that publishes it, if it is at `version`. */
+function dropScheduleAtVersion(db: Db, site: string, entryId: string, version: number) {
+  return db
+    .delete(schedules)
+    .where(
+      and(
+        eq(schedules.siteId, site),
+        eq(schedules.entryId, entryId),
+        sql`exists (select 1 from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), eq(entries.version, version))})`,
+      ),
+    )
 }

@@ -286,17 +286,17 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
 
 ### Operations: outcomes and effects (pinned in `core/src/operations`)
 
-| Operation          | Effect      | Outcomes                                                                 | `isError` outcomes                 |
-| ------------------ | ----------- | ------------------------------------------------------------------------ | ---------------------------------- |
-| `describe_site`    | read        | `ok`                                                                     | —                                  |
-| `list_entries`     | read        | `ok` (keyset cursor)                                                     | —                                  |
-| `get_entry`        | read        | `ok`, `not_found`; `view: head` (MCP) or `published` (RPC)               | `not_found`                        |
-| `get_translations` | read        | `ok`, `not_found`                                                        | `not_found`                        |
-| `create_draft`     | write       | `saved` (verdict may hold errors), `refused`                             | `refused`                          |
-| `update_draft`     | edit        | `saved`, `unchanged`, `conflict`, `not_found`, `refused`                 | `conflict`, `not_found`, `refused` |
-| `validate`         | read        | `ok` (verdict; the version does not change)                              | —                                  |
-| `publish`          | write       | `published`, `blocked`, `needs_acknowledgement`, `conflict`, `not_found` | `blocked`, `conflict`, `not_found` |
-| `unpublish`        | destructive | `unpublished`, `not_found`                                               | `not_found`                        |
+| Operation          | Effect      | Outcomes                                                                                     | `isError` outcomes                 |
+| ------------------ | ----------- | -------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `describe_site`    | read        | `ok`                                                                                         | —                                  |
+| `list_entries`     | read        | `ok` (keyset cursor)                                                                         | —                                  |
+| `get_entry`        | read        | `ok`, `not_found`; `view: head` (MCP) or `published` (RPC)                                   | `not_found`                        |
+| `get_translations` | read        | `ok`, `not_found`                                                                            | `not_found`                        |
+| `create_draft`     | write       | `saved` (verdict may hold errors), `refused`                                                 | `refused`                          |
+| `update_draft`     | edit        | `saved`, `unchanged`, `conflict`, `not_found`, `refused`                                     | `conflict`, `not_found`, `refused` |
+| `validate`         | read        | `ok` (verdict; the version does not change)                                                  | —                                  |
+| `publish`          | write       | `published`, `scheduled` (v0.2), `blocked`, `needs_acknowledgement`, `conflict`, `not_found` | `blocked`, `conflict`, `not_found` |
+| `unpublish`        | destructive | `unpublished`, `not_found`                                                                   | `not_found`                        |
 
 - `refused` is kept for content that cannot be stored or listed: a `size-limit` breach, or frontmatter that does not parse. Every other error is saved with the draft and only blocks publishing (ADR-004, ADR-020).
 - Hints from the effect: `read` is read-only and idempotent; `edit` and `write` are neither read-only nor destructive; `destructive` is destructive. Every tool is closed-world (`openWorldHint: false`).
@@ -477,6 +477,8 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 ### Verification log (v0.2)
 
 - 2026-10-14 — P1, group publish (ADR-024): `publish` takes `group`, and the store's `publishGroup` writes every member in one D1 batch whose last statement, a `select` that calls `json()` on a text that is not JSON when fewer publications landed than the group has entries, fails the batch so D1 rolls it back; a refusal names the member in `failedEntry`. The handler shows the members as published to the contracts, so two drafts that link to each other publish together (`tests/ops/publish-group.workerd.test.ts`, `tests/db/publish-group.workerd.test.ts`). Found while testing: a guard on versions alone passed a member that was already at the expected next version without being written, so the guard counts the publications of the batch by id. `check:push`: 3,878 tests; budgets 134.27 KiB and 241.09 KiB. Mutations → CAUGHT: the guard dropped from the batch, the members no longer seen as published.
+
+- 2026-10-14 — P1, scheduled publication (ADR-025): `publish` takes `publishAt`; the entry is checked as for a publish and waits as `scheduled` with a row in `schedules` (migration `0003_events_and_schedules.sql`, which also holds the outbox of P2); the Worker gets a `scheduled` handler, and the playground and the starter a cron trigger every minute, that publishes due entries through the same handler in the name of who scheduled them. A change after scheduling, or `unpublish`, takes the entry back to a draft; a group cannot be scheduled. `check:push`: 3,882 tests; acceptance and conformance green. Mutations → CAUGHT: the time comparison inverted, the cancellation of a stale schedule removed.
 
 ## Later stages (detailed at the start of each stage)
 

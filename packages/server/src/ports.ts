@@ -126,6 +126,16 @@ export type WriteRefusal =
   /** The row would be over `MAX_ROW_BYTES` (`limits.ts`); nothing was written. */
   | { readonly outcome: 'too_large'; readonly bytes: number; readonly limit: number }
 
+/** A scheduled publication, as the cron trigger reads it. */
+export interface StoredSchedule {
+  readonly entryId: string
+  readonly scheduledAt: string
+  /** The version the entry had once scheduled; another one means it changed since. */
+  readonly version: number
+  readonly acknowledged: readonly AcknowledgedWarning[]
+  readonly actor: Actor
+}
+
 /** One entry of a publication: what `publish` and `publishGroup` write for it. */
 export interface PublishWrite {
   readonly entryId: string
@@ -206,6 +216,25 @@ export interface ContentStore {
     | { readonly outcome: 'published'; readonly views: readonly EntryView[] }
     | (WriteRefusal & { readonly entryId: string })
   >
+  /**
+   * Schedules the publication of an entry that is not published, if it is still at
+   * `expectedVersion`: the entry becomes `scheduled` at the next version, and its schedule keeps
+   * the acknowledged warnings and the actor for the cron trigger (ADR-025).
+   */
+  schedule(
+    site: string,
+    write: {
+      readonly entryId: string
+      readonly expectedVersion: number
+      readonly scheduledAt: string
+      readonly acknowledged: readonly AcknowledgedWarning[]
+      readonly actor: Actor
+    },
+  ): Promise<{ readonly outcome: 'scheduled'; readonly view: EntryView } | WriteRefusal>
+  /** The schedules whose time has come, at most 50, oldest first. */
+  dueSchedules(site: string, now: string): Promise<readonly StoredSchedule[]>
+  /** Takes a scheduled entry back to a draft and drops its schedule. */
+  cancelSchedule(site: string, entryId: string): Promise<void>
   /** Takes the entry off the public site and appends the unpublish. */
   unpublish(
     site: string,

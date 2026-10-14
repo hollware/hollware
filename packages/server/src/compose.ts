@@ -5,7 +5,9 @@ import type { HollwareWorker } from './index.ts'
 import { createMcpEndpoint } from './mcp/index.ts'
 import type { Handlers } from './ops/types.ts'
 import type { Clock } from './ports.ts'
+import { createD1Store } from './db/index.ts'
 import { createEntrypoint } from './rpc/index.ts'
+import { runDueSchedules } from './schedule/run.ts'
 
 export interface ComposeOptions {
   /**
@@ -59,6 +61,23 @@ export function createHollwareWith(
   const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
   return {
     fetch: createGateway({ site, mcp, clock, log: writeLog }),
+    // The cron trigger: publishes what was scheduled and is due (ADR-025).
+    scheduled: async (_controller, env, ctx) => {
+      ctx.waitUntil(
+        runDueSchedules({
+          site,
+          store: createD1Store(env.DB, { clock }),
+          handlers,
+          clock,
+          log: writeLog,
+        }).then(
+          () => undefined,
+          (error: unknown) => {
+            writeLog({ kind: 'schedule_failed', message: String(error) })
+          },
+        ),
+      )
+    },
     Hollware: createEntrypoint({ site, handlers, clock, log: writeLog }),
   }
 }

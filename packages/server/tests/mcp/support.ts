@@ -56,6 +56,9 @@ export const STORE: ContentStore = {
   appendRevision: unused,
   publish: unused,
   publishGroup: unused,
+  schedule: unused,
+  dueSchedules: unused,
+  cancelSchedule: unused,
   unpublish: unused,
 }
 
@@ -201,6 +204,7 @@ export const CANNED: Canned = {
   },
   publish: {
     published: { outcome: 'published', entry: { ...SUMMARY, status: 'published', version: 2 } },
+    scheduled: { outcome: 'scheduled', entry: { ...SUMMARY, status: 'scheduled', version: 2 } },
     blocked: { outcome: 'blocked', entry: SUMMARY, verdict: VERDICT_FAILED },
     needs_acknowledgement: {
       outcome: 'needs_acknowledgement',

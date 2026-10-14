@@ -75,7 +75,14 @@ describe('operation specs', () => {
       publish: {
         effect: 'write',
         scopes: ['content:publish'],
-        outcomes: ['published', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
+        outcomes: [
+          'published',
+          'scheduled',
+          'blocked',
+          'needs_acknowledgement',
+          'conflict',
+          'not_found',
+        ],
         errors: ['blocked', 'conflict', 'not_found'],
       },
       unpublish: {

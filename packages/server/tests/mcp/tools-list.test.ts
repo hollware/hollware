@@ -58,7 +58,7 @@ const OUTCOMES: Record<string, string[]> = {
   get_entry: ['ok', 'not_found'],
   get_translations: ['ok', 'not_found'],
   list_entries: ['ok'],
-  publish: ['published', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
+  publish: ['published', 'scheduled', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
   unpublish: ['unpublished', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   validate: ['ok'],

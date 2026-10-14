@@ -21,7 +21,7 @@ export type RevisionRow = typeof revisions.$inferSelect
 /** A publication as `publications` stores it. */
 export type PublicationRow = typeof publications.$inferSelect
 
-function actorColumns(actor: Actor) {
+export function actorColumns(actor: Actor) {
   return {
     actorKind: actor.kind,
     actorUserId: actor.userId,
@@ -92,7 +92,7 @@ export function publicationRow(input: {
  * the row lacks fails here instead of shifting the ones after it. A value may be a column or any
  * SQL, for what only the database knows.
  */
-function valuesOf(table: SQLiteTable, row: Readonly<Record<string, unknown>>): SQL {
+export function valuesOf(table: SQLiteTable, row: Readonly<Record<string, unknown>>): SQL {
   const values = Object.keys(getTableColumns(table)).map((field) => {
     const value = row[field]
     if (value === undefined) throw new Error(`The row has no value for the column ${field}`)

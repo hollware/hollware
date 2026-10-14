@@ -1,4 +1,4 @@
-import type { EntryLookup, Verdict } from '@hollware/core'
+import { HollwareError, type EntryLookup, type Verdict } from '@hollware/core'
 import type { PublishWrite } from '../ports.ts'
 import { actorOf } from './actor.ts'
 import { conflictAt, entrySummary, refusalVerdict, verdictView, violationOf } from './answers.ts'
@@ -51,6 +51,43 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
   const acknowledged = new Set(input.acknowledgeWarnings.map(warningKey))
   if (verdict.warnings.some((warning) => !acknowledged.has(warningKey(warning)))) {
     return { outcome: 'needs_acknowledgement', entry: summary, verdict: verdictView(verdict) }
+  }
+  const acknowledgedWarnings = verdict.warnings.map(({ contract, path }) => ({ contract, path }))
+  if (
+    input.publishAt !== undefined &&
+    Date.parse(input.publishAt) > context.clock.now().getTime()
+  ) {
+    if (entry.status === 'published') {
+      throw new HollwareError(
+        'invalid_input',
+        'The entry is published, so its publication cannot be scheduled.',
+        'Publish its changes now, without publishAt, or unpublish it first and then schedule it.',
+      )
+    }
+    const scheduled = await context.store.schedule(context.site.key, {
+      entryId: entry.id,
+      expectedVersion: input.version,
+      scheduledAt: new Date(input.publishAt).toISOString(),
+      acknowledged: acknowledgedWarnings,
+      actor,
+    })
+    switch (scheduled.outcome) {
+      case 'scheduled':
+        return {
+          outcome: 'scheduled',
+          entry: entrySummary(scheduled.view),
+          verdict: verdictView(verdict),
+        }
+      case 'conflict':
+        return {
+          outcome: 'conflict',
+          conflict: conflictAt(scheduled.currentVersion, scheduled.headRevision),
+        }
+      case 'not_found':
+        return { outcome: 'not_found' }
+      default:
+        throw unexpectedAnswer(context, 'publish', scheduled)
+    }
   }
   const written = await context.store.publish(context.site.key, {
     entryId: entry.id,
@@ -112,6 +149,13 @@ type PublishContext = Parameters<typeof publish>[1]
  * that warning, and each publication records its own warnings.
  */
 async function publishGroup(input: PublishInput, context: PublishContext) {
+  if (input.publishAt !== undefined) {
+    throw new HollwareError(
+      'invalid_input',
+      'A group cannot be scheduled: publishAt schedules one entry.',
+      'Publish the group now, without publishAt, or schedule its entries one by one.',
+    )
+  }
   const actor = actorOf(context)
   const members = [{ id: input.id, version: input.version }, ...input.group].filter(
     (member, index, all) => all.findIndex((other) => other.id === member.id) === index,

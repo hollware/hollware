@@ -247,3 +247,103 @@ export const publications = sqliteTable(
     ),
   ],
 )
+
+/**
+ * Scheduled publications (ADR-025): one per entry at most. The cron trigger publishes the entry when
+ * `scheduled_at` has passed, if it is still at `version`, with the warnings that were acknowledged
+ * when it was scheduled, and in the name of who scheduled it.
+ */
+export const schedules = sqliteTable(
+  'schedules',
+  {
+    id: id('sch'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    scheduledAt: text('scheduled_at').notNull(),
+    /** The version of the entry once scheduled: a later change cancels the schedule. */
+    version: integer('version').notNull(),
+    /** A JSON array: the warnings acknowledged when the publication was scheduled. */
+    acknowledged: text('acknowledged').notNull(),
+    actorKind: text('actor_kind').notNull(),
+    actorUserId: text('actor_user_id').notNull(),
+    actorTokenId: text('actor_token_id'),
+    actorMeta: text('actor_meta'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('schedules_id_site').on(t.id, t.siteId),
+    unique('schedules_entry').on(t.siteId, t.entryId),
+    index('schedules_due').on(t.scheduledAt),
+    foreignKey({ name: 'schedules_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'schedules_entry_fk',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+    foreignKey({ name: 'schedules_user', columns: [t.actorUserId], foreignColumns: [users.id] }),
+    foreignKey({
+      name: 'schedules_token',
+      columns: [t.actorTokenId, t.siteId],
+      foreignColumns: [tokens.id, tokens.siteId],
+    }),
+    check('schedules_actor_kind', sql`${t.actorKind} IN ('token', 'user', 'oauth_client')`),
+    check(
+      'schedules_json',
+      sql`json_valid(${t.acknowledged}) AND json_type(${t.acknowledged}) = 'array' AND (${t.actorMeta} IS NULL OR json_valid(${t.actorMeta}))`,
+    ),
+  ],
+)
+
+/**
+ * The effects of a publication (ADR-025), written in the batch that publishes or unpublishes: one
+ * row per event. The Queue consumer delivers each event to every subscriber, and records it in
+ * `deliveries`; `sent_at` says that the event was put on the Queue.
+ */
+export const outbox = sqliteTable(
+  'outbox',
+  {
+    id: id('evt'),
+    siteId: siteId(),
+    /** `entry.published` or `entry.unpublished`. */
+    kind: text('kind').notNull(),
+    entryId: text('entry_id').notNull(),
+    /** A JSON object: what subscribers get. */
+    payload: text('payload').notNull(),
+    sentAt: text('sent_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('outbox_id_site').on(t.id, t.siteId),
+    index('outbox_unsent').on(t.sentAt, t.createdAt),
+    foreignKey({ name: 'outbox_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    check('outbox_kind', sql`${t.kind} IN ('entry.published', 'entry.unpublished')`),
+    check('outbox_json', sql`json_valid(${t.payload}) AND json_type(${t.payload}) = 'object'`),
+  ],
+)
+
+/** Each delivery of an event to a subscriber, so that a retry never delivers it twice. */
+export const deliveries = sqliteTable(
+  'deliveries',
+  {
+    id: id('dlv'),
+    siteId: siteId(),
+    eventId: text('event_id').notNull(),
+    /** The subscriber, by its name in the config, such as `webhook:newsletter` or `indexnow`. */
+    subscriber: text('subscriber').notNull(),
+    attempts: integer('attempts').notNull(),
+    deliveredAt: text('delivered_at'),
+    lastError: text('last_error'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('deliveries_id_site').on(t.id, t.siteId),
+    unique('deliveries_event_subscriber').on(t.eventId, t.subscriber),
+    foreignKey({ name: 'deliveries_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'deliveries_event',
+      columns: [t.eventId, t.siteId],
+      foreignColumns: [outbox.id, outbox.siteId],
+    }),
+    check('deliveries_attempts', sql`${t.attempts} >= 0`),
+  ],
+)

@@ -77,6 +77,12 @@ export interface HollwareRpc {
 export interface HollwareWorker {
   /** MCP at `/mcp`, and the other routes of the gateway. */
   readonly fetch: (request: Request, env: HollwareEnv, ctx: ExecutionContext) => Promise<Response>
+  /** The cron trigger of the project (`triggers.crons` in wrangler.jsonc, every minute). */
+  readonly scheduled: (
+    controller: ScheduledController,
+    env: HollwareEnv,
+    ctx: ExecutionContext,
+  ) => Promise<void>
   /** The RPC entrypoint, for the user's Worker to export under the name `Hollware`. */
   readonly Hollware: new (
     ctx: ExecutionContext,

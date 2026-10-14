@@ -167,9 +167,22 @@ export const publish = defineOperation({
       .describe(
         'Other entries to publish in the same step, each with the version you read: all of them are published, or none. A link between two of them counts as published, and an acknowledged warning holds for every entry that reports it.',
       ),
+    publishAt: z.iso
+      .datetime({ offset: true })
+      .optional()
+      .describe(
+        'Publish at this time instead of now, as an ISO 8601 date and time: the entry is checked now and waits as scheduled, and it is published within a minute of the time, if nobody changes it before. One entry at a time, never with group.',
+      ),
   }),
   output: z.object({
-    outcome: z.enum(['published', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found']),
+    outcome: z.enum([
+      'published',
+      'scheduled',
+      'blocked',
+      'needs_acknowledgement',
+      'conflict',
+      'not_found',
+    ]),
     entry: entrySummary.optional(),
     verdict: verdict.optional(),
     conflict: conflict.optional(),
@@ -181,6 +194,7 @@ export const publish = defineOperation({
   effect: 'write',
   outcomes: {
     published: { isError: false },
+    scheduled: { isError: false },
     blocked: { isError: true },
     needs_acknowledgement: { isError: false },
     conflict: { isError: true },

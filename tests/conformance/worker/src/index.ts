@@ -7,6 +7,9 @@ import config from '../hollware.config.ts'
  */
 const hollware = createHollware(config)
 
-export default { fetch: hollware.fetch } satisfies ExportedHandler<Env>
+export default {
+  fetch: hollware.fetch,
+  scheduled: hollware.scheduled,
+} satisfies ExportedHandler<Env>
 
 export class Hollware extends hollware.Hollware {}

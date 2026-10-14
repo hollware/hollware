@@ -8,6 +8,8 @@
   // Hollware runs and is tested without it. Remove both flags only if your own code needs
   // Node.js APIs.
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  // Every minute: publishes the scheduled entries whose time has come.
+  "triggers": { "crons": ["* * * * *"] },
   "vars": {
     // The only Host and Origin your Hollware answers; any other request is refused. This is the
     // URL `pnpm dev` serves. Set it to the public URL of the Worker before you deploy, such as

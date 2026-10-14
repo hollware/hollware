@@ -5,7 +5,10 @@ import config from '../hollware.config.ts'
 const hollware = createHollware(config)
 
 // MCP for your agents at /mcp, behind a personal token.
-export default { fetch: hollware.fetch } satisfies ExportedHandler<Env>
+export default {
+  fetch: hollware.fetch,
+  scheduled: hollware.scheduled,
+} satisfies ExportedHandler<Env>
 
 // What your sites read over a service binding: four read-only methods, no network, no token.
 export class Hollware extends hollware.Hollware {}

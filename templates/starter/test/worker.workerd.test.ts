@@ -63,10 +63,13 @@ describe('the database', () => {
 
     expect(results.map((row) => row.name)).toEqual([
       '_hollware_meta',
+      'deliveries',
       'entries',
+      'outbox',
       'publications',
       'revision_tags',
       'revisions',
+      'schedules',
       'sites',
       'tokens',
       'users',

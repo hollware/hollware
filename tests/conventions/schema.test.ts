@@ -77,10 +77,13 @@ describe('D1 schema', () => {
       .map(describeTable)
     expect(tables.map((table) => table.name).sort()).toEqual([
       '_hollware_meta',
+      'deliveries',
       'entries',
+      'outbox',
       'publications',
       'revision_tags',
       'revisions',
+      'schedules',
       'sites',
       'tokens',
       'users',

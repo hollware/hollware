@@ -9,6 +9,8 @@
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
+  // Every minute: publishes the scheduled entries whose time has come (ADR-025).
+  "triggers": { "crons": ["* * * * *"] },
   "vars": {
     // The only Host and Origin Hollware answers. This is the URL `vp dev` serves; the harness
     // tests override it with http://hollware.test (test/harness/workers.ts).
