@@ -45,4 +45,32 @@
     // globals it has. A Hollware project has neither the binding nor the class.
     { "binding": "PROBE", "service": "hollware-playground", "entrypoint": "Probe" },
   ],
+  // The demo on Cloudflare (v0.2): `CLOUDFLARE_ENV=demo vp build`, then `wrangler deploy` of the
+  // build. Bindings do not inherit, so each one is named again here.
+  "env": {
+    "demo": {
+      "name": "hollware-demo",
+      "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com" },
+      "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
+      "triggers": { "crons": ["* * * * *"] },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hollware-demo",
+          "database_id": "DEMO_DATABASE_ID",
+          "migrations_dir": "node_modules/@hollware/server/migrations",
+        },
+      ],
+      "queues": {
+        "producers": [{ "binding": "EVENTS", "queue": "hollware-demo-events" }],
+        "consumers": [
+          {
+            "queue": "hollware-demo-events",
+            "max_retries": 5,
+            "dead_letter_queue": "hollware-demo-events-dlq",
+          },
+        ],
+      },
+    },
+  },
 }

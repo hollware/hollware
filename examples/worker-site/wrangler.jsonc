@@ -24,4 +24,13 @@
     // globals it has. A site of your own has neither the binding nor the class.
     { "binding": "PROBE", "service": "hollware-worker-site", "entrypoint": "Probe" },
   ],
+  // The demo on Cloudflare (v0.2): the blog at demo.hollware.com, reading the demo's Hollware.
+  "env": {
+    "demo": {
+      "name": "hollware-worker-site-demo",
+      "vars": { "HOLLWARE_SITE": "playground", "PAGE_SIZE": 5 },
+      "routes": [{ "pattern": "demo.hollware.com", "custom_domain": true }],
+      "services": [{ "binding": "HOLLWARE", "service": "hollware-demo", "entrypoint": "Hollware" }],
+    },
+  },
 }
