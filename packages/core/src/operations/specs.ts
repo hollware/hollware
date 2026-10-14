@@ -188,7 +188,9 @@ export const publish = defineOperation({
     conflict: conflict.optional(),
     failedEntry: entryId
       .optional()
-      .describe('In a group, the entry that kept the group from being published.'),
+      .describe(
+        'In a group, the entry that kept the group from being published: blocked, stale, missing, or with a warning to acknowledge.',
+      ),
   }),
   scopes: ['content:publish'],
   effect: 'write',

@@ -338,34 +338,62 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         publish.name,
         { ...describe(publish), inputSchema: publish.input, outputSchema: publish.output },
         guarded(publish.name, (args) => {
-          const entry = byId(args.id)
-          if (entry === undefined) return reply(publish.outcomes, { outcome: 'not_found' })
-          if (entry.version !== args.version) {
-            return reply(publish.outcomes, {
-              outcome: 'conflict',
-              conflict: { currentVersion: entry.version, headRevision: revisionId(entry) },
-            })
+          // Like Hollware: the entry and its group, all or none, and the member that stops the
+          // group named in failedEntry when there is a group.
+          const members = [{ id: args.id, version: args.version }, ...args.group]
+          const named = args.group.length > 0
+          const checked = []
+          for (const member of members) {
+            const failedEntry = named ? { failedEntry: member.id } : {}
+            const entry = byId(member.id)
+            if (entry === undefined) {
+              return reply(publish.outcomes, { outcome: 'not_found', ...failedEntry })
+            }
+            if (entry.version !== member.version) {
+              return reply(publish.outcomes, {
+                outcome: 'conflict',
+                conflict: { currentVersion: entry.version, headRevision: revisionId(entry) },
+                ...failedEntry,
+              })
+            }
+            const verdict = verdictOf(fileOf(entry, entry.revisions.at(-1) ?? ''), 'publish')
+            if (verdict.errors.length > 0) {
+              return reply(publish.outcomes, {
+                outcome: 'blocked',
+                entry: summaryOf(entry),
+                verdict,
+                ...failedEntry,
+              })
+            }
+            checked.push({ entry, verdict, failedEntry })
           }
-          const verdict = verdictOf(fileOf(entry, entry.revisions.at(-1) ?? ''), 'publish')
-          if (verdict.errors.length > 0) {
-            return reply(publish.outcomes, { outcome: 'blocked', verdict })
+          for (const { entry, verdict, failedEntry } of checked) {
+            const unacknowledged = verdict.warnings.filter(
+              (warning) =>
+                !args.acknowledgeWarnings.some(
+                  (ack) => ack.contract === warning.contract && ack.path === warning.path,
+                ),
+            )
+            if (unacknowledged.length > 0) {
+              return reply(publish.outcomes, {
+                outcome: 'needs_acknowledgement',
+                entry: summaryOf(entry),
+                verdict,
+                ...failedEntry,
+              })
+            }
           }
-          const unacknowledged = verdict.warnings.filter(
-            (warning) =>
-              !args.acknowledgeWarnings.some(
-                (ack) => ack.contract === warning.contract && ack.path === warning.path,
-              ),
-          )
-          if (unacknowledged.length > 0) {
-            return reply(publish.outcomes, {
-              outcome: 'needs_acknowledgement',
-              entry: summaryOf(entry),
-              verdict,
-            })
+          for (const { entry } of checked) {
+            entry.published = entry.revisions.length - 1
+            entry.version += 1
           }
-          entry.published = entry.revisions.length - 1
-          entry.version += 1
-          return reply(publish.outcomes, { outcome: 'published', entry: summaryOf(entry), verdict })
+          const [first] = checked
+          if (first === undefined) throw new Error('a publish without an entry')
+          return reply(publish.outcomes, {
+            outcome: 'published',
+            entry: summaryOf(first.entry),
+            verdict: first.verdict,
+          })
         }),
       ),
     )

@@ -151,6 +151,18 @@ describe('runFile', () => {
   })
 })
 
+describe('an answer after a warning of wrangler', () => {
+  it('is read from the line that opens its JSON', async () => {
+    const wrangler = fakeWrangler(
+      ok(
+        '▲ [WARNING] Please add "services" to "env.demo".\n\n[{"results":[{"n":1}],"success":true}]',
+      ),
+    )
+
+    expect(await query(wrangler.run, 'DB', 'remote', 'SELECT 1 AS n')).toEqual([[{ n: 1 }]])
+  })
+})
+
 describe('a failed query', () => {
   it.each([
     [

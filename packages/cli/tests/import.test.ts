@@ -303,13 +303,13 @@ describe('hollware import writes the drafts in phase one, then publishes in phas
       'get_entry',
       'create_draft',
       'publish',
-      'publish',
     ])
-    expect(stub.calls.at(-2)?.args).toEqual({
+    // One publish for the import: the first entry, and the others as its group.
+    expect(stub.calls.at(-1)?.args).toEqual({
       id: id(1),
       version: 1,
       acknowledgeWarnings: [],
-      group: [],
+      group: [{ id: id(2), version: 1 }],
     })
     expect([...stub.entries.values()].map((entry) => [entry.slug, entry.published])).toEqual([
       ['a', 0],
@@ -457,8 +457,8 @@ describe('hollware import --publish', () => {
       `created    blog/en/warn  ${id(3)}  v1 (1 warning)`,
       'Drafts: 3 created, 0 updated, 0 unchanged.',
       `blocked                blog/en/err  ${id(1)}\n    error [schema] /frontmatter/description: Required Fix: Add a description.`,
-      `published              blog/en/ok  ${id(2)}`,
       `needs_acknowledgement  blog/en/warn  ${id(3)}\n    warning [seo-title-length] /frontmatter/title: The title has 70 characters; search engines show about 60. Fix: Shorten the title.`,
+      `published              blog/en/ok  ${id(2)}`,
       'Publishing: 1 published, 1 need acknowledgement, 1 blocked.',
     ])
     expect(err).toEqual([

@@ -440,9 +440,15 @@ interface Published {
   other: number
 }
 
+/** The most entries one publish takes: the entry and a group of 99 (ADR-024). */
+const GROUP_SIZE = 100
+
 /**
- * Phase two: publishes each imported entry that has unpublished changes, at the version phase
- * one left it. It acknowledges no warning: an entry with warnings is reported, not published.
+ * Phase two: publishes the imported entries that have unpublished changes, at the version phase
+ * one left them, as one group (in groups of 100), so that entries that link to each other are
+ * published together (ADR-024). When an entry stops its group, it is reported and taken out, and
+ * the rest is published again without it. It acknowledges no warning: an entry with warnings is
+ * reported, not published.
  */
 async function publishAll(
   session: Session,
@@ -450,41 +456,61 @@ async function publishAll(
   out: (message: string) => void,
 ): Promise<Published> {
   const result: Published = { published: 0, needsAcknowledgement: 0, blocked: 0, other: 0 }
-  for (const { file, summary } of entries) {
-    const label = printable(file.path.replace(/\.md$/, ''))
-    const line = (outcome: string, details: readonly string[] = []): string =>
-      [
-        `${outcome.padEnd(21)}  ${label}  ${summary.id}`,
-        ...details.map((detail) => `    ${detail}`),
-      ].join('\n')
-    try {
-      const answer = await session.call(publish, { id: summary.id, version: summary.version })
+  const labelOf = ({ file }: Imported) => printable(file.path.replace(/\.md$/, ''))
+  const line = (imported: Imported, outcome: string, details: readonly string[] = []): string =>
+    [
+      `${outcome.padEnd(21)}  ${labelOf(imported)}  ${imported.summary.id}`,
+      ...details.map((detail) => `    ${detail}`),
+    ].join('\n')
+  for (let start = 0; start < entries.length; start += GROUP_SIZE) {
+    let pending = entries.slice(start, start + GROUP_SIZE)
+    while (pending.length > 0) {
+      const [first, ...rest] = pending
+      if (first === undefined) break
+      let answer
+      try {
+        answer = await session.call(publish, {
+          id: first.summary.id,
+          version: first.summary.version,
+          group: rest.map(({ summary }) => ({ id: summary.id, version: summary.version })),
+        })
+      } catch (error) {
+        if (!(error instanceof ToolFailure)) throw error
+        for (const imported of pending) out(line(imported, 'failed', [error.message]))
+        result.other += pending.length
+        break
+      }
+      if (answer.outcome === 'published' || answer.outcome === 'scheduled') {
+        for (const imported of pending) out(line(imported, 'published'))
+        result.published += pending.length
+        break
+      }
+      const failed = pending.find(({ summary }) => summary.id === answer.failedEntry) ?? first
       switch (answer.outcome) {
-        case 'published':
-          result.published += 1
-          out(line('published'))
-          break
         case 'needs_acknowledgement':
           result.needsAcknowledgement += 1
-          out(line('needs_acknowledgement', (answer.verdict?.warnings ?? []).map(violationLine)))
+          out(
+            line(
+              failed,
+              'needs_acknowledgement',
+              (answer.verdict?.warnings ?? []).map(violationLine),
+            ),
+          )
           break
         case 'blocked':
           result.blocked += 1
-          out(line('blocked', (answer.verdict?.errors ?? []).map(violationLine)))
+          out(line(failed, 'blocked', (answer.verdict?.errors ?? []).map(violationLine)))
           break
         case 'conflict':
           result.other += 1
-          out(line('conflict', ['someone changed the entry after it was imported']))
+          out(line(failed, 'conflict', ['someone changed the entry after it was imported']))
           break
         case 'not_found':
           result.other += 1
-          out(line('not_found', ['the entry is gone']))
+          out(line(failed, 'not_found', ['the entry is gone']))
           break
       }
-    } catch (error) {
-      if (!(error instanceof ToolFailure)) throw error
-      result.other += 1
-      out(line('failed', [error.message]))
+      pending = pending.filter((imported) => imported !== failed)
     }
   }
   return result

@@ -256,18 +256,18 @@ async function publishGroup(input: PublishInput, context: PublishContext) {
   }
   const [main] = checked
   if (main === undefined) throw unexpectedAnswer(context, 'publish', { outcome: 'empty group' })
-  // Every warning of the group once, by what an acknowledgement names.
-  const warnings = new Map(
-    checked
-      .flatMap(({ verdict }) => verdict.warnings)
-      .map((warning) => [warningKey(warning), warning]),
-  )
+  // An acknowledgement holds for every member; the first member with a warning that nobody
+  // acknowledged is named, with its own verdict, so that a client can deal with it and go on.
   const acknowledged = new Set(input.acknowledgeWarnings.map(warningKey))
-  if ([...warnings.keys()].some((key) => !acknowledged.has(key))) {
+  const pending = checked.find(({ verdict }) =>
+    verdict.warnings.some((warning) => !acknowledged.has(warningKey(warning))),
+  )
+  if (pending !== undefined) {
     return {
       outcome: 'needs_acknowledgement' as const,
-      entry: main.summary,
-      verdict: verdictView({ ...main.verdict, warnings: [...warnings.values()] }),
+      entry: pending.summary,
+      verdict: verdictView(pending.verdict),
+      failedEntry: pending.write.entryId,
     }
   }
   const written = await context.store.publishGroup(

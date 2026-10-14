@@ -62,6 +62,32 @@ describe('publish with a group', () => {
     expect(await statuses(world, [a.id, b.id])).toEqual(['draft', 'draft'])
   })
 
+  it('names the member with a warning nobody acknowledged, and publishes once it is', async () => {
+    const world = await newWorld(env.DB, 'group-warning')
+    const a = await linked(world, 'post-a', 'post-b')
+    const b = await linked(world, 'post-b', 'post-a')
+    await world.agent.updateDraft({
+      id: b.id,
+      version: 1,
+      markdown: `${blogFrontmatter({ translationGroup: 'post-b', title: JSON.stringify('A title that runs well past the sixty characters that search engines show') })}\nRead [the other post](/en/blog/post-a/).\n`,
+    })
+    const ack = { contract: 'seo-title-length', path: '/frontmatter/title' }
+
+    const asked = await world.agent.publish({ ...a, group: [{ id: b.id, version: 2 }] })
+    const published = await world.agent.publish({
+      ...a,
+      group: [{ id: b.id, version: 2 }],
+      acknowledgeWarnings: [ack],
+    })
+
+    expect([
+      asked.outcome,
+      asked.failedEntry,
+      asked.verdict?.warnings.map((w) => w.contract),
+    ]).toEqual(['needs_acknowledgement', b.id, ['seo-title-length']])
+    expect(published.outcome).toBe('published')
+  })
+
   it('publishes none, and names the member, when one of them is stale', async () => {
     const world = await newWorld(env.DB, 'group-stale')
     const a = await linked(world, 'post-a', 'post-b')

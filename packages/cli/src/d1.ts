@@ -146,10 +146,8 @@ function readAnswer(result: WranglerResult, database: string, target: Target): R
     }
     throw new CliError(`wrangler could not run the SQL: ${reason}`)
   }
-  let json: unknown
-  try {
-    json = JSON.parse(result.stdout)
-  } catch {
+  const json = jsonOf(result.stdout)
+  if (json === undefined) {
     throw new CliError(`wrangler did not answer with JSON: ${failureReason(result)}`)
   }
   const answer = Answer.safeParse(json)
@@ -160,4 +158,29 @@ function readAnswer(result: WranglerResult, database: string, target: Target): R
     throw new CliError('wrangler reported that a statement did not succeed.')
   }
   return answer.data.map((statement) => statement.results)
+}
+
+/**
+ * The JSON of an answer of `wrangler d1 execute --json`: all of stdout, or, when wrangler printed a
+ * warning before it (a config it finds incomplete, an update that is out), what follows the first
+ * line that opens the array. `undefined` when there is no JSON. Reading past a warning matters:
+ * `hollware init` prints its token only after the SQL answered, so a failure here loses it.
+ */
+function jsonOf(stdout: string): unknown {
+  const attempts = [
+    stdout,
+    ...stdout
+      .split('\n')
+      .flatMap((line, index, lines) =>
+        line.trimStart().startsWith('[') ? [lines.slice(index).join('\n')] : [],
+      ),
+  ]
+  for (const text of attempts) {
+    try {
+      return JSON.parse(text)
+    } catch {
+      // Not JSON from here; try the next line that opens an array.
+    }
+  }
+  return undefined
 }
