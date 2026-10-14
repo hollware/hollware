@@ -490,6 +490,32 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 
 - 2026-10-14 — Release 0.2.0: `6610b16` promoted by the maintainer; the six packages are on npm at 0.2.0 with SLSA provenance, and `finalize` created the six tags and Releases on its own (`hollware@0.2.0` Latest). Follow-ups closed: `hollware import --publish` publishes as one group in groups of 100, taking out and reporting an entry that stops its group (`tests/acceptance/v0.2/import.test.ts`: the corpus in a cycle, 10 published in one step); `publish` with a group names the member with a warning to acknowledge in `failedEntry`; the CLI reads wrangler's JSON past a warning printed before it. Mutations → CAUGHT: the line that opens the JSON never found. `check:push`: 3,927 tests; acceptance 48. Open: AC-0.2-8, the cost of the demo after a week (around 2026-10-21).
 
+## v0.3 — Admin (proposed 2026-10-14, waiting for the maintainer's decisions)
+
+**Goal:** a person publishes a post, and approves one an agent wrote, without Claude Code or git.
+
+### Stage start (2026-10-14)
+
+- [x] Stack check: Vue 3.5.44, `@nuxt/ui` 4.11.3, vue-router 5.4.0, `@simplewebauthn/server` 14.0.3 and `/browser` 14.0.0, `@cloudflare/workers-oauth-provider` 1.2.3, CodeMirror 6 (`@codemirror/view` 6.43.14, `/merge` 6.12.2), `@comark/vue` 0.7.0; hono's stable line is 4.13.13 and we stay on 5.0.0-rc.1. Nothing moves the plan.
+- [ ] The maintainer decides A–D below.
+
+### Decisions (recommendation first)
+
+- **A. How people sign in.** Passkeys (SimpleWebAuthn) and a first-party admin session: a short-lived bearer the SPA keeps in memory, renewed through an `HttpOnly` cookie scoped to `/admin/session`; `/mcp` and `/v1` never read cookies. The OAuth server for third-party MCP clients (DCR, CIMD, consent) moves to v0.4, next to read tokens; agents keep personal tokens. _Alternative:_ the full OAuth provider now, with the admin as its own public client (the original plan), about a third more work.
+- **B. How approval works.** A principal with `content:write` and without `content:publish` that calls `publish` gets `pending_review`, and a review row in D1 holds the revision it asked for; a person with `content:publish` approves it in the admin, which publishes that revision in the approver's name and records the requester, or asks for changes with a note. A new revision cancels the review. No Workflow: nothing waits in a process. _Alternative:_ a Workflow with `waitForEvent` followed as an MCP Task (ADR-025 deferred it to here), for clients that support Tasks.
+- **C. Roles and scopes.** `owner`: every scope; `editor`: read, write, publish; `author`: read, write (publishes through review). A token's scopes stay its own intersected with its user's role (ADR-019).
+- **D. Scope of the stage.** In: passkeys and invitations, sessions, the review flow, and the admin (sign-in, entries, a CodeMirror editor that keeps the Markdown byte for byte with the verdict as diagnostics and a Comark preview, the review queue with a diff, tokens), served by the Worker at `/admin`, with Playwright e2e on virtual passkeys and axe. Out, to v0.4: the OAuth server, forms generated from the JSON Schema (v0.3 edits the frontmatter as text), comment threads, connected apps, the command palette.
+
+### Acceptance criteria (once A–D are decided)
+
+| #        | Criterion                                  | Verification                                                                                                                                                                                                                               |
+| -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AC-0.3-1 | Static, unit, acceptance, conformance, e2e | `vp run check:push`, `vp run test:acceptance`, `vp run test:conformance`, `vp run e2e:admin`                                                                                                                                               |
+| AC-0.3-2 | Exit flow                                  | an agent with an `author` token creates, validates and publishes → `pending_review`; Playwright signs in with a virtual passkey, reads the diff, the verdict and who wrote it, and approves; the entry is published in the approver's name |
+| AC-0.3-3 | A person alone                             | a person signs in, writes a post in the editor and publishes it, with no token and no git                                                                                                                                                  |
+| AC-0.3-4 | Accessibility                              | axe finds nothing serious or critical on every route of the admin                                                                                                                                                                          |
+| AC-0.3-5 | Human test                                 | the maintainer does AC-0.3-2 and AC-0.3-3 on the demo with a real passkey, on a computer and a phone                                                                                                                                       |
+
 ## Later stages (detailed at the start of each stage)
 
 - **v0.3 Admin** — Vue 3.5 + Nuxt UI 4 + Vue Router 5 SPA shipped in `@hollware/admin`; PKCE first-party client; editor (CodeMirror 6 + Comark preview), contract-driven forms, review queue with diff, approval via Workflow `waitForEvent`; identity screens. **Exit:** an agent's post approved from the admin; axe clean.
