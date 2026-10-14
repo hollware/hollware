@@ -1,6 +1,6 @@
 # ADR-006: One deployment per account, several sites inside
 
-Status: Proposed (2026-10-11)
+Status: Accepted (2026-10-14)
 
 ## Context
 
