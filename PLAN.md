@@ -280,7 +280,7 @@ Every item is done, verified and committed by the orchestrator before Wave 1. Af
   - the loader `tests/fixtures/content.ts` (`import.meta.glob` with `?raw`), tested in Node and in workerd, the byte order mark included;
   - `fmt.ignorePatterns` keeps the formatter off `tests/fixtures/content`, which stays byte for byte;
   - `packages/core/bench/`: WP2 writes it, on `content/bench/long-post.md`, and its task and CI step land with it (item 0.8);
-  - one harness pattern: `createPlaygroundHarness()` (`apps/playground/test/harness/workers.ts`) sends requests to `http://hollware.test` and gives the Worker that URL as `HOLLWARE_PUBLIC_URL`; `vp dev` keeps `http://localhost:5173`;
+  - one harness pattern: `createPlaygroundHarness()` (`apps/playground/test/harness/workers.ts`) sends requests to `http://hollware.test` and gives the Worker that URL as `HOLLWARE_PUBLIC_URL`; `vp dev` keeps `http://localhost:5199`;
   - a bilingual blog config in `apps/playground/hollware.config.ts` (site `playground`, collection `blog`, routes `/blog/:slug/` and `/en/blog/:slug/`, `callout` and `youtube`, the `seo-title-length` warning), tested in workerd
 - [x] 0.8 Root tasks and CI steps: each lands with the first test it runs (`test:conformance` with WP10, `check:budgets` with WP11, `test:acceptance` in Wave 4), so the guard `test-projects` never sees a test that nothing runs — `bench` landed with WP2 and `check:budgets` with WP11, and both run inside `check:push`; `test:conformance` landed with WP10 and `test:acceptance` in Wave 4, each in a CI job of its own
 

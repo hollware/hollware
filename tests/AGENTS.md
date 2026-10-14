@@ -32,6 +32,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
 - `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` lists `no_nodejs_compat` and `no_nodejs_compat_v2` and no positive Node.js flag; outside `templates/`, `send_metrics` is false.
 - `tests/conventions/worker-projects.test.ts`: every Wrangler config sits in a workspace package that defines `build` and `types:check`, and `types:check` names a config below the package directory.
+- `tests/conventions/dev-port.test.ts`: the playground and the starter serve `vp dev` on a fixed port with `strictPort`, and their `HOLLWARE_PUBLIC_URL` names that port.
 - `tests/conventions/conformance-baselines.test.ts`: each revision's baseline of the MCP conformance suite (`tests/conformance/baselines/`) names single checks with a class and a reason, never one of the must-pass profile, and keeps its recorded size; the profile keeps its claims.
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.

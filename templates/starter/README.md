@@ -21,7 +21,7 @@ directory the server package ships. Its `database_id` is a placeholder that work
 development; put the id of your own database there before deploying.
 
 `HOLLWARE_PUBLIC_URL` is the only Host and Origin the Worker answers, and any other request is
-refused. It is `http://localhost:5173`, the URL `pnpm dev` serves; set it to the public URL of
+refused. It is `http://localhost:5199`, the URL `pnpm dev` serves; set it to the public URL of
 the Worker before you deploy.
 
 The Worker runs without Node.js compatibility: `wrangler.jsonc` lists `no_nodejs_compat` and
@@ -34,7 +34,7 @@ is yours to decide: this template sets nothing for it.
 ```sh
 pnpm install
 pnpm exec wrangler d1 migrations apply DB --local   # the tables, in the local database
-pnpm dev                                            # http://localhost:5173
+pnpm dev                                            # http://localhost:5199
 ```
 
 An agent needs a personal token to write over MCP at `/mcp`. The `hollware` command-line

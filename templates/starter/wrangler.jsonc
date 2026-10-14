@@ -12,7 +12,7 @@
     // The only Host and Origin your Hollware answers; any other request is refused. This is the
     // URL `pnpm dev` serves. Set it to the public URL of the Worker before you deploy, such as
     // https://cms.example.com.
-    "HOLLWARE_PUBLIC_URL": "http://localhost:5173",
+    "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
   "d1_databases": [
     {

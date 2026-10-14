@@ -3,14 +3,14 @@ import { env, exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
 // Fails when: src/worker.ts stops exporting `{ fetch: hollware.fetch }` of createHollware(config)
-// as the Worker, so that GET /health for the public URL of wrangler.jsonc (localhost:5173) stops
+// as the Worker, so that GET /health for the public URL of wrangler.jsonc (localhost:5199) stops
 // answering 200, or another Host stops being a 403; when it stops exporting the class `Hollware`
 // that sites read over a service binding, or builds it from another config than hollware.config.ts
 // (describeSite must answer the site `my-site`); or when the D1 binding of wrangler.jsonc stops
 // pointing `migrations_dir` at the migrations of @hollware/server, so that its tables are missing.
 
 // A request made inside workerd has no Host header of its own: a browser or curl would send one.
-const PUBLIC_HOST = 'localhost:5173'
+const PUBLIC_HOST = 'localhost:5199'
 const asHost = (host: string) => ({ headers: { host } })
 
 // Cloudflare's `Service<...>` types every answer that holds `unknown` as `never`, so the stub is

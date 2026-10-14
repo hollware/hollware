@@ -40,7 +40,7 @@ answer that holds `unknown`, such as an entry's frontmatter, into `never`.
 ## Run it
 
 The site needs a Hollware to read. In one terminal, the playground serves one at
-`http://localhost:5173`:
+`http://localhost:5199`:
 
 ```sh
 cd apps/playground
@@ -54,7 +54,7 @@ CLI of `packages/cli` does both:
 ```sh
 node ../../packages/cli/src/index.ts init --site playground --local
 # copy tests/fixtures/content/blog into a directory called corpus/blog, then:
-node ../../packages/cli/src/index.ts import corpus --url http://localhost:5173 --token-file <file with the token> --publish
+node ../../packages/cli/src/index.ts import corpus --url http://localhost:5199 --token-file <file with the token> --publish
 ```
 
 In another terminal, this site serves it at `http://localhost:5174`. The two dev servers find each
