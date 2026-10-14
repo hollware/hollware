@@ -490,14 +490,14 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 
 - 2026-10-14 — Release 0.2.0: `6610b16` promoted by the maintainer; the six packages are on npm at 0.2.0 with SLSA provenance, and `finalize` created the six tags and Releases on its own (`hollware@0.2.0` Latest). Follow-ups closed: `hollware import --publish` publishes as one group in groups of 100, taking out and reporting an entry that stops its group (`tests/acceptance/v0.2/import.test.ts`: the corpus in a cycle, 10 published in one step); `publish` with a group names the member with a warning to acknowledge in `failedEntry`; the CLI reads wrangler's JSON past a warning printed before it. Mutations → CAUGHT: the line that opens the JSON never found. `check:push`: 3,927 tests; acceptance 48. Open: AC-0.2-8, the cost of the demo after a week (around 2026-10-21).
 
-## v0.3 — Admin (proposed 2026-10-14, waiting for the maintainer's decisions)
+## v0.3 — Admin (started 2026-10-14)
 
 **Goal:** a person publishes a post, and approves one an agent wrote, without Claude Code or git.
 
 ### Stage start (2026-10-14)
 
 - [x] Stack check: Vue 3.5.44, `@nuxt/ui` 4.11.3, vue-router 5.4.0, `@simplewebauthn/server` 14.0.3 and `/browser` 14.0.0, `@cloudflare/workers-oauth-provider` 1.2.3, CodeMirror 6 (`@codemirror/view` 6.43.14, `/merge` 6.12.2), `@comark/vue` 0.7.0; hono's stable line is 4.13.13 and we stay on 5.0.0-rc.1. Nothing moves the plan.
-- [ ] The maintainer decides A–D below.
+- [x] The maintainer decided A–D (2026-10-14): **A, the full OAuth server now** (the alternative: the admin as a first-party public client of `@cloudflare/workers-oauth-provider`, with DCR, CIMD and consent, beside personal tokens); B, review in D1; C, owner, editor and author; D, the core, the rest to v0.4.
 
 ### Decisions (recommendation first)
 

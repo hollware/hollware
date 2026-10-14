@@ -65,6 +65,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 ## Architecture
 
 **One Cloudflare primitive per responsibility.** D1 is the single source of truth, with read replicas. An operation registry exposes the same core over MCP, RPC and HTTP. Publishing commits in one D1 batch, and its effects go through an outbox and a Queue ([ADR-025](adr/0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md)). The layers below run from the clients down to storage and intelligence, and every node says what it does, why it is that primitive, the phase in which it arrives and what it costs.
+| [ADR-026](adr/0026-oauth-passkeys-and-the-admin-sign-in.md) | OAuth, passkeys and the admin's sign-in | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

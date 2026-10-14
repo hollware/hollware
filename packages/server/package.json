@@ -40,8 +40,10 @@
     "types:check": "wrangler types --check"
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "catalog:",
     "@hollware/core": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
+    "@simplewebauthn/server": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:"
   },
