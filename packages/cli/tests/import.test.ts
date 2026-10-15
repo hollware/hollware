@@ -669,16 +669,24 @@ describe('hollware import stops with what to do', () => {
     expect(stub.entries.get('blog/en/a')?.published).toBeNull()
   })
 
-  it('on a token that lacks the scope of publish: a group is refused, and says why', async () => {
+  it('on a token that lacks the scope of publish: the group is refused, so each entry asks alone', async () => {
     const stub = await serve({ scopes: ['content:read', 'content:write'] })
     const dir = temp.make({ 'blog/en/a.md': post('A'), 'blog/en/b.md': post('B') })
 
-    const { code, out } = await runImport(dir, stub.url, ['--publish'])
+    const { code, out, err } = await runImport(dir, stub.url, ['--publish'])
 
-    expect(code).toBe(1)
-    expect(out.at(-1)).toBe('Publishing: 0 published, 0 need acknowledgement, 0 blocked, 2 failed.')
-    expect(out.filter((line) => line.startsWith('failed'))).toHaveLength(2)
-    expect(out.join('\n')).toContain('publish asks for a review of one entry, now: not of a group')
+    expect([code, err]).toEqual([0, []])
+    expect(out.slice(-3)).toEqual([
+      'pending_review         blog/en/a  ent_00000000000000000000000001',
+      'pending_review         blog/en/b  ent_00000000000000000000000002',
+      'Publishing: 0 published, 0 need acknowledgement, 0 blocked, 2 asked for review.',
+    ])
+    // The group first, which the server refuses; then each entry on its own, without a group.
+    expect(
+      stub.calls
+        .filter((call) => call.tool === 'publish')
+        .map((call) => (Array.isArray(call.args['group']) ? call.args['group'].length : 0)),
+    ).toEqual([1, 0, 0])
   })
 
   it('when nothing answers at the address', async () => {

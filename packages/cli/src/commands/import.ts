@@ -36,7 +36,7 @@ export const IMPORT_USAGE = [
   '  --help               Show this help',
   '',
   'The token needs content:read and content:write, and content:publish for --publish: without it,',
-  'publish asks for a review of one entry, and refuses a group.',
+  'each entry asks for a review, which a person who may publish approves in the admin.',
 ].join('\n')
 
 type Violation = z.output<typeof schemas.violation>
@@ -451,8 +451,8 @@ const GROUP_SIZE = 100
  * one left them, as one group (in groups of 100), so that entries that link to each other are
  * published together (ADR-024). When an entry stops its group, it is reported and taken out, and
  * the rest is published again without it. It acknowledges no warning: an entry with warnings is
- * reported, not published. A token without content:publish gets a review of a lone entry
- * (`pending_review`), and its group is refused, which reports every entry of it as failed.
+ * reported, not published. A token without content:publish may only ask for a review of a lone
+ * entry (`pending_review`): its group is refused, and then every entry asks on its own.
  */
 async function publishAll(
   session: Session,
@@ -472,36 +472,53 @@ async function publishAll(
       `${outcome.padEnd(21)}  ${labelOf(imported)}  ${imported.summary.id}`,
       ...details.map((detail) => `    ${detail}`),
     ].join('\n')
+  /**
+   * Whether entries go one by one, once a group was refused: a token without content:publish may
+   * only ask for a review of a lone entry.
+   */
+  let alone = false
   for (let start = 0; start < entries.length; start += GROUP_SIZE) {
     let pending = entries.slice(start, start + GROUP_SIZE)
     while (pending.length > 0) {
       const [first, ...rest] = pending
       if (first === undefined) break
+      const batch = alone ? [first] : pending
       let answer
       try {
         answer = await session.call(publish, {
           id: first.summary.id,
           version: first.summary.version,
-          group: rest.map(({ summary }) => ({ id: summary.id, version: summary.version })),
+          ...(alone
+            ? {}
+            : { group: rest.map(({ summary }) => ({ id: summary.id, version: summary.version })) }),
         })
       } catch (error) {
         if (!(error instanceof ToolFailure)) throw error
-        for (const imported of pending) out(line(imported, 'failed', [error.message]))
-        result.other += pending.length
-        break
+        // A group refused as a whole: each entry goes on its own, and says what stops it, if
+        // anything does. A token without content:publish can only ask so.
+        if (!alone && batch.length > 1) {
+          alone = true
+          continue
+        }
+        for (const imported of batch) out(line(imported, 'failed', [error.message]))
+        result.other += batch.length
+        pending = pending.filter((imported) => !batch.includes(imported))
+        continue
       }
       if (answer.outcome === 'published' || answer.outcome === 'scheduled') {
-        for (const imported of pending) out(line(imported, 'published'))
-        result.published += pending.length
-        break
+        for (const imported of batch) out(line(imported, 'published'))
+        result.published += batch.length
+        pending = pending.filter((imported) => !batch.includes(imported))
+        continue
       }
       if (answer.outcome === 'pending_review') {
-        // Only one entry is ever asked for review, so pending is that entry.
-        for (const imported of pending) out(line(imported, 'pending_review'))
-        result.reviews += pending.length
-        break
+        // Only one entry is ever asked for review, so the batch is that entry.
+        for (const imported of batch) out(line(imported, 'pending_review'))
+        result.reviews += batch.length
+        pending = pending.filter((imported) => !batch.includes(imported))
+        continue
       }
-      const failed = pending.find(({ summary }) => summary.id === answer.failedEntry) ?? first
+      const failed = batch.find(({ summary }) => summary.id === answer.failedEntry) ?? first
       switch (answer.outcome) {
         case 'needs_acknowledgement':
           result.needsAcknowledgement += 1
