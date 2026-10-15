@@ -36,6 +36,7 @@ import { cliCommand, readToken } from '../../../conformance/seed.ts'
 const REPOSITORY = join(import.meta.dirname, '..', '..', '..', '..')
 const BUILT = join(REPOSITORY, 'apps', 'playground', 'dist', 'hollware_playground')
 const MIGRATIONS = join(REPOSITORY, 'packages', 'server', 'migrations')
+const ASSETS = join(REPOSITORY, 'apps', 'playground', 'dist', 'client')
 
 /** The site of the playground: its key in apps/playground/hollware.config.ts. */
 export const SITE_KEY = 'playground'
@@ -72,9 +73,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * The build's wrangler.json names the migrations relative to the playground. The copy names the
- * server's migrations by their absolute path: the same files `hollware migrate` applies in a
- * project, from `node_modules/@hollware/server/migrations`.
+ * The build's wrangler.json names the migrations, and the static assets that hold the admin,
+ * relative to the playground. The copy names them by their absolute paths: the server's
+ * migrations are the files `hollware migrate` applies in a project, from
+ * `node_modules/@hollware/server/migrations`, and the assets are the build's own.
  */
 function pointAtMigrations(directory: string): void {
   const path = join(directory, 'wrangler.json')
@@ -85,6 +87,8 @@ function pointAtMigrations(directory: string): void {
     throw new Error(`${path} has no D1 database`)
   }
   database['migrations_dir'] = MIGRATIONS
+  const assets = config['assets']
+  if (isRecord(assets)) assets['directory'] = ASSETS
   writeFileSync(path, JSON.stringify(config))
 }
 

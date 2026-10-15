@@ -16,14 +16,23 @@ catalog:
   '@cloudflare/vite-plugin': 1.63.2
   '@cloudflare/vitest-plugin': 1.4.1
   '@cloudflare/workers-oauth-provider': 1.2.3
+  '@codemirror/lang-markdown': 6.5.2
+  '@codemirror/lint': 6.9.7
+  '@codemirror/merge': 6.12.2
+  '@codemirror/state': 6.7.6
+  '@codemirror/view': 6.43.14
   '@comark/html': 0.7.0
+  '@comark/vue': 0.7.0
   '@modelcontextprotocol/client': 2.3.1
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   '@modelcontextprotocol/conformance': 0.2.0-alpha.12
   '@modelcontextprotocol/server': 2.3.1
+  '@nuxt/ui': 4.11.3
   '@simplewebauthn/server': 14.0.3
   '@standard-schema/spec': 1.1.0
   '@types/node': 24.19.2
+  '@vitejs/plugin-vue': 6.0.10
+  codemirror: 6.0.2
   # comark 0.7.0 pins markdown-exit 1.1.0-beta.2 itself (see the v0.1 spike S3).
   comark: 0.7.0
   drizzle-kit: 0.31.11
@@ -32,6 +41,7 @@ catalog:
   hono: 5.0.0-rc.1
   pkg-pr-new: 0.0.91
   publint: 0.3.25
+  tailwindcss: 4.3.3
   typescript: 7.0.2
   # Vite+ ships Vite as @voidzero-dev/vite-plus-core; every package resolves `vite` to it.
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
@@ -39,6 +49,8 @@ catalog:
   # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
   # needs it as a real peer dependency.
   vitest: 5.0.3
+  vue: 3.5.44
+  vue-router: 5.4.0
   wrangler: 4.150.0
   yaml: 2.9.1
   # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
@@ -64,3 +76,4 @@ trustPolicy: no-downgrade
 allowBuilds:
   esbuild: true # platform binary used by wrangler
   workerd: false # the binary arrives through optionalDependencies (@cloudflare/workerd-*)
+  vue-demi: false # its postinstall only switches its files to Vue 2; the ones it ships are for Vue 3

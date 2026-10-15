@@ -8,7 +8,10 @@ import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
+import { installAdmin } from './admin.ts'
+import { installOpsApi } from './ops-api.ts'
 import { installReadApi } from './read-api.ts'
+import type { Handlers } from '../ops/types.ts'
 import { installIdentity } from '../identity/routes.ts'
 import { installAuthorize } from '../oauth/authorize.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
@@ -26,6 +29,8 @@ export interface GatewayOptions {
   readonly read?: (env: HollwareEnv) => HollwareRpc
   /** The OAuth server of the config (ADR-026); dynamic client registration is off without it. */
   readonly auth?: ResolvedAuth
+  /** The handlers of the operations, for `POST /v1/ops/{name}`; without them there is no route. */
+  readonly handlers?: Handlers
 }
 
 /**
@@ -91,6 +96,20 @@ export function createGateway(options: GatewayOptions): Gateway {
     dynamicClientRegistration: options.auth?.dynamicClientRegistration ?? false,
     log,
   })
+
+  /**
+   * What a write hands to the Queue: the events it committed, after the answer (ADR-025). The
+   * cron trigger's sweep catches any that this misses.
+   */
+  const notify = (c: Context<GatewayEnv>, requestId: string) => (ids: readonly string[]) => {
+    c.executionCtx.waitUntil(
+      enqueue({ queue: c.env.EVENTS, db: connect(c.env.DB), site: site.key, ids, clock }).catch(
+        (error: unknown) => {
+          log({ kind: 'enqueue_failed', requestId, message: String(error) })
+        },
+      ),
+    )
+  }
 
   /**
    * A protected route: the resource server of `resource` answers a request without a token and a
@@ -159,17 +178,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           site,
           store: createD1Store(db, { clock }),
           clock,
-          // The events a write committed go to the Queue after the answer (ADR-025); the cron
-          // trigger's sweep catches any that this misses.
-          notify: (ids) => {
-            c.executionCtx.waitUntil(
-              enqueue({ queue: c.env.EVENTS, db: connect(db), site: site.key, ids, clock }).catch(
-                (error: unknown) => {
-                  log({ kind: 'enqueue_failed', requestId, message: String(error) })
-                },
-              ),
-            )
-          },
+          notify: notify(c, requestId),
         },
       })
     }),
@@ -195,6 +204,19 @@ export function createGateway(options: GatewayOptions): Gateway {
   app.all('/oauth/*', authorizationServer)
 
   installIdentity(app, { site: site.key, clock })
+  installAdmin(app, { oauth })
+
+  if (options.handlers !== undefined) {
+    installOpsApi(app, {
+      site,
+      handlers: options.handlers,
+      clock,
+      log,
+      protect: (c, proceed) => protect(c, 'v1', proceed),
+      metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
+      notify,
+    })
+  }
 
   if (options.read !== undefined) {
     installReadApi(app, {

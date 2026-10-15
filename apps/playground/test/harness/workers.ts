@@ -81,6 +81,8 @@ export function createHarnessWithoutPublicUrl() {
     throw new Error('the built wrangler.json of the playground has no vars')
   }
   delete config['vars']['HOLLWARE_PUBLIC_URL']
+  // The admin's files stay next to the build, where this copy cannot reach them.
+  delete config['assets']
   writeFileSync(configPath, JSON.stringify(config))
   return {
     server: createTestHarness({ workers: [{ configPath }] }),

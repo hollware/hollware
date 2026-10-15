@@ -81,6 +81,7 @@ export function createHollwareWith(
       log: writeLog,
       read: (env) => createRpc({ site, handlers, clock, log: writeLog }, env),
       auth: resolved.auth,
+      handlers,
     }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025).
     scheduled: async (_controller, env, ctx) => {

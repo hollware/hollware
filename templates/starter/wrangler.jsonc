@@ -24,6 +24,13 @@
       { "queue": "hollware-events", "max_retries": 5, "dead_letter_queue": "hollware-events-dlq" },
     ],
   },
+  // The admin, at /admin/: its hashed files go straight to the browser, and every other request
+  // reaches the Worker first, which serves the admin's page with its security policy.
+  "assets": {
+    "directory": "node_modules/@hollware/admin/dist/client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/*", "!/admin/assets/*"],
+  },
   "vars": {
     // The only Host and Origin your Hollware answers; any other request is refused. This is the
     // URL `pnpm dev` serves. Set it to the public URL of the Worker before you deploy, such as

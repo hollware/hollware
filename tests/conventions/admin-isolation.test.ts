@@ -5,7 +5,8 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: any source file outside packages/admin imports @hollware/admin (or a subpath of it).
+// Fails when: any source file outside packages/admin imports @hollware/admin (or a subpath of it),
+// but for a project's vite.config.ts, which may import the root of the package.
 
 describe('admin isolation', () => {
   it('no source file outside packages/admin imports the admin', () => {
@@ -44,6 +45,22 @@ describe('admin isolation', () => {
         "const a = await import('@hollware/admin/dist/index.html')",
       )
       expect(dynamic.map((violation) => violation.rule)).toEqual(['admin-isolation/import'])
+    })
+
+    it("lets a project's Vite config import the root of the package, and nothing else", () => {
+      expect(
+        check('apps/x/vite.config.ts', "import { adminAssets } from '@hollware/admin'"),
+      ).toEqual([])
+      expect(
+        check('apps/x/vite.config.ts', "import page from '@hollware/admin/dist/index.html'").map(
+          (violation) => violation.rule,
+        ),
+      ).toEqual(['admin-isolation/import'])
+      expect(
+        check('apps/x/src/vite.ts', "import { adminAssets } from '@hollware/admin'").map(
+          (violation) => violation.rule,
+        ),
+      ).toEqual(['admin-isolation/import'])
     })
 
     it('does not confuse a package that merely starts with the same letters', () => {

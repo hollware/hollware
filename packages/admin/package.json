@@ -32,15 +32,29 @@
     "provenance": true
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && vp build -c vite.app.config.ts",
     "test": "vp test",
     "publint": "publint --strict"
   },
   "devDependencies": {
+    "@codemirror/lang-markdown": "catalog:",
+    "@codemirror/lint": "catalog:",
+    "@codemirror/merge": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@comark/vue": "catalog:",
+    "@hollware/core": "workspace:*",
+    "@nuxt/ui": "catalog:",
     "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "codemirror": "catalog:",
+    "comark": "catalog:",
     "publint": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   },
   "engines": {
     "node": ">=24.11.0"

@@ -43,6 +43,8 @@ export interface HollwareEnv {
    * Personal tokens work without it; OAuth does not.
    */
   readonly OAUTH_KV: KVNamespace
+  /** The static assets of the Worker, which hold the admin at `/admin/`; without them, no admin. */
+  readonly ASSETS?: Fetcher
   /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
   readonly EVENTS?: EventQueue
 }

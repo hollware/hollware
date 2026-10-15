@@ -225,6 +225,8 @@ export interface BootOptions {
   readonly now?: string
   /** Instead of the test config: one with `auth`, say. */
   readonly config?: HollwareConfig
+  /** The static assets of the Worker, which hold the admin; none by default. */
+  readonly assets?: Fetcher
 }
 
 /** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
@@ -234,7 +236,10 @@ export function boot(options: BootOptions = {}) {
   const worker: HollwareWorker = createHollwareWith(options.config ?? CONFIG, handlers, { clock })
   const watched = watchDb(env.DB)
   const db = options.db ?? watched.db
-  const environment = envWith(db, 'publicUrl' in options ? options.publicUrl : PUBLIC_URL)
+  const environment: HollwareEnv = {
+    ...envWith(db, 'publicUrl' in options ? options.publicUrl : PUBLIC_URL),
+    ...(options.assets === undefined ? {} : { ASSETS: options.assets }),
+  }
   const { ctx, waited } = fakeContext()
 
   /** One request through `fetch`, with the Host the runtime would put on it. */

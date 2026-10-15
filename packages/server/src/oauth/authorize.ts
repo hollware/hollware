@@ -13,6 +13,7 @@ import { consentPage, messagePage, plainPageHeaders } from '../identity/pages.ts
 import { SESSION_COOKIE } from '../identity/routes.ts'
 import { findSession } from '../identity/store.ts'
 import type { Clock } from '../ports.ts'
+import { adminClient } from './admin.ts'
 import type { GrantProps, OAuth } from './server.ts'
 
 export interface AuthorizeOptions {
@@ -74,6 +75,8 @@ function answerError(error: unknown): Response {
  *
  * - A person without a session is sent to `/signin`, which comes back here once they are in. The
  *   session cookie is only sent to `/authorize`.
+ * - The admin, Hollware's own client (`admin.ts`), gets what it asks for within the role, with no
+ *   consent page.
  * - The page offers the scopes the client asked for that the person's role allows, each checked;
  *   the person may untick any. A request that would get no scope at all is refused with
  *   `access_denied`.
@@ -98,6 +101,20 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
       const request = await oauth.parseAuthRequest(c.req.raw)
       const signedIn = await person(c)
       if (signedIn === null) return signIn(c)
+      const server = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
+      if (request.clientId === (await adminClient(server, c.env)).clientId) {
+        // The admin is Hollware's own page: the person signed in to use it, and is not asked.
+        const scope = grantableScopes(signedIn.role, request.scope)
+        const props: GrantProps = { userId: signedIn.userId, site: options.site }
+        const { redirectTo } = await oauth.completeAuthorization({
+          request,
+          userId: signedIn.userId,
+          metadata: { site: options.site },
+          scope,
+          props,
+        })
+        return new Response(null, { status: 302, headers: { location: redirectTo } })
+      }
       const scopes = grantableScopes(
         signedIn.role,
         request.scope.length === 0 ? BASELINE : request.scope,

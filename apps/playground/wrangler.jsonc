@@ -29,6 +29,13 @@
       },
     ],
   },
+  // The admin, at /admin/ (ADR-026): its hashed files go straight to the browser, and every
+  // other request reaches the Worker first, which serves the admin's page with its policy.
+  "assets": {
+    "directory": "node_modules/@hollware/admin/dist/client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/*", "!/admin/assets/*"],
+  },
   "vars": {
     // The only Host and Origin Hollware answers. This is the URL `vp dev` serves; the harness
     // tests override it with http://localhost (test/harness/workers.ts).

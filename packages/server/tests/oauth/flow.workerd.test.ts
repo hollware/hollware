@@ -21,7 +21,8 @@ import {
 
 // Fails when: the OAuth server of ADR-026 stops letting an agent in the way it says. Its metadata
 // names the endpoints, takes Client ID Metadata Documents, and has no registration endpoint unless
-// the config turns it on; `/authorize` sends a person without a session to sign in and back,
+// the config turns it on; `/authorize` sends a person without a session to sign in and back, lets
+// the admin in with no consent page,
 // offers only the scopes the person's role allows of those asked, and redirects with a code, or
 // with `access_denied` when the person declines; the token endpoint trades the code, with PKCE,
 // for an access token that `/mcp` accepts as the person, through the client, with the scopes the
@@ -223,6 +224,40 @@ describe('the authorization endpoint', () => {
     expect(html).toContain('This app registered itself: its name is not verified.')
     expect(html).toContain('Access goes to <strong>agent.example.com</strong>')
     expect(page.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+
+  it('lets the admin, its own client, in without a consent page, within the role', async () => {
+    const worker = boot()
+    const author = await signedIn('author')
+    const admin = await (
+      await worker.send('/admin/config.json')
+    ).json<{
+      clientId: string
+      redirectUri: string
+      resource: string
+      scope: string
+    }>()
+    const { challenge } = await pkce()
+    const query = new URLSearchParams({
+      response_type: 'code',
+      client_id: admin.clientId,
+      redirect_uri: admin.redirectUri,
+      scope: admin.scope,
+      state: 'admin-state',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      resource: admin.resource,
+    })
+
+    const response = await worker.send(`/authorize?${query.toString()}`, {
+      headers: { cookie: author.cookie },
+    })
+
+    const location = new URL(response.headers.get('location') ?? '')
+    expect(response.status).toBe(302)
+    expect(`${location.origin}${location.pathname}`).toBe(admin.redirectUri)
+    expect(location.searchParams.get('state')).toBe('admin-state')
+    expect(location.searchParams.get('code')).toMatch(/\S+/)
   })
 
   it('redirects with access_denied and the state when the person declines', async () => {

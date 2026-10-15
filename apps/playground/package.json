@@ -20,6 +20,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:",
     "@cloudflare/vitest-plugin": "catalog:",
+    "@hollware/admin": "workspace:*",
     "@hollware/client": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:",
