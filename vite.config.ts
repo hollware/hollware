@@ -104,6 +104,11 @@ export default defineConfig({
         command: 'playwright test -c tests/e2e/playwright.config.ts',
         cache: false,
       },
+      // The install and the upgrade as a user does them (v0.4): this checkout's packages from a
+      // local registry that proxies npm, in an empty directory (scripts/e2e-install.ts and
+      // scripts/e2e-upgrade.ts). They need the network.
+      'e2e:install': { command: 'node scripts/e2e-install.ts', cache: false },
+      'e2e:upgrade': { command: 'node scripts/e2e-upgrade.ts --from 0.3.0', cache: false },
       // The MCP conformance run (ADR-022): the tests of its runner, then the suite against
       // `wrangler dev` of tests/conformance/worker, through the token proxy, for both revisions.
       'test:conformance': {

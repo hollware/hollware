@@ -117,6 +117,62 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The install and the upgrade as a user does them (v0.4): `create-hollware` from a local registry
+  # with this checkout's packages, with npm and with pnpm, on Linux and macOS; and a project of
+  # 0.3.0 moved to them. They read from npm, so they run beside `check` and do not gate it.
+  install:
+    name: Install (${{ matrix.os }}, ${{ matrix.pm }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+        pm: [npm, pnpm]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: true
+
+      - name: Install a new project
+        run: node scripts/e2e-install.ts --pm "$PM"
+        env:
+          PM: ${{ matrix.pm }}
+
+  upgrade:
+    name: Upgrade from 0.3.0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The starter of the release it upgrades from comes from its tag.
+          fetch-depth: 0
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.1.0
+          node-version-file: .node-version
+          cache: true
+
+      - name: Upgrade a project of 0.3.0
+        run: vp run e2e:upgrade
+
   # The MCP conformance suite against `wrangler dev` of a Hollware Worker, for both revisions of
   # the specification (ADR-022). It runs beside `check`, which it does not wait for.
   conformance:

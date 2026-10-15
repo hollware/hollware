@@ -66,6 +66,9 @@ export function templateManifest(starter: Json, catalog: Record<string, string>)
     scripts: starter['scripts'],
     dependencies: pin(starter['dependencies']),
     devDependencies: pin(starter['devDependencies']),
+    // npm checks the peers of the Cloudflare plugin against `vite`, which is Vite+'s core under an
+    // alias: overriding every `vite` with the project's own makes npm take it.
+    ...(starter['overrides'] === undefined ? {} : { overrides: starter['overrides'] }),
   }
 }
 

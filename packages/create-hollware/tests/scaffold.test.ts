@@ -9,7 +9,7 @@ import { create, type Io, type RunResult } from '../src/scaffold.ts'
 // Fails when: create-hollware stops making the project its own (the name of the Worker, its
 // database and its queues, the key of the site, Hollware's exact version for every Hollware
 // dependency, a .gitignore), writes into a directory that is not empty, stops running git init,
-// the install, the migrations and init in that order and in the project, stops printing init's
+// pnpm's allowed build scripts when pnpm installs, the install, the migrations and init in that order and in the project, stops printing init's
 // answer and the `claude mcp add` line with the token, or goes on after a step failed. The
 // programs it runs are not ours, so they are the one thing faked; the template is the real one,
 // made from templates/starter.
@@ -84,6 +84,18 @@ describe('create-hollware <dir>', () => {
     expect(read('hollware.config.ts')).not.toContain('my-site')
     expect(existsSync(join(cwd, 'blog-cms', '.gitignore'))).toBe(true)
     expect(existsSync(join(cwd, 'blog-cms', 'gitignore'))).toBe(false)
+    // npm needs no pnpm settings.
+    expect(existsSync(join(cwd, 'blog-cms', 'pnpm-workspace.yaml'))).toBe(false)
+  })
+
+  it('tells pnpm which build scripts to run, when pnpm installs', async () => {
+    const { io, cwd } = world()
+
+    await create(['blog-cms', '--pm', 'pnpm', '--no-install', '--no-git'], io)
+
+    expect(readFileSync(join(cwd, 'blog-cms', 'pnpm-workspace.yaml'), 'utf8')).toBe(
+      'allowBuilds:\n  esbuild: true\n  workerd: false\n',
+    )
   })
 
   it('runs git init, the install, the migrations and init, in the project', async () => {

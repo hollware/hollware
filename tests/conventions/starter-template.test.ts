@@ -8,7 +8,7 @@ import { readText } from '../support/repo.ts'
 // being made from templates/starter when create-hollware builds or is packed, stops being shipped
 // in it, or is committed; it takes the starter's built or installed files; or the script stops pinning the
 // catalog's exact versions and Hollware's own placeholder, or stops making a tsconfig that stands
-// alone with the starter's options over the repository's.
+// alone with the starter's options over the repository's, or drops the starter's npm overrides.
 
 const root = resolve(import.meta.dirname, '../..')
 
@@ -46,6 +46,7 @@ describe('the template of create-hollware', () => {
         scripts: { dev: 'vp dev' },
         dependencies: { '@hollware/server': 'workspace:*', zod: 'catalog:' },
         devDependencies: { wrangler: 'catalog:' },
+        overrides: { vite: '$vite' },
       },
       { zod: '4.6.5', wrangler: '4.150.0' },
     )
@@ -58,6 +59,7 @@ describe('the template of create-hollware', () => {
       scripts: { dev: 'vp dev' },
       dependencies: { '@hollware/server': 'HOLLWARE_VERSION', zod: '4.6.5' },
       devDependencies: { wrangler: '4.150.0' },
+      overrides: { vite: '$vite' },
     })
     expect(() => templateManifest({ dependencies: { zod: '^4.0.0' } }, {})).toThrow(
       'zod of the starter is "^4.0.0": use workspace:* or catalog:',

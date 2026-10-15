@@ -63,6 +63,8 @@ describe('commands in AGENTS.md', () => {
         'check:commit',
         'check:push',
         'e2e:admin',
+        'e2e:install',
+        'e2e:upgrade',
         'test:acceptance',
         'test:conformance',
       ]),

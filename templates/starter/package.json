@@ -27,5 +27,8 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "wrangler": "catalog:"
+  },
+  "overrides": {
+    "vite": "$vite"
   }
 }

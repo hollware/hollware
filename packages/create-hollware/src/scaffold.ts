@@ -144,12 +144,23 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
   for (const file of ['hollware.config.ts', 'README.md']) {
     replaceIn(join(target, file), [['my-site', choices.site]])
   }
+  if (choices.pm === 'pnpm') writeFileSync(join(target, 'pnpm-workspace.yaml'), PNPM_WORKSPACE)
 }
+
+/**
+ * pnpm runs no build script it was not told about, and fails the install on one. esbuild ships the
+ * binary wrangler uses; workerd's binary arrives through optionalDependencies, so its script is
+ * not needed.
+ */
+export const PNPM_WORKSPACE = `allowBuilds:
+  esbuild: true
+  workerd: false
+`
 
 async function step(io: Io, what: string, command: string, args: string[], cwd: string) {
   const result = await io.run(command, args, cwd)
   if (result.code !== 0) {
-    const detail = (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-5).join('\n')
+    const detail = (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-30).join('\n')
     throw new CreateError(`${what} failed (${command} ${args.join(' ')}):\n${detail}`)
   }
   return result
