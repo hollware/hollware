@@ -37,7 +37,7 @@ afterAll(async () => {
 
 describe('a Nuxt site with @hollware/nuxt', () => {
   it('renders a published entry on the server, from its Comark document', async () => {
-    const page = await nuxtFetch(server, '/blog/from-draft-to-published/')
+    const page = await nuxtFetch(server, '/en/blog/from-draft-to-published/')
     const html = await page.text()
 
     expect(page.status).toBe(200)
@@ -52,14 +52,14 @@ describe('a Nuxt site with @hollware/nuxt', () => {
   })
 
   it('lists the published entries, and not the draft', async () => {
-    const html = await (await nuxtFetch(server, '/')).text()
+    const html = await (await nuxtFetch(server, '/en/')).text()
 
-    expect(html).toContain('href="/blog/from-draft-to-published/"')
+    expect(html).toContain('href="/en/blog/from-draft-to-published/"')
     expect(html).not.toContain('markdown-as-source-of-truth')
   })
 
   it('answers a draft and an entry that does not exist with a 404', async () => {
-    const draft = await nuxtFetch(server, '/blog/markdown-as-source-of-truth/')
+    const draft = await nuxtFetch(server, '/en/blog/markdown-as-source-of-truth/')
     const missing = await nuxtFetch(server, '/_hollware/entry/blog/en/never-written')
 
     expect([draft.status, missing.status]).toEqual([404, 404])

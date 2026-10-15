@@ -13,4 +13,14 @@
     // Hollware Worker, and `Hollware` its read-only entrypoint.
     { "binding": "HOLLWARE", "service": "hollware-playground", "entrypoint": "Hollware" },
   ],
+  // The blog of the demo (v0.4), at demo.hollware.com, reading the demo's Hollware. It takes the
+  // name of the Worker that served it before (examples/worker-site), which holds the domain: going
+  // back is a deploy of that example.
+  "env": {
+    "demo": {
+      "name": "hollware-worker-site-demo",
+      "routes": [{ "pattern": "demo.hollware.com", "custom_domain": true }],
+      "services": [{ "binding": "HOLLWARE", "service": "hollware-demo", "entrypoint": "Hollware" }],
+    },
+  },
 }
