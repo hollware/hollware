@@ -13,6 +13,7 @@ export const ID_PREFIXES = {
   entry: 'ent',
   event: 'evt',
   invitation: 'inv',
+  member: 'mbr',
   passkey: 'pky',
   publication: 'pub',
   revision: 'rev',

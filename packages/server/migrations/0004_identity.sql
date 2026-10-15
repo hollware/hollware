@@ -30,6 +30,20 @@ CREATE TABLE `invitations` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `invitations_id_site` ON `invitations` (`id`,`site_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `invitations_hash` ON `invitations` (`hash`);--> statement-breakpoint
+CREATE TABLE `members` (
+	`id` text PRIMARY KEY NOT NULL,
+	`site_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`role` text NOT NULL,
+	`created_at` text NOT NULL,
+	`updated_at` text NOT NULL,
+	FOREIGN KEY (`site_id`) REFERENCES `sites`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "members_role" CHECK("members"."role" IN ('owner', 'editor', 'author'))
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `members_id_site` ON `members` (`id`,`site_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `members_person` ON `members` (`site_id`,`user_id`);--> statement-breakpoint
 CREATE TABLE `passkeys` (
 	`id` text PRIMARY KEY NOT NULL,
 	`site_id` text NOT NULL,
@@ -65,19 +79,12 @@ CREATE TABLE `sessions` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `sessions_id_site` ON `sessions` (`id`,`site_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `sessions_hash` ON `sessions` (`hash`);--> statement-breakpoint
--- Edited by hand (ADR-023): D1 ignores PRAGMA foreign_keys, so the rebuild of users that changes
--- its roles to owner, editor and author defers the foreign keys of the rows that point at users
--- (tokens, revisions, publications, schedules) to the end of the migration instead.
-PRAGMA defer_foreign_keys = on;--> statement-breakpoint
-CREATE TABLE `__new_users` (
-	`id` text PRIMARY KEY NOT NULL,
-	`name` text,
-	`role` text NOT NULL,
-	`created_at` text NOT NULL,
-	`updated_at` text NOT NULL,
-	CONSTRAINT "users_role" CHECK("__new_users"."role" IN ('owner', 'editor', 'author'))
-);
---> statement-breakpoint
-INSERT INTO `__new_users`("id", "name", "role", "created_at", "updated_at") SELECT "id", "name", "role", "created_at", "updated_at" FROM `users`;--> statement-breakpoint
-DROP TABLE `users`;--> statement-breakpoint
-ALTER TABLE `__new_users` RENAME TO `users`;
+-- Edited by hand (ADR-023): every person who has a token in a site becomes a member of it, with the
+-- role they had, so a deployment of v0.2 keeps who may do what. A reviewer of then is an author
+-- now. The id is the prefix and 26 hex digits, which are characters of a ULID.
+INSERT INTO `members` (`id`, `site_id`, `user_id`, `role`, `created_at`, `updated_at`)
+SELECT 'mbr_' || upper(hex(randomblob(13))), `pairs`.`site_id`, `users`.`id`,
+  CASE `users`.`role` WHEN 'reviewer' THEN 'author' ELSE `users`.`role` END,
+  `users`.`created_at`, `users`.`updated_at`
+FROM (SELECT DISTINCT `site_id`, `user_id` FROM `tokens`) AS `pairs`
+JOIN `users` ON `users`.`id` = `pairs`.`user_id`;

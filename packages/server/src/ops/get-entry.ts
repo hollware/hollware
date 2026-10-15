@@ -4,8 +4,8 @@ import { requireCollection, requireLocale } from './collections.ts'
 import type { OperationHandler } from './types.ts'
 
 /**
- * Reads an entry in the view of the call, `head` over MCP and `published` over RPC, with only the
- * formats that were asked for.
+ * Reads an entry in the view of the call, `head` over MCP and `published` over RPC, or in the
+ * published view when the input asks for it, with only the formats that were asked for.
  */
 export const getEntry: OperationHandler<'get_entry'> = async (input, context) => {
   requireCollection(context.site, input.collection)
@@ -13,7 +13,8 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   const found = await context.store.findEntry(
     context.site.key,
     { collection: input.collection, locale: input.locale, slug: input.slug },
-    context.view,
+    // `published` narrows a call to what is live; a call that reads only that stays there.
+    input.published ? 'published' : context.view,
   )
   if (found === null) return { outcome: 'not_found' }
   const { entry, revision } = found

@@ -185,7 +185,9 @@ describe('checkPersonalToken: the scopes of the role', () => {
     const seeded = await seedToken(env.DB, site)
 
     const before = await checkPersonalToken(env.DB, seeded.token, at(site))
-    await env.DB.prepare("UPDATE users SET role = 'author' WHERE id = ?1").bind(seeded.userId).run()
+    await env.DB.prepare("UPDATE members SET role = 'author' WHERE user_id = ?1")
+      .bind(seeded.userId)
+      .run()
     const after = await checkPersonalToken(env.DB, seeded.token, at(site))
 
     expect(before).toMatchObject({

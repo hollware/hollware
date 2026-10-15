@@ -89,6 +89,7 @@ describe('what the handler gets from the gateway', () => {
       locale: 'en',
       slug: 'hello-world',
       formats: ['markdown'],
+      published: false,
     })
     expect(context.principal).toEqual({
       kind: 'token',

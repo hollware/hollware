@@ -81,6 +81,7 @@ describe('D1 schema', () => {
       'deliveries',
       'entries',
       'invitations',
+      'members',
       'outbox',
       'passkeys',
       'publications',

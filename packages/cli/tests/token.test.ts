@@ -49,7 +49,7 @@ const TOKEN_ID = 'tok_01M4QZQSG0040G2081040G2081'
 const SECRET = `hw_pat_${'2'.repeat(52)}`
 const HASH = '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429'
 const CONTEXT_QUERY =
-  "SELECT id FROM sites ORDER BY id; SELECT id FROM users WHERE role = 'owner' ORDER BY created_at, id LIMIT 1;"
+  "SELECT id FROM sites ORDER BY id; SELECT user_id AS id FROM members WHERE role = 'owner' ORDER BY created_at, user_id LIMIT 1;"
 const NOW = '2026-10-12T12:00:00.000Z'
 
 function setup(

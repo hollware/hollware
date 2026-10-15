@@ -34,7 +34,14 @@ export const sites = sqliteTable('sites', {
   ...timestamps(),
 })
 
-/** People. A user belongs to the deployment; tokens carry the site. */
+/**
+ * People. A user belongs to the deployment; what they may do in a site is their row of `members`.
+ *
+ * `role` is the role of v0.1 and v0.2, kept with its CHECK of then: SQLite changes a CHECK only by
+ * rebuilding the table, and D1, which never turns foreign keys off, refuses to drop a table that
+ * other rows point at. Nothing reads it since v0.3. A new user gets the old name of their role
+ * (`legacyRoleOf`), so that the column stays true to the CHECK.
+ */
 export const users = sqliteTable(
   'users',
   {
@@ -43,7 +50,26 @@ export const users = sqliteTable(
     role: text('role').notNull(),
     ...timestamps(),
   },
-  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'author')`)],
+  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`)],
+)
+
+/** What a person may do in a site (ADR-026): one role per person and site. */
+export const members = sqliteTable(
+  'members',
+  {
+    id: id('mbr'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    role: text('role').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('members_id_site').on(t.id, t.siteId),
+    unique('members_person').on(t.siteId, t.userId),
+    foreignKey({ name: 'members_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'members_user', columns: [t.userId], foreignColumns: [users.id] }),
+    check('members_role', sql`${t.role} IN ('owner', 'editor', 'author')`),
+  ],
 )
 
 /** Personal tokens (ADR-019): only the hash is stored. */

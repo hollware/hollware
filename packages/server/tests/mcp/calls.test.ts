@@ -226,7 +226,13 @@ describe('what a handler gets', () => {
 
     expect(seen.map((call) => call.input)).toEqual([
       { collection: 'blog', limit: 20 },
-      { collection: 'blog', locale: 'en', slug: 'hello-world', formats: ['markdown'] },
+      {
+        collection: 'blog',
+        locale: 'en',
+        slug: 'hello-world',
+        formats: ['markdown'],
+        published: false,
+      },
       { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
     ])
   })

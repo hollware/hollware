@@ -33,7 +33,10 @@ export function newSite(): string {
   return `site-${crypto.randomUUID()}`
 }
 
-/** Writes the site when it is missing, a new user, and a new token of that user in the site. */
+/**
+ * Writes the site when it is missing, a new user who is a member of it with the role, and a new
+ * token of that user in the site.
+ */
 export async function seedToken(
   db: D1Database,
   site: string,
@@ -50,7 +53,18 @@ export async function seedToken(
       .prepare(
         'INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)',
       )
-      .bind(userId, 'Test user', options.role ?? 'owner', CREATED),
+      // users.role keeps the names of v0.2 (src/db/schema.ts); the role is the member's.
+      .bind(
+        userId,
+        'Test user',
+        options.role === 'author' ? 'reviewer' : (options.role ?? 'owner'),
+        CREATED,
+      ),
+    db
+      .prepare(
+        'INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)',
+      )
+      .bind(newId('mbr'), site, userId, options.role ?? 'owner', CREATED),
     db
       .prepare(
         `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, revoked_at,

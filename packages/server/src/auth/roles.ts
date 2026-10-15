@@ -37,3 +37,11 @@ export function effectiveScopes(role: string, tokenScopes: readonly Scope[]): Sc
   if (!isRole(role)) return []
   return ROLE_SCOPES[role].filter((scope) => tokenScopes.includes(scope))
 }
+
+/**
+ * The name a role had in v0.1 and v0.2, which the CHECK of `users.role` still allows: what a new
+ * user's `users.role` gets. Roles live in `members` since v0.3; nothing reads `users.role`.
+ */
+export function legacyRoleOf(role: Role): 'owner' | 'editor' | 'reviewer' {
+  return role === 'author' ? 'reviewer' : role
+}

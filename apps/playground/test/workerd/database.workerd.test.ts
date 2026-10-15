@@ -20,6 +20,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'deliveries',
     'entries',
     'invitations',
+    'members',
     'outbox',
     'passkeys',
     'publications',

@@ -75,6 +75,12 @@ export const getEntry = defineOperation({
       .min(1)
       .default(['markdown'])
       .describe('What to return of the revision: markdown, the Comark document, or html.'),
+    published: z
+      .boolean()
+      .default(false)
+      .describe(
+        'Read the revision that is live instead of the latest one: not_found when the entry is not published.',
+      ),
   }),
   output: z.object({ outcome: z.enum(['ok', 'not_found']), entry: entry.optional() }),
   scopes: ['content:read'],

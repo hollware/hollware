@@ -75,6 +75,7 @@ describe('the database', () => {
       'deliveries',
       'entries',
       'invitations',
+      'members',
       'outbox',
       'passkeys',
       'publications',

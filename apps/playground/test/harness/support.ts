@@ -48,6 +48,9 @@ export async function seedOwnerToken(
       "INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, 'Owner', 'owner', ?2, ?2)",
     ).bind(userId, now),
     env.DB.prepare(
+      "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'owner', ?4, ?4)",
+    ).bind(newId('mbr'), SITE_KEY, userId, now),
+    env.DB.prepare(
       `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, created_at, updated_at)
           VALUES (?1, ?2, ?3, 'harness', ?4, ?5, ?6, ?6)`,
     ).bind(

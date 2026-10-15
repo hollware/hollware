@@ -26,8 +26,8 @@ export interface Owner {
 }
 
 /**
- * Writes a site, its owner and a personal token with SQL, so that the actor of a write has the
- * user and the token its foreign keys point at.
+ * Writes a site, its owner (a member of the site with the role owner) and a personal token with
+ * SQL, so that the actor of a write has the user and the token its foreign keys point at.
  */
 export async function seedOwner(db: D1Database, site: string): Promise<Owner> {
   const now = '2026-10-12T09:00:00.000Z'
@@ -42,6 +42,11 @@ export async function seedOwner(db: D1Database, site: string): Promise<Owner> {
         "INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, 'Owner', 'owner', ?2, ?2)",
       )
       .bind(userId, now),
+    db
+      .prepare(
+        "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'owner', ?4, ?4)",
+      )
+      .bind(newId('mbr'), site, userId, now),
     db
       .prepare(
         `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, created_at, updated_at)

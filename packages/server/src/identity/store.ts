@@ -1,7 +1,8 @@
 import { newId } from '@hollware/core'
 import { and, eq, gt, isNull, lte } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
-import { authChallenges, invitations, passkeys, sessions, users } from '../db/schema.ts'
+import { legacyRoleOf } from '../auth/roles.ts'
+import { authChallenges, invitations, members, passkeys, sessions, users } from '../db/schema.ts'
 import { hashSecret, newSecret } from './secrets.ts'
 
 /** The D1 side of identity (ADR-026). Each write that must happen once is one conditional statement. */
@@ -154,15 +155,29 @@ export async function touchPasskey(db: Db, id: string, counter: number, now: Dat
     .where(eq(passkeys.id, id))
 }
 
-/** Makes the person of a new invitation, with its role. */
+/** Makes the person of a new invitation, a member of the site with its role, in one batch. */
 export async function createUser(
   db: Db,
-  input: { id: string; name: string; role: Role; now: Date },
+  input: { id: string; name: string; role: Role; site: string; now: Date },
 ): Promise<void> {
   const at = input.now.toISOString()
-  await db
-    .insert(users)
-    .values({ id: input.id, name: input.name, role: input.role, createdAt: at, updatedAt: at })
+  await db.batch([
+    db.insert(users).values({
+      id: input.id,
+      name: input.name,
+      role: legacyRoleOf(input.role),
+      createdAt: at,
+      updatedAt: at,
+    }),
+    db.insert(members).values({
+      id: newId('mbr'),
+      siteId: input.site,
+      userId: input.id,
+      role: input.role,
+      createdAt: at,
+      updatedAt: at,
+    }),
+  ])
 }
 
 export async function addPasskey(
@@ -214,12 +229,16 @@ export async function createSession(
   return { secret, expiresAt }
 }
 
-/** The person of a session cookie, while it lasts, with their role now. */
+/** The person of a session cookie, while it lasts, with their role in its site now. */
 export async function findSession(db: Db, site: string, secret: string, now: Date) {
   const [row] = await db
-    .select({ userId: sessions.userId, name: users.name, role: users.role })
+    .select({ userId: sessions.userId, name: users.name, role: members.role })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
+    .innerJoin(
+      members,
+      and(eq(members.userId, sessions.userId), eq(members.siteId, sessions.siteId)),
+    )
     .where(
       and(
         eq(sessions.siteId, site),

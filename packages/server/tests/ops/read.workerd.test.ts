@@ -8,7 +8,8 @@ import { createPost, newWorld, publicationsOf, publishPost } from './world.ts'
 // describe-site.ts stops passing the built-in contracts or recomputes them on every call, so the
 // description is no longer made once; list-entries.ts drops a filter, the limit or the cursor, or
 // lets a bad cursor through as something else than the store's invalid_input; get-entry.ts answers
-// formats nobody asked for, leaves one out, shows the wrong revision or verdict, or shows a
+// formats nobody asked for, leaves one out, shows the wrong revision or verdict (the live one when
+// asked for published, the latest otherwise), or shows a
 // publication that is not the last publish; get-translations.ts stops answering not_found for an
 // empty group; answers.ts entrySummary stops saying whether the latest revision is the live one.
 
@@ -223,6 +224,28 @@ describe('get_entry', () => {
       lastPublication: null,
       markdown,
     })
+  })
+
+  it('reads the revision that is live when asked for published, and not_found before it is', async () => {
+    const world = await newWorld(env.DB, 'get-published')
+    const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
+    await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })
+    const ref = { collection: 'blog', locale: 'en', slug: 'edge-caching-guide' }
+    const before = await world.agent.getEntry({ ...ref, published: true })
+    const live = (await world.agent.getEntry(ref)).entry?.markdown
+    const published = await publishPost(world, en)
+    await world.agent.updateDraft({
+      id: en.id,
+      version: published.version,
+      markdown: blogPost({ title: 'Edge caching, again', translationGroup: 'edge-caching-guide' }),
+    })
+
+    const after = await world.agent.getEntry({ ...ref, published: true })
+    const head = await world.agent.getEntry(ref)
+
+    expect(before).toEqual({ outcome: 'not_found' })
+    expect(after.entry?.markdown).toBe(live)
+    expect(head.entry?.markdown).not.toBe(live)
   })
 
   it('gives only the formats that are asked for', async () => {

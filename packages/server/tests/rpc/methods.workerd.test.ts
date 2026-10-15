@@ -152,9 +152,27 @@ describe('the options of a call', () => {
     await rpc.getEntry(SITE_KEY, 'blog', 'hello-world', 'es', { formats: undefined })
 
     expect(seen.map((one) => one.input)).toStrictEqual([
-      { collection: 'blog', locale: 'es', slug: 'hello-world', formats: ['html', 'document'] },
-      { collection: 'blog', locale: 'es', slug: 'hello-world', formats: ['markdown'] },
-      { collection: 'blog', locale: 'es', slug: 'hello-world', formats: ['markdown'] },
+      {
+        collection: 'blog',
+        locale: 'es',
+        slug: 'hello-world',
+        formats: ['html', 'document'],
+        published: false,
+      },
+      {
+        collection: 'blog',
+        locale: 'es',
+        slug: 'hello-world',
+        formats: ['markdown'],
+        published: false,
+      },
+      {
+        collection: 'blog',
+        locale: 'es',
+        slug: 'hello-world',
+        formats: ['markdown'],
+        published: false,
+      },
     ])
   })
 

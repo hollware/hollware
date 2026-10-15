@@ -109,14 +109,14 @@ export function parseDatabase(value: string): string {
   return value
 }
 
-/** The statement that finds an owner. */
+/** The statement that finds an owner: a member of a site with the role owner (ADR-026). */
 export function ownerQuery(): string {
-  return "SELECT id FROM users WHERE role = 'owner' LIMIT 1"
+  return "SELECT user_id AS id FROM members WHERE role = 'owner' LIMIT 1"
 }
 
 /** One statement for the sites of the database and one for its first owner. */
 export function sitesAndOwnerQuery(): string {
-  return "SELECT id FROM sites ORDER BY id; SELECT id FROM users WHERE role = 'owner' ORDER BY created_at, id LIMIT 1;"
+  return "SELECT id FROM sites ORDER BY id; SELECT user_id AS id FROM members WHERE role = 'owner' ORDER BY created_at, user_id LIMIT 1;"
 }
 
 /** The sites of the database. */
@@ -144,19 +144,23 @@ export function insertToken(token: NewToken): string {
 export interface FirstSite {
   site: string
   ownerId: string
+  /** The id of the owner's row of `members`. */
+  memberId: string
   ownerName: string | undefined
   token: NewToken
 }
 
 /**
- * What `init` writes, in one script: the site (left alone if it is already there), its owner
- * and the owner's first token.
+ * What `init` writes, in one script: the site (left alone if it is already there), its owner, a
+ * member of the site with the role owner, and the owner's first token. `users.role` gets the
+ * owner too, the one name of a role that its CHECK and `members` share.
  */
-export function initScript({ site, ownerId, ownerName, token }: FirstSite): string {
+export function initScript({ site, ownerId, memberId, ownerName, token }: FirstSite): string {
   const name = ownerName === undefined ? 'NULL' : quote(ownerName)
   return [
     `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(token.now)}, ${quote(token.now)}) ON CONFLICT (id) DO NOTHING;`,
     `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
+    `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
     '',
   ].join('\n')

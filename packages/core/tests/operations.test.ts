@@ -160,7 +160,13 @@ describe('operation specs', () => {
       group: [],
     })
     expect(getEntry.input.parse({ collection: 'blog', locale: 'en', slug: 'hello-world' })).toEqual(
-      { collection: 'blog', locale: 'en', slug: 'hello-world', formats: ['markdown'] },
+      {
+        collection: 'blog',
+        locale: 'en',
+        slug: 'hello-world',
+        formats: ['markdown'],
+        published: false,
+      },
     )
     const misspelled = updateDraft.input.safeParse({
       id: ENTRY_ID,

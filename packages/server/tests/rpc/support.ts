@@ -8,7 +8,13 @@ export const CALLS = [
     method: 'getEntry',
     tool: 'get_entry',
     call: (rpc: HollwareRpc) => rpc.getEntry(SITE_KEY, 'blog', 'hello-world', 'en'),
-    input: { collection: 'blog', locale: 'en', slug: 'hello-world', formats: ['markdown'] },
+    input: {
+      collection: 'blog',
+      locale: 'en',
+      slug: 'hello-world',
+      formats: ['markdown'],
+      published: false,
+    },
     output: CANNED.get_entry.ok,
   },
   {

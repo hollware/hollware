@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "68fae068-8e60-4555-a489-7e5623301c56",
-  "prevId": "f9f02bf6-f8be-44aa-9818-c3495af3041a",
+  "id": "f4527876-f3d4-49d2-a3a6-773ea3ba09e1",
+  "prevId": "94d01b62-528a-41fd-aa2c-62390566add0",
   "tables": {
     "auth_challenges": {
       "name": "auth_challenges",
@@ -583,6 +583,107 @@
         "invitations_role": {
           "name": "invitations_role",
           "value": "\"invitations\".\"role\" IN ('owner', 'editor', 'author')"
+        }
+      }
+    },
+    "members": {
+      "name": "members",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "members_id_site": {
+          "name": "members_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "members_person": {
+          "name": "members_person",
+          "columns": [
+            "site_id",
+            "user_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "members_site": {
+          "name": "members_site",
+          "tableFrom": "members",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "members_user": {
+          "name": "members_user",
+          "tableFrom": "members",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "members_role": {
+          "name": "members_role",
+          "value": "\"members\".\"role\" IN ('owner', 'editor', 'author')"
         }
       }
     },
@@ -2069,7 +2170,7 @@
       "checkConstraints": {
         "users_role": {
           "name": "users_role",
-          "value": "\"users\".\"role\" IN ('owner', 'editor', 'author')"
+          "value": "\"users\".\"role\" IN ('owner', 'editor', 'reviewer')"
         }
       }
     }

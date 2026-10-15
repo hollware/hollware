@@ -65,7 +65,10 @@ export interface TokenOptions {
  */
 export async function seedToken(server: TestHarness, options: TokenOptions): Promise<string> {
   const db = await database(server)
-  const owner = await db.prepare('SELECT id FROM users WHERE role = ?1').bind('owner').first()
+  const owner = await db
+    .prepare('SELECT user_id AS id FROM members WHERE role = ?1')
+    .bind('owner')
+    .first()
   if (!isRecord(owner) || typeof owner['id'] !== 'string') {
     throw new Error('the database has no owner: seed one with seedOwnerToken first')
   }

@@ -137,6 +137,7 @@ export async function verifyRegistration(
       id: challenge.userId,
       name: input.name.trim() === '' ? 'Unnamed' : input.name.trim(),
       role: invitation.role,
+      site: ceremony.site,
       now: ceremony.now,
     })
   }

@@ -401,6 +401,9 @@ async function measureWrites(root: string, workerDirectory: string): Promise<Wri
           "INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, 'Owner', 'owner', ?2, ?2)",
         ).bind(owner, now),
         DB.prepare(
+          "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, 'playground', ?2, 'owner', ?3, ?3)",
+        ).bind(newId('mbr'), owner, now),
+        DB.prepare(
           "INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, created_at, updated_at) VALUES (?1, 'playground', ?2, 'budget', ?3, ?4, ?5, ?5)",
         ).bind(
           newId('tok'),

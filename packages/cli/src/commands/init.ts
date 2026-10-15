@@ -90,9 +90,12 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     expiresAt: setupExpiresAt,
     now: timestamp,
   })
+  // Drawn last, so that the ids and secrets above stay what they were before members existed.
+  const memberId = newId(io, 'member')
   const script = initScript({
     site,
     ownerId,
+    memberId,
     ownerName,
     token: {
       id: tokenId,

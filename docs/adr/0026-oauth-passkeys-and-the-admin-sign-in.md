@@ -19,7 +19,7 @@ Status: Accepted (2026-10-14)
 ## Consequences
 
 - MCP clients that only speak OAuth, such as claude.ai connectors, can connect, after a person signs in and consents.
-- A project needs a KV namespace bound as `OAUTH_KV`, and a migration adds passkeys, invitations, setup links and roles.
+- A project needs a KV namespace bound as `OAUTH_KV`, and a migration adds passkeys, invitations, sessions and `members`: the role of a person in a site. Roles left `users`, whose CHECK named the roles of v0.1 (`reviewer` where v0.3 has `author`), because SQLite changes a CHECK only by rebuilding the table, and D1, which never turns foreign keys off, refuses to drop a table that other rows point at; `users.role` stays, unread (guard `legacy-role`).
 - Every surface keeps one way to check scopes: what an operation needs, against the principal's effective scopes.
 
 ## Alternatives considered

@@ -33,11 +33,14 @@ export interface TokenCheckOptions {
 /** `last_used_at` of a token is written at most once in this time. */
 const TOUCH_INTERVAL_MS = 60 * 60 * 1000
 
-/** The token with the role of its user, by the hash of the token, in the one site. */
+/**
+ * The token with the role of its user in the token's site, by the hash of the token, in the one
+ * site. A user who is no member of the site has no role there, and the token is unknown.
+ */
 const LOOKUP = `SELECT t.id AS token_id, t.site_id AS site_id, t.user_id AS user_id,
     t.scopes AS scopes, t.expires_at AS expires_at, t.revoked_at AS revoked_at,
-    t.last_used_at AS last_used_at, u.role AS role
-  FROM tokens AS t JOIN users AS u ON u.id = t.user_id
+    t.last_used_at AS last_used_at, m.role AS role
+  FROM tokens AS t JOIN members AS m ON m.user_id = t.user_id AND m.site_id = t.site_id
   WHERE t.hash = ?1 AND t.site_id = ?2`
 
 interface TokenRow {

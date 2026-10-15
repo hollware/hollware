@@ -74,14 +74,11 @@ export interface OAuth {
   ) => Promise<Response>
 }
 
-/**
- * The role of a user, read on every request: a change of role takes effect at once. Users belong
- * to the deployment, not to a site; the grant says which site it is for, and that is checked.
- */
-async function roleOf(db: D1Database, userId: string): Promise<string | null> {
+/** The role of a member of the site, read on every request: a change of role takes effect at once. */
+async function roleOf(db: D1Database, site: string, userId: string): Promise<string | null> {
   const row = await db
-    .prepare('SELECT role FROM users WHERE id = ?1')
-    .bind(userId)
+    .prepare('SELECT role FROM members WHERE site_id = ?1 AND user_id = ?2')
+    .bind(site, userId)
     .first<{ role: string }>()
   return row?.role ?? null
 }
@@ -174,7 +171,7 @@ function build(issuer: string, options: OAuthOptions): OAuth {
     if (granted === null) return refuse('unknown')
     if (!isGrantProps(granted.props)) return refuse('unknown')
     if (granted.props.site !== options.site) return refuse('other_site')
-    const role = await roleOf(env.DB, granted.props.userId)
+    const role = await roleOf(env.DB, options.site, granted.props.userId)
     if (role === null) return refuse('no_user')
     const principal: Principal = {
       kind: 'oauth',

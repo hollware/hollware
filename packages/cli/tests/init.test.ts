@@ -36,7 +36,7 @@ const OWNER_ID = 'usr_01M4QZQSG0040G2081040G2081'
 const TOKEN_ID = 'tok_01M4QZQSG0081040G2081040G2'
 const SECRET = `hw_pat_${'3'.repeat(52)}`
 const HASH = 'b07c83868ce651218676f8ab9a47188f183db88ea929168941c3f8f20afa6a7a'
-const OWNER_QUERY = "SELECT id FROM users WHERE role = 'owner' LIMIT 1"
+const OWNER_QUERY = "SELECT user_id AS id FROM members WHERE role = 'owner' LIMIT 1"
 
 /** A project with the starter's wrangler.jsonc, and a scratch directory for the SQL file. */
 function setup(
@@ -66,6 +66,7 @@ function setup(
 const SCRIPT = [
   "INSERT INTO sites (id, created_at, updated_at) VALUES ('blog', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
   `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00R30C1G60R30C1G6', 'blog', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',

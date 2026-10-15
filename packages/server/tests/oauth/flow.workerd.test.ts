@@ -316,7 +316,7 @@ describe('an access token', () => {
   it('does what the role allows at each request: a demoted owner loses publish at once', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { userId, tokens } = await tokenFor(worker, 'owner')
-    await env.DB.prepare("UPDATE users SET role = 'author' WHERE id = ?1").bind(userId).run()
+    await env.DB.prepare("UPDATE members SET role = 'author' WHERE user_id = ?1").bind(userId).run()
 
     await callRaw(
       worker.endpoint(tokens.access_token),

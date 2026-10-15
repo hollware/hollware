@@ -72,6 +72,11 @@ export async function seedSite(db: D1Database, site: string): Promise<SeededSite
       .bind(userId, now),
     db
       .prepare(
+        "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'owner', ?4, ?4)",
+      )
+      .bind(newId('mbr'), site, userId, now),
+    db
+      .prepare(
         `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, created_at, updated_at)
           VALUES (?1, ?2, ?3, 'seed', ?4, ?5, ?6, ?6)`,
       )
