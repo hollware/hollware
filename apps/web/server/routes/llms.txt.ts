@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
     ...readingOrder(page.entries).map(
       (doc) => `- [${doc.title}](https://hollware.com/docs/${doc.slug}.md): ${doc.description}`,
     ),
-    '- [MCP tools](https://hollware.com/reference/mcp-tools/): every tool of the MCP server, its scopes and its input schema',
+    '- [MCP tools](https://hollware.com/reference/mcp-tools.md): every tool of the MCP server, its scopes and its input schema',
     '',
   ]
   setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')

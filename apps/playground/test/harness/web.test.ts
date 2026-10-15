@@ -14,7 +14,7 @@ import { createWebHarness, webFetch } from './workers.ts'
 // site rendered on the server from its Comark document, with its `callout` as the site's own
 // component and the sidebar in reading order (`readingOrder` of app/utils/docs.ts); a draft as a
 // 404; the Markdown of a page at /docs/<slug>.md (server/middleware/markdown.ts); llms.txt with
-// every page in reading order; the MCP tools page generated from @hollware/core; or the landing
+// every page in reading order; the MCP tools page, and its Markdown, generated from @hollware/core; or the landing
 // page with the install command. The docs are written through MCP to the site `docs`, as an
 // agent writes them.
 
@@ -110,6 +110,11 @@ describe('hollware.com', () => {
 
     expect(tools).toContain('The 12 tools of')
     expect(tools).toContain('id="create_draft"')
+    const markdown = await webFetch(server, '/reference/mcp-tools.md')
+    const text = await markdown.text()
+    expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
+    expect(text.match(/^## /gm)).toHaveLength(12)
+    expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
   })
