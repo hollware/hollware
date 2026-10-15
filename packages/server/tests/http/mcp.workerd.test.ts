@@ -24,6 +24,7 @@ const LATER = '2026-11-11T12:00:00.000Z'
 
 const TOOLS = [
   'approve_review',
+  'content_stats',
   'create_draft',
   'describe_site',
   'get_entry',

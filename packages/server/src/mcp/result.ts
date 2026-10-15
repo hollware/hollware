@@ -42,6 +42,7 @@ const encoder = new TextEncoder()
 const OUTPUT_TOO_LARGE_FIX = {
   approve_review:
     'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
+  content_stats: 'Ask for less: pass a smaller limit.',
   create_draft:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   describe_site:

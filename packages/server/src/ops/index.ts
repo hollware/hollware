@@ -1,3 +1,4 @@
+import { contentStats } from './content-stats.ts'
 import { createDraft } from './create-draft.ts'
 import { describeSite } from './describe-site.ts'
 import { getEntry } from './get-entry.ts'
@@ -18,6 +19,7 @@ import { defineHandlers } from './types.ts'
  */
 export const handlers = defineHandlers({
   approve_review: approveReview,
+  content_stats: contentStats,
   create_draft: createDraft,
   describe_site: describeSite,
   get_entry: getEntry,

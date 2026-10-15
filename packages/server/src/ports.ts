@@ -395,3 +395,38 @@ export interface Semantic {
   readonly embedder: Embedder
   readonly index: VectorIndex
 }
+
+/*
+ * Analytics (ADR-031): the sites of a deployment count their page views, and agents read which
+ * pages are read. The count holds no person: a site, a path and a country, never a cookie, an IP
+ * or a user agent.
+ */
+
+/** A page view, as a site's beacon reports it. */
+export interface PageView {
+  readonly site: string
+  /** The path of the page, such as `/blog/edge-caching/`. */
+  readonly path: string
+  /** The two letters of the reader's country, or `XX` when it is not known. */
+  readonly country: string
+}
+
+/** Where page views are counted. */
+export interface AnalyticsWriter {
+  record(view: PageView): void
+}
+
+/** A page and how often it was read. */
+export interface PageCount {
+  readonly path: string
+  readonly views: number
+}
+
+/** Reads the counts back. */
+export interface AnalyticsReader {
+  /** The `limit` most read paths of the site in the last `days`, most read first. */
+  topPages(
+    site: string,
+    query: { readonly days: number; readonly limit: number },
+  ): Promise<readonly PageCount[]>
+}

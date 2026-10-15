@@ -10,6 +10,7 @@ import { describeError } from '../mcp/errors.ts'
 import type { ResolvedSite } from '@hollware/core'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
+import { analyticsReaderOf } from '../analytics/cloudflare.ts'
 
 /**
  * The operations over HTTP, for the admin (ADR-026): `POST /v1/ops/{name}` takes the input of the
@@ -106,6 +107,7 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         requestId,
         notify: options.notify(c, requestId, site.key),
         semantic: semanticOfEnv(c.env),
+        analytics: analyticsReaderOf(c.env),
       }
       try {
         const output = spec.output.parse(await invoke(options.handlers, spec, parsed.data, context))

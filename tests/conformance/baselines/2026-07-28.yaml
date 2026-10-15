@@ -11,7 +11,7 @@
 # The list only shrinks. Implementing a capability removes its entries in the same change and
 # lowers recordedSize; adding an entry is a reviewed change that raises it and states why.
 revision: '2026-07-28'
-recordedSize: 38
+recordedSize: 36
 entries:
   - check: server-stateless:sep-2575-server-rejects-undeclared-capability
     class: fixture
@@ -67,24 +67,18 @@ entries:
   - check: sep-2164-resource-not-found:sep-2164-data-uri
     class: not-offered
     reason: 'Hollware offers no resources, so the error of resources/read carries no data.uri. A warning counts as a failure in baseline mode.'
-  - check: prompts-list:prompts-list
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/list is not a method of the server and answers method not found.'
   - check: prompts-get-simple:prompts-get-simple
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+    class: fixture
+    reason: 'The suite gets one of its fixture prompts, which is no prompt of Hollware (its one prompt is refresh_content), so prompts/get answers that the prompt does not exist.'
   - check: prompts-get-with-args:prompts-get-with-args
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+    class: fixture
+    reason: 'The suite gets one of its fixture prompts, which is no prompt of Hollware (its one prompt is refresh_content), so prompts/get answers that the prompt does not exist.'
   - check: prompts-get-embedded-resource:prompts-get-embedded-resource
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
+    class: fixture
+    reason: 'The suite gets one of its fixture prompts, which is no prompt of Hollware (its one prompt is refresh_content), so prompts/get answers that the prompt does not exist.'
   - check: prompts-get-with-image:prompts-get-with-image
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found.'
-  - check: caching:sep-2549-prompts-list-caching-hints
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/list is not a method of the server and answers method not found.'
+    class: fixture
+    reason: 'The suite gets one of its fixture prompts, which is no prompt of Hollware (its one prompt is refresh_content), so prompts/get answers that the prompt does not exist.'
   - check: caching:sep-2549-resources-list-caching-hints
     class: not-offered
     reason: 'Hollware offers no resources, so resources/list is not a method of the server and answers method not found.'
@@ -113,8 +107,8 @@ entries:
     class: fixture
     reason: 'The suite calls the fixture tool test_input_required_result_elicitation, which is not an operation of Hollware, so the call fails with tool not found (a warning, which counts as a failure in baseline mode).'
   - check: input-required-result-non-tool-request:sep-2322-non-tool-incomplete
-    class: not-offered
-    reason: 'Hollware offers no prompts, so prompts/get is not a method of the server and answers method not found. The suite uses the fixture prompt test_input_required_result_prompt.'
+    class: fixture
+    reason: 'The suite gets its fixture prompt test_input_required_result_prompt, which is no prompt of Hollware (its one prompt is refresh_content), so prompts/get answers that the prompt does not exist.'
   - check: input-required-result-result-type:sep-2322-result-type-included
     class: fixture
     reason: 'The suite calls the fixture tool test_input_required_result_elicitation, which is not an operation of Hollware, so the call fails with tool not found.'

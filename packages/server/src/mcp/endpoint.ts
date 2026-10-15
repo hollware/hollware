@@ -20,6 +20,7 @@ import { scopeChallenge } from './scopes.ts'
 import { within } from './timeout.ts'
 import { createToolTable } from './tools.ts'
 import type { McpCall, McpEndpoint, McpEndpointOptions, McpLogEntry } from './types.ts'
+import { REFRESH_CONTENT, refreshContentText } from './prompts.ts'
 
 /**
  * `tools/list` is the same for every client and changes only when the Worker is deployed again:
@@ -188,7 +189,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
     }
     const server = new McpServer(options.serverInfo, {
       // A server that is built for one request can never push a change.
-      capabilities: { tools: { listChanged: false } },
+      capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } },
       cacheHints: { 'tools/list': TOOLS_LIST_CACHE_HINT },
     })
     for (const tool of tools) {
@@ -216,6 +217,25 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
         (input, mcp) => runTool(tool.spec, input, mcp, call, request.era),
       )
     }
+    server.registerPrompt(
+      REFRESH_CONTENT.name,
+      {
+        title: REFRESH_CONTENT.title,
+        description: REFRESH_CONTENT.description,
+        argsSchema: REFRESH_CONTENT.args,
+      },
+      ({ days }) => ({
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: refreshContentText(days === undefined ? 30 : Number(days)),
+            },
+          },
+        ],
+      }),
+    )
     return server
   }
 

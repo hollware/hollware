@@ -20,10 +20,11 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the thirteen operations, sorted by name, as tools/list shows them', () => {
+  it('are the fourteen operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
+      'content_stats',
       'create_draft',
       'describe_site',
       'get_entry',
@@ -61,6 +62,12 @@ describe('operation specs', () => {
         scopes: ['content:publish'],
         outcomes: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
         errors: ['blocked', 'not_pending', 'not_found'],
+      },
+      content_stats: {
+        effect: 'read',
+        scopes: ['content:read'],
+        outcomes: ['ok', 'unavailable'],
+        errors: ['unavailable'],
       },
       create_draft: {
         effect: 'write',

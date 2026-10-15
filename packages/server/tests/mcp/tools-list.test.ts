@@ -42,6 +42,7 @@ const DESTROY = {
 
 const TOOLS = [
   { name: 'approve_review', title: 'Approve a review', annotations: CHANGE },
+  { name: 'content_stats', title: 'Read what readers read', annotations: READ },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
@@ -58,6 +59,7 @@ const TOOLS = [
 
 const OUTCOMES: Record<string, string[]> = {
   approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
+  content_stats: ['ok', 'unavailable'],
   create_draft: ['saved', 'refused'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
@@ -171,7 +173,7 @@ describe('tools/list', () => {
     },
   )
 
-  it('says that the list never changes, and that anyone may keep it for five minutes', async () => {
+  it('says that the lists of tools and prompts never change, and that anyone may keep the tools for five minutes', async () => {
     const { endpoint } = endpointWith()
 
     const modern = await rpc(endpoint, 'modern', 'tools/list')
@@ -186,8 +188,14 @@ describe('tools/list', () => {
     expect(modern.result.ttlMs).toBe(300_000)
     expect(modern.result.cacheScope).toBe('public')
     expect(Object.keys(legacy.result)).toEqual(['tools'])
-    expect(discover.result.capabilities).toEqual({ tools: { listChanged: false } })
-    expect(initialize.result.capabilities).toEqual({ tools: { listChanged: false } })
+    expect(discover.result.capabilities).toEqual({
+      tools: { listChanged: false },
+      prompts: { listChanged: false },
+    })
+    expect(initialize.result.capabilities).toEqual({
+      tools: { listChanged: false },
+      prompts: { listChanged: false },
+    })
     expect(initialize.result.serverInfo).toEqual({ name: 'hollware', version: '0.0.0' })
   })
 
@@ -205,9 +213,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(26)
+    expect(converters).toHaveLength(28)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 26 }, () => 1),
+      Array.from({ length: 28 }, () => 1),
     )
   })
 })
@@ -218,6 +226,7 @@ describe('the tool table', () => {
 
     expect(names).toEqual([
       'approve_review',
+      'content_stats',
       'create_draft',
       'describe_site',
       'get_entry',

@@ -48,6 +48,7 @@ describe('the MCP endpoint in workerd', () => {
 
       expect(tools.map((tool) => tool.name)).toEqual([
         'approve_review',
+        'content_stats',
         'create_draft',
         'describe_site',
         'get_entry',

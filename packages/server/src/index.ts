@@ -54,6 +54,15 @@ export interface HollwareEnv {
    */
   readonly AI?: Ai
   readonly VECTORIZE?: Vectorize
+  /**
+   * Analytics (ADR-031): the Analytics Engine dataset that the beacon of the sites writes to, and
+   * what `content_stats` reads it with: the account, an API token with Account Analytics Read
+   * (a secret), and the dataset's name when it is not `hollware_page_views`.
+   */
+  readonly ANALYTICS?: AnalyticsEngineDataset
+  readonly HOLLWARE_ANALYTICS_ACCOUNT_ID?: string
+  readonly HOLLWARE_ANALYTICS_TOKEN?: string
+  readonly HOLLWARE_ANALYTICS_DATASET?: string
 }
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>

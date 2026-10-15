@@ -1,6 +1,7 @@
 export * as schemas from './schemas.ts'
 export {
   approveReview,
+  contentStats,
   createDraft,
   describeSite,
   getEntry,

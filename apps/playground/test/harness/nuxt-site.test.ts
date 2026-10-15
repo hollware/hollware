@@ -9,7 +9,8 @@ import { createNuxtHarness, nuxtFetch } from './workers.ts'
 // its stored Comark document (`<HollwareContent>`, the `/_hollware/entry` route and
 // `useHollwareEntry`), the index from `useHollwareEntries`, the generator meta of every page; or
 // it serves a draft, or an entry that does not exist, as anything but a 404; or a page sends the
-// browser the verdict and the last publication of an entry (`forPage`). The site is
+// browser the verdict and the last publication of an entry (`forPage`); or the page stops getting
+// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's. The site is
 // examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
 // compatibility; content is published through MCP, as an agent does.
 
@@ -56,6 +57,15 @@ describe('a Nuxt site with @hollware/nuxt', () => {
 
     expect(html).toContain('href="/en/blog/from-draft-to-published/"')
     expect(html).not.toContain('markdown-as-source-of-truth')
+  })
+
+  it('hands the browser where to count its views, and nothing more of the server', async () => {
+    const html = await (await nuxtFetch(server, '/en/')).text()
+
+    // The public config of the page, which the beacon plugin reads.
+    expect(html).toContain('hollware:{site:"playground",beacon:"http://localhost"}')
+    // The read token and the binding stay on the server.
+    expect(html).not.toContain('binding:')
   })
 
   it('answers a draft and an entry that does not exist with a 404', async () => {

@@ -1,7 +1,7 @@
 import type { OperationByName, OperationName, ResolvedSite } from '@hollware/core'
 import type * as z from 'zod'
 import type { Principal } from '../auth/types.ts'
-import type { Clock, ContentStore, Semantic, View } from '../ports.ts'
+import type { AnalyticsReader, Clock, ContentStore, Semantic, View } from '../ports.ts'
 
 /**
  * The handlers of the operations (ADR-017): one per spec of `@hollware/core`, paired by type,
@@ -26,6 +26,8 @@ export interface OperationContext {
   readonly notify?: (eventIds: readonly string[]) => void
   /** The model and the vector index, when the Worker has both (ADR-030); absent or `null` without. */
   readonly semantic?: Semantic | null
+  /** The counts of page views, when the deployment can read them (ADR-031); absent or `null` without. */
+  readonly analytics?: AnalyticsReader | null
 }
 
 /** The handler of one operation: its parsed input in, its output out. */

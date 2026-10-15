@@ -232,6 +232,17 @@ export const CANNED: Canned = {
       },
     },
   },
+  content_stats: {
+    ok: {
+      outcome: 'ok',
+      since: '2026-09-15T10:00:00.000Z',
+      pages: [
+        { path: '/blog/hello-world/', views: 42, entry: SUMMARY },
+        { path: '/', views: 7, entry: null },
+      ],
+    },
+    unavailable: { outcome: 'unavailable' },
+  },
   get_entry: {
     ok: { outcome: 'ok', entry: ENTRY },
     not_found: { outcome: 'not_found' },
@@ -306,6 +317,7 @@ const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
 export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName<Name>['input']> } =
   {
     approve_review: { id: REVIEW_ID },
+    content_stats: {},
     create_draft: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
     describe_site: {},
     get_entry: { collection: 'blog', locale: 'en', slug: 'hello-world' },
@@ -362,6 +374,11 @@ export function fakeHandlers(
       'approve_review',
       overrides.approve_review ??
         (async () => pick(CANNED.approve_review, outcomes.approve_review ?? 'published')),
+    ),
+    content_stats: record(
+      'content_stats',
+      overrides.content_stats ??
+        (async () => pick(CANNED.content_stats, outcomes.content_stats ?? 'ok')),
     ),
     create_draft: record(
       'create_draft',

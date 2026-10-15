@@ -354,9 +354,37 @@ export const requestChanges = defineOperation({
   },
 })
 
+export const contentStats = defineOperation({
+  name: 'content_stats',
+  title: 'Read what readers read',
+  description:
+    'The most read pages of the sites that read this one, over the last days, most read first, each with the published entry it shows when it shows one. Use it to pick what to update. unavailable when the deployment has no analytics.',
+  input: z.strictObject({
+    days: z.number().int().min(1).max(90).default(30).describe('How many days back to count.'),
+    limit: z.number().int().min(1).max(50).default(10),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok', 'unavailable']),
+    since: z.string().optional().describe('The start of the count, in ISO 8601.'),
+    pages: z
+      .array(
+        z.object({
+          path: z.string(),
+          views: z.number().describe('Page views, sampling accounted for.'),
+          entry: entrySummary.nullable().describe('The published entry at that path, or null.'),
+        }),
+      )
+      .optional(),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false }, unavailable: { isError: true } },
+})
+
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
+  contentStats,
   createDraft,
   describeSite,
   getEntry,

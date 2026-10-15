@@ -18,6 +18,8 @@ import { installAuthorize } from '../oauth/authorize.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
+import { analyticsReaderOf } from '../analytics/cloudflare.ts'
+import { installEvents } from './events.ts'
 
 export interface GatewayOptions {
   /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
@@ -163,6 +165,9 @@ export function createGateway(options: GatewayOptions): Gateway {
    */
   const readsFromAnyCorsOrigin = (request: Request, origin: string): boolean => {
     const { pathname } = new URL(request.url)
+    // The beacon of a site's pages (ADR-031): the route checks the origin against the site that
+    // the beacon names, which is the only check that knows which site that is.
+    if (request.method === 'POST' && pathname === '/events') return true
     return (
       corsOrigins.has(origin) &&
       ['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
@@ -226,6 +231,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           clock,
           notify: notify(c, requestId, site.key),
           semantic: semanticOfEnv(c.env),
+          analytics: analyticsReaderOf(c.env),
         },
       })
     }),
@@ -282,6 +288,8 @@ export function createGateway(options: GatewayOptions): Gateway {
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
     })
   }
+
+  installEvents(app, { sites })
 
   installErrorHandling(app, log)
 

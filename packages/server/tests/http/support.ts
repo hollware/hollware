@@ -227,6 +227,8 @@ export interface BootOptions {
   readonly config?: HollwareConfig
   /** The static assets of the Worker, which hold the admin; none by default. */
   readonly assets?: Fetcher
+  /** More bindings and variables of the Worker, such as `ANALYTICS`. */
+  readonly bindings?: Partial<HollwareEnv>
 }
 
 /** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
@@ -239,6 +241,7 @@ export function boot(options: BootOptions = {}) {
   const environment: HollwareEnv = {
     ...envWith(db, 'publicUrl' in options ? options.publicUrl : PUBLIC_URL),
     ...(options.assets === undefined ? {} : { ASSETS: options.assets }),
+    ...options.bindings,
   }
   const { ctx, waited } = fakeContext()
 

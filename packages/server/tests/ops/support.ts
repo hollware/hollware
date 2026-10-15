@@ -1,6 +1,7 @@
 import {
   contracts,
   approveReview as approveReviewSpec,
+  contentStats as contentStatsSpec,
   createDraft as createDraftSpec,
   defineCollection,
   defineComponent,
@@ -260,6 +261,8 @@ export function agent(context: OperationContext) {
       call(listReviewsSpec, handlers.list_reviews, input, context),
     requestChanges: (input: z.input<typeof requestChangesSpec.input>) =>
       call(requestChangesSpec, handlers.request_changes, input, context),
+    contentStats: (input: z.input<typeof contentStatsSpec.input>) =>
+      call(contentStatsSpec, handlers.content_stats, input, context),
     createDraft: (input: z.input<typeof createDraftSpec.input>) =>
       call(createDraftSpec, handlers.create_draft, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),

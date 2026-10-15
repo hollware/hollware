@@ -46,6 +46,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 028 | Read tokens, and CORS for the read API                                                                      | Accepted              | [0028-read-tokens-and-cors-for-the-read-api.md](0028-read-tokens-and-cors-for-the-read-api.md)                                                 |
 | 029 | Full-text search in D1                                                                                      | Accepted              | [0029-full-text-search-in-d1.md](0029-full-text-search-in-d1.md)                                                                               |
 | 030 | Vectors as derived data                                                                                     | Accepted              | [0030-vectors-as-derived-data.md](0030-vectors-as-derived-data.md)                                                                             |
+| 031 | Page views without personal data                                                                            | Accepted              | [0031-page-views-without-personal-data.md](0031-page-views-without-personal-data.md)                                                           |
 
 ## Template
 
