@@ -7,10 +7,15 @@ export const theme: Extension = EditorView.theme({
   '.cm-content': { caretColor: 'var(--ui-text-highlighted)' },
   '.cm-gutters': {
     backgroundColor: 'var(--ui-bg-elevated)',
-    color: 'var(--ui-text-muted)',
+    // Toned, not muted: the line numbers pass a contrast of 4.5:1 on both themes.
+    color: 'var(--ui-text-toned)',
     borderRight: '1px solid var(--ui-border)',
   },
-  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--ui-bg-accented)' },
+  '.cm-activeLine': { backgroundColor: 'var(--ui-bg-accented)' },
+  '.cm-activeLineGutter': {
+    backgroundColor: 'var(--ui-bg-elevated)',
+    color: 'var(--ui-text-highlighted)',
+  },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
     backgroundColor: 'var(--ui-bg-accented)',
   },

@@ -17,18 +17,19 @@ deleted when v1.0 ships, together with this section.
 
 ## Commands
 
-| Command                                                                   | What it does                                                                      |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                   |
-| `vp check`                                                                | Format, lint and type-check the whole repo                                        |
-| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                       |
-| `vp run -r build`                                                         | Build every package                                                               |
-| `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
-| `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
-| `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types              |
-| `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
-| `vp run test:acceptance`                                                  | The acceptance suite of the stage, against the built playground and example site  |
-| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
+| Command                                                                   | What it does                                                                                        |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                                     |
+| `vp check`                                                                | Format, lint and type-check the whole repo                                                          |
+| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                                         |
+| `vp run -r build`                                                         | Build every package                                                                                 |
+| `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95                   |
+| `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup                   |
+| `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types                                |
+| `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions                     |
+| `vp run test:acceptance`                                                  | The acceptance suite of the stage, against the built playground and example site                    |
+| `vp run e2e:admin`                                                        | The admin in Chromium with a virtual passkey and axe (`pnpm exec playwright install chromium` once) |
+| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                            |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A
 global `vp` of another version breaks the Cloudflare plugin. Supervised servers are

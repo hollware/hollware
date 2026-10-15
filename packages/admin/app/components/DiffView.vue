@@ -24,8 +24,20 @@ function mount() {
   view?.destroy()
   if (host.value === null) return
   view = new MergeView({
-    a: { doc: props.original, extensions: readOnly },
-    b: { doc: props.modified, extensions: readOnly },
+    a: {
+      doc: props.original,
+      extensions: [
+        readOnly,
+        EditorView.contentAttributes.of({ 'aria-label': 'The Markdown that is live' }),
+      ],
+    },
+    b: {
+      doc: props.modified,
+      extensions: [
+        readOnly,
+        EditorView.contentAttributes.of({ 'aria-label': 'The Markdown asked for' }),
+      ],
+    },
     parent: host.value,
     collapseUnchanged: { margin: 3, minSize: 6 },
   })

@@ -62,8 +62,12 @@ export interface Project {
   query(sql: string): Promise<Row[][]>
   /** Writes a file beside the project that only its owner can read, and gives its path. */
   writeSecret(name: string, content: string): string
-  /** Serves the Worker with `wrangler dev`, and gives its URL: its public URL. */
-  start(): Promise<string>
+  /**
+   * Serves the Worker with `wrangler dev`, and gives its URL: its public URL. A test that needs a
+   * name and not an address there, as WebAuthn does, asks for `localhost`; the port is a free one
+   * unless it says which.
+   */
+  start(options?: { readonly hostname?: 'localhost'; readonly port?: number }): Promise<string>
   /** Stops what the project started and deletes its directories. */
   close(): Promise<void>
 }
@@ -120,10 +124,10 @@ export function createProject(): Project {
       chmodSync(path, 0o600)
       return path
     },
-    start: async () => {
-      const port = await freePort()
+    start: async (options = {}) => {
+      const port = options.port ?? (await freePort())
       const inspectorPort = await freePort()
-      const url = `http://127.0.0.1:${port}`
+      const url = `http://${options.hostname ?? '127.0.0.1'}:${port}`
       dev = startProcess({
         command: wrangler,
         args: [
@@ -145,7 +149,7 @@ export function createProject(): Project {
       })
       await waitForWorker({
         port,
-        host: `127.0.0.1:${port}`,
+        host: `${options.hostname ?? '127.0.0.1'}:${port}`,
         process: dev,
         timeoutMs: START_TIMEOUT_MS,
       })

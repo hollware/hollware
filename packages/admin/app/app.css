@@ -1,2 +1,16 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+/*
+ * Nuxt UI's colors in light mode are the 500 shades, and white text on most of them is under the
+ * 4.5:1 contrast of WCAG AA (axe's color-contrast). The admin uses the 800 shades instead, which
+ * pass, and keeps Nuxt UI's own shades in dark mode, where the text on them is dark.
+ */
+:root {
+  --ui-primary: var(--ui-color-primary-800);
+  --ui-secondary: var(--ui-color-secondary-800);
+  --ui-success: var(--ui-color-success-800);
+  --ui-info: var(--ui-color-info-800);
+  --ui-warning: var(--ui-color-warning-800);
+  --ui-error: var(--ui-color-error-800);
+}

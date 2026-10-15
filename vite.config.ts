@@ -69,7 +69,7 @@ export default defineConfig({
         test: {
           name: 'repo',
           include: ['scripts/**/*.test.ts', 'tests/**/*.test.ts'],
-          exclude: ['tests/acceptance/**', 'tests/conformance/**'],
+          exclude: ['tests/acceptance/**', 'tests/conformance/**', 'tests/e2e/**'],
           environment: 'node',
         },
       },
@@ -78,8 +78,8 @@ export default defineConfig({
   run: {
     cache: { scripts: false, tasks: true },
     tasks: {
-      // The pre-commit hook runs check:commit; CI runs check:push, and test:conformance and
-      // test:acceptance in jobs of their own.
+      // The pre-commit hook runs check:commit; CI runs check:push, and test:conformance,
+      // test:acceptance and e2e:admin in jobs of their own.
       'check:commit': { command: 'vp check', cache: false },
       // The Markdown pipeline's budget: the p95 CPU time of a write of the 2,027-word fixture.
       bench: {
@@ -94,6 +94,12 @@ export default defineConfig({
       // (PLAN.md lists what each criterion checks).
       'test:acceptance': {
         command: 'vp test run --config tests/acceptance/vitest.config.ts',
+        cache: false,
+      },
+      // The end-to-end tests of the admin (v0.3): Chromium with a virtual passkey against the
+      // built playground under `wrangler dev`, with axe on every page (tests/e2e).
+      'e2e:admin': {
+        command: 'playwright test -c tests/e2e/playwright.config.ts',
         cache: false,
       },
       // The MCP conformance run (ADR-022): the tests of its runner, then the suite against

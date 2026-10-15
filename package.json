@@ -8,10 +8,12 @@
     "version-packages": "changeset version && pnpm install --lockfile-only && vp fmt"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@changesets/changelog-github": "catalog:",
     "@changesets/cli": "catalog:",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/conformance": "catalog:",
+    "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "drizzle-orm": "catalog:",
     "pkg-pr-new": "catalog:",

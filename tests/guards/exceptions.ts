@@ -98,7 +98,7 @@ export interface TestRunnerList {
  * fails: an exemption must not hide tests that nothing runs.
  */
 export const OTHER_TEST_RUNNERS: TestRunnerList = {
-  max: 2,
+  max: 3,
   entries: [
     {
       dir: 'tests/acceptance/',
@@ -109,6 +109,12 @@ export const OTHER_TEST_RUNNERS: TestRunnerList = {
       dir: 'tests/conformance/',
       task: 'test:conformance',
       reason: 'The MCP conformance suite runs with `vp run test:conformance` (arrives in v0.1).',
+    },
+    {
+      dir: 'tests/e2e/',
+      task: 'e2e:admin',
+      reason:
+        'The admin runs in Chromium under Playwright, with `vp run e2e:admin` (arrives in v0.3).',
     },
   ],
 }
