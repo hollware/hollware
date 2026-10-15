@@ -138,6 +138,8 @@ export interface StoredReview {
   /** The warnings the person who asked acknowledged. */
   readonly acknowledged: readonly AcknowledgedWarning[]
   readonly requestedBy: string
+  /** The name of the user who asked, or `null` when they gave none. */
+  readonly requestedByName: string | null
   readonly requestedAt: string
   readonly decidedBy: string | null
   readonly decidedAt: string | null

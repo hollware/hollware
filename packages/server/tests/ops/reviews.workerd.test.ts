@@ -81,6 +81,7 @@ describe('publish without content:publish', () => {
         revision: (await entryColumns(world.db, en.id))?.head_rev,
         status: 'pending',
         requestedBy: world.tenant.userId,
+        requestedByName: 'Owner',
         requestedAt: T1,
         decidedBy: null,
         decidedAt: null,

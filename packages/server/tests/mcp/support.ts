@@ -179,6 +179,7 @@ const REVIEW = {
   revision: REVISION_ID,
   status: 'pending',
   requestedBy: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+  requestedByName: 'Ada',
   requestedAt: '2026-10-12T12:00:00.000Z',
   decidedBy: null,
   decidedAt: null,

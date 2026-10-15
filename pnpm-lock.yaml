@@ -179,6 +179,9 @@ catalogs:
     '@cloudflare/workers-oauth-provider':
       specifier: 1.2.3
       version: 1.2.3
+    '@codemirror/commands':
+      specifier: 6.11.1
+      version: 6.11.1
     '@codemirror/lang-markdown':
       specifier: 6.5.2
       version: 6.5.2
@@ -200,6 +203,15 @@ catalogs:
     '@comark/vue':
       specifier: 0.7.0
       version: 0.7.0
+    '@iconify-json/lucide':
+      specifier: 1.2.143
+      version: 1.2.143
+    '@iconify/utils':
+      specifier: 3.1.7
+      version: 3.1.7
+    '@iconify/vue':
+      specifier: 5.0.3
+      version: 5.0.3
     '@modelcontextprotocol/client':
       specifier: 2.3.1
       version: 2.3.1
@@ -390,6 +402,9 @@ importers:
 
   packages/admin:
     devDependencies:
+      '@codemirror/commands':
+        specifier: 'catalog:'
+        version: 6.11.1
       '@codemirror/lang-markdown':
         specifier: 'catalog:'
         version: 6.5.2
@@ -411,6 +426,15 @@ importers:
       '@hollware/core':
         specifier: workspace:*
         version: link:../core
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.143
+      '@iconify/utils':
+        specifier: 'catalog:'
+        version: 3.1.7
+      '@iconify/vue':
+        specifier: 'catalog:'
+        version: 5.0.3(vue@3.5.44(typescript@7.0.2))
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(9b783ecaea1271facc404a5ccd06d5c4)
@@ -444,6 +468,9 @@ importers:
       vue-router:
         specifier: 'catalog:'
         version: 5.4.0(@types/node@24.19.2)(@vue/compiler-sfc@3.5.44)(esbuild@0.27.7)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(vue@3.5.44(typescript@7.0.2))(yaml@2.9.1)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
 
   packages/cli:
     dependencies:
@@ -1554,6 +1581,9 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4 || ^5.0.0-0
+
+  '@iconify-json/lucide@1.2.143':
+    resolution: {integrity: sha512-YSggiBVmSY5IvLoKS5pUBoNYkon5g5bac0/JvYCIaFbhTfsTfkIHG2nCXWSk03tu5C4IEmyZ4qwfwbO9CXqLag==}
 
   '@iconify/collections@1.0.750':
     resolution: {integrity: sha512-dsjsQLm/rHsAxxMg0AFHqqCBLoYPJhqclRmB0qzlfHG2ahnipentuPW/auVwIDtvHPL9lAYTDZ9HPRFS9wkgQg==}
@@ -5848,6 +5878,10 @@ snapshots:
   '@hono/node-server@2.1.4(hono@4.13.13)':
     dependencies:
       hono: 4.13.13
+
+  '@iconify-json/lucide@1.2.143':
+    dependencies:
+      '@iconify/types': 2.0.0
 
   '@iconify/collections@1.0.750':
     dependencies:

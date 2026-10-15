@@ -8,3 +8,6 @@ declare module '*.vue' {
 
 // Styles are imported for their effect: Vite puts them in the page.
 declare module '*.css'
+
+// The Lucide icons of the admin, which vite.app.config.ts finds and defines.
+declare const __HOLLWARE_ICONS__: Parameters<typeof import('@iconify/vue').addCollection>[0] | null

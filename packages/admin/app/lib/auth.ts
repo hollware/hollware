@@ -1,0 +1,169 @@
+import { challengeOf, randomValue } from './pkce.ts'
+
+/**
+ * How the admin signs in (ADR-026): it is the server's own OAuth client, so it sends the person to
+ * `/authorize` with PKCE, and the server, which knows the person by the session of their passkey,
+ * sends them straight back with a code. The tokens live in memory only; the verifier and the state
+ * wait in session storage across the redirect, and are dropped once they are used.
+ */
+
+/** What `/admin/config.json` says about the admin's client. */
+export interface AdminConfig {
+  readonly issuer: string
+  readonly clientId: string
+  readonly redirectUri: string
+  readonly resource: string
+  readonly scope: string
+}
+
+interface Tokens {
+  readonly access: string
+  readonly refresh: string | null
+  /** When the access token expires, in milliseconds since the epoch. */
+  readonly expiresAt: number
+}
+
+/** What waits in session storage while the person is away at `/authorize`. */
+interface Pending {
+  readonly verifier: string
+  readonly state: string
+  /** Where to go back to in the admin once signed in. */
+  readonly returnTo: string
+}
+
+export interface AuthDeps {
+  readonly fetch: typeof fetch
+  /** Leaves the page for another URL. */
+  readonly navigate: (url: string) => void
+  readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+  readonly now: () => number
+}
+
+const PENDING = 'hollware:sign-in'
+
+/** An access token is renewed when it has less than this left. */
+const MARGIN_MS = 60_000
+
+export class SignInError extends Error {
+  override readonly name = 'SignInError'
+}
+
+export function createAuth(deps: AuthDeps) {
+  let config: Promise<AdminConfig> | null = null
+  let tokens: Tokens | null = null
+
+  const loadConfig = (): Promise<AdminConfig> => {
+    config ??= deps.fetch('/admin/config.json').then(async (response) => {
+      if (!response.ok)
+        throw new SignInError(`The admin could not read its settings (${response.status}).`)
+      return (await response.json()) as AdminConfig
+    })
+    return config
+  }
+
+  const keep = (answer: {
+    access_token: string
+    refresh_token?: string
+    expires_in?: number
+  }): string => {
+    tokens = {
+      access: answer.access_token,
+      refresh: answer.refresh_token ?? null,
+      expiresAt: deps.now() + (answer.expires_in ?? 3600) * 1000,
+    }
+    return tokens.access
+  }
+
+  const exchange = async (body: Record<string, string>) => {
+    const settings = await loadConfig()
+    const response = await deps.fetch('/oauth/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        ...body,
+        client_id: settings.clientId,
+        resource: settings.resource,
+      }),
+    })
+    if (!response.ok) return null
+    return (await response.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+  }
+
+  return {
+    /** Sends the person to sign in, and back to `returnTo` in the admin afterwards. */
+    async signIn(returnTo: string): Promise<void> {
+      const settings = await loadConfig()
+      const pending: Pending = { verifier: randomValue(), state: randomValue(16), returnTo }
+      deps.storage.setItem(PENDING, JSON.stringify(pending))
+      const query = new URLSearchParams({
+        response_type: 'code',
+        client_id: settings.clientId,
+        redirect_uri: settings.redirectUri,
+        scope: settings.scope,
+        state: pending.state,
+        code_challenge: await challengeOf(pending.verifier),
+        code_challenge_method: 'S256',
+        resource: settings.resource,
+      })
+      deps.navigate(`/authorize?${query.toString()}`)
+    },
+
+    /**
+     * Finishes the sign-in on the callback: checks the state, trades the code for tokens, and
+     * answers where to go back to. The pending sign-in is used once.
+     */
+    async complete(callback: URL): Promise<string> {
+      const stored = deps.storage.getItem(PENDING)
+      deps.storage.removeItem(PENDING)
+      const pending = stored === null ? null : (JSON.parse(stored) as Pending)
+      const code = callback.searchParams.get('code')
+      if (
+        pending === null ||
+        code === null ||
+        callback.searchParams.get('state') !== pending.state
+      ) {
+        throw new SignInError(
+          callback.searchParams.get('error_description') ??
+            'The sign-in did not come back as it left. Sign in again.',
+        )
+      }
+      const settings = await loadConfig()
+      const answer = await exchange({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: settings.redirectUri,
+        code_verifier: pending.verifier,
+      })
+      if (answer === null) throw new SignInError('The sign-in was refused. Sign in again.')
+      keep(answer)
+      return pending.returnTo
+    },
+
+    /** An access token that is good for a minute more, renewed if need be, or `null`. */
+    async token(): Promise<string | null> {
+      if (tokens === null) return null
+      if (tokens.expiresAt - deps.now() > MARGIN_MS) return tokens.access
+      if (tokens.refresh === null) {
+        tokens = null
+        return null
+      }
+      const answer = await exchange({ grant_type: 'refresh_token', refresh_token: tokens.refresh })
+      if (answer === null) {
+        tokens = null
+        return null
+      }
+      return keep(answer)
+    },
+
+    /** Forgets the tokens: the next call signs in again. */
+    forget(): void {
+      tokens = null
+    },
+  }
+}
+
+export type Auth = ReturnType<typeof createAuth>

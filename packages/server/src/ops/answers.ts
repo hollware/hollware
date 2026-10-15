@@ -31,6 +31,7 @@ export function reviewView(review: StoredReview): ReviewOutput {
     revision: review.revisionId,
     status: review.status,
     requestedBy: review.requestedBy,
+    requestedByName: review.requestedByName,
     requestedAt: review.requestedAt,
     decidedBy: review.decidedBy,
     decidedAt: review.decidedAt,

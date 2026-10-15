@@ -409,6 +409,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
                 revision: revisionId(asked.entry),
                 status: 'pending',
                 requestedBy: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+                requestedByName: null,
                 requestedAt: STUB_TIME,
                 decidedBy: null,
                 decidedAt: null,

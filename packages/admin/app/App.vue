@@ -1,9 +1,30 @@
 <script setup lang="ts">
-import UApp from '@nuxt/ui/components/App.vue'
+const links = [
+  { label: 'Entries', to: '/' },
+  { label: 'Reviews', to: '/reviews' },
+]
 </script>
 
 <template>
   <UApp>
-    <RouterView />
+    <div class="min-h-screen">
+      <header class="border-b border-default">
+        <nav class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3" aria-label="Main">
+          <span class="font-semibold">Hollware</span>
+          <RouterLink
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            class="text-sm text-muted hover:text-highlighted"
+            active-class="text-highlighted font-medium"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </nav>
+      </header>
+      <main class="mx-auto max-w-6xl px-4 py-6">
+        <RouterView />
+      </main>
+    </div>
   </UApp>
 </template>

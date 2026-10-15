@@ -137,6 +137,10 @@ export const review = z.object({
     'pending until someone decides; cancelled when a new revision of the entry is saved.',
   ),
   requestedBy: z.string().describe('The user who asked.'),
+  requestedByName: z
+    .string()
+    .nullable()
+    .describe('The name of the user who asked, if they gave one.'),
   requestedAt: z.string(),
   decidedBy: z.string().nullable(),
   decidedAt: z.string().nullable(),

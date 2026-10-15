@@ -1,10 +1,10 @@
 import { newId } from '@hollware/core'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm'
 import type { Actor, Clock, ReviewStatus, StoredReview, WriteRefusal } from '../ports.ts'
 import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { parseAcknowledged } from './schedules.ts'
-import { entries, reviews } from './schema.ts'
+import { entries, reviews, users } from './schema.ts'
 import { valuesOf } from './statements.ts'
 
 /**
@@ -23,7 +23,12 @@ function statusOf(value: string): ReviewStatus {
   return status
 }
 
-function toReview(row: typeof reviews.$inferSelect): StoredReview {
+/** The columns of a review, and the name of who asked for it. */
+const COLUMNS = { ...getTableColumns(reviews), requestedByName: users.name }
+
+function toReview(
+  row: typeof reviews.$inferSelect & { requestedByName: string | null },
+): StoredReview {
   return {
     id: row.id,
     entryId: row.entryId,
@@ -31,6 +36,7 @@ function toReview(row: typeof reviews.$inferSelect): StoredReview {
     status: statusOf(row.status),
     acknowledged: parseAcknowledged(row.acknowledged),
     requestedBy: row.requestedBy,
+    requestedByName: row.requestedByName,
     requestedAt: row.createdAt,
     decidedBy: row.decidedBy,
     decidedAt: row.decidedAt,
@@ -93,8 +99,9 @@ export function approvePendingReview(
 
 async function pendingOf(db: Db, site: string, entryId: string): Promise<StoredReview | null> {
   const [row] = await db
-    .select()
+    .select(COLUMNS)
     .from(reviews)
+    .innerJoin(users, eq(users.id, reviews.requestedBy))
     .where(
       and(eq(reviews.siteId, site), eq(reviews.entryId, entryId), eq(reviews.status, 'pending')),
     )
@@ -157,8 +164,9 @@ export async function requestReview(
 
 export async function findReview(db: Db, site: string, id: string): Promise<StoredReview | null> {
   const [row] = await db
-    .select()
+    .select(COLUMNS)
     .from(reviews)
+    .innerJoin(users, eq(users.id, reviews.requestedBy))
     .where(and(eq(reviews.siteId, site), eq(reviews.id, id)))
     .limit(1)
   return row === undefined ? null : toReview(row)
@@ -170,8 +178,9 @@ export async function listReviews(
   query: { readonly status: ReviewStatus; readonly limit: number },
 ): Promise<readonly StoredReview[]> {
   const rows = await db
-    .select()
+    .select(COLUMNS)
     .from(reviews)
+    .innerJoin(users, eq(users.id, reviews.requestedBy))
     .where(and(eq(reviews.siteId, site), eq(reviews.status, query.status)))
     .orderBy(desc(reviews.createdAt), desc(reviews.id))
     .limit(query.limit)
@@ -198,8 +207,8 @@ export async function requestChanges(
       updatedAt: now,
     })
     .where(and(eq(reviews.siteId, site), eq(reviews.id, write.id), eq(reviews.status, 'pending')))
-    .returning()
-  if (row !== undefined) return { outcome: 'changes_requested', review: toReview(row) }
+    .returning({ id: reviews.id })
   const review = await findReview(db, site, write.id)
+  if (row !== undefined && review !== null) return { outcome: 'changes_requested', review }
   return review === null ? { outcome: 'not_found' } : { outcome: 'not_pending', review }
 }
