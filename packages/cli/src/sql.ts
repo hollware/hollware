@@ -131,6 +131,8 @@ export function sitesQuery(): string {
 
 export interface NewToken {
   id: string
+  /** A read token (`hw_read_`); a personal token when absent, the column's default. */
+  kind?: 'read'
   site: string
   userId: string
   label: string
@@ -143,7 +145,8 @@ export interface NewToken {
 
 /** The row of a new token. */
 export function insertToken(token: NewToken): string {
-  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES (${quote(token.id)}, ${quote(token.site)}, ${quote(token.userId)}, ${quote(token.label)}, ${quote(token.hash)}, ${quote(JSON.stringify(token.scopes))}, ${quote(token.expiresAt)}, ${quote(token.now)}, ${quote(token.now)});`
+  const kind = token.kind === undefined ? ['', ''] : [', kind', `, ${quote(token.kind)}`]
+  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at${kind[0]}) VALUES (${quote(token.id)}, ${quote(token.site)}, ${quote(token.userId)}, ${quote(token.label)}, ${quote(token.hash)}, ${quote(JSON.stringify(token.scopes))}, ${quote(token.expiresAt)}, ${quote(token.now)}, ${quote(token.now)}${kind[1]});`
 }
 
 export interface FirstSite {

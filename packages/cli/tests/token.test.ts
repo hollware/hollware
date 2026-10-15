@@ -3,6 +3,8 @@
 //   statements or their arguments change (the context query, the INSERT, its columns), the hash
 //   stored is not the SHA-256 of the printed token, the token is stored, the default scopes or
 //   the 90 days change, or the token is printed more than once.
+// - "create makes a read token with --read …": `--read` stops making an `hw_read_` token, stored
+//   with the kind read and content:read alone, or lets --scopes widen it.
 // - "create takes the scopes, the expiry and the site from the flags" rows: `--scopes`,
 //   `--expires-in-days` or `--site` stop reaching the INSERT, the scopes are not kept in the
 //   order given without repeats, or "1 day" is written "1 days".
@@ -105,6 +107,38 @@ describe('hollware token create', () => {
       ].join('\n'),
     ])
     expect(out.join('\n').split(SECRET)).toHaveLength(2)
+  })
+
+  it('makes a read token with --read: hw_read_, content:read and the kind read, printed once', async () => {
+    const wrangler = fakeWrangler(...createAnswers())
+    const project = setup(wrangler)
+    const secret = `hw_read_${'2'.repeat(52)}`
+
+    const { code, out, err } = await project.run(['token', 'create', '--label', 'site', '--read'])
+    const refused = await project.run([
+      'token',
+      'create',
+      '--label',
+      'site',
+      '--read',
+      '--scopes',
+      'content:write',
+    ])
+
+    expect(err).toEqual([])
+    expect(code).toBe(0)
+    expect(wrangler.calls[1]?.args[6]).toBe(
+      `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at, kind) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'site', '269a65ac0cce4966bd7249c4d1c7ed1630d16df2900df4a04839632e04fd8158', '["content:read"]', '2027-01-10T12:00:00.000Z', '${NOW}', '${NOW}', 'read');`,
+    )
+    expect(out[0]?.split('\n')[0]).toBe(`Created read token ${TOKEN_ID} for the site "blog".`)
+    expect(out.join('\n').split(secret)).toHaveLength(2)
+    expect([refused.code, refused.err]).toEqual([
+      1,
+      [
+        'hollware token create: --read and --scopes cannot be used together: a read token only reads. Run "hollware token create --help" for the options.',
+      ],
+    ])
+    expect(wrangler.calls).toHaveLength(2)
   })
 
   it.each([

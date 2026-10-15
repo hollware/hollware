@@ -81,6 +81,13 @@ export const tokens = sqliteTable(
     userId: text('user_id').notNull(),
     label: text('label').notNull(),
     hash: text('hash').notNull(),
+    /**
+     * `personal` (`hw_pat_`) or `read` (`hw_read_`), which reads the published content of the
+     * site over the read API and nothing else. Its CHECK is the column's own (migration 0007).
+     */
+    kind: text('kind', { enum: ['personal', 'read'] })
+      .notNull()
+      .default('personal'),
     /** A JSON array of scopes. */
     scopes: text('scopes').notNull(),
     expiresAt: text('expires_at'),

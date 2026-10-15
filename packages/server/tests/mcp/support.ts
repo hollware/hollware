@@ -39,6 +39,7 @@ export const SITE: ResolvedSite = {
   styleGuide: null,
   collections: new Map(),
   url: null,
+  cors: { origins: [] },
   events: { webhooks: [], indexNow: null },
 }
 

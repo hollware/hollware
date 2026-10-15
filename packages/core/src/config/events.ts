@@ -28,6 +28,29 @@ export function readSiteUrl(path: string, raw: unknown, problems: Problems): str
   return url.origin
 }
 
+/** The origins of a site's pages that may read its published content from the browser. */
+export function readCors(
+  path: string,
+  raw: unknown,
+  problems: Problems,
+): { readonly origins: readonly string[] } {
+  if (raw === undefined) return { origins: [] }
+  if (!isRecord(raw) || !Array.isArray(raw['origins'])) {
+    problems.add(
+      path,
+      wrongType(raw, 'an object with origins'),
+      'Declare it as { origins: ["https://example.com"] }, or remove it.',
+    )
+    return { origins: [] }
+  }
+  const origins: string[] = []
+  for (const [index, origin] of raw['origins'].entries()) {
+    const read = readSiteUrl(itemPath(keyPath(path, 'origins'), index), origin, problems)
+    if (read !== null && !origins.includes(read)) origins.push(read)
+  }
+  return { origins }
+}
+
 function readBindingName(path: string, raw: unknown, problems: Problems): string | null {
   if (typeof raw === 'string' && BINDING_NAME.test(raw)) return raw
   problems.add(

@@ -227,6 +227,7 @@ describe('hollware on a real local D1', () => {
         last_used_at: null,
         created_at: NOW,
         updated_at: NOW,
+        kind: 'personal',
       },
     ])
     expect(tokens?.[0]?.hash).not.toBe(token)
@@ -272,6 +273,7 @@ describe('hollware on a real local D1', () => {
         last_used_at: null,
         created_at: NOW,
         updated_at: NOW,
+        kind: 'personal',
       })
     }
     // The statement was one statement: nothing was dropped or injected, and three tokens exist.

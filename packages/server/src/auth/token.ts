@@ -1,4 +1,10 @@
-import { hashPersonalToken, isPersonalToken, isScope, type Scope } from '@hollware/core'
+import {
+  hashPersonalToken,
+  isPersonalToken,
+  isReadToken,
+  isScope,
+  type Scope,
+} from '@hollware/core'
 import { effectiveScopes } from './roles.ts'
 import type { Principal } from './types.ts'
 
@@ -8,8 +14,8 @@ import type { Principal } from './types.ts'
  */
 export type TokenRejection = 'unknown' | 'expired' | 'revoked'
 
-/** The principal of a personal token. */
-export type TokenPrincipal = Extract<Principal, { readonly kind: 'token' }>
+/** The principal of a personal token or of a read token. */
+export type TokenPrincipal = Extract<Principal, { readonly kind: 'token' | 'read' }>
 
 export type TokenCheck =
   | {
@@ -38,7 +44,7 @@ const TOUCH_INTERVAL_MS = 60 * 60 * 1000
  * deployment. A user who is no member of the site has no role there, and the token is unknown.
  */
 const LOOKUP = `SELECT t.id AS token_id, t.site_id AS site_id, t.user_id AS user_id,
-    t.scopes AS scopes, t.expires_at AS expires_at, t.revoked_at AS revoked_at,
+    t.kind AS kind, t.scopes AS scopes, t.expires_at AS expires_at, t.revoked_at AS revoked_at,
     t.last_used_at AS last_used_at, m.role AS role
   FROM tokens AS t JOIN members AS m ON m.user_id = t.user_id AND m.site_id = t.site_id
   WHERE t.hash = ?1`
@@ -47,6 +53,7 @@ interface TokenRow {
   readonly token_id: string
   readonly site_id: string
   readonly user_id: string
+  readonly kind: string
   readonly scopes: string
   readonly expires_at: string | null
   readonly revoked_at: string | null
@@ -111,9 +118,9 @@ export async function recordTokenUse(
 }
 
 /**
- * Authenticates a personal token (ADR-019). A string without the shape of a token is `unknown`
- * without a query. Otherwise one query finds the token by the hash of the whole string, in this
- * site only, together with the role of its user; the answer is, in this order:
+ * Authenticates a personal token (ADR-019) or a read token. A string without the shape of either
+ * is `unknown` without a query. Otherwise one query finds the token by the hash of the whole
+ * string, together with the role of its user in the token's site; the answer is, in this order:
  *
  * - `unknown`: no such token in the sites of this deployment. A token of another site is the same as
  *   no token, and nothing says it exists elsewhere.
@@ -133,24 +140,27 @@ export async function checkPersonalToken(
   token: string,
   options: TokenCheckOptions,
 ): Promise<TokenCheck> {
-  if (!isPersonalToken(token)) return { ok: false, reason: 'unknown' }
+  const kind = isPersonalToken(token) ? 'personal' : isReadToken(token) ? 'read' : null
+  if (kind === null) return { ok: false, reason: 'unknown' }
   const row = await db
     .prepare(LOOKUP)
     .bind(await hashPersonalToken(token))
     .first<TokenRow>()
-  if (row === null || !options.sites.has(row.site_id)) return { ok: false, reason: 'unknown' }
+  // A row of the other kind is no token of this one: the prefix and the row must agree.
+  if (row === null || row.kind !== kind || !options.sites.has(row.site_id)) {
+    return { ok: false, reason: 'unknown' }
+  }
   if (row.revoked_at !== null) return { ok: false, reason: 'revoked' }
   if (hasExpired(row.expires_at, options.now)) return { ok: false, reason: 'expired' }
   const recent = row.last_used_at !== null && row.last_used_at >= anHourBefore(options.now)
+  const scopes = effectiveScopes(row.role, parseTokenScopes(row.scopes))
+  const identity = { userId: row.user_id, tokenId: row.token_id, site: row.site_id }
   return {
     ok: true,
-    principal: {
-      kind: 'token',
-      userId: row.user_id,
-      tokenId: row.token_id,
-      site: row.site_id,
-      scopes: effectiveScopes(row.role, parseTokenScopes(row.scopes)),
-    },
+    principal:
+      kind === 'read'
+        ? { kind: 'read', ...identity, scopes: scopes.filter((scope) => scope === 'content:read') }
+        : { kind: 'token', ...identity, scopes },
     touch: recent ? null : recordTokenUse(db, { id: row.token_id, site: row.site_id }, options.now),
   }
 }

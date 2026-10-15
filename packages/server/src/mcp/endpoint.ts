@@ -42,7 +42,7 @@ function authInfoOf(principal: Principal, resourceMetadataUrl: string | null): A
   return {
     token: '',
     clientId:
-      principal.kind === 'token'
+      principal.kind === 'token' || principal.kind === 'read'
         ? principal.tokenId
         : principal.kind === 'oauth'
           ? principal.clientId

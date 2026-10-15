@@ -1,5 +1,6 @@
 import {
   generatePersonalToken,
+  generateReadToken,
   hashPersonalToken,
   isScope,
   newId,
@@ -127,6 +128,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       const rows = await connect(c.env.DB)
         .select({
           id: tokens.id,
+          kind: tokens.kind,
           label: tokens.label,
           scopes: tokens.scopes,
           user: users.name,
@@ -154,9 +156,26 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           'Say what the token is for.',
         )
       }
-      const asked = Array.isArray(input['scopes'])
-        ? input['scopes'].filter((s) => typeof s === 'string')
-        : []
+      const asKind = input['kind']
+      const kind: 'personal' | 'read' | null =
+        asKind === undefined || asKind === 'personal'
+          ? 'personal'
+          : asKind === 'read'
+            ? 'read'
+            : null
+      if (kind === null) {
+        return refused(
+          'kind is "personal" or "read".',
+          'Leave it out for a personal token; "read" makes a token that reads published content.',
+        )
+      }
+      // A read token reads, whatever it asks for.
+      const asked =
+        kind === 'read'
+          ? ['content:read']
+          : Array.isArray(input['scopes'])
+            ? input['scopes'].filter((s) => typeof s === 'string')
+            : []
       // A token gets no more than the person who makes it may do.
       const scopes = person.scopes.filter((scope) => asked.includes(scope))
       if (scopes.length === 0) {
@@ -172,9 +191,10 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           'Leave it out for 90 days.',
         )
       const now = options.clock.now()
-      const secret = generatePersonalToken()
+      const secret = kind === 'read' ? generateReadToken() : generatePersonalToken()
       const row = {
         id: newId('tok'),
+        kind,
         siteId: person.site,
         userId: person.userId,
         label,
@@ -187,7 +207,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         updatedAt: now.toISOString(),
       }
       await connect(c.env.DB).insert(tokens).values(row)
-      return json({ id: row.id, label, scopes, expiresAt: row.expiresAt, secret }, 201)
+      return json({ id: row.id, kind, label, scopes, expiresAt: row.expiresAt, secret }, 201)
     }),
   )
 

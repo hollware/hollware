@@ -6,6 +6,7 @@ import { api } from '../lib/session.ts'
 
 interface Token {
   id: string
+  kind: 'personal' | 'read'
   label: string
   scopes: string[]
   user: string | null
@@ -23,6 +24,8 @@ const failure = ref<string | null>(null)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
 const days = ref(90)
+/** A read token reads published content over the read API, and nothing else. */
+const read = ref(false)
 /** The secret of the token just made: shown once, never again. */
 const secret = ref<string | null>(null)
 const busy = ref(false)
@@ -51,7 +54,7 @@ async function make() {
   try {
     const made = await api.admin<{ secret: string }>('tokens', {
       label: label.value,
-      scopes: chosen.value,
+      ...(read.value ? { kind: 'read' } : { scopes: chosen.value }),
       expiresInDays: days.value,
     })
     secret.value = made.secret
@@ -83,7 +86,7 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-xl font-semibold">Personal tokens</h1>
+    <h1 class="text-xl font-semibold">Tokens</h1>
     <UAlert
       v-if="failure !== null"
       color="warning"
@@ -98,7 +101,12 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
         <UFormField label="Days">
           <UInput v-model.number="days" type="number" :min="1" :max="365" class="w-24" />
         </UFormField>
-        <fieldset class="flex flex-wrap gap-3">
+        <UCheckbox
+          v-model="read"
+          label="Read token"
+          description="Reads published content over the read API, and nothing else"
+        />
+        <fieldset v-if="!read" class="flex flex-wrap gap-3">
           <legend class="sr-only">Scopes</legend>
           <UCheckbox
             v-for="scope in SCOPES"
@@ -124,6 +132,7 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
         <thead class="text-left text-muted">
           <tr>
             <th class="py-2">Label</th>
+            <th>Kind</th>
             <th>Person</th>
             <th>Scopes</th>
             <th>Expires</th>
@@ -134,6 +143,7 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
         <tbody>
           <tr v-for="token in tokens" :key="token.id" class="border-t border-default">
             <td class="py-2 font-medium">{{ token.label }}</td>
+            <td>{{ token.kind }}</td>
             <td>{{ token.user ?? '—' }}</td>
             <td class="font-mono text-xs">{{ token.scopes.join(' ') }}</td>
             <td>{{ day(token.expiresAt) }}</td>

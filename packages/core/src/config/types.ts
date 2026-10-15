@@ -73,6 +73,11 @@ export interface SiteDefinition {
   readonly styleGuide?: string
   /** The public origin of the site, such as `https://example.com`: entries' URLs start with it. */
   readonly url?: string
+  /**
+   * The origins whose pages may read the published content of the site from the browser, over
+   * the read API with a read token (`hw_read_`). None by default.
+   */
+  readonly cors?: { readonly origins: readonly string[] }
   /** Who hears about publications (ADR-025). */
   readonly events?: {
     /** Each gets every event, signed with HMAC-SHA256 by the Worker secret named in `secret`. */
@@ -131,6 +136,8 @@ export interface ResolvedSite {
   readonly collections: ReadonlyMap<string, ResolvedCollection>
   /** The public origin of the site, or `null`. */
   readonly url: string | null
+  /** The origins that may call the read API from a page, each as `URL.origin` gives it. */
+  readonly cors: { readonly origins: readonly string[] }
   readonly events: ResolvedEvents
 }
 
@@ -147,7 +154,7 @@ export interface ResolvedEvents {
   readonly indexNow: { readonly key: string } | null
 }
 
-/** The config once resolved, at the start of the Worker. v0.1 holds exactly one site. */
+/** The config once resolved, at the start of the Worker: one site or more (ADR-027). */
 export interface ResolvedConfig {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly auth: ResolvedAuth

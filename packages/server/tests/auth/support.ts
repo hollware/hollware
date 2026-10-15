@@ -1,4 +1,4 @@
-import { generatePersonalToken, hashPersonalToken, newId } from '@hollware/core'
+import { generatePersonalToken, generateReadToken, hashPersonalToken, newId } from '@hollware/core'
 
 /**
  * Rows for the auth tests, written straight into D1 with SQL: the site, a user with a role, and a
@@ -16,6 +16,8 @@ export interface SeedTokenOptions {
   readonly lastUsedAt?: string | null
   /** What is stored under the hash of this string, instead of a real personal token. */
   readonly secret?: string
+  /** A read token (`hw_read_`, kind `read`, `content:read` unless `scopes` says otherwise). */
+  readonly read?: boolean
 }
 
 export interface SeededToken {
@@ -44,7 +46,8 @@ export async function seedToken(
 ): Promise<SeededToken> {
   const userId = newId('usr')
   const tokenId = newId('tok')
-  const token = options.secret ?? generatePersonalToken()
+  const read = options.read === true
+  const token = options.secret ?? (read ? generateReadToken() : generatePersonalToken())
   await db.batch([
     db
       .prepare('INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)')
@@ -68,8 +71,8 @@ export async function seedToken(
     db
       .prepare(
         `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, revoked_at,
-          last_used_at, created_at, updated_at)
-          VALUES (?1, ?2, ?3, 'test', ?4, ?5, ?6, ?7, ?8, ?9, ?9)`,
+          last_used_at, created_at, updated_at, kind)
+          VALUES (?1, ?2, ?3, 'test', ?4, ?5, ?6, ?7, ?8, ?9, ?9, ?10)`,
       )
       .bind(
         tokenId,
@@ -77,12 +80,16 @@ export async function seedToken(
         userId,
         await hashPersonalToken(token),
         JSON.stringify(
-          options.scopes ?? ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+          options.scopes ??
+            (read
+              ? ['content:read']
+              : ['content:read', 'content:write', 'content:publish', 'schema:admin']),
         ),
         options.expiresAt ?? null,
         options.revokedAt ?? null,
         options.lastUsedAt ?? null,
         CREATED,
+        read ? 'read' : 'personal',
       ),
   ])
   return { site, userId, tokenId, token }

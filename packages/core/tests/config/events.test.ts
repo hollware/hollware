@@ -7,7 +7,7 @@ import { configWith, problemsOf } from './support.ts'
 // its events (ADR-025) as webhooks with a name, an https URL and the name of the Worker secret that
 // signs them, and IndexNow with the name of the secret of its key; or stops reporting, at its path,
 // a url that is no origin, a webhook that breaks one of those rules or repeats a name, or IndexNow
-// on a site without a url.
+// on a site without a url; or stops reading `cors.origins` as a list of origins, each once.
 
 const site = (config: unknown) => resolveConfig(config).sites.get('demo')
 const paths = (config: unknown) => problemsOf(config).map((problem) => problem.path)
@@ -72,6 +72,30 @@ describe('the url and the events of a site', () => {
       'IndexNow without a url',
       { events: { indexNow: { key: 'KEY' } } },
       ['sites.demo.events.indexNow'],
+    ],
+  ])('reports %s at its path', (_name, overrides, expected) => {
+    expect(paths(configWith(overrides))).toEqual(expected)
+  })
+})
+
+describe('the origins of a site that may read it from a page', () => {
+  it('reads each origin as URL.origin gives it, once, and none by default', () => {
+    const resolved = site(
+      configWith({
+        cors: { origins: ['https://example.com/', 'http://localhost:3000', 'https://example.com'] },
+      }),
+    )
+
+    expect(resolved?.cors).toEqual({ origins: ['https://example.com', 'http://localhost:3000'] })
+    expect(site(configWith())?.cors).toEqual({ origins: [] })
+  })
+
+  it.each([
+    ['origins that are no list', { cors: { origins: 'https://example.com' } }, ['sites.demo.cors']],
+    [
+      'an origin with a path, and one that is no URL',
+      { cors: { origins: ['https://example.com/app', 'example.com'] } },
+      ['sites.demo.cors.origins[0]', 'sites.demo.cors.origins[1]'],
     ],
   ])('reports %s at its path', (_name, overrides, expected) => {
     expect(paths(configWith(overrides))).toEqual(expected)

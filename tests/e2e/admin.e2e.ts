@@ -82,7 +82,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
-    ['/admin/tokens', 'Personal tokens'],
+    ['/admin/tokens', 'Tokens'],
     ['/signin', 'Sign in'],
   ] as const) {
     await owner.goto(path)

@@ -10,7 +10,8 @@ import { boot, NOW, OTHER_SITE_KEY, SITE_KEY, type Booted } from './support.ts'
 // personal token, even an owner's with schema:admin, or an admin token without schema:admin,
 // reaches them; a token they make gets scopes its maker does not have, is not shown once, does not
 // work, or still works once revoked; the list shows a hash; an invitation is made for an owner, or
-// stops giving a link to /setup that the list of people then counts as pending.
+// stops giving a link to /setup that the list of people then counts as pending; or a read token
+// made there stops being an hw_read_ token with content:read alone.
 
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -153,6 +154,30 @@ describe("the admin's own routes", () => {
     expect(row).not.toHaveProperty('hash')
     expect(JSON.stringify(listed)).not.toContain(created.secret)
     expect([before.status, after.status]).toEqual([200, 401])
+  })
+
+  it('make a read token that reads and nothing else, whatever scopes it asks for', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+
+    const made = await call(worker, owner, '/v1/admin/tokens', {
+      label: 'Site',
+      kind: 'read',
+      scopes: ['content:write'],
+    })
+    const created = await made.json<{ secret: string; kind: string; scopes: string[] }>()
+    const read = await worker.send('/v1/site', { token: created.secret })
+    const listed = await (
+      await call(worker, owner, '/v1/admin/tokens')
+    ).json<{ tokens: { kind: string; label: string }[] }>()
+    const wrong = await call(worker, owner, '/v1/admin/tokens', { label: 'x', kind: 'admin' })
+
+    expect(made.status).toBe(201)
+    expect(created).toMatchObject({ kind: 'read', scopes: ['content:read'] })
+    expect(created.secret).toMatch(/^hw_read_/)
+    expect(read.status).toBe(200)
+    expect(listed.tokens.find((token) => token.label === 'Site')?.kind).toBe('read')
+    expect(wrong.status).toBe(400)
   })
 
   it('invite an editor or an author with a link to /setup, and never an owner', async () => {

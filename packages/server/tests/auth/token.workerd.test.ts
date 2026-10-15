@@ -1,4 +1,4 @@
-import { generatePersonalToken } from '@hollware/core'
+import { generatePersonalToken, generateReadToken } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -12,7 +12,9 @@ import { newSite, readUse, seedToken } from './support.ts'
 // the role of its user as of now (`effectiveScopes`); starts or skips the write of `last_used_at`
 // when it should not (the hour in `recent`), or lets that write reject; and recordTokenUse writes
 // when `last_used_at` is within the hour (its `UPDATE`'s condition), writes a token of another
-// site (its `site_id`), or stops moving `updated_at` with it. D1 is the real thing, migrated.
+// site (its `site_id`), or stops moving `updated_at` with it; or a read token stops being a read
+// principal with `content:read` alone, or a token whose prefix and row disagree on its kind is
+// accepted. D1 is the real thing, migrated.
 
 const NOW = new Date('2026-10-12T18:30:00.000Z')
 
@@ -98,6 +100,51 @@ describe('checkPersonalToken: who the token is', () => {
     expect(theirOwn).toMatchObject({ ok: true, principal: { site: stranger } })
     await settle(own)
     await settle(theirOwn)
+  })
+})
+
+describe('checkPersonalToken: read tokens', () => {
+  it('accepts a read token as a read principal that may only read, whatever its row holds', async () => {
+    const site = newSite()
+    const seeded = await seedToken(env.DB, site, {
+      read: true,
+      scopes: ['content:read', 'content:write', 'content:publish'],
+    })
+
+    const check = await checkPersonalToken(env.DB, seeded.token, at(site))
+
+    expect(check).toEqual({
+      ok: true,
+      principal: {
+        kind: 'read',
+        userId: seeded.userId,
+        tokenId: seeded.tokenId,
+        site,
+        scopes: ['content:read'],
+      },
+      touch: expect.any(Promise),
+    })
+    await settle(check)
+  })
+
+  it('refuses a token whose prefix is not the kind of its row, as unknown', async () => {
+    const site = newSite()
+    // A personal token stored as a read token, and a read token stored as a personal one.
+    const personalAsRead = await seedToken(env.DB, site, {
+      read: true,
+      secret: generatePersonalToken(),
+    })
+    const readAsPersonal = await seedToken(env.DB, site, { secret: generateReadToken() })
+
+    const answers = [
+      await checkPersonalToken(env.DB, personalAsRead.token, at(site)),
+      await checkPersonalToken(env.DB, readAsPersonal.token, at(site)),
+    ]
+
+    expect(answers).toEqual([
+      { ok: false, reason: 'unknown' },
+      { ok: false, reason: 'unknown' },
+    ])
   })
 })
 

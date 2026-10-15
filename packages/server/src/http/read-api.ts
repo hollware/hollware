@@ -7,10 +7,12 @@ import type { GatewayEnv } from './types.ts'
 
 /**
  * The HTTP read API (v0.2): the four read methods of the RPC binding, for a site that is not a
- * Worker of the same account. It serves published content only, to a personal token or an OAuth
- * access token with `content:read` (ADR-026), and answers with an ETag, so that a client revalidates instead of reading the
- * body again (304). Its responses are private: they are behind a token, so no shared cache keeps
- * them. The OpenAPI document is at `/v1/openapi.json`.
+ * Worker of the same account. It serves published content only, to a personal token, a read token
+ * (`hw_read_`) or an OAuth access token with `content:read` (ADR-026), of one site, and answers
+ * with an ETag, so that a client revalidates instead of reading the body again (304). Its
+ * responses are private: they are behind a token, so no shared cache keeps them. A page of an
+ * origin that the site's config lists (`cors.origins`) may call it from the browser; any other
+ * origin is refused. The OpenAPI document is at `/v1/openapi.json`.
  *
  *   GET /v1/site                                   describe_site
  *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
@@ -25,6 +27,20 @@ export interface ReadApiOptions {
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   /** The protected resource metadata of `/v1`, which a 403 names. */
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
+  /** The origins whose pages may read a site from the browser (`cors.origins` of its config). */
+  readonly corsOrigins: (site: string) => readonly string[]
+  /** Whether any site lists the origin: a preflight carries no token to tell the site by. */
+  readonly anyCorsOrigin: (origin: string) => boolean
+}
+
+/** How long a browser keeps the answer of a preflight, in seconds. */
+const PREFLIGHT_MAX_AGE = 600
+
+/** The origin of a request from a page of another origin than Hollware's own, or `null`. */
+function crossOriginOf(c: Context<GatewayEnv>): string | null {
+  const origin = c.req.header('origin')
+  if (origin === undefined) return null
+  return origin.toLowerCase() === new URL(c.env.HOLLWARE_PUBLIC_URL).origin ? null : origin
 }
 
 const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
@@ -70,6 +86,18 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
   app.use('/v1/*', async (c, next) => {
     // The operations over HTTP and the admin's own routes have routes of their own.
     if (c.req.path.startsWith('/v1/ops/') || c.req.path.startsWith('/v1/admin/')) return next()
+    const crossOrigin = crossOriginOf(c)
+    if (c.req.method === 'OPTIONS') {
+      // A preflight: the guard let it through only for an origin that some site lists.
+      const headers = new Headers({ allow: 'GET, HEAD, OPTIONS', vary: 'Origin' })
+      if (crossOrigin !== null && options.anyCorsOrigin(crossOrigin)) {
+        headers.set('access-control-allow-origin', crossOrigin)
+        headers.set('access-control-allow-methods', 'GET, HEAD')
+        headers.set('access-control-allow-headers', 'authorization, if-none-match')
+        headers.set('access-control-max-age', String(PREFLIGHT_MAX_AGE))
+      }
+      return new Response(null, { status: 204, headers })
+    }
     if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
       return c.json(
         { code: 'invalid_input', message: 'The read API only reads.', fix: 'Use GET.' },
@@ -80,23 +108,51 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       )
     }
     if (c.req.path === '/v1/openapi.json') return next()
-    return options.protect(c, async (principal) => {
+    const response = await options.protect(c, async (principal) => {
       if (!principal.scopes.includes('content:read')) {
         return insufficientScope(['content:read'], options.metadataUrl(c))
       }
       // A token belongs to one site, and the read API reads that site.
       c.set('site', principal.site)
-      try {
-        await next()
-        return c.res
-      } catch (error) {
-        if (!(error instanceof HollwareError)) throw error
+      if (crossOrigin !== null && !options.corsOrigins(principal.site).includes(crossOrigin)) {
         return c.json(
-          { code: error.code, message: error.message, fix: error.fix },
-          STATUS[error.code] ?? 500,
+          {
+            code: 'forbidden_origin',
+            message: `The site "${principal.site}" does not let pages of ${crossOrigin} read it.`,
+            fix: `Add "${crossOrigin}" to cors.origins of the site in hollware.config.ts, or read from a server.`,
+          },
+          403,
+          // Hollware's own origin, so that the OAuth library reflects no other one onto it.
+          {
+            vary: 'Origin',
+            'access-control-allow-origin': new URL(c.env.HOLLWARE_PUBLIC_URL).origin,
+          },
         )
       }
+      const answered = await (async () => {
+        try {
+          await next()
+          return c.res
+        } catch (error) {
+          if (!(error instanceof HollwareError)) throw error
+          return c.json(
+            { code: error.code, message: error.message, fix: error.fix },
+            STATUS[error.code] ?? 500,
+          )
+        }
+      })()
+      if (crossOrigin === null) return answered
+      // The page may read the answer, and its ETag, to revalidate.
+      const shared = new Response(answered.body, answered)
+      shared.headers.set('access-control-allow-origin', crossOrigin)
+      shared.headers.set('access-control-expose-headers', 'etag')
+      shared.headers.append('vary', 'Origin')
+      return shared
     })
+    // Once the route has answered, Hono keeps `c.res` and drops what a middleware returns: the
+    // answer, with the headers added around it, goes back through `c.res`.
+    c.res = response
+    return c.res
   })
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))

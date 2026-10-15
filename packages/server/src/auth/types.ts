@@ -26,6 +26,18 @@ export type Principal =
       readonly scopes: readonly Scope[]
     }
   | {
+      /**
+       * A read token (`hw_read_`): it reads the published content of its site over the read API,
+       * and the gateway turns it away from every other route.
+       */
+      readonly kind: 'read'
+      readonly userId: string
+      readonly tokenId: string
+      readonly site: string
+      /** `content:read` while its user's role has it, else nothing. */
+      readonly scopes: readonly Scope[]
+    }
+  | {
       /** A Worker of the same account, over the RPC binding: it reads published content. */
       readonly kind: 'binding'
       readonly scopes: readonly ['content:read']

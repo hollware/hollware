@@ -121,6 +121,7 @@ export function siteOf(
     styleGuide: null,
     collections: new Map([[collection.name, collection]]),
     url: null,
+    cors: { origins: [] },
     events: { webhooks: [], indexNow: null },
   }
 }

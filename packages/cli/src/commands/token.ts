@@ -1,7 +1,7 @@
 import { hashPersonalToken, PERSONAL_TOKEN_TTL_DAYS, type Scope } from '@hollware/core'
 import { parseFlags } from '../args.ts'
 import { chooseTarget, query, resolveDatabase, type Row } from '../d1.ts'
-import { inDays, newId, newPersonalToken } from '../entropy.ts'
+import { inDays, newId, newPersonalToken, newReadToken } from '../entropy.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable, table } from '../format.ts'
 import type { Io } from '../io.ts'
@@ -38,13 +38,16 @@ export const TOKEN_USAGE = [
 ].join('\n')
 
 export const TOKEN_CREATE_USAGE = [
-  'Usage: hollware token create --label <text> [--scopes <list>] [--expires-in-days <n>]',
+  'Usage: hollware token create --label <text> [--scopes <list> | --read] [--expires-in-days <n>]',
   '                             [--site <key>] [--local | --remote] [--database <name>]',
   '',
   "Creates a personal token for the site's owner and prints it once; Hollware keeps only its hash.",
+  'With --read, a read token (hw_read_): it reads the published content of the site over the read',
+  'API (GET /v1/...) and nothing else, so a site may use it at build time or in the browser.',
   '',
   'Options:',
   '  --label <text>          What the token is for, 1 to 64 characters (required)',
+  '  --read                  A read token: content:read, published content, the read API only',
   '  --scopes <list>         Comma-separated: content:read, content:write, content:publish, schema:admin',
   '                          (default: content:read,content:write)',
   `  --expires-in-days <n>   Days until it expires, 1 to 365 (default: ${PERSONAL_TOKEN_TTL_DAYS})`,
@@ -108,12 +111,17 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       ...WHERE_OPTIONS,
       label: { type: 'string' },
       scopes: { type: 'string' },
+      read: { type: 'boolean' },
       'expires-in-days': { type: 'string' },
     },
   })
   if (values.help === true) {
     io.out(TOKEN_CREATE_USAGE)
     return 0
+  }
+  const read = values.read === true
+  if (read && values.scopes !== undefined) {
+    throw new UsageError('--read and --scopes cannot be used together: a read token only reads.')
   }
   if (values.label === undefined) {
     throw new UsageError(
@@ -122,7 +130,11 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   }
   const label = parseLabel(values.label)
   const siteFlag = values.site === undefined ? undefined : parseSiteKey(values.site)
-  const scopes = values.scopes === undefined ? DEFAULT_SCOPES : parseScopes(values.scopes)
+  const scopes: readonly Scope[] = read
+    ? ['content:read']
+    : values.scopes === undefined
+      ? DEFAULT_SCOPES
+      : parseScopes(values.scopes)
   const days =
     values['expires-in-days'] === undefined
       ? PERSONAL_TOKEN_TTL_DAYS
@@ -144,13 +156,14 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
 
   const now = io.now()
   const id = newId(io, 'token')
-  const secret = newPersonalToken(io)
+  const secret = read ? newReadToken(io) : newPersonalToken(io)
   const expiresAt = inDays(now, days)
   await query(
     io.wrangler,
     database,
     target,
     insertToken({
+      ...(read ? { kind: 'read' as const } : {}),
       id,
       site,
       userId: ownerId,
@@ -163,7 +176,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   )
   io.out(
     [
-      `Created token ${id} for the site "${site}".`,
+      `Created ${read ? 'read token' : 'token'} ${id} for the site "${site}".`,
       '',
       `Label    ${label}`,
       `Scopes   ${scopes.join(' ')}`,

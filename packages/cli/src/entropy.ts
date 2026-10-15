@@ -1,4 +1,10 @@
-import { generatePersonalToken, ID_PREFIXES, ulid, type IdPrefix } from '@hollware/core'
+import {
+  generatePersonalToken,
+  generateReadToken,
+  ID_PREFIXES,
+  ulid,
+  type IdPrefix,
+} from '@hollware/core'
 import type { Io } from './io.ts'
 
 /** A new id of a kind, such as `usr_01JAB…`, from the clock and the random source of `io`. */
@@ -10,6 +16,11 @@ export function newId(io: Pick<Io, 'now' | 'randomBytes'>, kind: keyof typeof ID
 /** A new personal token (`hw_pat_` and 52 characters) from the random source of `io`. */
 export function newPersonalToken(io: Pick<Io, 'randomBytes'>): string {
   return generatePersonalToken(io.randomBytes(52))
+}
+
+/** A new read token (`hw_read_`), from the same randomness. */
+export function newReadToken(io: Pick<Io, 'randomBytes'>): string {
+  return generateReadToken(io.randomBytes(52))
 }
 
 const DAY_MS = 86_400_000

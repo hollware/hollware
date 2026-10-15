@@ -2,15 +2,20 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import {
   generatePersonalToken,
+  generateReadToken,
   hashPersonalToken,
   isPersonalToken,
+  isReadToken,
   PERSONAL_TOKEN_PREFIX,
   PERSONAL_TOKEN_TTL_DAYS,
+  READ_TOKEN_PREFIX,
 } from '../src/tokens.ts'
 
 // Fails when: a personal token stops being `hw_pat_` and 52 characters of lowercase Crockford
 // base 32 (one per random byte, from its low 5 bits), the shape check accepts something else, the
-// hash stops being the hex SHA-256 of the whole token, or the default lifetime moves from 90 days.
+// hash stops being the hex SHA-256 of the whole token, or the default lifetime moves from 90 days;
+// or a read token stops being `hw_read_` and the same 52 characters, or either shape check takes a
+// token of the other kind.
 
 const ZERO_TOKEN = `hw_pat_${'0'.repeat(52)}`
 
@@ -63,5 +68,23 @@ describe('personal tokens', () => {
 
   it('expires after 90 days unless asked otherwise', () => {
     expect(PERSONAL_TOKEN_TTL_DAYS).toBe(90)
+  })
+})
+
+describe('read tokens', () => {
+  it('are hw_read_ and the same 52 characters, and neither shape takes the other', () => {
+    const counting = Uint8Array.from({ length: 52 }, (_, index) => index)
+    const read = generateReadToken(counting)
+
+    expect(READ_TOKEN_PREFIX).toBe('hw_read_')
+    expect(read).toBe('hw_read_0123456789abcdefghjkmnpqrstvwxyz0123456789abcdefghjk')
+    expect([isReadToken(read), isPersonalToken(read)]).toEqual([true, false])
+    expect([isReadToken(ZERO_TOKEN), isReadToken(`hw_read_${'0'.repeat(51)}`)]).toEqual([
+      false,
+      false,
+    ])
+    expect(() => generateReadToken(new Uint8Array(53))).toThrow(
+      new RangeError('a read token takes 52 random bytes, got 53'),
+    )
   })
 })

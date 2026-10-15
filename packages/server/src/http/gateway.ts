@@ -154,13 +154,52 @@ export function createGateway(options: GatewayOptions): Gateway {
     return withRefusalBody(response, outcome.refusal !== null)
   }
 
+  /** Every origin that the config of some site lets read the site from a page. */
+  const corsOrigins = new Set([...sites.values()].flatMap((site) => site.cors.origins))
+  /**
+   * The guard lets a page of such an origin through to the read API alone, and only to read: the
+   * read API then checks the origin against the site of the token.
+   */
+  const readsFromAnyCorsOrigin = (request: Request, origin: string): boolean => {
+    const { pathname } = new URL(request.url)
+    return (
+      corsOrigins.has(origin) &&
+      ['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+      pathname.startsWith('/v1/') &&
+      // The admin's routes read too; the operations are POST, which the method already refuses.
+      !pathname.startsWith('/v1/admin/')
+    )
+  }
+
+  /**
+   * A route for a person or their personal token: a read token reads over the read API alone, so
+   * it is refused here, before anything runs (403, as a token that lacks a scope).
+   */
+  const protectWrites = (
+    c: Context<GatewayEnv>,
+    resource: ResourceName,
+    proceed: Proceed,
+  ): Promise<Response> =>
+    protect(c, resource, async (principal, auth) =>
+      principal.kind === 'read'
+        ? Response.json(
+            {
+              code: 'forbidden',
+              message: 'A read token reads published content over GET /v1, and nothing else.',
+              fix: 'Use a personal token (hw_pat_) or sign in with OAuth for this.',
+            },
+            { status: 403, headers: { 'cache-control': 'no-store' } },
+          )
+        : proceed(principal, auth),
+    )
+
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID())
     await next()
   })
 
   app.use('*', async (c, next) => {
-    const refusal = checkHostAndOrigin(c.req.raw, c.env.HOLLWARE_PUBLIC_URL)
+    const refusal = checkHostAndOrigin(c.req.raw, c.env.HOLLWARE_PUBLIC_URL, readsFromAnyCorsOrigin)
     if (refusal !== null) return refusal
     await next()
   })
@@ -170,7 +209,7 @@ export function createGateway(options: GatewayOptions): Gateway {
   )
 
   app.all('/mcp', async (c) =>
-    protect(c, 'mcp', async (principal) => {
+    protectWrites(c, 'mcp', async (principal) => {
       const requestId = c.get('requestId')
       const db = c.env.DB
       const site = sites.get(principal.site)
@@ -216,7 +255,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     sites: siteKeys,
     clock,
     oauth,
-    protect: (c, proceed) => protect(c, 'v1', proceed),
+    protect: (c, proceed) => protectWrites(c, 'v1', proceed),
     metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
   })
 
@@ -226,7 +265,7 @@ export function createGateway(options: GatewayOptions): Gateway {
       handlers: options.handlers,
       clock,
       log,
-      protect: (c, proceed) => protect(c, 'v1', proceed),
+      protect: (c, proceed) => protectWrites(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
       notify,
     })
@@ -235,6 +274,8 @@ export function createGateway(options: GatewayOptions): Gateway {
   if (options.read !== undefined) {
     installReadApi(app, {
       read: options.read,
+      corsOrigins: (site) => sites.get(site)?.cors.origins ?? [],
+      anyCorsOrigin: (origin) => corsOrigins.has(origin),
       protect: (c, proceed) => protect(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
     })

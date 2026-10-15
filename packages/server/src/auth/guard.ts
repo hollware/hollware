@@ -45,7 +45,9 @@ function readPublicUrl(value: unknown): PublicUrl | null {
  *   Any other port is another host.
  * - An `Origin` header that is present and is not the origin of the public URL, scheme and port
  *   included: 403. That covers the opaque `null` origin and an empty value. A request without
- *   `Origin` passes: only browsers send it, and they are what the check is for.
+ *   `Origin` passes: only browsers send it, and they are what the check is for. The one exception
+ *   is `crossOrigin`: an origin it accepts passes too (the read API, for the origins a site's
+ *   config lists; the read API then checks the origin against the site of the token).
  *
  * It returns the response to send, or `null` when the request may go on. No answer repeats the
  * request: the 403s say what to send instead, and the 500 only says what is missing.
@@ -55,8 +57,13 @@ function readPublicUrl(value: unknown): PublicUrl | null {
  * they accept a `Host` such as `user@cms.example.com` or `cms.example.com/x`.
  *
  * @param publicUrl The `HOLLWARE_PUBLIC_URL` variable as the environment holds it.
+ * @param crossOrigin Whether a request may come from a page of another origin; never, by default.
  */
-export function checkHostAndOrigin(request: Request, publicUrl: unknown): Response | null {
+export function checkHostAndOrigin(
+  request: Request,
+  publicUrl: unknown,
+  crossOrigin: (request: Request, origin: string) => boolean = () => false,
+): Response | null {
   const expected = readPublicUrl(publicUrl)
   if (expected === null) {
     return authErrorResponse(500, {
@@ -74,7 +81,11 @@ export function checkHostAndOrigin(request: Request, publicUrl: unknown): Respon
     })
   }
   const origin = request.headers.get('origin')
-  if (origin !== null && origin.toLowerCase() !== expected.origin) {
+  if (
+    origin !== null &&
+    origin.toLowerCase() !== expected.origin &&
+    !crossOrigin(request, origin)
+  ) {
     return authErrorResponse(403, {
       code: 'forbidden_origin',
       message: 'The Origin header of the request is not the public URL of this Hollware.',
