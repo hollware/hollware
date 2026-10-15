@@ -9,6 +9,9 @@ type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>
 
 export type Format = 'markdown' | 'document' | 'html'
 
+/** How a search is made: by its words, by meaning, or both merged. */
+export type SearchMode = 'fulltext' | 'semantic' | 'hybrid'
+
 /**
  * What a site reads from Hollware: the published content, through the four read methods. A
  * service binding to a Hollware Worker already has this shape; `createClient` gives the same over
@@ -20,7 +23,7 @@ export interface HollwareReader {
     collection: string,
     slug: string,
     locale: string,
-    options?: { readonly formats?: readonly Format[] },
+    options?: { readonly formats?: readonly Format[]; readonly related?: boolean },
   ): Promise<Output<typeof getEntry>>
   listEntries(
     site: string,
@@ -38,11 +41,16 @@ export interface HollwareReader {
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
   describeSite(site: string): Promise<Output<typeof describeSite>>
-  /** The published entries that hold every word of `query`, best first. */
+  /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(
     site: string,
     query: string,
-    options?: { readonly collection?: string; readonly locale?: string; readonly limit?: number },
+    options?: {
+      readonly collection?: string
+      readonly locale?: string
+      readonly limit?: number
+      readonly mode?: SearchMode
+    },
   ): Promise<Output<typeof search>>
 }
 
@@ -113,10 +121,11 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       collection: string,
       slug: string,
       locale: string,
-      options?: { readonly formats?: readonly Format[] },
+      options?: { readonly formats?: readonly Format[]; readonly related?: boolean },
     ) =>
       get(`${segment(collection)}/${segment(locale)}/${segment(slug)}`, {
         formats: options?.formats?.join(','),
+        related: options?.related === true ? 'true' : undefined,
       }),
     listEntries: (
       _site: string,
@@ -135,13 +144,14 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     search: (
       _site: string,
       query: string,
-      options: { collection?: string; locale?: string; limit?: number } = {},
+      options: { collection?: string; locale?: string; limit?: number; mode?: SearchMode } = {},
     ) =>
       get('search', {
         q: query,
         collection: options.collection,
         locale: options.locale,
         limit: options.limit === undefined ? undefined : String(options.limit),
+        mode: options.mode,
       }),
   }
   return reader

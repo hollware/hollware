@@ -1,4 +1,4 @@
-import type { Embedder, Semantic, VectorIndex, VectorMetadata } from './ports.ts'
+import type { Embedder, Semantic, VectorIndex, VectorMetadata } from '../ports.ts'
 
 /** The embedding model when the config names none: multilingual, so Spanish finds English. */
 export const DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-m3'
@@ -51,8 +51,9 @@ export function workersAiEmbedder(ai: AiBinding, model: string): Embedder {
 
 function metadataOf(raw: Record<string, unknown> | undefined): VectorMetadata | null {
   if (raw === undefined) return null
-  const { site, entry, collection, locale, piece } = raw
+  const { site, entry, collection, locale, piece, excerpt } = raw
   if (
+    typeof excerpt !== 'string' ||
     typeof site !== 'string' ||
     typeof entry !== 'string' ||
     typeof collection !== 'string' ||
@@ -61,7 +62,7 @@ function metadataOf(raw: Record<string, unknown> | undefined): VectorMetadata | 
   ) {
     return null
   }
-  return { site, entry, collection, locale, piece }
+  return { site, entry, collection, locale, piece, excerpt }
 }
 
 /** Vectorize as the index. Its metadata indexes on site, collection, locale and piece filter. */
@@ -109,4 +110,9 @@ export function semanticOf(env: object, model: string): Semantic | null {
     embedder: workersAiEmbedder(ai as unknown as AiBinding, model),
     index: vectorizeIndex(vectorize as unknown as VectorizeBinding),
   }
+}
+
+/** Semantic search over the Worker's bindings with the deployment's model, or `null` without. */
+export function semanticOfEnv(env: object): Semantic | null {
+  return semanticOf(env, DEFAULT_EMBEDDING_MODEL)
 }

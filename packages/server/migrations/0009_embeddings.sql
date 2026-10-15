@@ -6,6 +6,7 @@ CREATE TABLE `entry_embeddings` (
 	`model` text NOT NULL,
 	`chunker_version` text NOT NULL,
 	`pieces` integer NOT NULL,
+	`related` text DEFAULT '[]' NOT NULL,
 	`created_at` text NOT NULL,
 	`updated_at` text NOT NULL,
 	FOREIGN KEY (`site_id`) REFERENCES `sites`(`id`) ON UPDATE no action ON DELETE no action,

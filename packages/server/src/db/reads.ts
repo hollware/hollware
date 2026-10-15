@@ -6,6 +6,7 @@ import type {
   EntrySummaryView,
   EntryView,
   ListQuery,
+  RelatedEntry,
   SearchHit,
   SearchQuery,
   StoredPublication,
@@ -27,7 +28,7 @@ import {
   toRevision,
   toRevisionSummary,
 } from './rows.ts'
-import { entries, publications, revisions, revisionTags } from './schema.ts'
+import { entries, entryEmbeddings, publications, revisions, revisionTags } from './schema.ts'
 
 /**
  * The reads of the store. Every query carries the `site_id` of the site it was asked for, so a
@@ -222,6 +223,51 @@ export async function searchEntries(
     // bm25 is lower for a better match; the answer says higher.
     return entry === undefined ? [] : [{ entry, snippet: hit.snippet, score: -hit.rank }]
   })
+}
+
+/** The entries of those ids that the view has, in the order of the ids; the others are left out. */
+export async function findSummaries(
+  db: Db,
+  site: string,
+  ids: readonly string[],
+  view: View,
+): Promise<readonly EntrySummaryView[]> {
+  if (ids.length === 0) return []
+  const rows = await summaryQuery(db, view, [
+    eq(entries.siteId, site),
+    inArray(entries.id, [...ids]),
+  ])
+  const byId = new Map(rows.map((row) => [row.entry.id, toEntrySummaryView(row)]))
+  return ids.flatMap((id) => {
+    const entry = byId.get(id)
+    return entry === undefined ? [] : [entry]
+  })
+}
+
+/** The entries closest to one, closest first, as its vectors found them (ADR-030); `[]` without. */
+export async function relatedOf(
+  db: Db,
+  site: string,
+  entryId: string,
+): Promise<readonly RelatedEntry[]> {
+  const [row] = await db
+    .select({ related: entryEmbeddings.related })
+    .from(entryEmbeddings)
+    .where(and(eq(entryEmbeddings.siteId, site), eq(entryEmbeddings.entryId, entryId)))
+    .limit(1)
+  if (row === undefined) return []
+  const parsed: unknown = JSON.parse(row.related)
+  if (!Array.isArray(parsed)) return []
+  return parsed.flatMap((item: unknown) =>
+    typeof item === 'object' &&
+    item !== null &&
+    'id' in item &&
+    'score' in item &&
+    typeof item.id === 'string' &&
+    typeof item.score === 'number'
+      ? [{ id: item.id, score: item.score }]
+      : [],
+  )
 }
 
 export async function listEntries(

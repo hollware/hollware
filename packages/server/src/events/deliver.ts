@@ -9,7 +9,7 @@ import type { Db } from '../db/d1.ts'
 import { deliveredTo, findEvent, recordAttempt } from '../db/events.ts'
 import type { Clock } from '../ports.ts'
 import type { EventPayload } from '../ops/event.ts'
-import type { Semantic } from '../semantic/ports.ts'
+import type { Semantic } from '../ports.ts'
 import { syncEntryVectors } from '../semantic/index-entry.ts'
 
 /** Where IndexNow takes the URLs that changed. */

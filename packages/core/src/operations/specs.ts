@@ -13,6 +13,7 @@ import {
   review,
   reviewId,
   reviewStatus,
+  searchMode,
   siteDescription,
   slug,
   verdict,
@@ -65,19 +66,34 @@ export const search = defineOperation({
   name: 'search',
   title: 'Search entries',
   description:
-    'Searches the published entries of the site for every word of query, in their title, tags and text, best match first, each with the words around the match. Narrow it to a collection or a locale. Drafts are not searched: read them with list_entries.',
+    'Searches the published entries of the site, best match first. Full text finds the entries that hold every word of query, in their title, tags and text; semantic finds them by meaning, in any language; hybrid merges both. Narrow it to a collection or a locale. Drafts are not searched: read them with list_entries.',
   input: z.strictObject({
-    query: z.string().trim().min(1).max(200).describe('The words to find; punctuation is ignored.'),
+    query: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .describe('The words to find, or a question; punctuation is ignored by full text.'),
     collection: collectionName.optional(),
     locale: locale.optional(),
     limit: z.number().int().min(1).max(50).default(10),
+    mode: searchMode
+      .optional()
+      .describe(
+        'fulltext, semantic or hybrid; hybrid when not given. Semantic and hybrid need the semantic search of the deployment: without it the search is full text, and mode in the answer says so.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['ok']),
+    mode: searchMode.describe('How the search was made.'),
     results: z.array(
       z.object({
         entry: entrySummary,
-        snippet: z.string().describe('The words around the match, the match between [ and ].'),
+        snippet: z
+          .string()
+          .describe(
+            'The words around the match, the words found between [ and ]; for a match by meaning, the start of the closest part.',
+          ),
         score: z.number().describe('How well it matches: higher is better.'),
       }),
     ),
@@ -107,8 +123,18 @@ export const getEntry = defineOperation({
       .describe(
         'Read the revision that is live instead of the latest one: not_found when the entry is not published.',
       ),
+    related: z
+      .boolean()
+      .default(false)
+      .describe(
+        'Also return the published entries closest to this one by meaning, in its collection and locale, closest first. Needs the semantic search of the deployment; empty without it.',
+      ),
   }),
-  output: z.object({ outcome: z.enum(['ok', 'not_found']), entry: entry.optional() }),
+  output: z.object({
+    outcome: z.enum(['ok', 'not_found']),
+    entry: entry.optional(),
+    related: z.array(entrySummary).optional().describe('When related was asked for.'),
+  }),
   scopes: ['content:read'],
   effect: 'read',
   outcomes: { ok: { isError: false }, not_found: { isError: true } },

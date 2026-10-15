@@ -1,7 +1,7 @@
 import { renderHtml } from '@hollware/core'
 import { entrySummary, publicationView, verdictView } from './answers.ts'
 import { requireCollection, requireLocale } from './collections.ts'
-import type { OperationHandler } from './types.ts'
+import type { OperationContext, OperationHandler } from './types.ts'
 
 /**
  * Reads an entry in the view of the call, `head` over MCP and `published` over RPC, or in the
@@ -19,6 +19,7 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   if (found === null) return { outcome: 'not_found' }
   const { entry, revision } = found
   const publication = await context.store.lastPublication(context.site.key, entry.id)
+  const related = input.related ? await relatedEntries(context, entry.id) : undefined
   return {
     outcome: 'ok',
     entry: {
@@ -31,5 +32,21 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
       ...(input.formats.includes('document') ? { document: revision.document } : {}),
       ...(input.formats.includes('html') ? { html: await renderHtml(revision.document) } : {}),
     },
+    ...(related === undefined ? {} : { related }),
   }
+}
+
+/**
+ * The published entries closest to one, as its vectors found them when it was indexed: none when
+ * the deployment has no semantic search, and none that is no longer published.
+ */
+async function relatedEntries(context: OperationContext, entryId: string) {
+  if ((context.semantic ?? null) === null) return []
+  const related = await context.store.relatedOf(context.site.key, entryId)
+  const summaries = await context.store.findSummaries(
+    context.site.key,
+    related.map((item) => item.id),
+    'published',
+  )
+  return summaries.map(entrySummary)
 }

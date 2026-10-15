@@ -15,6 +15,7 @@ import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import { describeError } from '../mcp/errors.ts'
 import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Clock } from '../ports.ts'
+import { semanticOfEnv } from '../semantic/cloudflare.ts'
 
 /** A call over RPC that failed in a way its caller does not get to see. */
 export interface RpcLogEntry {
@@ -38,7 +39,7 @@ export interface RpcDeps {
 }
 
 /** What a call needs of the bindings of the invocation. */
-export type RpcEnv = Pick<HollwareEnv, 'DB'>
+export type RpcEnv = Pick<HollwareEnv, 'DB' | 'AI' | 'VECTORIZE'>
 
 /**
  * Who calls over RPC: a Worker of the same account, which reads published content and nothing
@@ -176,6 +177,7 @@ async function run<Schema extends z.ZodType, Output>(
     clock: deps.clock,
     client: null,
     requestId,
+    semantic: semanticOfEnv(env),
   }
   try {
     return await handler(input, context)
@@ -199,7 +201,7 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         'getEntry',
         site,
         getEntrySpec.input,
-        () => ({ collection, locale, slug, ...readOptions(options, ['formats']) }),
+        () => ({ collection, locale, slug, ...readOptions(options, ['formats', 'related']) }),
         deps.handlers.get_entry,
       ),
     listEntries: (site, collection, options) =>
@@ -239,7 +241,7 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         'search',
         site,
         searchSpec.input,
-        () => ({ query, ...readOptions(options, ['collection', 'locale', 'limit']) }),
+        () => ({ query, ...readOptions(options, ['collection', 'locale', 'limit', 'mode']) }),
         deps.handlers.search,
       ),
   }

@@ -1,10 +1,4 @@
-import type {
-  Embedder,
-  Semantic,
-  StoredVector,
-  VectorIndex,
-  VectorMatch,
-} from '../../src/semantic/ports.ts'
+import type { Embedder, Semantic, StoredVector, VectorIndex, VectorMatch } from '../../src/ports.ts'
 
 /**
  * A model that needs no network: the vector of a text counts its letters a to z, so two texts

@@ -7,7 +7,9 @@ import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER } from './workers.ts
 
 // Fails when: @hollware/client stops reading the same published content over a service binding
 // and over HTTP (one suite, both transports), or the read API of the built Worker (src/http/
-// read-api.ts) stops serving the five read methods at /v1 (search included) to a token with content:read, stops
+// read-api.ts) stops serving the five read methods at /v1 (search included) to a token with content:read, passing
+// on a search's mode (refusing one it does not know) and get_entry's related, stops answering an
+// input the caller got wrong with its code and status (400 or 404) instead of a 500, stops
 // answering 304 to its own ETag, stops refusing a request without a token or one that writes, or
 // stops describing its routes in /v1/openapi.json.
 
@@ -67,6 +69,17 @@ describe('@hollware/client', () => {
       // A word of the Spanish post, written without its accent; the draft is never found.
       const found = await client.search(SITE_KEY, 'cache borde', { locale: 'es' })
       const unpublished = await client.search(SITE_KEY, 'source truth')
+      // The playground has no AI or Vectorize binding: every search is full text, and says so.
+      const meaning = await client.search(SITE_KEY, 'cache borde', { mode: 'semantic' })
+      const related = await client.getEntry(SITE_KEY, 'blog', 'edge-caching-basics', 'en', {
+        related: true,
+      })
+      let unknownMode = 'answered'
+      try {
+        await client.search(SITE_KEY, 'cache', JSON.parse('{"mode":"vibes"}'))
+      } catch (error) {
+        unknownMode = error instanceof Error ? error.message : String(error)
+      }
 
       expect(
         [
@@ -80,6 +93,10 @@ describe('@hollware/client', () => {
           found.results.map(({ entry: { slug } }) => slug),
           found.results[0]?.snippet.includes('['),
           unpublished.results,
+          meaning.mode,
+          meaning.results.map(({ entry: { slug } }) => slug),
+          related.related,
+          unknownMode.includes('mode'),
         ],
         transport,
       ).toEqual([
@@ -93,6 +110,10 @@ describe('@hollware/client', () => {
         ['cache-en-el-borde'],
         true,
         [],
+        'fulltext',
+        ['cache-en-el-borde'],
+        [],
+        true,
       ])
     }
   })
@@ -115,6 +136,31 @@ describe('the read API', () => {
       true,
       304,
       200,
+    ])
+  })
+
+  it('answers what the caller got wrong with its code and status, never as a failure of its own', async () => {
+    const statuses: [string, number, unknown][] = []
+    for (const path of [
+      '/v1/nope',
+      '/v1/blog?limit=0',
+      '/v1/blog/xx/edge-caching-basics',
+      '/v1/search?q=cache&mode=vibes',
+    ]) {
+      const response = await get(path)
+      const body: unknown = await response.json()
+      statuses.push([
+        path,
+        response.status,
+        typeof body === 'object' && body !== null && 'code' in body ? body.code : null,
+      ])
+    }
+
+    expect(statuses).toEqual([
+      ['/v1/nope', 404, 'unknown_collection'],
+      ['/v1/blog?limit=0', 400, 'invalid_input'],
+      ['/v1/blog/xx/edge-caching-basics', 404, 'unknown_locale'],
+      ['/v1/search?q=cache&mode=vibes', 400, 'invalid_input'],
     ])
   })
 

@@ -16,7 +16,7 @@ import type { GatewayEnv } from './types.ts'
  *
  *   GET /v1/site                                   describe_site
  *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
- *   GET /v1/search?q&collection&locale&limit       search
+ *   GET /v1/search?q&collection&locale&limit&mode  search
  *   GET /v1/{collection}/translations/{group}      get_translations
  *   GET /v1/{collection}/{locale}/{slug}?formats=  get_entry (formats: markdown,document,html)
  */
@@ -48,6 +48,28 @@ const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
   invalid_input: 400,
   unknown_collection: 404,
   unknown_locale: 404,
+}
+
+/**
+ * A route of the read API whose `HollwareError` (an unknown collection, a limit out of range) is
+ * the caller's to read, with its status. It is caught here, in the route: Hono 5 hands an error
+ * that a route throws to the app's error handler before any middleware around it sees it, and
+ * that handler answers every error with the same 500.
+ */
+function readRoute<Path extends string>(
+  handler: (c: Context<GatewayEnv, Path>) => Promise<Response>,
+): (c: Context<GatewayEnv, Path>) => Promise<Response> {
+  return async (c) => {
+    try {
+      return await handler(c)
+    } catch (error) {
+      if (!(error instanceof HollwareError)) throw error
+      return c.json(
+        { code: error.code, message: error.message, fix: error.fix },
+        STATUS[error.code] ?? 500,
+      )
+    }
+  }
 }
 
 /** A weak ETag of a body: the first 128 bits of its SHA-256, in hex. */
@@ -130,18 +152,8 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
           },
         )
       }
-      const answered = await (async () => {
-        try {
-          await next()
-          return c.res
-        } catch (error) {
-          if (!(error instanceof HollwareError)) throw error
-          return c.json(
-            { code: error.code, message: error.message, fix: error.fix },
-            STATUS[error.code] ?? 500,
-          )
-        }
-      })()
+      await next()
+      const answered = c.res
       if (crossOrigin === null) return answered
       // The page may read the answer, and its ETag, to revalidate.
       const shared = new Response(answered.body, answered)
@@ -157,64 +169,97 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
   })
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))
-  app.get('/v1/site', async (c) => answer(c, await options.read(c.env).describeSite(c.get('site'))))
+  app.get(
+    '/v1/site',
+    readRoute(async (c) => answer(c, await options.read(c.env).describeSite(c.get('site')))),
+  )
   // Before /v1/:collection, which would take "search" for the name of a collection.
-  app.get('/v1/search', async (c) => {
-    const query = c.req.query()
-    const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
-    return answer(
-      c,
-      await options.read(c.env).search(c.get('site'), query['q'] ?? '', {
-        ...(query['collection'] === undefined ? {} : { collection: query['collection'] }),
-        ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
-        ...(limit === undefined ? {} : { limit }),
-      }),
-    )
-  })
-  app.get('/v1/:collection', async (c) => {
-    const query = c.req.query()
-    const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
-    return answer(
-      c,
-      await options.read(c.env).listEntries(c.get('site'), c.req.param('collection'), {
-        ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
-        ...(query['tag'] === undefined ? {} : { tag: query['tag'] }),
-        ...(limit === undefined ? {} : { limit }),
-        ...(query['cursor'] === undefined ? {} : { cursor: query['cursor'] }),
-      }),
-    )
-  })
-  app.get('/v1/:collection/translations/:group', async (c) =>
-    answer(
-      c,
-      await options
-        .read(c.env)
-        .getTranslations(c.get('site'), c.req.param('collection'), c.req.param('group')),
+  app.get(
+    '/v1/search',
+    readRoute(async (c) => {
+      const query = c.req.query()
+      const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
+      return answer(
+        c,
+        await options.read(c.env).search(c.get('site'), query['q'] ?? '', {
+          ...(query['collection'] === undefined ? {} : { collection: query['collection'] }),
+          ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
+          ...(limit === undefined ? {} : { limit }),
+          ...(query['mode'] === undefined ? {} : { mode: searchModeOf(query['mode']) }),
+        }),
+      )
+    }),
+  )
+  app.get(
+    '/v1/:collection',
+    readRoute<'/v1/:collection'>(async (c) => {
+      const query = c.req.query()
+      const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
+      return answer(
+        c,
+        await options.read(c.env).listEntries(c.get('site'), c.req.param('collection'), {
+          ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
+          ...(query['tag'] === undefined ? {} : { tag: query['tag'] }),
+          ...(limit === undefined ? {} : { limit }),
+          ...(query['cursor'] === undefined ? {} : { cursor: query['cursor'] }),
+        }),
+      )
+    }),
+  )
+  app.get(
+    '/v1/:collection/translations/:group',
+    readRoute<'/v1/:collection/translations/:group'>(async (c) =>
+      answer(
+        c,
+        await options
+          .read(c.env)
+          .getTranslations(c.get('site'), c.req.param('collection'), c.req.param('group')),
+      ),
     ),
   )
-  app.get('/v1/:collection/:locale/:slug', async (c) => {
-    const formats = c.req.query('formats')
-    return answer(
-      c,
-      await options.read(c.env).getEntry(
-        c.get('site'),
-        c.req.param('collection'),
-        c.req.param('slug'),
-        c.req.param('locale'),
-        formats === undefined
-          ? {}
-          : {
-              formats: formats
-                .split(',')
-                .flatMap((format) =>
-                  format === 'markdown' || format === 'document' || format === 'html'
-                    ? [format]
-                    : [],
-                ),
-            },
-      ),
+  app.get(
+    '/v1/:collection/:locale/:slug',
+    readRoute<'/v1/:collection/:locale/:slug'>(async (c) => {
+      const formats = c.req.query('formats')
+      const related = c.req.query('related') === 'true' ? { related: true } : {}
+      return answer(
+        c,
+        await options.read(c.env).getEntry(
+          c.get('site'),
+          c.req.param('collection'),
+          c.req.param('slug'),
+          c.req.param('locale'),
+          formats === undefined
+            ? related
+            : {
+                ...related,
+                formats: formats
+                  .split(',')
+                  .flatMap((format) =>
+                    format === 'markdown' || format === 'document' || format === 'html'
+                      ? [format]
+                      : [],
+                  ),
+              },
+        ),
+      )
+    }),
+  )
+}
+
+const SEARCH_MODES = ['fulltext', 'semantic', 'hybrid'] as const
+
+/** The `mode` of a search from the query string, or the error that names the ones there are. */
+function searchModeOf(value: string): (typeof SEARCH_MODES)[number] {
+  const mode = SEARCH_MODES.find((known) => known === value)
+  if (mode === undefined) {
+    throw new HollwareError(
+      'invalid_input',
+      `The search mode ${value} is not one Hollware knows.`,
+      `Pass mode as one of ${SEARCH_MODES.join(', ')}, or leave it out for hybrid.`,
     )
-  })
+  }
+  return mode
 }
 
 /** The OpenAPI 3.1 document of the read API. */
@@ -256,8 +301,9 @@ export function openApiDocument(): object {
             param('collection', 'query', false),
             param('locale', 'query', false),
             param('limit', 'query', false),
+            param('mode', 'query', false),
           ],
-          responses: { '200': ok('The published entries that hold every word of q'), ...common },
+          responses: { '200': ok('The published entries that match q, best first'), ...common },
         },
       },
       '/v1/{collection}': {
@@ -292,6 +338,7 @@ export function openApiDocument(): object {
             param('locale', 'path', true),
             param('slug', 'path', true),
             param('formats', 'query', false),
+            param('related', 'query', false),
           ],
           responses: {
             '200': ok('A published entry'),

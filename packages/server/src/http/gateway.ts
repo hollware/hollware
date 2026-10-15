@@ -17,6 +17,7 @@ import { installIdentity } from '../identity/routes.ts'
 import { installAuthorize } from '../oauth/authorize.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
+import { semanticOfEnv } from '../semantic/cloudflare.ts'
 
 export interface GatewayOptions {
   /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
@@ -224,6 +225,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           store: createD1Store(db, { clock }),
           clock,
           notify: notify(c, requestId, site.key),
+          semantic: semanticOfEnv(c.env),
         },
       })
     }),

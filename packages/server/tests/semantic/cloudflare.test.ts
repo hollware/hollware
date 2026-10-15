@@ -41,7 +41,14 @@ function fakeVectorize(
   }
 }
 
-const METADATA = { site: 'blog', entry: 'ent_1', collection: 'posts', locale: 'en', piece: 0 }
+const METADATA = {
+  site: 'blog',
+  entry: 'ent_1',
+  collection: 'posts',
+  locale: 'en',
+  piece: 0,
+  excerpt: 'Caching at the edge',
+}
 
 describe('the Workers AI embedder', () => {
   it('asks the model for every text at once and answers its vectors', async () => {

@@ -68,7 +68,11 @@ export interface HollwareRpc {
     collection: string,
     slug: string,
     locale: string,
-    options?: { readonly formats?: readonly ('markdown' | 'document' | 'html')[] },
+    options?: {
+      readonly formats?: readonly ('markdown' | 'document' | 'html')[]
+      /** Also the published entries closest by meaning (ADR-030). */
+      readonly related?: boolean
+    },
   ): Promise<Output<typeof getEntry>>
   listEntries(
     site: string,
@@ -86,11 +90,16 @@ export interface HollwareRpc {
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
   describeSite(site: string): Promise<Output<typeof describeSite>>
-  /** The published entries that hold every word of `query`, best first. */
+  /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(
     site: string,
     query: string,
-    options?: { readonly collection?: string; readonly locale?: string; readonly limit?: number },
+    options?: {
+      readonly collection?: string
+      readonly locale?: string
+      readonly limit?: number
+      readonly mode?: 'fulltext' | 'semantic' | 'hybrid'
+    },
   ): Promise<Output<typeof search>>
 }
 

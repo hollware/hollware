@@ -232,6 +232,7 @@ describe('what a handler gets', () => {
         slug: 'hello-world',
         formats: ['markdown'],
         published: false,
+        related: false,
       },
       { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
     ])

@@ -14,6 +14,7 @@ export const CALLS = [
       slug: 'hello-world',
       formats: ['markdown'],
       published: false,
+      related: false,
     },
     output: CANNED.get_entry.ok,
   },

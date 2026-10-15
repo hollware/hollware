@@ -13,6 +13,7 @@ import {
   processMarkdown,
   publish as publishSpec,
   requestChanges as requestChangesSpec,
+  search as searchSpec,
   renderHtml,
   resolveConfig,
   unpublish as unpublishSpec,
@@ -270,6 +271,8 @@ export function agent(context: OperationContext) {
       call(listEntriesSpec, handlers.list_entries, input, context),
     publish: (input: z.input<typeof publishSpec.input>) =>
       call(publishSpec, handlers.publish, input, context),
+    search: (input: z.input<typeof searchSpec.input>) =>
+      call(searchSpec, handlers.search, input, context),
     unpublish: (input: z.input<typeof unpublishSpec.input>) =>
       call(unpublishSpec, handlers.unpublish, input, context),
     updateDraft: (input: z.input<typeof updateDraftSpec.input>) =>
@@ -323,6 +326,8 @@ export const UNTOUCHED: ContentStore = {
   findEntryById: () => touched('findEntryById'),
   listEntries: () => touched('listEntries'),
   searchEntries: () => touched('searchEntries'),
+  findSummaries: () => touched('findSummaries'),
+  relatedOf: () => touched('relatedOf'),
   listTranslations: () => touched('listTranslations'),
   lookup: () => touched('lookup'),
   lastPublication: () => touched('lastPublication'),

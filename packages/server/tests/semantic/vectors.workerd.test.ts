@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { connect } from '../../src/db/d1.ts'
 import { deliverEvent } from '../../src/events/deliver.ts'
 import { healVectors, syncEntryVectors } from '../../src/semantic/index-entry.ts'
-import type { Semantic } from '../../src/semantic/ports.ts'
+import type { Semantic } from '../../src/ports.ts'
 import { blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 import { fakeSemantic } from './fakes.ts'
@@ -95,6 +95,7 @@ describe('the vectors of an entry', () => {
       collection: 'blog',
       locale: 'en',
       piece: 2,
+      excerpt: 'Purging When it lets go.',
     })
     expect(await rowOf(world, id)).toEqual({
       revision_id: await publishedRevision(world, id),

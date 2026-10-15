@@ -158,6 +158,7 @@ describe('the options of a call', () => {
         slug: 'hello-world',
         formats: ['html', 'document'],
         published: false,
+        related: false,
       },
       {
         collection: 'blog',
@@ -165,6 +166,7 @@ describe('the options of a call', () => {
         slug: 'hello-world',
         formats: ['markdown'],
         published: false,
+        related: false,
       },
       {
         collection: 'blog',
@@ -172,6 +174,7 @@ describe('the options of a call', () => {
         slug: 'hello-world',
         formats: ['markdown'],
         published: false,
+        related: false,
       },
     ])
   })
@@ -214,7 +217,7 @@ describe('the options of a call', () => {
     {
       method: 'getEntry',
       unknown: 'format',
-      allowed: 'formats',
+      allowed: 'formats, related',
       call: (rpc: HollwareRpc) =>
         rpc.getEntry(SITE_KEY, 'blog', 'hello-world', 'en', JSON.parse('{"format":["html"]}')),
     },

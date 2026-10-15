@@ -14,12 +14,15 @@ Semantic search finds an entry by what it means, across languages: a Spanish que
 - **An internal subscriber, `vectors`, keeps them** on the events of the outbox (ADR-025). It reads the entry as it is now, so it is right however late it runs and whichever event called it: the vectors of the published revision are made once, an entry with nothing published loses them, and a revision with fewer sections drops the vectors of the sections it lost. A failure is retried as any delivery is.
 - **The cron trigger heals what no event did**: entries published before the Worker had semantic search, vectors of another model or chunker, and vectors of entries that are no longer published, a few entries a minute.
 - **Two ports, `Embedder` and `VectorIndex`**, with adapters over the bindings and deterministic fakes in tests, so no test reaches the network.
+- **`search` takes a `mode`**: `fulltext` (ADR-029), `semantic` (the query embedded, the nearest pieces, each entry once by its closest piece, its snippet the start of that piece) or `hybrid`, the default, which merges both by reciprocal rank fusion (`1 / (60 + place)` summed over the lists), the words found by full text keeping their snippet. Without semantic search every mode is full text, and the answer's `mode` says which one ran.
+- **Related entries are found when an entry is indexed**: the entries nearest to its summary vector, in its collection and locale, kept with its vectors (`entry_embeddings.related`). `get_entry` answers them when asked (`related: true`), only those still published.
 
 ## Consequences
 
 - Turning semantic search on, or changing the model, needs no command: the cron indexes the site within minutes of the deploy.
 - A Vectorize index serves one model, since its dimensions are fixed: changing the model means a new index.
-- A write costs no embedding; publishing costs one call to the model per entry, outside the request.
+- A write costs no embedding; publishing costs one call to the model per entry, outside the request. A semantic or hybrid search costs one call per query.
+- The related entries of an entry are those of when it was indexed: an entry published later shows up in its related ones the next time it is indexed.
 
 ## Alternatives considered
 

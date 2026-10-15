@@ -553,6 +553,11 @@ export const entryEmbeddings = sqliteTable(
     chunkerVersion: text('chunker_version').notNull(),
     /** How many pieces, so how many vectors: `<entry id>:0` to `<entry id>:<pieces - 1>`. */
     pieces: integer('pieces').notNull(),
+    /**
+     * The entries closest to this one by their summaries, in its collection and locale, closest
+     * first, as JSON: `[{ "id": "ent_…", "score": 0.91 }]`. Found when its vectors were made.
+     */
+    related: text('related').notNull().default('[]'),
     ...timestamps(),
   },
   (t) => [

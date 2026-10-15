@@ -53,6 +53,8 @@ export const STORE: ContentStore = {
   findEntryById: unused,
   listEntries: unused,
   searchEntries: unused,
+  findSummaries: unused,
+  relatedOf: unused,
   listTranslations: unused,
   lookup: unused,
   lastPublication: unused,
@@ -242,7 +244,11 @@ export const CANNED: Canned = {
     ok: { outcome: 'ok', entries: [SUMMARY], nextCursor: null },
   },
   search: {
-    ok: { outcome: 'ok', results: [{ entry: SUMMARY, snippet: 'the [words] found', score: 1.5 }] },
+    ok: {
+      outcome: 'ok',
+      mode: 'fulltext',
+      results: [{ entry: SUMMARY, snippet: 'the [words] found', score: 1.5 }],
+    },
   },
   list_reviews: {
     ok: { outcome: 'ok', reviews: [{ ...REVIEW, entry: SUMMARY }] },

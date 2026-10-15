@@ -168,6 +168,7 @@ describe('operation specs', () => {
         slug: 'hello-world',
         formats: ['markdown'],
         published: false,
+        related: false,
       },
     )
     const misspelled = updateDraft.input.safeParse({

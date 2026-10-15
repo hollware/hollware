@@ -135,6 +135,12 @@ export interface SearchHit {
   readonly score: number
 }
 
+/** An entry close to another by meaning, and how close: higher is closer. */
+export interface RelatedEntry {
+  readonly id: string
+  readonly score: number
+}
+
 /** The answer to a write that the store could not make. */
 export type WriteRefusal =
   | { readonly outcome: 'conflict'; readonly currentVersion: number; readonly headRevision: string }
@@ -211,6 +217,14 @@ export interface ContentStore {
    * the title weighs most, then the tags, then the text (bm25).
    */
   searchEntries(site: string, query: SearchQuery): Promise<readonly SearchHit[]>
+  /** The entries of those ids that the view has, in the order of the ids. */
+  findSummaries(
+    site: string,
+    ids: readonly string[],
+    view: View,
+  ): Promise<readonly EntrySummaryView[]>
+  /** The entries closest to one by meaning, closest first (ADR-030); `[]` when it has no vectors. */
+  relatedOf(site: string, entryId: string): Promise<readonly RelatedEntry[]>
   /** The entries of a translation group, one per locale, in the given view. */
   listTranslations(
     site: string,
@@ -318,4 +332,66 @@ export interface ContentStore {
 /** The time, so that tests can fix it. */
 export interface Clock {
   now(): Date
+}
+
+/*
+ * Semantic search (ADR-030) stands on two services that have no local emulation: a model that
+ * turns text into vectors, and an index that finds the nearest ones. Both are ports, so that tests
+ * use deterministic fakes and a deployment without them has no semantic search at all.
+ */
+
+/** Turns texts into vectors, all of the same length. */
+export interface Embedder {
+  /** The model, which the stored vectors name: another model makes them stale. */
+  readonly model: string
+  embed(texts: readonly string[]): Promise<number[][]>
+}
+
+/** What a vector says about where it comes from, to filter and to read a match back. */
+export interface VectorMetadata {
+  readonly site: string
+  readonly entry: string
+  readonly collection: string
+  readonly locale: string
+  /** The piece of the entry: 0 for its summary. */
+  readonly piece: number
+  /** The start of the piece's text, for the snippet of a match. */
+  readonly excerpt: string
+}
+
+export interface StoredVector {
+  /** `<entry id>:<piece>`. */
+  readonly id: string
+  readonly values: readonly number[]
+  readonly metadata: VectorMetadata
+}
+
+export interface VectorMatch {
+  readonly id: string
+  /** How close: higher is closer. */
+  readonly score: number
+  readonly metadata: VectorMetadata
+}
+
+export interface VectorIndex {
+  upsert(vectors: readonly StoredVector[]): Promise<void>
+  remove(ids: readonly string[]): Promise<void>
+  /** The `topK` vectors nearest to `values` among those of the site, narrowed as asked. */
+  query(
+    values: readonly number[],
+    options: {
+      readonly topK: number
+      readonly site: string
+      readonly collection?: string
+      readonly locale?: string
+      /** Only the summaries, one vector per entry. */
+      readonly summariesOnly?: boolean
+    },
+  ): Promise<readonly VectorMatch[]>
+}
+
+/** What semantic search needs: both services, or the deployment has none. */
+export interface Semantic {
+  readonly embedder: Embedder
+  readonly index: VectorIndex
 }

@@ -154,6 +154,9 @@ export const conflict = z.object({
 
 export const format = z.enum(['markdown', 'document', 'html'])
 
+/** How a search is made: by its words, by meaning, or both merged (ADR-030). */
+export const searchMode = z.enum(['fulltext', 'semantic', 'hybrid'])
+
 export const componentDescription = z.object({
   name: z.string(),
   description: z.string().nullable(),

@@ -2,9 +2,27 @@ import { CHUNKER_VERSION, chunksOf, newId, type EntryDocument } from '@hollware/
 import { and, eq, isNotNull, isNull, ne, or } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
 import { entries, entryEmbeddings, revisions } from '../db/schema.ts'
-import { vectorId, type Semantic } from './ports.ts'
+import type { Semantic } from '../ports.ts'
+
+/** The id of a piece's vector. */
+export function vectorId(entryId: string, piece: number): string {
+  return `${entryId}:${piece}`
+}
 
 export type IndexOutcome = 'indexed' | 'current' | 'removed' | 'absent'
+
+/** How many entries an entry keeps as its related ones. */
+export const RELATED_LIMIT = 5
+
+/** How long the excerpt of a piece is, in characters, cut at a word. */
+export const EXCERPT_LENGTH = 200
+
+function excerptOf(text: string): string {
+  if (text.length <= EXCERPT_LENGTH) return text
+  const cut = text.slice(0, EXCERPT_LENGTH)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim()}…`
+}
 
 function stringOf(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
@@ -92,13 +110,27 @@ export async function syncEntryVectors(
         collection: published.collection,
         locale: published.locale,
         piece: chunk.index,
+        excerpt: excerptOf(chunk.text),
       },
     })),
   )
   // A revision with fewer sections than the one before leaves vectors that no piece has now.
   if (stored !== undefined)
     await semantic.index.remove(idsOf(entryId, chunks.length, stored.pieces))
+  // The entries nearest by their summaries, in its collection and locale; itself left out.
+  const nearest = await semantic.index.query(vectors[0] ?? [], {
+    topK: RELATED_LIMIT + 1,
+    site,
+    collection: published.collection,
+    locale: published.locale,
+    summariesOnly: true,
+  })
+  const related = nearest
+    .filter((match) => match.metadata.entry !== entryId)
+    .slice(0, RELATED_LIMIT)
+    .map((match) => ({ id: match.metadata.entry, score: match.score }))
   const row = {
+    related: JSON.stringify(related),
     revisionId: published.revisionId,
     model: semantic.embedder.model,
     chunkerVersion: CHUNKER_VERSION,
