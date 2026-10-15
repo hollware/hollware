@@ -33,7 +33,6 @@ import {
 
 export interface Ceremony {
   readonly db: Db
-  readonly site: string
   /** The public URL of the Worker, `HOLLWARE_PUBLIC_URL`. */
   readonly publicUrl: string
   readonly now: Date
@@ -53,12 +52,7 @@ function refused(message: string, fix: string): HollwareError {
 
 /** The options of `navigator.credentials.create` for the person of an invitation. */
 export async function registrationOptions(ceremony: Ceremony, invitationSecret: string) {
-  const invitation = await findInvitation(
-    ceremony.db,
-    ceremony.site,
-    invitationSecret,
-    ceremony.now,
-  )
+  const invitation = await findInvitation(ceremony.db, invitationSecret, ceremony.now)
   if (invitation === null) {
     throw refused(
       'This link is not valid: it was used already, or it expired.',
@@ -67,9 +61,7 @@ export async function registrationOptions(ceremony: Ceremony, invitationSecret: 
   }
   const userId = invitation.userId ?? newId('usr')
   const existing =
-    invitation.userId === null
-      ? []
-      : await passkeysOf(ceremony.db, ceremony.site, invitation.userId)
+    invitation.userId === null ? [] : await passkeysOf(ceremony.db, invitation.userId)
   const rp = relyingParty(ceremony)
   const options = await generateRegistrationOptions({
     rpName: 'Hollware',
@@ -81,7 +73,6 @@ export async function registrationOptions(ceremony: Ceremony, invitationSecret: 
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
   })
   const challengeId = await saveChallenge(ceremony.db, {
-    site: ceremony.site,
     challenge: options.challenge,
     purpose: 'register',
     invitationId: invitation.id,
@@ -106,7 +97,6 @@ export async function verifyRegistration(
   },
 ): Promise<{ userId: string; session: string }> {
   const challenge = await takeChallenge(ceremony.db, {
-    site: ceremony.site,
     id: input.challengeId,
     purpose: 'register',
     now: ceremony.now,
@@ -122,11 +112,8 @@ export async function verifyRegistration(
     expectedRPID: rp.id,
   })
   if (!verified.verified) throw refused('The passkey could not be verified.', 'Try again.')
-  const invitation = await invitationById(ceremony.db, ceremony.site, challenge.invitationId)
-  if (
-    invitation === null ||
-    !(await redeemInvitation(ceremony.db, ceremony.site, invitation.id, ceremony.now))
-  ) {
+  const invitation = await invitationById(ceremony.db, challenge.invitationId)
+  if (invitation === null || !(await redeemInvitation(ceremony.db, invitation.id, ceremony.now))) {
     throw refused(
       'This link is not valid: it was used already, or it expired.',
       'Ask the owner of this Hollware for a new invitation.',
@@ -137,13 +124,12 @@ export async function verifyRegistration(
       id: challenge.userId,
       name: input.name.trim() === '' ? 'Unnamed' : input.name.trim(),
       role: invitation.role,
-      site: ceremony.site,
+      site: invitation.site,
       now: ceremony.now,
     })
   }
   const { credential } = verified.registrationInfo
   await addPasskey(ceremony.db, {
-    site: ceremony.site,
     userId: challenge.userId,
     credentialId: credential.id,
     publicKey: isoBase64URL.fromBuffer(credential.publicKey),
@@ -153,7 +139,6 @@ export async function verifyRegistration(
     now: ceremony.now,
   })
   const session = await createSession(ceremony.db, {
-    site: ceremony.site,
     userId: challenge.userId,
     now: ceremony.now,
     hours: SESSION_HOURS,
@@ -161,7 +146,7 @@ export async function verifyRegistration(
   return { userId: challenge.userId, session: session.secret }
 }
 
-/** The options of `navigator.credentials.get`: any passkey of this site, chosen by the person. */
+/** The options of `navigator.credentials.get`: any passkey of this deployment, chosen by the person. */
 export async function authenticationOptions(ceremony: Ceremony) {
   const rp = relyingParty(ceremony)
   const options = await generateAuthenticationOptions({
@@ -169,7 +154,6 @@ export async function authenticationOptions(ceremony: Ceremony) {
     userVerification: 'preferred',
   })
   const challengeId = await saveChallenge(ceremony.db, {
-    site: ceremony.site,
     challenge: options.challenge,
     purpose: 'authenticate',
     invitationId: null,
@@ -179,19 +163,18 @@ export async function authenticationOptions(ceremony: Ceremony) {
   return { challengeId, options }
 }
 
-/** Verifies a sign-in with a passkey of this site, and opens the person's session. */
+/** Verifies a sign-in with a passkey of this deployment, and opens the person's session. */
 export async function verifyAuthentication(
   ceremony: Ceremony,
   input: { readonly challengeId: string; readonly response: AuthenticationResponseJSON },
 ): Promise<{ userId: string; session: string }> {
   const challenge = await takeChallenge(ceremony.db, {
-    site: ceremony.site,
     id: input.challengeId,
     purpose: 'authenticate',
     now: ceremony.now,
   })
   if (challenge === null) throw refused('The sign-in expired.', 'Sign in again.')
-  const passkey = await findPasskey(ceremony.db, ceremony.site, input.response.id)
+  const passkey = await findPasskey(ceremony.db, input.response.id)
   if (passkey === null) {
     throw refused('This passkey is not one of this Hollware.', 'Use a passkey you registered here.')
   }
@@ -211,7 +194,6 @@ export async function verifyAuthentication(
   if (!verified.verified) throw refused('The passkey could not be verified.', 'Try again.')
   await touchPasskey(ceremony.db, passkey.id, verified.authenticationInfo.newCounter, ceremony.now)
   const session = await createSession(ceremony.db, {
-    site: ceremony.site,
     userId: passkey.userId,
     now: ceremony.now,
     hours: SESSION_HOURS,

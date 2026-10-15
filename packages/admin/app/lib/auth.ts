@@ -40,6 +40,8 @@ export interface AuthDeps {
 }
 
 const PENDING = 'hollware:sign-in'
+/** The site the person chose in the admin, for the next sign-in; none means the server's choice. */
+const SITE = 'hollware:site'
 
 /** An access token is renewed when it has less than this left. */
 const MARGIN_MS = 60_000
@@ -109,7 +111,19 @@ export function createAuth(deps: AuthDeps) {
         code_challenge_method: 'S256',
         resource: settings.resource,
       })
+      const site = deps.storage.getItem(SITE)
+      if (site !== null) query.set('site', site)
       deps.navigate(`/authorize?${query.toString()}`)
+    },
+
+    /**
+     * Moves the admin to another site of the person: a token is for one site, so the admin forgets
+     * its tokens and signs in again for that site, which the server answers at once.
+     */
+    async switchSite(site: string, returnTo: string): Promise<void> {
+      deps.storage.setItem(SITE, site)
+      tokens = null
+      await this.signIn(returnTo)
     },
 
     /**

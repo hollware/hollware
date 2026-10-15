@@ -11,13 +11,14 @@ import { connect } from '../db/d1.ts'
 import type { GatewayEnv } from '../http/types.ts'
 import { consentPage, messagePage, plainPageHeaders } from '../identity/pages.ts'
 import { SESSION_COOKIE } from '../identity/routes.ts'
-import { findSession } from '../identity/store.ts'
+import { findSession, membershipsOf, type Role } from '../identity/store.ts'
 import type { Clock } from '../ports.ts'
 import { adminClient } from './admin.ts'
 import type { GrantProps, OAuth } from './server.ts'
 
 export interface AuthorizeOptions {
-  readonly site: string
+  /** The sites of the deployment: a grant is for one of them. */
+  readonly sites: ReadonlySet<string>
   readonly clock: Clock
   readonly oauth: (publicUrl: string) => OAuth
 }
@@ -82,43 +83,70 @@ function answerError(error: unknown): Response {
  *   `access_denied`.
  * - The grant stores the person and the site. What its tokens may do is read again on each request
  *   against the person's role then (`server.ts`).
+ * - The site is the one `?site=` names, if the person is a member of it; else the only site the
+ *   person is a member of; else the consent page asks which (v0.4). The admin names its site, and
+ *   takes the first one when it names none.
  */
 export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOptions): void {
   const person = async (c: Context<GatewayEnv>) => {
     const secret = getCookie(c, SESSION_COOKIE)
     if (secret === undefined) return null
-    return await findSession(connect(c.env.DB), options.site, secret, options.clock.now())
+    const db = connect(c.env.DB)
+    const found = await findSession(db, secret, options.clock.now())
+    if (found === null) return null
+    const memberships = (await membershipsOf(db, found.userId)).filter((membership) =>
+      options.sites.has(membership.site),
+    )
+    return { ...found, memberships }
   }
   const signIn = (c: Context<GatewayEnv>) => {
     const url = new URL(c.req.url)
     const back = `${url.pathname}${url.search}`
     return c.redirect(`/signin?return_to=${encodeURIComponent(back)}`, 302)
   }
+  const notMember = (site: string | undefined) =>
+    html(
+      messagePage(
+        'Not a member',
+        site === undefined
+          ? 'You are not a member of any site of this Hollware. Ask an owner for an invitation.'
+          : `You are not a member of the site "${site}". Ask its owner for an invitation.`,
+      ),
+      403,
+    )
 
   app.get('/authorize', async (c) => {
-    const oauth = options.oauth(c.env.HOLLWARE_PUBLIC_URL).authorizationServer.getOAuthApi(c.env)
+    const server = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
+    const oauth = server.authorizationServer.getOAuthApi(c.env)
     try {
       const request = await oauth.parseAuthRequest(c.req.raw)
       const signedIn = await person(c)
       if (signedIn === null) return signIn(c)
-      const server = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
+      const [first] = signedIn.memberships
+      if (first === undefined) return notMember(undefined)
+      const asked = c.req.query('site')
+      const named =
+        asked === undefined ? undefined : signedIn.memberships.find((m) => m.site === asked)
+      if (asked !== undefined && named === undefined) return notMember(asked)
       if (request.clientId === (await adminClient(server, c.env)).clientId) {
         // The admin is Hollware's own page: the person signed in to use it, and is not asked.
-        const scope = grantableScopes(signedIn.role, request.scope)
-        const props: GrantProps = { userId: signedIn.userId, site: options.site }
+        const membership = named ?? first
+        const props: GrantProps = { userId: signedIn.userId, site: membership.site }
         const { redirectTo } = await oauth.completeAuthorization({
           request,
           userId: signedIn.userId,
-          metadata: { site: options.site },
-          scope,
+          metadata: { site: membership.site },
+          scope: grantableScopes(membership.role, request.scope),
           props,
         })
         return new Response(null, { status: 302, headers: { location: redirectTo } })
       }
-      const scopes = grantableScopes(
-        signedIn.role,
-        request.scope.length === 0 ? BASELINE : request.scope,
-      )
+      const choices: readonly { site: string; role: Role }[] =
+        named !== undefined ? [named] : signedIn.memberships
+      const asking = request.scope.length === 0 ? BASELINE : request.scope
+      // What the page offers: the scopes any site the person may choose allows; the site they
+      // choose cuts them to its role when they approve.
+      const scopes = [...new Set(choices.flatMap((m) => grantableScopes(m.role, asking)))]
       if (scopes.length === 0) {
         const location = authorizationErrorRedirect(
           request,
@@ -137,6 +165,7 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
           redirectIsLoopback: details.redirectIsLoopback,
           person: signedIn.name ?? 'you',
           scopes,
+          sites: choices.map((m) => m.site),
           handle: consent.handle,
         }),
         200,
@@ -164,7 +193,11 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
         const denied = await oauth.denyConsent(c.req.raw, handle)
         return new Response(null, { status: 302, headers: denied.headers })
       }
-      const scope = grantableScopes(signedIn.role, form.getAll('scope').map(String))
+      const chosen = form.get('site')
+      const membership = signedIn.memberships.find((m) => m.site === chosen)
+      if (membership === undefined)
+        return notMember(typeof chosen === 'string' ? chosen : undefined)
+      const scope = grantableScopes(membership.role, form.getAll('scope').map(String))
       const approved = await oauth.approveConsent(c.req.raw, handle, { scope })
       if (scope.length === 0) {
         const location = authorizationErrorRedirect(
@@ -175,11 +208,11 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
         approved.headers.set('location', location)
         return new Response(null, { status: 302, headers: approved.headers })
       }
-      const props: GrantProps = { userId: signedIn.userId, site: options.site }
+      const props: GrantProps = { userId: signedIn.userId, site: membership.site }
       const { redirectTo } = await oauth.completeAuthorization({
         request: approved.request,
         userId: signedIn.userId,
-        metadata: { site: options.site },
+        metadata: { site: membership.site },
         scope,
         props,
       })

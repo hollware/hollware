@@ -80,31 +80,8 @@ const cases: readonly Case[] = [
     problems: [
       {
         path: 'sites',
-        message: 'has no site, and v0.1 serves exactly one site per deployment',
+        message: 'has no site, and a deployment serves at least one',
         fix: SITE_FIX,
-      },
-    ],
-  },
-  {
-    name: 'two sites',
-    config: { sites: { alpha: siteWith(), beta: siteWith() } },
-    problems: [
-      {
-        path: 'sites',
-        message: 'has 2 sites ("alpha", "beta"), and v0.1 serves exactly one site per deployment',
-        fix: 'Keep exactly one site in sites.',
-      },
-    ],
-  },
-  {
-    name: 'three sites',
-    config: { sites: { alpha: siteWith(), beta: siteWith(), gamma: siteWith() } },
-    problems: [
-      {
-        path: 'sites',
-        message:
-          'has 3 sites ("alpha", "beta", "gamma"), and v0.1 serves exactly one site per deployment',
-        fix: 'Keep exactly one site in sites.',
       },
     ],
   },

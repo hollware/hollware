@@ -7,6 +7,8 @@ export type GatewayEnv = {
   Variables: {
     /** One `crypto.randomUUID()` per request, set before anything else runs. */
     requestId: string
+    /** The site of the principal, set once its token is checked (read API). */
+    site: string
   }
 }
 

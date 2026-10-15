@@ -1,4 +1,4 @@
-import { resolveConfig, type HollwareConfig } from '@hollware/core'
+import { resolveConfig, type HollwareConfig, type ResolvedSite } from '@hollware/core'
 import manifest from '../package.json' with { type: 'json' }
 import { createGateway } from './http/index.ts'
 import type { HollwareEnv, HollwareWorker } from './index.ts'
@@ -39,7 +39,7 @@ function writeLog(entry: object): void {
  *
  * - the config is resolved with `resolveConfig`, so a broken `hollware.config.ts` throws its
  *   `ConfigError` here, and the Worker fails at startup with a message that says what to change.
- *   v0.1 serves the one site of the config;
+ *   The deployment serves every site of the config, and a token, a grant or a call names one;
  * - the MCP endpoint, whose tool schemas are converted once, and the Hono app of the gateway,
  *   which is `fetch`: MCP at `/mcp` behind the guard and the token check, and the other routes
  *   (`http/gateway.ts`);
@@ -56,14 +56,10 @@ export function createHollwareWith(
   options: ComposeOptions = {},
 ): HollwareWorker {
   const resolved = resolveConfig(config)
-  const [site] = resolved.sites.values()
-  if (site === undefined) {
-    // `resolveConfig` throws for a config without exactly one site; this is only for the types.
-    throw new Error('The resolved config has no site, which resolveConfig never lets through')
-  }
+  const sites = resolved.sites
   const clock = options.clock ?? systemClock
   const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
-  const deliveryDeps = (env: HollwareEnv): DeliveryDeps => ({
+  const deliveryDeps = (env: HollwareEnv, site: ResolvedSite): DeliveryDeps => ({
     db: connect(env.DB),
     site,
     clock,
@@ -75,39 +71,45 @@ export function createHollwareWith(
   })
   return {
     fetch: createGateway({
-      site,
+      sites,
       mcp,
       clock,
       log: writeLog,
-      read: (env) => createRpc({ site, handlers, clock, log: writeLog }, env),
+      read: (env) => createRpc({ sites, handlers, clock, log: writeLog }, env),
       auth: resolved.auth,
       handlers,
     }),
-    // The cron trigger: publishes what was scheduled and is due (ADR-025).
+    // The cron trigger: publishes what was scheduled and is due (ADR-025), site by site.
     scheduled: async (_controller, env, ctx) => {
-      const deps = deliveryDeps(env)
-      ctx.waitUntil(
-        runDueSchedules({
+      const each = async (site: ResolvedSite) => {
+        await runDueSchedules({
           site,
           store: createD1Store(env.DB, { clock }),
           handlers,
           clock,
           log: writeLog,
         })
-          // Then the outbox, which holds the events of what was just published, too.
-          .then(() => sweepOutbox({ queue: env.EVENTS, deps }))
-          .then(
-            () => undefined,
-            (error: unknown) => {
-              writeLog({ kind: 'cron_failed', message: String(error) })
-            },
-          ),
+        // Then the outbox, which holds the events of what was just published, too.
+        await sweepOutbox({ queue: env.EVENTS, deps: deliveryDeps(env, site) })
+      }
+      ctx.waitUntil(
+        (async () => {
+          // One site that fails does not keep the next one waiting.
+          for (const site of sites.values()) {
+            await each(site).catch((error: unknown) => {
+              writeLog({ kind: 'cron_failed', site: site.key, message: String(error) })
+            })
+          }
+        })(),
       )
     },
-    // The consumer of the events Queue: delivers each event to the subscribers of the site.
+    // The consumer of the events Queue: delivers each event to the subscribers of its site.
     queue: async (batch, env) => {
-      await consumeEvents(batch.messages, deliveryDeps(env))
+      await consumeEvents(batch.messages, (key) => {
+        const site = sites.get(key)
+        return site === undefined ? undefined : deliveryDeps(env, site)
+      })
     },
-    Hollware: createEntrypoint({ site, handlers, clock, log: writeLog }),
+    Hollware: createEntrypoint({ sites, handlers, clock, log: writeLog }),
   }
 }

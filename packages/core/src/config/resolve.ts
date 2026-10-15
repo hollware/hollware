@@ -161,14 +161,9 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
     return sites
   }
   const keys = Object.keys(raw)
+  // A deployment serves one site or several (v0.4): each token, grant and member belongs to one.
   if (keys.length === 0) {
-    problems.add('sites', 'has no site, and v0.1 serves exactly one site per deployment', SITE_FIX)
-  } else if (keys.length > 1) {
-    problems.add(
-      'sites',
-      `has ${keys.length} sites (${keys.map(quote).join(', ')}), and v0.1 serves exactly one site per deployment`,
-      'Keep exactly one site in sites.',
-    )
+    problems.add('sites', 'has no site, and a deployment serves at least one', SITE_FIX)
   }
   for (const key of keys) {
     const site = readSite(key, raw[key], problems)
@@ -204,7 +199,7 @@ function readAuth(raw: unknown, problems: Problems): ResolvedAuth {
 /**
  * Checks the config of the deployment and fills in its defaults, or throws a `ConfigError` with
  * every problem it found, so that a broken `hollware.config.ts` stops the Worker at startup with
- * a message that says what to change. v0.1 serves exactly one site per deployment.
+ * a message that says what to change. A deployment serves one site or more.
  *
  * The parameter is `unknown` because the config comes from user code that may be plain
  * JavaScript; a `HollwareConfig` is accepted as is, so this is a `ResolveConfig`. Notes on the

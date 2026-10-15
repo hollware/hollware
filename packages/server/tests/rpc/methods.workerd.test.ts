@@ -44,7 +44,7 @@ function rpcOver(overrides: Overrides = {}) {
   const logs: RpcLogEntry[] = []
   const watched = watchDb(env.DB)
   const rpc = createRpc(
-    { site: SITE, handlers, clock, log: (entry) => void logs.push(entry) },
+    { sites: new Map([[SITE.key, SITE]]), handlers, clock, log: (entry) => void logs.push(entry) },
     { DB: watched.db },
   )
   return { rpc, seen, clock, logs, ...watched }
@@ -332,7 +332,7 @@ describe('a call that breaks the schema of its operation', () => {
 
 describe('a call for another site', () => {
   it.each(WRONG_SITE)(
-    '$method is invalid_input that names the site this deployment serves, and opens no session',
+    '$method is invalid_input that names the sites this deployment serves, and opens no session',
     async ({ call }) => {
       const { rpc, seen, sessions, queries } = rpcOver()
 
@@ -341,8 +341,8 @@ describe('a call for another site', () => {
       expect(error).toBeInstanceOf(HollwareError)
       expect(error).toMatchObject({
         code: 'invalid_input',
-        message: 'This Hollware serves the site "gateway-tests", not the one the call names.',
-        fix: 'Pass "gateway-tests", the site this deployment serves, as the site argument.',
+        message: 'This Hollware serves no site "a-stranger-site": it serves "gateway-tests".',
+        fix: 'Pass one of "gateway-tests", the sites this deployment serves, as the site argument.',
       })
       expect(seen).toEqual([])
       expect(sessions).toEqual([])

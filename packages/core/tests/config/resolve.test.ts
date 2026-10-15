@@ -365,6 +365,15 @@ describe('resolveConfig', () => {
     expect(blog?.components.get('callout')?.props).toBe(props)
   })
 
+  it('resolves a deployment of several sites, each with its key', () => {
+    const resolved = resolveConfig(configWith())
+    const two = resolveConfig({ sites: { alpha: siteWith(), beta: siteWith() } })
+
+    expect([...resolved.sites.keys()]).toHaveLength(1)
+    expect([...two.sites.keys()]).toEqual(['alpha', 'beta'])
+    expect(siteOf(two, 'beta').key).toBe('beta')
+  })
+
   it('resolves the same config to the same result every time', () => {
     const config = blogConfig({
       translations: { groupBy: 'group' },

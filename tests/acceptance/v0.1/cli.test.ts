@@ -149,12 +149,12 @@ describe('AC-0.1-16: init and tokens', () => {
     ])
   })
 
-  it('init refuses to run on a database that has an owner, and changes nothing', async () => {
+  it('init refuses to run again for a site that has an owner, and changes nothing', async () => {
     const again = await project.hollware('init', '--local', '--site', SITE_KEY)
 
     expect(again.code).toBe(1)
     expect(stable(again.output)).toBe(
-      'hollware init: the database already has an owner (<usr>), so there is nothing to set up. Create another token with "hollware token create --label <text>".\n',
+      `hollware init: the site "${SITE_KEY}" already has an owner (<usr>), so there is nothing to set up. Create another token with "hollware token create --site ${SITE_KEY} --label <text>".\n`,
     )
     const [users, tokens] = await project.query(
       'SELECT count(*) AS n FROM users; SELECT count(*) AS n FROM tokens',

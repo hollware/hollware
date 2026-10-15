@@ -42,6 +42,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 024 | Entries that link to each other are published together, in one step                                         | Accepted              | [0024-publish-a-group-of-entries-in-one-step.md](0024-publish-a-group-of-entries-in-one-step.md)                                               |
 | 025 | Publishing commits in one batch, and its effects go through an outbox                                       | Accepted              | [0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md](0025-publish-commits-in-one-batch-and-effects-go-through-an-outbox.md) |
 | 026 | OAuth, passkeys and the admin's sign-in                                                                     | Accepted              | [0026-oauth-passkeys-and-the-admin-sign-in.md](0026-oauth-passkeys-and-the-admin-sign-in.md)                                                   |
+| 027 | One person across the sites of a deployment                                                                 | Accepted              | [0027-one-person-across-the-sites-of-a-deployment.md](0027-one-person-across-the-sites-of-a-deployment.md)                                     |
 
 ## Template
 

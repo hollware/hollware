@@ -8,7 +8,7 @@ import { expect, it } from 'vite-plus/test'
 // owner, a token, an entry with its revision and a publication are written, as a deployment of
 // v0.2 holds them; then every later migration runs, in order, as `hollware migrate` runs them. The
 // rows must all still be there, every person with a token must be a member of its site with the
-// role they had, and no foreign key may point nowhere. This is what caught a rebuild of `users` in
+// role they had, a passkey and a session of v0.3 must outlive the loss of their site (0006), and no foreign key may point nowhere. This is what caught a rebuild of `users` in
 // the first 0004: with foreign keys on, as D1 always has them, dropping a table that other rows
 // point at fails the transaction (D1 answered it as "internal error").
 
@@ -46,6 +46,14 @@ const CONTENT = [
     'token', '${ID('usr')}', '${ID('tok')}', '${T}', '${T}')`,
 ]
 
+/** What v0.3 holds of the owner's sign-in: a passkey and a session, then of a site. */
+const PEOPLE = [
+  `INSERT INTO passkeys (id, site_id, user_id, credential_id, public_key, counter, transports, label, created_at, updated_at)
+    VALUES ('pky_1', 'demo', '${ID('usr')}', 'credential-1', 'key', 0, '[]', 'Laptop', '${T}', '${T}')`,
+  `INSERT INTO sessions (id, site_id, user_id, hash, expires_at, created_at, updated_at)
+    VALUES ('ses_1', 'demo', '${ID('usr')}', 'session-hash', '2099-01-01T00:00:00.000Z', '${T}', '${T}')`,
+]
+
 it('runs every migration after 0003 over the content of a deployment, and keeps all of it', () => {
   const db = new DatabaseSync(':memory:')
   db.exec('PRAGMA foreign_keys = ON')
@@ -68,6 +76,9 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
   db.exec('COMMIT')
 
   for (const file of later) {
+    // A person with a passkey and a session, as the admin of v0.3 makes them, before they lose
+    // their site.
+    if (file.startsWith('0006')) for (const statement of PEOPLE) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')
@@ -84,5 +95,11 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
   expect(db.prepare('SELECT id FROM members').get()).toEqual({
     id: expect.stringMatching(/^mbr_[0-9A-F]{26}$/),
   })
+  expect(db.prepare('SELECT user_id, credential_id FROM passkeys').all()).toEqual([
+    { user_id: ID('usr'), credential_id: 'credential-1' },
+  ])
+  expect(db.prepare('SELECT user_id, hash FROM sessions').all()).toEqual([
+    { user_id: ID('usr'), hash: 'session-hash' },
+  ])
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

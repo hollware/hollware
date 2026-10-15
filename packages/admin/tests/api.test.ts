@@ -13,6 +13,7 @@ function world(answer: () => Response) {
   let forgotten = false
   const auth: Auth = {
     signIn: async (returnTo) => void signIns.push(returnTo),
+    switchSite: async (_site, returnTo) => void signIns.push(returnTo),
     complete: async () => '/',
     token: async () => 'access-1',
     forget: () => {

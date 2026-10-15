@@ -115,6 +115,8 @@ export interface ConsentView {
   readonly person: string
   /** The scopes the person may grant to this request, each offered checked. */
   readonly scopes: readonly string[]
+  /** The sites the grant may be for: one is sent as it is; several are a choice, the first checked. */
+  readonly sites: readonly string[]
   readonly handle: string
 }
 
@@ -132,6 +134,15 @@ export function consentPage(view: ConsentView): string {
   const loopback = view.redirectIsLoopback
     ? '<p><strong>This sends access to an app on this computer.</strong> Continue only if you just started to connect it.</p>'
     : ''
+  const sites =
+    view.sites.length === 1
+      ? `<input type="hidden" name="site" value="${escapeHtml(view.sites[0] ?? '')}">`
+      : `<fieldset><legend>For the site</legend>${view.sites
+          .map(
+            (site, index) =>
+              `<label><input type="radio" name="site" value="${escapeHtml(site)}"${index === 0 ? ' checked' : ''}> ${escapeHtml(site)}</label>`,
+          )
+          .join('\n')}</fieldset>`
   const scopes = view.scopes
     .map(
       (scope) =>
@@ -154,6 +165,7 @@ ${origin}
 ${loopback}
 <form method="post" action="/authorize">
 <input type="hidden" name="handle" value="${escapeHtml(view.handle)}">
+${sites}
 ${scopes}
 <p><button name="decision" value="approve">Allow</button> <button name="decision" value="deny">Deny</button></p>
 </form>

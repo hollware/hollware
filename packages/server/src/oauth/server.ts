@@ -6,7 +6,7 @@ import {
 } from '@cloudflare/workers-oauth-provider'
 import { effectiveScopes } from '../auth/roles.ts'
 import { checkPersonalToken, type TokenRejection } from '../auth/token.ts'
-import type { Principal } from '../auth/types.ts'
+import type { RequestPrincipal } from '../auth/types.ts'
 import type { OAuthErrorLog } from '../http/types.ts'
 import type { HollwareEnv } from '../index.ts'
 import type { Clock } from '../ports.ts'
@@ -28,7 +28,7 @@ export type ResourceName = 'mcp' | 'v1'
 export type Refusal = TokenRejection | 'no_user' | 'other_site'
 
 /** What a protected route does once its token is accepted. */
-export type Proceed = (principal: Principal, auth: OAuthResourceAuth) => Promise<Response>
+export type Proceed = (principal: RequestPrincipal, auth: OAuthResourceAuth) => Promise<Response>
 
 /** The request of a protected route, as the gateway hands it to the resource server. */
 interface Pending {
@@ -45,8 +45,8 @@ interface Pending {
 }
 
 export interface OAuthOptions {
-  /** The one site this deployment serves; a grant of any other is refused. */
-  readonly site: string
+  /** The sites this deployment serves; a grant or a token of any other is refused. */
+  readonly sites: ReadonlySet<string>
   readonly clock: Clock
   /** Whether clients may register themselves (RFC 7591), from `auth` of the config. */
   readonly dynamicClientRegistration: boolean
@@ -155,7 +155,7 @@ function build(issuer: string, options: OAuthOptions): OAuth {
     }
     if (isPersonalToken(token)) {
       const check = await checkPersonalToken(env.DB, token, {
-        site: options.site,
+        sites: options.sites,
         now: options.clock.now(),
       })
       if (!check.ok) return refuse(check.reason)
@@ -170,14 +170,15 @@ function build(issuer: string, options: OAuthOptions): OAuth {
     const granted = await authorizationServer.validateToken<unknown>(resource, token, env)
     if (granted === null) return refuse('unknown')
     if (!isGrantProps(granted.props)) return refuse('unknown')
-    if (granted.props.site !== options.site) return refuse('other_site')
-    const role = await roleOf(env.DB, options.site, granted.props.userId)
+    const site = granted.props.site
+    if (!options.sites.has(site)) return refuse('other_site')
+    const role = await roleOf(env.DB, site, granted.props.userId)
     if (role === null) return refuse('no_user')
-    const principal: Principal = {
+    const principal: RequestPrincipal = {
       kind: 'oauth',
       userId: granted.props.userId,
       clientId: granted.clientId,
-      site: options.site,
+      site,
       scopes: effectiveScopes(role, granted.scope.filter(isScope)),
     }
     return {
@@ -191,7 +192,7 @@ function build(issuer: string, options: OAuthOptions): OAuth {
   }
 
   const resourceServer = (name: ResourceName) =>
-    new OAuthResourceServer<HollwareEnv, Principal>({
+    new OAuthResourceServer<HollwareEnv, RequestPrincipal>({
       resourceMetadata: {
         resource: resources[name],
         authorization_servers: [issuer],

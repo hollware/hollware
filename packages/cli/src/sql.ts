@@ -109,9 +109,9 @@ export function parseDatabase(value: string): string {
   return value
 }
 
-/** The statement that finds an owner: a member of a site with the role owner (ADR-026). */
+/** The statement that finds the owners: the members with the role owner, first come first (ADR-026). */
 export function ownerQuery(): string {
-  return "SELECT user_id AS id FROM members WHERE role = 'owner' LIMIT 1"
+  return "SELECT user_id AS id, site_id AS site FROM members WHERE role = 'owner' ORDER BY created_at, user_id"
 }
 
 /** One statement for the sites of the database and one for its first owner. */
@@ -165,6 +165,26 @@ export function initScript({ site, ownerId, memberId, ownerName, token }: FirstS
   return [
     `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(token.now)}, ${quote(token.now)}) ON CONFLICT (id) DO NOTHING;`,
     `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
+    `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
+    insertToken(token),
+    '',
+  ].join('\n')
+}
+
+export interface AnotherSite {
+  site: string
+  ownerId: string
+  memberId: string
+  token: NewToken
+}
+
+/**
+ * What `init` writes for a site of a deployment that has an owner already: the site, the owner as
+ * its owner too (one person across the sites of a deployment), and a token of that site.
+ */
+export function anotherSiteScript({ site, ownerId, memberId, token }: AnotherSite): string {
+  return [
+    `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(token.now)}, ${quote(token.now)}) ON CONFLICT (id) DO NOTHING;`,
     `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
     '',

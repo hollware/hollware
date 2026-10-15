@@ -74,15 +74,17 @@ function isEventMessage(body: unknown): body is EventMessage {
 /**
  * The Queue consumer: delivers each event, acknowledges it once every subscriber has it, and asks
  * for a retry otherwise; after the Queue's retries it lands in the dead-letter queue. A message of
- * another site, or that is no event, is acknowledged and dropped.
+ * a site this deployment does not serve (`depsOf` has none for it), or that is no event, is
+ * acknowledged and dropped.
  */
 export async function consumeEvents(
   messages: readonly EventDelivery[],
-  deps: DeliveryDeps,
+  depsOf: (site: string) => DeliveryDeps | undefined,
 ): Promise<void> {
   for (const message of messages) {
     const { body } = message
-    if (!isEventMessage(body) || body.site !== deps.site.key) {
+    const deps = isEventMessage(body) ? depsOf(body.site) : undefined
+    if (!isEventMessage(body) || deps === undefined) {
       message.ack()
       continue
     }

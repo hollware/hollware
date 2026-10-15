@@ -19,6 +19,8 @@
 // - "init is all or nothing …": the script of `init` stops being one `wrangler d1 execute` of a
 //   file (a statement that fails leaves the ones before it written), the SQL file stays behind
 //   when it fails, or `--database` stops reaching wrangler as it is given.
+// - "init of a second site makes the owner its owner …": the script of a second site stops
+//   fitting the tables, or makes a second person.
 // - "token revoke sets revoked_at and tells the three cases apart": the `UPDATE … RETURNING`
 //   and the `SELECT` no longer give two separate results in the real answer, or the
 //   statements no longer fit the table.
@@ -237,7 +239,7 @@ describe('hollware on a real local D1', () => {
     expect(code).toBe(1)
     expect(out).toEqual([])
     expect(err).toEqual([
-      `hollware init: the database already has an owner (${state.ownerId}), so there is nothing to set up. Create another token with "hollware token create --label <text>".`,
+      `hollware init: the site "blog" already has an owner (${state.ownerId}), so there is nothing to set up. Create another token with "hollware token create --site blog --label <text>".`,
     ])
     expect(
       await rows(
@@ -369,6 +371,29 @@ describe('hollware on a real local D1', () => {
           'DB2',
         ),
       ).toEqual([[{ sites: 1, users: 1, tokens: 1 }]])
+    },
+  )
+
+  it(
+    'init of a second site makes the owner its owner, with a token of that site',
+    SLOW,
+    async () => {
+      const { code, err } = await cli(['init', '--site', 'docs'])
+
+      expect(err).toEqual([])
+      expect(code).toBe(0)
+      expect(
+        await rows(
+          "SELECT m.site_id AS site, m.role AS role, (SELECT count(*) FROM users) AS users, (SELECT count(*) FROM tokens WHERE site_id = 'docs') AS tokens FROM members m WHERE m.user_id = '" +
+            state.ownerId +
+            "' ORDER BY m.site_id;",
+        ),
+      ).toEqual([
+        [
+          { site: 'blog', role: 'owner', users: 1, tokens: 1 },
+          { site: 'docs', role: 'owner', users: 1, tokens: 1 },
+        ],
+      ])
     },
   )
 })

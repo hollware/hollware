@@ -10,14 +10,14 @@ import {
   verifyRegistration,
   type Ceremony,
 } from '../../src/identity/ceremonies.ts'
-import { createInvitation, findSession } from '../../src/identity/store.ts'
+import { createInvitation, findSession, membershipsOf } from '../../src/identity/store.ts'
 import { seedOwner, siteKey } from '../db/support.ts'
 import { softAuthenticator } from '../support/authenticator.ts'
 
 // Fails when: the passkey ceremonies (src/identity) stop letting a person in the way ADR-026 says:
 // a setup link adds a passkey to the owner it names and an invitation makes a new person with its
 // role, each once and before it expires; sign-in with a registered passkey opens a session that
-// knows the person and their role; and a registration or a sign-in from another origin, a
+// knows the person, whose role is that of each site they are a member of; and a registration or a sign-in from another origin, a
 // challenge used twice, an invitation redeemed by a second registration, a signature that does
 // not verify, or a passkey of no one is refused.
 
@@ -26,7 +26,7 @@ const NOW = new Date('2026-10-14T10:00:00.000Z')
 
 async function site() {
   const owner = await seedOwner(env.DB, siteKey('identity'))
-  const ceremony: Ceremony = { db: connect(env.DB), site: owner.site, publicUrl: ORIGIN, now: NOW }
+  const ceremony: Ceremony = { db: connect(env.DB), publicUrl: ORIGIN, now: NOW }
   return { owner, ceremony }
 }
 
@@ -58,10 +58,9 @@ describe('registration', () => {
     const { answer } = await register(ceremony, link.secret)
 
     expect(answer.userId).toBe(owner.actor.userId)
-    expect(await findSession(ceremony.db, owner.site, answer.session, NOW)).toEqual({
+    expect(await findSession(ceremony.db, answer.session, NOW)).toEqual({
       userId: owner.actor.userId,
       name: 'Owner',
-      role: 'owner',
     })
     await expect(registrationOptions(ceremony, link.secret)).rejects.toThrow(
       'This link is not valid',
@@ -81,11 +80,13 @@ describe('registration', () => {
     const { answer } = await register(ceremony, invitation.secret)
 
     expect(answer.userId).not.toBe(owner.actor.userId)
-    expect(await findSession(ceremony.db, owner.site, answer.session, NOW)).toEqual({
+    expect(await findSession(ceremony.db, answer.session, NOW)).toEqual({
       userId: answer.userId,
       name: 'Ada',
-      role: 'author',
     })
+    expect(await membershipsOf(ceremony.db, answer.userId)).toEqual([
+      { site: owner.site, role: 'author' },
+    ])
   })
 
   it('lets one person in through an invitation, even when two registrations start from it', async () => {
@@ -153,7 +154,7 @@ describe('sign-in', () => {
 
     const answer = await verifyAuthentication(ceremony, { challengeId, response })
 
-    expect((await findSession(ceremony.db, owner.site, answer.session, NOW))?.role).toBe('owner')
+    expect((await findSession(ceremony.db, answer.session, NOW))?.userId).toBe(owner.actor.userId)
     await expect(verifyAuthentication(ceremony, { challengeId, response })).rejects.toThrow(
       'The sign-in expired',
     )

@@ -17,7 +17,7 @@ import { newSite, readUse, seedToken } from './support.ts'
 const NOW = new Date('2026-10-12T18:30:00.000Z')
 
 function at(site: string, now: Date = NOW) {
-  return { site, now }
+  return { sites: new Set([site]), now }
 }
 
 /** Waits for the write of `last_used_at` that a check starts, so that no test leaves a query behind. */
@@ -222,7 +222,7 @@ describe('checkPersonalToken: last_used_at', () => {
     const site = newSite()
     const seeded = await seedToken(env.DB, site)
     const checkAt = (iso: string) =>
-      checkPersonalToken(env.DB, seeded.token, { site, now: new Date(iso) })
+      checkPersonalToken(env.DB, seeded.token, { sites: new Set([site]), now: new Date(iso) })
     const lastUsed = async () => (await readUse(env.DB, seeded.tokenId))?.last_used_at
 
     const first = await checkAt('2026-10-12T18:30:00.000Z')

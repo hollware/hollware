@@ -124,7 +124,7 @@ export const OTHER_TEST_RUNNERS: TestRunnerList = {
  * site, with `UNIQUE(id, site_id)` and composite foreign keys.
  */
 export const TABLES_WITHOUT_SITE: ExceptionList = {
-  max: 3,
+  max: 6,
   entries: [
     {
       value: '_hollware_meta',
@@ -136,6 +136,20 @@ export const TABLES_WITHOUT_SITE: ExceptionList = {
       value: 'users',
       reason:
         'A user belongs to the deployment and may work on several sites; the tokens carry the site (ADR-019).',
+    },
+    {
+      value: 'passkeys',
+      reason:
+        'A person signs in to the deployment, not to a site (v0.4, maintainer, 2026-10-15): one passkey for every site they are a member of.',
+    },
+    {
+      value: 'sessions',
+      reason:
+        "A session is the signed-in person, across sites (v0.4); the site of a request is the grant's or the token's.",
+    },
+    {
+      value: 'auth_challenges',
+      reason: 'A sign-in has no site (v0.4); a registration names its invitation, which has one.',
     },
   ],
 }

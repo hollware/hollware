@@ -19,8 +19,8 @@ import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../o
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 
 export interface GatewayOptions {
-  /** The one site this deployment serves (v0.1). Its key is the site a token must belong to. */
-  readonly site: ResolvedSite
+  /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
+  readonly sites: ReadonlyMap<string, ResolvedSite>
   /** Built once for the isolate; the gateway mounts it at `/mcp`. */
   readonly mcp: McpEndpoint
   /** The time of a request: the expiry of a token and every write are read from it. */
@@ -79,7 +79,8 @@ export type Gateway = (
  * nothing. A failed D1 query while the token is checked is one of those: it is never a 401.
  */
 export function createGateway(options: GatewayOptions): Gateway {
-  const { site, mcp, clock, log } = options
+  const { sites, mcp, clock, log } = options
+  const siteKeys: ReadonlySet<string> = new Set(sites.keys())
   const app = new Hono<GatewayEnv>()
   /**
    * The Worker's own context of each request. Hono hands its routes the same object under a
@@ -92,7 +93,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     return ctx
   }
   const oauth = createOAuth({
-    site: site.key,
+    sites: siteKeys,
     clock,
     dynamicClientRegistration: options.auth?.dynamicClientRegistration ?? false,
     log,
@@ -102,15 +103,16 @@ export function createGateway(options: GatewayOptions): Gateway {
    * What a write hands to the Queue: the events it committed, after the answer (ADR-025). The
    * cron trigger's sweep catches any that this misses.
    */
-  const notify = (c: Context<GatewayEnv>, requestId: string) => (ids: readonly string[]) => {
-    c.executionCtx.waitUntil(
-      enqueue({ queue: c.env.EVENTS, db: connect(c.env.DB), site: site.key, ids, clock }).catch(
-        (error: unknown) => {
-          log({ kind: 'enqueue_failed', requestId, message: String(error) })
-        },
-      ),
-    )
-  }
+  const notify =
+    (c: Context<GatewayEnv>, requestId: string, site: string) => (ids: readonly string[]) => {
+      c.executionCtx.waitUntil(
+        enqueue({ queue: c.env.EVENTS, db: connect(c.env.DB), site, ids, clock }).catch(
+          (error: unknown) => {
+            log({ kind: 'enqueue_failed', requestId, message: String(error) })
+          },
+        ),
+      )
+    }
 
   /**
    * A protected route: the resource server of `resource` answers a request without a token and a
@@ -171,6 +173,9 @@ export function createGateway(options: GatewayOptions): Gateway {
     protect(c, 'mcp', async (principal) => {
       const requestId = c.get('requestId')
       const db = c.env.DB
+      const site = sites.get(principal.site)
+      // The token check refuses a token of a site this deployment does not serve.
+      if (site === undefined) throw new Error(`No site ${principal.site} for a checked token`)
       return await mcp.fetch(c.req.raw, {
         principal,
         requestId,
@@ -179,7 +184,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           site,
           store: createD1Store(db, { clock }),
           clock,
-          notify: notify(c, requestId),
+          notify: notify(c, requestId, site.key),
         },
       })
     }),
@@ -198,17 +203,17 @@ export function createGateway(options: GatewayOptions): Gateway {
   }
   // The rest of the authorization server: its metadata (RFC 8414), the token endpoint, which
   // revokes too, and registration when the config turns it on. `/authorize` is ours.
-  installAuthorize(app, { site: site.key, clock, oauth })
+  installAuthorize(app, { sites: siteKeys, clock, oauth })
   const authorizationServer = (c: Context<GatewayEnv>) =>
     oauth(c.env.HOLLWARE_PUBLIC_URL).authorizationServer.fetch(c.req.raw, c.env, workerContext(c))
   app.all('/.well-known/oauth-authorization-server', authorizationServer)
   app.all('/oauth/*', authorizationServer)
 
-  installIdentity(app, { site: site.key, clock })
+  installIdentity(app, { clock })
   installAdmin(app, { oauth })
 
   installAdminApi(app, {
-    site: site.key,
+    sites: siteKeys,
     clock,
     oauth,
     protect: (c, proceed) => protect(c, 'v1', proceed),
@@ -217,7 +222,7 @@ export function createGateway(options: GatewayOptions): Gateway {
 
   if (options.handlers !== undefined) {
     installOpsApi(app, {
-      site,
+      sites,
       handlers: options.handlers,
       clock,
       log,
@@ -230,7 +235,6 @@ export function createGateway(options: GatewayOptions): Gateway {
   if (options.read !== undefined) {
     installReadApi(app, {
       read: options.read,
-      site: site.key,
       protect: (c, proceed) => protect(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
     })

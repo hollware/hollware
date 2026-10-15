@@ -25,8 +25,8 @@ export type TokenCheck =
   | { readonly ok: false; readonly reason: TokenRejection }
 
 export interface TokenCheckOptions {
-  /** The site this deployment serves. A token of any other site is `unknown`. */
-  readonly site: string
+  /** The sites this deployment serves. A token of any other site is `unknown`. */
+  readonly sites: ReadonlySet<string>
   readonly now: Date
 }
 
@@ -34,14 +34,14 @@ export interface TokenCheckOptions {
 const TOUCH_INTERVAL_MS = 60 * 60 * 1000
 
 /**
- * The token with the role of its user in the token's site, by the hash of the token, in the one
- * site. A user who is no member of the site has no role there, and the token is unknown.
+ * The token with the role of its user in the token's site, by the hash of the token, in the
+ * deployment. A user who is no member of the site has no role there, and the token is unknown.
  */
 const LOOKUP = `SELECT t.id AS token_id, t.site_id AS site_id, t.user_id AS user_id,
     t.scopes AS scopes, t.expires_at AS expires_at, t.revoked_at AS revoked_at,
     t.last_used_at AS last_used_at, m.role AS role
   FROM tokens AS t JOIN members AS m ON m.user_id = t.user_id AND m.site_id = t.site_id
-  WHERE t.hash = ?1 AND t.site_id = ?2`
+  WHERE t.hash = ?1`
 
 interface TokenRow {
   readonly token_id: string
@@ -115,8 +115,8 @@ export async function recordTokenUse(
  * without a query. Otherwise one query finds the token by the hash of the whole string, in this
  * site only, together with the role of its user; the answer is, in this order:
  *
- * - `unknown`: no such token in this site. A token of another site is the same as no token, and
- *   nothing says it exists elsewhere.
+ * - `unknown`: no such token in the sites of this deployment. A token of another site is the same as
+ *   no token, and nothing says it exists elsewhere.
  * - `revoked`: it has a revocation date, whatever the date says: it is never read, so a clock that
  *   runs ahead of the Worker's, where the token was revoked, cannot keep it alive for a while.
  * - `expired`: its expiry is now or past (see `hasExpired`).
@@ -136,9 +136,9 @@ export async function checkPersonalToken(
   if (!isPersonalToken(token)) return { ok: false, reason: 'unknown' }
   const row = await db
     .prepare(LOOKUP)
-    .bind(await hashPersonalToken(token), options.site)
+    .bind(await hashPersonalToken(token))
     .first<TokenRow>()
-  if (row === null) return { ok: false, reason: 'unknown' }
+  if (row === null || !options.sites.has(row.site_id)) return { ok: false, reason: 'unknown' }
   if (row.revoked_at !== null) return { ok: false, reason: 'revoked' }
   if (hasExpired(row.expires_at, options.now)) return { ok: false, reason: 'expired' }
   const recent = row.last_used_at !== null && row.last_used_at >= anHourBefore(options.now)

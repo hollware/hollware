@@ -552,7 +552,7 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 
 ### Blocks
 
-- [ ] 1 Multi-site: a config with several sites; the site of a request is the principal's (a personal token's, a grant's); people and passkeys across sites, roles per site; the admin's site switcher; the consent page's site choice
+- [x] 1 Multi-site: a config with several sites; the site of a request is the principal's (a personal token's, a grant's); people and passkeys across sites, roles per site; the admin's site switcher; the consent page's site choice
 - [ ] 2 Read tokens (`hw_read_`, published content only, revocable) and CORS per site for the read API
 - [ ] 3 `create-hollware`, the starter, `hollware deploy` and `hollware doctor`
 - [ ] 4 `@hollware/nuxt`: `useHollware()` over a binding or HTTP, `<HollwareContent>` with `@comark/vue`, draft preview; `examples/nuxt-blog`
@@ -569,6 +569,8 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7).
 
 ### Verification log (v0.4)
+
+- 2026-10-15 — Block 1, multi-site (ADR-027): `resolveConfig` takes one site or more; the gateway, the ops API, the read API and the admin API act on the site of the principal, the RPC binding on the site the call names (`invalid_input` listing the served sites otherwise), the cron trigger and the Queue consumer on each site. Migration 0006 drops `site_id` from `passkeys`, `sessions`, `auth_challenges` (the data test seeds a passkey and a session before it and finds them after). `/authorize` offers the sites of the person and grants the role of the chosen one; `GET /v1/admin/me` and the admin's site switcher; `hollware init` adds a site to the existing owner (unit and real-D1 tests). Known limit: an invitation always makes a new person. `vp check`, `vp test` 4,016 tests, playground 61, acceptance 50, conformance OK, e2e:admin 3, `check:push` exit 0. Mutations → CAUGHT: ops, read API and MCP each taking a fixed site instead of the principal's; `/me` not filtering the served sites; `/me` needing `schema:admin`; the consent POST falling back to another membership; granting the owner's scopes whatever the chosen role; the grant's site check removed; `init` never adding a site.
 
 ## Later stages (detailed at the start of each stage)
 

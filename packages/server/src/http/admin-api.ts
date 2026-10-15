@@ -12,7 +12,7 @@ import { isRole, ROLE_SCOPES } from '../auth/roles.ts'
 import type { Principal } from '../auth/types.ts'
 import { connect } from '../db/d1.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
-import { createInvitation } from '../identity/store.ts'
+import { createInvitation, membershipsOf } from '../identity/store.ts'
 import { adminClient } from '../oauth/admin.ts'
 import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
@@ -20,7 +20,8 @@ import type { GatewayEnv } from './types.ts'
 
 /**
  * What only a person in the admin may do (ADR-026): see, make and revoke personal tokens, and
- * invite people. These are no operations, so no agent sees them over MCP, and a request needs an
+ * invite people, on the site of their token; and learn who they are and which sites they may switch
+ * to (`/v1/admin/me`, the one route for every role). These are no operations, so no agent sees them over MCP, and a request needs an
  * access token of the admin's own client with `schema:admin`: a personal token, or a token of
  * another client, never reaches them, even an owner's. A leaked token cannot mint the next one.
  */
@@ -30,7 +31,8 @@ const TOKEN_DAYS = 90
 const INVITATION_DAYS = 7
 
 export interface AdminApiOptions {
-  readonly site: string
+  /** The sites of the deployment: the person may switch among those they are a member of. */
+  readonly sites: ReadonlySet<string>
   readonly clock: Clock
   readonly oauth: (publicUrl: string) => OAuth
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
@@ -64,13 +66,17 @@ function daysFrom(value: unknown, fallback: number): number | null {
 }
 
 export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions): void {
-  /** Runs `handle` for a person in the admin with `schema:admin`; anyone else is refused. */
+  /**
+   * Runs `handle` for a person in the admin with `schema:admin`, or with any scope when `anyone`;
+   * anyone else is refused.
+   */
   const admin =
     (
       handle: (
         c: Context<GatewayEnv>,
         person: Extract<Principal, { kind: 'oauth' }>,
       ) => Promise<Response>,
+      { anyone = false }: { readonly anyone?: boolean } = {},
     ) =>
     (c: Context<GatewayEnv>) =>
       options.protect(c, async (principal) => {
@@ -82,7 +88,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
             403,
           )
         }
-        if (!principal.scopes.includes('schema:admin')) {
+        if (!anyone && !principal.scopes.includes('schema:admin')) {
           return insufficientScope(['schema:admin'], options.metadataUrl(c))
         }
         return handle(c, principal)
@@ -95,9 +101,29 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       : {}
   }
 
+  // Who is signed in, the site of the token, and the sites of the deployment the person may switch
+  // to, with their role in each: what the admin needs to draw itself, for every role.
+  app.get(
+    '/v1/admin/me',
+    admin(
+      async (c, person) => {
+        const db = connect(c.env.DB)
+        const [user] = await db
+          .select({ id: users.id, name: users.name })
+          .from(users)
+          .where(eq(users.id, person.userId))
+        const sites = (await membershipsOf(db, person.userId)).filter((membership) =>
+          options.sites.has(membership.site),
+        )
+        return json({ user, site: person.site, scopes: person.scopes, sites })
+      },
+      { anyone: true },
+    ),
+  )
+
   app.get(
     '/v1/admin/tokens',
-    admin(async (c) => {
+    admin(async (c, person) => {
       const rows = await connect(c.env.DB)
         .select({
           id: tokens.id,
@@ -111,7 +137,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         })
         .from(tokens)
         .innerJoin(users, eq(users.id, tokens.userId))
-        .where(eq(tokens.siteId, options.site))
+        .where(eq(tokens.siteId, person.site))
         .orderBy(desc(tokens.createdAt), desc(tokens.id))
       return json({ tokens: rows.map((row) => ({ ...row, scopes: parseScopes(row.scopes) })) })
     }),
@@ -149,7 +175,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       const secret = generatePersonalToken()
       const row = {
         id: newId('tok'),
-        siteId: options.site,
+        siteId: person.site,
         userId: person.userId,
         label,
         hash: await hashPersonalToken(secret),
@@ -167,20 +193,20 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
 
   app.post(
     '/v1/admin/tokens/:id/revoke',
-    admin(async (c) => {
+    admin(async (c, person) => {
       const now = options.clock.now().toISOString()
       const db = connect(c.env.DB)
       const id = c.req.param('id') ?? ''
       const [revoked] = await db
         .update(tokens)
         .set({ revokedAt: now, updatedAt: now })
-        .where(and(eq(tokens.siteId, options.site), eq(tokens.id, id), isNull(tokens.revokedAt)))
+        .where(and(eq(tokens.siteId, person.site), eq(tokens.id, id), isNull(tokens.revokedAt)))
         .returning({ id: tokens.id })
       if (revoked !== undefined) return json({ id: revoked.id, revokedAt: now })
       const [row] = await db
         .select({ id: tokens.id, revokedAt: tokens.revokedAt })
         .from(tokens)
-        .where(and(eq(tokens.siteId, options.site), eq(tokens.id, id)))
+        .where(and(eq(tokens.siteId, person.site), eq(tokens.id, id)))
       return row === undefined
         ? refused('There is no such token.', 'List the tokens and pick one of them.', 404)
         : json({ id: row.id, revokedAt: row.revokedAt })
@@ -189,21 +215,21 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
 
   app.get(
     '/v1/admin/people',
-    admin(async (c) => {
+    admin(async (c, person) => {
       const db = connect(c.env.DB)
       const now = options.clock.now().toISOString()
       const people = await db
         .select({ id: users.id, name: users.name, role: members.role, since: members.createdAt })
         .from(members)
         .innerJoin(users, eq(users.id, members.userId))
-        .where(eq(members.siteId, options.site))
+        .where(eq(members.siteId, person.site))
         .orderBy(members.createdAt, users.id)
       const pending = await db
         .select({ id: invitations.id, role: invitations.role, expiresAt: invitations.expiresAt })
         .from(invitations)
         .where(
           and(
-            eq(invitations.siteId, options.site),
+            eq(invitations.siteId, person.site),
             isNull(invitations.usedAt),
             isNull(invitations.userId),
             gt(invitations.expiresAt, now),
@@ -216,7 +242,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
 
   app.post(
     '/v1/admin/invitations',
-    admin(async (c) => {
+    admin(async (c, person) => {
       const input = await body(c)
       const role = input['role']
       // An owner is made by `hollware init`; the admin invites editors and authors.
@@ -230,7 +256,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       if (days === null)
         return refused('days is a whole number from 1 to 365.', 'Leave it out for 7 days.')
       const made = await createInvitation(connect(c.env.DB), {
-        site: options.site,
+        site: person.site,
         role,
         userId: null,
         now: options.clock.now(),

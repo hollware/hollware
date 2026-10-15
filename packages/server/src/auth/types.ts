@@ -30,3 +30,6 @@ export type Principal =
       readonly kind: 'binding'
       readonly scopes: readonly ['content:read']
     }
+
+/** A principal of a request over HTTP: a person or their token, and always of one site. */
+export type RequestPrincipal = Exclude<Principal, { readonly kind: 'binding' }>

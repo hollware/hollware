@@ -19,14 +19,19 @@ import type { GatewayEnv, GatewayLogEntry } from './types.ts'
  */
 
 export interface OpsApiOptions {
-  readonly site: ResolvedSite
+  /** The sites of the deployment, by key: an operation runs on the site of its principal. */
+  readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: GatewayLogEntry) => void
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
   /** What a write that committed events hands to the Queue, after the answer. */
-  readonly notify: (c: Context<GatewayEnv>, requestId: string) => (ids: readonly string[]) => void
+  readonly notify: (
+    c: Context<GatewayEnv>,
+    requestId: string,
+    site: string,
+  ) => (ids: readonly string[]) => void
 }
 
 const STATUS: Readonly<Record<string, 400 | 404 | 500 | 504>> = {
@@ -87,15 +92,18 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
           400,
         )
       }
+      const site = options.sites.get(principal.site)
+      // The token check refuses a token of a site this deployment does not serve.
+      if (site === undefined) throw new Error(`No site ${principal.site} for a checked token`)
       const context: OperationContext = {
-        site: options.site,
+        site,
         principal,
         view: 'head',
         store: createD1Store(c.env.DB, { clock: options.clock }),
         clock: options.clock,
         client: { name: 'hollware-admin' },
         requestId,
-        notify: options.notify(c, requestId),
+        notify: options.notify(c, requestId, site.key),
       }
       try {
         const output = spec.output.parse(await invoke(options.handlers, spec, parsed.data, context))

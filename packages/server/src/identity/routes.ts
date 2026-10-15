@@ -24,13 +24,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** The setup and sign-in pages, and the four steps of the passkey ceremonies. */
-export function installIdentity(
-  app: Hono<GatewayEnv>,
-  options: { readonly site: string; readonly clock: Clock },
-): void {
+export function installIdentity(app: Hono<GatewayEnv>, options: { readonly clock: Clock }): void {
   const ceremony = (c: Context<GatewayEnv>): Ceremony => ({
     db: connect(c.env.DB),
-    site: options.site,
     publicUrl: c.env.HOLLWARE_PUBLIC_URL,
     now: options.clock.now(),
   })

@@ -5,19 +5,25 @@ import { legacyRoleOf } from '../auth/roles.ts'
 import { authChallenges, invitations, members, passkeys, sessions, users } from '../db/schema.ts'
 import { hashSecret, newSecret } from './secrets.ts'
 
-/** The D1 side of identity (ADR-026). Each write that must happen once is one conditional statement. */
+/**
+ * The D1 side of identity (ADR-026). A person is one across the sites of a deployment (v0.4): their
+ * passkeys, sessions and sign-in challenges have no site; an invitation does, and so does the role
+ * a person has in a site (`members`). Each write that must happen once is one conditional statement.
+ */
 
 export type Role = 'owner' | 'editor' | 'author'
 
 export interface Invitation {
   readonly id: string
+  /** The site the invitation lets a person into. */
+  readonly site: string
   readonly role: Role
   readonly userId: string | null
 }
 
 function roleOf(value: string): Role {
   if (value === 'owner' || value === 'editor' || value === 'author') return value
-  throw new Error(`An invitation has the role ${value}, which the schema does not allow`)
+  throw new Error(`A role of ${value} is no role the schema allows`)
 }
 
 /** Creates a link that lets one person in, and gives its secret, which is never stored. */
@@ -46,16 +52,19 @@ export async function createInvitation(
 /** The invitation of a secret, while it is unused and has not expired. */
 export async function findInvitation(
   db: Db,
-  site: string,
   secret: string,
   now: Date,
 ): Promise<Invitation | null> {
   const [row] = await db
-    .select({ id: invitations.id, role: invitations.role, userId: invitations.userId })
+    .select({
+      id: invitations.id,
+      site: invitations.siteId,
+      role: invitations.role,
+      userId: invitations.userId,
+    })
     .from(invitations)
     .where(
       and(
-        eq(invitations.siteId, site),
         eq(invitations.hash, await hashSecret(secret)),
         isNull(invitations.usedAt),
         gt(invitations.expiresAt, now.toISOString()),
@@ -66,24 +75,12 @@ export async function findInvitation(
 }
 
 /** Uses an invitation, once: `false` when it was used already or has expired. */
-export async function redeemInvitation(
-  db: Db,
-  site: string,
-  id: string,
-  now: Date,
-): Promise<boolean> {
+export async function redeemInvitation(db: Db, id: string, now: Date): Promise<boolean> {
   const at = now.toISOString()
   const rows = await db
     .update(invitations)
     .set({ usedAt: at, updatedAt: at })
-    .where(
-      and(
-        eq(invitations.siteId, site),
-        eq(invitations.id, id),
-        isNull(invitations.usedAt),
-        gt(invitations.expiresAt, at),
-      ),
-    )
+    .where(and(eq(invitations.id, id), isNull(invitations.usedAt), gt(invitations.expiresAt, at)))
     .returning({ id: invitations.id })
   return rows.length === 1
 }
@@ -92,7 +89,6 @@ export async function redeemInvitation(
 export async function saveChallenge(
   db: Db,
   input: {
-    site: string
     challenge: string
     purpose: 'register' | 'authenticate'
     invitationId: string | null
@@ -104,7 +100,6 @@ export async function saveChallenge(
   const now = input.now.toISOString()
   await db.insert(authChallenges).values({
     id,
-    siteId: input.site,
     challenge: input.challenge,
     purpose: input.purpose,
     invitationId: input.invitationId,
@@ -119,29 +114,23 @@ export async function saveChallenge(
 /** Takes a challenge, once, if it has the purpose asked and has not expired. */
 export async function takeChallenge(
   db: Db,
-  input: { site: string; id: string; purpose: 'register' | 'authenticate'; now: Date },
+  input: { id: string; purpose: 'register' | 'authenticate'; now: Date },
 ) {
-  const [row] = await db
-    .delete(authChallenges)
-    .where(and(eq(authChallenges.siteId, input.site), eq(authChallenges.id, input.id)))
-    .returning()
+  const [row] = await db.delete(authChallenges).where(eq(authChallenges.id, input.id)).returning()
   if (row === undefined || row.purpose !== input.purpose) return null
   if (row.expiresAt <= input.now.toISOString()) return null
   return row
 }
 
-export async function passkeysOf(db: Db, site: string, userId: string) {
-  return db
-    .select()
-    .from(passkeys)
-    .where(and(eq(passkeys.siteId, site), eq(passkeys.userId, userId)))
+export async function passkeysOf(db: Db, userId: string) {
+  return db.select().from(passkeys).where(eq(passkeys.userId, userId))
 }
 
-export async function findPasskey(db: Db, site: string, credentialId: string) {
+export async function findPasskey(db: Db, credentialId: string) {
   const [row] = await db
     .select()
     .from(passkeys)
-    .where(and(eq(passkeys.siteId, site), eq(passkeys.credentialId, credentialId)))
+    .where(eq(passkeys.credentialId, credentialId))
     .limit(1)
   return row ?? null
 }
@@ -183,7 +172,6 @@ export async function createUser(
 export async function addPasskey(
   db: Db,
   input: {
-    site: string
     userId: string
     credentialId: string
     publicKey: string
@@ -196,7 +184,6 @@ export async function addPasskey(
   const at = input.now.toISOString()
   await db.insert(passkeys).values({
     id: newId('pky'),
-    siteId: input.site,
     userId: input.userId,
     credentialId: input.credentialId,
     publicKey: input.publicKey,
@@ -212,14 +199,13 @@ export async function addPasskey(
 /** Opens a session for a person, and gives the secret of its cookie, which is never stored. */
 export async function createSession(
   db: Db,
-  input: { site: string; userId: string; now: Date; hours: number },
+  input: { userId: string; now: Date; hours: number },
 ): Promise<{ secret: string; expiresAt: string }> {
   const secret = newSecret('hw_ses')
   const at = input.now.toISOString()
   const expiresAt = new Date(input.now.getTime() + input.hours * 3_600_000).toISOString()
   await db.insert(sessions).values({
     id: newId('ses'),
-    siteId: input.site,
     userId: input.userId,
     hash: await hashSecret(secret),
     expiresAt,
@@ -229,25 +215,30 @@ export async function createSession(
   return { secret, expiresAt }
 }
 
-/** The person of a session cookie, while it lasts, with their role in its site now. */
-export async function findSession(db: Db, site: string, secret: string, now: Date) {
+/** The person of a session cookie, while it lasts. */
+export async function findSession(db: Db, secret: string, now: Date) {
   const [row] = await db
-    .select({ userId: sessions.userId, name: users.name, role: members.role })
+    .select({ userId: sessions.userId, name: users.name })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .innerJoin(
-      members,
-      and(eq(members.userId, sessions.userId), eq(members.siteId, sessions.siteId)),
-    )
     .where(
-      and(
-        eq(sessions.siteId, site),
-        eq(sessions.hash, await hashSecret(secret)),
-        gt(sessions.expiresAt, now.toISOString()),
-      ),
+      and(eq(sessions.hash, await hashSecret(secret)), gt(sessions.expiresAt, now.toISOString())),
     )
     .limit(1)
   return row ?? null
+}
+
+/** The sites a person is a member of, with their role in each, in the order they joined. */
+export async function membershipsOf(
+  db: Db,
+  userId: string,
+): Promise<readonly { readonly site: string; readonly role: Role }[]> {
+  const rows = await db
+    .select({ site: members.siteId, role: members.role })
+    .from(members)
+    .where(eq(members.userId, userId))
+    .orderBy(members.createdAt, members.siteId)
+  return rows.map((row) => ({ site: row.site, role: roleOf(row.role) }))
 }
 
 /** Drops the sessions that have expired; the cron trigger calls it. */
@@ -256,11 +247,16 @@ export async function dropExpiredSessions(db: Db, now: Date): Promise<void> {
 }
 
 /** An invitation by its id, used or not: what a registration redeems. */
-export async function invitationById(db: Db, site: string, id: string): Promise<Invitation | null> {
+export async function invitationById(db: Db, id: string): Promise<Invitation | null> {
   const [row] = await db
-    .select({ id: invitations.id, role: invitations.role, userId: invitations.userId })
+    .select({
+      id: invitations.id,
+      site: invitations.siteId,
+      role: invitations.role,
+      userId: invitations.userId,
+    })
     .from(invitations)
-    .where(and(eq(invitations.siteId, site), eq(invitations.id, id)))
+    .where(eq(invitations.id, id))
     .limit(1)
   return row === undefined ? null : { ...row, role: roleOf(row.role) }
 }

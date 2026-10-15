@@ -29,8 +29,8 @@ export interface RpcLogEntry {
 
 /** What the four methods stand on, built once for the isolate. */
 export interface RpcDeps {
-  /** The one site this deployment serves (v0.1). */
-  readonly site: ResolvedSite
+  /** The sites this deployment serves, by key; a call names one of them. */
+  readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: RpcLogEntry) => void
@@ -49,14 +49,15 @@ const BINDING_PRINCIPAL: Principal = Object.freeze({
 } as const)
 
 /**
- * The site of a call is not the site of this deployment. v0.1 serves one site, and the message
- * and the fix both say which, for a caller that only gets one of them.
+ * The site of a call is none of the sites of this deployment. The message and the fix both say
+ * which sites it serves, for a caller that only gets one of them.
  */
-function wrongSite(served: string): HollwareError {
+function unknownSite(site: string, served: Iterable<string>): HollwareError {
+  const keys = [...served].map((key) => `"${key}"`).join(', ')
   return new HollwareError(
     'invalid_input',
-    `This Hollware serves the site "${served}", not the one the call names.`,
-    `Pass "${served}", the site this deployment serves, as the site argument.`,
+    `This Hollware serves no site "${site}": it serves ${keys}.`,
+    `Pass one of ${keys}, the sites this deployment serves, as the site argument.`,
   )
 }
 
@@ -141,7 +142,7 @@ function forCaller(
 }
 
 /**
- * One call of an operation over RPC. In this order: the site is the one of this deployment, the
+ * One call of an operation over RPC. In this order: the site is one of this deployment, the
  * input is built and parsed by the spec's schema, and the handler runs with
  *
  * - `view: 'published'`, so a draft is never read, and the principal `{ kind: 'binding', scopes:
@@ -162,11 +163,12 @@ async function run<Schema extends z.ZodType, Output>(
   build: () => unknown,
   handler: (input: z.output<Schema>, context: OperationContext) => Promise<Output>,
 ): Promise<Output> {
-  if (site !== deps.site.key) throw wrongSite(deps.site.key)
+  const served = deps.sites.get(site)
+  if (served === undefined) throw unknownSite(site, deps.sites.keys())
   const input = parseInput(schema, build())
   const requestId = crypto.randomUUID()
   const context: OperationContext = {
-    site: deps.site,
+    site: served,
     principal: BINDING_PRINCIPAL,
     view: 'published',
     store: createD1Store(env.DB.withSession('first-unconstrained')),

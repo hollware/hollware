@@ -40,6 +40,31 @@ const ALL = 'content:read content:write content:publish'
 /** The test config, with dynamic client registration on, so that a test can make a client. */
 const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistration: true } })
 
+/** Two sites, the second with the same collection, and registration on. */
+const TWO_SITES = defineConfig({
+  ...WITH_REGISTRATION,
+  sites: Object.fromEntries(
+    Object.values(CONFIG.sites).flatMap((site) => [
+      [SITE_KEY, site],
+      [OTHER_SITE_KEY, site],
+    ]),
+  ),
+})
+
+/** Makes the person a member of another site too, with this role. */
+async function memberOf(userId: string, site: string, role: 'owner' | 'editor' | 'author') {
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)',
+  )
+    .bind(site, NOW)
+    .run()
+  await env.DB.prepare(
+    'INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)',
+  )
+    .bind(`mem_${crypto.randomUUID()}`, site, userId, role, NOW)
+    .run()
+}
+
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
@@ -79,7 +104,6 @@ async function register(worker: Booted): Promise<string> {
 async function signedIn(role: 'owner' | 'editor' | 'author', site = SITE_KEY) {
   const { userId } = await seedToken(env.DB, site, { role })
   const session = await createSession(connect(env.DB), {
-    site,
     userId,
     now: new Date(NOW),
     hours: 12,
@@ -112,8 +136,14 @@ async function consent(worker: Booted, clientId: string, challenge: string, cook
 }
 
 /** Allows the scopes given, and follows the redirect to the code. */
-async function allow(worker: Booted, handle: string, cookies: string, scopes: readonly string[]) {
-  const form = new URLSearchParams({ handle, decision: 'approve' })
+async function allow(
+  worker: Booted,
+  handle: string,
+  cookies: string,
+  scopes: readonly string[],
+  site = SITE_KEY,
+) {
+  const form = new URLSearchParams({ handle, decision: 'approve', site })
   for (const scope of scopes) form.append('scope', scope)
   return await worker.send('/authorize', {
     method: 'POST',
@@ -154,6 +184,7 @@ async function tokenFor(worker: Booted, role: 'owner' | 'editor' | 'author', sit
     handle,
     cookies,
     offered.filter((scope) => scope !== undefined),
+    site,
   )
   const code = new URL(redirect.headers.get('location') ?? '').searchParams.get('code') ?? ''
   const tokens = await exchange(worker, clientId, code, verifier)
@@ -224,6 +255,45 @@ describe('the authorization endpoint', () => {
     expect(html).toContain('This app registered itself: its name is not verified.')
     expect(html).toContain('Access goes to <strong>agent.example.com</strong>')
     expect(page.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+
+  it('asks which site when the person is in two, and grants the one they choose, if theirs', async () => {
+    const worker = boot({ config: TWO_SITES })
+    const person = await signedIn('author')
+    await memberOf(person.userId, OTHER_SITE_KEY, 'editor')
+    const clientId = await register(worker)
+    const { verifier, challenge } = await pkce()
+
+    const { html, handle, offered, cookies } = await consent(
+      worker,
+      clientId,
+      challenge,
+      person.cookie,
+    )
+    const stranger = await allow(worker, handle, cookies, ['content:read'], 'no-such-site')
+    const again = await consent(worker, clientId, challenge, person.cookie)
+    const chosen = await allow(
+      worker,
+      again.handle,
+      again.cookies,
+      // A forged form that asks for more than an editor may have.
+      ['content:read', 'content:publish', 'schema:admin'],
+      OTHER_SITE_KEY,
+    )
+    const code = new URL(chosen.headers.get('location') ?? '').searchParams.get('code') ?? ''
+    const tokens = await exchange(worker, clientId, code, verifier)
+    await callRaw(worker.endpoint(tokens.access_token), 'modern', 'describe_site', {})
+
+    expect(html).toContain(`<input type="radio" name="site" value="${SITE_KEY}" checked>`)
+    expect(html).toContain(`<input type="radio" name="site" value="${OTHER_SITE_KEY}">`)
+    // The union of what the roles allow: the editor of the other site may publish.
+    expect(offered).toEqual(['content:read', 'content:write', 'content:publish'])
+    expect(stranger.status).toBe(403)
+    expect(tokens.scope).toBe('content:read content:publish')
+    expect(onlyCall(worker.seen).context).toMatchObject({
+      site: { key: OTHER_SITE_KEY },
+      principal: { scopes: ['content:read', 'content:publish'] },
+    })
   })
 
   it('lets the admin, its own client, in without a consent page, within the role', async () => {

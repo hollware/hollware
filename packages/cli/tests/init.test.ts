@@ -6,8 +6,10 @@
 //   or the output stops saying the token once.
 // - "uses the target of the flag …" rows: `--remote` or the local default is not passed to
 //   wrangler in both calls, or the message names the wrong database.
-// - "refuses a second init and writes nothing": the owner check is removed or ignored, so a
-//   second `init` goes on to write; or the refusal asks for a directory, or writes a file.
+// - "refuses a second init of a site and writes nothing": the owner check is removed or ignored,
+//   so a second `init` goes on to write; or the refusal asks for a directory, or writes a file.
+// - "adds another site to the owner of the database …": `init` for a new site of a database with
+//   an owner makes a second owner, or writes a setup link, or gives the token another site.
 // - "says to migrate first when the tables are missing": a database without tables is reported
 //   with the raw error of SQLite.
 // - "takes the database from --database …": `--database` is not passed to wrangler as it is.
@@ -36,7 +38,8 @@ const OWNER_ID = 'usr_01M4QZQSG0040G2081040G2081'
 const TOKEN_ID = 'tok_01M4QZQSG0081040G2081040G2'
 const SECRET = `hw_pat_${'3'.repeat(52)}`
 const HASH = 'b07c83868ce651218676f8ab9a47188f183db88ea929168941c3f8f20afa6a7a'
-const OWNER_QUERY = "SELECT user_id AS id FROM members WHERE role = 'owner' LIMIT 1"
+const OWNER_QUERY =
+  "SELECT user_id AS id, site_id AS site FROM members WHERE role = 'owner' ORDER BY created_at, user_id"
 
 /** A project with the starter's wrangler.jsonc, and a scratch directory for the SQL file. */
 function setup(
@@ -71,6 +74,15 @@ const SCRIPT = [
   `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',
 ].join('\n')
+
+/** The script of `init --site docs` on a database whose owner owns `blog`. */
+const ANOTHER_SITE = [
+  "INSERT INTO sites (id, created_at, updated_at) VALUES ('docs', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
+  `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00C1G60R30C1G60R3', 'docs', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  '',
+].join('\n')
+const SECRET_OF_ANOTHER = `hw_pat_${'2'.repeat(52)}`
 
 describe('hollware init', () => {
   it('creates the site, the owner and the first token in one script and prints the token once', async () => {
@@ -135,8 +147,8 @@ describe('hollware init', () => {
     expect(out[0]?.split('\n')[0]).toBe(`Hollware is ready on the ${name} database "DB".`)
   })
 
-  it('refuses a second init and writes nothing', async () => {
-    const wrangler = fakeWrangler(d1([{ id: OWNER_ID }]))
+  it('refuses a second init of a site and writes nothing', async () => {
+    const wrangler = fakeWrangler(d1([{ id: OWNER_ID, site: 'blog' }]))
     const project = setup(wrangler)
 
     const { code, out, err } = await project.run(['init', '--site', 'blog'])
@@ -144,13 +156,29 @@ describe('hollware init', () => {
     expect(code).toBe(1)
     expect(out).toEqual([])
     expect(err).toEqual([
-      `hollware init: the database already has an owner (${OWNER_ID}), so there is nothing to set up. Create another token with "hollware token create --label <text>".`,
+      `hollware init: the site "blog" already has an owner (${OWNER_ID}), so there is nothing to set up. Create another token with "hollware token create --site blog --label <text>".`,
     ])
     expect(wrangler.calls.map((call) => call.args)).toEqual([
       ['d1', 'execute', 'DB', '--local', '--json', '--command', OWNER_QUERY],
     ])
     expect(project.requests()).toBe(0)
     expect(readdirSync(project.scratch)).toEqual([])
+  })
+
+  it('adds another site to the owner of the database, with a token of that site and no setup link', async () => {
+    const wrangler = fakeWrangler(d1([{ id: OWNER_ID, site: 'blog' }]), d1([], [], []))
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run(['init', '--site', 'docs'])
+
+    expect(err).toEqual([])
+    expect(code).toBe(0)
+    expect(wrangler.calls[1]?.sql).toBe(ANOTHER_SITE)
+    expect(out.join('\n')).not.toContain('/setup?invitation=')
+    expect(out[0]?.split('\n')[0]).toBe(
+      'Added the site "docs" on the local database "DB", owned by the owner of the database.',
+    )
+    expect(out.join('\n').split(SECRET_OF_ANOTHER)).toHaveLength(2)
   })
 
   it('says to migrate first when the tables are missing', async () => {

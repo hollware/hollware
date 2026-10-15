@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { connect } from '../../src/db/d1.ts'
 import { createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
-import { boot, NOW, SITE_KEY, type Booted } from './support.ts'
+import { boot, NOW, OTHER_SITE_KEY, SITE_KEY, type Booted } from './support.ts'
 
 // Fails when: the admin's own routes (src/http/admin-api.ts) stop being the admin's alone: a
 // personal token, even an owner's with schema:admin, or an admin token without schema:admin,
@@ -19,11 +19,29 @@ function base64url(bytes: Uint8Array): string {
     .replace(/=+$/, '')
 }
 
-/** An access token of the admin's own client, for a person of the site with this role. */
-async function adminToken(worker: Booted, role: 'owner' | 'editor' | 'author'): Promise<string> {
+/**
+ * An access token of the admin's own client, for a person of the site with this role, who is an
+ * editor of each site of `alsoEditorOf` too.
+ */
+async function adminToken(
+  worker: Booted,
+  role: 'owner' | 'editor' | 'author',
+  alsoEditorOf: readonly string[] = [],
+): Promise<string> {
   const { userId } = await seedToken(env.DB, SITE_KEY, { role })
+  for (const site of alsoEditorOf) {
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)',
+    )
+      .bind(site, NOW)
+      .run()
+    await env.DB.prepare(
+      "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'editor', ?4, ?4)",
+    )
+      .bind(`mem_${crypto.randomUUID()}`, site, userId, NOW)
+      .run()
+  }
   const session = await createSession(connect(env.DB), {
-    site: SITE_KEY,
     userId,
     now: new Date(NOW),
     hours: 12,
@@ -90,6 +108,23 @@ describe("the admin's own routes", () => {
     expect(await personal.json()).toMatchObject({ message: 'Only the admin may do this.' })
     expect(scoped.status).toBe(403)
     expect(scoped.headers.get('www-authenticate')).toContain('scope="schema:admin"')
+  })
+
+  it('say who is signed in to any role, with the sites of this deployment they may switch to', async () => {
+    const worker = boot()
+    // A member of a site this deployment does not serve, too: the admin cannot switch to it.
+    const author = await adminToken(worker, 'author', [OTHER_SITE_KEY])
+
+    const me = await call(worker, author, '/v1/admin/me')
+    const tokens = await call(worker, author, '/v1/admin/tokens')
+
+    expect(me.status).toBe(200)
+    expect(await me.json()).toMatchObject({
+      site: SITE_KEY,
+      scopes: ['content:read', 'content:write'],
+      sites: [{ site: SITE_KEY, role: 'author' }],
+    })
+    expect(tokens.status).toBe(403)
   })
 
   it('make a token with the scopes its maker has, once in clear, and revoke it', async () => {

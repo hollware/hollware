@@ -8,7 +8,8 @@ import { challengeOf } from '../app/lib/pkce.ts'
 // scopes, a state and an S256 challenge; on the callback it refuses a state that is not the one it
 // sent and uses a pending sign-in once; it trades the code with the verifier for tokens it keeps in
 // memory only; it renews the access token with the refresh token a minute before it expires; and
-// it forgets tokens the server no longer takes.
+// it forgets tokens the server no longer takes; or a switch of site stops forgetting the tokens of
+// the last site and naming the new one at every sign-in.
 
 const CONFIG = {
   issuer: 'https://cms.example.com',
@@ -89,6 +90,21 @@ describe('the sign-in of the admin', () => {
     expect(back).toBe('/admin/reviews')
     expect(await w.auth.token()).toBe('access-1')
     expect(w.storage.size).toBe(0)
+  })
+
+  it('names no site until the person switches to one, and then that site at every sign-in', async () => {
+    const w = world([tokens('access-1')])
+    await signedIn(w)
+
+    await w.auth.switchSite('docs', '/admin/')
+    const switched = new URL(w.visited.at(-1) ?? '', CONFIG.issuer)
+    await w.auth.signIn('/admin/')
+    const again = new URL(w.visited.at(-1) ?? '', CONFIG.issuer)
+
+    expect(new URL(w.visited[0] ?? '', CONFIG.issuer).searchParams.has('site')).toBe(false)
+    expect(switched.searchParams.get('site')).toBe('docs')
+    expect(again.searchParams.get('site')).toBe('docs')
+    expect(await w.auth.token()).toBe(null)
   })
 
   it('refuses a callback whose state is not the one it sent, and uses a sign-in once', async () => {

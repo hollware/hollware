@@ -621,11 +621,11 @@ describe('a config with several problems', () => {
   })
 
   it('holds each problem as data with a path, a message and a fix', () => {
-    const [first] = problemsOf({ sites: { a: siteWith(), b: siteWith() } })
+    const [first] = problemsOf({ sites: {} })
     expect(first).toStrictEqual({
       path: 'sites',
-      message: 'has 2 sites ("a", "b"), and v0.1 serves exactly one site per deployment',
-      fix: 'Keep exactly one site in sites.',
+      message: 'has no site, and a deployment serves at least one',
+      fix: expect.stringContaining('Declare one site'),
     })
   })
 })

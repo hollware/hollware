@@ -21,7 +21,6 @@ import type { GatewayEnv } from './types.ts'
 export interface ReadApiOptions {
   /** The read methods over the bindings of a request: the RPC surface itself. */
   readonly read: (env: HollwareEnv) => HollwareRpc
-  readonly site: string
   /** The resource server of `/v1`, which turns a request without an accepted token away. */
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   /** The protected resource metadata of `/v1`, which a 403 names. */
@@ -85,6 +84,8 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       if (!principal.scopes.includes('content:read')) {
         return insufficientScope(['content:read'], options.metadataUrl(c))
       }
+      // A token belongs to one site, and the read API reads that site.
+      c.set('site', principal.site)
       try {
         await next()
         return c.res
@@ -98,14 +99,14 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     })
   })
 
-  app.get('/v1/openapi.json', (c) => c.json(openApiDocument(options.site)))
-  app.get('/v1/site', async (c) => answer(c, await options.read(c.env).describeSite(options.site)))
+  app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))
+  app.get('/v1/site', async (c) => answer(c, await options.read(c.env).describeSite(c.get('site'))))
   app.get('/v1/:collection', async (c) => {
     const query = c.req.query()
     const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
     return answer(
       c,
-      await options.read(c.env).listEntries(options.site, c.req.param('collection'), {
+      await options.read(c.env).listEntries(c.get('site'), c.req.param('collection'), {
         ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
         ...(query['tag'] === undefined ? {} : { tag: query['tag'] }),
         ...(limit === undefined ? {} : { limit }),
@@ -118,7 +119,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       c,
       await options
         .read(c.env)
-        .getTranslations(options.site, c.req.param('collection'), c.req.param('group')),
+        .getTranslations(c.get('site'), c.req.param('collection'), c.req.param('group')),
     ),
   )
   app.get('/v1/:collection/:locale/:slug', async (c) => {
@@ -126,7 +127,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     return answer(
       c,
       await options.read(c.env).getEntry(
-        options.site,
+        c.get('site'),
         c.req.param('collection'),
         c.req.param('slug'),
         c.req.param('locale'),
@@ -147,7 +148,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
 }
 
 /** The OpenAPI 3.1 document of the read API. */
-export function openApiDocument(site: string): object {
+export function openApiDocument(): object {
   const ok = (description: string) => ({
     description,
     headers: { ETag: { schema: { type: 'string' } } },
@@ -169,7 +170,7 @@ export function openApiDocument(site: string): object {
   })
   return {
     openapi: '3.1.0',
-    info: { title: `Hollware read API (${site})`, version: '1' },
+    info: { title: 'Hollware read API', version: '1' },
     // A personal token, or an OAuth access token for this resource (ADR-026).
     components: { securitySchemes: { token: { type: 'http', scheme: 'bearer' } } },
     security: [{ token: [] }],

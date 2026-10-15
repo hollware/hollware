@@ -375,12 +375,14 @@ export const deliveries = sqliteTable(
   ],
 )
 
-/** The passkeys of a person (ADR-026): WebAuthn credentials, by their id, with their public key. */
+/**
+ * The passkeys of a person (ADR-026): WebAuthn credentials, by their id, with their public key. A
+ * person is one across the sites of a deployment (v0.4), and so are their passkeys and sessions.
+ */
 export const passkeys = sqliteTable(
   'passkeys',
   {
     id: id('pky'),
-    siteId: siteId(),
     userId: text('user_id').notNull(),
     /** The credential id, base64url, as the authenticator gives it. */
     credentialId: text('credential_id').notNull(),
@@ -395,10 +397,8 @@ export const passkeys = sqliteTable(
     ...timestamps(),
   },
   (t) => [
-    unique('passkeys_id_site').on(t.id, t.siteId),
     unique('passkeys_credential').on(t.credentialId),
     index('passkeys_user').on(t.userId),
-    foreignKey({ name: 'passkeys_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({ name: 'passkeys_user_fk', columns: [t.userId], foreignColumns: [users.id] }),
     check('passkeys_counter', sql`${t.counter} >= 0`),
     check(
@@ -440,7 +440,6 @@ export const authChallenges = sqliteTable(
   'auth_challenges',
   {
     id: id('chl'),
-    siteId: siteId(),
     challenge: text('challenge').notNull(),
     /** `register` or `authenticate`. */
     purpose: text('purpose').notNull(),
@@ -451,11 +450,7 @@ export const authChallenges = sqliteTable(
     expiresAt: text('expires_at').notNull(),
     ...timestamps(),
   },
-  (t) => [
-    unique('auth_challenges_id_site').on(t.id, t.siteId),
-    foreignKey({ name: 'auth_challenges_site', columns: [t.siteId], foreignColumns: [sites.id] }),
-    check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`),
-  ],
+  (t) => [check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`)],
 )
 
 /** Signed-in people (ADR-026): the session cookie that `/authorize` reads, by its hash. */
@@ -463,16 +458,13 @@ export const sessions = sqliteTable(
   'sessions',
   {
     id: id('ses'),
-    siteId: siteId(),
     userId: text('user_id').notNull(),
     hash: text('hash').notNull(),
     expiresAt: text('expires_at').notNull(),
     ...timestamps(),
   },
   (t) => [
-    unique('sessions_id_site').on(t.id, t.siteId),
     unique('sessions_hash').on(t.hash),
-    foreignKey({ name: 'sessions_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({ name: 'sessions_user', columns: [t.userId], foreignColumns: [users.id] }),
   ],
 )

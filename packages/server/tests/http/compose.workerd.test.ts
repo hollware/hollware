@@ -1,11 +1,21 @@
-import { ConfigError, defineCollection, defineConfig } from '@hollware/core'
+import { defineCollection, defineConfig } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 import * as z from 'zod'
 
 import { createHollwareWith } from '../../src/compose.ts'
-import { CANNED, fakeHandlers } from '../mcp/support.ts'
-import { boot, CONFIG, fakeContext, HOST, PUBLIC_URL, SITE_KEY, wire } from './support.ts'
+import { callRaw, CANNED, fakeHandlers } from '../mcp/support.ts'
+import { seedToken } from '../auth/support.ts'
+import {
+  boot,
+  CONFIG,
+  fakeContext,
+  HOST,
+  OTHER_SITE_KEY,
+  PUBLIC_URL,
+  SITE_KEY,
+  wire,
+} from './support.ts'
 
 // Fails when: `createHollwareWith` stops resolving the config when it is called, so that a broken
 // config throws its `ConfigError` (with its path, its message and its fix) at startup, and not at
@@ -13,7 +23,7 @@ import { boot, CONFIG, fakeContext, HOST, PUBLIC_URL, SITE_KEY, wire } from './s
 // and nothing else; makes `fetch` depend on being called as a method of the object (a Worker
 // writes `export default { fetch: hollware.fetch }`); or stops giving the Worker the system clock
 // when none is passed, read at each request and not once at startup (a token's expiry is judged by
-// it). The one site of the config reaches the handlers in `mcp.workerd.test.ts`.
+// it); or stops serving every site of the config, each to the tokens of that site.
 
 const collection = defineCollection({
   schema: z.object({ title: z.string().min(1) }),
@@ -21,21 +31,39 @@ const collection = defineCollection({
 })
 
 describe('createHollwareWith', () => {
-  it('throws the ConfigError of a config with two sites when it is called, naming what to change', () => {
-    const { handlers } = fakeHandlers()
-    const config = defineConfig({
+  it('serves every site of a config with two sites: a token acts on its own site, and only on it', async () => {
+    const twoSites = defineConfig({
       sites: {
-        first: { locales: ['en'], defaultLocale: 'en', collections: { blog: collection } },
-        second: { locales: ['en'], defaultLocale: 'en', collections: { blog: collection } },
+        ...CONFIG.sites,
+        [OTHER_SITE_KEY]: {
+          locales: ['en'],
+          defaultLocale: 'en',
+          collections: { blog: collection },
+        },
       },
     })
+    const worker = boot({ config: twoSites })
+    const first = await seedToken(env.DB, SITE_KEY)
+    const second = await seedToken(env.DB, OTHER_SITE_KEY)
 
-    const startup = () => createHollwareWith(config, handlers)
+    const call = (token: string) =>
+      worker.send('/v1/ops/describe_site', {
+        method: 'POST',
+        token,
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      })
+    const answers = [(await call(first.token)).status, (await call(second.token)).status]
+    const read = await worker.send('/v1/site', { token: second.token })
+    await callRaw(worker.endpoint(second.token), 'modern', 'describe_site', {})
 
-    expect(startup).toThrow(ConfigError)
-    expect(startup).toThrow(
-      'sites: has 2 sites ("first", "second"), and v0.1 serves exactly one site per deployment. Keep exactly one site in sites.',
-    )
+    expect([...answers, read.status]).toEqual([200, 200, 200])
+    expect(worker.seen.map((seen) => seen.context.site.key)).toEqual([
+      SITE_KEY,
+      OTHER_SITE_KEY,
+      OTHER_SITE_KEY,
+      OTHER_SITE_KEY,
+    ])
   })
 
   it('throws the ConfigError of a config with no site, and of a site whose default locale is not one of its own', () => {
@@ -48,7 +76,7 @@ describe('createHollwareWith', () => {
     })
 
     expect(() => createHollwareWith(none, handlers)).toThrow(
-      'sites: has no site, and v0.1 serves exactly one site per deployment.',
+      'sites: has no site, and a deployment serves at least one.',
     )
     expect(() => createHollwareWith(wrongLocale, handlers)).toThrow(
       'sites.blog.defaultLocale: is "es", which is not one of the locales ("en"). Set it to one of "en", or add "es" to locales.',

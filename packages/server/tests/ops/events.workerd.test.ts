@@ -190,12 +190,16 @@ describe('deliveries', () => {
     })
     const id = event?.id ?? ''
 
+    // The deployment serves the site of the world, and no other.
+    const served = (fetch: DeliveryDeps['fetch']) => (site: string) =>
+      site === world.tenant.key ? deps(world, fetch) : undefined
+
     await consumeEvents(
       [message({ site: world.tenant.key, id })],
-      deps(world, network({ [INDEXNOW_ENDPOINT]: 500 }).fetch),
+      served(network({ [INDEXNOW_ENDPOINT]: 500 }).fetch),
     )
-    await consumeEvents([message({ site: world.tenant.key, id })], deps(world, network().fetch))
-    await consumeEvents([message({ site: 'another-site', id })], deps(world, network().fetch))
+    await consumeEvents([message({ site: world.tenant.key, id })], served(network().fetch))
+    await consumeEvents([message({ site: 'another-site', id })], served(network().fetch))
 
     expect(verdicts).toEqual([`retry ${id}`, `ack ${id}`, `ack ${id}`])
   })
