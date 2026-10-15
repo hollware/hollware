@@ -44,6 +44,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 026 | OAuth, passkeys and the admin's sign-in                                                                     | Accepted              | [0026-oauth-passkeys-and-the-admin-sign-in.md](0026-oauth-passkeys-and-the-admin-sign-in.md)                                                   |
 | 027 | One person across the sites of a deployment                                                                 | Accepted              | [0027-one-person-across-the-sites-of-a-deployment.md](0027-one-person-across-the-sites-of-a-deployment.md)                                     |
 | 028 | Read tokens, and CORS for the read API                                                                      | Accepted              | [0028-read-tokens-and-cors-for-the-read-api.md](0028-read-tokens-and-cors-for-the-read-api.md)                                                 |
+| 029 | Full-text search in D1                                                                                      | Accepted              | [0029-full-text-search-in-d1.md](0029-full-text-search-in-d1.md)                                                                               |
 
 ## Template
 

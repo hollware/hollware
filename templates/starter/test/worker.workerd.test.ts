@@ -74,6 +74,13 @@ describe('the database', () => {
       'auth_challenges',
       'deliveries',
       'entries',
+      // The full-text index (migrations/0008_search.sql) and the tables FTS5 keeps for it.
+      'entries_fts',
+      'entries_fts_config',
+      'entries_fts_content',
+      'entries_fts_data',
+      'entries_fts_docsize',
+      'entries_fts_idx',
       'invitations',
       'members',
       'outbox',

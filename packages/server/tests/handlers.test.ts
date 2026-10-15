@@ -14,6 +14,7 @@ const handlers: Handlers = {
   get_entry: notYet,
   get_translations: notYet,
   list_entries: notYet,
+  search: notYet,
   list_reviews: notYet,
   publish: notYet,
   request_changes: notYet,

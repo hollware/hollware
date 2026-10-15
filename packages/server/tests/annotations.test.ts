@@ -57,6 +57,7 @@ describe('MCP hints', () => {
       list_reviews: 'read-only',
       publish: 'changes',
       request_changes: 'changes',
+      search: 'read-only',
       unpublish: 'destructive',
       update_draft: 'changes',
       validate: 'read-only',

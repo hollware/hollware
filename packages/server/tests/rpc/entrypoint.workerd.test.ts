@@ -36,10 +36,11 @@ const RPC_METHODS: Record<keyof HollwareRpc, true> = {
   getEntry: true,
   getTranslations: true,
   listEntries: true,
+  search: true,
 }
 
 describe('the Hollware class', () => {
-  it('has the four methods of HollwareRpc and nothing else, own or inherited', () => {
+  it('has the five methods of HollwareRpc and nothing else, own or inherited', () => {
     const { worker } = boot()
 
     expect(callableNames(worker.Hollware.prototype)).toEqual([
@@ -47,12 +48,14 @@ describe('the Hollware class', () => {
       'getEntry',
       'getTranslations',
       'listEntries',
+      'search',
     ])
     expect(Object.keys(RPC_METHODS).sort()).toEqual([
       'describeSite',
       'getEntry',
       'getTranslations',
       'listEntries',
+      'search',
     ])
   })
 

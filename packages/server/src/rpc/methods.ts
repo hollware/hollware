@@ -4,6 +4,7 @@ import {
   getTranslations as getTranslationsSpec,
   HollwareError,
   listEntries as listEntriesSpec,
+  search as searchSpec,
   type ErrorCode,
   type ResolvedSite,
 } from '@hollware/core'
@@ -230,6 +231,16 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         describeSiteSpec.input,
         () => ({}),
         deps.handlers.describe_site,
+      ),
+    search: (site, query, options) =>
+      run(
+        deps,
+        env,
+        'search',
+        site,
+        searchSpec.input,
+        () => ({ query, ...readOptions(options, ['collection', 'locale', 'limit']) }),
+        deps.handlers.search,
       ),
   }
 }

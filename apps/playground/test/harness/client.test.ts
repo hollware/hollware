@@ -7,7 +7,7 @@ import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER } from './workers.ts
 
 // Fails when: @hollware/client stops reading the same published content over a service binding
 // and over HTTP (one suite, both transports), or the read API of the built Worker (src/http/
-// read-api.ts) stops serving the four read methods at /v1 to a token with content:read, stops
+// read-api.ts) stops serving the five read methods at /v1 (search included) to a token with content:read, stops
 // answering 304 to its own ETag, stops refusing a request without a token or one that writes, or
 // stops describing its routes in /v1/openapi.json.
 
@@ -64,6 +64,9 @@ describe('@hollware/client', () => {
       const listed = await client.listEntries(SITE_KEY, 'blog', { locale: 'en' })
       const group = await client.getTranslations(SITE_KEY, 'blog', 'edge-caching')
       const site = await client.describeSite(SITE_KEY)
+      // A word of the Spanish post, written without its accent; the draft is never found.
+      const found = await client.search(SITE_KEY, 'cache borde', { locale: 'es' })
+      const unpublished = await client.search(SITE_KEY, 'source truth')
 
       expect(
         [
@@ -74,6 +77,9 @@ describe('@hollware/client', () => {
           listed.entries?.map(({ slug }) => slug),
           group.entries?.map(({ locale }) => locale).sort(),
           site.site.key,
+          found.results.map(({ entry: { slug } }) => slug),
+          found.results[0]?.snippet.includes('['),
+          unpublished.results,
         ],
         transport,
       ).toEqual([
@@ -84,6 +90,9 @@ describe('@hollware/client', () => {
         ['edge-caching-basics'],
         ['en', 'es'],
         'playground',
+        ['cache-en-el-borde'],
+        true,
+        [],
       ])
     }
   })
@@ -119,7 +128,7 @@ describe('the read API', () => {
     expect([anonymous.status, write.status]).toEqual([401, 405])
   })
 
-  it('describes its four routes in OpenAPI 3.1', async () => {
+  it('describes its five routes in OpenAPI 3.1', async () => {
     const document: unknown = await (await get('/v1/openapi.json')).json()
 
     expect(document).toMatchObject({ openapi: '3.1.0' })
@@ -129,6 +138,7 @@ describe('the read API', () => {
         : [],
     ).toEqual([
       '/v1/site',
+      '/v1/search',
       '/v1/{collection}',
       '/v1/{collection}/translations/{group}',
       '/v1/{collection}/{locale}/{slug}',

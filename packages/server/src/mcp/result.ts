@@ -57,6 +57,7 @@ const OUTPUT_TOO_LARGE_FIX = {
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   request_changes:
     'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
+  search: 'Ask for less: pass a smaller limit.',
   unpublish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   update_draft:

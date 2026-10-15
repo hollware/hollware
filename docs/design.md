@@ -68,6 +68,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-026](adr/0026-oauth-passkeys-and-the-admin-sign-in.md) | OAuth, passkeys and the admin's sign-in | Accepted |
 | [ADR-027](adr/0027-one-person-across-the-sites-of-a-deployment.md) | One person across the sites of a deployment | Accepted |
 | [ADR-028](adr/0028-read-tokens-and-cors-for-the-read-api.md) | Read tokens, and CORS for the read API | Accepted |
+| [ADR-029](adr/0029-full-text-search-in-d1.md) | Full-text search in D1 | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

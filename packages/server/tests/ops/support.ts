@@ -322,6 +322,7 @@ export const UNTOUCHED: ContentStore = {
   findEntry: () => touched('findEntry'),
   findEntryById: () => touched('findEntryById'),
   listEntries: () => touched('listEntries'),
+  searchEntries: () => touched('searchEntries'),
   listTranslations: () => touched('listTranslations'),
   lookup: () => touched('lookup'),
   lastPublication: () => touched('lastPublication'),

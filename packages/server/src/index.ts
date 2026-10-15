@@ -4,6 +4,7 @@ import type {
   getTranslations,
   HollwareConfig,
   listEntries,
+  search,
 } from '@hollware/core'
 import type { WorkerEntrypoint } from 'cloudflare:workers'
 import type * as z from 'zod'
@@ -79,6 +80,12 @@ export interface HollwareRpc {
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
   describeSite(site: string): Promise<Output<typeof describeSite>>
+  /** The published entries that hold every word of `query`, best first. */
+  search(
+    site: string,
+    query: string,
+    options?: { readonly collection?: string; readonly locale?: string; readonly limit?: number },
+  ): Promise<Output<typeof search>>
 }
 
 /**

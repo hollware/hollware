@@ -131,11 +131,14 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, after every migration', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, and the two of search', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
     expect(results).toEqual([
+      // migrations/0008_search.sql: the full-text index follows what is published.
+      { name: 'entries_fts_publication', tbl_name: 'entries' },
+      { name: 'entries_fts_removal', tbl_name: 'entries' },
       { name: 'publications_immutable', tbl_name: 'publications' },
       { name: 'publications_no_delete', tbl_name: 'publications' },
       { name: 'publications_no_replace', tbl_name: 'publications' },

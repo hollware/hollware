@@ -8,7 +8,7 @@
  * runs `create-hollware` from that registry. Then, in the project it made:
  *
  * 1. the dev server starts and answers `/health`;
- * 2. MCP lists the twelve tools to the token that create-hollware printed;
+ * 2. MCP lists every tool (`OPERATIONS` of @hollware/core) to the token that create-hollware printed;
  * 3. that token creates a draft and publishes it;
  * 4. a read token, made with the project's own `hollware`, reads the published entry over `/v1`,
  *    and is refused by MCP;
@@ -20,6 +20,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import { OPERATIONS } from '../packages/core/src/index.ts'
 import { packAll } from './e2e/pack.ts'
 import {
   fail,
@@ -112,10 +113,11 @@ async function main(): Promise<void> {
     step('The dev server')
     stopDev = (await startDev(project, env)).stop
 
-    step('MCP lists the twelve tools to the token of create-hollware')
+    step('MCP lists every tool to the token of create-hollware')
     const listed = await mcp(token, 'tools/list', {})
     const tools = (listed['tools'] as { name: string }[]).map((tool) => tool.name)
-    if (tools.length !== 12) fail(`tools/list answered ${tools.length} tools: ${tools.join(', ')}`)
+    if (tools.length !== OPERATIONS.length)
+      fail(`tools/list answered ${tools.length} tools: ${tools.join(', ')}`)
 
     step('A draft, published')
     await publishPost(token, 'written-in-the-install-test', 'Written in the install test')

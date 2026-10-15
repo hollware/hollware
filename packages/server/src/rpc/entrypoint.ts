@@ -29,5 +29,8 @@ export function createEntrypoint(deps: RpcDeps): HollwareWorker['Hollware'] {
     describeSite(...args: Parameters<HollwareRpc['describeSite']>) {
       return createRpc(deps, this.env).describeSite(...args)
     }
+    search(...args: Parameters<HollwareRpc['search']>) {
+      return createRpc(deps, this.env).search(...args)
+    }
   }
 }

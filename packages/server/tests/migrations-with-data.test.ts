@@ -38,12 +38,18 @@ const CONTENT = [
     VALUES ('${ID('ent')}', 'demo', 'blog', 'en', 'hello', 'draft', 1, '${ID('rev')}', '${T}', '${T}')`,
   `INSERT INTO revisions (id, site_id, entry_id, markdown, frontmatter, document, comark_version,
     pipeline_version, word_count, verdict, actor_kind, actor_user_id, actor_token_id, created_at, updated_at)
-    VALUES ('${ID('rev')}', 'demo', '${ID('ent')}', '# Hello', '{}', '{}', '0.7.0', '1', 1, '{}',
+    VALUES ('${ID('rev')}', 'demo', '${ID('ent')}', '# Hello', '{"title":"Hello harbour"}', '{}', '0.7.0', '1', 1, '{}',
     'token', '${ID('usr')}', '${ID('tok')}', '${T}', '${T}')`,
   `INSERT INTO publications (id, site_id, entry_id, revision_id, action, verdict, acknowledged,
     actor_kind, actor_user_id, actor_token_id, created_at, updated_at)
     VALUES ('${ID('pub')}', 'demo', '${ID('ent')}', '${ID('rev')}', 'publish', '{}', '[]',
     'token', '${ID('usr')}', '${ID('tok')}', '${T}', '${T}')`,
+]
+
+/** The entry published, before the search index of 0008 exists, which it must then hold. */
+const PUBLISHED = [
+  `UPDATE entries SET status = 'published', published_rev = head_rev, published_at = '${T}',
+    published_sort_key = '${T}', version = 2 WHERE id = '${ID('ent')}'`,
 ]
 
 /** What v0.3 holds of the owner's sign-in: a passkey and a session, then of a site. */
@@ -79,6 +85,7 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     // A person with a passkey and a session, as the admin of v0.3 makes them, before they lose
     // their site.
     if (file.startsWith('0006')) for (const statement of PEOPLE) db.exec(statement)
+    if (file.startsWith('0008')) for (const statement of PUBLISHED) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')
@@ -101,5 +108,9 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
   expect(db.prepare('SELECT user_id, hash FROM sessions').all()).toEqual([
     { user_id: ID('usr'), hash: 'session-hash' },
   ])
+  // 0008 indexes what was published before it.
+  expect(
+    db.prepare("SELECT entry_id, title FROM entries_fts WHERE entries_fts MATCH 'harbour'").all(),
+  ).toEqual([{ entry_id: ID('ent'), title: 'Hello harbour' }])
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

@@ -1,4 +1,4 @@
-import type { describeSite, getEntry, getTranslations, listEntries } from '@hollware/core'
+import type { describeSite, getEntry, getTranslations, listEntries, search } from '@hollware/core'
 import type * as z from 'zod'
 
 export { signWebhook, verifyWebhook, type WebhookCheck } from '@hollware/core'
@@ -38,6 +38,12 @@ export interface HollwareReader {
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
   describeSite(site: string): Promise<Output<typeof describeSite>>
+  /** The published entries that hold every word of `query`, best first. */
+  search(
+    site: string,
+    query: string,
+    options?: { readonly collection?: string; readonly locale?: string; readonly limit?: number },
+  ): Promise<Output<typeof search>>
 }
 
 export type ClientOptions =
@@ -126,6 +132,17 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     getTranslations: (_site: string, collection: string, group: string) =>
       get(`${segment(collection)}/translations/${segment(group)}`),
     describeSite: (_site: string) => get('site'),
+    search: (
+      _site: string,
+      query: string,
+      options: { collection?: string; locale?: string; limit?: number } = {},
+    ) =>
+      get('search', {
+        q: query,
+        collection: options.collection,
+        locale: options.locale,
+        limit: options.limit === undefined ? undefined : String(options.limit),
+      }),
   }
   return reader
 }
@@ -144,6 +161,7 @@ export function createClient(options: ClientOptions): HollwareReader {
     listEntries: async (...args) => narrow(await reader.listEntries(...args)),
     getTranslations: async (...args) => narrow(await reader.getTranslations(...args)),
     describeSite: async (...args) => narrow(await reader.describeSite(...args)),
+    search: async (...args) => narrow(await reader.search(...args)),
   }
 }
 

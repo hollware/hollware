@@ -56,6 +56,7 @@ describe('the MCP endpoint in workerd', () => {
         'list_reviews',
         'publish',
         'request_changes',
+        'search',
         'unpublish',
         'update_draft',
         'validate',

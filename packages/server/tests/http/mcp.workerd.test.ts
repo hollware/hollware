@@ -32,6 +32,7 @@ const TOOLS = [
   'list_reviews',
   'publish',
   'request_changes',
+  'search',
   'unpublish',
   'update_draft',
   'validate',

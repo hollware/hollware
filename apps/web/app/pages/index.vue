@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { OPERATIONS } from '@hollware/core'
+
 useSeoMeta({
   title: '',
   description:
@@ -15,8 +17,7 @@ const features = [
   {
     icon: 'i-lucide-plug',
     title: 'MCP, natively',
-    description:
-      'Twelve tools over both revisions of the protocol, with personal tokens or OAuth. Claude Code, claude.ai and any MCP client write to it.',
+    description: `${OPERATIONS.length} tools over both revisions of the protocol, with personal tokens or OAuth. Claude Code, claude.ai and any MCP client write to it.`,
   },
   {
     icon: 'i-lucide-database',

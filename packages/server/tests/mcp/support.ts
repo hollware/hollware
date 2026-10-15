@@ -52,6 +52,7 @@ export const STORE: ContentStore = {
   findEntry: unused,
   findEntryById: unused,
   listEntries: unused,
+  searchEntries: unused,
   listTranslations: unused,
   lookup: unused,
   lastPublication: unused,
@@ -240,6 +241,9 @@ export const CANNED: Canned = {
   list_entries: {
     ok: { outcome: 'ok', entries: [SUMMARY], nextCursor: null },
   },
+  search: {
+    ok: { outcome: 'ok', results: [{ entry: SUMMARY, snippet: 'the [words] found', score: 1.5 }] },
+  },
   list_reviews: {
     ok: { outcome: 'ok', reviews: [{ ...REVIEW, entry: SUMMARY }] },
   },
@@ -301,6 +305,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     get_entry: { collection: 'blog', locale: 'en', slug: 'hello-world' },
     get_translations: { collection: 'blog', translationGroup: 'hello' },
     list_entries: { collection: 'blog' },
+    search: { query: 'words' },
     list_reviews: {},
     publish: { id: ENTRY_ID, version: 1 },
     request_changes: { id: REVIEW_ID, note: 'Cite a source.' },
@@ -375,6 +380,10 @@ export function fakeHandlers(
       'list_entries',
       overrides.list_entries ??
         (async () => pick(CANNED.list_entries, outcomes.list_entries ?? 'ok')),
+    ),
+    search: record(
+      'search',
+      overrides.search ?? (async () => pick(CANNED.search, outcomes.search ?? 'ok')),
     ),
     list_reviews: record(
       'list_reviews',

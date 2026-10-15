@@ -117,6 +117,24 @@ export interface ListQuery {
   readonly cursor?: string
 }
 
+/** A full-text search of the published entries of a site. */
+export interface SearchQuery {
+  /** What the person or the agent typed: its words are matched, its punctuation is not. */
+  readonly text: string
+  readonly collection?: string
+  readonly locale?: string
+  readonly limit: number
+}
+
+/** An entry that a search found, best first. */
+export interface SearchHit {
+  readonly entry: EntrySummaryView
+  /** The words around the match in the text, the match between `[` and `]`. */
+  readonly snippet: string
+  /** How well it matches: higher is better. */
+  readonly score: number
+}
+
 /** The answer to a write that the store could not make. */
 export type WriteRefusal =
   | { readonly outcome: 'conflict'; readonly currentVersion: number; readonly headRevision: string }
@@ -188,6 +206,11 @@ export interface ContentStore {
     site: string,
     query: ListQuery,
   ): Promise<{ readonly entries: readonly EntrySummaryView[]; readonly nextCursor: string | null }>
+  /**
+   * The published entries whose title, tags or text hold every word of the query, best first:
+   * the title weighs most, then the tags, then the text (bm25).
+   */
+  searchEntries(site: string, query: SearchQuery): Promise<readonly SearchHit[]>
   /** The entries of a translation group, one per locale, in the given view. */
   listTranslations(
     site: string,

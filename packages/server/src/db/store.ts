@@ -24,6 +24,7 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     findEntry: (site, ref, view) => reads.findEntry(database, site, ref, view),
     findEntryById: (site, id, view) => reads.findEntryById(database, site, id, view),
     listEntries: (site, query) => reads.listEntries(database, site, query),
+    searchEntries: (site, query) => reads.searchEntries(database, site, query),
     listTranslations: (site, collection, translationGroup, view) =>
       reads.listTranslations(database, site, collection, translationGroup, view),
     lookup: (site) => reads.lookup(database, site),

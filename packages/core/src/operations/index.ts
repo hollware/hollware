@@ -10,6 +10,7 @@ export {
   OPERATIONS,
   publish,
   requestChanges,
+  search,
   unpublish,
   updateDraft,
   validate,

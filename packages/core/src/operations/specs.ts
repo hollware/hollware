@@ -61,6 +61,32 @@ export const listEntries = defineOperation({
   outcomes: { ok: { isError: false } },
 })
 
+export const search = defineOperation({
+  name: 'search',
+  title: 'Search entries',
+  description:
+    'Searches the published entries of the site for every word of query, in their title, tags and text, best match first, each with the words around the match. Narrow it to a collection or a locale. Drafts are not searched: read them with list_entries.',
+  input: z.strictObject({
+    query: z.string().trim().min(1).max(200).describe('The words to find; punctuation is ignored.'),
+    collection: collectionName.optional(),
+    locale: locale.optional(),
+    limit: z.number().int().min(1).max(50).default(10),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok']),
+    results: z.array(
+      z.object({
+        entry: entrySummary,
+        snippet: z.string().describe('The words around the match, the match between [ and ].'),
+        score: z.number().describe('How well it matches: higher is better.'),
+      }),
+    ),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false } },
+})
+
 export const getEntry = defineOperation({
   name: 'get_entry',
   title: 'Get an entry',
@@ -313,6 +339,7 @@ export const OPERATIONS = [
   listReviews,
   publish,
   requestChanges,
+  search,
   unpublish,
   updateDraft,
   validate,

@@ -16,6 +16,7 @@ import type { GatewayEnv } from './types.ts'
  *
  *   GET /v1/site                                   describe_site
  *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
+ *   GET /v1/search?q&collection&locale&limit       search
  *   GET /v1/{collection}/translations/{group}      get_translations
  *   GET /v1/{collection}/{locale}/{slug}?formats=  get_entry (formats: markdown,document,html)
  */
@@ -157,6 +158,19 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))
   app.get('/v1/site', async (c) => answer(c, await options.read(c.env).describeSite(c.get('site'))))
+  // Before /v1/:collection, which would take "search" for the name of a collection.
+  app.get('/v1/search', async (c) => {
+    const query = c.req.query()
+    const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
+    return answer(
+      c,
+      await options.read(c.env).search(c.get('site'), query['q'] ?? '', {
+        ...(query['collection'] === undefined ? {} : { collection: query['collection'] }),
+        ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
+        ...(limit === undefined ? {} : { limit }),
+      }),
+    )
+  })
   app.get('/v1/:collection', async (c) => {
     const query = c.req.query()
     const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
@@ -233,6 +247,18 @@ export function openApiDocument(): object {
     paths: {
       '/v1/site': {
         get: { operationId: 'describe_site', responses: { '200': ok('The site'), ...common } },
+      },
+      '/v1/search': {
+        get: {
+          operationId: 'search',
+          parameters: [
+            param('q', 'query', true),
+            param('collection', 'query', false),
+            param('locale', 'query', false),
+            param('limit', 'query', false),
+          ],
+          responses: { '200': ok('The published entries that hold every word of q'), ...common },
+        },
       },
       '/v1/{collection}': {
         get: {

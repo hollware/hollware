@@ -57,6 +57,13 @@
       "when": 1792034942684,
       "tag": "0007_read_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792086605125,
+      "tag": "0008_search",
+      "breakpoints": true
     }
   ]
 }

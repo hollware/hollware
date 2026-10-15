@@ -3,6 +3,7 @@ import { describeSite } from './describe-site.ts'
 import { getEntry } from './get-entry.ts'
 import { getTranslations } from './get-translations.ts'
 import { listEntries } from './list-entries.ts'
+import { search } from './search.ts'
 import { publish } from './publish.ts'
 import { approveReview, listReviews, requestChanges } from './reviews.ts'
 import { unpublish } from './unpublish.ts'
@@ -22,6 +23,7 @@ export const handlers = defineHandlers({
   get_entry: getEntry,
   get_translations: getTranslations,
   list_entries: listEntries,
+  search,
   list_reviews: listReviews,
   publish,
   request_changes: requestChanges,

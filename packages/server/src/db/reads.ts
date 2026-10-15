@@ -1,11 +1,13 @@
 import { HollwareError } from '@hollware/core'
 import type { EntryFacts, EntryLookup, EntryRef } from '@hollware/core'
-import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, or, sql, type SQL } from 'drizzle-orm'
 
 import type {
   EntrySummaryView,
   EntryView,
   ListQuery,
+  SearchHit,
+  SearchQuery,
   StoredPublication,
   StoredRevision,
   View,
@@ -175,6 +177,51 @@ export function listEntriesQuery(
   ])
     .orderBy(desc(sortKey), desc(entries.id))
     .limit(query.limit + 1)
+}
+
+/**
+ * The FTS5 query of what someone typed: each of its words as a quoted string, so that FTS5's own
+ * syntax (`AND`, `NEAR`, `*`, quotes) is never read from it, and every word must match. Empty when
+ * it holds no word.
+ */
+export function ftsQuery(text: string): string {
+  const words = text.match(/[\p{L}\p{N}_]+/gu) ?? []
+  return words.map((word) => `"${word}"`).join(' ')
+}
+
+/** The weights of the columns of `entries_fts` in bm25: title, tags, then the text. */
+const BM25 = sql.raw('bm25(entries_fts, 10.0, 4.0, 1.0)')
+
+export async function searchEntries(
+  db: Db,
+  site: string,
+  query: SearchQuery,
+): Promise<readonly SearchHit[]> {
+  const match = ftsQuery(query.text)
+  if (match === '') return []
+  const hits = await db.all<{ entry_id: string; snippet: string; rank: number }>(sql`
+    select entry_id, snippet(entries_fts, 2, '[', ']', '…', 16) as snippet, ${BM25} as rank
+    from entries_fts
+    where entries_fts match ${match} and site_id = ${site}
+      ${query.collection === undefined ? sql`` : sql`and collection = ${query.collection}`}
+      ${query.locale === undefined ? sql`` : sql`and locale = ${query.locale}`}
+    order by rank
+    limit ${query.limit}
+  `)
+  if (hits.length === 0) return []
+  const rows = await summaryQuery(db, 'published', [
+    eq(entries.siteId, site),
+    inArray(
+      entries.id,
+      hits.map((hit) => hit.entry_id),
+    ),
+  ])
+  const byId = new Map(rows.map((row) => [row.entry.id, toEntrySummaryView(row)]))
+  return hits.flatMap((hit) => {
+    const entry = byId.get(hit.entry_id)
+    // bm25 is lower for a better match; the answer says higher.
+    return entry === undefined ? [] : [{ entry, snippet: hit.snippet, score: -hit.rank }]
+  })
 }
 
 export async function listEntries(

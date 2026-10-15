@@ -30,6 +30,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { e2eVersion, userEnv } from './e2e-install.ts'
+import { OPERATIONS } from '../packages/core/src/index.ts'
 import { packAll } from './e2e/pack.ts'
 import { fail, mcp, publishPost, readPublished, run, startDev, step } from './e2e/project.ts'
 import { startRegistry } from './e2e/registry.ts'
@@ -128,7 +129,7 @@ async function main(): Promise<void> {
     step('What the old release made still works')
     stopDev = (await startDev(project, env)).stop
     const listed = await mcp(token, 'tools/list', {})
-    if (!Array.isArray(listed['tools']) || listed['tools'].length !== 12) {
+    if (!Array.isArray(listed['tools']) || listed['tools'].length !== OPERATIONS.length) {
       fail(`the old token listed ${JSON.stringify(listed['tools'])}`)
     }
     if ((await readPublished(token, 'published-before-the-upgrade')) !== 200) {
