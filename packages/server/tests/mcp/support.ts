@@ -397,7 +397,7 @@ export async function connect(endpoint: McpEndpoint, options: ConnectOptions) {
     client.setRequestHandler('elicitation/create', (request) => answer(request.params.message))
   }
   await client.connect(
-    new StreamableHTTPClientTransport(new URL('http://hollware.test/mcp'), {
+    new StreamableHTTPClientTransport(new URL('https://hollware.test/mcp'), {
       fetch: async (input, init) => {
         requests += 1
         const request = new Request(input, init)
@@ -492,7 +492,7 @@ export async function rpc(
     ...options.headers,
   }
   const response = await endpoint.fetch(
-    new Request('http://hollware.test/mcp', {
+    new Request('https://hollware.test/mcp', {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

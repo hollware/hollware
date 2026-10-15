@@ -9,7 +9,9 @@ import { createHarnessWithoutPublicUrl, createPlaygroundHarness, HOLLWARE_URL } 
 // answered before its token is even looked at, so a valid token does not open it; a request with
 // no token (401 `unauthorized` with the Bearer challenge), or with one that is not Hollware's
 // (401 with `invalid_token`), is refused; and a deployment that forgot HOLLWARE_PUBLIC_URL answers
-// 500 `misconfigured` to everything, `/health` included. A valid token still works, so none of the
+// 500 `misconfigured` to everything, `/health` included; the OAuth server stops publishing its
+// metadata, or stops taking metadata documents of clients, which it does only with the
+// `global_fetch_strictly_public` flag of the built config, or lets clients register themselves. A valid token still works, so none of the
 // refusals is an accident of the setup.
 
 const server = createPlaygroundHarness()
@@ -67,7 +69,7 @@ describe('the built Hollware Worker', () => {
     expect(await response.json()).toEqual({
       code: 'forbidden_host',
       message: 'The Host header of the request is not the public URL of this Hollware.',
-      fix: 'Send the request to http://hollware.test, the public URL of this Hollware (HOLLWARE_PUBLIC_URL).',
+      fix: 'Send the request to http://localhost, the public URL of this Hollware (HOLLWARE_PUBLIC_URL).',
     })
   })
 
@@ -81,7 +83,7 @@ describe('the built Hollware Worker', () => {
     expect(await response.json()).toEqual({
       code: 'forbidden_origin',
       message: 'The Origin header of the request is not the public URL of this Hollware.',
-      fix: 'Call Hollware from a client that sends no Origin header, or from a page served at http://hollware.test.',
+      fix: 'Call Hollware from a client that sends no Origin header, or from a page served at http://localhost.',
     })
   })
 
@@ -96,7 +98,9 @@ describe('the built Hollware Worker', () => {
     const response = await mcpRequest(`${HOLLWARE_URL}/mcp`, {})
 
     expect(response.status).toBe(401)
-    expect(response.headers.get('www-authenticate')).toBe('Bearer realm="hollware"')
+    expect(response.headers.get('www-authenticate')).toBe(
+      `Bearer realm="hollware", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp", scope="content:read"`,
+    )
     expect(await response.json()).toMatchObject({ code: 'unauthorized' })
   })
 
@@ -107,8 +111,23 @@ describe('the built Hollware Worker', () => {
 
     expect(response.status).toBe(401)
     expect(response.headers.get('www-authenticate')).toBe(
-      'Bearer realm="hollware", error="invalid_token"',
+      `Bearer realm="hollware", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     )
+  })
+})
+
+describe('the OAuth server of the built Worker', () => {
+  it('publishes its metadata, takes metadata documents of clients, and lets none register', async () => {
+    const response = await server.fetch(`${HOLLWARE_URL}/.well-known/oauth-authorization-server`)
+    const metadata: unknown = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(metadata).toMatchObject({
+      issuer: HOLLWARE_URL,
+      authorization_endpoint: `${HOLLWARE_URL}/authorize`,
+      client_id_metadata_document_supported: true,
+    })
+    expect(metadata).not.toHaveProperty('registration_endpoint')
   })
 })
 

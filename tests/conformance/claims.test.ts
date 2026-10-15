@@ -8,7 +8,8 @@ import { freePort } from './processes.ts'
 // own claim breaks: the public Host refused, the Host check or the Origin check gone alone, a
 // refusal with the wrong status or the wrong code, the 401 for a missing token or for an unknown
 // token gone, with the wrong status or the wrong realm, the 403 for a missing scope gone, with the
-// wrong status or a challenge that names no scope, a granted scope refused, served with the wrong
+// wrong status or a challenge that names no scope, any of the three without the protected resource
+// metadata of `/mcp`, a granted scope refused, served with the wrong
 // status, with an error or with no result; the answers of the Worker stop being read, as JSON and
 // as a server-sent event; the requests of an era stop carrying what the era requires (the
 // `Mcp-Method` and `Mcp-Name` headers and the `_meta` envelope of 2026-07-28, the protocol header of
@@ -47,6 +48,8 @@ interface Faults {
   unauthorizedIs403?: boolean
   /** The challenge of a 401 names another realm. */
   wrongRealm?: boolean
+  /** No challenge names the protected resource metadata. */
+  noResourceMetadata?: boolean
   /** The scope of a tool is not checked. */
   skipScopeCheck?: boolean
   /** The 403 for a missing scope names no scope. */
@@ -82,6 +85,10 @@ async function fakeWorker(faults: Faults = {}) {
   }
   const refusal = faults.refusalsAre400 === true ? 400 : 403
   const unauthorized = faults.unauthorizedIs403 === true ? 403 : 401
+  const metadata =
+    faults.noResourceMetadata === true
+      ? 'resource_metadata="none"'
+      : `resource_metadata="http://${PUBLIC_HOST}/.well-known/oauth-protected-resource/mcp"`
   const realm = faults.wrongRealm === true ? 'Bearer realm="other"' : 'Bearer realm="hollware"'
   const server = createServer((incoming, response) => {
     const chunks: Buffer[] = []
@@ -113,7 +120,12 @@ async function fakeWorker(faults: Faults = {}) {
         ? credentials.slice('Bearer '.length)
         : undefined
       if (token === undefined && faults.skipTokenCheck !== true) {
-        json(response, unauthorized, { code: 'unauthorized' }, { 'www-authenticate': realm })
+        json(
+          response,
+          unauthorized,
+          { code: 'unauthorized' },
+          { 'www-authenticate': `${realm}, ${metadata}, scope="content:read"` },
+        )
         return
       }
       if (token !== undefined && token !== READ_ONLY && faults.acceptAnyToken !== true) {
@@ -121,7 +133,9 @@ async function fakeWorker(faults: Faults = {}) {
           response,
           unauthorized,
           { code: 'unauthorized' },
-          { 'www-authenticate': `${realm}, error="invalid_token"` },
+          {
+            'www-authenticate': `${realm}, ${metadata}, error="invalid_token", scope="content:read"`,
+          },
         )
         return
       }
@@ -141,7 +155,7 @@ async function fakeWorker(faults: Faults = {}) {
             'www-authenticate':
               faults.challengeWithoutScope === true
                 ? 'Bearer error="insufficient_scope"'
-                : 'Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write"',
+                : `Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", ${metadata}`,
           },
         )
         return
@@ -287,6 +301,14 @@ describe('the probes of what the suite cannot see', () => {
       ])
     })
 
+    it('fail the 401 and 403 probes when no challenge names the protected resource metadata', async () => {
+      expect(await failed({ noResourceMetadata: true })).toEqual([
+        'no-token-is-401-with-challenge',
+        'unknown-token-is-401-invalid-token',
+        'missing-scope-is-403-with-challenge',
+      ])
+    })
+
     it('fail the 403 probe when the scope of a tool is not checked', async () => {
       expect(await failed({ skipScopeCheck: true })).toEqual([
         'missing-scope-is-403-with-challenge',
@@ -323,8 +345,7 @@ describe('the probes of what the suite cannot see', () => {
     const results = await probe(port)
     expect(results['missing-scope-is-403-with-challenge']).toMatchObject({
       status: 'FAILURE',
-      errorMessage:
-        'expected 403, got 200; expected www-authenticate: Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", got none',
+      errorMessage: `expected 403, got 200; expected www-authenticate: Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", resource_metadata="http://${PUBLIC_HOST}/.well-known/oauth-protected-resource/mcp", got none`,
     })
     expect(results['public-host-is-accepted']).toMatchObject({
       status: 'SUCCESS',

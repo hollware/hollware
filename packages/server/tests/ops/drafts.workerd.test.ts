@@ -18,7 +18,7 @@ import {
 // a file the way the specs say. create-draft.ts, update-draft.ts and draft.ts store the Markdown
 // as the caller sent it, derive the frontmatter, tags, translation group, word count and versions
 // from what the pipeline returned and from the fields the collection names (and from nothing
-// else), record the actor and what its client said, save a draft whose contracts fail, refuse
+// else), record the actor and what its client said (an OAuth client by its id, with no token), save a draft whose contracts fail, refuse
 // only what cannot be stored, put the version check of update_draft before everything else
 // (conflict wins over unchanged, over a refusal and over a save), answer unchanged for the file
 // the head already holds and write nothing then, hand the pipeline the components, the size limit
@@ -118,6 +118,36 @@ describe('create_draft', () => {
       head_rev: revision?.id,
       published_rev: null,
       translation_group: 'edge-caching-guide',
+    })
+  })
+
+  it('records an OAuth client as the actor, with its id beside what it said, and no token', async () => {
+    const world = await newWorld(env.DB, 'create-oauth')
+    world.time.set(T0)
+    const client = { name: 'claude-ai', version: '2.0.0' }
+    const principal = {
+      kind: 'oauth',
+      userId: world.tenant.userId,
+      clientId: 'https://claude.ai/oauth/mcp-client.json',
+      site: world.tenant.key,
+      scopes: ['content:read', 'content:write'],
+    } as const
+
+    const created = await agentFor(world.context({ client, principal })).createDraft({
+      ...english,
+      markdown: blogPost(),
+    })
+
+    const [revision] = await revisionsOf(world.db, created.entry?.id ?? '')
+    expect(revision).toMatchObject({
+      actor_kind: 'oauth_client',
+      actor_user_id: world.tenant.userId,
+      actor_token_id: null,
+    })
+    expect(JSON.parse(revision?.actor_meta ?? '')).toEqual({
+      name: 'claude-ai',
+      version: '2.0.0',
+      oauthClient: 'https://claude.ai/oauth/mcp-client.json',
     })
   })
 

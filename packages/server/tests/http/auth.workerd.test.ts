@@ -7,10 +7,10 @@ import { rpc } from '../mcp/support.ts'
 import { boot, captureLogs, restoreLogs, OTHER_SITE_KEY, SITE_KEY, wire } from './support.ts'
 
 // Fails when: the token check stops standing in front of the MCP endpoint: a request to `/mcp`
-// with no token (any method), or with a token that is unknown, malformed, expired (a second ago
-// or at this very instant of the clock), revoked or of another site, stops being 401 with the
-// challenge of its case (`Bearer realm="hollware"` with no token, plus `error="invalid_token"`
-// with a refused one) and the body of `unauthorized`; the reason a token was refused reaches the
+// with no token (any method but the preflight), or with a token that is unknown, malformed, expired
+// (a second ago or at this very instant of the clock), revoked or of another site, stops being 401
+// with the challenge of its case (the realm, the protected resource metadata of `/mcp` and the
+// baseline scope, plus `error="invalid_token"` with a refused one) and the body of `unauthorized`; the reason a token was refused reaches the
 // answer instead of only the log; a handler runs for a request that was refused; the lookup
 // leaves the primary database for a replica session or is skipped for a request with no token;
 // the token is looked up for any site but the one of this deployment; `last_used_at` stops being
@@ -19,17 +19,21 @@ import { boot, captureLogs, restoreLogs, OTHER_SITE_KEY, SITE_KEY, wire } from '
 
 const REQUEST_ID = '5c1f6a52-0f67-4c4e-9d3a-2f6a8e1b7c90'
 
+/** Where a client reads how to get a token for `/mcp` (RFC 9728), which every 401 names. */
+const METADATA = 'https://hollware.test/.well-known/oauth-protected-resource/mcp'
+
 const NO_TOKEN = {
   status: 401,
   headers: {
     'cache-control': 'no-store',
     'content-type': 'application/json',
-    'www-authenticate': 'Bearer realm="hollware"',
+    pragma: 'no-cache',
+    'www-authenticate': `Bearer realm="hollware", resource_metadata="${METADATA}", scope="content:read"`,
   },
   body: {
     code: 'unauthorized',
-    message: 'The request carries no personal token.',
-    fix: 'Send a personal token as "Authorization: Bearer <token>". Create one with `hollware token create`.',
+    message: 'The request carries no token.',
+    fix: 'Send a personal token as "Authorization: Bearer <token>" (create one with `hollware token create`), or sign in through OAuth: the challenge names where.',
   },
 }
 
@@ -38,12 +42,13 @@ const REFUSED = {
   headers: {
     'cache-control': 'no-store',
     'content-type': 'application/json',
-    'www-authenticate': 'Bearer realm="hollware", error="invalid_token"',
+    pragma: 'no-cache',
+    'www-authenticate': `Bearer realm="hollware", resource_metadata="${METADATA}", error="invalid_token", scope="content:read"`,
   },
   body: {
     code: 'unauthorized',
-    message: 'The personal token was not accepted.',
-    fix: 'Tokens expire and can be revoked. Create a new one with `hollware token create` and send it as "Authorization: Bearer <token>".',
+    message: 'The token was not accepted.',
+    fix: 'Tokens expire and can be revoked. Create a new personal token with `hollware token create`, or sign in through OAuth again, and send it as "Authorization: Bearer <token>".',
   },
 }
 
@@ -56,7 +61,7 @@ afterEach(() => {
 })
 
 describe('a request to /mcp with no token', () => {
-  it.each(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])(
+  it.each(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])(
     'is refused with 401 and the challenge, for %s',
     async (method) => {
       const worker = boot()
@@ -79,7 +84,17 @@ describe('a request to /mcp with no token', () => {
     const response = await worker.send('/mcp', { method: 'HEAD' })
 
     expect(response.status).toBe(401)
-    expect(response.headers.get('www-authenticate')).toBe('Bearer realm="hollware"')
+    expect(response.headers.get('www-authenticate')).toBe(NO_TOKEN.headers['www-authenticate'])
+  })
+
+  it('answers a preflight (OPTIONS) with 204 and nothing else: it carries no token to check', async () => {
+    const worker = boot()
+
+    const response = await worker.send('/mcp', { method: 'OPTIONS' })
+
+    expect(response.status).toBe(204)
+    expect(worker.seen).toEqual([])
+    expect(worker.queries).toEqual([])
   })
 
   it('is logged, with the id of the request and no more', async () => {

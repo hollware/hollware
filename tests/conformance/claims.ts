@@ -177,6 +177,11 @@ function expectStatus(answer: Answer, status: number, problems: string[]): void 
   if (answer.status !== status) problems.push(`expected ${status}, got ${answer.status}`)
 }
 
+/** Where the challenges of `/mcp` send a client to learn how to get a token (RFC 9728, ADR-026). */
+function metadataOf(publicUrl: URL): string {
+  return `${publicUrl.origin}/.well-known/oauth-protected-resource/mcp`
+}
+
 function expectHeader(answer: Answer, name: string, expected: string, problems: string[]): void {
   const found = header(answer, name)
   if (found !== expected) problems.push(`expected ${name}: ${expected}, got ${found ?? 'none'}`)
@@ -239,7 +244,12 @@ export async function probeClaims(options: ClaimsOptions): Promise<ProbeResult[]
     async (problems) => {
       const answer = await mcp(['host', publicUrl.host, ...call.headers], call.body)
       expectStatus(answer, 401, problems)
-      expectHeader(answer, 'www-authenticate', 'Bearer realm="hollware"', problems)
+      expectHeader(
+        answer,
+        'www-authenticate',
+        `Bearer realm="hollware", resource_metadata="${metadataOf(publicUrl)}", scope="content:read"`,
+        problems,
+      )
     },
   )
   await probe(
@@ -254,7 +264,7 @@ export async function probeClaims(options: ClaimsOptions): Promise<ProbeResult[]
       expectHeader(
         answer,
         'www-authenticate',
-        'Bearer realm="hollware", error="invalid_token"',
+        `Bearer realm="hollware", resource_metadata="${metadataOf(publicUrl)}", error="invalid_token", scope="content:read"`,
         problems,
       )
     },
@@ -277,7 +287,7 @@ export async function probeClaims(options: ClaimsOptions): Promise<ProbeResult[]
       expectHeader(
         answer,
         'www-authenticate',
-        'Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write"',
+        `Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", resource_metadata="${metadataOf(publicUrl)}"`,
         problems,
       )
     },

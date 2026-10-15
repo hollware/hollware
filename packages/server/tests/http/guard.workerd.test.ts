@@ -31,7 +31,7 @@ const FORBIDDEN_HOST = {
   body: {
     code: 'forbidden_host',
     message: 'The Host header of the request is not the public URL of this Hollware.',
-    fix: 'Send the request to http://hollware.test, the public URL of this Hollware (HOLLWARE_PUBLIC_URL).',
+    fix: 'Send the request to https://hollware.test, the public URL of this Hollware (HOLLWARE_PUBLIC_URL).',
   },
 }
 
@@ -41,7 +41,7 @@ const FORBIDDEN_ORIGIN = {
   body: {
     code: 'forbidden_origin',
     message: 'The Origin header of the request is not the public URL of this Hollware.',
-    fix: 'Call Hollware from a client that sends no Origin header, or from a page served at http://hollware.test.',
+    fix: 'Call Hollware from a client that sends no Origin header, or from a page served at https://hollware.test.',
   },
 }
 
@@ -87,7 +87,7 @@ const REFUSALS: readonly {
   },
   {
     name: 'the Origin of another scheme',
-    send: { headers: { origin: 'https://hollware.test' } },
+    send: { headers: { origin: 'http://hollware.test' } },
     answer: FORBIDDEN_ORIGIN,
   },
   { name: 'the opaque Origin', send: { headers: { origin: 'null' } }, answer: FORBIDDEN_ORIGIN },
@@ -146,7 +146,7 @@ describe('the guard in front of every route', () => {
     const plain = await worker.send('/health')
     const shouting = await worker.send('/health', {
       host: 'HOLLWARE.TEST',
-      headers: { origin: 'HTTP://Hollware.Test' },
+      headers: { origin: 'HTTPS://Hollware.Test' },
     })
 
     expect(await wire(plain)).toEqual({ status: 200, headers: HEADERS, body: { ok: true } })

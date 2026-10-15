@@ -210,7 +210,7 @@ describe('AC-0.1-16: init and tokens', () => {
     })
     expect([refused.status, refused.headers.get('www-authenticate')]).toEqual([
       401,
-      'Bearer realm="hollware", error="invalid_token"',
+      `Bearer realm="hollware", resource_metadata="${url}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     ])
     const relisted = await project.hollware('token', 'list', '--local')
     expect(cells(relisted.output)[2]?.slice(1, 3)).toEqual(['acceptance reader', 'revoked'])

@@ -3,7 +3,7 @@ import { ConfigError, Problems } from './config-error.ts'
 import { readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
-import type { ResolvedCollection, ResolvedConfig, ResolvedSite } from './types.ts'
+import type { ResolvedAuth, ResolvedCollection, ResolvedConfig, ResolvedSite } from './types.ts'
 import { isRecord, itemPath, keyPath, quote, readOptionalString, wrongType } from './values.ts'
 
 const SITE_FIX =
@@ -177,6 +177,30 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
   return sites
 }
 
+/** `auth` of the config: absent, or an object whose `dynamicClientRegistration` is a boolean. */
+function readAuth(raw: unknown, problems: Problems): ResolvedAuth {
+  if (raw === undefined) return { dynamicClientRegistration: false }
+  if (!isRecord(raw)) {
+    problems.add(
+      'auth',
+      wrongType(raw, 'an object'),
+      'Write auth: { dynamicClientRegistration: true }, or leave auth out.',
+    )
+    return { dynamicClientRegistration: false }
+  }
+  const value = raw['dynamicClientRegistration']
+  if (value === undefined) return { dynamicClientRegistration: false }
+  if (typeof value !== 'boolean') {
+    problems.add(
+      'auth.dynamicClientRegistration',
+      wrongType(value, 'true or false'),
+      'Write true to let MCP clients register themselves, or leave it out.',
+    )
+    return { dynamicClientRegistration: false }
+  }
+  return { dynamicClientRegistration: value }
+}
+
 /**
  * Checks the config of the deployment and fills in its defaults, or throws a `ConfigError` with
  * every problem it found, so that a broken `hollware.config.ts` stops the Worker at startup with
@@ -206,8 +230,10 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
 export function resolveConfig(config: unknown): ResolvedConfig {
   const problems = new Problems()
   let sites = new Map<string, ResolvedSite>()
+  let auth: ResolvedAuth = { dynamicClientRegistration: false }
   if (isRecord(config)) {
     sites = readSites(config['sites'], problems)
+    auth = readAuth(config['auth'], problems)
   } else {
     problems.add(
       'config',
@@ -216,5 +242,5 @@ export function resolveConfig(config: unknown): ResolvedConfig {
     )
   }
   if (problems.list.length > 0) throw new ConfigError(problems.list)
-  return { sites }
+  return { sites, auth }
 }

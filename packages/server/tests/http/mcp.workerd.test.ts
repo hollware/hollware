@@ -15,9 +15,9 @@ import { boot, captureLogs, restoreLogs, onlyCall, SITE_KEY } from './support.ts
 // user, token, site and effective scopes), the one site of the config, the view `head`, the id of
 // the request, the clock the Worker was given, what the client said about itself, and a store on
 // the primary database (never a replica session, so an agent reads what it has just written). A
-// token without the scope of a tool must be 403 with the endpoint's challenge, with the handler
-// never run. Every line of the log is one JSON line written through `console.log`. D1 is the real
-// one, migrated.
+// token without the scope of a tool must be 403 with the endpoint's challenge, which names the
+// protected resource metadata of `/mcp`, with the handler never run. Every line of the log is one
+// JSON line written through `console.log`. D1 is the real one, migrated.
 
 const REQUEST_ID = '9d2c1b7e-6a4f-4e0b-8c35-1f7a2b6d4e90'
 const LATER = '2026-11-11T12:00:00.000Z'
@@ -207,7 +207,7 @@ describe('a token without the scope of the tool', () => {
 
     expect(answer.status).toBe(403)
     expect(answer.headers.get('www-authenticate')).toBe(
-      'Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write"',
+      'Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", resource_metadata="https://hollware.test/.well-known/oauth-protected-resource/mcp"',
     )
     expect(answer.message).toEqual({
       error: 'insufficient_scope',
@@ -252,7 +252,8 @@ describe('a token without the scope of the tool', () => {
 })
 
 describe('the request that reaches the endpoint', () => {
-  it.each(['GET', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'])(
+  // OPTIONS is a preflight: the resource server answers it, before any token (auth.workerd.test.ts).
+  it.each(['GET', 'DELETE', 'PUT', 'PATCH'])(
     'is served for %s too: /mcp has every method, and the endpoint decides',
     async (method) => {
       const seeded = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })

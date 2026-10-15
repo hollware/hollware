@@ -1,5 +1,5 @@
-import type { TokenRejection } from '../auth/index.ts'
 import type { HollwareEnv } from '../index.ts'
+import type { Refusal } from '../oauth/server.ts'
 
 /** What the routes of the gateway read from Hono: the Worker's bindings and the id of the request. */
 export type GatewayEnv = {
@@ -10,7 +10,7 @@ export type GatewayEnv = {
   }
 }
 
-/** A request to `/mcp` that was turned away for its credentials (a 401). */
+/** A request to `/mcp` or `/v1` that was turned away for its credentials (a 401). */
 export interface AuthRefusedLog {
   readonly kind: 'auth_refused'
   readonly requestId: string
@@ -18,7 +18,7 @@ export interface AuthRefusedLog {
    * Why. The caller is told none of it: every refused token gets the same answer, so that
    * nobody learns which tokens exist. The operator reads it here.
    */
-  readonly reason: 'no_token' | TokenRejection
+  readonly reason: 'no_token' | Refusal
 }
 
 /** A request whose route threw. The cause is here, for the operator, and never in the answer. */
@@ -38,5 +38,12 @@ export interface EnqueueFailedLog {
   readonly message: string
 }
 
+/** An error the OAuth server answered, with the check that failed (never on the wire). */
+export interface OAuthErrorLog {
+  readonly kind: 'oauth_error'
+  readonly code: string
+  readonly reason: string | null
+}
+
 /** What the gateway writes to the log, besides the lines of the MCP endpoint. */
-export type GatewayLogEntry = AuthRefusedLog | RequestErrorLog | EnqueueFailedLog
+export type GatewayLogEntry = AuthRefusedLog | RequestErrorLog | EnqueueFailedLog | OAuthErrorLog

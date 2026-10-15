@@ -12,6 +12,11 @@ import type { TextFile, Violation } from './types.ts'
  * Hollware's own configs also set `"send_metrics": false`, so no command run in this
  * repository sends wrangler's telemetry. A template is the user's project: its telemetry is the
  * user's choice.
+ *
+ * A Worker of Hollware, which is one with the D1 binding `DB`, holds the OAuth server (ADR-026):
+ * it lists `global_fetch_strictly_public`, without which the server would fetch a client's
+ * metadata document through the zone and refuses to take such documents, and it binds `OAUTH_KV`,
+ * at the top and in every environment that names its own bindings (bindings do not inherit).
  */
 
 export interface WranglerFlagsInput {
@@ -24,6 +29,23 @@ const OPT_OUTS = ['no_nodejs_compat', 'no_nodejs_compat_v2']
 
 /** The flags that would turn it back on. */
 const OPT_INS = ['nodejs_compat', 'nodejs_compat_v2']
+
+/** Whether a set of bindings (the top of a config, or one environment) has the D1 binding `DB`. */
+function bindsHollware(bindings: Record<string, unknown>): boolean {
+  const databases = bindings.d1_databases
+  return (
+    Array.isArray(databases) &&
+    databases.some((database) => isRecord(database) && database.binding === 'DB')
+  )
+}
+
+function bindsOAuthKv(bindings: Record<string, unknown>): boolean {
+  const namespaces = bindings.kv_namespaces
+  return (
+    Array.isArray(namespaces) &&
+    namespaces.some((namespace) => isRecord(namespace) && namespace.binding === 'OAUTH_KV')
+  )
+}
 
 export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
   const violations: Violation[] = []
@@ -51,6 +73,29 @@ export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
         'node-compat',
         `"compatibility_flags" turns Node.js compatibility on with ${JSON.stringify(enabling)}: Hollware runs without it`,
       )
+    }
+    if (bindsHollware(parsed.value)) {
+      if (!listed.includes('global_fetch_strictly_public')) {
+        report(
+          'oauth',
+          '"compatibility_flags" must list "global_fetch_strictly_public": the OAuth server fetches the metadata documents of clients over the public internet only',
+        )
+      }
+      const environments = isRecord(parsed.value.env) ? Object.entries(parsed.value.env) : []
+      const places: [string, Record<string, unknown>][] = [
+        ['the top of the config', parsed.value],
+        ...environments.flatMap(([name, bindings]): [string, Record<string, unknown>][] =>
+          isRecord(bindings) && bindsHollware(bindings) ? [[`env.${name}`, bindings]] : [],
+        ),
+      ]
+      for (const [place, bindings] of places) {
+        if (!bindsOAuthKv(bindings)) {
+          report(
+            'oauth',
+            `${place} must bind a KV namespace as "OAUTH_KV": the OAuth server keeps its clients, grants and tokens there`,
+          )
+        }
+      }
     }
     if (!config.path.startsWith('templates/') && parsed.value.send_metrics !== false) {
       report(

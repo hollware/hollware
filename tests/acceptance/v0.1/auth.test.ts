@@ -90,7 +90,7 @@ describe('AC-0.1-6: who may reach the MCP endpoint', () => {
 
     expect([response.status, response.headers.get('www-authenticate')]).toEqual([
       401,
-      'Bearer realm="hollware"',
+      `Bearer realm="hollware", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp", scope="content:read"`,
     ])
   })
 
@@ -105,7 +105,7 @@ describe('AC-0.1-6: who may reach the MCP endpoint', () => {
 
     expect([response.status, response.headers.get('www-authenticate')]).toEqual([
       401,
-      'Bearer realm="hollware", error="invalid_token"',
+      `Bearer realm="hollware", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     ])
   })
 
@@ -115,7 +115,7 @@ describe('AC-0.1-6: who may reach the MCP endpoint', () => {
 
     expect([write.status, write.headers.get('www-authenticate')]).toEqual([
       403,
-      'Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write"',
+      `Bearer error="insufficient_scope", error_description="create_draft requires: content:write", scope="content:write", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp"`,
     ])
     expect(read.status).toBe(200)
   })

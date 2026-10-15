@@ -56,10 +56,11 @@ new process group, so the child outlives its supervisor.
 - The test runner of `@cloudflare/vitest-plugin` keeps Node.js compatibility on whatever
   the flags say, so a workerd test never proves that code runs without Node.js. The
   playground's harness test proves it on the built Workers.
-- Harness tests reach Hollware at `http://hollware.test` and give the Worker that URL as
-  its `HOLLWARE_PUBLIC_URL`: build the harness with `createPlaygroundHarness()` from
-  `apps/playground/test/harness/workers.ts`. Hollware is its primary Worker, so
-  `server.fetch('http://hollware.test/...')` carries the Host its guard compares; a request sent
+- Harness tests reach Hollware at `http://localhost` and give the Worker that URL as
+  its `HOLLWARE_PUBLIC_URL`: the harness hands a Worker every URL as `http`, and the OAuth
+  server takes `http` only on a loopback host. Build the harness with `createPlaygroundHarness()`
+  from `apps/playground/test/harness/workers.ts`. Hollware is its primary Worker, so
+  `server.fetch('http://localhost/...')` carries the Host its guard compares; a request sent
   straight to a Worker (`server.getWorker(name).fetch`) carries the harness's own Host, so only the
   site is reached that way (`siteFetch`). Content is created as an agent creates it, through
   `agentWith(...)` and MCP; the personal token that lets it in (`seedOwnerToken(...)`, in

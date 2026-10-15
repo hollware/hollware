@@ -60,15 +60,24 @@ serve them (ADR-017). Boundary rules for this package:
   `readBearerToken`, then `checkPersonalToken` on the `D1Database` binding, never a replica
   session, so a revoked token stops at once. Hand its `touch` to `ctx.waitUntil`. A refused token
   gets one answer whether it was unknown, expired or revoked: log the reason, never send it.
-  `ROLE_SCOPES` has one entry per role of the `users_role` check; owners get every scope, the
-  other roles none until v0.3.
+  `ROLE_SCOPES` has one entry per role of the `users_role` check: owner, editor, author.
+- `src/oauth` is the OAuth server of ADR-026, built once per public URL: an
+  `OAuthAuthorizationServer` and an `OAuthResourceServer` each for `/mcp` and `/v1`. The resource
+  server validates a token by its shape: `hw_pat_…` goes to `checkPersonalToken`, anything else to
+  the authorization server, and either way the scopes are intersected with the user's role at that
+  request. `/authorize` is ours (`authorize.ts`): the session cookie, then a consent page that
+  offers only what the role allows. A validator never throws to the library, which would answer a
+  bare 503: it hands the error to the gateway, which throws it into the error handler.
+- `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
+  `/signin` and the four steps of their ceremonies.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
   when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
   there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one
   JSON line through `console.log`.
 - `src/http` is the gateway, a Hono 5 app: a request id, then `checkHostAndOrigin` before every
-  route, then `GET /health`, `/mcp` (401 before the endpoint, `touch` to `ctx.waitUntil`, a store
-  on the primary) and a JSON 404. Whatever a route throws is a JSON 500 with the request id in its
+  route, then `GET /health`, `/mcp` and `/v1` behind their resource servers (401 with the
+  protected resource metadata before the endpoint, `touch` to `ctx.waitUntil`, a store on the
+  primary), the authorization server's routes, the identity pages and a JSON 404. Whatever a route throws is a JSON 500 with the request id in its
   fix; a D1 failure is never a 401. Hono 5's `onError` and `notFound` are middleware `(c, next)`;
   the Hono 4 form answers a plain-text 500, so everything version-specific stays in
   `src/http/errors.ts`.

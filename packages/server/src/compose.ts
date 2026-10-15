@@ -55,7 +55,8 @@ export function createHollwareWith(
   handlers: Handlers,
   options: ComposeOptions = {},
 ): HollwareWorker {
-  const [site] = resolveConfig(config).sites.values()
+  const resolved = resolveConfig(config)
+  const [site] = resolved.sites.values()
   if (site === undefined) {
     // `resolveConfig` throws for a config without exactly one site; this is only for the types.
     throw new Error('The resolved config has no site, which resolveConfig never lets through')
@@ -79,6 +80,7 @@ export function createHollwareWith(
       clock,
       log: writeLog,
       read: (env) => createRpc({ site, handlers, clock, log: writeLog }, env),
+      auth: resolved.auth,
     }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025).
     scheduled: async (_controller, env, ctx) => {

@@ -9,7 +9,7 @@ import { createTestHarness, type TestHarness } from 'wrangler'
  * Hollware Worker gets it as its HOLLWARE_PUBLIC_URL, so the Host and Origin it checks are the
  * ones the tests send.
  */
-export const HOLLWARE_URL = 'http://hollware.test'
+export const HOLLWARE_URL = 'http://localhost'
 
 /** The URL the tests give the site Worker; `siteFetch` sends the request to it. */
 export const SITE_URL = 'http://site.test'

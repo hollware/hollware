@@ -19,7 +19,8 @@
 #   caching        the ttlMs and cacheScope hints of tools/list (SEP-2549)
 #   transport      Streamable HTTP: the validation of its headers (SEP-2243) and its streams
 #   dns-rebinding  the Host and Origin checks of the Worker, as it runs under wrangler dev
-#   authorization  the 401 with its challenge and the 403 with the missing scope
+#   authorization  the 401 with its challenge and the 403 with the missing scope, each naming the
+#                  protected resource metadata of /mcp (ADR-026)
 #   wire-schema    every message of every scenario validates against the schema of the revision
 #
 # The scenario "hollware-claims" is not a scenario of the suite: it holds the probes of

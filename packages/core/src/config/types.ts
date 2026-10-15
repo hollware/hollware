@@ -93,6 +93,18 @@ export interface HollwareConfig {
    * content exists. v0.1 serves exactly one site per deployment.
    */
   readonly sites: Readonly<Record<string, SiteDefinition>>
+  /** How MCP clients and the admin get tokens (ADR-026). */
+  readonly auth?: AuthDefinition
+}
+
+/** The OAuth server of a deployment. */
+export interface AuthDefinition {
+  /**
+   * Whether a client may register itself (RFC 7591), for MCP clients that cannot present a
+   * Client ID Metadata Document. Off by default: a registration is a write to KV that anyone can
+   * make, and MCP 2026-07-28 prefers metadata documents.
+   */
+  readonly dynamicClientRegistration?: boolean
 }
 
 /** A collection once the config is resolved: checked, with every default filled in. */
@@ -138,6 +150,12 @@ export interface ResolvedEvents {
 /** The config once resolved, at the start of the Worker. v0.1 holds exactly one site. */
 export interface ResolvedConfig {
   readonly sites: ReadonlyMap<string, ResolvedSite>
+  readonly auth: ResolvedAuth
+}
+
+/** The OAuth server once the config is resolved. */
+export interface ResolvedAuth {
+  readonly dynamicClientRegistration: boolean
 }
 
 /**

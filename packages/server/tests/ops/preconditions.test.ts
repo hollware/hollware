@@ -176,7 +176,7 @@ describe('a write from a principal that is not a token', () => {
         message: 'The operation failed on the server.',
         fix: 'Try again. If it keeps failing, give the site operator this request id: req_names_1.',
         cause: {
-          message: 'A write was routed for a principal of kind binding; only a token writes.',
+          message: 'A write was routed for a principal of kind binding; only a person writes.',
         },
       })
     },

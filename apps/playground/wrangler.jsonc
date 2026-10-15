@@ -6,7 +6,13 @@
   "compatibility_date": "2026-10-06",
   // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
   // Hollware runs without it, and so does everything that tests Hollware.
-  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  // global_fetch_strictly_public: the OAuth server fetches the metadata documents of clients
+  // (CIMD) over the public internet only, never through the zone (ADR-026).
+  "compatibility_flags": [
+    "no_nodejs_compat",
+    "no_nodejs_compat_v2",
+    "global_fetch_strictly_public",
+  ],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
   // Every minute: publishes the scheduled entries whose time has come (ADR-025).
@@ -25,9 +31,13 @@
   },
   "vars": {
     // The only Host and Origin Hollware answers. This is the URL `vp dev` serves; the harness
-    // tests override it with http://hollware.test (test/harness/workers.ts).
+    // tests override it with http://localhost (test/harness/workers.ts).
     "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
+  // The OAuth server's clients, grants and tokens (ADR-026). Placeholder id: local development and
+  // tests never contact Cloudflare; a deploy needs the id of a namespace made with
+  // `wrangler kv namespace create`.
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -55,6 +65,9 @@
       "triggers": { "crons": ["* * * * *"] },
       // No test probe in the demo.
       "services": [],
+      // DEMO-KV: the id of the namespace in the maintainer's account, created when OAuth reaches
+      // the demo (v0.3); a deploy of the demo fails until it is set.
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
       "d1_databases": [
         {
           "binding": "DB",

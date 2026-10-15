@@ -369,7 +369,7 @@ interface SeedDatabase {
  */
 async function measureWrites(root: string, workerDirectory: string): Promise<WriteCost> {
   const { createTestHarness } = await import('wrangler')
-  const origin = 'http://hollware.test'
+  const origin = 'http://localhost'
   const fixturePath = join(root, 'tests/fixtures/content/bench/long-post.md')
   const post = readFileSync(fixturePath, 'utf8')
   const cold: number[] = []

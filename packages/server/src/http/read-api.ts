@@ -1,19 +1,14 @@
 import { HollwareError } from '@hollware/core'
 import type { Context, Hono } from 'hono'
-import {
-  checkPersonalToken,
-  insufficientScope,
-  readBearerToken,
-  unauthorized,
-} from '../auth/index.ts'
+import { insufficientScope } from '../auth/index.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
-import type { Clock } from '../ports.ts'
-import type { GatewayEnv, GatewayLogEntry } from './types.ts'
+import type { Proceed } from '../oauth/server.ts'
+import type { GatewayEnv } from './types.ts'
 
 /**
  * The HTTP read API (v0.2): the four read methods of the RPC binding, for a site that is not a
- * Worker of the same account. It serves published content only, to a personal token with
- * `content:read`, and answers with an ETag, so that a client revalidates instead of reading the
+ * Worker of the same account. It serves published content only, to a personal token or an OAuth
+ * access token with `content:read` (ADR-026), and answers with an ETag, so that a client revalidates instead of reading the
  * body again (304). Its responses are private: they are behind a token, so no shared cache keeps
  * them. The OpenAPI document is at `/v1/openapi.json`.
  *
@@ -27,8 +22,10 @@ export interface ReadApiOptions {
   /** The read methods over the bindings of a request: the RPC surface itself. */
   readonly read: (env: HollwareEnv) => HollwareRpc
   readonly site: string
-  readonly clock: Clock
-  readonly log: (entry: GatewayLogEntry) => void
+  /** The resource server of `/v1`, which turns a request without an accepted token away. */
+  readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
+  /** The protected resource metadata of `/v1`, which a 403 names. */
+  readonly metadataUrl: (c: Context<GatewayEnv>) => string
 }
 
 const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
@@ -82,31 +79,21 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       )
     }
     if (c.req.path === '/v1/openapi.json') return next()
-    const requestId = c.get('requestId')
-    const token = readBearerToken(c.req.raw)
-    if (token === null) {
-      options.log({ kind: 'auth_refused', requestId, reason: 'no_token' })
-      return unauthorized()
-    }
-    const check = await checkPersonalToken(c.env.DB, token, {
-      site: options.site,
-      now: options.clock.now(),
+    return options.protect(c, async (principal) => {
+      if (!principal.scopes.includes('content:read')) {
+        return insufficientScope(['content:read'], options.metadataUrl(c))
+      }
+      try {
+        await next()
+        return c.res
+      } catch (error) {
+        if (!(error instanceof HollwareError)) throw error
+        return c.json(
+          { code: error.code, message: error.message, fix: error.fix },
+          STATUS[error.code] ?? 500,
+        )
+      }
     })
-    if (!check.ok) {
-      options.log({ kind: 'auth_refused', requestId, reason: check.reason })
-      return unauthorized(check.reason)
-    }
-    if (!check.principal.scopes.includes('content:read')) return insufficientScope(['content:read'])
-    if (check.touch !== null) c.executionCtx.waitUntil(check.touch)
-    try {
-      return await next()
-    } catch (error) {
-      if (!(error instanceof HollwareError)) throw error
-      return c.json(
-        { code: error.code, message: error.message, fix: error.fix },
-        STATUS[error.code] ?? 500,
-      )
-    }
   })
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument(options.site)))
@@ -166,7 +153,10 @@ export function openApiDocument(site: string): object {
   })
   const common = {
     '304': { description: 'Not modified: the ETag of If-None-Match is current.' },
-    '401': { description: 'No token, or one that is unknown, expired or revoked.' },
+    '401': {
+      description:
+        'No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata.',
+    },
     '403': { description: 'The token lacks content:read.' },
   }
   const param = (name: string, location: 'path' | 'query', required: boolean) => ({
@@ -178,6 +168,7 @@ export function openApiDocument(site: string): object {
   return {
     openapi: '3.1.0',
     info: { title: `Hollware read API (${site})`, version: '1' },
+    // A personal token, or an OAuth access token for this resource (ADR-026).
     components: { securitySchemes: { token: { type: 'http', scheme: 'bearer' } } },
     security: [{ token: [] }],
     paths: {

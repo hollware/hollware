@@ -7,7 +7,7 @@ import type { TokenRejection } from '../../src/auth/token.ts'
 // adds `invalid_token` when no token was presented or leaves it out when one was refused, or lets
 // the body say which of unknown, expired and revoked it was; insufficientScope stops answering
 // 403, names fewer scopes than are missing in the challenge or in the body, or changes their
-// order; authErrorResponse stops sending JSON with `Cache-Control: no-store`.
+// order, or leaves out the protected resource metadata it was given; authErrorResponse stops sending JSON with `Cache-Control: no-store`.
 
 async function wire(response: Response) {
   return {
@@ -26,8 +26,8 @@ const REFUSED = {
   },
   body: {
     code: 'unauthorized',
-    message: 'The personal token was not accepted.',
-    fix: 'Tokens expire and can be revoked. Create a new one with `hollware token create` and send it as "Authorization: Bearer <token>".',
+    message: 'The token was not accepted.',
+    fix: 'Tokens expire and can be revoked. Create a new personal token with `hollware token create`, or sign in through OAuth again, and send it as "Authorization: Bearer <token>".',
   },
 }
 
@@ -42,8 +42,8 @@ describe('unauthorized', () => {
       },
       body: {
         code: 'unauthorized',
-        message: 'The request carries no personal token.',
-        fix: 'Send a personal token as "Authorization: Bearer <token>". Create one with `hollware token create`.',
+        message: 'The request carries no token.',
+        fix: 'Send a personal token as "Authorization: Bearer <token>" (create one with `hollware token create`), or sign in through OAuth: the challenge names where.',
       },
     })
   })
@@ -69,9 +69,20 @@ describe('insufficientScope', () => {
       body: {
         code: 'insufficient_scope',
         message: 'The token lacks a scope this operation requires. Missing: content:write.',
-        fix: "Send a token that carries every missing scope. Create one with `hollware token create`; a token only gets the scopes its user's role allows.",
+        fix: "Send a token that carries every missing scope: create one with `hollware token create`, or authorize the client again for them. A token only gets the scopes its user's role allows.",
       },
     })
+  })
+
+  it('names the protected resource metadata when it is given one', async () => {
+    const response = insufficientScope(
+      ['content:read'],
+      'https://cms.example.com/.well-known/oauth-protected-resource/v1',
+    )
+
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer realm="hollware", resource_metadata="https://cms.example.com/.well-known/oauth-protected-resource/v1", error="insufficient_scope", scope="content:read"',
+    )
   })
 
   it('names every missing scope, in the order given', async () => {
@@ -89,7 +100,7 @@ describe('insufficientScope', () => {
         code: 'insufficient_scope',
         message:
           'The token lacks a scope this operation requires. Missing: schema:admin, content:write, content:publish.',
-        fix: "Send a token that carries every missing scope. Create one with `hollware token create`; a token only gets the scopes its user's role allows.",
+        fix: "Send a token that carries every missing scope: create one with `hollware token create`, or authorize the client again for them. A token only gets the scopes its user's role allows.",
       },
     })
   })

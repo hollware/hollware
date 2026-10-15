@@ -3,14 +3,14 @@ import type { Context, Hono } from 'hono'
 import { connect } from '../db/d1.ts'
 import type { GatewayEnv } from '../http/types.ts'
 import type { Clock } from '../ports.ts'
-import {
-  authenticationOptions,
-  registrationOptions,
-  verifyAuthentication,
-  verifyRegistration,
-  type Ceremony,
-} from './ceremonies.ts'
+import type { Ceremony } from './ceremonies.ts'
 import { pageHeaders, setupPage, signInPage } from './pages.ts'
+
+/**
+ * The ceremonies, with SimpleWebAuthn and its parsers, in a chunk of their own: only these four
+ * routes use them, and a Worker that serves MCP never pays for them at startup (`budgets.json`).
+ */
+const ceremonies = () => import('./ceremonies.ts')
 
 /** The cookie of a signed-in person: only `/authorize` reads it (ADR-026). */
 export const SESSION_COOKIE = 'hollware_session'
@@ -66,7 +66,11 @@ export function installIdentity(
   app.post(
     '/auth/register/options',
     handle(async (c) =>
-      c.json(await registrationOptions(ceremony(c), text((await body(c))['invitation']))),
+      c.json(
+        await (
+          await ceremonies()
+        ).registrationOptions(ceremony(c), text((await body(c))['invitation'])),
+      ),
     ),
   )
   app.post(
@@ -81,7 +85,9 @@ export function installIdentity(
           'Send the credential as JSON.',
         )
       }
-      const answer = await verifyRegistration(ceremony(c), {
+      const answer = await (
+        await ceremonies()
+      ).verifyRegistration(ceremony(c), {
         challengeId: text(input['challengeId']),
         // SimpleWebAuthn checks every field of the credential it reads.
         response: JSON.parse(JSON.stringify(response)),
@@ -93,7 +99,7 @@ export function installIdentity(
   )
   app.post(
     '/auth/signin/options',
-    handle(async (c) => c.json(await authenticationOptions(ceremony(c)))),
+    handle(async (c) => c.json(await (await ceremonies()).authenticationOptions(ceremony(c)))),
   )
   app.post(
     '/auth/signin/verify',
@@ -107,7 +113,9 @@ export function installIdentity(
           'Send the credential as JSON.',
         )
       }
-      const answer = await verifyAuthentication(ceremony(c), {
+      const answer = await (
+        await ceremonies()
+      ).verifyAuthentication(ceremony(c), {
         challengeId: text(input['challengeId']),
         response: JSON.parse(JSON.stringify(response)),
       })

@@ -1,5 +1,7 @@
 export { defineCollection, defineComponent, defineConfig, defineContract } from './define.ts'
 export type {
+  AuthDefinition,
+  ResolvedAuth,
   CollectionDefinition,
   ComponentDefinition,
   DescribedSchema,

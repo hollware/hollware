@@ -1,4 +1,10 @@
-import { defineCollection, defineConfig, resolveConfig, type ResolvedSite } from '@hollware/core'
+import {
+  defineCollection,
+  defineConfig,
+  resolveConfig,
+  type HollwareConfig,
+  type ResolvedSite,
+} from '@hollware/core'
 import { env, exports, tracing } from 'cloudflare:workers'
 import * as z from 'zod'
 import { createHollwareWith } from '../../src/compose.ts'
@@ -21,7 +27,7 @@ export const SITE_KEY = 'gateway-tests'
 export const OTHER_SITE_KEY = 'other-site'
 
 export const HOST = 'hollware.test'
-export const PUBLIC_URL = `http://${HOST}`
+export const PUBLIC_URL = `https://${HOST}`
 
 export const CONFIG = defineConfig({
   sites: {
@@ -192,7 +198,11 @@ export function restoreLogs(): void {
 
 /** An environment as a deployment can get it wrong: the variable missing, or not a URL. */
 export function envWith(db: D1Database, publicUrl: unknown): HollwareEnv {
-  return { DB: db, ...JSON.parse(JSON.stringify({ HOLLWARE_PUBLIC_URL: publicUrl })) }
+  return {
+    DB: db,
+    OAUTH_KV: env.OAUTH_KV,
+    ...JSON.parse(JSON.stringify({ HOLLWARE_PUBLIC_URL: publicUrl })),
+  }
 }
 
 export interface SendOptions {
@@ -213,13 +223,15 @@ export interface BootOptions {
   /** The `HOLLWARE_PUBLIC_URL` of the environment; leave it out for the right one. */
   readonly publicUrl?: unknown
   readonly now?: string
+  /** Instead of the test config: one with `auth`, say. */
+  readonly config?: HollwareConfig
 }
 
 /** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
 export function boot(options: BootOptions = {}) {
   const { handlers, seen } = fakeHandlers(options.overrides, options.outcomes)
   const clock = testClock(options.now)
-  const worker: HollwareWorker = createHollwareWith(CONFIG, handlers, { clock })
+  const worker: HollwareWorker = createHollwareWith(options.config ?? CONFIG, handlers, { clock })
   const watched = watchDb(env.DB)
   const db = options.db ?? watched.db
   const environment = envWith(db, 'publicUrl' in options ? options.publicUrl : PUBLIC_URL)

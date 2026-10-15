@@ -70,7 +70,7 @@ describe('createHollwareWith', () => {
 
     const response = await fetch(
       new Request(`${PUBLIC_URL}/health`, { headers: { host: HOST } }),
-      { DB: env.DB, HOLLWARE_PUBLIC_URL: PUBLIC_URL },
+      { DB: env.DB, OAUTH_KV: env.OAUTH_KV, HOLLWARE_PUBLIC_URL: PUBLIC_URL },
       ctx,
     )
 
@@ -87,7 +87,11 @@ describe('createHollwareWith', () => {
     })
     const { Hollware } = createHollwareWith(CONFIG, handlers)
     const { ctx } = fakeContext()
-    const instance = new Hollware(ctx, { DB: env.DB, HOLLWARE_PUBLIC_URL: PUBLIC_URL })
+    const instance = new Hollware(ctx, {
+      DB: env.DB,
+      OAUTH_KV: env.OAUTH_KV,
+      HOLLWARE_PUBLIC_URL: PUBLIC_URL,
+    })
 
     await instance.describeSite(SITE_KEY)
     await new Promise((resolve) => setTimeout(resolve, 50))

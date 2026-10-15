@@ -50,8 +50,8 @@ export function unauthorized(reason?: TokenRejection): Response {
       401,
       {
         code: 'unauthorized',
-        message: 'The request carries no personal token.',
-        fix: 'Send a personal token as "Authorization: Bearer <token>". Create one with `hollware token create`.',
+        message: 'The request carries no token.',
+        fix: 'Send a personal token as "Authorization: Bearer <token>" (create one with `hollware token create`), or sign in through OAuth: the challenge names where.',
       },
       REALM,
     )
@@ -60,8 +60,8 @@ export function unauthorized(reason?: TokenRejection): Response {
     401,
     {
       code: 'unauthorized',
-      message: 'The personal token was not accepted.',
-      fix: 'Tokens expire and can be revoked. Create a new one with `hollware token create` and send it as "Authorization: Bearer <token>".',
+      message: 'The token was not accepted.',
+      fix: 'Tokens expire and can be revoked. Create a new personal token with `hollware token create`, or sign in through OAuth again, and send it as "Authorization: Bearer <token>".',
     },
     `${REALM}, error="invalid_token"`,
   )
@@ -69,16 +69,22 @@ export function unauthorized(reason?: TokenRejection): Response {
 
 /**
  * 403 for a token that authenticated but lacks scopes. It names every scope that is missing, in
- * the body and in the challenge (RFC 6750), so that a client asks for all of them at once.
+ * the body and in the challenge (RFC 6750), so that a client asks for all of them at once, and,
+ * when there is one, the protected resource metadata where it learns how (RFC 9728).
  */
-export function insufficientScope(missing: readonly Scope[]): Response {
+export function insufficientScope(
+  missing: readonly Scope[],
+  resourceMetadataUrl?: string,
+): Response {
+  const metadata =
+    resourceMetadataUrl === undefined ? '' : `, resource_metadata="${resourceMetadataUrl}"`
   return authErrorResponse(
     403,
     {
       code: 'insufficient_scope',
       message: `The token lacks a scope this operation requires. Missing: ${missing.join(', ')}.`,
-      fix: "Send a token that carries every missing scope. Create one with `hollware token create`; a token only gets the scopes its user's role allows.",
+      fix: "Send a token that carries every missing scope: create one with `hollware token create`, or authorize the client again for them. A token only gets the scopes its user's role allows.",
     },
-    `${REALM}, error="insufficient_scope", scope="${missing.join(' ')}"`,
+    `${REALM}${metadata}, error="insufficient_scope", scope="${missing.join(' ')}"`,
   )
 }

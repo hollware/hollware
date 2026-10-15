@@ -16,6 +16,16 @@ export type Principal =
       readonly scopes: readonly Scope[]
     }
   | {
+      /** An access token of the OAuth server (ADR-026): a person, through a client they allowed. */
+      readonly kind: 'oauth'
+      readonly userId: string
+      /** The client the person allowed: a Client ID Metadata Document URL, or a registered id. */
+      readonly clientId: string
+      readonly site: string
+      /** The scopes of the grant intersected with those of the user's role, as of now. */
+      readonly scopes: readonly Scope[]
+    }
+  | {
       /** A Worker of the same account, over the RPC binding: it reads published content. */
       readonly kind: 'binding'
       readonly scopes: readonly ['content:read']

@@ -5,7 +5,9 @@ import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
 // Fails when: a wrangler.jsonc stops listing both no_nodejs_compat and no_nodejs_compat_v2, lists
-// nodejs_compat or nodejs_compat_v2, or, outside templates/, stops setting send_metrics to false.
+// nodejs_compat or nodejs_compat_v2, or, outside templates/, stops setting send_metrics to false;
+// or a Worker of Hollware (one with the D1 binding DB) stops listing global_fetch_strictly_public
+// or binding OAUTH_KV, at the top or in an environment with bindings of its own.
 
 const isWranglerConfig = (path: string) => /(^|\/)wrangler\.jsonc$/.test(path)
 
@@ -82,6 +84,33 @@ describe('wrangler flags', () => {
         },
       ])
       expect(check('templates/starter/wrangler.jsonc', `{ ${flags} }`)).toEqual([])
+    })
+
+    it('holds a Worker of Hollware to the OAuth server: the flag, and OAUTH_KV in every environment', () => {
+      const flags = '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"]'
+      const db = '"d1_databases": [{ "binding": "DB" }]'
+      const kv = '"kv_namespaces": [{ "binding": "OAUTH_KV" }]'
+      expect(
+        check(
+          'apps/x/wrangler.jsonc',
+          `{ ${flags}, "send_metrics": false, ${db}, ${kv}, "env": { "demo": { ${db} } } }`,
+        ),
+      ).toEqual([
+        {
+          rule: 'wrangler-flags/oauth',
+          file: 'apps/x/wrangler.jsonc',
+          message:
+            '"compatibility_flags" must list "global_fetch_strictly_public": the OAuth server fetches the metadata documents of clients over the public internet only',
+        },
+        {
+          rule: 'wrangler-flags/oauth',
+          file: 'apps/x/wrangler.jsonc',
+          message:
+            'env.demo must bind a KV namespace as "OAUTH_KV": the OAuth server keeps its clients, grants and tokens there',
+        },
+      ])
+      // A site that reads Hollware over a binding has no OAuth server of its own.
+      expect(check('examples/x/wrangler.jsonc', `{ ${flags}, "send_metrics": false }`)).toEqual([])
     })
 
     it('reports a file that is not JSONC holding an object', () => {

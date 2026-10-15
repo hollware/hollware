@@ -38,6 +38,11 @@ export interface HollwareEnv {
    * Origin the Worker answers; without it, every request fails.
    */
   readonly HOLLWARE_PUBLIC_URL: string
+  /**
+   * The KV namespace of the OAuth server (ADR-026): its clients, grants and tokens, all by hash.
+   * Personal tokens work without it; OAuth does not.
+   */
+  readonly OAUTH_KV: KVNamespace
   /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
   readonly EVENTS?: EventQueue
 }

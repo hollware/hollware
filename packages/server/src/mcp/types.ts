@@ -14,6 +14,12 @@ export interface McpCall {
   /** An id for this request, which the log lines of the call carry. */
   readonly requestId: string
   /**
+   * The protected resource metadata of `/mcp` (RFC 9728), which a 403 of a scope challenge names
+   * so that the client knows where to ask for more; `null` when there is none, as in the tests of
+   * the endpoint alone.
+   */
+  readonly resourceMetadataUrl?: string | null
+  /**
    * The site, the store and the clock the handlers work with. The view is not here: over MCP an
    * operation always reads the head, so the adapter sets it and the gateway cannot get it wrong.
    * The client is not here either: it is whatever the MCP client says about itself.

@@ -34,14 +34,22 @@ const TOOLS_LIST_CACHE_HINT = { ttlMs: 300_000, cacheScope: 'public' } as const
 type Era = McpRequestContext['era']
 
 /**
- * What the SDK is told about a principal: its scopes, which are the effective ones, and the id of
- * its token as the client. It carries no token: the gateway checked it, and nothing here needs it.
+ * What the SDK is told about a principal: its scopes, which are the effective ones, the id of its
+ * token or of its OAuth client as the client, and where its protected resource metadata is. It
+ * carries no token: the gateway checked it, and nothing here needs it.
  */
-function authInfoOf(principal: Principal): AuthInfo {
+function authInfoOf(principal: Principal, resourceMetadataUrl: string | null): AuthInfo {
   return {
     token: '',
-    clientId: principal.kind === 'token' ? principal.tokenId : principal.kind,
+    clientId:
+      principal.kind === 'token'
+        ? principal.tokenId
+        : principal.kind === 'oauth'
+          ? principal.clientId
+          : principal.kind,
     scopes: [...principal.scopes],
+    // The 403 of a scope challenge names the document a client reads to ask for more (RFC 9728).
+    ...(resourceMetadataUrl === null ? {} : { resourceMetadataUrl }),
   }
 }
 
@@ -220,7 +228,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
       if (!call?.principal) {
         throw new Error('The MCP endpoint serves a request only as the principal the gateway found')
       }
-      const authInfo = authInfoOf(call.principal)
+      const authInfo = authInfoOf(call.principal, call.resourceMetadataUrl ?? null)
       calls.set(authInfo, call)
       return handler.fetch(request, { authInfo })
     },

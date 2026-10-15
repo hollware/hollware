@@ -192,7 +192,7 @@ describe('a call without a principal', () => {
     ['no call at all', undefined],
   ])('is never served: %s', async (_label, call) => {
     const { endpoint, seen, logs } = endpointWith()
-    const request = new Request('http://hollware.test/mcp', {
+    const request = new Request('https://hollware.test/mcp', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{"jsonrpc":"2.0","id":1,"method":"tools/list"}',

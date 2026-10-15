@@ -46,7 +46,9 @@ describe('the playground Worker over HTTP', () => {
     })
 
     expect(response.status).toBe(401)
-    expect(response.headers.get('www-authenticate')).toBe('Bearer realm="hollware"')
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer realm="hollware", resource_metadata="http://localhost:5199/.well-known/oauth-protected-resource/mcp", scope="content:read"',
+    )
     expect(await response.json()).toMatchObject({ code: 'unauthorized' })
   })
 })

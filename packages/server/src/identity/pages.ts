@@ -91,3 +91,109 @@ export function pageHeaders(nonce: string): Record<string, string> {
     'referrer-policy': 'no-referrer',
   }
 }
+
+/** Text for HTML: every string a client chose (its name, its redirect host, a scope) goes through it. */
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`)
+}
+
+/** What a scope lets a client do, in the words of the consent page. */
+const SCOPE_WORDS: Readonly<Record<string, string>> = {
+  'content:read': 'Read the content, drafts included',
+  'content:write': 'Write drafts',
+  'content:publish': 'Publish and unpublish',
+  'schema:admin': 'Change the site settings',
+}
+
+export interface ConsentView {
+  readonly clientName: string
+  /** The domain of a client known by a metadata document; absent for one that registered itself. */
+  readonly clientDomain?: string | undefined
+  readonly redirectHost: string
+  readonly redirectIsLoopback: boolean
+  /** The person who is signed in. */
+  readonly person: string
+  /** The scopes the person may grant to this request, each offered checked. */
+  readonly scopes: readonly string[]
+  readonly handle: string
+}
+
+/**
+ * The consent page of `/authorize` (ADR-026): which client asks, where the tokens go, and what it
+ * may do, with Allow and Deny. It has no script, and it posts the handle that `beginConsent` bound
+ * to this browser. Everything the client chose is escaped.
+ */
+export function consentPage(view: ConsentView): string {
+  const name = escapeHtml(view.clientName)
+  const origin =
+    view.clientDomain === undefined
+      ? '<p>This app registered itself: its name is not verified.</p>'
+      : `<p>Published by <strong>${escapeHtml(view.clientDomain)}</strong>.</p>`
+  const loopback = view.redirectIsLoopback
+    ? '<p><strong>This sends access to an app on this computer.</strong> Continue only if you just started to connect it.</p>'
+    : ''
+  const scopes = view.scopes
+    .map(
+      (scope) =>
+        `<label><input type="checkbox" name="scope" value="${escapeHtml(scope)}" checked> ${escapeHtml(SCOPE_WORDS[scope] ?? scope)} <code>${escapeHtml(scope)}</code></label>`,
+    )
+    .join('\n')
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Allow ${name} · Hollware</title>
+<style>${STYLE}label input{width:auto;margin-right:.5rem}</style>
+</head>
+<body>
+<main>
+<h1>Allow ${name} to use this Hollware?</h1>
+${origin}
+<p>Signed in as <strong>${escapeHtml(view.person)}</strong>. Access goes to <strong>${escapeHtml(view.redirectHost)}</strong>.</p>
+${loopback}
+<form method="post" action="/authorize">
+<input type="hidden" name="handle" value="${escapeHtml(view.handle)}">
+${scopes}
+<p><button name="decision" value="approve">Allow</button> <button name="decision" value="deny">Deny</button></p>
+</form>
+</main>
+</body>
+</html>
+`
+}
+
+/** A page that only says what went wrong and what to do. */
+export function messagePage(title: string, message: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)} · Hollware</title>
+<style>${STYLE}</style>
+</head>
+<body>
+<main>
+<h1>${escapeHtml(title)}</h1>
+<p>${escapeHtml(message)}</p>
+</main>
+</body>
+</html>
+`
+}
+
+/**
+ * The headers of a page without a script: no framing and no caching. The form of the consent page
+ * posts to `/authorize`, which redirects to the client, so `form-action` is not restricted: a
+ * browser applies it to the redirect too.
+ */
+export function plainPageHeaders(): Record<string, string> {
+  return {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-security-policy': `default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'`,
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+  }
+}
