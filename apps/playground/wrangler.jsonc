@@ -65,9 +65,8 @@
       "triggers": { "crons": ["* * * * *"] },
       // No test probe in the demo.
       "services": [],
-      // DEMO-KV: the id of the namespace in the maintainer's account, created when OAuth reaches
-      // the demo (v0.3); a deploy of the demo fails until it is set.
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+      // The namespace hollware-demo-oauth in the maintainer's account (created 2026-10-14).
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "f4b6a249127848139b0cb6c400ce0e0c" }],
       "d1_databases": [
         {
           "binding": "DB",
