@@ -119,6 +119,11 @@ export function sitesAndOwnerQuery(): string {
   return "SELECT id FROM sites ORDER BY id; SELECT user_id AS id FROM members WHERE role = 'owner' ORDER BY created_at, user_id LIMIT 1;"
 }
 
+/** The owner of a site: the member with the role owner who came first. */
+export function ownerOfSiteQuery(site: string): string {
+  return `SELECT user_id AS id FROM members WHERE site_id = ${quote(site)} AND role = 'owner' ORDER BY created_at, user_id LIMIT 1;`
+}
+
 /** The sites of the database. */
 export function sitesQuery(): string {
   return 'SELECT id FROM sites ORDER BY id;'

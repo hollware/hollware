@@ -63,7 +63,10 @@ const COMMANDS_HELP = [
   ],
   ['token list', ['--site', '--local', '--remote', '--database']],
   ['token revoke', ['<id>', '--site', '--local', '--remote', '--database']],
-  ['invite', ['--role', '--days', '--url', '--site', '--local', '--remote', '--database']],
+  [
+    'invite',
+    ['--role', '--owner', '--days', '--url', '--site', '--local', '--remote', '--database'],
+  ],
   ['import', ['<directory>', '--url', '--token-file', '--publish', '--dry-run']],
 ] as const
 
