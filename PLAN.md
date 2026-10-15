@@ -583,3 +583,43 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - 2026-10-15 — Release 0.4.0: `9e4b0f1` promoted by the maintainer. Six packages published on the first run; `@hollware/nuxt` was refused twice (403 "OIDC permission denied"): its trusted publisher had been made with `--allow-stage-publish` only, while `release.yml` publishes with `npm publish` after the `npm` environment's approval, which needs the publish permission the other six have. With the permission fixed, a rerun of the failed job skipped the six already on npm and published it. All seven are `latest` at 0.4.0 with SLSA provenance; `finalize` made the seven tags and Releases (`hollware@0.4.0` Latest). Found on the way: a stale npm token on the maintainer's machine (401 on `npm whoami`), fixed with `npm login`.
 - 2026-10-15 — AC-0.4-6, met: a sub-agent with no access to the repository, fetching only hollware.com, installed 0.4.0 from npm in an empty directory and passed all five steps: `npm create hollware my-cms -- --no-git`, the dev server, `describe_site`, `create_draft` and `publish` over raw JSON-RPC with the printed token, a read token reading the post over `/v1`, and `hollware doctor` clean. Its frictions, each fixed: run the CLI from inside the project; options need `--` with npm; how to stop the server; a sample post of the starter's blog; MCP over plain HTTP (headers, SSE answers, `structuredContent`, no session); every write moves `version`; the read API's local URL and the starter's collection `blog` (the examples said `posts`); `doctor` defaults to the local database; the tools reference had no Markdown. The four pages went up as reviews for the maintainer; `/reference/mcp-tools.md` is new in apps/web (tested in `web.test.ts`), waiting for a redeploy.
 - 2026-10-15 — Close of v0.4: the maintainer approved the four reviewed pages, live on hollware.com; `/reference/mcp-tools.md` deployed (200, twelve tools). Clean clone of `e96ecf0`: `pnpm install --frozen-lockfile`, `vp check`, `vp test` (265 files, 4,070 tests) and `vp run -r build` pass. CI green on `main`, with the install jobs on Ubuntu and macOS, npm and pnpm, and the upgrade from 0.3.0. Carried over: AC-0.4-7 (an external person's install), AC-0.2-8 (the demo's cost, around 2026-10-21), draft preview (`create_preview_token`) and inviting a person who already exists to another site. No reviewer trio this stage: the sub-agent budget allows one agent, which ran AC-0.4-6.
+
+## v0.5 — Intelligence (started 2026-10-15)
+
+**Goal:** an agent uses the existing content and its metrics to write better: it finds what is already written, sees what readers read, and updates it through the contracts.
+
+### Decisions (2026-10-15)
+
+- **Two releases (maintainer):** 0.5.0 brings search (full text, semantic, hybrid), related entries and analytics; 0.6.0 brings `@hollware/agents` (an editorial reviewer, an ES↔EN translator and a weekly auditor, none with `content:publish`), standing on the search 0.5.0 proved.
+- **A staging deployment (maintainer):** `hollware-staging` in the maintainer's account, with its own D1, Vectorize index and a synthetic corpus, for the model comparison and the search evaluation against the real Workers AI and Vectorize. The demo changes only once staging passes.
+- **Analytics on hollware.com and the demo (maintainer):** a beacon of Hollware's own to Analytics Engine, with no cookie, no IP and no user agent: the path, the site, the entry and the country.
+- **Stack (orchestrator):** the Agents SDK 0.28.1 depends on the MCP SDK 2.3.1, the same as Hollware, so `@hollware/agents` needs no isolation of its version. Full-text search was moved out of v0.2, so it is built here, with FTS5 in D1.
+
+### Blocks (0.5.0)
+
+- [ ] 1 Full-text search: an FTS5 index of published entries (`unicode61 remove_diacritics 2`), kept in the batch that publishes and unpublishes; the operation `search` (MCP, the ops API, the read API and RPC) with bm25 ranking and snippets
+- [ ] 2 Vectors as derived data: `entry_embeddings` (entry, revision, model, chunker version); a chunker over the Comark document (a vector per section and one for the summary); `Embedder` and `VectorIndex` ports with deterministic fakes; the Queue consumer embeds a published revision and drops an unpublished one, idempotent by revision; `hollware reindex`
+- [ ] 3 Semantic and hybrid search over the vectors; related entries (top-k by the summary vector, at publish) returned by `get_entry`
+- [ ] 4 Analytics: `record_events` (HTTP and RPC, an origin allowlist, no personal data) to Analytics Engine; `content_stats` (validated identifiers, `SUM(_sample_interval)`, ten minutes of cache in KV); the beacon in `@hollware/nuxt`; the MCP prompt `refresh_content`
+- [ ] 5 Staging: the deployment, the model comparison (`bge-m3`, `embeddinggemma-300m`, `qwen3-embedding-0.6b`) on an ES/EN corpus, the evaluation (at least 40 labelled queries, cross-language included)
+- [ ] 6 The docs of the stage, written in Hollware; the demo and hollware.com on 0.5.0; release 0.5.0
+
+### Acceptance criteria (0.5.0)
+
+| #        | Criterion          | Check                                                                                                                   |
+| -------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| AC-0.5-1 | Offline            | `vp run check:push`: every test with fakes, no network                                                                  |
+| AC-0.5-2 | Search quality     | `vp run eval:search -- --target staging`: recall@5 ≥ 0.85 within a language, ≥ 0.70 across languages, p95 ≤ 400 ms      |
+| AC-0.5-3 | Consistent vectors | `hollware doctor --embeddings --remote` on staging: no missing vector and no orphan                                     |
+| AC-0.5-4 | Analytics          | `content_stats` within ±5 % of the synthetic beacons sent to staging                                                    |
+| AC-0.5-6 | Exit flow          | `content_stats` → pick an entry → semantic `search` → `update_draft` → `validate` → `publish` → reindexed → found again |
+| AC-0.5-7 | Cost               | after 14 days, the free plan or about $5 a month                                                                        |
+
+### Maintainer actions
+
+- Workers AI and Vectorize enabled on the account; an API token with Analytics Read for `content_stats`.
+- The OK to create `hollware-staging` and its resources, and each first deploy.
+- Billing alerts on the account.
+- 0.6.0: the placeholder and the trusted publisher (with publish permission) of `@hollware/agents`.
+
+### Verification log (v0.5)
