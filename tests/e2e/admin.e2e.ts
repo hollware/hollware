@@ -10,6 +10,9 @@ import { expectAccessible, post, setUp, target, writeMarkdown } from './support.
 
 test.describe.configure({ mode: 'serial' })
 
+// A toast's text is on the page twice for a moment: in the toast, and in the live region that
+// announces it. Each check of a toast takes the first.
+
 let owner: Page
 
 async function newEntry(page: Page, locale: 'es' | 'en', title: string, slug: string) {
@@ -26,7 +29,7 @@ async function newEntry(page: Page, locale: 'es' | 'en', title: string, slug: st
   await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible()
   await writeMarkdown(page, post(title, 'hello-world'))
   await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible()
 }
 
 test.beforeAll(async ({ browser }) => {
@@ -42,7 +45,7 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
   await expectAccessible(owner)
   await owner.getByRole('button', { name: 'Publish' }).click()
 
-  await expect(owner.getByText('Published', { exact: true })).toBeVisible()
+  await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
   await owner.goto('/admin/')
   await expect(owner.getByRole('row', { name: /Hola mundo/ })).toContainText('published')
 })
@@ -62,9 +65,9 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(author.getByRole('heading', { name: 'Hola mundo', level: 1 }).first()).toBeVisible()
   await writeMarkdown(author, post('Hola mundo, otra vez', 'hello-world'))
   await author.getByRole('button', { name: 'Save' }).click()
-  await expect(author.getByText('Saved', { exact: true })).toBeVisible()
+  await expect(author.getByText('Saved', { exact: true }).first()).toBeVisible()
   await author.getByRole('button', { name: 'Publish' }).click()
-  await expect(author.getByText('Sent for review')).toBeVisible()
+  await expect(author.getByText('Sent for review').first()).toBeVisible()
 
   await owner.goto('/admin/reviews')
   await expect(owner.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible()
@@ -73,7 +76,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expectAccessible(owner)
   await owner.getByRole('button', { name: 'Approve and publish' }).click()
 
-  await expect(owner.getByText('Approved and published')).toBeVisible()
+  await expect(owner.getByText('Approved and published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
 })
 
