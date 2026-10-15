@@ -3,7 +3,15 @@
 A headless CMS for the agent era, native to Cloudflare.
 
 > [!WARNING]
-> **Pre-alpha. Under construction. Do not use it for anything real.** Hollware is being built in the open, one stage at a time. The core of v0.1 works on a local machine: an agent writes and publishes over MCP, contracts check every write, and a site reads what was published over a service binding. Since v0.2, publishing can be scheduled and grouped, its events reach webhooks and IndexNow, sites can read over HTTP too, and a demo runs at demo.hollware.com. It has no admin yet. What is done and what comes next is tracked in [`PLAN.md`](PLAN.md).
+> **Pre-alpha.** Hollware is being built in the open, one stage at a time, and its API can still change between releases. Since v0.4 anyone can install it: agents write and publish over MCP with contracts on every write, people review in an admin with passkeys, sites read over a service binding or HTTP, and one deployment serves several sites. The docs are at [hollware.com](https://hollware.com); what is done and what comes next is tracked in [`PLAN.md`](PLAN.md).
+
+## Get started
+
+```sh
+npm create hollware my-cms
+```
+
+It makes a project, its local database, your site and a token, and prints the command that connects Claude Code to it. The [quickstart](https://hollware.com/docs/quickstart/) goes from there to a deployed Hollware.
 
 Hollware is designed for teams that already have a frontend and want their AI agents to write the content. Agents write Markdown over [MCP](https://modelcontextprotocol.io), contracts check every write, and sites read what was published from Hollware, which runs in your own Cloudflare account.
 
@@ -17,14 +25,12 @@ Hollware's thesis is stated as five principles. They describe what Hollware is c
 4. **Markdown is the source of truth.** It is what agents write and read best, and it produces readable diffs. [Comark](https://comark.dev) compiles it into a derived document that can be regenerated at any time.
 5. **Cloudflare-native, close to zero cost.** Every piece uses a Cloudflare primitive with a free tier, and it all deploys to your own account. The target is $0 to $5 a month for two sites.
 
-## How it is designed to work
-
-This is the design, not what runs today.
+## How it works
 
 - **Agents write over MCP.** An agent creates or updates an entry as Markdown with frontmatter, through the Model Context Protocol.
 - **Contracts validate on write.** Every write is checked against the collection's contracts: the frontmatter schema, the components allowed in the body and rules across entries. Violations come back to the agent with an instruction on how to fix them. They block publishing, not saving a draft.
 - **D1 is the single source of truth.** Entries and their append-only revisions live in [D1](https://developers.cloudflare.com/d1/), Cloudflare's SQL database. An edit made on top of a stale version is rejected as a conflict instead of overwriting newer work.
-- **Sites read what was published.** A site on Cloudflare reads over [Workers RPC](https://developers.cloudflare.com/workers/runtime-apis/rpc/) through a service binding: typed, without crossing the public internet, and with no token to manage. Sites elsewhere will read over cacheable HTTP, planned for v0.2.
+- **Sites read what was published.** A site on Cloudflare reads over [Workers RPC](https://developers.cloudflare.com/workers/runtime-apis/rpc/) through a service binding: typed, without crossing the public internet, and with no token to manage. Sites elsewhere read over HTTP with a read token, or with `@hollware/nuxt`.
 
 ## Out of scope
 
