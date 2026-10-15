@@ -7,7 +7,8 @@ export default defineNuxtConfig({
   buildDir: '.nuxt',
   modules: ['@nuxt/ui', '@hollware/nuxt'],
   css: ['~/assets/css/main.css'],
-  hollware: { site: 'docs' },
+  // HOLLWARE_BEACON, at build time, is the Hollware that counts the views of the docs (ADR-031).
+  hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '' },
   colorMode: { preference: 'dark', fallback: 'dark' },
   // Icons come from the installed collection, never fetched from a CDN at runtime.
   icon: { serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },

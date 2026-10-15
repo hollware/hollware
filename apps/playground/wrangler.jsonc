@@ -67,7 +67,18 @@
   "env": {
     "demo": {
       "name": "hollware-demo",
-      "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com" },
+      // Next to D1's primary (ENAM), as staging measured (v0.5).
+      "placement": { "mode": "smart", "hint": "enam" },
+      "vars": {
+        "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com",
+        "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
+        "HOLLWARE_ANALYTICS_ACCOUNT_ID": "2aca825b41485fe1e2b99d2dfadcad5a",
+        "HOLLWARE_ANALYTICS_DATASET": "hollware_page_views",
+      },
+      // Semantic search and page views (v0.5); the secret HOLLWARE_ANALYTICS_TOKEN reads them.
+      "ai": { "binding": "AI" },
+      "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-demo-bge-m3" }],
+      "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "hollware_page_views" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
       "triggers": { "crons": ["* * * * *"] },
       // No test probe in the demo.
