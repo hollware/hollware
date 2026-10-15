@@ -1,5 +1,15 @@
 # create-hollware
 
+## 0.4.0
+
+### Minor Changes
+
+- [`2b76bb0`](https://github.com/hollware/hollware/commit/2b76bb01979986c7f9ec8bb2b2080bad7c252fcd) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `npm create hollware <dir>` makes a project: the starter, every Hollware package at its own version, `git init`, the install, the local migrations, and the site with its owner and a first token, then the `claude mcp add` line for it. `hollware deploy` deploys to Cloudflare, creating the D1 database, the KV namespace and the queues on the first run and setting the public URL of the Worker, and migrates the remote database. `hollware doctor` checks a project and says what to fix. `hollware migrate --remote` takes no backup of a database that has none of the migrations yet.
+
+### Patch Changes
+
+- [`92ccc02`](https://github.com/hollware/hollware/commit/92ccc02ce181db4f291f543a109cd2bd3bf0d7d1) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project installs with npm, whose peer check refused Vite+'s core in place of `vite` (the starter now overrides every `vite` with its own), and with pnpm, which refused the build scripts of esbuild and workerd (a pnpm project gets a `pnpm-workspace.yaml` that allows them). A step that fails shows the last 30 lines of what it printed.
+
 ## 0.3.0
 
 No changes in this release.

@@ -1,5 +1,12 @@
 # @hollware/client
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [[`43333d3`](https://github.com/hollware/hollware/commit/43333d309843e464c47b20412d2d1d05738c835a), [`a7b5f26`](https://github.com/hollware/hollware/commit/a7b5f261d08bf8b58e3dc98ee0a7148de71d394b)]:
+  - @hollware/core@0.4.0
+
 ## 0.3.0
 
 ### Patch Changes
