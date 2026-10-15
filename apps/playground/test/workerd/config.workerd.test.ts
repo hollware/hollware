@@ -20,8 +20,9 @@ const FRONTMATTER = {
 }
 
 describe('the playground config', () => {
-  it('has one bilingual site with a blog routed per locale', () => {
-    expect(Object.keys(config.sites)).toEqual(['playground'])
+  it('has the docs of hollware.com, and a bilingual site with a blog routed per locale', () => {
+    expect(Object.keys(config.sites)).toEqual(['docs', 'playground'])
+    expect(config.sites['docs']?.collections?.['docs']?.routes).toEqual({ en: '/docs/:slug/' })
     expect(site?.locales).toEqual(['es', 'en'])
     expect(blog?.routes).toEqual({ es: '/blog/:slug/', en: '/en/blog/:slug/' })
     expect([blog?.translations?.groupBy, blog?.tags, blog?.sortBy]).toEqual([

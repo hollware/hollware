@@ -35,7 +35,9 @@ function shippedReleases() {
   })
 }
 
-describe('shipped migrations', () => {
+// It reads every shipped migration with `git show`, one process each, for every release: the
+// default 5 s timeout failed twice under load (2026-10-15) while the test itself passed.
+describe('shipped migrations', { timeout: 60_000 }, () => {
   it('no migration that a release of @hollware/server shipped has changed', () => {
     const releases = shippedReleases()
     // Without the tags (a shallow clone, or one that skipped them) the check would pass on

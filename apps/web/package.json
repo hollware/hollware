@@ -1,0 +1,29 @@
+{
+  "name": "@hollware/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "postinstall": "nuxt prepare",
+    "types": "wrangler types",
+    "types:check": "wrangler types --check"
+  },
+  "dependencies": {
+    "@hollware/core": "workspace:*",
+    "@hollware/nuxt": "workspace:*",
+    "@iconify-json/lucide": "catalog:",
+    "@nuxt/ui": "catalog:",
+    "h3": "catalog:",
+    "nuxt": "catalog:",
+    "tailwindcss": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

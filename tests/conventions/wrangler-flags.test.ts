@@ -16,6 +16,7 @@ describe('wrangler flags', () => {
     const configs = readRepoFiles(isWranglerConfig)
     expect(configs.map((config) => config.path)).toEqual([
       'apps/playground/wrangler.jsonc',
+      'apps/web/wrangler.jsonc',
       'examples/nuxt-blog/wrangler.jsonc',
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',

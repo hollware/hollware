@@ -18,10 +18,14 @@ export default function buildWorkers() {
       stdio: 'pipe',
     })
   }
-  // The Nuxt example builds with Nuxt, which runs Vite itself.
-  const nuxtBlog = new URL('../../../../examples/nuxt-blog/', import.meta.url)
-  execFileSync(fileURLToPath(new URL('node_modules/.bin/nuxt', nuxtBlog)), ['build'], {
-    cwd: fileURLToPath(nuxtBlog),
-    stdio: 'pipe',
-  })
+  // The Nuxt projects, the example and hollware.com, build with Nuxt, which runs Vite itself.
+  for (const project of [
+    new URL('../../../../examples/nuxt-blog/', import.meta.url),
+    new URL('../../../web/', import.meta.url),
+  ]) {
+    execFileSync(fileURLToPath(new URL('node_modules/.bin/nuxt', project)), ['build'], {
+      cwd: fileURLToPath(project),
+      stdio: 'pipe',
+    })
+  }
 }

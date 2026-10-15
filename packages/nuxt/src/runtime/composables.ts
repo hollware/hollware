@@ -35,10 +35,13 @@ export function useHollwareEntries(
     limit?: number
     cursor?: string
   }> = {},
+  /** `lazy: true` renders without waiting for the answer, as `useFetch` does. */
+  fetching: { lazy?: boolean } = {},
 ) {
   const path = computed(() => `/_hollware/entries/${encodeURIComponent(toValue(collection))}`)
   return useFetch<{ outcome: 'ok'; entries: PageEntry[]; nextCursor: string | null }>(path, {
     query: computed(() => toValue(options)),
+    ...fetching,
   })
 }
 

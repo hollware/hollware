@@ -35,6 +35,30 @@ export const BUILT = {
   nuxt: new URL('../../../../examples/nuxt-blog/.output/server/', import.meta.url),
 }
 
+/** The built hollware.com (`apps/web`), Worker and wrangler.json, as Nuxt writes them. */
+export const BUILT_WEB = new URL('../../../web/.output/server/', import.meta.url)
+
+/** The name of hollware.com's Worker. */
+export const WEB_WORKER = 'hollware-web'
+
+/** The built Hollware Worker and hollware.com, which reads the docs over its service binding. */
+export function createWebHarness() {
+  return createTestHarness({
+    workers: [
+      {
+        configPath: new URL('wrangler.json', BUILT.hollware),
+        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+      },
+      { configPath: new URL('wrangler.json', BUILT_WEB) },
+    ],
+  })
+}
+
+/** A request to hollware.com, at SITE_URL. */
+export function webFetch(server: TestHarness, path: string) {
+  return server.getWorker(WEB_WORKER).fetch(`${SITE_URL}${path}`)
+}
+
 /** The name of the Nuxt example's Worker (`examples/nuxt-blog`). */
 export const NUXT_WORKER = 'hollware-nuxt-blog'
 

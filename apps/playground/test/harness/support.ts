@@ -34,6 +34,7 @@ export async function migrate(server: TestHarness): Promise<void> {
 export async function seedOwnerToken(
   server: TestHarness,
   scopes: readonly string[] = ALL_SCOPES,
+  site: string = SITE_KEY,
 ): Promise<string> {
   const env = await server.getWorker<{ DB: Database }>(HOLLWARE_WORKER).getEnv()
   const now = new Date().toISOString()
@@ -41,7 +42,7 @@ export async function seedOwnerToken(
   const token = generatePersonalToken()
   await env.DB.batch([
     env.DB.prepare('INSERT INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)').bind(
-      SITE_KEY,
+      site,
       now,
     ),
     env.DB.prepare(
@@ -49,18 +50,11 @@ export async function seedOwnerToken(
     ).bind(userId, now),
     env.DB.prepare(
       "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'owner', ?4, ?4)",
-    ).bind(newId('mbr'), SITE_KEY, userId, now),
+    ).bind(newId('mbr'), site, userId, now),
     env.DB.prepare(
       `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, created_at, updated_at)
           VALUES (?1, ?2, ?3, 'harness', ?4, ?5, ?6, ?6)`,
-    ).bind(
-      newId('tok'),
-      SITE_KEY,
-      userId,
-      await hashPersonalToken(token),
-      JSON.stringify(scopes),
-      now,
-    ),
+    ).bind(newId('tok'), site, userId, await hashPersonalToken(token), JSON.stringify(scopes), now),
   ])
   return token
 }
@@ -128,6 +122,8 @@ export type Agent = ReturnType<typeof agentWith>
 
 /** One Markdown file to create as an entry. */
 export interface Draft {
+  /** The collection; the blog unless it says otherwise. */
+  readonly collection?: string
   readonly locale: 'es' | 'en'
   readonly slug: string
   readonly markdown: string

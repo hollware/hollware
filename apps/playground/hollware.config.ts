@@ -2,8 +2,8 @@ import { contracts, defineCollection, defineComponent, defineConfig } from '@hol
 import * as z from 'zod'
 
 /**
- * The playground's config: one site with a bilingual blog, the site the tests of v0.1 write to
- * and read from. Its corpus is tests/fixtures/content/blog, and its broken variants are
+ * The playground's config, which the demo deployment runs too: a bilingual blog, the site the
+ * tests write to and read from, and the documentation of hollware.com. Its corpus is tests/fixtures/content/blog, and its broken variants are
  * tests/fixtures/content/invalid, each of which breaks one of the contracts below.
  */
 
@@ -58,8 +58,44 @@ const blog = defineCollection({
   styleGuide: 'Short paragraphs, one idea per section, and an example for every claim.',
 })
 
+/**
+ * The documentation of hollware.com (v0.4): written in Hollware by agents and people, and read
+ * by the site over a service binding. A page belongs to a section of the sidebar, and `order` is
+ * its place in it.
+ */
+const docs = defineCollection({
+  schema: z.object({
+    title: z.string().min(1).max(70),
+    description: z.string().min(1).max(160),
+    section: z.enum(['start', 'guides', 'concepts', 'reference']),
+    order: z.number().int().min(0).max(999),
+  }),
+  routes: { en: '/docs/:slug/' },
+  components: {
+    callout: defineComponent({
+      props: z.strictObject({ type: z.enum(['note', 'tip', 'warning']) }),
+      description: 'A note beside the flow of the text: something to keep in mind, or to avoid.',
+      example: '::callout{type="warning"}\nNever commit a token.\n::',
+    }),
+  },
+  contracts: [contracts.internalLinksResolve({ severity: 'warning' }), contracts.imagesHaveAlt()],
+  styleGuide: [
+    'Write for a developer who has never heard of Hollware and wants it running today.',
+    'Second person, present tense, short sentences. One task or one idea per page.',
+    'Every command is in a code block, ready to paste, with its language. Show the output when it',
+    'tells the reader something. No marketing words: say what it does.',
+  ].join(' '),
+})
+
 export default defineConfig({
   sites: {
+    docs: {
+      locales: ['en'],
+      defaultLocale: 'en',
+      url: 'https://hollware.com',
+      collections: { docs },
+      styleGuide: 'Plain international English.',
+    },
     playground: {
       locales: ['es', 'en'],
       defaultLocale: 'es',

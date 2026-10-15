@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // hollware.com: the site of Hollware, whose documentation is written in Hollware.
+  "name": "hollware-web",
+  // The latest compatibility date the workerd bundled with wrangler supports.
+  "compatibility_date": "2026-10-06",
+  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
+  // The site needs no Node.js.
+  "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
+  // No anonymous wrangler telemetry from this repository.
+  "send_metrics": false,
+  "services": [
+    // The docs, read over a service binding from the Hollware that holds them: locally and in the
+    // tests the playground; on Cloudflare the demo deployment (`env.production`).
+    { "binding": "HOLLWARE", "service": "hollware-playground", "entrypoint": "Hollware" },
+  ],
+  // hollware.com on Cloudflare: the apex, reading the docs from the demo's Hollware
+  // (cms.demo.hollware.com, site `docs`). Bindings do not inherit, so each is named again.
+  "env": {
+    "production": {
+      "name": "hollware-web",
+      "routes": [
+        { "pattern": "hollware.com", "custom_domain": true },
+        { "pattern": "www.hollware.com", "custom_domain": true },
+      ],
+      "services": [{ "binding": "HOLLWARE", "service": "hollware-demo", "entrypoint": "Hollware" }],
+    },
+  },
+}

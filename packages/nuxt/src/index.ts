@@ -32,6 +32,8 @@ export interface ModuleOptions {
   generator: boolean
 }
 
+export type { PageEntry } from './runtime/types.ts'
+
 export const name = '@hollware/nuxt'
 
 /** The routes of the site that read Hollware for its pages, on the server. */

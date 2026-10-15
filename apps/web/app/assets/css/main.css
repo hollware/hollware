@@ -1,0 +1,197 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+/*
+ * hollware.com. A near-black ground with cool greys, one mint accent that reads like a terminal
+ * prompt, Geist for text and Geist Mono for everything a reader types. Dark first; the light theme
+ * keeps the same structure on paper-white.
+ */
+@theme static {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* The accent: mint, from a prompt's cursor to a pale wash. */
+  --color-mint-50: #edfdf7;
+  --color-mint-100: #d2faea;
+  --color-mint-200: #a8f3d6;
+  --color-mint-300: #72eabd;
+  --color-mint-400: #3ee6a8;
+  --color-mint-500: #17c98a;
+  --color-mint-600: #0ca372;
+  --color-mint-700: #0c825d;
+  --color-mint-800: #0e664b;
+  --color-mint-900: #0d543f;
+  --color-mint-950: #032f23;
+
+  /* The neutrals: greys with a little blue, so the black is ink and not soot. */
+  --color-ink-50: #f6f7f8;
+  --color-ink-100: #eceef0;
+  --color-ink-200: #d6dadf;
+  --color-ink-300: #b3bac2;
+  --color-ink-400: #8a939e;
+  --color-ink-500: #6b7480;
+  --color-ink-600: #545c66;
+  --color-ink-700: #3c424a;
+  --color-ink-800: #23272c;
+  --color-ink-900: #15181b;
+  --color-ink-950: #0b0d0e;
+}
+
+:root {
+  --ui-radius: 0.5rem;
+  --ui-container: 76rem;
+}
+
+.dark {
+  --ui-bg: #08090a;
+  --ui-bg-muted: #0f1113;
+  --ui-bg-elevated: #131619;
+  --ui-bg-accented: #1b1f23;
+  --ui-border: rgb(255 255 255 / 0.08);
+  --ui-border-muted: rgb(255 255 255 / 0.05);
+  --ui-border-accented: rgb(255 255 255 / 0.14);
+  --ui-text-muted: #8a939e;
+  --ui-text-dimmed: #6b7480;
+}
+
+body {
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A grid that fades out from the top: the backdrop of a hero. */
+.backdrop-grid {
+  background-image:
+    linear-gradient(to right, var(--ui-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ui-border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+}
+
+/* A soft light behind a headline, in the accent. */
+.backdrop-glow {
+  background: radial-gradient(
+    ellipse 50% 40% at 50% 0%,
+    color-mix(in oklab, var(--color-mint-400) 22%, transparent),
+    transparent 70%
+  );
+}
+
+.text-gradient {
+  background: linear-gradient(180deg, var(--ui-text-highlighted) 30%, var(--ui-text-muted));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/*
+ * The body of a documentation page, as @comark/vue renders it: plain elements, styled here.
+ */
+.prose {
+  color: var(--ui-text);
+  font-size: 0.975rem;
+  line-height: 1.75;
+  max-width: 46rem;
+
+  & > * + * {
+    margin-top: 1.1em;
+  }
+  & h1 {
+    display: none; /* The page shows its title above the body. */
+  }
+  & h2 {
+    color: var(--ui-text-highlighted);
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin-top: 2.4em;
+    padding-top: 1.2em;
+    border-top: 1px solid var(--ui-border-muted);
+    scroll-margin-top: 6rem;
+  }
+  & h3 {
+    color: var(--ui-text-highlighted);
+    font-size: 1.08rem;
+    font-weight: 600;
+    margin-top: 1.8em;
+    scroll-margin-top: 6rem;
+  }
+  & a {
+    color: var(--ui-primary);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--ui-primary) 40%, transparent);
+    text-underline-offset: 3px;
+  }
+  & a:hover {
+    text-decoration-color: var(--ui-primary);
+  }
+  & strong {
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+  }
+  & ul,
+  & ol {
+    padding-left: 1.25em;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & li + li {
+    margin-top: 0.35em;
+  }
+  & li::marker {
+    color: var(--ui-text-dimmed);
+  }
+  & :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    padding: 0.15em 0.4em;
+    border-radius: 0.35rem;
+    background: var(--ui-bg-elevated);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text-highlighted);
+  }
+  & pre {
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    line-height: 1.7;
+    padding: 1rem 1.15rem;
+    border-radius: 0.6rem;
+    background: var(--ui-bg-muted);
+    border: 1px solid var(--ui-border);
+    overflow-x: auto;
+    color: var(--ui-text-highlighted);
+  }
+  & blockquote {
+    border-left: 2px solid var(--ui-primary);
+    padding-left: 1rem;
+    color: var(--ui-text-muted);
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    display: block;
+    overflow-x: auto;
+  }
+  & th,
+  & td {
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  & th {
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+  }
+  & img {
+    border-radius: 0.6rem;
+    border: 1px solid var(--ui-border);
+  }
+  & hr {
+    border-color: var(--ui-border);
+  }
+}
