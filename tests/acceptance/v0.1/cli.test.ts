@@ -96,6 +96,9 @@ describe('AC-0.1-10: migrations', () => {
     )
 
     expect(rows?.map((row) => row['name'])).toEqual([
+      // The full-text index follows what is published (0008).
+      'entries_fts_publication',
+      'entries_fts_removal',
       'publications_immutable',
       'publications_no_delete',
       'publications_no_replace',
