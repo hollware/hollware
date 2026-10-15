@@ -31,6 +31,29 @@ export const PAGE_SIZE = 2
 export const BUILT = {
   site: new URL('../../../../examples/worker-site/dist/hollware_worker_site/', import.meta.url),
   hollware: new URL('../../dist/hollware_playground/', import.meta.url),
+  // Nuxt's Cloudflare preset writes the Worker and its wrangler.json to .output/server.
+  nuxt: new URL('../../../../examples/nuxt-blog/.output/server/', import.meta.url),
+}
+
+/** The name of the Nuxt example's Worker (`examples/nuxt-blog`). */
+export const NUXT_WORKER = 'hollware-nuxt-blog'
+
+/** The built Hollware Worker and the Nuxt blog, which reads it over its service binding. */
+export function createNuxtHarness() {
+  return createTestHarness({
+    workers: [
+      {
+        configPath: new URL('wrangler.json', BUILT.hollware),
+        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+      },
+      { configPath: new URL('wrangler.json', BUILT.nuxt) },
+    ],
+  })
+}
+
+/** A request to the Nuxt blog, at SITE_URL. */
+export function nuxtFetch(server: TestHarness, path: string) {
+  return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}${path}`)
 }
 
 /**

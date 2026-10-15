@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-// The projects whose Workers the harness tests run: Hollware (this project) and the example site.
+// The projects whose Workers the harness tests run: Hollware (this project), the example site
+// and, below, the Nuxt example.
 const projects = [
   new URL('../../', import.meta.url),
   new URL('../../../../examples/worker-site/', import.meta.url),
@@ -17,4 +18,10 @@ export default function buildWorkers() {
       stdio: 'pipe',
     })
   }
+  // The Nuxt example builds with Nuxt, which runs Vite itself.
+  const nuxtBlog = new URL('../../../../examples/nuxt-blog/', import.meta.url)
+  execFileSync(fileURLToPath(new URL('node_modules/.bin/nuxt', nuxtBlog)), ['build'], {
+    cwd: fileURLToPath(nuxtBlog),
+    stdio: 'pipe',
+  })
 }

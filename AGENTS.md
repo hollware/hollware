@@ -93,9 +93,11 @@ new process group, so the child outlives its supervisor.
 - `packages/admin` — the review and approval UI, prebuilt.
 - `packages/cli` — the `hollware` CLI.
 - `packages/create-hollware` — `npm create hollware`.
+- `packages/nuxt` — `@hollware/nuxt`: reads Hollware from a Nuxt site.
 - `apps/playground` — a local Hollware instance for development.
 - `templates/starter` — the thin project users get.
 - `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
+- `examples/nuxt-blog` — a Nuxt blog on a Worker that reads Hollware through `@hollware/nuxt`.
 - `tests/conformance/worker` — the Hollware Worker that the MCP conformance suite runs against.
 
 ## Conventions

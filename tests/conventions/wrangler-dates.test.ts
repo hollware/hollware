@@ -15,6 +15,7 @@ describe('wrangler compatibility dates', () => {
     const configs = readRepoFiles(isWranglerConfig)
     expect(configs.map((config) => config.path)).toEqual([
       'apps/playground/wrangler.jsonc',
+      'examples/nuxt-blog/wrangler.jsonc',
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',

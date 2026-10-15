@@ -1,0 +1,23 @@
+{
+  "name": "@hollware/example-nuxt-blog",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "postinstall": "nuxt prepare",
+    "types": "wrangler types",
+    "types:check": "wrangler types --check"
+  },
+  "dependencies": {
+    "@hollware/nuxt": "workspace:*",
+    "nuxt": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

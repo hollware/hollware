@@ -6,7 +6,7 @@ import { readText } from '../support/repo.ts'
 
 // Fails when: pnpm-workspace.yaml lowers minimumReleaseAge below 1440, drops trustPolicy:
 // no-downgrade, lists an allowBuilds entry without a "# reason", lists a
-// minimumReleaseAgeExclude entry that is not exact, has no reason, has no "expires YYYY-MM-DD"
+// minimumReleaseAgeExclude or trustPolicyExclude entry that is not exact, has no reason, has no "expires YYYY-MM-DD"
 // or has expired, pins a catalog version that is not exact, or leaves the catalog unsorted;
 // or the root packageManager loses its sha512 hash.
 
@@ -92,6 +92,19 @@ describe('pnpm policy', () => {
           message:
             'allowBuilds.workerd has no trailing "# reason": say why its build script may run, or why it must not',
         },
+      ])
+    })
+
+    it('holds trustPolicyExclude to the same rules: exact, with a reason, not expired', () => {
+      expect(
+        messages({
+          exclude:
+            'trustPolicyExclude:\n  - cssnano@^9 # expires 2026-10-20\n  - semver@6.3.1 # old line; expires 2026-10-10',
+        }),
+      ).toEqual([
+        'pnpm-policy/exclude-entry: trustPolicyExclude entry cssnano@^9 must be one exact name@version, never a range or a pattern',
+        'pnpm-policy/exclude-reason: trustPolicyExclude entry cssnano@^9 needs a trailing "# <reason>; expires YYYY-MM-DD" comment with a reason',
+        'pnpm-policy/exclude-expired: trustPolicyExclude entry semver@6.3.1 expired on 2026-10-10: remove it and let trustPolicy apply',
       ])
     })
 

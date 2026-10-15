@@ -9,6 +9,7 @@
   "fixed": [
     [
       "@hollware/core",
+      "@hollware/nuxt",
       "@hollware/server",
       "@hollware/client",
       "@hollware/admin",

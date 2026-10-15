@@ -32,6 +32,7 @@ catalog:
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   '@modelcontextprotocol/conformance': 0.2.0-alpha.12
   '@modelcontextprotocol/server': 2.3.1
+  '@nuxt/kit': 4.6.1
   '@nuxt/ui': 4.11.3
   '@playwright/test': 1.64.0
   '@simplewebauthn/server': 14.0.3
@@ -43,8 +44,12 @@ catalog:
   comark: 0.7.0
   drizzle-kit: 0.31.11
   drizzle-orm: 0.45.4
+  # The h3 and nitropack that nuxt 4.6.1 runs on: @hollware/nuxt imports both in its runtime.
+  h3: 1.15.11
   # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
   hono: 5.0.0-rc.1
+  nitropack: 2.13.4
+  nuxt: 4.6.1
   pkg-pr-new: 0.0.91
   publint: 0.3.25
   tailwindcss: 4.3.3
@@ -76,6 +81,39 @@ peerDependencyRules:
 # exact minimumReleaseAgeExclude entry with a reason and an expiry date.
 minimumReleaseAge: 1440
 trustPolicy: no-downgrade
+# Exact versions that trustPolicy refuses while their publisher is the same one. Each needs a
+# reason and an expiry date, as minimumReleaseAgeExclude does.
+trustPolicyExclude:
+  - semver@6.3.1 # @babel/core 7 (through nuxt's vite-builder) pins the semver 6 line, published before npm had provenance; expires 2026-11-15
+  - cssnano@9.8.0 # nuxt 4.6.1 needs ^9.4.0; from 9.1.2 npm writes the same trusted publisher id without its "oidc:" prefix; expires 2026-11-15
+  - stylehacks@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-unique-selectors@9.0.6 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-reduce-transforms@9.0.6 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-reduce-initial@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-ordered-values@9.0.9 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-whitespace@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-url@10.0.0 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-unicode@9.1.1 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-timing-functions@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-string@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-repeat-style@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-positions@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-display-values@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-normalize-charset@9.0.6 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-minify-selectors@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-minify-params@9.1.0 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-minify-gradients@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-minify-font-values@9.0.9 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-merge-rules@9.1.5 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-merge-longhand@9.4.0 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-discard-overridden@9.0.6 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-discard-empty@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-discard-duplicates@9.0.7 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-discard-comments@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-convert-values@9.1.0 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - postcss-colormin@9.0.8 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - cssnano-utils@9.0.0 # same as cssnano@9.8.0 above; expires 2026-11-15
+  - cssnano-preset-default@9.8.0 # same as cssnano@9.8.0 above; expires 2026-11-15
 
 # Build scripts are denied unless listed here with a reason. pnpm 12 fails the
 # install on any unlisted build script.

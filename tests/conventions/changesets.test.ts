@@ -10,7 +10,7 @@ import { workspaceManifests } from '../support/workspace.ts'
 // private packages would be versioned or tagged.
 
 describe('changeset config', () => {
-  it('fixes the six published packages as one group', () => {
+  it('fixes the seven published packages as one group', () => {
     const violations = checkChangesets({
       config: file('.changeset/config.json', readText('.changeset/config.json')),
       manifests: workspaceManifests(),

@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
+  // The template that the build makes holds the tests of a user's project, not of this package.
+  test: { include: ['tests/**/*.test.ts'] },
   pack: {
     entry: ['src/index.ts'],
     dts: { generator: 'tsgo' },

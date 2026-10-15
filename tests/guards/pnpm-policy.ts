@@ -9,8 +9,8 @@ import type { TextFile, Violation } from './types.ts'
  * - `minimumReleaseAge` is at least 1440 minutes (24 hours) and `trustPolicy` is
  *   `no-downgrade`.
  * - Every `allowBuilds` entry carries a trailing `# reason`.
- * - Every `minimumReleaseAgeExclude` entry is one exact `name@version` with a trailing
- *   `# reason; expires YYYY-MM-DD` comment whose date has not passed. (None exist today.)
+ * - Every `minimumReleaseAgeExclude` and `trustPolicyExclude` entry is one exact `name@version`
+ *   with a trailing `# reason; expires YYYY-MM-DD` comment whose date has not passed.
  * - Every catalog version is exact: no `^`, `~`, `*` or range, `npm:` aliases included. The
  *   keys stay sorted, as the file says.
  * - The root `packageManager` pins pnpm with its `sha512` hash.
@@ -87,41 +87,47 @@ export function checkPnpmPolicy(input: PnpmPolicyInput): Violation[] {
     }
   }
 
-  const exclude = doc.get('minimumReleaseAgeExclude', true)
-  if (isSeq(exclude)) {
-    for (const item of exclude.items) {
-      const entry = scalarString(item) ?? JSON.stringify(plain(item))
-      if (!EXACT_PACKAGE_VERSION.test(entry)) {
-        report(
-          'exclude-entry',
-          `minimumReleaseAgeExclude entry ${entry} must be one exact name@version, never a range or a pattern`,
-        )
+  // Each exception to a policy is one exact version, with why and until when.
+  for (const [key, policy] of [
+    ['minimumReleaseAgeExclude', 'minimumReleaseAge'],
+    ['trustPolicyExclude', 'trustPolicy'],
+  ] as const) {
+    const exclude = doc.get(key, true)
+    if (isSeq(exclude)) {
+      for (const item of exclude.items) {
+        const entry = scalarString(item) ?? JSON.stringify(plain(item))
+        if (!EXACT_PACKAGE_VERSION.test(entry)) {
+          report(
+            'exclude-entry',
+            `${key} entry ${entry} must be one exact name@version, never a range or a pattern`,
+          )
+        }
+        const comment = isScalar(item) ? (yaml.trailingComment(item) ?? '') : ''
+        const expires = /\bexpires (\d{4}-\d{2}-\d{2})\b/.exec(comment)?.[1]
+        const reason = comment
+          .replace(/\bexpires \d{4}-\d{2}-\d{2}\b/, '')
+          .replace(/^[\s,;:.-]+|[\s,;:.-]+$/g, '')
+        if (reason === '') {
+          report(
+            'exclude-reason',
+            `${key} entry ${entry} needs a trailing "# <reason>; expires YYYY-MM-DD" comment with a reason`,
+          )
+        }
+        if (expires === undefined || !isCalendarDate(expires)) {
+          report(
+            'exclude-expiry',
+            `${key} entry ${entry} needs "expires YYYY-MM-DD" with a real date in its trailing comment`,
+          )
+        } else if (expires < input.today) {
+          report(
+            'exclude-expired',
+            `${key} entry ${entry} expired on ${expires}: remove it and let ${policy} apply`,
+          )
+        }
       }
-      const comment = isScalar(item) ? (yaml.trailingComment(item) ?? '') : ''
-      const expires = /\bexpires (\d{4}-\d{2}-\d{2})\b/.exec(comment)?.[1]
-      const reason = comment
-        .replace(/\bexpires \d{4}-\d{2}-\d{2}\b/, '')
-        .replace(/^[\s,;:.-]+|[\s,;:.-]+$/g, '')
-      if (reason === '') {
-        report(
-          'exclude-reason',
-          `minimumReleaseAgeExclude entry ${entry} needs a trailing "# <reason>; expires YYYY-MM-DD" comment with a reason`,
-        )
-      }
-      if (expires === undefined || !isCalendarDate(expires)) {
-        report(
-          'exclude-expiry',
-          `minimumReleaseAgeExclude entry ${entry} needs "expires YYYY-MM-DD" with a real date in its trailing comment`,
-        )
-      } else if (expires < input.today) {
-        report(
-          'exclude-expired',
-          `minimumReleaseAgeExclude entry ${entry} expired on ${expires}: remove it and let minimumReleaseAge apply`,
-        )
-      }
+    } else if (exclude !== undefined && exclude !== null) {
+      report('exclude-entry', `${key} must be a list`)
     }
-  } else if (exclude !== undefined && exclude !== null) {
-    report('exclude-entry', 'minimumReleaseAgeExclude must be a list')
   }
 
   const catalogs: { label: string; node: unknown }[] = [

@@ -52,7 +52,7 @@ Each stage ends with an exit criterion that can be verified. The stage-by-stage 
 
 ## Packages
 
-Six packages, planned to arrive in the order below. For now they are scaffolding: nothing in them works yet.
+Seven packages, released together at one version, in the order they arrived.
 
 | Package                                       | What it will be                                                                            | Arrives in |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
@@ -62,6 +62,7 @@ Six packages, planned to arrive in the order below. For now they are scaffolding
 | [`@hollware/client`](packages/client)         | The same typed interface over a service binding or over HTTP.                              | v0.2       |
 | [`@hollware/admin`](packages/admin)           | The review and approval UI, prebuilt and served by the Worker.                             | v0.3       |
 | [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                                            | v0.4       |
+| [`@hollware/nuxt`](packages/nuxt)             | Reads Hollware from a Nuxt site, over a service binding or HTTP.                           | v0.4       |
 
 ## Documentation
 
