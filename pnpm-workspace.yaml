@@ -19,15 +19,19 @@ catalog:
   '@cloudflare/workers-oauth-provider': 1.2.3
   '@codemirror/commands': 6.11.1
   '@codemirror/lang-markdown': 6.5.2
+  '@codemirror/language': 6.13.1
   '@codemirror/lint': 6.9.7
   '@codemirror/merge': 6.12.2
   '@codemirror/state': 6.7.6
   '@codemirror/view': 6.43.14
   '@comark/html': 0.7.0
   '@comark/vue': 0.7.0
+  '@fontsource-variable/geist': 5.3.0
+  '@fontsource-variable/geist-mono': 5.3.0
   '@iconify-json/lucide': 1.2.143
   '@iconify/utils': 3.1.7
   '@iconify/vue': 5.0.3
+  '@lezer/highlight': 1.2.5
   '@modelcontextprotocol/client': 2.3.1
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   '@modelcontextprotocol/conformance': 0.2.0-alpha.12

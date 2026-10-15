@@ -50,7 +50,7 @@ export default defineConfig({
   root: 'app',
   base: '/admin/',
   // Nuxt UI's components resolve where a template uses them; composables are imported by name.
-  plugins: [vue(), ui({ autoImport: false })],
+  plugins: [vue(), ui({ autoImport: false, ui: { colors: { primary: 'mint', neutral: 'ink' } } })],
   define: { __HOLLWARE_ICONS__: JSON.stringify(icons()) },
   build: {
     outDir: '../dist/client/admin',

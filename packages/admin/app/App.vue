@@ -48,32 +48,51 @@ const choices = computed(() =>
 
 <template>
   <UApp>
-    <div class="min-h-screen">
-      <header class="border-b border-default">
+    <div class="min-h-screen bg-default">
+      <header class="sticky top-0 z-10 border-b border-default bg-default/80 backdrop-blur-md">
         <nav class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3" aria-label="Main">
-          <span class="font-semibold">Hollware</span>
+          <RouterLink to="/" class="inline-flex items-center gap-2.5">
+            <svg viewBox="0 0 32 32" class="size-6" aria-hidden="true">
+              <rect width="32" height="32" rx="8" class="fill-(--ui-bg-accented)" />
+              <path
+                d="M9 8v16M23 8v16M9 16h14"
+                class="stroke-primary"
+                stroke-width="3"
+                stroke-linecap="round"
+                fill="none"
+              />
+            </svg>
+            <span class="font-semibold tracking-tight text-highlighted">Hollware</span>
+            <span
+              class="rounded-full border border-default px-2 py-0.5 font-mono text-[11px] text-muted"
+              >admin</span
+            >
+          </RouterLink>
           <RouterLink
             v-for="link in links"
             :key="link.to"
             :to="link.to"
-            class="text-sm text-muted hover:text-highlighted"
+            class="text-sm text-muted transition-colors hover:text-highlighted"
             active-class="text-highlighted font-medium"
           >
             {{ link.label }}
           </RouterLink>
-          <div v-if="me !== null" class="ml-auto flex items-center gap-2 text-sm">
-            <USelect
-              v-if="choices.length > 1"
-              v-model="site"
-              :items="choices"
-              aria-label="Site"
-              class="w-48"
-            />
-            <span v-else class="text-muted">{{ me.site }}</span>
+          <div class="ml-auto flex items-center gap-2 text-sm">
+            <template v-if="me !== null">
+              <USelect
+                v-if="choices.length > 1"
+                v-model="site"
+                :items="choices"
+                aria-label="Site"
+                class="w-48"
+              />
+              <span v-else class="font-mono text-xs text-muted">{{ me.site }}</span>
+            </template>
+            <UColorModeButton color="neutral" variant="ghost" />
           </div>
         </nav>
       </header>
-      <main class="mx-auto max-w-6xl px-4 py-6">
+      <main class="mx-auto max-w-6xl px-4 py-8">
         <RouterView />
       </main>
     </div>

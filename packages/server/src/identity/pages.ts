@@ -6,9 +6,26 @@
  * invitation from the address bar, so the page never prints it.
  */
 
-const STYLE = `body{font:1rem/1.5 system-ui,sans-serif;max-width:28rem;margin:4rem auto;padding:0 1rem;color:#1d1d1f}
-label{display:block;margin:.75rem 0 .25rem}input{width:100%;padding:.5rem;font:inherit}
-button{margin-top:1rem;padding:.6rem 1rem;font:inherit;cursor:pointer}[role=alert]{color:#b00020}`
+/**
+ * The look of hollware.com and the admin, with nothing to fetch: the page's policy loads no font,
+ * so the type is the system's. Ink greys and the mint accent, dark when the device is.
+ */
+const STYLE = `:root{color-scheme:light dark;--bg:#f6f7f8;--card:#fff;--fg:#15181b;--muted:#545c66;--line:#d6dadf;--accent:#0c825d;--on-accent:#fff;--danger:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#08090a;--card:#0f1113;--fg:#eceef0;--muted:#8a939e;--line:rgb(255 255 255/.1);--accent:#3ee6a8;--on-accent:#04140d;--danger:#ff8a80}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem 1rem;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+main{width:100%;max-width:26rem;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2rem}
+.brand{display:flex;align-items:center;gap:.6rem;margin-bottom:1.75rem;font-weight:600;letter-spacing:-.01em}.brand svg{width:26px;height:26px}
+h1{font-size:1.4rem;line-height:1.25;letter-spacing:-.02em;margin:0 0 .5rem}p{color:var(--muted);margin:.5rem 0}strong{color:var(--fg)}
+label{display:block;margin:1rem 0 .35rem;font-size:.9rem;font-weight:500}fieldset label,form>label:has(input[type=checkbox]){font-weight:400;display:flex;align-items:center;gap:.5rem;margin:.5rem 0}
+input{width:100%;padding:.6rem .75rem;font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:8px}input:focus{outline:2px solid var(--accent);outline-offset:1px}
+label input{width:auto;margin:0}fieldset{border:1px solid var(--line);border-radius:8px;margin:1rem 0;padding:.5rem .9rem}legend{color:var(--muted);font-size:.85rem;padding:0 .3rem}
+code{font:.82em ui-monospace,'SF Mono',Menlo,monospace;color:var(--muted)}
+button{margin-top:1.25rem;padding:.6rem 1rem;font:inherit;font-weight:500;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg)}
+button:not([value=deny]){background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+[role=alert]{color:var(--danger)}`
+
+/** The mark of Hollware, before the title of every page. */
+const BRAND = `<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor" opacity=".08"/><path d="M9 8v16M23 8v16M9 16h14" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" fill="none"/></svg>Hollware</div>`
 
 const POST = `async function post(path, body) {
   const response = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
@@ -29,6 +46,7 @@ function page(title: string, nonce: string, body: string, script: string): strin
 </head>
 <body>
 <main>
+${BRAND}
 <h1>${title}</h1>
 ${body}
 <p id="error" role="alert"></p>
@@ -155,10 +173,11 @@ export function consentPage(view: ConsentView): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Allow ${name} · Hollware</title>
-<style>${STYLE}label input{width:auto;margin-right:.5rem}</style>
+<style>${STYLE}</style>
 </head>
 <body>
 <main>
+${BRAND}
 <h1>Allow ${name} to use this Hollware?</h1>
 ${origin}
 <p>Signed in as <strong>${escapeHtml(view.person)}</strong>. Access goes to <strong>${escapeHtml(view.redirectHost)}</strong>.</p>
@@ -187,6 +206,7 @@ export function messagePage(title: string, message: string): string {
 </head>
 <body>
 <main>
+${BRAND}
 <h1>${escapeHtml(title)}</h1>
 <p>${escapeHtml(message)}</p>
 </main>

@@ -11,12 +11,6 @@ export default defineNuxtConfig({
   colorMode: { preference: 'dark', fallback: 'dark' },
   // Icons come from the installed collection, never fetched from a CDN at runtime.
   icon: { serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },
-  fonts: {
-    families: [
-      { name: 'Geist', weights: [400, 500, 600, 700] },
-      { name: 'Geist Mono', weights: [400, 500] },
-    ],
-  },
   app: {
     head: {
       htmlAttrs: { lang: 'en' },

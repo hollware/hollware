@@ -11,6 +11,15 @@ if (__HOLLWARE_ICONS__ !== null) addCollection(__HOLLWARE_ICONS__)
 
 const BASE = '/admin'
 
+// Dark, as hollware.com, until the person picks a theme (Nuxt UI keeps the choice here).
+try {
+  if (window.localStorage.getItem('vueuse-color-scheme') === null) {
+    window.localStorage.setItem('vueuse-color-scheme', 'dark')
+  }
+} catch {
+  // Storage can be off; the theme then follows the system.
+}
+
 const router = createRouter({
   history: createWebHistory(`${BASE}/`),
   routes: [

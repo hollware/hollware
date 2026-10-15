@@ -188,6 +188,9 @@ catalogs:
     '@codemirror/lang-markdown':
       specifier: 6.5.2
       version: 6.5.2
+    '@codemirror/language':
+      specifier: 6.13.1
+      version: 6.13.1
     '@codemirror/lint':
       specifier: 6.9.7
       version: 6.9.7
@@ -206,6 +209,12 @@ catalogs:
     '@comark/vue':
       specifier: 0.7.0
       version: 0.7.0
+    '@fontsource-variable/geist':
+      specifier: 5.3.0
+      version: 5.3.0
+    '@fontsource-variable/geist-mono':
+      specifier: 5.3.0
+      version: 5.3.0
     '@iconify-json/lucide':
       specifier: 1.2.143
       version: 1.2.143
@@ -215,6 +224,9 @@ catalogs:
     '@iconify/vue':
       specifier: 5.0.3
       version: 5.0.3
+    '@lezer/highlight':
+      specifier: 1.2.5
+      version: 1.2.5
     '@modelcontextprotocol/client':
       specifier: 2.3.1
       version: 2.3.1
@@ -398,6 +410,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@fontsource-variable/geist':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@fontsource-variable/geist-mono':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@hollware/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -494,6 +512,9 @@ importers:
       '@codemirror/lang-markdown':
         specifier: 'catalog:'
         version: 6.5.2
+      '@codemirror/language':
+        specifier: 'catalog:'
+        version: 6.13.1
       '@codemirror/lint':
         specifier: 'catalog:'
         version: 6.9.7
@@ -509,6 +530,12 @@ importers:
       '@comark/vue':
         specifier: 'catalog:'
         version: 0.7.0(vue@3.5.44(typescript@7.0.2))
+      '@fontsource-variable/geist':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@fontsource-variable/geist-mono':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@hollware/core':
         specifier: workspace:*
         version: link:../core
@@ -521,6 +548,9 @@ importers:
       '@iconify/vue':
         specifier: 'catalog:'
         version: 5.0.3(vue@3.5.44(typescript@7.0.2))
+      '@lezer/highlight':
+        specifier: 'catalog:'
+        version: 1.2.5
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(de764ef50ce7b34faacc3f479e9de31b)
@@ -1816,6 +1846,12 @@ packages:
 
   '@floating-ui/vue@1.1.11':
     resolution: {integrity: sha512-HzHKCNVxnGS35r9fCHBc3+uCnjw9IWIlCPL683cGgM9Kgj2BiAl8x1mS7vtvP6F9S/e/q4O6MApwSHj8hNLGfw==}
+
+  '@fontsource-variable/geist-mono@5.3.0':
+    resolution: {integrity: sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw==}
+
+  '@fontsource-variable/geist@5.3.0':
+    resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
 
   '@hexagon/base64@1.1.28':
     resolution: {integrity: sha512-lhqDEAvWixy3bZ+UOYbPwUbBkwBq5C1LAJ/xPC8Oi+lL54oyakv/npbA0aU2hgCsx/1NUd4IBvV03+aUBWxerw==}
@@ -8098,6 +8134,10 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
+
+  '@fontsource-variable/geist-mono@5.3.0': {}
+
+  '@fontsource-variable/geist@5.3.0': {}
 
   '@hexagon/base64@1.1.28': {}
 
