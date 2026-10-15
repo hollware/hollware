@@ -3,8 +3,8 @@
 The command line of [Hollware](https://github.com/hollware/hollware), an open-source headless
 CMS for the agent era, native to Cloudflare Workers.
 
-> **Status: pre-alpha.** `init`, `migrate`, `token` and `import` work, against a Hollware that
-> is still being built. `export` arrives in v0.2. POSIX shells only: it has not been tried on
+> **Status: pre-alpha.** `init`, `migrate`, `deploy`, `doctor`, `token`, `invite` and `import`
+> work, against a Hollware that is still being built. POSIX shells only: it has not been tried on
 > Windows.
 
 ## Commands
@@ -13,7 +13,10 @@ CMS for the agent era, native to Cloudflare Workers.
 | --------- | -------------------------------------------------------------------------------- |
 | `init`    | Create a site, its owner and a first personal token in the project's D1 database |
 | `migrate` | Apply D1 migrations; `--check` lists the pending ones, `--remote` backs up first |
-| `token`   | Create, list and revoke personal tokens                                          |
+| `deploy`  | Deploy to Cloudflare, creating what the project needs, and migrate the database  |
+| `doctor`  | Check the project, its bindings, its database and its owner, with what to fix    |
+| `token`   | Create, list and revoke personal tokens, and read tokens with `--read`           |
+| `invite`  | Invite a person to the admin, as an editor or an author                          |
 | `import`  | Import Markdown files over MCP, as drafts, and publish them with `--publish`     |
 | `export`  | Export entries as Markdown files (v0.2)                                          |
 
@@ -32,9 +35,15 @@ hollware token list                      # never shows a hash
 hollware token revoke tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW
 ```
 
+To put it on Cloudflare, log in with `wrangler login` and run `hollware deploy`: the first deploy
+creates the D1 database, the KV namespace and the queues, writes their ids and the public URL of
+the Worker into `wrangler.jsonc`, and applies the migrations. Then `hollware init --site blog
+--remote` makes the site in it.
+
 Add `--remote` to work on the database in Cloudflare instead (it needs `wrangler login` or a
 `CLOUDFLARE_API_TOKEN`). `migrate --remote` first exports the database to
-`.wrangler/hollware-backups` and stops if that fails. `--database <name>` picks another D1
+`.wrangler/hollware-backups` and stops if that fails; a new database, with none of the
+migrations, has nothing to back up. `--database <name>` picks another D1
 database than the binding `DB`. `--site <key>` picks a site when the database has several.
 
 Put the token that `init` printed in a file only you can read, and import a directory of
@@ -52,7 +61,7 @@ reported, and the command exits with code 1. The token never appears in its outp
 
 ## How it works
 
-`init`, `migrate` and `token` run the project's own `wrangler` (the nearest
+`init`, `migrate`, `deploy`, `doctor` and `token` run the project's own `wrangler` (the nearest
 `node_modules/.bin/wrangler`) against its D1 database, and read the binding from `wrangler.jsonc`.
 `import` speaks MCP to `<url>/mcp` with the token as a bearer token. The CLI never loads
 `hollware.config.ts`.

@@ -25,6 +25,9 @@
 // - "uses --database for every call": `--database` is not given to every wrangler command and
 //   the backup name.
 // - "rejects --local and --remote together": both flags are accepted.
+// - "takes no backup of a remote database that has none of the migrations yet": a new database
+//   is exported before its first migration (an export that can fail for want of a permission,
+//   with nothing in it to keep), or a database with a migration is not.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -43,6 +46,9 @@ const LIST_NONE =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: local \n\nUse --remote if you want to access the remote instance.\n\n✅ No migrations to apply!\n'
 const LIST_ONE_PENDING =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: local \n\nUse --remote if you want to access the remote instance.\n\nMigrations to be applied:\n┌─────────────────┐\n│ Name            │\n├─────────────────┤\n│ 0003_notes.sql  │\n└─────────────────┘\n'
+// The same table, on a database that has its first migration: two of them are left.
+const LIST_LATER_PENDING =
+  '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: remote \n\nMigrations to be applied:\n┌──────────────────────┐\n│ Name                 │\n├──────────────────────┤\n│ 0001_core.sql        │\n├──────────────────────┤\n│ 0002_append_only.sql │\n└──────────────────────┘\n'
 const APPLIED = '🌀 Executing on local database DB ...\n🚣 10 commands executed successfully.\n'
 
 const NAMES = ['0000_init.sql', '0001_core.sql', '0002_append_only.sql']
@@ -154,7 +160,7 @@ describe('hollware migrate', () => {
 
   it('backs up the remote database before it applies anything', async () => {
     const wrangler = fakeWrangler(
-      ok(LIST_ALL_PENDING),
+      ok(LIST_LATER_PENDING),
       exportsTo('-- the database --\n'),
       ok(APPLIED),
     )
@@ -171,14 +177,30 @@ describe('hollware migrate', () => {
     ])
     expect(out).toEqual([
       `Backing up the remote database "DB" to ${project.backup} ...`,
-      `Applied 3 migrations to the remote database "DB":\n  0000_init.sql\n  0001_core.sql\n  0002_append_only.sql\nBackup taken before: ${project.backup}`,
+      `Applied 2 migrations to the remote database "DB":\n  0001_core.sql\n  0002_append_only.sql\nBackup taken before: ${project.backup}`,
     ])
     expect(readFileSync(project.backup, 'utf8')).toBe('-- the database --\n')
   })
 
+  it('takes no backup of a remote database that has none of the migrations yet', async () => {
+    const wrangler = fakeWrangler(ok(LIST_ALL_PENDING), ok(APPLIED))
+    const project = setup(wrangler)
+
+    const { code, out } = await project.run(['migrate', '--remote'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args)).toEqual([
+      ['d1', 'migrations', 'list', 'DB', '--remote'],
+      ['d1', 'migrations', 'apply', 'DB', '--remote'],
+    ])
+    expect(out).toEqual([
+      'Applied 3 migrations to the remote database "DB":\n  0000_init.sql\n  0001_core.sql\n  0002_append_only.sql',
+    ])
+  })
+
   it('stops when the backup fails, and applies nothing', async () => {
     const wrangler = fakeWrangler(
-      ok(LIST_ALL_PENDING),
+      ok(LIST_LATER_PENDING),
       failed(
         '\u001B[31m✘ \u001B[41;31m[\u001B[41;97mERROR\u001B[41;31m]\u001B[0m \u001B[1mD1 reset before export completed!\u001B[0m\n',
       ),
@@ -199,7 +221,7 @@ describe('hollware migrate', () => {
     ['an empty file', ''],
   ])('stops when wrangler says it exported but wrote %s', async (_what, content) => {
     const wrangler = fakeWrangler(
-      ok(LIST_ALL_PENDING),
+      ok(LIST_LATER_PENDING),
       content === undefined ? ok('Not exporting.') : exportsTo(content),
     )
     const project = setup(wrangler)
@@ -224,7 +246,7 @@ describe('hollware migrate', () => {
     ])
 
     const remote = fakeWrangler(
-      ok(LIST_ALL_PENDING),
+      ok(LIST_LATER_PENDING),
       exportsTo('-- backup --'),
       failed('✘ [ERROR] near "CREATE": syntax error\n'),
     )
@@ -267,7 +289,7 @@ describe('hollware migrate', () => {
   })
 
   it('uses --database for every call and for the name of the backup', async () => {
-    const wrangler = fakeWrangler(ok(LIST_ALL_PENDING), exportsTo('-- backup --'), ok(APPLIED))
+    const wrangler = fakeWrangler(ok(LIST_LATER_PENDING), exportsTo('-- backup --'), ok(APPLIED))
     const project = setup(wrangler, {})
 
     const { code } = await project.run(['migrate', '--remote', '--database', 'blog-db'])

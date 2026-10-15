@@ -33,21 +33,19 @@
   },
   "vars": {
     // The only Host and Origin your Hollware answers; any other request is refused. This is the
-    // URL `pnpm dev` serves. Set it to the public URL of the Worker before you deploy, such as
-    // https://cms.example.com.
+    // URL `pnpm dev` serves. `hollware deploy` sets it to the workers.dev URL of the Worker, or to
+    // the one its --url names, such as https://cms.example.com.
     "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
-  // The OAuth server's clients, grants and tokens (ADR-026). Placeholder id: local development and
-  // tests never contact Cloudflare; a deploy needs the id of a namespace made with
-  // `wrangler kv namespace create`.
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  // The OAuth server's clients, grants and tokens (ADR-026). No id: the first `hollware deploy`
+  // creates the namespace and writes its id here.
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   "d1_databases": [
     {
       "binding": "DB",
+      // No id: the first `hollware deploy` creates the database by this name and writes its id
+      // here. Local development needs none.
       "database_name": "my-hollware",
-      // Placeholder for local development. Replace it with the id of the database that
-      // `wrangler d1 create my-hollware` prints before you deploy.
-      "database_id": "00000000-0000-0000-0000-000000000000",
       // The server package ships its migrations; the project applies them as they are.
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },

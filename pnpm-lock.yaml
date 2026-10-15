@@ -659,6 +659,9 @@ importers:
       '@hollware/admin':
         specifier: workspace:*
         version: link:../../packages/admin
+      hollware:
+        specifier: workspace:*
+        version: link:../../packages/cli
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

@@ -1,18 +1,11 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process'
 import { readFileSync, realpathSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { create, CreateError, USAGE, UsageError, type Io, type RunResult } from './scaffold.ts'
 
-const USAGE = [
-  'Usage: npm create hollware <dir>',
-  '',
-  'Create a new Hollware project in <dir> (not implemented yet).',
-  '',
-  'Pre-alpha: nothing is scaffolded yet.',
-  '',
-  'Options:',
-  '  --help     Show this help',
-  '  --version  Print the version',
-].join('\n')
+export { USAGE } from './scaffold.ts'
+export type { Io } from './scaffold.ts'
 
 // Read at runtime, next to this module: `../package.json` is the package manifest
 // both from `src/index.ts` and from the built `dist/index.mjs`.
@@ -25,14 +18,14 @@ function readVersion(): string {
 }
 
 /**
- * Runs the CLI and returns its exit code. Each call to `io.out` or `io.err` is one
- * message; whoever owns the streams adds the trailing newline. Only the first
- * argument is looked at.
+ * Runs the CLI and returns its exit code. Each call to `io.out` or `io.err` is one message;
+ * whoever owns the streams adds the trailing newline. `--help` and `--version` need nothing but
+ * the streams; making a project takes the rest of `io`, which `defaults` fills in.
  */
-export function main(
+export async function main(
   argv: string[],
-  io: { out: (s: string) => void; err: (s: string) => void },
-): number {
+  io: Pick<Io, 'out' | 'err'> & Partial<Omit<Io, 'out' | 'err'>>,
+): Promise<number> {
   const [first] = argv
   if (first === undefined || first === '--help') {
     io.out(USAGE)
@@ -42,12 +35,49 @@ export function main(
     io.out(`create-hollware ${readVersion()}`)
     return 0
   }
-  if (first.startsWith('-')) {
-    io.err(`create-hollware: unknown flag "${first}"\n\n${USAGE}`)
-    return 1
+  try {
+    return await create(argv, {
+      cwd: io.cwd ?? process.cwd(),
+      templateDir: io.templateDir ?? fileURLToPath(new URL('../template', import.meta.url)),
+      version: io.version ?? readVersion(),
+      run: io.run ?? runProgram,
+      out: io.out,
+      err: io.err,
+    })
+  } catch (error) {
+    if (error instanceof UsageError) {
+      io.err(`create-hollware: ${error.message}\n\n${USAGE}`)
+      return 1
+    }
+    if (error instanceof CreateError) {
+      io.err(`create-hollware: ${error.message}`)
+      return 1
+    }
+    throw error
   }
-  io.err('create-hollware: not implemented yet')
-  return 1
+}
+
+/** Runs a program with its output captured, and its stdin closed: nothing waits for an answer. */
+function runProgram(command: string, args: readonly string[], cwd: string): Promise<RunResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, [...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk
+    })
+    child.on('error', (error) => {
+      reject(new CreateError(`could not run ${command}: ${error.message}`))
+    })
+    child.on('close', (code) => {
+      resolve({ code: code ?? 1, stdout, stderr })
+    })
+  })
 }
 
 // True when this module is the process entry point. The path goes through
@@ -64,7 +94,7 @@ function isEntryPoint(): boolean {
 }
 
 if (isEntryPoint()) {
-  process.exitCode = main(process.argv.slice(2), {
+  process.exitCode = await main(process.argv.slice(2), {
     out: (s) => process.stdout.write(`${s}\n`),
     err: (s) => process.stderr.write(`${s}\n`),
   })

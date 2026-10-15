@@ -34,7 +34,12 @@ export function publishedManifest(
       directory: dir,
     },
     ...(binName === undefined ? {} : { bin: { [binName]: './src/index.ts' } }),
-    files: dir === 'packages/server' ? ['dist', 'migrations'] : ['dist'],
+    files:
+      dir === 'packages/server'
+        ? ['dist', 'migrations']
+        : dir === 'packages/create-hollware'
+          ? ['dist', 'template']
+          : ['dist'],
     type: 'module',
     exports: { '.': './src/index.ts', './package.json': './package.json' },
     publishConfig: {

@@ -56,10 +56,21 @@ async function runWith(cli: typeof main, argv: string[]): Promise<Outcome> {
 const COMMANDS_HELP = [
   ['init', ['--site', '--local', '--remote', '--owner-name', '--url', '--database']],
   ['migrate', ['--local', '--remote', '--check', '--database']],
+  ['deploy', ['--url']],
+  ['doctor', ['--local', '--remote']],
   ['token', ['create', 'list', 'revoke']],
   [
     'token create',
-    ['--label', '--scopes', '--expires-in-days', '--site', '--local', '--remote', '--database'],
+    [
+      '--label',
+      '--scopes',
+      '--read',
+      '--expires-in-days',
+      '--site',
+      '--local',
+      '--remote',
+      '--database',
+    ],
   ],
   ['token list', ['--site', '--local', '--remote', '--database']],
   ['token revoke', ['<id>', '--site', '--local', '--remote', '--database']],
@@ -87,10 +98,12 @@ describe('hollware --help', () => {
 
   it('lists every command with what it does', async () => {
     const [usage] = (await run(['--help'])).out
-    expect(usage?.split('\n').slice(2, 9)).toEqual([
+    expect(usage?.split('\n').slice(2, 11)).toEqual([
       'Commands:',
       "  init     Set up a site, its owner and a first token in the project's D1 database",
       '  migrate  Apply D1 migrations',
+      '  deploy   Deploy to Cloudflare and migrate the remote database',
+      '  doctor   Check the project, its bindings, its database and its owner',
       '  token    Create, list and revoke personal tokens',
       '  invite   Invite a person to the admin, as an editor or an author',
       '  import   Import Markdown files over MCP',

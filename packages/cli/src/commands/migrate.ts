@@ -11,7 +11,8 @@ export const MIGRATE_USAGE = [
   '',
   'Applies the D1 migrations the project has not applied yet, with wrangler. Before it applies',
   'anything to the remote database it exports a backup, and it stops if the backup fails. The',
-  'export can make the database unavailable for a moment; with nothing pending there is no backup.',
+  'export can make the database unavailable for a moment; with nothing pending, or on a new',
+  'database that has none of the migrations yet, there is no backup.',
   '',
   'Options:',
   '  --local            Use the local database (the default)',
@@ -20,6 +21,9 @@ export const MIGRATE_USAGE = [
   '  --database <name>  The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
   '  --help             Show this help',
 ].join('\n')
+
+/** The first migration of the server: a database that lacks it has no Hollware tables yet. */
+export const FIRST_MIGRATION = '0000_init.sql'
 
 /** Where the backups before a remote migration go, below the project: wrangler's own, git-ignored folder. */
 export const BACKUP_DIRECTORY = join('.wrangler', 'hollware-backups')
@@ -59,7 +63,9 @@ export async function migrate(argv: readonly string[], io: Io): Promise<number> 
     throw new CliError(`${count} pending. Run "hollware migrate --${target}" to apply them.`)
   }
 
-  const backup = target === 'remote' ? await takeBackup(io, database) : undefined
+  // A database that has none of the migrations yet holds nothing to back up.
+  const fresh = pending.includes(FIRST_MIGRATION)
+  const backup = target === 'remote' && !fresh ? await takeBackup(io, database) : undefined
   const applied = await io.wrangler(['d1', 'migrations', 'apply', database, `--${target}`])
   if (applied.code !== 0) {
     const saved = backup === undefined ? '' : ` The backup taken before is in ${backup}.`

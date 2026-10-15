@@ -19,6 +19,8 @@ const COMMANDS = [
     summary: "Set up a site, its owner and a first token in the project's D1 database",
   },
   { name: 'migrate', summary: 'Apply D1 migrations' },
+  { name: 'deploy', summary: 'Deploy to Cloudflare and migrate the remote database' },
+  { name: 'doctor', summary: 'Check the project, its bindings, its database and its owner' },
   { name: 'token', summary: 'Create, list and revoke personal tokens' },
   { name: 'invite', summary: 'Invite a person to the admin, as an editor or an author' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
@@ -41,7 +43,8 @@ const USAGE = [
   '  --version  Print the version',
   '',
   'Run "hollware <command> --help" for the options of a command.',
-  'init, migrate, token and invite work on the project in the current directory, through its wrangler.',
+  'init, migrate, deploy, doctor, token and invite work on the project in the current directory,',
+  'through its wrangler.',
 ].join('\n')
 
 const TOKEN_COMMANDS = ['create', 'list', 'revoke']
@@ -66,7 +69,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.err('hollware export: not implemented yet (planned for v0.2)')
     return 1
   }
-  if (!['init', 'migrate', 'token', 'invite', 'import'].includes(first)) {
+  if (!['init', 'migrate', 'deploy', 'doctor', 'token', 'invite', 'import'].includes(first)) {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
     return 1
   }
@@ -90,6 +93,10 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/init.ts')).init(args, io)
     case 'migrate':
       return (await import('./commands/migrate.ts')).migrate(args, io)
+    case 'deploy':
+      return (await import('./commands/deploy.ts')).deploy(args, io)
+    case 'doctor':
+      return (await import('./commands/doctor.ts')).doctor(args, io)
     case 'token':
       return (await import('./commands/token.ts')).token(args, io)
     case 'invite':

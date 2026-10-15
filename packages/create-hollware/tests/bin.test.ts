@@ -28,9 +28,9 @@ describe('the create-hollware bin, run as a process', () => {
   })
 
   it('sends errors to stderr and exits with the code main returns', () => {
-    const { status, stdout, stderr } = node([installed.bin, 'my-site'])
+    const { status, stdout, stderr } = node([installed.bin, '--pm', 'yarn', 'x'])
     expect(stdout).toBe('')
-    expect(stderr).toBe('create-hollware: not implemented yet\n')
+    expect(stderr).toMatch(/^create-hollware: --pm is npm or pnpm, not "yarn"\n/)
     expect(status).toBe(1)
   })
 

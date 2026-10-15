@@ -25,6 +25,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and its timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to another site's table carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration that a `@hollware/server@*` release tag holds is edited or removed, and the release tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
+- `tests/conventions/starter-template.test.ts`: the template that create-hollware ships is made by `scripts/sync-starter.ts` from `templates/starter` when the package builds or packs, and is never committed: the starter's files, the catalog's exact versions, Hollware's own as `HOLLWARE_VERSION`, a tsconfig that stands alone.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
 - `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in what the workspace packages and apps install.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.

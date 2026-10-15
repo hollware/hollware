@@ -36,9 +36,13 @@ const UNSCOPED_NAMES: Readonly<Record<string, string>> = {
   'create-hollware': 'create-hollware',
 }
 
-/** What `files` ships. Everything ships `dist`; the server also ships its D1 migrations. */
+/**
+ * What `files` ships. Everything ships `dist`; the server also ships its D1 migrations, and
+ * create-hollware the project template it copies (made from templates/starter when it packs).
+ */
 const SHIPPED_EXTRA: Readonly<Record<string, readonly string[]>> = {
   server: ['migrations'],
+  'create-hollware': ['template'],
 }
 
 /** The executable a package installs, by directory. Only the two command-line packages have one. */

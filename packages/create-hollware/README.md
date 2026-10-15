@@ -1,18 +1,32 @@
 # create-hollware
 
-Creates a new project for [Hollware](https://github.com/hollware/hollware), an open-source
-headless CMS for the agent era, native to Cloudflare Workers.
+Creates a new project for [Hollware](https://hollware.com), an open-source headless CMS for the
+agent era, native to Cloudflare Workers.
 
-> **Status: pre-alpha, not usable yet.** The binary answers `--help` and `--version`;
-> running it with a directory prints "not implemented yet" and exits with code 1.
+```sh
+npm create hollware my-cms
+pnpm create hollware my-cms --pm pnpm
+```
 
-## What it will be
+It copies the starter into `my-cms`, pins every Hollware package at its own version, runs
+`git init` and the install, applies the migrations to the local database, and makes your site,
+its owner and a first personal token. Then it prints the token once, a link to set up your passkey
+for the admin, and the `claude mcp add` line that connects Claude Code to it.
 
-`npm create hollware <dir>` will copy the starter template into `<dir>` and pin the exact
-Hollware versions it needs.
+| Option             | What it does                                                    |
+| ------------------ | --------------------------------------------------------------- |
+| `--name <name>`    | The name of the Worker and of its database (default: the dir)   |
+| `--site <key>`     | The key of your site in `hollware.config.ts` (default: my-site) |
+| `--pm <npm\|pnpm>` | The package manager that installs (default: npm)                |
+| `--yes`            | Take the defaults; the directory is `my-hollware`               |
+| `--no-install`     | Only write the files                                            |
+| `--no-git`         | Do not run `git init`                                           |
+
+The directory must be new or empty. Node.js 24 or later.
 
 ## Links
 
+- Docs: <https://hollware.com>
 - Repository: <https://github.com/hollware/hollware>
 - Issues: <https://github.com/hollware/hollware/issues>
 - License: MIT

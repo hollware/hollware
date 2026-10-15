@@ -16,7 +16,8 @@
     "create-hollware": "./src/index.ts"
   },
   "files": [
-    "dist"
+    "dist",
+    "template"
   ],
   "type": "module",
   "exports": {
@@ -38,7 +39,8 @@
     "provenance": true
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "node ../../scripts/sync-starter.ts && vp pack",
+    "prepack": "node ../../scripts/sync-starter.ts",
     "test": "vp test",
     "publint": "publint --strict"
   },

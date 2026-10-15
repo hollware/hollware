@@ -8,7 +8,9 @@
     "build": "vp build",
     "test": "vp test",
     "types": "wrangler types",
-    "types:check": "wrangler types --check"
+    "types:check": "wrangler types --check",
+    "deploy": "hollware deploy",
+    "doctor": "hollware doctor"
   },
   "dependencies": {
     "@hollware/core": "workspace:*",
@@ -19,6 +21,7 @@
     "@cloudflare/vite-plugin": "catalog:",
     "@cloudflare/vitest-plugin": "catalog:",
     "@hollware/admin": "workspace:*",
+    "hollware": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

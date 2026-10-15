@@ -7,6 +7,8 @@ const generated = [
   '**/.wrangler/**',
   '**/worker-configuration.d.ts',
   '**/migrations/meta/**',
+  // scripts/sync-starter.ts writes it from templates/starter, which is formatted and linted.
+  'packages/create-hollware/template/**',
 ]
 
 // Test fixtures whose bytes matter: the formatter would rewrite the Markdown under test.
