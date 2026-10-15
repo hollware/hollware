@@ -6,7 +6,13 @@ import { getTranslations } from './get-translations.ts'
 import { listEntries } from './list-entries.ts'
 import { search } from './search.ts'
 import { publish } from './publish.ts'
-import { approveReview, commentReview, listReviews, requestChanges } from './reviews.ts'
+import {
+  approveReview,
+  commentReview,
+  listReviews,
+  requestChanges,
+  requestReview,
+} from './reviews.ts'
 import { unpublish } from './unpublish.ts'
 import { updateDraft } from './update-draft.ts'
 import { validate } from './validate.ts'
@@ -30,6 +36,7 @@ export const handlers = defineHandlers({
   list_reviews: listReviews,
   publish,
   request_changes: requestChanges,
+  request_review: requestReview,
   unpublish,
   update_draft: updateDraft,
   validate,

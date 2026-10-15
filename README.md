@@ -58,7 +58,7 @@ Each stage ends with an exit criterion that can be verified. The stage-by-stage 
 
 ## Packages
 
-Seven packages, released together at one version, in the order they arrived.
+Eight packages, released together at one version, in the order they arrived.
 
 | Package                                       | What it will be                                                                            | Arrives in |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
@@ -69,6 +69,7 @@ Seven packages, released together at one version, in the order they arrived.
 | [`@hollware/admin`](packages/admin)           | The review and approval UI, prebuilt and served by the Worker.                             | v0.3       |
 | [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                                            | v0.4       |
 | [`@hollware/nuxt`](packages/nuxt)             | Reads Hollware from a Nuxt site, over a service binding or HTTP.                           | v0.4       |
+| [`@hollware/agents`](packages/agents)         | A reviewer, a translator and a weekly auditor on a Worker; none publishes.                 | v0.6       |
 
 ## Documentation
 

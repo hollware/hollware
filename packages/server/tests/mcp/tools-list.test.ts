@@ -52,6 +52,7 @@ const TOOLS = [
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
+  { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
   { name: 'search', title: 'Search entries', annotations: READ },
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
@@ -78,6 +79,7 @@ const OUTCOMES: Record<string, string[]> = {
     'not_found',
   ],
   request_changes: ['changes_requested', 'not_pending', 'not_found'],
+  request_review: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
   search: ['ok'],
   unpublish: ['unpublished', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
@@ -215,9 +217,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(30)
+    expect(converters).toHaveLength(32)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 30 }, () => 1),
+      Array.from({ length: 32 }, () => 1),
     )
   })
 })
@@ -238,6 +240,7 @@ describe('the tool table', () => {
       'list_reviews',
       'publish',
       'request_changes',
+      'request_review',
       'search',
       'unpublish',
       'update_draft',

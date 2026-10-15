@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import adminConfig from '../../packages/admin/vite.config.ts'
+import agentsConfig from '../../packages/agents/vite.config.ts'
 import cliConfig from '../../packages/cli/vite.config.ts'
 import clientConfig from '../../packages/client/vite.config.ts'
 import coreConfig from '../../packages/core/vite.config.ts'
@@ -46,6 +47,7 @@ describe('package manifests', () => {
       files: repoFiles(),
       devExports: {
         'packages/admin': devExportsOf(adminConfig),
+        'packages/agents': devExportsOf(agentsConfig),
         'packages/cli': devExportsOf(cliConfig),
         'packages/client': devExportsOf(clientConfig),
         'packages/core': devExportsOf(coreConfig),

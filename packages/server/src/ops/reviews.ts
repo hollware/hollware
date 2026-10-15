@@ -1,3 +1,4 @@
+import type { Principal } from '../auth/types.ts'
 import { actorOf } from './actor.ts'
 import { entrySummary, reviewCommentView, reviewView } from './answers.ts'
 import { unexpectedAnswer } from './errors.ts'
@@ -113,4 +114,43 @@ export const commentReview: OperationHandler<'comment_review'> = async (input, c
   return answer.outcome === 'commented'
     ? { outcome: 'commented', comment: reviewCommentView(answer.comment) }
     : { outcome: answer.outcome }
+}
+
+/**
+ * Asks for a review of the head revision of an entry through `publish`, with `content:publish`
+ * taken from the caller for this call: the same checks run, and the one thing that cannot happen
+ * is a publication. It is how an agent sends its work to a person, whatever its token holds.
+ */
+export const requestReview: OperationHandler<'request_review'> = async (input, context) => {
+  const { principal: given } = context
+  // A binding never holds content:publish; every other principal loses it for this call.
+  const principal: Principal =
+    given.kind === 'binding'
+      ? given
+      : { ...given, scopes: given.scopes.filter((scope) => scope !== 'content:publish') }
+  const answer = await publish(
+    {
+      id: input.id,
+      version: input.version,
+      acknowledgeWarnings: input.acknowledgeWarnings,
+      group: [],
+    },
+    { ...context, principal },
+  )
+  switch (answer.outcome) {
+    case 'pending_review':
+    case 'blocked':
+    case 'needs_acknowledgement':
+    case 'conflict':
+    case 'not_found':
+      return {
+        outcome: answer.outcome,
+        ...(answer.entry === undefined ? {} : { entry: answer.entry }),
+        ...(answer.verdict === undefined ? {} : { verdict: answer.verdict }),
+        ...(answer.conflict === undefined ? {} : { conflict: answer.conflict }),
+        ...(answer.review === undefined ? {} : { review: answer.review }),
+      }
+    default:
+      throw unexpectedAnswer(context, 'request_review', answer)
+  }
 }

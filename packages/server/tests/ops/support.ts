@@ -15,6 +15,7 @@ import {
   processMarkdown,
   publish as publishSpec,
   requestChanges as requestChangesSpec,
+  requestReview as requestReviewSpec,
   search as searchSpec,
   renderHtml,
   resolveConfig,
@@ -277,6 +278,8 @@ export function agent(context: OperationContext) {
       call(listEntriesSpec, handlers.list_entries, input, context),
     publish: (input: z.input<typeof publishSpec.input>) =>
       call(publishSpec, handlers.publish, input, context),
+    requestReview: (input: z.input<typeof requestReviewSpec.input>) =>
+      call(requestReviewSpec, handlers.request_review, input, context),
     search: (input: z.input<typeof searchSpec.input>) =>
       call(searchSpec, handlers.search, input, context),
     unpublish: (input: z.input<typeof unpublishSpec.input>) =>

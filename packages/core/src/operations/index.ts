@@ -12,6 +12,7 @@ export {
   OPERATIONS,
   publish,
   requestChanges,
+  requestReview,
   search,
   unpublish,
   updateDraft,

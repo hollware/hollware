@@ -3,7 +3,12 @@
   "baseBranch": "main",
   "access": "public",
   "format": false,
-  "changelog": ["@changesets/changelog-github", { "repo": "hollware/hollware" }],
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "repo": "hollware/hollware"
+    }
+  ],
   "commit": false,
   "ignore": [],
   "fixed": [
@@ -13,11 +18,15 @@
       "@hollware/server",
       "@hollware/client",
       "@hollware/admin",
+      "@hollware/agents",
       "hollware",
       "create-hollware"
     ]
   ],
   "linked": [],
   "updateInternalDependencies": "patch",
-  "privatePackages": { "version": false, "tag": false }
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  }
 }

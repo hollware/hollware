@@ -5,7 +5,9 @@ import type { Principal } from '../../src/auth/types.ts'
 import { agent as agentFor, warmUpComark } from './support.ts'
 import { createPost, newWorld, type World } from './world.ts'
 
-// Fails when: comment_review (src/ops/reviews.ts, src/db/reviews.ts) stops adding a comment to a
+// Fails when: request_review (src/ops/reviews.ts) publishes for a caller that holds
+// content:publish, instead of asking for a review after the same checks as publish; or
+// comment_review (src/ops/reviews.ts, src/db/reviews.ts) stops adding a comment to a
 // pending review in the caller's name, with the name its client gave, or adds one to a review
 // that was decided or that does not exist, or to a review of another site; or list_reviews stops
 // answering each review with its comments, oldest first.
@@ -91,5 +93,39 @@ describe('comment_review', () => {
       { outcome: 'not_found' },
     ])
     expect(listed.reviews?.[0]?.comments).toEqual([])
+  })
+})
+
+describe('request_review', () => {
+  it('asks for a review and publishes nothing, even for a caller who may publish', async () => {
+    const world = await newWorld(env.DB, 'request-review')
+    const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
+    await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })
+
+    // world.agent holds content:publish.
+    const answer = await world.agent.requestReview({ id: en.id, version: en.version })
+    const entry = await world.agent.getEntry({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'edge-caching-guide',
+    })
+
+    expect(answer).toMatchObject({ outcome: 'pending_review', review: { status: 'pending' } })
+    expect(entry.entry?.status).toBe('draft')
+  })
+
+  it('stops where publish would, and asks for nothing', async () => {
+    const world = await newWorld(env.DB, 'request-review-blocked')
+    const created = await world.agent.createDraft({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'no-description',
+      markdown: '---\ntitle: No description\n---\n\nText.\n',
+    })
+
+    const answer = await world.agent.requestReview({ id: created.entry?.id ?? '', version: 1 })
+    const reviews = await world.agent.listReviews({})
+
+    expect([answer.outcome, reviews.reviews]).toEqual(['blocked', []])
   })
 })

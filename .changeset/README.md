@@ -12,7 +12,7 @@ A change that needs no release (docs, tests, tooling) adds an empty changeset in
 
 ## Versions
 
-The seven published packages (`@hollware/core`, `@hollware/server`, `@hollware/client`, `@hollware/admin`, `@hollware/nuxt`, `hollware` and `create-hollware`) share one version. A changeset for any of them releases all seven at the same version (`fixed` in `config.json`). Apps, templates and examples are private and never versioned.
+The eight published packages (`@hollware/core`, `@hollware/server`, `@hollware/client`, `@hollware/admin`, `@hollware/nuxt`, `@hollware/agents`, `hollware` and `create-hollware`) share one version. A changeset for any of them releases all eight at the same version (`fixed` in `config.json`). Apps, templates and examples are private and never versioned.
 
 ## Releasing
 

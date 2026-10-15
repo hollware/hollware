@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "catalog:",
+    "@hollware/agents": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@types/node": "catalog:",
     "drizzle-kit": "catalog:",

@@ -317,6 +317,22 @@ export const CANNED: Canned = {
     conflict: { outcome: 'conflict', conflict: CONFLICT },
     not_found: { outcome: 'not_found' },
   },
+  request_review: {
+    pending_review: {
+      outcome: 'pending_review',
+      entry: SUMMARY,
+      verdict: VERDICT_OK,
+      review: REVIEW,
+    },
+    blocked: { outcome: 'blocked', entry: SUMMARY, verdict: VERDICT_FAILED },
+    needs_acknowledgement: {
+      outcome: 'needs_acknowledgement',
+      entry: SUMMARY,
+      verdict: VERDICT_OK,
+    },
+    conflict: { outcome: 'conflict', conflict: { currentVersion: 2, headRevision: REVISION_ID } },
+    not_found: { outcome: 'not_found' },
+  },
   request_changes: {
     changes_requested: {
       outcome: 'changes_requested',
@@ -363,6 +379,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     list_reviews: {},
     publish: { id: ENTRY_ID, version: 1 },
     request_changes: { id: REVIEW_ID, note: 'Cite a source.' },
+    request_review: { id: ENTRY_ID, version: 1 },
     unpublish: { id: ENTRY_ID },
     update_draft: { id: ENTRY_ID, version: 1, markdown: MARKDOWN },
     validate: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
@@ -453,6 +470,11 @@ export function fakeHandlers(
       'list_reviews',
       overrides.list_reviews ??
         (async () => pick(CANNED.list_reviews, outcomes.list_reviews ?? 'ok')),
+    ),
+    request_review: record(
+      'request_review',
+      overrides.request_review ??
+        (async () => pick(CANNED.request_review, outcomes.request_review ?? 'pending_review')),
     ),
     request_changes: record(
       'request_changes',

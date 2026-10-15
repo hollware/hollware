@@ -10,7 +10,7 @@ import {
 } from '@modelcontextprotocol/server'
 import type { Principal } from '../auth/types.ts'
 import { OPERATION_TIMEOUT_MS } from '../limits.ts'
-import type { Handlers, OperationContext } from '../ops/types.ts'
+import type { OperationContext } from '../ops/types.ts'
 import { EFFECT_ANNOTATIONS } from './annotations.ts'
 import { askToAcknowledge, replyTo, warningsOf, withAcknowledged } from './acknowledge.ts'
 import { canElicitForm, declaredClient } from './envelope.ts'
@@ -21,6 +21,7 @@ import { within } from './timeout.ts'
 import { createToolTable } from './tools.ts'
 import type { McpCall, McpEndpoint, McpEndpointOptions, McpLogEntry } from './types.ts'
 import { REFRESH_CONTENT, refreshContentText } from './prompts.ts'
+import { invoke } from '../ops/invoke.ts'
 
 /**
  * `tools/list` is the same for every client and changes only when the Worker is deployed again:
@@ -52,24 +53,6 @@ function authInfoOf(principal: Principal, resourceMetadataUrl: string | null): A
     // The 403 of a scope challenge names the document a client reads to ask for more (RFC 9728).
     ...(resourceMetadataUrl === null ? {} : { resourceMetadataUrl }),
   }
-}
-
-/**
- * Calls the handler of an operation. This is the one place where the typed pairing of specs and
- * handlers meets the dynamic protocol: the SDK parsed `input` with the input schema of `spec`,
- * which is the schema that types the handler of the same name.
- */
-function invoke(
-  handlers: Handlers,
-  spec: Operation,
-  input: unknown,
-  context: OperationContext,
-): Promise<unknown> {
-  const handler = handlers[spec.name] as (
-    input: unknown,
-    context: OperationContext,
-  ) => Promise<unknown>
-  return handler(input, context)
 }
 
 /**

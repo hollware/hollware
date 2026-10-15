@@ -338,6 +338,45 @@ export const approveReview = defineOperation({
   },
 })
 
+export const requestReview = defineOperation({
+  name: 'request_review',
+  title: 'Ask for a review',
+  description:
+    'Asks a person who may publish to review the latest revision of an entry, after the same checks publish makes, if the entry is still at the version you read. It never publishes, whatever your scopes: the answer is pending_review, or why not (blocked by the contracts, warnings to acknowledge, a conflict). A new revision of the entry cancels the request.',
+  input: z.strictObject({
+    id: entryId,
+    version,
+    acknowledgeWarnings: z
+      .array(acknowledgedWarning)
+      .default([])
+      .describe('The warnings you accept, as needs_acknowledgement listed them.'),
+  }),
+  output: z.object({
+    outcome: z.enum([
+      'pending_review',
+      'blocked',
+      'needs_acknowledgement',
+      'conflict',
+      'not_found',
+    ]),
+    entry: entrySummary.optional(),
+    verdict: verdict.optional(),
+    conflict: conflict.optional(),
+    review: review
+      .optional()
+      .describe('With pending_review: the request, as list_reviews shows it.'),
+  }),
+  scopes: ['content:write'],
+  effect: 'write',
+  outcomes: {
+    pending_review: { isError: false },
+    blocked: { isError: true },
+    needs_acknowledgement: { isError: false },
+    conflict: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
 export const commentReview = defineOperation({
   name: 'comment_review',
   title: 'Comment on a review',
@@ -422,6 +461,7 @@ export const OPERATIONS = [
   listReviews,
   publish,
   requestChanges,
+  requestReview,
   search,
   unpublish,
   updateDraft,

@@ -1,4 +1,4 @@
-import { HollwareError, OPERATIONS, type Operation, type Scope } from '@hollware/core'
+import { HollwareError, OPERATIONS, type Scope } from '@hollware/core'
 import type { Context, Hono } from 'hono'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
@@ -11,6 +11,7 @@ import type { ResolvedSite } from '@hollware/core'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { analyticsReaderOf } from '../analytics/cloudflare.ts'
+import { invoke } from '../ops/invoke.ts'
 
 /**
  * The operations over HTTP, for the admin (ADR-026): `POST /v1/ops/{name}` takes the input of the
@@ -48,18 +49,6 @@ function json(body: unknown, status = 200): Response {
 }
 
 /** Calls the handler of an operation with input its spec has parsed. */
-function invoke(
-  handlers: Handlers,
-  spec: Operation,
-  input: unknown,
-  context: OperationContext,
-): Promise<unknown> {
-  const handler = handlers[spec.name] as (
-    input: unknown,
-    context: OperationContext,
-  ) => Promise<unknown>
-  return handler(input, context)
-}
 
 export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): void {
   app.post('/v1/ops/:name', async (c) =>

@@ -97,6 +97,7 @@ new process group, so the child outlives its supervisor.
 - `packages/cli` — the `hollware` CLI.
 - `packages/create-hollware` — `npm create hollware`.
 - `packages/nuxt` — `@hollware/nuxt`: reads Hollware from a Nuxt site.
+- `packages/agents` — `@hollware/agents`: a reviewer, a translator and an auditor that never publish.
 - `apps/playground` — a local Hollware instance for development.
 - `apps/web` — hollware.com: the landing page and the docs, read from Hollware.
 - `templates/starter` — the thin project users get.

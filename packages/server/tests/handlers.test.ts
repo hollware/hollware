@@ -20,6 +20,7 @@ const handlers: Handlers = {
   list_reviews: notYet,
   publish: notYet,
   request_changes: notYet,
+  request_review: notYet,
   unpublish: notYet,
   update_draft: notYet,
   validate: notYet,
