@@ -1,0 +1,293 @@
+{
+  "note": "Labelled queries of the search evaluation (AC-0.5-2). Each expects the entry of its translation group in its locale among the first five results. Paraphrases on purpose: few share words with the title they expect.",
+  "queries": [
+    {
+      "query": "readers keep seeing an old version of my page after I update it",
+      "locale": "en",
+      "expect": "edge-cache-purge",
+      "kind": "same-language"
+    },
+    {
+      "query": "mis lectores siguen viendo la versión antigua después de actualizar",
+      "locale": "es",
+      "expect": "edge-cache-purge",
+      "kind": "same-language"
+    },
+    {
+      "query": "cómo borrar copias viejas guardadas en los servidores cercanos al lector",
+      "locale": "en",
+      "expect": "edge-cache-purge",
+      "kind": "cross-language"
+    },
+    {
+      "query": "log in without typing anything, using my fingerprint",
+      "locale": "en",
+      "expect": "passkeys",
+      "kind": "same-language"
+    },
+    {
+      "query": "iniciar sesión sin escribir nada, solo con mi huella",
+      "locale": "es",
+      "expect": "passkeys",
+      "kind": "same-language"
+    },
+    {
+      "query": "acceder a mi cuenta sin clave que me puedan robar",
+      "locale": "en",
+      "expect": "passkeys",
+      "kind": "cross-language"
+    },
+    {
+      "query": "how to add a column to a production table without downtime",
+      "locale": "en",
+      "expect": "schema-migrations",
+      "kind": "same-language"
+    },
+    {
+      "query": "agregar un campo a una tabla en producción sin caída",
+      "locale": "es",
+      "expect": "schema-migrations",
+      "kind": "same-language"
+    },
+    {
+      "query": "por qué no conviene revertir cambios de estructura de datos",
+      "locale": "en",
+      "expect": "schema-migrations",
+      "kind": "cross-language"
+    },
+    {
+      "query": "make photos lighter for mobile visitors",
+      "locale": "en",
+      "expect": "responsive-images",
+      "kind": "same-language"
+    },
+    {
+      "query": "fotos más livianas para quienes visitan desde el celular",
+      "locale": "es",
+      "expect": "responsive-images",
+      "kind": "same-language"
+    },
+    {
+      "query": "qué formato de foto pesa menos que jpeg",
+      "locale": "en",
+      "expect": "responsive-images",
+      "kind": "cross-language"
+    },
+    {
+      "query": "how do I know a callback request is genuine and not forged",
+      "locale": "en",
+      "expect": "webhook-signatures",
+      "kind": "same-language"
+    },
+    {
+      "query": "cómo saber si una notificación entrante es auténtica",
+      "locale": "es",
+      "expect": "webhook-signatures",
+      "kind": "same-language"
+    },
+    {
+      "query": "evitar que procesemos dos veces el mismo aviso de otro servicio",
+      "locale": "en",
+      "expect": "webhook-signatures",
+      "kind": "cross-language"
+    },
+    {
+      "query": "stop a bot that floods my API with calls",
+      "locale": "en",
+      "expect": "rate-limiting",
+      "kind": "same-language"
+    },
+    {
+      "query": "frenar a un bot que satura mi API con llamadas",
+      "locale": "es",
+      "expect": "rate-limiting",
+      "kind": "same-language"
+    },
+    {
+      "query": "qué responder cuando un cliente hace demasiadas solicitudes",
+      "locale": "en",
+      "expect": "rate-limiting",
+      "kind": "cross-language"
+    },
+    {
+      "query": "making signup fields usable for blind people",
+      "locale": "en",
+      "expect": "accessible-forms",
+      "kind": "same-language"
+    },
+    {
+      "query": "campos de registro que funcionen para personas ciegas",
+      "locale": "es",
+      "expect": "accessible-forms",
+      "kind": "same-language"
+    },
+    {
+      "query": "mensajes de error que no dependan solo del color",
+      "locale": "en",
+      "expect": "accessible-forms",
+      "kind": "cross-language"
+    },
+    {
+      "query": "an event shows the wrong hour for users in another country",
+      "locale": "en",
+      "expect": "time-zones",
+      "kind": "same-language"
+    },
+    {
+      "query": "un evento aparece a la hora equivocada para usuarios de otro país",
+      "locale": "es",
+      "expect": "time-zones",
+      "kind": "same-language"
+    },
+    {
+      "query": "guardar el cumpleaños sin que se corra un día",
+      "locale": "en",
+      "expect": "time-zones",
+      "kind": "cross-language"
+    },
+    {
+      "query": "my homemade bread yeast culture smells sour, is it ready",
+      "locale": "en",
+      "expect": "sourdough",
+      "kind": "same-language"
+    },
+    {
+      "query": "mi fermento casero para pan huele ácido, ¿está listo?",
+      "locale": "es",
+      "expect": "sourdough",
+      "kind": "same-language"
+    },
+    {
+      "query": "cada cuánto alimentar el fermento guardado en la nevera",
+      "locale": "en",
+      "expect": "sourdough",
+      "kind": "cross-language"
+    },
+    {
+      "query": "plan to go from 10k to running 42 kilometers",
+      "locale": "en",
+      "expect": "marathon",
+      "kind": "same-language"
+    },
+    {
+      "query": "plan para pasar de 10 km a correr 42 kilómetros",
+      "locale": "es",
+      "expect": "marathon",
+      "kind": "same-language"
+    },
+    {
+      "query": "qué ritmo llevar al comienzo de una carrera larga",
+      "locale": "en",
+      "expect": "marathon",
+      "kind": "cross-language"
+    },
+    {
+      "query": "what to do with vegetable peels instead of the trash",
+      "locale": "en",
+      "expect": "composting",
+      "kind": "same-language"
+    },
+    {
+      "query": "qué hacer con las cáscaras de verdura en vez de botarlas",
+      "locale": "es",
+      "expect": "composting",
+      "kind": "same-language"
+    },
+    {
+      "query": "mi pila de restos orgánicos huele mal",
+      "locale": "en",
+      "expect": "composting",
+      "kind": "cross-language"
+    },
+    {
+      "query": "my filter coffee tastes sour and watery",
+      "locale": "en",
+      "expect": "pour-over",
+      "kind": "same-language"
+    },
+    {
+      "query": "mi café filtrado sale ácido y aguado",
+      "locale": "es",
+      "expect": "pour-over",
+      "kind": "same-language"
+    },
+    {
+      "query": "cuántos gramos de café por taza",
+      "locale": "en",
+      "expect": "pour-over",
+      "kind": "cross-language"
+    },
+    {
+      "query": "deciding things across time zones without video calls",
+      "locale": "en",
+      "expect": "async-teams",
+      "kind": "same-language"
+    },
+    {
+      "query": "decidir cosas entre zonas horarias sin videollamadas",
+      "locale": "es",
+      "expect": "async-teams",
+      "kind": "same-language"
+    },
+    {
+      "query": "documentos escritos en lugar de juntas",
+      "locale": "en",
+      "expect": "async-teams",
+      "kind": "cross-language"
+    },
+    {
+      "query": "how to save money every month without failing",
+      "locale": "en",
+      "expect": "budgeting",
+      "kind": "same-language"
+    },
+    {
+      "query": "cómo ahorrar plata cada mes sin fallar",
+      "locale": "es",
+      "expect": "budgeting",
+      "kind": "same-language"
+    },
+    {
+      "query": "detectar suscripciones que no uso",
+      "locale": "en",
+      "expect": "budgeting",
+      "kind": "cross-language"
+    },
+    {
+      "query": "my cycle chain squeaks and gears shift badly",
+      "locale": "en",
+      "expect": "bike-maintenance",
+      "kind": "same-language"
+    },
+    {
+      "query": "la cadena de mi bici chirría y los cambios fallan",
+      "locale": "es",
+      "expect": "bike-maintenance",
+      "kind": "same-language"
+    },
+    {
+      "query": "qué revisar antes de salir a pedalear",
+      "locale": "en",
+      "expect": "bike-maintenance",
+      "kind": "cross-language"
+    },
+    {
+      "query": "leaves turning yellow because the soil is always wet",
+      "locale": "en",
+      "expect": "houseplants",
+      "kind": "same-language"
+    },
+    {
+      "query": "hojas amarillas porque la tierra siempre está mojada",
+      "locale": "es",
+      "expect": "houseplants",
+      "kind": "same-language"
+    },
+    {
+      "query": "cuándo echarle agua a una planta en maceta",
+      "locale": "en",
+      "expect": "houseplants",
+      "kind": "cross-language"
+    }
+  ]
+}

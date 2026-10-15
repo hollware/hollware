@@ -112,7 +112,15 @@ export function semanticOf(env: object, model: string): Semantic | null {
   }
 }
 
-/** Semantic search over the Worker's bindings with the deployment's model, or `null` without. */
+/**
+ * Semantic search over the Worker's bindings, or `null` without them. The model is the variable
+ * `HOLLWARE_EMBEDDING_MODEL`, or `DEFAULT_EMBEDDING_MODEL`; the Vectorize index must have been
+ * made for its dimensions, so a new model needs a new index.
+ */
 export function semanticOfEnv(env: object): Semantic | null {
-  return semanticOf(env, DEFAULT_EMBEDDING_MODEL)
+  const model: unknown = Reflect.get(env, 'HOLLWARE_EMBEDDING_MODEL')
+  return semanticOf(
+    env,
+    typeof model === 'string' && model !== '' ? model : DEFAULT_EMBEDDING_MODEL,
+  )
 }

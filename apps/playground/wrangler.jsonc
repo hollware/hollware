@@ -93,5 +93,48 @@
         ],
       },
     },
+    // Staging (v0.5): semantic search and analytics against the real Workers AI, Vectorize and
+    // Analytics Engine, with a synthetic corpus, before the demo gets them. `CLOUDFLARE_ENV=staging
+    // vp build`, then `wrangler deploy` of the build. A Vectorize index serves one model: another
+    // model is another index here and in HOLLWARE_EMBEDDING_MODEL.
+    "staging": {
+      "name": "hollware-staging",
+      "workers_dev": true,
+      // Next to D1's primary (ENAM): a search makes several round trips to it, and from a colo
+      // far away each one costs what the whole answer should.
+      "placement": { "mode": "smart", "hint": "enam" },
+      "vars": {
+        "HOLLWARE_PUBLIC_URL": "https://hollware-staging.sergioazoc.workers.dev",
+        "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
+        "HOLLWARE_ANALYTICS_ACCOUNT_ID": "2aca825b41485fe1e2b99d2dfadcad5a",
+        "HOLLWARE_ANALYTICS_DATASET": "hollware_staging_page_views",
+      },
+      "triggers": { "crons": ["* * * * *"] },
+      "services": [],
+      "ai": { "binding": "AI" },
+      "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-staging-bge-m3" }],
+      "analytics_engine_datasets": [
+        { "binding": "ANALYTICS", "dataset": "hollware_staging_page_views" },
+      ],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e85a150e74794fd6a8d5d83625d6e0ed" }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "hollware-staging",
+          "database_id": "64b0a941-34ed-4da9-b439-22fcfd15d12a",
+          "migrations_dir": "node_modules/@hollware/server/migrations",
+        },
+      ],
+      "queues": {
+        "producers": [{ "binding": "EVENTS", "queue": "hollware-staging-events" }],
+        "consumers": [
+          {
+            "queue": "hollware-staging-events",
+            "max_retries": 5,
+            "dead_letter_queue": "hollware-staging-events-dlq",
+          },
+        ],
+      },
+    },
   },
 }

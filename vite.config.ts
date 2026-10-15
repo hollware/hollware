@@ -109,6 +109,9 @@ export default defineConfig({
       // scripts/e2e-upgrade.ts). They need the network.
       'e2e:install': { command: 'node scripts/e2e-install.ts', cache: false },
       'e2e:upgrade': { command: 'node scripts/e2e-upgrade.ts --from 0.3.0', cache: false },
+      // The search evaluation (v0.5, AC-0.5-2) against a deployment with semantic search:
+      // `vp run eval:search -- --hollware <url> --token-file <file> [--seed]`.
+      'eval:search': { command: 'node scripts/eval-search.ts', cache: false },
       // The MCP conformance run (ADR-022): the tests of its runner, then the suite against
       // `wrangler dev` of tests/conformance/worker, through the token proxy, for both revisions.
       'test:conformance': {

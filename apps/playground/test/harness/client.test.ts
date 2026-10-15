@@ -125,6 +125,12 @@ describe('the read API', () => {
       headers: { authorization: `Bearer ${token}`, ...headers },
     })
 
+  it('says how long the read took on the server', async () => {
+    const answer = await get('/v1/blog/en/edge-caching-basics')
+
+    expect(answer.headers.get('server-timing')).toMatch(/^read;dur=\d+$/)
+  })
+
   it('answers 304 to its own ETag, and 200 to another', async () => {
     const first = await get('/v1/blog/en/edge-caching-basics')
     const etag = first.headers.get('etag') ?? ''

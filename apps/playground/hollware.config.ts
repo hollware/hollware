@@ -99,6 +99,8 @@ export default defineConfig({
     playground: {
       locales: ['es', 'en'],
       defaultLocale: 'es',
+      // The blog of the demo (examples/nuxt-blog): its pages count their views here (ADR-031).
+      url: 'https://demo.hollware.com',
       collections: { blog },
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',
     },

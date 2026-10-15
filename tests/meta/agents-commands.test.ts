@@ -65,6 +65,7 @@ describe('commands in AGENTS.md', () => {
         'e2e:admin',
         'e2e:install',
         'e2e:upgrade',
+        'eval:search',
         'test:acceptance',
         'test:conformance',
       ]),

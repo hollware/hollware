@@ -54,14 +54,19 @@ const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
  * A route of the read API whose `HollwareError` (an unknown collection, a limit out of range) is
  * the caller's to read, with its status. It is caught here, in the route: Hono 5 hands an error
  * that a route throws to the app's error handler before any middleware around it sees it, and
- * that handler answers every error with the same 500.
+ * that handler answers every error with the same 500. The answer says how long the read took on
+ * the server, after the token was checked (`Server-Timing: read;dur=<ms>`), so that a client can
+ * tell the server's time from the network's.
  */
 function readRoute<Path extends string>(
   handler: (c: Context<GatewayEnv, Path>) => Promise<Response>,
 ): (c: Context<GatewayEnv, Path>) => Promise<Response> {
   return async (c) => {
+    const started = Date.now()
     try {
-      return await handler(c)
+      const response = await handler(c)
+      response.headers.set('server-timing', `read;dur=${Date.now() - started}`)
+      return response
     } catch (error) {
       if (!(error instanceof HollwareError)) throw error
       return c.json(

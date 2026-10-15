@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { semanticOf, vectorizeIndex, workersAiEmbedder } from '../../src/semantic/cloudflare.ts'
+import {
+  semanticOf,
+  semanticOfEnv,
+  vectorizeIndex,
+  workersAiEmbedder,
+} from '../../src/semantic/cloudflare.ts'
 
 // Fails when: the adapters over Workers AI and Vectorize (src/semantic/cloudflare.ts) stop asking
 // the model for a batch of texts and reading `data` back, stop refusing an answer without a vector
@@ -139,5 +144,17 @@ describe('semanticOf', () => {
     expect(semanticOf({ AI: ai }, 'model')).toBeNull()
     expect(semanticOf({ VECTORIZE: vectorize }, 'model')).toBeNull()
     expect(semanticOf({ AI: ai, VECTORIZE: vectorize }, 'model')?.embedder.model).toBe('model')
+  })
+})
+
+describe('semanticOfEnv', () => {
+  it('takes the model of HOLLWARE_EMBEDDING_MODEL, and bge-m3 without it', () => {
+    const bindings = { AI: fakeAi({ data: [] }), VECTORIZE: fakeVectorize([]) }
+
+    expect(semanticOfEnv(bindings)?.embedder.model).toBe('@cf/baai/bge-m3')
+    expect(
+      semanticOfEnv({ ...bindings, HOLLWARE_EMBEDDING_MODEL: '@cf/qwen/qwen3-embedding-0.6b' })
+        ?.embedder.model,
+    ).toBe('@cf/qwen/qwen3-embedding-0.6b')
   })
 })

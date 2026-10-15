@@ -53,7 +53,10 @@ export interface HollwareEnv {
    * `search` can be semantic; without either, search is full text only.
    */
   readonly AI?: Ai
-  readonly VECTORIZE?: Vectorize
+  /** `wrangler types` names a Vectorize binding `VectorizeIndex`; either works. */
+  readonly VECTORIZE?: Vectorize | VectorizeIndex
+  /** The embedding model of Workers AI, `@cf/baai/bge-m3` when not set; its index must match it. */
+  readonly HOLLWARE_EMBEDDING_MODEL?: string
   /**
    * Analytics (ADR-031): the Analytics Engine dataset that the beacon of the sites writes to, and
    * what `content_stats` reads it with: the account, an API token with Account Analytics Read

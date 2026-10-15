@@ -44,6 +44,7 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp run e2e:admin`                                              | The admin in Chromium with a virtual passkey and axe (`pnpm exec playwright install chromium` once)               |
 | `pnpm exec vp run e2e:install`                                            | `create-hollware` from a local registry of this checkout, then MCP, publish and a read token (`-- --pm pnpm` too) |
 | `pnpm exec vp run e2e:upgrade`                                            | A project of 0.3.0, installed from npm, moved to this checkout and migrated; its data and token still work        |
+| `pnpm exec vp run eval:search`                                            | Search quality and server time against a deployment with semantic search (`-- --hollware <url> --token-file <f>`) |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                                          |
 
 `vp` is Vite+. Always run the copy installed in the repository, through `pnpm exec`: a global `vp` of another version breaks the Cloudflare plugin. `AGENTS.md` writes `vp` as shorthand for `pnpm exec vp`.
