@@ -4,7 +4,7 @@
 > (together with its mention in `AGENTS.md`). The design lives in `docs/design.md`;
 > decisions live in `docs/adr/`.
 
-- **Status:** v0.1 released as 0.1.0 on 2026-10-14 (F0 closed on 2026-10-12) · **Started:** 2026-10-11
+- **Status:** v0.4 released as 0.4.0 on 2026-10-15; next is v0.5 Intelligence · **Started:** 2026-10-11
 - **Legend:** `[ ]` todo · `[~]` in progress · `[x]` done and verified · `[!]` blocked
 - **Cadence:** one stage at a time. Each stage ends with acceptance, reviewers, green CI,
   a clean-clone check and a pause for the maintainer's review.
@@ -540,7 +540,7 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - 2026-10-15, AC-0.3-5 (maintainer): on the demo, on a computer with a real passkey (Touch ID), the maintainer set up the passkey from the link of `invite --owner`, wrote a post and its translation in the admin and published it, which the site served, and approved a post that Claude Code wrote with a token without `content:publish` (it answered `pending_review`). The phone was left out by the maintainer's decision, since the rest works
 - 2026-10-15, release 0.3.0: Version Packages (#5) merged with its own title; the maintainer promoted ef7b712 to `release` and approved `npm`; run 38673272204 succeeded (check, pack, publish, tag and release). The six packages are on npm at 0.3.0 with SLSA provenance, the six tags `*@0.3.0` and their GitHub Releases exist, `hollware@0.3.0` is Latest, and the tarball of `@hollware/admin` holds the built app (`dist/client/admin`)
 
-## v0.4 — Distribution (started 2026-10-15)
+## v0.4 — Distribution (released 0.4.0 on 2026-10-15)
 
 **Goal:** anyone installs Hollware from its docs, and a second site, the docs of hollware.com, runs in the same deployment as the first.
 
@@ -559,14 +559,14 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - [x] 5 hollware.com: a Nuxt app (`apps/web`) with the design of the project, the docs read from Hollware, deployed at hollware.com
 - [x] 6 The admin in the same design
 - [x] 7 The docs content, written in Hollware (agents write drafts with a token without publish; the maintainer approves)
-- [ ] 8 Install and upgrade e2e (a local registry), a docs-only agent installs Hollware, release 0.4.0
+- [x] 8 Install and upgrade e2e (a local registry), a docs-only agent installs Hollware, release 0.4.0
 
 ### Maintainer actions
 
-- The placeholder and the trusted publisher of `@hollware/nuxt` on npm (2FA), when block 4 is ready.
-- The OK for each first deploy (hollware.com at the apex).
-- Approve the docs drafts in the admin.
-- An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7).
+- [x] The placeholder and the trusted publisher of `@hollware/nuxt` on npm (2FA), when block 4 is ready.
+- [x] The OK for each first deploy (hollware.com at the apex).
+- [x] Approve the docs drafts in the admin.
+- [ ] An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7). Open: the maintainer will arrange it later.
 
 ### Verification log (v0.4)
 
@@ -582,3 +582,4 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - 2026-10-15 — AC-0.4-8, with the maintainer's OK: `examples/nuxt-blog` became the blog of the demo. It is bilingual now, with the playground's routes (Spanish at `/blog/<slug>/`, English at `/en/blog/<slug>/`, an index each), so the demo's links keep working. Its `env.demo` binds `hollware-demo` and takes the name of the Worker that held demo.hollware.com, `hollware-worker-site-demo`, so the domain did not move and going back is a deploy of `examples/worker-site`. Deployed: both indexes and a post in each locale answer 200 with the generator meta, and `scripts/probe-demo.ts` measured a publication live in 0.3 s. Release 0.4.0: the Version Packages PR (#6) merged as `9e4b0f1`; the maintainer publishes the placeholder of `@hollware/nuxt` and its trusted publisher, then promotes.
 - 2026-10-15 — Release 0.4.0: `9e4b0f1` promoted by the maintainer. Six packages published on the first run; `@hollware/nuxt` was refused twice (403 "OIDC permission denied"): its trusted publisher had been made with `--allow-stage-publish` only, while `release.yml` publishes with `npm publish` after the `npm` environment's approval, which needs the publish permission the other six have. With the permission fixed, a rerun of the failed job skipped the six already on npm and published it. All seven are `latest` at 0.4.0 with SLSA provenance; `finalize` made the seven tags and Releases (`hollware@0.4.0` Latest). Found on the way: a stale npm token on the maintainer's machine (401 on `npm whoami`), fixed with `npm login`.
 - 2026-10-15 — AC-0.4-6, met: a sub-agent with no access to the repository, fetching only hollware.com, installed 0.4.0 from npm in an empty directory and passed all five steps: `npm create hollware my-cms -- --no-git`, the dev server, `describe_site`, `create_draft` and `publish` over raw JSON-RPC with the printed token, a read token reading the post over `/v1`, and `hollware doctor` clean. Its frictions, each fixed: run the CLI from inside the project; options need `--` with npm; how to stop the server; a sample post of the starter's blog; MCP over plain HTTP (headers, SSE answers, `structuredContent`, no session); every write moves `version`; the read API's local URL and the starter's collection `blog` (the examples said `posts`); `doctor` defaults to the local database; the tools reference had no Markdown. The four pages went up as reviews for the maintainer; `/reference/mcp-tools.md` is new in apps/web (tested in `web.test.ts`), waiting for a redeploy.
+- 2026-10-15 — Close of v0.4: the maintainer approved the four reviewed pages, live on hollware.com; `/reference/mcp-tools.md` deployed (200, twelve tools). Clean clone of `e96ecf0`: `pnpm install --frozen-lockfile`, `vp check`, `vp test` (265 files, 4,070 tests) and `vp run -r build` pass. CI green on `main`, with the install jobs on Ubuntu and macOS, npm and pnpm, and the upgrade from 0.3.0. Carried over: AC-0.4-7 (an external person's install), AC-0.2-8 (the demo's cost, around 2026-10-21), draft preview (`create_preview_token`) and inviting a person who already exists to another site. No reviewer trio this stage: the sub-agent budget allows one agent, which ran AC-0.4-6.
