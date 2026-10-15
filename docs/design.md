@@ -69,6 +69,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-027](adr/0027-one-person-across-the-sites-of-a-deployment.md) | One person across the sites of a deployment | Accepted |
 | [ADR-028](adr/0028-read-tokens-and-cors-for-the-read-api.md) | Read tokens, and CORS for the read API | Accepted |
 | [ADR-029](adr/0029-full-text-search-in-d1.md) | Full-text search in D1 | Accepted |
+| [ADR-030](adr/0030-vectors-as-derived-data.md) | Vectors as derived data | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

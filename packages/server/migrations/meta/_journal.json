@@ -64,6 +64,13 @@
       "when": 1792086605125,
       "tag": "0008_search",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792087464375,
+      "tag": "0009_embeddings",
+      "breakpoints": true
     }
   ]
 }

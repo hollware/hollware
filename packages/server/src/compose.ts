@@ -11,6 +11,8 @@ import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { runDueSchedules } from './schedule/run.ts'
+import { DEFAULT_EMBEDDING_MODEL, semanticOf } from './semantic/cloudflare.ts'
+import { healVectors } from './semantic/index-entry.ts'
 
 export interface ComposeOptions {
   /**
@@ -68,6 +70,7 @@ export function createHollwareWith(
       const value: unknown = Reflect.get(env, name)
       return typeof value === 'string' ? value : undefined
     },
+    semantic: semanticOf(env, DEFAULT_EMBEDDING_MODEL),
   })
   return {
     fetch: createGateway({
@@ -91,6 +94,14 @@ export function createHollwareWith(
         })
         // Then the outbox, which holds the events of what was just published, too.
         await sweepOutbox({ queue: env.EVENTS, deps: deliveryDeps(env, site) })
+        // And the vectors that no event brought in line (v0.5), a few entries each minute.
+        const semantic = semanticOf(env, DEFAULT_EMBEDDING_MODEL)
+        if (semantic !== null) {
+          await healVectors(connect(env.DB), semantic, {
+            site: site.key,
+            now: clock.now().toISOString(),
+          })
+        }
       }
       ctx.waitUntil(
         (async () => {

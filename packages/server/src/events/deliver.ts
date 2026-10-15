@@ -9,6 +9,8 @@ import type { Db } from '../db/d1.ts'
 import { deliveredTo, findEvent, recordAttempt } from '../db/events.ts'
 import type { Clock } from '../ports.ts'
 import type { EventPayload } from '../ops/event.ts'
+import type { Semantic } from '../semantic/ports.ts'
+import { syncEntryVectors } from '../semantic/index-entry.ts'
 
 /** Where IndexNow takes the URLs that changed. */
 export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
@@ -27,6 +29,8 @@ export interface DeliveryDeps {
   readonly fetch: (request: Request) => Promise<Response>
   /** The value of a Worker secret by its name, or `undefined` when it is not set. */
   readonly secret: (name: string) => string | undefined
+  /** The model and the vector index, when the Worker has both; semantic search is off without. */
+  readonly semantic?: Semantic | null
 }
 
 async function ensureOk(response: Response, what: string): Promise<void> {
@@ -71,6 +75,20 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
           body: JSON.stringify({ host, key, urlList: [payload.url] }),
         })
         await ensureOk(await deps.fetch(request), 'IndexNow')
+      },
+    })
+  }
+  const semantic = deps.semantic
+  if (semantic !== undefined && semantic !== null) {
+    // Hollware's own subscriber: the vectors follow what is published, whichever the event.
+    subscribers.push({
+      name: 'vectors',
+      async send(payload) {
+        await syncEntryVectors(deps.db, semantic, {
+          site: site.key,
+          entryId: payload.entry.id,
+          now: deps.clock.now().toISOString(),
+        })
       },
     })
   }

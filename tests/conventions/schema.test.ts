@@ -80,6 +80,7 @@ describe('D1 schema', () => {
       'auth_challenges',
       'deliveries',
       'entries',
+      'entry_embeddings',
       'invitations',
       'members',
       'outbox',

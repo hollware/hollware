@@ -33,3 +33,4 @@ export {
   READ_TOKEN_PREFIX,
 } from './tokens.ts'
 export * from './webhooks.ts'
+export { CHUNK_LIMITS, CHUNKER_VERSION, chunksOf, type Chunk } from './search/chunks.ts'

@@ -10,6 +10,7 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 export const ID_PREFIXES = {
   challenge: 'chl',
   delivery: 'dlv',
+  embedding: 'emb',
   entry: 'ent',
   event: 'evt',
   invitation: 'inv',

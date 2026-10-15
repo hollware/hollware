@@ -48,6 +48,12 @@ export interface HollwareEnv {
   readonly ASSETS?: Fetcher
   /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
   readonly EVENTS?: EventQueue
+  /**
+   * Workers AI and a Vectorize index (v0.5): with both, every published entry is embedded and
+   * `search` can be semantic; without either, search is full text only.
+   */
+  readonly AI?: Ai
+  readonly VECTORIZE?: Vectorize
 }
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>

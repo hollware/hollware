@@ -535,3 +535,40 @@ export const reviews = sqliteTable(
     ),
   ],
 )
+
+/**
+ * The vectors of an entry, as derived data (v0.5): the published revision they were made from,
+ * with which model and which version of the chunker, and how many pieces there are. The vectors
+ * live in Vectorize under `<entry id>:<piece>`; this row says which exist and whether they are
+ * current. One row per entry: a new publication replaces it.
+ */
+export const entryEmbeddings = sqliteTable(
+  'entry_embeddings',
+  {
+    id: id('emb'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    revisionId: text('revision_id').notNull(),
+    model: text('model').notNull(),
+    chunkerVersion: text('chunker_version').notNull(),
+    /** How many pieces, so how many vectors: `<entry id>:0` to `<entry id>:<pieces - 1>`. */
+    pieces: integer('pieces').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('entry_embeddings_id_site').on(t.id, t.siteId),
+    unique('entry_embeddings_entry').on(t.siteId, t.entryId),
+    foreignKey({ name: 'entry_embeddings_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'entry_embeddings_entry_fk',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'entry_embeddings_revision_fk',
+      columns: [t.revisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    check('entry_embeddings_pieces', sql`${t.pieces} >= 1`),
+  ],
+)

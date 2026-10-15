@@ -81,6 +81,7 @@ describe('the database', () => {
       'entries_fts_data',
       'entries_fts_docsize',
       'entries_fts_idx',
+      'entry_embeddings',
       'invitations',
       'members',
       'outbox',
