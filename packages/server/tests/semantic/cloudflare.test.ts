@@ -29,9 +29,17 @@ function fakeVectorize(
 ) {
   const queries: { vector: number[]; options: unknown }[] = []
   const deleted: string[][] = []
+  const fetched: string[][] = []
   return {
     queries,
     deleted,
+    fetched,
+    async getByIds(ids: string[]) {
+      fetched.push(ids)
+      return ids
+        .filter((id) => id !== 'gone')
+        .map((id) => ({ id, values: new Float32Array([0.5, 0.25]) }))
+    },
     async upsert() {
       return {}
     },
@@ -132,6 +140,17 @@ describe('the Vectorize index', () => {
     await index.remove(['ent_1:0', 'ent_1:1'])
 
     expect(vectorize.deleted).toEqual([['ent_1:0', 'ent_1:1']])
+  })
+})
+
+describe('the Vectorize index, read back', () => {
+  it('answers the values of the vectors it has, as numbers, and asks nothing for no id', async () => {
+    const vectorize = fakeVectorize([])
+    const index = vectorizeIndex(vectorize)
+
+    expect(await index.get([])).toEqual([])
+    expect(await index.get(['ent_1:0', 'gone'])).toEqual([{ id: 'ent_1:0', values: [0.5, 0.25] }])
+    expect(vectorize.fetched).toEqual([['ent_1:0', 'gone']])
   })
 })
 

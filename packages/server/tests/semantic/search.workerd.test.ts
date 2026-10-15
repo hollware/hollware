@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import type { Semantic } from '../../src/ports.ts'
-import { syncEntryVectors } from '../../src/semantic/index-entry.ts'
+import { refreshRelated, syncEntryVectors } from '../../src/semantic/index-entry.ts'
 import { agent, BINDING, blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 import { fakeSemantic } from './fakes.ts'
@@ -14,7 +14,9 @@ import { fakeSemantic } from './fakes.ts'
 // merging both in hybrid, where the words found by full text keep their snippet; or stops saying
 // in `mode` that the search was full text when the deployment has no semantic search; or get_entry
 // (src/ops/get-entry.ts) stops answering, only when asked, the published entries the vectors found
-// closest when the entry was indexed (src/semantic/index-entry.ts), closest first and never itself.
+// closest when the entry was indexed (src/semantic/index-entry.ts), closest first and never itself;
+// or the cron's refreshRelated stops finding them again for an entry whose list is empty after ten
+// minutes, or a day old, or touches one whose list is fresh.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -150,5 +152,35 @@ describe('related entries', () => {
     expect(plain).not.toHaveProperty('related')
     expect(after.related?.map((entry) => entry.slug)).toEqual(['moon'])
     expect(without.related).toEqual([])
+  })
+})
+
+describe('the refresh of related entries', () => {
+  it('finds them again when they were empty for ten minutes, or are a day old', async () => {
+    // jazz is indexed alone, so it finds no related entries; the others come after it.
+    const { world, reader, semantic } = await indexed('related-refresh', ['jazz', 'buzz', 'moon'])
+    const site = reader(semantic)
+    const db = connect(world.db)
+    const at = (time: string) => refreshRelated(db, semantic, { site: world.tenant.key, now: time })
+    const jazzRelated = async () =>
+      (
+        await site.getEntry({ collection: 'blog', locale: 'en', slug: 'jazz', related: true })
+      ).related?.map((entry) => entry.slug)
+    const before = await jazzRelated()
+
+    const early = await at('2026-10-15T12:09:00.000Z')
+    const retried = await at('2026-10-15T12:11:00.000Z')
+    const after = await jazzRelated()
+    const fresh = await at('2026-10-15T12:12:00.000Z')
+    const daily = await at('2026-10-16T12:12:00.000Z')
+
+    expect([before, early, retried, after, fresh, daily]).toEqual([
+      [],
+      0,
+      1,
+      ['buzz', 'moon'],
+      0,
+      3,
+    ])
   })
 })

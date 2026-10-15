@@ -16,6 +16,7 @@ interface VectorizeBinding {
     }[],
   ): Promise<unknown>
   deleteByIds(ids: string[]): Promise<unknown>
+  getByIds(ids: string[]): Promise<{ id: string; values: number[] | Float32Array | Float64Array }[]>
   query(
     vector: number[],
     options: {
@@ -80,6 +81,11 @@ export function vectorizeIndex(binding: VectorizeBinding): VectorIndex {
     },
     async remove(ids) {
       if (ids.length > 0) await binding.deleteByIds([...ids])
+    },
+    async get(ids) {
+      if (ids.length === 0) return []
+      const found = await binding.getByIds([...ids])
+      return found.map((vector) => ({ id: vector.id, values: Array.from(vector.values) }))
     },
     async query(values, options) {
       const answer = await binding.query([...values], {

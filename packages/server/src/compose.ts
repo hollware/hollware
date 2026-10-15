@@ -12,7 +12,7 @@ import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
-import { healVectors } from './semantic/index-entry.ts'
+import { healVectors, refreshRelated } from './semantic/index-entry.ts'
 
 export interface ComposeOptions {
   /**
@@ -97,10 +97,9 @@ export function createHollwareWith(
         // And the vectors that no event brought in line (v0.5), a few entries each minute.
         const semantic = semanticOfEnv(env)
         if (semantic !== null) {
-          await healVectors(connect(env.DB), semantic, {
-            site: site.key,
-            now: clock.now().toISOString(),
-          })
+          const now = clock.now().toISOString()
+          await healVectors(connect(env.DB), semantic, { site: site.key, now })
+          await refreshRelated(connect(env.DB), semantic, { site: site.key, now })
         }
       }
       ctx.waitUntil(

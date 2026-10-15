@@ -376,6 +376,10 @@ export interface VectorMatch {
 export interface VectorIndex {
   upsert(vectors: readonly StoredVector[]): Promise<void>
   remove(ids: readonly string[]): Promise<void>
+  /** The stored values of those vectors; an id the index does not have is left out. */
+  get(
+    ids: readonly string[],
+  ): Promise<readonly { readonly id: string; readonly values: readonly number[] }[]>
   /** The `topK` vectors nearest to `values` among those of the site, narrowed as asked. */
   query(
     values: readonly number[],

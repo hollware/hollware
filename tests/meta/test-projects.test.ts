@@ -91,6 +91,7 @@ describe('test projects', () => {
       'apps/playground/test/workerd/node-globals.workerd.test.ts',
     ])
     expect(inProject('playground:harness')).toEqual([
+      'apps/playground/test/harness/apex.test.ts',
       'apps/playground/test/harness/client.test.ts',
       'apps/playground/test/harness/gateway.test.ts',
       'apps/playground/test/harness/identity.test.ts',

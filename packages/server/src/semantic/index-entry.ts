@@ -1,8 +1,8 @@
 import { CHUNKER_VERSION, chunksOf, newId, type EntryDocument } from '@hollware/core'
-import { and, eq, isNotNull, isNull, ne, or } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lte, ne, or } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
 import { entries, entryEmbeddings, revisions } from '../db/schema.ts'
-import type { Semantic } from '../ports.ts'
+import type { RelatedEntry, Semantic } from '../ports.ts'
 
 /** The id of a piece's vector. */
 export function vectorId(entryId: string, piece: number): string {
@@ -33,6 +33,30 @@ function idsOf(entryId: string, from: number, pieces: number): string[] {
   return Array.from({ length: Math.max(0, pieces - from) }, (_, offset) =>
     vectorId(entryId, from + offset),
   )
+}
+
+/** The entries nearest to an entry's summary, in its collection and locale; itself left out. */
+async function nearestTo(
+  semantic: Semantic,
+  input: {
+    readonly site: string
+    readonly entryId: string
+    readonly collection: string
+    readonly locale: string
+    readonly summary: readonly number[]
+  },
+): Promise<RelatedEntry[]> {
+  const nearest = await semantic.index.query(input.summary, {
+    topK: RELATED_LIMIT + 1,
+    site: input.site,
+    collection: input.collection,
+    locale: input.locale,
+    summariesOnly: true,
+  })
+  return nearest
+    .filter((match) => match.metadata.entry !== input.entryId)
+    .slice(0, RELATED_LIMIT)
+    .map((match) => ({ id: match.metadata.entry, score: match.score }))
 }
 
 /**
@@ -117,18 +141,13 @@ export async function syncEntryVectors(
   // A revision with fewer sections than the one before leaves vectors that no piece has now.
   if (stored !== undefined)
     await semantic.index.remove(idsOf(entryId, chunks.length, stored.pieces))
-  // The entries nearest by their summaries, in its collection and locale; itself left out.
-  const nearest = await semantic.index.query(vectors[0] ?? [], {
-    topK: RELATED_LIMIT + 1,
+  const related = await nearestTo(semantic, {
     site,
+    entryId,
     collection: published.collection,
     locale: published.locale,
-    summariesOnly: true,
+    summary: vectors[0] ?? [],
   })
-  const related = nearest
-    .filter((match) => match.metadata.entry !== entryId)
-    .slice(0, RELATED_LIMIT)
-    .map((match) => ({ id: match.metadata.entry, score: match.score }))
   const row = {
     related: JSON.stringify(related),
     revisionId: published.revisionId,
@@ -217,4 +236,70 @@ export async function healVectors(
     )
   }
   return { synced: ids.length - failed, failed }
+}
+
+/** How long an entry with no related entries waits before they are looked for again. */
+export const RELATED_RETRY_MS = 10 * 60_000
+
+/** How old the related entries of an entry may grow before they are looked for again. */
+export const RELATED_REFRESH_MS = 24 * 60 * 60_000
+
+/**
+ * What the cron trigger does for related entries: it finds them again for at most `limit`
+ * entries of the site, oldest first, whose related entries are a day old, or empty for ten
+ * minutes. Vectorize shows a vector seconds after it was written, so entries indexed together
+ * miss each other at first; and an entry published later belongs among the related entries of
+ * those before it. Each keeps its vectors: only its summary is read back and compared.
+ */
+export async function refreshRelated(
+  db: Db,
+  semantic: Semantic,
+  input: { readonly site: string; readonly now: string; readonly limit?: number },
+): Promise<number> {
+  const now = Date.parse(input.now)
+  const retryBefore = new Date(now - RELATED_RETRY_MS).toISOString()
+  const refreshBefore = new Date(now - RELATED_REFRESH_MS).toISOString()
+  const rows = await db
+    .select({
+      entryId: entryEmbeddings.entryId,
+      collection: entries.collection,
+      locale: entries.locale,
+    })
+    .from(entryEmbeddings)
+    .innerJoin(
+      entries,
+      and(eq(entries.id, entryEmbeddings.entryId), eq(entries.siteId, entryEmbeddings.siteId)),
+    )
+    .where(
+      and(
+        eq(entryEmbeddings.siteId, input.site),
+        isNotNull(entries.publishedRev),
+        or(
+          and(eq(entryEmbeddings.related, '[]'), lte(entryEmbeddings.updatedAt, retryBefore)),
+          lte(entryEmbeddings.updatedAt, refreshBefore),
+        ),
+      ),
+    )
+    .orderBy(entryEmbeddings.updatedAt)
+    .limit(input.limit ?? 10)
+  if (rows.length === 0) return 0
+  const summaries = new Map(
+    (await semantic.index.get(rows.map((row) => vectorId(row.entryId, 0)))).map((vector) => [
+      vector.id,
+      vector.values,
+    ]),
+  )
+  let refreshed = 0
+  for (const row of rows) {
+    const summary = summaries.get(vectorId(row.entryId, 0))
+    // No summary in the index: the sweep of the vectors makes it again.
+    if (summary === undefined) continue
+    const related = await nearestTo(semantic, { site: input.site, ...row, summary })
+    await db
+      .update(entryEmbeddings)
+      .set({ related: JSON.stringify(related), updatedAt: input.now })
+      .where(and(eq(entryEmbeddings.siteId, input.site), eq(entryEmbeddings.entryId, row.entryId)))
+    refreshed += 1
+  }
+  return refreshed
 }

@@ -46,6 +46,12 @@ export function fakeIndex(): VectorIndex & { readonly vectors: Map<string, Store
     async remove(ids) {
       for (const id of ids) vectors.delete(id)
     },
+    async get(ids) {
+      return ids.flatMap((id) => {
+        const vector = vectors.get(id)
+        return vector === undefined ? [] : [{ id, values: vector.values }]
+      })
+    },
     async query(values, options) {
       const matches: VectorMatch[] = []
       for (const vector of vectors.values()) {
