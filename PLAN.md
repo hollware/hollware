@@ -540,6 +540,36 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - 2026-10-15, AC-0.3-5 (maintainer): on the demo, on a computer with a real passkey (Touch ID), the maintainer set up the passkey from the link of `invite --owner`, wrote a post and its translation in the admin and published it, which the site served, and approved a post that Claude Code wrote with a token without `content:publish` (it answered `pending_review`). The phone was left out by the maintainer's decision, since the rest works
 - 2026-10-15, release 0.3.0: Version Packages (#5) merged with its own title; the maintainer promoted ef7b712 to `release` and approved `npm`; run 38673272204 succeeded (check, pack, publish, tag and release). The six packages are on npm at 0.3.0 with SLSA provenance, the six tags `*@0.3.0` and their GitHub Releases exist, `hollware@0.3.0` is Latest, and the tarball of `@hollware/admin` holds the built app (`dist/client/admin`)
 
+## v0.4 — Distribution (started 2026-10-15)
+
+**Goal:** anyone installs Hollware from its docs, and a second site, the docs of hollware.com, runs in the same deployment as the first.
+
+### Decisions (2026-10-15)
+
+- **People across sites (maintainer):** one person, one passkey and one session for the whole deployment; the role is per site (`members`). The admin switches sites; the consent page asks which site when the person is in several. Passkeys and sessions lose `site_id`.
+- **hollware.com (maintainer):** the site itself is the documentation, built with Nuxt and Nuxt UI, customized to the full: complete dark mode, the aesthetic of executor.sh, t3.codes and linear.app. The admin takes the same aesthetic.
+- **Where the docs content lives (orchestrator, the maintainer named no preference):** site `docs` in the existing deployment (cms.demo.hollware.com), beside the blog of the demo. hollware.com reads it over a service binding with `@hollware/nuxt`, as any site would; no CI rebuild, no tokens in GitHub.
+
+### Blocks
+
+- [ ] 1 Multi-site: a config with several sites; the site of a request is the principal's (a personal token's, a grant's); people and passkeys across sites, roles per site; the admin's site switcher; the consent page's site choice
+- [ ] 2 Read tokens (`hw_read_`, published content only, revocable) and CORS per site for the read API
+- [ ] 3 `create-hollware`, the starter, `hollware deploy` and `hollware doctor`
+- [ ] 4 `@hollware/nuxt`: `useHollware()` over a binding or HTTP, `<HollwareContent>` with `@comark/vue`, draft preview; `examples/nuxt-blog`
+- [ ] 5 hollware.com: a Nuxt app (`apps/web`) with the design of the project, the docs read from Hollware, deployed at hollware.com
+- [ ] 6 The admin in the same design
+- [ ] 7 The docs content, written in Hollware (agents write drafts with a token without publish; the maintainer approves)
+- [ ] 8 Install and upgrade e2e (a local registry), a docs-only agent installs Hollware, release 0.4.0
+
+### Maintainer actions
+
+- The placeholder and the trusted publisher of `@hollware/nuxt` on npm (2FA), when block 4 is ready.
+- The OK for each first deploy (hollware.com at the apex).
+- Approve the docs drafts in the admin.
+- An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7).
+
+### Verification log (v0.4)
+
 ## Later stages (detailed at the start of each stage)
 
 - **v0.3 Admin** — Vue 3.5 + Nuxt UI 4 + Vue Router 5 SPA shipped in `@hollware/admin`; PKCE first-party client; editor (CodeMirror 6 + Comark preview), contract-driven forms, review queue with diff, approval via Workflow `waitForEvent`; identity screens. **Exit:** an agent's post approved from the admin; axe clean.
