@@ -8,12 +8,15 @@ import { defineHandlers, type Handlers, type OperationHandler } from '../src/ops
 const notYet = (): Promise<never> => Promise.reject(new Error('implemented in WP7'))
 
 const handlers: Handlers = {
+  approve_review: notYet,
   create_draft: notYet,
   describe_site: notYet,
   get_entry: notYet,
   get_translations: notYet,
   list_entries: notYet,
+  list_reviews: notYet,
   publish: notYet,
+  request_changes: notYet,
   unpublish: notYet,
   update_draft: notYet,
   validate: notYet,
@@ -26,7 +29,7 @@ describe('the handler table', () => {
     void validate
     // @ts-expect-error -- `validate` has no handler.
     defineHandlers(missingOne)
-    // @ts-expect-error -- `delete_entry` is no operation of v0.1.
+    // @ts-expect-error -- `delete_entry` is no operation.
     defineHandlers({ ...handlers, delete_entry: notYet })
   })
 

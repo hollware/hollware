@@ -72,11 +72,13 @@ describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
       '0002_append_only.sql',
       '0003_events_and_schedules.sql',
       '0004_identity.sql',
+      '0005_reviews.sql',
       'meta/0000_snapshot.json',
       'meta/0001_snapshot.json',
       'meta/0002_snapshot.json',
       'meta/0003_snapshot.json',
       'meta/0004_snapshot.json',
+      'meta/0005_snapshot.json',
       'meta/_journal.json',
     ])
     expect(run.stdout).toContain('No schema changes, nothing to migrate')
@@ -98,10 +100,10 @@ describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
     const run = generateOnCopy('drift', schemaFile, ['--name', 'drift'])
 
     expect(run.after.filter((file) => !run.before.includes(file))).toEqual([
-      '0005_drift.sql',
-      'meta/0005_snapshot.json',
+      '0006_drift.sql',
+      'meta/0006_snapshot.json',
     ])
-    expect(readFileSync(join(run.out, '0005_drift.sql'), 'utf8')).toBe(
+    expect(readFileSync(join(run.out, '0006_drift.sql'), 'utf8')).toBe(
       'ALTER TABLE `revisions` ADD `summary` text;',
     )
   })

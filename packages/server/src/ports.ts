@@ -126,6 +126,24 @@ export type WriteRefusal =
   /** The row would be over `MAX_ROW_BYTES` (`limits.ts`); nothing was written. */
   | { readonly outcome: 'too_large'; readonly bytes: number; readonly limit: number }
 
+/** The status of a review (v0.3). */
+export type ReviewStatus = 'pending' | 'approved' | 'changes_requested' | 'cancelled'
+
+/** A request to publish a revision, and what was decided about it. */
+export interface StoredReview {
+  readonly id: string
+  readonly entryId: string
+  readonly revisionId: string
+  readonly status: ReviewStatus
+  /** The warnings the person who asked acknowledged. */
+  readonly acknowledged: readonly AcknowledgedWarning[]
+  readonly requestedBy: string
+  readonly requestedAt: string
+  readonly decidedBy: string | null
+  readonly decidedAt: string | null
+  readonly note: string | null
+}
+
 /** A scheduled publication, as the cron trigger reads it. */
 export interface StoredSchedule {
   readonly entryId: string
@@ -186,7 +204,8 @@ export interface ContentStore {
   ): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal>
   /**
    * Appends a revision and makes it the head, if the entry is still at `expectedVersion`. In
-   * one batch: the revision, its tags (only where the revision was inserted) and the entry.
+   * one batch: the revision, its tags (only where the revision was inserted), the cancellation of
+   * a pending review, which asked for another revision, and the entry.
    */
   appendRevision(
     site: string,
@@ -199,7 +218,8 @@ export interface ContentStore {
   ): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal>
   /**
    * Publishes the head revision, if the entry is still at `expectedVersion`, and appends the
-   * publication with its verdict and acknowledged warnings.
+   * publication with its verdict and acknowledged warnings. A pending review of the entry is
+   * approved by the actor in the same batch: what it asked for is published.
    */
   publish(
     site: string,
@@ -235,6 +255,34 @@ export interface ContentStore {
   dueSchedules(site: string, now: string): Promise<readonly StoredSchedule[]>
   /** Takes a scheduled entry back to a draft and drops its schedule. */
   cancelSchedule(site: string, entryId: string): Promise<void>
+  /**
+   * Asks for the head revision of an entry to be published, if the entry is still at
+   * `expectedVersion`. An entry has one pending review at most: asking again answers it.
+   */
+  requestReview(
+    site: string,
+    write: {
+      readonly entryId: string
+      readonly expectedVersion: number
+      readonly acknowledged: readonly AcknowledgedWarning[]
+      readonly actor: Actor
+    },
+  ): Promise<{ readonly outcome: 'pending_review'; readonly review: StoredReview } | WriteRefusal>
+  /** A review of the site, by its id, or `null`. */
+  findReview(site: string, id: string): Promise<StoredReview | null>
+  /** The reviews of the site with this status, newest first. */
+  listReviews(
+    site: string,
+    query: { readonly status: ReviewStatus; readonly limit: number },
+  ): Promise<readonly StoredReview[]>
+  /** Closes a pending review with a note, without publishing. */
+  requestChanges(
+    site: string,
+    write: { readonly id: string; readonly note: string; readonly userId: string },
+  ): Promise<
+    | { readonly outcome: 'changes_requested' | 'not_pending'; readonly review: StoredReview }
+    | { readonly outcome: 'not_found' }
+  >
   /** Takes the entry off the public site and appends the unpublish. */
   unpublish(
     site: string,

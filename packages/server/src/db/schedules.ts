@@ -102,7 +102,7 @@ export async function dueSchedules(
     version: row.version,
     acknowledged: parseAcknowledged(row.acknowledged),
     actor: {
-      kind: 'token',
+      kind: actorKindOf(row.actorKind),
       userId: row.actorUserId,
       tokenId: row.actorTokenId,
       meta: row.actorMeta === null ? null : parseMeta(row.actorMeta),
@@ -133,7 +133,7 @@ export async function cancelSchedule(
   ])
 }
 
-function parseAcknowledged(text: string): AcknowledgedWarning[] {
+export function parseAcknowledged(text: string): AcknowledgedWarning[] {
   const value: unknown = JSON.parse(text)
   if (!Array.isArray(value)) return []
   return value.flatMap((item: unknown) =>
@@ -146,6 +146,12 @@ function parseAcknowledged(text: string): AcknowledgedWarning[] {
       ? [{ contract: item.contract, path: item.path }]
       : [],
   )
+}
+
+/** The kind of an actor as the `*_actor_kind` checks allow it. */
+function actorKindOf(value: string): Actor['kind'] {
+  if (value === 'token' || value === 'user' || value === 'oauth_client') return value
+  throw new Error(`A schedule has the actor kind ${value}, which is no kind`)
 }
 
 function parseMeta(text: string): Record<string, unknown> | null {

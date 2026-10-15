@@ -118,6 +118,31 @@ export const entry = entrySummary.extend({
   html: z.string().optional(),
 })
 
+export const reviewId = z
+  .string()
+  .regex(/^rvw_[0-9A-HJKMNP-TV-Z]{26}$/)
+  .describe('The id of a review (rvw_…), as publish and list_reviews return it.')
+
+export const reviewStatus = z.enum(['pending', 'approved', 'changes_requested', 'cancelled'])
+
+/**
+ * A request to publish a revision, made by someone who may write but not publish, and what a
+ * person who may publish decided about it.
+ */
+export const review = z.object({
+  id: reviewId,
+  entryId,
+  revision: revisionId.describe('The revision asked for.'),
+  status: reviewStatus.describe(
+    'pending until someone decides; cancelled when a new revision of the entry is saved.',
+  ),
+  requestedBy: z.string().describe('The user who asked.'),
+  requestedAt: z.string(),
+  decidedBy: z.string().nullable(),
+  decidedAt: z.string().nullable(),
+  note: z.string().nullable().describe('What the reviewer asked to change, or null.'),
+})
+
 export const conflict = z.object({
   currentVersion: z.number().int().min(1),
   headRevision: revisionId,

@@ -1,9 +1,37 @@
 import type { ResolvedSite, Scope } from '@hollware/core'
 import type { Handlers } from '../ops/types.ts'
-import type { Clock, ContentStore } from '../ports.ts'
+import type { Principal } from '../auth/types.ts'
+import type { Actor, Clock, ContentStore } from '../ports.ts'
 
 /** What the publication of a schedule may do: what `publish` needs, in the scheduler's name. */
 const SCHEDULER_SCOPES: readonly Scope[] = ['content:read', 'content:write', 'content:publish']
+
+/**
+ * The principal a schedule publishes as: the token, or the OAuth client, that scheduled it, with
+ * the scopes a publication needs. An OAuth client is known by the id its actor kept (ADR-026).
+ */
+function principalOf(actor: Actor, site: string): Principal {
+  if (actor.kind === 'oauth_client') {
+    const client = actor.meta?.['oauthClient']
+    return {
+      kind: 'oauth',
+      userId: actor.userId,
+      clientId: typeof client === 'string' ? client : 'unknown',
+      site,
+      scopes: SCHEDULER_SCOPES,
+    }
+  }
+  if (actor.tokenId === null) {
+    throw new Error(`A schedule of a ${actor.kind} has no token to publish with`)
+  }
+  return {
+    kind: 'token',
+    userId: actor.userId,
+    tokenId: actor.tokenId,
+    site,
+    scopes: SCHEDULER_SCOPES,
+  }
+}
 
 export interface ScheduleRun {
   readonly published: number
@@ -39,13 +67,7 @@ export async function runDueSchedules(input: {
       },
       {
         site,
-        principal: {
-          kind: 'token',
-          userId: schedule.actor.userId,
-          tokenId: schedule.actor.tokenId ?? '',
-          site: site.key,
-          scopes: SCHEDULER_SCOPES,
-        },
+        principal: principalOf(schedule.actor, site.key),
         view: 'head',
         store,
         clock,

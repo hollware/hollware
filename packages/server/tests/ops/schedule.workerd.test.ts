@@ -3,14 +3,15 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { handlers } from '../../src/ops/index.ts'
 import { runDueSchedules } from '../../src/schedule/run.ts'
-import { blogFrontmatter, warmUpComark } from './support.ts'
+import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
 import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 
 // Fails when: a publish with publishAt stops scheduling the entry (status scheduled at the next
 // version, no publication yet) after the same checks as a publish; the cron run (src/schedule/
 // run.ts) publishes before the time, stops publishing at the time in the name of who scheduled it
 // and with the warnings acknowledged then, or keeps a schedule whose entry changed since (the entry
-// must go back to a draft); unpublish stops cancelling a schedule; or publishAt is taken with a
+// must go back to a draft), or publishes for an OAuth client as anything but that client;
+// unpublish stops cancelling a schedule; or publishAt is taken with a
 // group, or for an entry that is published.
 
 vi.setConfig({ testTimeout: 60_000 })
@@ -50,6 +51,31 @@ function run(world: World) {
 }
 
 describe('publishAt', () => {
+  it('publishes at the time in the name of the OAuth client that scheduled it', async () => {
+    const world = await newWorld(env.DB, 'schedule-oauth')
+    const id = await post(world)
+    const client = agentFor(
+      world.context({
+        principal: {
+          kind: 'oauth',
+          userId: world.tenant.userId,
+          clientId: 'https://claude.ai/oauth/mcp-client.json',
+          site: world.tenant.key,
+          scopes: ['content:read', 'content:write', 'content:publish'],
+        },
+      }),
+    )
+    await client.publish({ id, version: 1, publishAt: LATER, acknowledgeWarnings: [TITLE_ACK] })
+
+    world.time.set(LATER)
+    expect(await run(world)).toEqual({ published: 1, cancelled: 0 })
+    const [publication] = await publicationsOf(world.db, id)
+    expect([publication?.actor_kind, publication?.actor_token_id]).toEqual(['oauth_client', null])
+    expect(JSON.parse(publication?.actor_meta ?? '')).toEqual({
+      oauthClient: 'https://claude.ai/oauth/mcp-client.json',
+    })
+  })
+
   it('schedules the entry, and the cron run publishes it at the time, in the name of who scheduled it', async () => {
     const world = await newWorld(env.DB, 'schedule')
     const id = await post(world)

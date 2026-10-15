@@ -68,6 +68,10 @@ serve them (ADR-017). Boundary rules for this package:
   request. `/authorize` is ours (`authorize.ts`): the session cookie, then a consent page that
   offers only what the role allows. A validator never throws to the library, which would answer a
   bare 503: it hands the error to the gateway, which throws it into the error handler.
+- Reviews (v0.3): `publish` from a principal without `content:publish` runs the same checks and
+  asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
+  closes its pending review in the same batch: a new revision cancels it, a publication approves
+  it. `approve_review` publishes through the `publish` handler itself, in the approver's name.
 - `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
   `/signin` and the four steps of their ceremonies.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,

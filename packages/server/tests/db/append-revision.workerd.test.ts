@@ -457,7 +457,7 @@ describe('appendRevision to a translation group that another entry holds', () =>
 })
 
 describe('the optimistic write, as SQL', () => {
-  it('is one batch of the revision inserted at the version, its tags inserted where the revision is, and the entry updated at the version, returning it', async () => {
+  it('is one batch of the revision inserted at the version, its tags inserted where the revision is, a pending review cancelled at the version, and the entry updated at the version, returning it', async () => {
     const { owner, entryId } = await seedDraft('append-sql')
     const { db, prepared, batches } = recordStatements(env.DB)
     const store = createD1Store(db, { clock: fixedClock(T2).clock })
@@ -470,10 +470,11 @@ describe('the optimistic write, as SQL', () => {
     })
 
     expect(answer.outcome).toBe('saved')
-    expect(batches).toEqual([3])
+    expect(batches).toEqual([4])
     expect(prepared).toEqual([
       'insert into "revisions" ("id", "site_id", "entry_id", "markdown", "frontmatter", "document", "comark_version", "pipeline_version", "word_count", "verdict", "actor_kind", "actor_user_id", "actor_token_id", "actor_meta", "created_at", "updated_at") select ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? from "entries" where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?)',
       'insert into "revision_tags" ("id", "site_id", "revision_id", "tag", "created_at", "updated_at") with "t" ("id", "tag") as (values (?, ?), (?, ?)) select "t"."id", ?, ?, "t"."tag", ?, ? from "t" where exists (select 1 from "revisions" where ("revisions"."id" = ? and "revisions"."site_id" = ?))',
+      'update "reviews" set "status" = ?, "updated_at" = ? where ("reviews"."site_id" = ? and "reviews"."entry_id" = ? and "reviews"."status" = ? and exists (select 1 from "entries" where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?)))',
       'update "entries" set "translation_group" = ?, "version" = "entries"."version" + 1, "head_rev" = ?, "updated_at" = ? where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?) returning "id", "collection", "locale", "slug", "translation_group", "status", "version", "head_rev", "published_rev", "published_at", "updated_at"',
     ])
   })
@@ -491,9 +492,9 @@ describe('the optimistic write, as SQL', () => {
     })
 
     expect(stale).toMatchObject({ outcome: 'conflict', currentVersion: 1 })
-    expect(batches).toEqual([2])
-    expect(prepared).toHaveLength(3)
-    expect(prepared[2]).toBe(
+    expect(batches).toEqual([3])
+    expect(prepared).toHaveLength(4)
+    expect(prepared[3]).toBe(
       'select "version", "head_rev" from "entries" where ("entries"."site_id" = ? and "entries"."id" = ?) limit ?',
     )
   })

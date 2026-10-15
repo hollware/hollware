@@ -1,0 +1,2087 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "68fae068-8e60-4555-a489-7e5623301c56",
+  "prevId": "f9f02bf6-f8be-44aa-9818-c3495af3041a",
+  "tables": {
+    "auth_challenges": {
+      "name": "auth_challenges",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "challenge": {
+          "name": "challenge",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invitation_id": {
+          "name": "invitation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "auth_challenges_id_site": {
+          "name": "auth_challenges_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "auth_challenges_site": {
+          "name": "auth_challenges_site",
+          "tableFrom": "auth_challenges",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "auth_challenges_purpose": {
+          "name": "auth_challenges_purpose",
+          "value": "\"auth_challenges\".\"purpose\" IN ('register', 'authenticate')"
+        }
+      }
+    },
+    "deliveries": {
+      "name": "deliveries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subscriber": {
+          "name": "subscriber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "delivered_at": {
+          "name": "delivered_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "deliveries_id_site": {
+          "name": "deliveries_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "deliveries_event_subscriber": {
+          "name": "deliveries_event_subscriber",
+          "columns": [
+            "event_id",
+            "subscriber"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "deliveries_site": {
+          "name": "deliveries_site",
+          "tableFrom": "deliveries",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "deliveries_event": {
+          "name": "deliveries_event",
+          "tableFrom": "deliveries",
+          "tableTo": "outbox",
+          "columnsFrom": [
+            "event_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "deliveries_attempts": {
+          "name": "deliveries_attempts",
+          "value": "\"deliveries\".\"attempts\" >= 0"
+        }
+      }
+    },
+    "entries": {
+      "name": "entries",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "collection": {
+          "name": "collection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "translation_group": {
+          "name": "translation_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "head_rev": {
+          "name": "head_rev",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "published_rev": {
+          "name": "published_rev",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_sort_key": {
+          "name": "published_sort_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "entries_head": {
+          "name": "entries_head",
+          "columns": [
+            "site_id",
+            "collection",
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "entries_head_locale": {
+          "name": "entries_head_locale",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "entries_published": {
+          "name": "entries_published",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "published_sort_key",
+            "id"
+          ],
+          "isUnique": false,
+          "where": "\"entries\".\"status\" = 'published'"
+        },
+        "entries_id_site": {
+          "name": "entries_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "entries_slug": {
+          "name": "entries_slug",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "slug"
+          ],
+          "isUnique": true
+        },
+        "entries_translation": {
+          "name": "entries_translation",
+          "columns": [
+            "site_id",
+            "collection",
+            "translation_group",
+            "locale"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "entries_site": {
+          "name": "entries_site",
+          "tableFrom": "entries",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "entries_status": {
+          "name": "entries_status",
+          "value": "\"entries\".\"status\" IN ('draft', 'scheduled', 'published')"
+        },
+        "entries_version": {
+          "name": "entries_version",
+          "value": "\"entries\".\"version\" >= 1"
+        },
+        "entries_draft": {
+          "name": "entries_draft",
+          "value": "\"entries\".\"status\" <> 'draft' OR (\"entries\".\"published_rev\" IS NULL AND \"entries\".\"published_sort_key\" IS NULL AND \"entries\".\"scheduled_at\" IS NULL)"
+        },
+        "entries_published": {
+          "name": "entries_published",
+          "value": "\"entries\".\"status\" <> 'published' OR (\"entries\".\"published_rev\" IS NOT NULL AND \"entries\".\"published_at\" IS NOT NULL AND \"entries\".\"published_sort_key\" IS NOT NULL)"
+        },
+        "entries_scheduled": {
+          "name": "entries_scheduled",
+          "value": "\"entries\".\"status\" <> 'scheduled' OR \"entries\".\"scheduled_at\" IS NOT NULL"
+        }
+      }
+    },
+    "_hollware_meta": {
+      "name": "_hollware_meta",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "invitations": {
+      "name": "invitations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "invitations_id_site": {
+          "name": "invitations_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "invitations_hash": {
+          "name": "invitations_hash",
+          "columns": [
+            "hash"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "invitations_site": {
+          "name": "invitations_site",
+          "tableFrom": "invitations",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invitations_user": {
+          "name": "invitations_user",
+          "tableFrom": "invitations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "invitations_role": {
+          "name": "invitations_role",
+          "value": "\"invitations\".\"role\" IN ('owner', 'editor', 'author')"
+        }
+      }
+    },
+    "outbox": {
+      "name": "outbox",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "outbox_unsent": {
+          "name": "outbox_unsent",
+          "columns": [
+            "sent_at",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "outbox_id_site": {
+          "name": "outbox_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "outbox_site": {
+          "name": "outbox_site",
+          "tableFrom": "outbox",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "outbox_kind": {
+          "name": "outbox_kind",
+          "value": "\"outbox\".\"kind\" IN ('entry.published', 'entry.unpublished')"
+        },
+        "outbox_json": {
+          "name": "outbox_json",
+          "value": "json_valid(\"outbox\".\"payload\") AND json_type(\"outbox\".\"payload\") = 'object'"
+        }
+      }
+    },
+    "passkeys": {
+      "name": "passkeys",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "credential_id": {
+          "name": "credential_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "counter": {
+          "name": "counter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "transports": {
+          "name": "transports",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "passkeys_user": {
+          "name": "passkeys_user",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "passkeys_id_site": {
+          "name": "passkeys_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "passkeys_credential": {
+          "name": "passkeys_credential",
+          "columns": [
+            "credential_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "passkeys_site": {
+          "name": "passkeys_site",
+          "tableFrom": "passkeys",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "passkeys_user_fk": {
+          "name": "passkeys_user_fk",
+          "tableFrom": "passkeys",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "passkeys_counter": {
+          "name": "passkeys_counter",
+          "value": "\"passkeys\".\"counter\" >= 0"
+        },
+        "passkeys_json": {
+          "name": "passkeys_json",
+          "value": "json_valid(\"passkeys\".\"transports\") AND json_type(\"passkeys\".\"transports\") = 'array'"
+        }
+      }
+    },
+    "publications": {
+      "name": "publications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision_id": {
+          "name": "revision_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "acknowledged": {
+          "name": "acknowledged",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_kind": {
+          "name": "actor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_token_id": {
+          "name": "actor_token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_meta": {
+          "name": "actor_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "publications_entry": {
+          "name": "publications_entry",
+          "columns": [
+            "entry_id",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "publications_id_site": {
+          "name": "publications_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "publications_site": {
+          "name": "publications_site",
+          "tableFrom": "publications",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "publications_entry": {
+          "name": "publications_entry",
+          "tableFrom": "publications",
+          "tableTo": "entries",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "publications_revision": {
+          "name": "publications_revision",
+          "tableFrom": "publications",
+          "tableTo": "revisions",
+          "columnsFrom": [
+            "revision_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "publications_user": {
+          "name": "publications_user",
+          "tableFrom": "publications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "publications_token": {
+          "name": "publications_token",
+          "tableFrom": "publications",
+          "tableTo": "tokens",
+          "columnsFrom": [
+            "actor_token_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "publications_action": {
+          "name": "publications_action",
+          "value": "\"publications\".\"action\" IN ('publish', 'unpublish')"
+        },
+        "publications_shape": {
+          "name": "publications_shape",
+          "value": "(\"publications\".\"action\" = 'publish' AND \"publications\".\"revision_id\" IS NOT NULL AND \"publications\".\"verdict\" IS NOT NULL) OR (\"publications\".\"action\" = 'unpublish' AND \"publications\".\"revision_id\" IS NULL AND \"publications\".\"verdict\" IS NULL)"
+        },
+        "publications_actor_kind": {
+          "name": "publications_actor_kind",
+          "value": "\"publications\".\"actor_kind\" IN ('token', 'user', 'oauth_client')"
+        },
+        "publications_json": {
+          "name": "publications_json",
+          "value": "json_valid(\"publications\".\"acknowledged\") AND json_type(\"publications\".\"acknowledged\") = 'array' AND (\"publications\".\"verdict\" IS NULL OR json_valid(\"publications\".\"verdict\")) AND (\"publications\".\"actor_meta\" IS NULL OR json_valid(\"publications\".\"actor_meta\"))"
+        }
+      }
+    },
+    "reviews": {
+      "name": "reviews",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision_id": {
+          "name": "revision_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "acknowledged": {
+          "name": "acknowledged",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requested_meta": {
+          "name": "requested_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "reviews_pending": {
+          "name": "reviews_pending",
+          "columns": [
+            "site_id",
+            "entry_id"
+          ],
+          "isUnique": true,
+          "where": "\"reviews\".\"status\" = 'pending'"
+        },
+        "reviews_queue": {
+          "name": "reviews_queue",
+          "columns": [
+            "site_id",
+            "status",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "reviews_id_site": {
+          "name": "reviews_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "reviews_site": {
+          "name": "reviews_site",
+          "tableFrom": "reviews",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "reviews_entry": {
+          "name": "reviews_entry",
+          "tableFrom": "reviews",
+          "tableTo": "entries",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "reviews_revision": {
+          "name": "reviews_revision",
+          "tableFrom": "reviews",
+          "tableTo": "revisions",
+          "columnsFrom": [
+            "revision_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "reviews_requester": {
+          "name": "reviews_requester",
+          "tableFrom": "reviews",
+          "tableTo": "users",
+          "columnsFrom": [
+            "requested_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "reviews_decider": {
+          "name": "reviews_decider",
+          "tableFrom": "reviews",
+          "tableTo": "users",
+          "columnsFrom": [
+            "decided_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "reviews_status": {
+          "name": "reviews_status",
+          "value": "\"reviews\".\"status\" IN ('pending', 'approved', 'changes_requested', 'cancelled')"
+        },
+        "reviews_decided": {
+          "name": "reviews_decided",
+          "value": "(\"reviews\".\"status\" IN ('pending', 'cancelled')) OR (\"reviews\".\"decided_by\" IS NOT NULL AND \"reviews\".\"decided_at\" IS NOT NULL)"
+        },
+        "reviews_json": {
+          "name": "reviews_json",
+          "value": "json_valid(\"reviews\".\"acknowledged\") AND json_type(\"reviews\".\"acknowledged\") = 'array' AND (\"reviews\".\"requested_meta\" IS NULL OR json_valid(\"reviews\".\"requested_meta\"))"
+        }
+      }
+    },
+    "revision_tags": {
+      "name": "revision_tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision_id": {
+          "name": "revision_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "revision_tags_by_tag": {
+          "name": "revision_tags_by_tag",
+          "columns": [
+            "site_id",
+            "tag"
+          ],
+          "isUnique": false
+        },
+        "revision_tags_id_site": {
+          "name": "revision_tags_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "revision_tags_tag": {
+          "name": "revision_tags_tag",
+          "columns": [
+            "revision_id",
+            "tag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "revision_tags_site": {
+          "name": "revision_tags_site",
+          "tableFrom": "revision_tags",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "revision_tags_revision": {
+          "name": "revision_tags_revision",
+          "tableFrom": "revision_tags",
+          "tableTo": "revisions",
+          "columnsFrom": [
+            "revision_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "revisions": {
+      "name": "revisions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "markdown": {
+          "name": "markdown",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "frontmatter": {
+          "name": "frontmatter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "document": {
+          "name": "document",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comark_version": {
+          "name": "comark_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "pipeline_version": {
+          "name": "pipeline_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "word_count": {
+          "name": "word_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_kind": {
+          "name": "actor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_token_id": {
+          "name": "actor_token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_meta": {
+          "name": "actor_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "revisions_entry": {
+          "name": "revisions_entry",
+          "columns": [
+            "entry_id",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "revisions_id_site": {
+          "name": "revisions_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "revisions_site": {
+          "name": "revisions_site",
+          "tableFrom": "revisions",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "revisions_entry": {
+          "name": "revisions_entry",
+          "tableFrom": "revisions",
+          "tableTo": "entries",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "revisions_user": {
+          "name": "revisions_user",
+          "tableFrom": "revisions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "revisions_token": {
+          "name": "revisions_token",
+          "tableFrom": "revisions",
+          "tableTo": "tokens",
+          "columnsFrom": [
+            "actor_token_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "revisions_actor_kind": {
+          "name": "revisions_actor_kind",
+          "value": "\"revisions\".\"actor_kind\" IN ('token', 'user', 'oauth_client')"
+        },
+        "revisions_json": {
+          "name": "revisions_json",
+          "value": "json_valid(\"revisions\".\"frontmatter\") AND json_valid(\"revisions\".\"document\") AND json_valid(\"revisions\".\"verdict\") AND (\"revisions\".\"actor_meta\" IS NULL OR json_valid(\"revisions\".\"actor_meta\"))"
+        },
+        "revisions_word_count": {
+          "name": "revisions_word_count",
+          "value": "\"revisions\".\"word_count\" >= 0"
+        }
+      }
+    },
+    "schedules": {
+      "name": "schedules",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_id": {
+          "name": "entry_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "acknowledged": {
+          "name": "acknowledged",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_kind": {
+          "name": "actor_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_token_id": {
+          "name": "actor_token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "actor_meta": {
+          "name": "actor_meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "schedules_due": {
+          "name": "schedules_due",
+          "columns": [
+            "scheduled_at"
+          ],
+          "isUnique": false
+        },
+        "schedules_id_site": {
+          "name": "schedules_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "schedules_entry": {
+          "name": "schedules_entry",
+          "columns": [
+            "site_id",
+            "entry_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "schedules_site": {
+          "name": "schedules_site",
+          "tableFrom": "schedules",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "schedules_entry_fk": {
+          "name": "schedules_entry_fk",
+          "tableFrom": "schedules",
+          "tableTo": "entries",
+          "columnsFrom": [
+            "entry_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "schedules_user": {
+          "name": "schedules_user",
+          "tableFrom": "schedules",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "schedules_token": {
+          "name": "schedules_token",
+          "tableFrom": "schedules",
+          "tableTo": "tokens",
+          "columnsFrom": [
+            "actor_token_id",
+            "site_id"
+          ],
+          "columnsTo": [
+            "id",
+            "site_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "schedules_actor_kind": {
+          "name": "schedules_actor_kind",
+          "value": "\"schedules\".\"actor_kind\" IN ('token', 'user', 'oauth_client')"
+        },
+        "schedules_json": {
+          "name": "schedules_json",
+          "value": "json_valid(\"schedules\".\"acknowledged\") AND json_type(\"schedules\".\"acknowledged\") = 'array' AND (\"schedules\".\"actor_meta\" IS NULL OR json_valid(\"schedules\".\"actor_meta\"))"
+        }
+      }
+    },
+    "sessions": {
+      "name": "sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "sessions_id_site": {
+          "name": "sessions_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "sessions_hash": {
+          "name": "sessions_hash",
+          "columns": [
+            "hash"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "sessions_site": {
+          "name": "sessions_site",
+          "tableFrom": "sessions",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sessions_user": {
+          "name": "sessions_user",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sites": {
+      "name": "sites",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "tokens": {
+      "name": "tokens",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scopes": {
+          "name": "scopes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tokens_id_site": {
+          "name": "tokens_id_site",
+          "columns": [
+            "id",
+            "site_id"
+          ],
+          "isUnique": true
+        },
+        "tokens_hash": {
+          "name": "tokens_hash",
+          "columns": [
+            "hash"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "tokens_site": {
+          "name": "tokens_site",
+          "tableFrom": "tokens",
+          "tableTo": "sites",
+          "columnsFrom": [
+            "site_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tokens_user": {
+          "name": "tokens_user",
+          "tableFrom": "tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tokens_scopes": {
+          "name": "tokens_scopes",
+          "value": "json_valid(\"tokens\".\"scopes\") AND json_type(\"tokens\".\"scopes\") = 'array'"
+        }
+      }
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "users_role": {
+          "name": "users_role",
+          "value": "\"users\".\"role\" IN ('owner', 'editor', 'author')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

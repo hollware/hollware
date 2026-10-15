@@ -1,6 +1,7 @@
 import type { Clock, ContentStore } from '../ports.ts'
 import { connect, type D1Like } from './d1.ts'
 import * as reads from './reads.ts'
+import * as reviews from './reviews.ts'
 import * as schedules from './schedules.ts'
 import * as writes from './writes.ts'
 
@@ -35,5 +36,12 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     dueSchedules: (site, now) => schedules.dueSchedules(database, site, now),
     cancelSchedule: (site, entryId) => schedules.cancelSchedule(database, clock, site, entryId),
     unpublish: (site, write) => writes.unpublish(database, clock, site, write),
+    requestReview: (site, write) =>
+      reviews.requestReview(database, clock, site, write, () =>
+        writes.whyNothingChanged(database, site, write.entryId),
+      ),
+    findReview: (site, id) => reviews.findReview(database, site, id),
+    listReviews: (site, query) => reviews.listReviews(database, site, query),
+    requestChanges: (site, write) => reviews.requestChanges(database, clock, site, write),
   }
 }

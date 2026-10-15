@@ -48,12 +48,15 @@ describe('MCP hints', () => {
       ]),
     )
     expect(hints).toEqual({
+      approve_review: 'changes',
       create_draft: 'changes',
       describe_site: 'read-only',
       get_entry: 'read-only',
       get_translations: 'read-only',
       list_entries: 'read-only',
+      list_reviews: 'read-only',
       publish: 'changes',
+      request_changes: 'changes',
       unpublish: 'destructive',
       update_draft: 'changes',
       validate: 'read-only',

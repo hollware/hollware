@@ -17,6 +17,7 @@ export const ID_PREFIXES = {
   publication: 'pub',
   revision: 'rev',
   revisionTag: 'tag',
+  review: 'rvw',
   schedule: 'sch',
   session: 'ses',
   token: 'tok',

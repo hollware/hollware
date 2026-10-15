@@ -20,12 +20,16 @@ import {
 // SDK or a handler.
 
 const REQUIRED = [
+  ['approve_review', 'content:publish'],
   ['create_draft', 'content:write'],
   ['describe_site', 'content:read'],
   ['get_entry', 'content:read'],
   ['get_translations', 'content:read'],
   ['list_entries', 'content:read'],
-  ['publish', 'content:publish'],
+  ['list_reviews', 'content:read'],
+  // Without content:publish, publish asks for a review; the handler decides that (v0.3).
+  ['publish', 'content:write'],
+  ['request_changes', 'content:publish'],
   ['unpublish', 'content:publish'],
   ['update_draft', 'content:write'],
   ['validate', 'content:read'],

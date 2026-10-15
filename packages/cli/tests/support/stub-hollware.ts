@@ -338,6 +338,20 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         publish.name,
         { ...describe(publish), inputSchema: publish.input, outputSchema: publish.output },
         guarded(publish.name, (args) => {
+          // Like Hollware: without content:publish, one entry is asked for review, now, and a
+          // group or a time is refused (v0.3).
+          const reviewOnly = !granted.includes('content:publish')
+          if (reviewOnly && (args.group.length > 0 || args.publishAt !== undefined)) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Without content:publish, publish asks for a review of one entry, now: not of a group, and not at a time.',
+                },
+              ],
+              isError: true,
+            }
+          }
           // Like Hollware: the entry and its group, all or none, and the member that stops the
           // group named in failedEntry when there is a group.
           const members = [{ id: args.id, version: args.version }, ...args.group]
@@ -382,6 +396,25 @@ export function startStub(options: StubOptions): Promise<StubServer> {
                 ...failedEntry,
               })
             }
+          }
+          const [asked] = checked
+          if (reviewOnly && asked !== undefined) {
+            return reply(publish.outcomes, {
+              outcome: 'pending_review',
+              entry: summaryOf(asked.entry),
+              verdict: asked.verdict,
+              review: {
+                id: 'rvw_01JAB3XQ8ZK4M6N2P5R7S9T0VX',
+                entryId: asked.entry.id,
+                revision: revisionId(asked.entry),
+                status: 'pending',
+                requestedBy: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+                requestedAt: STUB_TIME,
+                decidedBy: null,
+                decidedAt: null,
+                note: null,
+              },
+            })
           }
           for (const { entry } of checked) {
             entry.published = entry.revisions.length - 1

@@ -7,6 +7,7 @@ import {
   sqliteTable,
   text,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 import { id, siteId, timestamps } from './columns.ts'
 
@@ -447,5 +448,65 @@ export const sessions = sqliteTable(
     unique('sessions_hash').on(t.hash),
     foreignKey({ name: 'sessions_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({ name: 'sessions_user', columns: [t.userId], foreignColumns: [users.id] }),
+  ],
+)
+
+/**
+ * Reviews (v0.3): a person who may write but not publish asks for a revision to be published, and
+ * a person who may publish approves it, which publishes it, or asks for changes with a note. An
+ * entry has at most one pending review; a new revision of the entry cancels it, and a publication
+ * of the entry approves it, in the batch of that write.
+ */
+export const reviews = sqliteTable(
+  'reviews',
+  {
+    id: id('rvw'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    /** The revision asked for: the head of the entry when the review was asked. */
+    revisionId: text('revision_id').notNull(),
+    status: text('status').notNull(),
+    /** A JSON array: the warnings the person who asked acknowledged. */
+    acknowledged: text('acknowledged').notNull(),
+    requestedBy: text('requested_by').notNull(),
+    /** What the client that asked said about itself, as JSON, or `null`. */
+    requestedMeta: text('requested_meta'),
+    decidedBy: text('decided_by'),
+    decidedAt: text('decided_at'),
+    /** What the person who asked for changes wrote. */
+    note: text('note'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('reviews_id_site').on(t.id, t.siteId),
+    uniqueIndex('reviews_pending')
+      .on(t.siteId, t.entryId)
+      .where(sql`${t.status} = 'pending'`),
+    index('reviews_queue').on(t.siteId, t.status, t.createdAt),
+    foreignKey({ name: 'reviews_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'reviews_entry',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+    foreignKey({
+      name: 'reviews_revision',
+      columns: [t.revisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    foreignKey({ name: 'reviews_requester', columns: [t.requestedBy], foreignColumns: [users.id] }),
+    foreignKey({ name: 'reviews_decider', columns: [t.decidedBy], foreignColumns: [users.id] }),
+    check(
+      'reviews_status',
+      sql`${t.status} IN ('pending', 'approved', 'changes_requested', 'cancelled')`,
+    ),
+    check(
+      'reviews_decided',
+      sql`(${t.status} IN ('pending', 'cancelled')) OR (${t.decidedBy} IS NOT NULL AND ${t.decidedAt} IS NOT NULL)`,
+    ),
+    check(
+      'reviews_json',
+      sql`json_valid(${t.acknowledged}) AND json_type(${t.acknowledged}) = 'array' AND (${t.requestedMeta} IS NULL OR json_valid(${t.requestedMeta}))`,
+    ),
   ],
 )

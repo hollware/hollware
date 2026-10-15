@@ -9,7 +9,7 @@ import {
   type Violation,
 } from '@hollware/core'
 import type * as z from 'zod'
-import type { EntrySummaryView, StoredPublication, WriteRefusal } from '../ports.ts'
+import type { EntrySummaryView, StoredPublication, StoredReview, WriteRefusal } from '../ports.ts'
 
 /**
  * What the operations answer with, made from what the store returns. The shapes are the ones of
@@ -21,6 +21,22 @@ export type EntrySummary = z.output<typeof schemas.entrySummary>
 export type VerdictOutput = z.output<typeof schemas.verdict>
 export type PublicationOutput = z.output<typeof schemas.publication>
 export type ConflictOutput = z.output<typeof schemas.conflict>
+export type ReviewOutput = z.output<typeof schemas.review>
+
+/** A review as an output. */
+export function reviewView(review: StoredReview): ReviewOutput {
+  return {
+    id: review.id,
+    entryId: review.entryId,
+    revision: review.revisionId,
+    status: review.status,
+    requestedBy: review.requestedBy,
+    requestedAt: review.requestedAt,
+    decidedBy: review.decidedBy,
+    decidedAt: review.decidedAt,
+    note: review.note,
+  }
+}
 
 /**
  * The summary of an entry, from a listing (`EntrySummaryView`) or from a read of one entry

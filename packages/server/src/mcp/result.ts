@@ -40,6 +40,8 @@ const encoder = new TextEncoder()
  * has already run when its answer turns out too large, so it says to look at the state it left.
  */
 const OUTPUT_TOO_LARGE_FIX = {
+  approve_review:
+    'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
   create_draft:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   describe_site:
@@ -50,8 +52,11 @@ const OUTPUT_TOO_LARGE_FIX = {
     'The translations do not fit in one answer. Read each one with get_entry instead.',
   list_entries:
     'Ask for less: pass a smaller limit, or narrow the list with locale, tag or status.',
+  list_reviews: 'Ask for less: pass a smaller limit.',
   publish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
+  request_changes:
+    'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
   unpublish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   update_draft:

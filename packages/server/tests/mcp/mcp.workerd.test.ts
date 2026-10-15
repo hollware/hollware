@@ -47,12 +47,15 @@ describe('the MCP endpoint in workerd', () => {
       })
 
       expect(tools.map((tool) => tool.name)).toEqual([
+        'approve_review',
         'create_draft',
         'describe_site',
         'get_entry',
         'get_translations',
         'list_entries',
+        'list_reviews',
         'publish',
+        'request_changes',
         'unpublish',
         'update_draft',
         'validate',

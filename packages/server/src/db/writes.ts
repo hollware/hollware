@@ -17,6 +17,7 @@ import type {
 import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
+import { approvePendingReview, cancelPendingReview } from './reviews.ts'
 import { dropSchedule } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
 import { entries, outbox, publications, revisions, schedules, sites } from './schema.ts'
@@ -118,7 +119,7 @@ async function holderOfTranslation(
 }
 
 /** Why an update touched nothing: the entry moved on (`conflict`) or it is not there. */
-async function whyNothingChanged(
+export async function whyNothingChanged(
   db: Db,
   site: string,
   entryId: string,
@@ -244,6 +245,7 @@ export async function appendRevision(
     db.batch([
       insertRevisionAtVersion(db, row, write.expectedVersion),
       ...insertTags(db, { site, revisionId, tags, now }),
+      cancelPendingReview(db, site, write.entryId, write.expectedVersion, now),
       db
         .update(entries)
         .set({
@@ -306,6 +308,7 @@ export async function publish(
     insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
       eq(entries.version, write.expectedVersion),
     ]),
+    approvePendingReview(db, site, write.entryId, write.expectedVersion, write.actor.userId, now),
     db
       .update(entries)
       .set({
@@ -326,7 +329,7 @@ export async function publish(
       )
       .returning(entryFields),
   ])
-  const [changed] = results[3]
+  const [changed] = results[4]
   if (changed === undefined) return whyNothingChanged(db, site, write.entryId)
   const entry = toEntry(changed)
   const revision =
@@ -380,6 +383,7 @@ export async function publishGroup(
       insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
         eq(entries.version, write.expectedVersion),
       ]),
+      approvePendingReview(db, site, write.entryId, write.expectedVersion, write.actor.userId, now),
       db
         .update(entries)
         .set({

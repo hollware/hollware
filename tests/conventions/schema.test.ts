@@ -84,6 +84,7 @@ describe('D1 schema', () => {
       'outbox',
       'passkeys',
       'publications',
+      'reviews',
       'revision_tags',
       'revisions',
       'schedules',

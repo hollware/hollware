@@ -1,12 +1,15 @@
 export * as schemas from './schemas.ts'
 export {
+  approveReview,
   createDraft,
   describeSite,
   getEntry,
   getTranslations,
   listEntries,
+  listReviews,
   OPERATIONS,
   publish,
+  requestChanges,
   unpublish,
   updateDraft,
   validate,

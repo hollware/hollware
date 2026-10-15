@@ -655,18 +655,30 @@ describe('hollware import stops with what to do', () => {
     expect(tools(stub.calls)).toEqual(['validate', 'get_entry'])
   })
 
-  it('on a token that lacks the scope of publish, after the drafts are written', async () => {
+  it('on a token that lacks the scope of publish: a lone entry is asked for review', async () => {
     const stub = await serve({ scopes: ['content:read', 'content:write'] })
     const dir = temp.make({ 'blog/en/a.md': post('A') })
 
     const { code, out, err } = await runImport(dir, stub.url, ['--publish'])
 
-    expect(code).toBe(1)
-    expect(out.at(-1)).toBe('Drafts: 1 created, 0 updated, 0 unchanged.')
-    expect(err).toEqual([
-      'hollware import: the token lacks a scope this call needs (403 insufficient_scope: content:publish). "hollware token create --scopes <list>" makes one that has it.',
-    ])
+    expect([code, err]).toEqual([0, []])
+    expect(out.at(-2)).toBe('pending_review         blog/en/a  ent_00000000000000000000000001')
+    expect(out.at(-1)).toBe(
+      'Publishing: 0 published, 0 need acknowledgement, 0 blocked, 1 asked for review.',
+    )
     expect(stub.entries.get('blog/en/a')?.published).toBeNull()
+  })
+
+  it('on a token that lacks the scope of publish: a group is refused, and says why', async () => {
+    const stub = await serve({ scopes: ['content:read', 'content:write'] })
+    const dir = temp.make({ 'blog/en/a.md': post('A'), 'blog/en/b.md': post('B') })
+
+    const { code, out } = await runImport(dir, stub.url, ['--publish'])
+
+    expect(code).toBe(1)
+    expect(out.at(-1)).toBe('Publishing: 0 published, 0 need acknowledgement, 0 blocked, 2 failed.')
+    expect(out.filter((line) => line.startsWith('failed'))).toHaveLength(2)
+    expect(out.join('\n')).toContain('publish asks for a review of one entry, now: not of a group')
   })
 
   it('when nothing answers at the address', async () => {

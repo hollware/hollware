@@ -62,6 +62,10 @@ export const STORE: ContentStore = {
   dueSchedules: unused,
   cancelSchedule: unused,
   unpublish: unused,
+  requestReview: unused,
+  findReview: unused,
+  listReviews: unused,
+  requestChanges: unused,
 }
 
 export const CLOCK: Clock = { now: () => new Date('2026-10-12T12:00:00.000Z') }
@@ -167,6 +171,20 @@ export const ENTRY: Entry = {
 
 const CONFLICT = { currentVersion: 2, headRevision: REVISION_ID }
 
+export const REVIEW_ID = 'rvw_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
+
+const REVIEW = {
+  id: REVIEW_ID,
+  entryId: ENTRY_ID,
+  revision: REVISION_ID,
+  status: 'pending',
+  requestedBy: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+  requestedAt: '2026-10-12T12:00:00.000Z',
+  decidedBy: null,
+  decidedAt: null,
+  note: null,
+} as const
+
 type OutputOf<Name extends OperationName> = z.output<OperationByName<Name>['output']>
 
 type Canned = {
@@ -177,6 +195,22 @@ type Canned = {
 
 /** A valid output for every outcome of every operation. */
 export const CANNED: Canned = {
+  approve_review: {
+    published: {
+      outcome: 'published',
+      review: { ...REVIEW, status: 'approved' },
+      entry: { ...SUMMARY, status: 'published', version: 2 },
+    },
+    blocked: { outcome: 'blocked', review: REVIEW, entry: SUMMARY, verdict: VERDICT_FAILED },
+    needs_acknowledgement: {
+      outcome: 'needs_acknowledgement',
+      review: REVIEW,
+      entry: SUMMARY,
+      verdict: VERDICT_WARNED,
+    },
+    not_pending: { outcome: 'not_pending', review: { ...REVIEW, status: 'cancelled' } },
+    not_found: { outcome: 'not_found' },
+  },
   create_draft: {
     saved: { outcome: 'saved', entry: SUMMARY, verdict: VERDICT_OK },
     refused: { outcome: 'refused', verdict: VERDICT_FAILED },
@@ -204,6 +238,9 @@ export const CANNED: Canned = {
   list_entries: {
     ok: { outcome: 'ok', entries: [SUMMARY], nextCursor: null },
   },
+  list_reviews: {
+    ok: { outcome: 'ok', reviews: [{ ...REVIEW, entry: SUMMARY }] },
+  },
   publish: {
     published: { outcome: 'published', entry: { ...SUMMARY, status: 'published', version: 2 } },
     scheduled: { outcome: 'scheduled', entry: { ...SUMMARY, status: 'scheduled', version: 2 } },
@@ -213,7 +250,21 @@ export const CANNED: Canned = {
       entry: SUMMARY,
       verdict: VERDICT_WARNED,
     },
+    pending_review: {
+      outcome: 'pending_review',
+      entry: SUMMARY,
+      verdict: VERDICT_OK,
+      review: REVIEW,
+    },
     conflict: { outcome: 'conflict', conflict: CONFLICT },
+    not_found: { outcome: 'not_found' },
+  },
+  request_changes: {
+    changes_requested: {
+      outcome: 'changes_requested',
+      review: { ...REVIEW, status: 'changes_requested', note: 'Cite a source.' },
+    },
+    not_pending: { outcome: 'not_pending', review: { ...REVIEW, status: 'approved' } },
     not_found: { outcome: 'not_found' },
   },
   unpublish: {
@@ -242,12 +293,15 @@ const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
 /** A valid input for every operation. */
 export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName<Name>['input']> } =
   {
+    approve_review: { id: REVIEW_ID },
     create_draft: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
     describe_site: {},
     get_entry: { collection: 'blog', locale: 'en', slug: 'hello-world' },
     get_translations: { collection: 'blog', translationGroup: 'hello' },
     list_entries: { collection: 'blog' },
+    list_reviews: {},
     publish: { id: ENTRY_ID, version: 1 },
+    request_changes: { id: REVIEW_ID, note: 'Cite a source.' },
     unpublish: { id: ENTRY_ID },
     update_draft: { id: ENTRY_ID, version: 1, markdown: MARKDOWN },
     validate: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
@@ -291,6 +345,11 @@ export function fakeHandlers(
       return handler(input, context)
     }
   const handlers: Handlers = {
+    approve_review: record(
+      'approve_review',
+      overrides.approve_review ??
+        (async () => pick(CANNED.approve_review, outcomes.approve_review ?? 'published')),
+    ),
     create_draft: record(
       'create_draft',
       overrides.create_draft ??
@@ -314,6 +373,16 @@ export function fakeHandlers(
       'list_entries',
       overrides.list_entries ??
         (async () => pick(CANNED.list_entries, outcomes.list_entries ?? 'ok')),
+    ),
+    list_reviews: record(
+      'list_reviews',
+      overrides.list_reviews ??
+        (async () => pick(CANNED.list_reviews, outcomes.list_reviews ?? 'ok')),
+    ),
+    request_changes: record(
+      'request_changes',
+      overrides.request_changes ??
+        (async () => pick(CANNED.request_changes, outcomes.request_changes ?? 'changes_requested')),
     ),
     publish: record(
       'publish',

@@ -35,7 +35,8 @@ export const IMPORT_USAGE = [
   '  --dry-run            Only validate: write nothing, publish nothing',
   '  --help               Show this help',
   '',
-  'The token needs content:read and content:write, and content:publish for --publish.',
+  'The token needs content:read and content:write, and content:publish for --publish: without it,',
+  'publish asks for a review of one entry, and refuses a group.',
 ].join('\n')
 
 type Violation = z.output<typeof schemas.violation>
@@ -169,7 +170,7 @@ async function importFiles({
     const toPublish = drafts.entries.filter((imported) => imported.summary.hasUnpublishedChanges)
     const published = await publishAll(session, toPublish, out)
     out(
-      `Publishing: ${published.published} published, ${published.needsAcknowledgement} need acknowledgement, ${published.blocked} blocked${published.other === 0 ? '' : `, ${published.other} failed`}.`,
+      `Publishing: ${published.published} published, ${published.needsAcknowledgement} need acknowledgement, ${published.blocked} blocked${published.reviews === 0 ? '' : `, ${published.reviews} asked for review`}${published.other === 0 ? '' : `, ${published.other} failed`}.`,
     )
     const problems = published.needsAcknowledgement + published.blocked + published.other
     if (problems > 0) {
@@ -437,6 +438,8 @@ interface Published {
   published: number
   needsAcknowledgement: number
   blocked: number
+  /** Entries a token without content:publish asked a review for (v0.3). */
+  reviews: number
   other: number
 }
 
@@ -448,14 +451,21 @@ const GROUP_SIZE = 100
  * one left them, as one group (in groups of 100), so that entries that link to each other are
  * published together (ADR-024). When an entry stops its group, it is reported and taken out, and
  * the rest is published again without it. It acknowledges no warning: an entry with warnings is
- * reported, not published.
+ * reported, not published. A token without content:publish gets a review of a lone entry
+ * (`pending_review`), and its group is refused, which reports every entry of it as failed.
  */
 async function publishAll(
   session: Session,
   entries: readonly Imported[],
   out: (message: string) => void,
 ): Promise<Published> {
-  const result: Published = { published: 0, needsAcknowledgement: 0, blocked: 0, other: 0 }
+  const result: Published = {
+    published: 0,
+    needsAcknowledgement: 0,
+    blocked: 0,
+    reviews: 0,
+    other: 0,
+  }
   const labelOf = ({ file }: Imported) => printable(file.path.replace(/\.md$/, ''))
   const line = (imported: Imported, outcome: string, details: readonly string[] = []): string =>
     [
@@ -483,6 +493,12 @@ async function publishAll(
       if (answer.outcome === 'published' || answer.outcome === 'scheduled') {
         for (const imported of pending) out(line(imported, 'published'))
         result.published += pending.length
+        break
+      }
+      if (answer.outcome === 'pending_review') {
+        // Only one entry is ever asked for review, so pending is that entry.
+        for (const imported of pending) out(line(imported, 'pending_review'))
+        result.reviews += pending.length
         break
       }
       const failed = pending.find(({ summary }) => summary.id === answer.failedEntry) ?? first

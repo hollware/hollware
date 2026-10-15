@@ -23,12 +23,15 @@ const REQUEST_ID = '9d2c1b7e-6a4f-4e0b-8c35-1f7a2b6d4e90'
 const LATER = '2026-11-11T12:00:00.000Z'
 
 const TOOLS = [
+  'approve_review',
   'create_draft',
   'describe_site',
   'get_entry',
   'get_translations',
   'list_entries',
+  'list_reviews',
   'publish',
+  'request_changes',
   'unpublish',
   'update_draft',
   'validate',

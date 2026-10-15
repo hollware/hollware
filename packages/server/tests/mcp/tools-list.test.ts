@@ -41,24 +41,38 @@ const DESTROY = {
 }
 
 const TOOLS = [
+  { name: 'approve_review', title: 'Approve a review', annotations: CHANGE },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
+  { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
+  { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
   { name: 'validate', title: 'Validate a Markdown file', annotations: READ },
 ]
 
 const OUTCOMES: Record<string, string[]> = {
+  approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
   create_draft: ['saved', 'refused'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
   get_translations: ['ok', 'not_found'],
   list_entries: ['ok'],
-  publish: ['published', 'scheduled', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
+  list_reviews: ['ok'],
+  publish: [
+    'published',
+    'scheduled',
+    'blocked',
+    'needs_acknowledgement',
+    'pending_review',
+    'conflict',
+    'not_found',
+  ],
+  request_changes: ['changes_requested', 'not_pending', 'not_found'],
   unpublish: ['unpublished', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   validate: ['ok'],
@@ -189,9 +203,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(18)
+    expect(converters).toHaveLength(24)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 18 }, () => 1),
+      Array.from({ length: 24 }, () => 1),
     )
   })
 })
@@ -201,12 +215,15 @@ describe('the tool table', () => {
     const names = createToolTable([...OPERATIONS].reverse()).map((tool) => tool.spec.name)
 
     expect(names).toEqual([
+      'approve_review',
       'create_draft',
       'describe_site',
       'get_entry',
       'get_translations',
       'list_entries',
+      'list_reviews',
       'publish',
+      'request_changes',
       'unpublish',
       'update_draft',
       'validate',

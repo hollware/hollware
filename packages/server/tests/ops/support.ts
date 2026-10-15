@@ -1,5 +1,6 @@
 import {
   contracts,
+  approveReview as approveReviewSpec,
   createDraft as createDraftSpec,
   defineCollection,
   defineComponent,
@@ -8,8 +9,10 @@ import {
   getEntry as getEntrySpec,
   getTranslations as getTranslationsSpec,
   listEntries as listEntriesSpec,
+  listReviews as listReviewsSpec,
   processMarkdown,
   publish as publishSpec,
+  requestChanges as requestChangesSpec,
   renderHtml,
   resolveConfig,
   unpublish as unpublishSpec,
@@ -250,6 +253,12 @@ async function call<Input extends z.ZodType, Output extends z.ZodType>(
 /** The nine operations as one caller makes them, in the context it is given. */
 export function agent(context: OperationContext) {
   return {
+    approveReview: (input: z.input<typeof approveReviewSpec.input>) =>
+      call(approveReviewSpec, handlers.approve_review, input, context),
+    listReviews: (input: z.input<typeof listReviewsSpec.input> = {}) =>
+      call(listReviewsSpec, handlers.list_reviews, input, context),
+    requestChanges: (input: z.input<typeof requestChangesSpec.input>) =>
+      call(requestChangesSpec, handlers.request_changes, input, context),
     createDraft: (input: z.input<typeof createDraftSpec.input>) =>
       call(createDraftSpec, handlers.create_draft, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),
@@ -324,4 +333,8 @@ export const UNTOUCHED: ContentStore = {
   dueSchedules: () => touched('dueSchedules'),
   cancelSchedule: () => touched('cancelSchedule'),
   unpublish: () => touched('unpublish'),
+  requestReview: () => touched('requestReview'),
+  findReview: () => touched('findReview'),
+  listReviews: () => touched('listReviews'),
+  requestChanges: () => touched('requestChanges'),
 }

@@ -10,6 +10,9 @@ import {
   format,
   locale,
   markdown,
+  review,
+  reviewId,
+  reviewStatus,
   siteDescription,
   slug,
   verdict,
@@ -152,7 +155,7 @@ export const publish = defineOperation({
   name: 'publish',
   title: 'Publish an entry',
   description:
-    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group.',
+    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group. Without content:publish, the same checks run and the answer is pending_review: a person who may publish approves the revision or asks for changes, and a new revision of the entry cancels the request. A review is for one entry, now: never with group or publishAt.',
   input: z.strictObject({
     id: entryId,
     version,
@@ -180,25 +183,30 @@ export const publish = defineOperation({
       'scheduled',
       'blocked',
       'needs_acknowledgement',
+      'pending_review',
       'conflict',
       'not_found',
     ]),
     entry: entrySummary.optional(),
     verdict: verdict.optional(),
     conflict: conflict.optional(),
+    review: review
+      .optional()
+      .describe('With pending_review: the request, as list_reviews shows it.'),
     failedEntry: entryId
       .optional()
       .describe(
         'In a group, the entry that kept the group from being published: blocked, stale, missing, or with a warning to acknowledge.',
       ),
   }),
-  scopes: ['content:publish'],
+  scopes: ['content:write'],
   effect: 'write',
   outcomes: {
     published: { isError: false },
     scheduled: { isError: false },
     blocked: { isError: true },
     needs_acknowledgement: { isError: false },
+    pending_review: { isError: false },
     conflict: { isError: true },
     not_found: { isError: true },
   },
@@ -219,14 +227,86 @@ export const unpublish = defineOperation({
   outcomes: { unpublished: { isError: false }, not_found: { isError: true } },
 })
 
-/** Every operation of v0.1, sorted by name: the order of `tools/list`. */
+export const listReviews = defineOperation({
+  name: 'list_reviews',
+  title: 'List the reviews',
+  description:
+    'Lists the requests to publish, newest first, with the entry each one is for: the pending ones unless you name another status.',
+  input: z.strictObject({
+    status: reviewStatus.default('pending'),
+    limit: z.number().int().min(1).max(100).default(50),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok']),
+    reviews: z.array(review.extend({ entry: entrySummary })),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false } },
+})
+
+export const approveReview = defineOperation({
+  name: 'approve_review',
+  title: 'Approve a review',
+  description:
+    'Publishes the revision a review asked for, in your name, after the contracts run again as publish runs them. The warnings the request acknowledged count as acknowledged; a new one answers needs_acknowledgement, and you approve again with it in acknowledgeWarnings.',
+  input: z.strictObject({
+    id: reviewId,
+    acknowledgeWarnings: z
+      .array(acknowledgedWarning)
+      .default([])
+      .describe('Warnings you accept besides those the request acknowledged.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found']),
+    review: review.optional(),
+    entry: entrySummary.optional(),
+    verdict: verdict.optional(),
+  }),
+  scopes: ['content:publish'],
+  effect: 'write',
+  outcomes: {
+    published: { isError: false },
+    blocked: { isError: true },
+    needs_acknowledgement: { isError: false },
+    not_pending: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
+export const requestChanges = defineOperation({
+  name: 'request_changes',
+  title: 'Ask for changes',
+  description:
+    'Closes a pending review without publishing, with a note that says what to change. The author saves a new revision and asks again.',
+  input: z.strictObject({
+    id: reviewId,
+    note: z.string().trim().min(1).max(4000).describe('What to change, for the author.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['changes_requested', 'not_pending', 'not_found']),
+    review: review.optional(),
+  }),
+  scopes: ['content:publish'],
+  effect: 'edit',
+  outcomes: {
+    changes_requested: { isError: false },
+    not_pending: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
+/** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
+  approveReview,
   createDraft,
   describeSite,
   getEntry,
   getTranslations,
   listEntries,
+  listReviews,
   publish,
+  requestChanges,
   unpublish,
   updateDraft,
   validate,

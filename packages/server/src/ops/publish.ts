@@ -1,8 +1,15 @@
-import { HollwareError, type EntryLookup, type Verdict } from '@hollware/core'
+import { HollwareError, type EntryLookup, type Scope, type Verdict } from '@hollware/core'
 import type { PublishWrite } from '../ports.ts'
 import { eventFor } from './event.ts'
 import { actorOf } from './actor.ts'
-import { conflictAt, entrySummary, refusalVerdict, verdictView, violationOf } from './answers.ts'
+import {
+  conflictAt,
+  entrySummary,
+  refusalVerdict,
+  reviewView,
+  verdictView,
+  violationOf,
+} from './answers.ts'
 import { collectionOfEntry } from './collections.ts'
 import { judge, processFor, sortKeyOf } from './draft.ts'
 import { unexpectedAnswer } from './errors.ts'
@@ -19,8 +26,21 @@ function warningKey(warning: { readonly contract: string; readonly path: string 
  * changed since the draft was saved: an error blocks, and a warning has to be acknowledged, by
  * contract and path, before the publication is made. The publication records every warning of its
  * verdict as acknowledged (ADR-021).
+ *
+ * A caller without `content:publish` goes through the same checks, and then asks for a review
+ * instead of publishing (v0.3): the answer is `pending_review`, and a person who may publish
+ * decides. A review is for one entry, now.
  */
 export const publish: OperationHandler<'publish'> = async (input, context) => {
+  const granted: readonly Scope[] = context.principal.scopes
+  const mayPublish = granted.includes('content:publish')
+  if (!mayPublish && (input.group.length > 0 || input.publishAt !== undefined)) {
+    throw new HollwareError(
+      'invalid_input',
+      'Without content:publish, publish asks for a review of one entry, now: not of a group, and not at a time.',
+      'Publish each entry on its own, without group and publishAt; a person who may publish approves it.',
+    )
+  }
   if (input.group.length > 0) return publishGroup(input, context)
   const actor = actorOf(context)
   const found = await context.store.findEntryById(context.site.key, input.id, 'head')
@@ -54,6 +74,32 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
     return { outcome: 'needs_acknowledgement', entry: summary, verdict: verdictView(verdict) }
   }
   const acknowledgedWarnings = verdict.warnings.map(({ contract, path }) => ({ contract, path }))
+  if (!mayPublish) {
+    const asked = await context.store.requestReview(context.site.key, {
+      entryId: entry.id,
+      expectedVersion: input.version,
+      acknowledged: acknowledgedWarnings,
+      actor,
+    })
+    switch (asked.outcome) {
+      case 'pending_review':
+        return {
+          outcome: 'pending_review',
+          entry: summary,
+          verdict: verdictView(verdict),
+          review: reviewView(asked.review),
+        }
+      case 'conflict':
+        return {
+          outcome: 'conflict',
+          conflict: conflictAt(asked.currentVersion, asked.headRevision),
+        }
+      case 'not_found':
+        return { outcome: 'not_found' }
+      default:
+        throw unexpectedAnswer(context, 'publish', asked)
+    }
+  }
   if (
     input.publishAt !== undefined &&
     Date.parse(input.publishAt) > context.clock.now().getTime()
