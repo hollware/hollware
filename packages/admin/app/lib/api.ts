@@ -32,34 +32,56 @@ export interface ApiDeps {
 }
 
 export function createApi(deps: ApiDeps) {
+  /** A request with the token; on a refusal of the token, the person signs in again. */
+  async function send(path: string, init: RequestInit): Promise<unknown> {
+    const token = await deps.auth.token()
+    if (token === null) {
+      await deps.auth.signIn(deps.here())
+      // The page is leaving for the sign-in; nothing waits for this answer.
+      return new Promise<never>(() => {})
+    }
+    const headers = new Headers(init.headers)
+    headers.set('authorization', `Bearer ${token}`)
+    const response = await deps.fetch(path, { ...init, headers })
+    if (response.status === 401) {
+      deps.auth.forget()
+      await deps.auth.signIn(deps.here())
+      return new Promise<never>(() => {})
+    }
+    const body: unknown = await response.json()
+    if (!response.ok) {
+      const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
+      throw new ApiError(
+        error.code ?? 'internal',
+        error.message ?? `The server answered ${response.status}.`,
+        error.fix ?? 'Try again.',
+      )
+    }
+    return body
+  }
+
   return {
+    /** An operation, as the MCP tool of that name takes and answers it. */
     async call<Name extends OperationName>(name: Name, input: Input<Name>): Promise<Output<Name>> {
-      const token = await deps.auth.token()
-      if (token === null) {
-        await deps.auth.signIn(deps.here())
-        // The page is leaving for the sign-in; nothing waits for this answer.
-        return new Promise<never>(() => {})
-      }
-      const response = await deps.fetch(`/v1/ops/${name}`, {
+      return (await send(`/v1/ops/${name}`, {
         method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
-      })
-      if (response.status === 401) {
-        deps.auth.forget()
-        await deps.auth.signIn(deps.here())
-        return new Promise<never>(() => {})
-      }
-      const body: unknown = await response.json()
-      if (!response.ok) {
-        const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
-        throw new ApiError(
-          error.code ?? 'internal',
-          error.message ?? `The server answered ${response.status}.`,
-          error.fix ?? 'Try again.',
-        )
-      }
-      return body as Output<Name>
+      })) as Output<Name>
+    },
+
+    /** One of the admin's own routes, `/v1/admin/…`: tokens and invitations. */
+    async admin<Answer>(path: string, body?: unknown): Promise<Answer> {
+      return (await send(
+        `/v1/admin/${path}`,
+        body === undefined
+          ? { method: 'GET' }
+          : {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(body),
+            },
+      )) as Answer
     },
   }
 }

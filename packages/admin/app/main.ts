@@ -22,6 +22,8 @@ const router = createRouter({
       props: true,
     },
     { path: '/reviews', component: () => import('./pages/Reviews.vue') },
+    { path: '/tokens', component: () => import('./pages/Tokens.vue') },
+    { path: '/people', component: () => import('./pages/People.vue') },
     { path: '/callback', component: () => import('./pages/Callback.vue'), meta: { open: true } },
   ],
 })

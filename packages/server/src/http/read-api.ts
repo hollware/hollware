@@ -69,8 +69,8 @@ async function answer(c: Context<GatewayEnv>, value: unknown): Promise<Response>
 
 export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): void {
   app.use('/v1/*', async (c, next) => {
-    // The operations over HTTP have a route of their own (ops-api.ts).
-    if (c.req.path.startsWith('/v1/ops/')) return next()
+    // The operations over HTTP and the admin's own routes have routes of their own.
+    if (c.req.path.startsWith('/v1/ops/') || c.req.path.startsWith('/v1/admin/')) return next()
     if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
       return c.json(
         { code: 'invalid_input', message: 'The read API only reads.', fix: 'Use GET.' },

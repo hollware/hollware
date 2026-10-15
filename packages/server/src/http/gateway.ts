@@ -9,6 +9,7 @@ import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
 import { installAdmin } from './admin.ts'
+import { installAdminApi } from './admin-api.ts'
 import { installOpsApi } from './ops-api.ts'
 import { installReadApi } from './read-api.ts'
 import type { Handlers } from '../ops/types.ts'
@@ -205,6 +206,14 @@ export function createGateway(options: GatewayOptions): Gateway {
 
   installIdentity(app, { site: site.key, clock })
   installAdmin(app, { oauth })
+
+  installAdminApi(app, {
+    site: site.key,
+    clock,
+    oauth,
+    protect: (c, proceed) => protect(c, 'v1', proceed),
+    metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
+  })
 
   if (options.handlers !== undefined) {
     installOpsApi(app, {

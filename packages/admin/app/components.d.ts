@@ -17,6 +17,7 @@ declare module 'vue' {
     UApp: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/App.vue')['default']
     UBadge: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/Badge.vue')['default']
     UButton: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
+    UCheckbox: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/Checkbox.vue')['default']
     UFormField: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
     UInput: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UModal: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_9b783ecaea1271facc404a5ccd06d5c4/node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
