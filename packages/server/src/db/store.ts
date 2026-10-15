@@ -46,5 +46,7 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     findReview: (site, id) => reviews.findReview(database, site, id),
     listReviews: (site, query) => reviews.listReviews(database, site, query),
     requestChanges: (site, write) => reviews.requestChanges(database, clock, site, write),
+    commentReview: (site, write) => reviews.commentReview(database, clock, site, write),
+    reviewComments: (site, reviewIds) => reviews.reviewCommentsOf(database, site, reviewIds),
   }
 }

@@ -87,6 +87,7 @@ describe('the database', () => {
       'outbox',
       'passkeys',
       'publications',
+      'review_comments',
       'reviews',
       'revision_tags',
       'revisions',

@@ -170,6 +170,18 @@ export interface StoredReview {
   readonly note: string | null
 }
 
+/** A comment on a review (v0.6). */
+export interface StoredReviewComment {
+  readonly id: string
+  readonly reviewId: string
+  readonly authorId: string
+  readonly authorName: string | null
+  /** What the client that wrote it said about itself, or `null`. */
+  readonly authorMeta: Readonly<Record<string, unknown>> | null
+  readonly body: string
+  readonly createdAt: string
+}
+
 /** A scheduled publication, as the cron trigger reads it. */
 export interface StoredSchedule {
   readonly entryId: string
@@ -314,6 +326,19 @@ export interface ContentStore {
     site: string,
     query: { readonly status: ReviewStatus; readonly limit: number },
   ): Promise<readonly StoredReview[]>
+  /** Adds a comment to a review, if it is still pending. */
+  commentReview(
+    site: string,
+    write: { readonly reviewId: string; readonly actor: Actor; readonly body: string },
+  ): Promise<
+    | { readonly outcome: 'commented'; readonly comment: StoredReviewComment }
+    | { readonly outcome: 'not_pending' | 'not_found' }
+  >
+  /** The comments of these reviews, oldest first, by review. */
+  reviewComments(
+    site: string,
+    reviewIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly StoredReviewComment[]>>
   /** Closes a pending review with a note, without publishing. */
   requestChanges(
     site: string,

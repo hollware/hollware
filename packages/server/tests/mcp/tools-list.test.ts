@@ -42,6 +42,7 @@ const DESTROY = {
 
 const TOOLS = [
   { name: 'approve_review', title: 'Approve a review', annotations: CHANGE },
+  { name: 'comment_review', title: 'Comment on a review', annotations: CHANGE },
   { name: 'content_stats', title: 'Read what readers read', annotations: READ },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
@@ -59,6 +60,7 @@ const TOOLS = [
 
 const OUTCOMES: Record<string, string[]> = {
   approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
+  comment_review: ['commented', 'not_pending', 'not_found'],
   content_stats: ['ok', 'unavailable'],
   create_draft: ['saved', 'refused'],
   describe_site: ['ok'],
@@ -213,9 +215,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(28)
+    expect(converters).toHaveLength(30)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 28 }, () => 1),
+      Array.from({ length: 30 }, () => 1),
     )
   })
 })
@@ -226,6 +228,7 @@ describe('the tool table', () => {
 
     expect(names).toEqual([
       'approve_review',
+      'comment_review',
       'content_stats',
       'create_draft',
       'describe_site',

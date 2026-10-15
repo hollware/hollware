@@ -6,7 +6,7 @@ import { getTranslations } from './get-translations.ts'
 import { listEntries } from './list-entries.ts'
 import { search } from './search.ts'
 import { publish } from './publish.ts'
-import { approveReview, listReviews, requestChanges } from './reviews.ts'
+import { approveReview, commentReview, listReviews, requestChanges } from './reviews.ts'
 import { unpublish } from './unpublish.ts'
 import { updateDraft } from './update-draft.ts'
 import { validate } from './validate.ts'
@@ -19,6 +19,7 @@ import { defineHandlers } from './types.ts'
  */
 export const handlers = defineHandlers({
   approve_review: approveReview,
+  comment_review: commentReview,
   content_stats: contentStats,
   create_draft: createDraft,
   describe_site: describeSite,

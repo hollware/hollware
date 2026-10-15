@@ -1,5 +1,5 @@
 import { actorOf } from './actor.ts'
-import { entrySummary, reviewView } from './answers.ts'
+import { entrySummary, reviewCommentView, reviewView } from './answers.ts'
 import { unexpectedAnswer } from './errors.ts'
 import { publish } from './publish.ts'
 import type { OperationHandler } from './types.ts'
@@ -16,12 +16,20 @@ export const listReviews: OperationHandler<'list_reviews'> = async (input, conte
     status: input.status,
     limit: input.limit,
   })
+  const comments = await context.store.reviewComments(
+    context.site.key,
+    found.map((review) => review.id),
+  )
   const reviews = []
   for (const review of found) {
     const view = await context.store.findEntryById(context.site.key, review.entryId, 'head')
     // An entry is never deleted while a review names it (the foreign key), so this is a bug.
     if (view === null) throw unexpectedAnswer(context, 'list_reviews', { outcome: 'no entry' })
-    reviews.push({ ...reviewView(review), entry: entrySummary(view) })
+    reviews.push({
+      ...reviewView(review),
+      entry: entrySummary(view),
+      comments: (comments.get(review.id) ?? []).map(reviewCommentView),
+    })
   }
   return { outcome: 'ok', reviews }
 }
@@ -90,4 +98,19 @@ export const requestChanges: OperationHandler<'request_changes'> = async (input,
   })
   if (closed.outcome === 'not_found') return { outcome: 'not_found' }
   return { outcome: closed.outcome, review: reviewView(closed.review) }
+}
+
+/**
+ * A comment on a pending review, in the name of the caller: for the person who decides and for
+ * the author. It decides nothing; a review that is no longer pending takes none.
+ */
+export const commentReview: OperationHandler<'comment_review'> = async (input, context) => {
+  const answer = await context.store.commentReview(context.site.key, {
+    reviewId: input.id,
+    actor: actorOf(context),
+    body: input.body,
+  })
+  return answer.outcome === 'commented'
+    ? { outcome: 'commented', comment: reviewCommentView(answer.comment) }
+    : { outcome: answer.outcome }
 }

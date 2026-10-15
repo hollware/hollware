@@ -1,6 +1,7 @@
 import {
   contracts,
   approveReview as approveReviewSpec,
+  commentReview as commentReviewSpec,
   contentStats as contentStatsSpec,
   createDraft as createDraftSpec,
   defineCollection,
@@ -261,6 +262,8 @@ export function agent(context: OperationContext) {
       call(listReviewsSpec, handlers.list_reviews, input, context),
     requestChanges: (input: z.input<typeof requestChangesSpec.input>) =>
       call(requestChangesSpec, handlers.request_changes, input, context),
+    commentReview: (input: z.input<typeof commentReviewSpec.input>) =>
+      call(commentReviewSpec, handlers.comment_review, input, context),
     contentStats: (input: z.input<typeof contentStatsSpec.input>) =>
       call(contentStatsSpec, handlers.content_stats, input, context),
     createDraft: (input: z.input<typeof createDraftSpec.input>) =>
@@ -346,4 +349,6 @@ export const UNTOUCHED: ContentStore = {
   findReview: () => touched('findReview'),
   listReviews: () => touched('listReviews'),
   requestChanges: () => touched('requestChanges'),
+  commentReview: () => touched('commentReview'),
+  reviewComments: () => touched('reviewComments'),
 }

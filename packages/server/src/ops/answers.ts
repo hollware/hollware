@@ -9,7 +9,13 @@ import {
   type Violation,
 } from '@hollware/core'
 import type * as z from 'zod'
-import type { EntrySummaryView, StoredPublication, StoredReview, WriteRefusal } from '../ports.ts'
+import type {
+  EntrySummaryView,
+  StoredPublication,
+  StoredReview,
+  WriteRefusal,
+  StoredReviewComment,
+} from '../ports.ts'
 
 /**
  * What the operations answer with, made from what the store returns. The shapes are the ones of
@@ -124,5 +130,18 @@ export function publicationView(publication: StoredPublication | null): Publicat
     verdict: verdictView(publication.verdict),
     acknowledged: publication.acknowledged.map(({ contract, path }) => ({ contract, path })),
     at: publication.createdAt,
+  }
+}
+
+/** A comment on a review as the operations answer it; `client` is the name its client gave. */
+export function reviewCommentView(comment: StoredReviewComment) {
+  const name = comment.authorMeta?.['name']
+  return {
+    id: comment.id,
+    author: comment.authorId,
+    authorName: comment.authorName,
+    client: typeof name === 'string' ? name : null,
+    body: comment.body,
+    at: comment.createdAt,
   }
 }

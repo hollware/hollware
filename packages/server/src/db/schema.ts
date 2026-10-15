@@ -577,3 +577,37 @@ export const entryEmbeddings = sqliteTable(
     check('entry_embeddings_pieces', sql`${t.pieces} >= 1`),
   ],
 )
+
+/**
+ * Comments on a review (v0.6): what a person or an agent says about the revision a review asks
+ * for, before someone decides. Only a pending review takes one; they stay after the decision.
+ */
+export const reviewComments = sqliteTable(
+  'review_comments',
+  {
+    id: id('rvc'),
+    siteId: siteId(),
+    reviewId: text('review_id').notNull(),
+    authorId: text('author_id').notNull(),
+    /** What the client that wrote it said about itself, as JSON, or `null`. */
+    authorMeta: text('author_meta'),
+    body: text('body').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('review_comments_id_site').on(t.id, t.siteId),
+    index('review_comments_review').on(t.siteId, t.reviewId, t.createdAt),
+    foreignKey({ name: 'review_comments_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'review_comments_review_fk',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    foreignKey({
+      name: 'review_comments_author',
+      columns: [t.authorId],
+      foreignColumns: [users.id],
+    }),
+    check('review_comments_body', sql`length(${t.body}) BETWEEN 1 AND 4000`),
+  ],
+)

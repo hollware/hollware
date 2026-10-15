@@ -9,6 +9,7 @@ const notYet = (): Promise<never> => Promise.reject(new Error('implemented in WP
 
 const handlers: Handlers = {
   approve_review: notYet,
+  comment_review: notYet,
   content_stats: notYet,
   create_draft: notYet,
   describe_site: notYet,

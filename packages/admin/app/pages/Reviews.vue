@@ -17,6 +17,7 @@ const live = ref('')
 const asked = ref('')
 const verdict = ref<Verdict | null>(null)
 const note = ref('')
+const comment = ref('')
 const busy = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
@@ -91,6 +92,25 @@ async function approve(acknowledged: readonly Warning[] = []) {
   }
 }
 
+async function addComment() {
+  if (chosen.value === null || comment.value.trim() === '') return
+  busy.value = true
+  try {
+    const answer = await api.call('comment_review', { id: chosen.value.id, body: comment.value })
+    if (answer.outcome === 'commented' && answer.comment !== undefined) {
+      chosen.value = { ...chosen.value, comments: [...chosen.value.comments, answer.comment] }
+      comment.value = ''
+    } else {
+      toast.add({ title: 'This review is closed', color: 'warning' })
+      await list()
+    }
+  } catch (error) {
+    report(error, 'Not sent')
+  } finally {
+    busy.value = false
+  }
+}
+
 async function requestChanges() {
   if (chosen.value === null || note.value.trim() === '') return
   busy.value = true
@@ -138,6 +158,34 @@ async function requestChanges() {
       </p>
       <DiffView :original="live" :modified="asked" />
       <VerdictList :verdict="verdict" />
+      <section aria-label="Comments" class="space-y-2">
+        <h2 class="text-sm font-semibold">Comments</h2>
+        <p v-if="chosen.comments.length === 0" class="text-sm text-muted">No comments yet.</p>
+        <article
+          v-for="item in chosen.comments"
+          :key="item.id"
+          class="rounded border border-default p-3 text-sm"
+        >
+          <p class="text-muted">
+            {{ item.authorName ?? item.author }}
+            <UBadge v-if="item.client !== null" :label="item.client" variant="subtle" size="sm" />
+            · {{ new Date(item.at).toLocaleString() }}
+          </p>
+          <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
+        </article>
+        <div class="flex items-end gap-3">
+          <UFormField label="Comment" class="flex-1">
+            <UTextarea v-model="comment" class="w-full" :rows="2" />
+          </UFormField>
+          <UButton
+            label="Comment"
+            variant="outline"
+            :loading="busy"
+            :disabled="comment.trim() === ''"
+            @click="addComment"
+          />
+        </div>
+      </section>
       <div class="flex flex-wrap items-end gap-3">
         <UButton label="Approve and publish" color="success" :loading="busy" @click="approve()" />
         <UFormField label="What to change" class="min-w-64 flex-1">

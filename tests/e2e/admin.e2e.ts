@@ -5,7 +5,8 @@ import { expectAccessible, post, setUp, target, writeMarkdown } from './support.
 // browser with a passkey. AC-0.3-3: the owner sets up a passkey from the link of `hollware init`,
 // writes a post and its translation in the editor, saves them and publishes. AC-0.3-2: the owner
 // invites an author, who sets up a passkey from the invitation, edits the post and publishes it,
-// which asks for a review; the owner reads the review and approves it, which publishes it.
+// which asks for a review; the owner reads the review, comments on it and approves it, which
+// publishes it.
 // AC-0.3-4: axe finds nothing serious or critical on any page of the admin or of the sign-in.
 
 test.describe.configure({ mode: 'serial' })
@@ -73,6 +74,10 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible()
   await owner.getByRole('button', { name: /Hola mundo, otra vez.*asked by Ana/ }).click()
   await expect(owner.getByText('Hola mundo, otra vez').first()).toBeVisible()
+  await expect(owner.getByText('No comments yet.')).toBeVisible()
+  await owner.getByRole('textbox', { name: 'Comment' }).fill('The title reads well.')
+  await owner.getByRole('button', { name: 'Comment', exact: true }).click()
+  await expect(owner.getByText('The title reads well.')).toBeVisible()
   await expectAccessible(owner)
   await owner.getByRole('button', { name: 'Approve and publish' }).click()
 

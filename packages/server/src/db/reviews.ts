@@ -1,10 +1,17 @@
 import { newId } from '@hollware/core'
-import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm'
-import type { Actor, Clock, ReviewStatus, StoredReview, WriteRefusal } from '../ports.ts'
+import { and, asc, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
+import type {
+  Actor,
+  Clock,
+  ReviewStatus,
+  StoredReview,
+  StoredReviewComment,
+  WriteRefusal,
+} from '../ports.ts'
 import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { parseAcknowledged } from './schedules.ts'
-import { entries, reviews, users } from './schema.ts'
+import { entries, reviewComments, reviews, users } from './schema.ts'
 import { valuesOf } from './statements.ts'
 
 /**
@@ -211,4 +218,90 @@ export async function requestChanges(
   const review = await findReview(db, site, write.id)
   if (row !== undefined && review !== null) return { outcome: 'changes_requested', review }
   return review === null ? { outcome: 'not_found' } : { outcome: 'not_pending', review }
+}
+
+function metaOf(text: string | null): Readonly<Record<string, unknown>> | null {
+  if (text === null) return null
+  const parsed: unknown = JSON.parse(text)
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? Object.fromEntries(Object.entries(parsed))
+    : null
+}
+
+const COMMENT_COLUMNS = { ...getTableColumns(reviewComments), authorName: users.name }
+
+function toComment(
+  row: typeof reviewComments.$inferSelect & { authorName: string | null },
+): StoredReviewComment {
+  return {
+    id: row.id,
+    reviewId: row.reviewId,
+    authorId: row.authorId,
+    authorName: row.authorName,
+    authorMeta: metaOf(row.authorMeta),
+    body: row.body,
+    createdAt: row.createdAt,
+  }
+}
+
+/**
+ * Adds a comment to a review in one statement that inserts only while the review is pending, so a
+ * decision that lands first leaves no comment behind it.
+ */
+export async function commentReview(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: { readonly reviewId: string; readonly actor: Actor; readonly body: string },
+): Promise<
+  | { readonly outcome: 'commented'; readonly comment: StoredReviewComment }
+  | { readonly outcome: 'not_pending' | 'not_found' }
+> {
+  const id = newId('rvc')
+  const now = clock.now().toISOString()
+  const meta = write.actor.meta === null ? null : JSON.stringify(write.actor.meta)
+  const inserted = await db.all<{ id: string }>(sql`
+    insert into ${reviewComments}
+      (id, site_id, review_id, author_id, author_meta, body, created_at, updated_at)
+    select ${id}, ${site}, ${write.reviewId}, ${write.actor.userId}, ${meta}, ${write.body}, ${now}, ${now}
+    where exists (select 1 from ${reviews} where ${and(
+      eq(reviews.id, write.reviewId),
+      eq(reviews.siteId, site),
+      eq(reviews.status, 'pending'),
+    )})
+    returning id
+  `)
+  if (inserted.length === 0) {
+    const review = await findReview(db, site, write.reviewId)
+    return { outcome: review === null ? 'not_found' : 'not_pending' }
+  }
+  const [row] = await db
+    .select(COMMENT_COLUMNS)
+    .from(reviewComments)
+    .innerJoin(users, eq(users.id, reviewComments.authorId))
+    .where(and(eq(reviewComments.siteId, site), eq(reviewComments.id, id)))
+    .limit(1)
+  if (row === undefined) throw new Error(`The comment ${id} that was just written is not there`)
+  return { outcome: 'commented', comment: toComment(row) }
+}
+
+export async function reviewCommentsOf(
+  db: Db,
+  site: string,
+  reviewIds: readonly string[],
+): Promise<ReadonlyMap<string, readonly StoredReviewComment[]>> {
+  const byReview = new Map<string, StoredReviewComment[]>()
+  if (reviewIds.length === 0) return byReview
+  const rows = await db
+    .select(COMMENT_COLUMNS)
+    .from(reviewComments)
+    .innerJoin(users, eq(users.id, reviewComments.authorId))
+    .where(and(eq(reviewComments.siteId, site), inArray(reviewComments.reviewId, [...reviewIds])))
+    .orderBy(asc(reviewComments.createdAt), asc(reviewComments.id))
+  for (const row of rows) {
+    const list = byReview.get(row.reviewId) ?? []
+    list.push(toComment(row))
+    byReview.set(row.reviewId, list)
+  }
+  return byReview
 }

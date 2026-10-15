@@ -70,6 +70,8 @@ export const STORE: ContentStore = {
   findReview: unused,
   listReviews: unused,
   requestChanges: unused,
+  commentReview: unused,
+  reviewComments: unused,
 }
 
 export const CLOCK: Clock = { now: () => new Date('2026-10-12T12:00:00.000Z') }
@@ -232,6 +234,21 @@ export const CANNED: Canned = {
       },
     },
   },
+  comment_review: {
+    commented: {
+      outcome: 'commented',
+      comment: {
+        id: 'rvc_01JAB3XQ8ZK4M6N2P5R7S9T0VZ',
+        author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+        authorName: 'Ada',
+        client: null,
+        body: 'Add an example.',
+        at: '2026-10-13T11:00:00.000Z',
+      },
+    },
+    not_pending: { outcome: 'not_pending' },
+    not_found: { outcome: 'not_found' },
+  },
   content_stats: {
     ok: {
       outcome: 'ok',
@@ -262,7 +279,25 @@ export const CANNED: Canned = {
     },
   },
   list_reviews: {
-    ok: { outcome: 'ok', reviews: [{ ...REVIEW, entry: SUMMARY }] },
+    ok: {
+      outcome: 'ok',
+      reviews: [
+        {
+          ...REVIEW,
+          entry: SUMMARY,
+          comments: [
+            {
+              id: 'rvc_01JAB3XQ8ZK4M6N2P5R7S9T0VZ',
+              author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+              authorName: 'Ada',
+              client: 'hollware-agents',
+              body: 'The second section needs an example.',
+              at: '2026-10-13T11:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    },
   },
   publish: {
     published: { outcome: 'published', entry: { ...SUMMARY, status: 'published', version: 2 } },
@@ -317,6 +352,7 @@ const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
 export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName<Name>['input']> } =
   {
     approve_review: { id: REVIEW_ID },
+    comment_review: { id: REVIEW_ID, body: 'Add an example.' },
     content_stats: {},
     create_draft: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
     describe_site: {},
@@ -374,6 +410,11 @@ export function fakeHandlers(
       'approve_review',
       overrides.approve_review ??
         (async () => pick(CANNED.approve_review, outcomes.approve_review ?? 'published')),
+    ),
+    comment_review: record(
+      'comment_review',
+      overrides.comment_review ??
+        (async () => pick(CANNED.comment_review, outcomes.comment_review ?? 'commented')),
     ),
     content_stats: record(
       'content_stats',

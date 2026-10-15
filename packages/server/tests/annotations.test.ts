@@ -49,6 +49,7 @@ describe('MCP hints', () => {
     )
     expect(hints).toEqual({
       approve_review: 'changes',
+      comment_review: 'changes',
       content_stats: 'read-only',
       create_draft: 'changes',
       describe_site: 'read-only',

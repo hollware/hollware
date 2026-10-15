@@ -12,6 +12,7 @@ import {
   markdown,
   review,
   reviewId,
+  reviewComment,
   reviewStatus,
   searchMode,
   siteDescription,
@@ -296,7 +297,12 @@ export const listReviews = defineOperation({
   }),
   output: z.object({
     outcome: z.enum(['ok']),
-    reviews: z.array(review.extend({ entry: entrySummary })),
+    reviews: z.array(
+      review.extend({
+        entry: entrySummary,
+        comments: z.array(reviewComment).describe('What was said about it, oldest first.'),
+      }),
+    ),
   }),
   scopes: ['content:read'],
   effect: 'read',
@@ -327,6 +333,28 @@ export const approveReview = defineOperation({
     published: { isError: false },
     blocked: { isError: true },
     needs_acknowledgement: { isError: false },
+    not_pending: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
+export const commentReview = defineOperation({
+  name: 'comment_review',
+  title: 'Comment on a review',
+  description:
+    'Adds a comment to a pending review, for the person who decides it and for the author: what to change, what reads well, what the contracts cannot check. It neither approves nor closes the review.',
+  input: z.strictObject({
+    id: reviewId,
+    body: z.string().trim().min(1).max(4000).describe('The comment, in Markdown.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['commented', 'not_pending', 'not_found']),
+    comment: reviewComment.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'write',
+  outcomes: {
+    commented: { isError: false },
     not_pending: { isError: true },
     not_found: { isError: true },
   },
@@ -384,6 +412,7 @@ export const contentStats = defineOperation({
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
+  commentReview,
   contentStats,
   createDraft,
   describeSite,

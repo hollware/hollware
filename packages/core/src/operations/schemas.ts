@@ -147,6 +147,19 @@ export const review = z.object({
   note: z.string().nullable().describe('What the reviewer asked to change, or null.'),
 })
 
+/** A comment on a review (v0.6), by a person or by the agent of one. */
+export const reviewComment = z.object({
+  id: z.string(),
+  author: z.string().describe('The user who wrote it, or whose token their agent used.'),
+  authorName: z.string().nullable(),
+  client: z
+    .string()
+    .nullable()
+    .describe('The name the client gave, such as hollware-agents for the agents; null for none.'),
+  body: z.string(),
+  at: z.string(),
+})
+
 export const conflict = z.object({
   currentVersion: z.number().int().min(1),
   headRevision: revisionId,
