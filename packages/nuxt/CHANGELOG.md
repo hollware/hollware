@@ -1,5 +1,12 @@
 # @hollware/nuxt
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
