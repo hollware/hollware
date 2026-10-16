@@ -134,6 +134,11 @@ export const entries = sqliteTable(
     publishedAt: text('published_at'),
     publishedSortKey: text('published_sort_key'),
     scheduledAt: text('scheduled_at'),
+    /**
+     * When the entry went to the trash, or null. A trashed entry keeps its row, its slug and its
+     * translation group: only a draft goes there, and it comes back as the draft it was.
+     */
+    deletedAt: text('deleted_at'),
     ...timestamps(),
   },
   (t) => [

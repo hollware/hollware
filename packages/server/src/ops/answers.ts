@@ -66,6 +66,7 @@ export function entrySummary(view: EntrySummaryView): EntrySummary {
     hasUnpublishedChanges: entry.publishedRevision !== entry.headRevision,
     publishedAt: entry.publishedAt,
     scheduledAt: entry.scheduledAt,
+    deletedAt: entry.deletedAt,
     updatedAt: entry.updatedAt,
   }
 }

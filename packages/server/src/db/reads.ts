@@ -1,6 +1,6 @@
 import { HollwareError } from '@hollware/core'
 import type { EntryFacts, EntryLookup, EntryRef } from '@hollware/core'
-import { and, desc, eq, inArray, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type {
   EntrySummaryView,
@@ -49,9 +49,15 @@ function revisionOf(view: View) {
   return and(eq(revisions.id, revisionId), eq(revisions.siteId, entries.siteId))
 }
 
-/** What picks the entries of a view: the caller's conditions, and in the published view only published ones. */
-function viewWhere(view: View, conditions: readonly (SQL | undefined)[]) {
-  return and(...conditions, view === 'published' ? publishedOnly : undefined)
+/**
+ * What picks the entries of a view: the caller's conditions, and in the published view only
+ * published ones. The head view leaves out the entries in the trash, or lists only them when
+ * `trashed` asks for the trash. The published view needs no such condition: only a draft goes to
+ * the trash, and it stays a draft there.
+ */
+function viewWhere(view: View, conditions: readonly (SQL | undefined)[], trashed = false) {
+  if (view === 'published') return and(...conditions, publishedOnly)
+  return and(...conditions, trashed ? isNotNull(entries.deletedAt) : isNull(entries.deletedAt))
 }
 
 /**
@@ -77,7 +83,12 @@ function toEntryView(row: ViewRow): EntryView {
  * the revision only its id, its frontmatter and its tags. The sort key of the published view
  * comes along for the cursor.
  */
-function summaryQuery(db: Db, view: View, conditions: readonly (SQL | undefined)[]) {
+function summaryQuery(
+  db: Db,
+  view: View,
+  conditions: readonly (SQL | undefined)[],
+  trashed = false,
+) {
   return db
     .select({
       entry: entryFields,
@@ -87,7 +98,7 @@ function summaryQuery(db: Db, view: View, conditions: readonly (SQL | undefined)
     })
     .from(entries)
     .innerJoin(revisions, revisionOf(view))
-    .where(viewWhere(view, conditions))
+    .where(viewWhere(view, conditions, trashed))
 }
 
 type SummaryRow = Awaited<ReturnType<typeof summaryQuery>>[number]
@@ -165,17 +176,24 @@ export function listEntriesQuery(
   cursor: CursorPosition | null,
 ) {
   const sortKey = query.view === 'head' ? entries.updatedAt : entries.publishedSortKey
-  return summaryQuery(db, query.view, [
-    eq(entries.siteId, site),
-    eq(entries.collection, query.collection),
-    query.locale === undefined ? undefined : eq(entries.locale, query.locale),
-    // The published view holds published entries only, which `viewWhere` already says.
-    query.view === 'head' && query.status !== undefined
-      ? eq(entries.status, query.status)
-      : undefined,
-    query.tag === undefined ? undefined : hasTag(site, query.tag),
-    cursor === null ? undefined : sql`(${sortKey}, ${entries.id}) < (${cursor.key}, ${cursor.id})`,
-  ])
+  return summaryQuery(
+    db,
+    query.view,
+    [
+      eq(entries.siteId, site),
+      eq(entries.collection, query.collection),
+      query.locale === undefined ? undefined : eq(entries.locale, query.locale),
+      // The published view holds published entries only, which `viewWhere` already says.
+      query.view === 'head' && query.status !== undefined
+        ? eq(entries.status, query.status)
+        : undefined,
+      query.tag === undefined ? undefined : hasTag(site, query.tag),
+      cursor === null
+        ? undefined
+        : sql`(${sortKey}, ${entries.id}) < (${cursor.key}, ${cursor.id})`,
+    ],
+    query.trashed === true,
+  )
     .orderBy(desc(sortKey), desc(entries.id))
     .limit(query.limit + 1)
 }
@@ -283,8 +301,12 @@ export async function listEntries(
     )
   }
   const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor, query.view)
-  // The published view lists published entries only: any other status asks for none.
-  if (query.view === 'published' && query.status !== undefined && query.status !== 'published') {
+  // The published view lists published entries only: any other status asks for none, and so
+  // does the trash, which holds drafts only.
+  if (
+    query.view === 'published' &&
+    (query.trashed === true || (query.status !== undefined && query.status !== 'published'))
+  ) {
     return { entries: [], nextCursor: null }
   }
   const rows = await listEntriesQuery(db, site, query, cursor)
@@ -373,7 +395,7 @@ function refMatches(ref: EntryRef): SQL | undefined {
   )
 }
 
-/** What cross-entry contracts read, scoped to one site. */
+/** What cross-entry contracts read, scoped to one site; an entry in the trash is not there. */
 export function lookup(db: Db, site: string): EntryLookup {
   return {
     /**
@@ -386,7 +408,9 @@ export function lookup(db: Db, site: string): EntryLookup {
         db
           .select(factFields)
           .from(entries)
-          .where(and(eq(entries.siteId, site), or(...group.map(refMatches)))),
+          .where(
+            and(eq(entries.siteId, site), isNull(entries.deletedAt), or(...group.map(refMatches))),
+          ),
       )
       if (first === undefined) return []
       const found = new Map<string, EntryFacts>()
@@ -408,6 +432,7 @@ export function lookup(db: Db, site: string): EntryLookup {
             eq(entries.siteId, site),
             eq(entries.collection, collection),
             eq(entries.translationGroup, translationGroup),
+            isNull(entries.deletedAt),
           ),
         )
         .orderBy(entries.locale)

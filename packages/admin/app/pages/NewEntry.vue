@@ -65,6 +65,10 @@ async function create() {
       await router.push(`/entries/${collection.value}/${locale.value}/${slug.value}`)
       return
     }
+    if (created.outcome === 'in_trash') {
+      failure.value = m.value.newEntry.inTrash
+      return
+    }
     refusal.value = created.verdict ?? null
   } catch (error) {
     failure.value = error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)

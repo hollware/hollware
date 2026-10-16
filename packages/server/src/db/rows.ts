@@ -29,6 +29,7 @@ export const entryFields = {
   publishedRev: entries.publishedRev,
   publishedAt: entries.publishedAt,
   scheduledAt: entries.scheduledAt,
+  deletedAt: entries.deletedAt,
   updatedAt: entries.updatedAt,
 }
 
@@ -125,6 +126,7 @@ export function toEntry(row: EntryRow): StoredEntry {
     publishedRevision: row.publishedRev,
     publishedAt: row.publishedAt,
     scheduledAt: row.scheduledAt,
+    deletedAt: row.deletedAt,
     updatedAt: row.updatedAt,
   }
 }

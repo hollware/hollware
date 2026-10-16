@@ -46,12 +46,18 @@ export const listEntries = defineOperation({
   name: 'list_entries',
   title: 'List entries',
   description:
-    'Lists the entries of a collection, newest first, filtered by locale, tag or status. Pass the nextCursor of an answer as cursor to get the next page.',
+    'Lists the entries of a collection, newest first, filtered by locale, tag or status. Pass the nextCursor of an answer as cursor to get the next page. Entries in the trash are left out, unless trashed asks for them.',
   input: z.strictObject({
     collection: collectionName,
     locale: locale.optional(),
     tag: z.string().min(1).optional(),
     status: entryStatus.optional(),
+    trashed: z
+      .boolean()
+      .optional()
+      .describe(
+        'true to list the entries in the trash, last trashed first, instead of the others.',
+      ),
     limit: z.number().int().min(1).max(100).default(20),
     cursor: z.string().min(1).optional(),
   }),
@@ -165,16 +171,18 @@ export const createDraft = defineOperation({
   name: 'create_draft',
   title: 'Create a draft',
   description:
-    'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken.',
+    'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back.',
   input: z.strictObject({ collection: collectionName, locale, slug, markdown }),
   output: z.object({
-    outcome: z.enum(['saved', 'refused']),
-    entry: entrySummary.optional(),
+    outcome: z.enum(['saved', 'refused', 'in_trash']),
+    entry: entrySummary
+      .optional()
+      .describe('With saved, the new draft; with in_trash, the entry in the trash that holds it.'),
     verdict: verdict.optional(),
   }),
   scopes: ['content:write'],
   effect: 'write',
-  outcomes: { saved: { isError: false }, refused: { isError: true } },
+  outcomes: { saved: { isError: false }, refused: { isError: true }, in_trash: { isError: true } },
 })
 
 export const updateDraft = defineOperation({
@@ -286,6 +294,46 @@ export const unpublish = defineOperation({
   scopes: ['content:publish'],
   effect: 'destructive',
   outcomes: { unpublished: { isError: false }, not_found: { isError: true } },
+})
+
+export const deleteEntry = defineOperation({
+  name: 'delete_entry',
+  title: 'Move an entry to the trash',
+  description:
+    'Moves a draft to the trash, if it is still at the version you read: every operation treats it as gone, its pending review is cancelled, and nothing is deleted. It keeps its slug and translation, and restore_entry brings it back as the draft it was. A published or scheduled entry answers published: unpublish it first.',
+  input: z.strictObject({ id: entryId, version }),
+  output: z.object({
+    outcome: z.enum(['trashed', 'published', 'conflict', 'not_found']),
+    entry: entrySummary.optional(),
+    conflict: conflict.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'destructive',
+  outcomes: {
+    trashed: { isError: false },
+    published: { isError: true },
+    conflict: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
+export const restoreEntry = defineOperation({
+  name: 'restore_entry',
+  title: 'Bring an entry back from the trash',
+  description:
+    'Brings an entry back from the trash as the draft it was, with its revisions, at the next version. An entry that is not in the trash answers not_trashed.',
+  input: z.strictObject({ id: entryId }),
+  output: z.object({
+    outcome: z.enum(['restored', 'not_trashed', 'not_found']),
+    entry: entrySummary.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'write',
+  outcomes: {
+    restored: { isError: false },
+    not_trashed: { isError: true },
+    not_found: { isError: true },
+  },
 })
 
 export const listReviews = defineOperation({
@@ -661,6 +709,7 @@ export const OPERATIONS = [
   contentStats,
   createDraft,
   createSite,
+  deleteEntry,
   deleteSite,
   describeSite,
   getEntry,
@@ -672,6 +721,7 @@ export const OPERATIONS = [
   publish,
   requestChanges,
   requestReview,
+  restoreEntry,
   restoreSite,
   search,
   setCollection,

@@ -21,6 +21,8 @@ type Row = Entry & { title: string }
 type Warning = Output<'validate'>['verdict']['warnings'][number]
 
 const ALL = 'all'
+/** The status filter that lists the trash instead of a status. */
+const TRASH = 'trash'
 /** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
 const MOST = 2000
 
@@ -40,6 +42,8 @@ function queried(name: string, fallback: string): string {
 const collection = ref(queried('collection', ''))
 const locale = ref(queried('locale', ALL))
 const status = ref(queried('status', ALL))
+
+const inTrash = computed(() => status.value === TRASH)
 
 const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === collection.value),
@@ -64,7 +68,11 @@ async function load() {
         collection: collection.value,
         limit: 100,
         ...(locale.value === ALL ? {} : { locale: locale.value }),
-        ...(status.value === ALL ? {} : { status: status.value as Status }),
+        ...(status.value === ALL
+          ? {}
+          : status.value === TRASH
+            ? { trashed: true }
+            : { status: status.value as Status }),
         ...(cursor === null ? {} : { cursor }),
       })
       all.push(...answer.entries)
@@ -128,10 +136,15 @@ const columns = computed<TableColumn<Row>[]>(() => [
  */
 const reportBulk = useBulkReport()
 const busy = ref(false)
-const publishable = (entry: Row) => entry.status !== 'published' || entry.hasUnpublishedChanges
-const unpublishable = (entry: Row) => entry.status !== 'draft'
+const publishable = (entry: Row) =>
+  entry.deletedAt === null && (entry.status !== 'published' || entry.hasUnpublishedChanges)
+const unpublishable = (entry: Row) => entry.deletedAt === null && entry.status !== 'draft'
+// Only a draft goes to the trash; what is published or scheduled is unpublished first.
+const trashable = (entry: Row) => entry.deletedAt === null && entry.status === 'draft'
+const restorable = (entry: Row) => entry.deletedAt !== null
 
 const unpublishing = ref<Row[]>([])
+const trashing = ref<Row[]>([])
 const scheduling = ref<Row[]>([])
 const publishAt = ref('')
 const warned = ref<{ row: Row; warnings: Warning[] }[]>([])
@@ -144,6 +157,7 @@ const open = (list: { value: unknown[] }) =>
     },
   })
 const unpublishOpen = open(unpublishing)
+const trashOpen = open(trashing)
 const scheduleOpen = open(scheduling)
 const warnedOpen = open(warned)
 
@@ -216,11 +230,41 @@ async function unpublishMany() {
   }
 }
 
+async function trashMany() {
+  const rows = trashing.value
+  trashing.value = []
+  busy.value = true
+  try {
+    const results = await runAll(rows, async (row) => {
+      const answer = await api.call('delete_entry', { id: row.id, version: row.version })
+      // `published` refuses the trash: the entry was published or scheduled meanwhile.
+      return { outcome: answer.outcome === 'published' ? 'not_draft' : answer.outcome }
+    })
+    reportBulk(countOutcomes(results))
+    await load()
+  } finally {
+    busy.value = false
+  }
+}
+
+async function restoreMany(rows: readonly Row[]) {
+  busy.value = true
+  try {
+    reportBulk(
+      countOutcomes(await runAll(rows, (row) => api.call('restore_entry', { id: row.id }))),
+    )
+    await load()
+  } finally {
+    busy.value = false
+  }
+}
+
 const statuses = computed(() => [
   { label: m.value.entries.anyStatus, value: ALL },
   { label: m.value.entries.draft, value: 'draft' },
   { label: m.value.entries.scheduled, value: 'scheduled' },
   { label: m.value.entries.published, value: 'published' },
+  { label: m.value.entries.trash, value: TRASH },
 ])
 const locales = computed(() => [
   { label: m.value.entries.anyLocale, value: ALL },
@@ -274,6 +318,24 @@ const locales = computed(() => [
           :disabled="busy"
           @click="unpublishing = selected.filter(unpublishable)"
         />
+        <UButton
+          v-if="selected.some(trashable)"
+          :label="m.bulk.trash(selected.filter(trashable).length)"
+          icon="i-lucide-trash-2"
+          color="error"
+          variant="outline"
+          size="sm"
+          :disabled="busy"
+          @click="trashing = selected.filter(trashable)"
+        />
+        <UButton
+          v-if="selected.some(restorable)"
+          :label="m.bulk.restore(selected.filter(restorable).length)"
+          icon="i-lucide-undo-2"
+          size="sm"
+          :loading="busy"
+          @click="restoreMany(selected.filter(restorable))"
+        />
       </template>
       <template #filters>
         <template v-if="site !== null">
@@ -288,7 +350,12 @@ const locales = computed(() => [
         </template>
       </template>
       <template #title-cell="{ row }">
+        <!-- An entry in the trash has no page until it is restored. -->
+        <span v-if="row.original.deletedAt !== null" class="block max-w-md truncate font-medium">
+          {{ row.original.title }}
+        </span>
         <RouterLink
+          v-else
           :to="entryPath(row.original)"
           class="block max-w-md truncate font-medium hover:underline"
         >
@@ -330,6 +397,16 @@ const locales = computed(() => [
       <template #site-cell="{ row }">
         <div class="text-right">
           <UButton
+            v-if="row.original.deletedAt !== null"
+            :label="m.entries.restore"
+            :aria-label="m.entries.restoreOne(row.original.title)"
+            icon="i-lucide-undo-2"
+            variant="outline"
+            size="sm"
+            :disabled="busy"
+            @click="restoreMany([row.original])"
+          />
+          <UButton
             v-if="liveUrl(row.original) !== null"
             :to="liveUrl(row.original) ?? undefined"
             target="_blank"
@@ -356,6 +433,16 @@ const locales = computed(() => [
           color="error"
           @click="unpublishMany"
         />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="trashOpen" :title="m.bulk.trashTitle(trashing.length)">
+      <template #body>
+        <p class="text-sm">{{ m.bulk.trashBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.keepIt" variant="ghost" @click="trashing = []" />
+        <UButton :label="m.bulk.trash(trashing.length)" color="error" @click="trashMany" />
       </template>
     </UModal>
 

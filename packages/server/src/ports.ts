@@ -40,6 +40,8 @@ export interface StoredEntry {
   readonly publishedAt: string | null
   /** When a scheduled entry will be published, or `null`. */
   readonly scheduledAt: string | null
+  /** When the entry went to the trash, or `null`. The reads leave a trashed entry out. */
+  readonly deletedAt: string | null
   readonly updatedAt: string
 }
 
@@ -113,6 +115,8 @@ export interface ListQuery {
   readonly locale?: string
   readonly tag?: string
   readonly status?: StoredEntry['status']
+  /** The entries in the trash instead of the others; the published view has none. */
+  readonly trashed?: boolean
   readonly view: View
   readonly limit: number
   /** The `nextCursor` of the previous page. */
@@ -213,6 +217,16 @@ export interface OutboxEvent {
   readonly payload: string
 }
 
+/** A new entry whose slug or translation an entry in the trash holds: restore that one. */
+export interface InTrash {
+  readonly outcome: 'in_trash'
+  readonly view: EntryView
+}
+
+/**
+ * The reads of the store leave out an entry in the trash, in every view: for the operations it is
+ * not there until it is restored. Only `listEntries` with `trashed` reads the trash.
+ */
 export interface ContentStore {
   /** The entry with that collection, locale and slug, in the given view, or `null`. */
   findEntry(site: string, ref: EntryRef, view: View): Promise<EntryView | null>
@@ -250,11 +264,35 @@ export interface ContentStore {
   lookup(site: string): EntryLookup
   /** The latest publish or unpublish of an entry, or `null`. */
   lastPublication(site: string, entryId: string): Promise<StoredPublication | null>
-  /** Creates an entry at version 1 with its first revision, as a draft. */
+  /**
+   * Creates an entry at version 1 with its first revision, as a draft. A slug or a translation
+   * that an entry in the trash holds is `in_trash`, by that entry.
+   */
   createEntry(
     site: string,
     entry: EntryRef & { readonly translationGroup: string | null; readonly revision: NewRevision },
-  ): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal>
+  ): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal | InTrash>
+  /**
+   * Moves a draft to the trash, if it is still at `expectedVersion`: the entry gets its
+   * `deletedAt` and the next version, and its pending review is cancelled in the same batch. No
+   * row is deleted. An entry that is published or scheduled is `not_draft`, and nothing is written.
+   */
+  trashEntry(
+    site: string,
+    write: { readonly entryId: string; readonly expectedVersion: number },
+  ): Promise<
+    | { readonly outcome: 'trashed' | 'not_draft'; readonly view: EntryView }
+    | Extract<WriteRefusal, { readonly outcome: 'conflict' | 'not_found' }>
+  >
+  /** Brings an entry back from the trash as the draft it was, at the next version. */
+  restoreEntry(
+    site: string,
+    entryId: string,
+  ): Promise<
+    | { readonly outcome: 'restored'; readonly view: EntryView }
+    | { readonly outcome: 'not_trashed'; readonly view: EntryView }
+    | { readonly outcome: 'not_found' }
+  >
   /**
    * Appends a revision and makes it the head, if the entry is still at `expectedVersion`. In
    * one batch: the revision, its tags (only where the revision was inserted), the cancellation of

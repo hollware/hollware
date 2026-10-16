@@ -123,6 +123,7 @@ describe('publish', () => {
       publishedRevision: id('rev_a'),
       publishedAt: T3,
       scheduledAt: null,
+      deletedAt: null,
       updatedAt: T3,
     })
     expect(result.view.revision).toMatchObject({
@@ -145,6 +146,7 @@ describe('publish', () => {
       published_at: T3,
       published_sort_key: '2026-10-05',
       scheduled_at: null,
+      deleted_at: null,
       created_at: T1,
       updated_at: T3,
     })
@@ -376,6 +378,7 @@ describe('unpublish', () => {
       publishedRevision: null,
       publishedAt: T1,
       scheduledAt: null,
+      deletedAt: null,
       updatedAt: T3,
     })
     expect(result.view.revision.id).toBe(id('rev_a'))

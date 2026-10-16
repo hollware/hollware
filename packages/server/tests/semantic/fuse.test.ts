@@ -21,6 +21,7 @@ function hit(id: string, snippet: string): SearchHit {
       publishedRevision: `rev_${id}`,
       publishedAt: '2026-10-15T10:00:00.000Z',
       scheduledAt: null,
+      deletedAt: null,
       updatedAt: '2026-10-15T10:00:00.000Z',
     },
     revision: { id: `rev_${id}`, frontmatter: {}, tags: [] },

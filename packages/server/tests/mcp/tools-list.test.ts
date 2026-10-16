@@ -46,6 +46,7 @@ const TOOLS = [
   { name: 'content_stats', title: 'Read what readers read', annotations: READ },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
   { name: 'create_site', title: 'Create a site', annotations: CHANGE },
+  { name: 'delete_entry', title: 'Move an entry to the trash', annotations: DESTROY },
   { name: 'delete_site', title: 'Put a site in the trash', annotations: DESTROY },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
@@ -57,6 +58,7 @@ const TOOLS = [
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
+  { name: 'restore_entry', title: 'Bring an entry back from the trash', annotations: CHANGE },
   { name: 'restore_site', title: 'Bring a site back from the trash', annotations: CHANGE },
   { name: 'search', title: 'Search entries', annotations: READ },
   { name: 'set_collection', title: 'Add, change or remove a collection', annotations: DESTROY },
@@ -70,8 +72,9 @@ const OUTCOMES: Record<string, string[]> = {
   approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
   comment_review: ['commented', 'not_pending', 'not_found'],
   content_stats: ['ok', 'unavailable'],
-  create_draft: ['saved', 'refused'],
+  create_draft: ['saved', 'refused', 'in_trash'],
   create_site: ['created', 'taken', 'invalid'],
+  delete_entry: ['trashed', 'published', 'conflict', 'not_found'],
   delete_site: ['trashed', 'needs_confirmation', 'not_found'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
@@ -91,6 +94,7 @@ const OUTCOMES: Record<string, string[]> = {
   ],
   request_changes: ['changes_requested', 'not_pending', 'not_found'],
   request_review: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
+  restore_entry: ['restored', 'not_trashed', 'not_found'],
   restore_site: ['restored', 'not_found'],
   search: ['ok'],
   set_collection: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
@@ -231,9 +235,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(46)
+    expect(converters).toHaveLength(50)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 46 }, () => 1),
+      Array.from({ length: 50 }, () => 1),
     )
   })
 })
@@ -248,6 +252,7 @@ describe('the tool table', () => {
       'content_stats',
       'create_draft',
       'create_site',
+      'delete_entry',
       'delete_site',
       'describe_site',
       'get_entry',
@@ -259,6 +264,7 @@ describe('the tool table', () => {
       'publish',
       'request_changes',
       'request_review',
+      'restore_entry',
       'restore_site',
       'search',
       'set_collection',

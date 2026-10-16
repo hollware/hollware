@@ -24,8 +24,8 @@ export const listReviews: OperationHandler<'list_reviews'> = async (input, conte
   const reviews = []
   for (const review of found) {
     const view = await context.store.findEntryById(context.site.key, review.entryId, 'head')
-    // An entry is never deleted while a review names it (the foreign key), so this is a bug.
-    if (view === null) throw unexpectedAnswer(context, 'list_reviews', { outcome: 'no entry' })
+    // An entry in the trash is not there, nor are its reviews: trashing cancelled the pending one.
+    if (view === null) continue
     reviews.push({
       ...reviewView(review),
       entry: entrySummary(view),

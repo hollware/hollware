@@ -96,6 +96,10 @@ export const entrySummary = z.object({
     .string()
     .nullable()
     .describe('When a scheduled entry will be published, or null for one that is not scheduled.'),
+  deletedAt: z
+    .string()
+    .nullable()
+    .describe('When the entry went to the trash, or null for one that is not in the trash.'),
   updatedAt: z.string(),
 })
 

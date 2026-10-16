@@ -1,6 +1,6 @@
 import { newId } from '@hollware/core'
 import type { EntryRef } from '@hollware/core'
-import { and, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { alias } from 'drizzle-orm/sqlite-core'
 
@@ -8,6 +8,7 @@ import type {
   Actor,
   Clock,
   EntryView,
+  InTrash,
   NewRevision,
   OutboxEvent,
   PublishWrite,
@@ -48,10 +49,10 @@ type Taken = Extract<WriteRefusal, { outcome: 'taken' }>
  * answer is `taken` by the entry that holds the key, found by `holder`. A unique violation nobody
  * holds the key for, and any other error, is not an outcome: it is thrown as it came.
  */
-async function attempt<Results>(
+async function attempt<Results, Refusal extends Taken | InTrash = Taken>(
   batch: Promise<Results>,
-  holder: () => Promise<Taken | null>,
-): Promise<{ readonly written: Results } | { readonly taken: Taken }> {
+  holder: () => Promise<Refusal | null>,
+): Promise<{ readonly written: Results } | { readonly taken: Refusal }> {
   try {
     return { written: await batch }
   } catch (error) {
@@ -61,14 +62,17 @@ async function attempt<Results>(
   }
 }
 
-/** The entry that holds the slug or the translation that a new entry asks for; the slug first. */
+/**
+ * The entry that holds the slug or the translation that a new entry asks for; the slug first. An
+ * entry in the trash keeps both, and is named as `in_trash`, so that the caller restores it.
+ */
 async function holderOfNewEntry(
   db: Db,
   site: string,
   entry: EntryRef & { readonly translationGroup: string | null },
-): Promise<Taken | null> {
+): Promise<Taken | InTrash | null> {
   const rows = await db
-    .select({ id: entries.id, slug: entries.slug })
+    .select({ id: entries.id, slug: entries.slug, deletedAt: entries.deletedAt })
     .from(entries)
     .where(
       and(
@@ -83,12 +87,15 @@ async function holderOfNewEntry(
         ),
       ),
     )
-  const bySlug = rows.find((row) => row.slug === entry.slug)
-  if (bySlug !== undefined) return { outcome: 'taken', field: 'slug', by: bySlug.id }
-  const [byGroup] = rows
-  return byGroup === undefined
-    ? null
-    : { outcome: 'taken', field: 'translationGroup', by: byGroup.id }
+  const holder = rows.find((row) => row.slug === entry.slug) ?? rows[0]
+  if (holder === undefined) return null
+  if (holder.deletedAt !== null) {
+    const view = await findTrashed(db, site, holder.id)
+    if (view !== null) return { outcome: 'in_trash', view }
+  }
+  return holder.slug === entry.slug
+    ? { outcome: 'taken', field: 'slug', by: holder.id }
+    : { outcome: 'taken', field: 'translationGroup', by: holder.id }
 }
 
 /** The other entry of the collection and locale of `entryId` that is in `translationGroup`. */
@@ -164,7 +171,7 @@ export async function createEntry(
   clock: Clock,
   site: string,
   entry: EntryRef & { readonly translationGroup: string | null; readonly revision: NewRevision },
-): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal> {
+): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal | InTrash> {
   const now = clock.now().toISOString()
   const entryId = newId('ent')
   const revisionId = newId('rev')
@@ -212,6 +219,7 @@ export async function createEntry(
         publishedRevision: null,
         publishedAt: null,
         scheduledAt: null,
+        deletedAt: null,
         updatedAt: now,
       },
       revision: storedRevision({ id: revisionId, entryId, now, revision: entry.revision, tags }),
@@ -488,6 +496,89 @@ export async function unpublish(
   ])
   const view = await findEntryById(db, site, write.entryId, 'head')
   return view === null ? { outcome: 'not_found' } : { outcome: 'unpublished', view }
+}
+
+/**
+ * Moves a draft to the trash in one batch: its pending review is cancelled, and the entry gets its
+ * `deleted_at` and the next version, both only while it is a draft out of the trash at
+ * `expectedVersion`. When the update touches nothing, one read tells why.
+ */
+export async function trashEntry(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: { readonly entryId: string; readonly expectedVersion: number },
+): Promise<
+  | { readonly outcome: 'trashed' | 'not_draft'; readonly view: EntryView }
+  | Extract<WriteRefusal, { readonly outcome: 'conflict' | 'not_found' }>
+> {
+  const now = clock.now().toISOString()
+  const trashable = [eq(entries.status, 'draft'), isNull(entries.deletedAt)]
+  const [, updated] = await db.batch([
+    cancelPendingReview(db, site, write.entryId, write.expectedVersion, now, trashable),
+    db
+      .update(entries)
+      .set({ deletedAt: now, version: sql`${entries.version} + 1`, updatedAt: now })
+      .where(
+        and(
+          eq(entries.id, write.entryId),
+          eq(entries.siteId, site),
+          eq(entries.version, write.expectedVersion),
+          ...trashable,
+        ),
+      )
+      .returning({ id: entries.id }),
+  ])
+  if (updated.length === 0) {
+    const view = await findEntryById(db, site, write.entryId, 'head')
+    if (view === null) return { outcome: 'not_found' }
+    if (view.entry.version !== write.expectedVersion) {
+      return {
+        outcome: 'conflict',
+        currentVersion: view.entry.version,
+        headRevision: view.entry.headRevision,
+      }
+    }
+    return { outcome: 'not_draft', view }
+  }
+  const view = await findTrashed(db, site, write.entryId)
+  if (view === null)
+    throw new Error(`Entry ${write.entryId} is not in the trash after its trashing`)
+  return { outcome: 'trashed', view }
+}
+
+/** Brings an entry back from the trash as the draft it was, at the next version. */
+export async function restoreEntry(
+  db: Db,
+  clock: Clock,
+  site: string,
+  entryId: string,
+): Promise<
+  | { readonly outcome: 'restored' | 'not_trashed'; readonly view: EntryView }
+  | { readonly outcome: 'not_found' }
+> {
+  const now = clock.now().toISOString()
+  const updated = await db
+    .update(entries)
+    .set({ deletedAt: null, version: sql`${entries.version} + 1`, updatedAt: now })
+    .where(and(eq(entries.id, entryId), eq(entries.siteId, site), isNotNull(entries.deletedAt)))
+    .returning({ id: entries.id })
+  const view = await findEntryById(db, site, entryId, 'head')
+  if (view === null) return { outcome: 'not_found' }
+  return { outcome: updated.length === 0 ? 'not_trashed' : 'restored', view }
+}
+
+/** An entry in the trash with its head revision, which the reads of the store leave out. */
+async function findTrashed(db: Db, site: string, entryId: string): Promise<EntryView | null> {
+  const [row] = await db
+    .select({ entry: entryFields, headRev: entries.headRev })
+    .from(entries)
+    .where(and(eq(entries.id, entryId), eq(entries.siteId, site), isNotNull(entries.deletedAt)))
+    .limit(1)
+  if (row === undefined) return null
+  const revision = await findRevision(db, site, row.headRev)
+  if (revision === null) throw new Error(`The head revision of entry ${entryId} is not there`)
+  return { entry: toEntry(row.entry), revision }
 }
 
 /** Drops the schedule of an entry in the batch that publishes it, if it is at `version`. */

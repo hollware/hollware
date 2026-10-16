@@ -72,6 +72,10 @@ serve them (ADR-017). Boundary rules for this package:
   asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
   closes its pending review in the same batch: a new revision cancels it, a publication approves
   it. `approve_review` publishes through the `publish` handler itself, in the approver's name.
+- The trash of entries: `delete_entry` sets `entries.deleted_at` on a draft, and every read of the
+  store (the contracts' lookups included) leaves a trashed entry out but `listEntries` with
+  `trashed`; it keeps its slug and translation, so `create_draft` answers `in_trash`
+  (`tests/ops/trash.workerd.test.ts`).
 - `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
   `/signin` and the four steps of their ceremonies.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,

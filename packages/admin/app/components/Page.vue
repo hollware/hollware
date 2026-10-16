@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { useMessages } from '../i18n/index.ts'
+import { me, useSiteMenu } from '../lib/me.ts'
+
 /**
  * A page of the admin: a panel of Nuxt UI's dashboard beside the sidebar, its title and its
- * actions in the bar at the top, its content below, as Linear lays out a view.
+ * actions in the bar at the top, its content below, as Linear lays out a view. The bar names the
+ * site the page is of, with the menu to switch to another: what a page shows is that site's.
  */
 defineProps<{ title: string; description?: string }>()
+const m = useMessages()
+const siteMenu = useSiteMenu()
 </script>
 
 <template>
@@ -12,6 +18,19 @@ defineProps<{ title: string; description?: string }>()
       <UDashboardNavbar :title="title">
         <template #leading>
           <UDashboardSidebarCollapse />
+          <UDropdownMenu v-if="me !== null" :items="siteMenu" :content="{ align: 'start' }">
+            <UButton
+              :label="me.site"
+              :aria-label="m.nav.siteOfPage(me.site)"
+              icon="i-lucide-globe"
+              trailing-icon="i-lucide-chevrons-up-down"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              class="font-mono text-muted"
+            />
+          </UDropdownMenu>
+          <span v-if="me !== null" aria-hidden="true" class="text-dimmed">/</span>
         </template>
         <template #right>
           <slot name="actions" />

@@ -140,6 +140,7 @@ describe('list_entries', () => {
       hasUnpublishedChanges: true,
       publishedAt: null,
       scheduledAt: null,
+      deletedAt: null,
       updatedAt: '2026-10-13T10:20:00.000Z',
     })
   })

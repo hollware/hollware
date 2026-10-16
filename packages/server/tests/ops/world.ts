@@ -134,7 +134,7 @@ export async function snapshotOf(db: D1Database, site: string) {
   const { results: entries } = await db
     .prepare(
       `SELECT id, status, version, head_rev, published_rev, published_at, published_sort_key,
-        translation_group, updated_at FROM entries WHERE site_id = ? ORDER BY id`,
+        translation_group, deleted_at, updated_at FROM entries WHERE site_id = ? ORDER BY id`,
     )
     .bind(site)
     .all()

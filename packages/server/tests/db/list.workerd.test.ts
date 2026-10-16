@@ -197,6 +197,7 @@ describe('listEntries in the head view', () => {
           publishedRevision: null,
           publishedAt: null,
           scheduledAt: null,
+          deletedAt: null,
           updatedAt: T1,
         },
         revision: {
@@ -463,7 +464,7 @@ function revisionColumns(statement: string): string[] {
 }
 
 /** What every listing selects: the entry, the id and the frontmatter of the revision, its tags. */
-const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
+const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
 
 describe('the statements of a listing', () => {
   it('read the id and the frontmatter of a revision and no other column of it: never the Markdown, the document or the verdict', async () => {
@@ -520,7 +521,7 @@ describe('the statements of a listing', () => {
     // The cursor is a row value, which an index seeks to; and the status of the published view is
     // a literal, which the partial index needs.
     expect(prepared).toEqual([
-      `${SELECT_A_SUMMARY} from "entries" inner join "revisions" on ("revisions"."id" = "entries"."head_rev" and "revisions"."site_id" = "entries"."site_id") where ("entries"."site_id" = ? and "entries"."collection" = ? and "entries"."locale" = ? and ("entries"."updated_at", "entries"."id") < (?, ?)) order by "entries"."updated_at" desc, "entries"."id" desc limit ?`,
+      `${SELECT_A_SUMMARY} from "entries" inner join "revisions" on ("revisions"."id" = "entries"."head_rev" and "revisions"."site_id" = "entries"."site_id") where ("entries"."site_id" = ? and "entries"."collection" = ? and "entries"."locale" = ? and ("entries"."updated_at", "entries"."id") < (?, ?) and "entries"."deleted_at" is null) order by "entries"."updated_at" desc, "entries"."id" desc limit ?`,
       `${SELECT_A_SUMMARY} from "entries" inner join "revisions" on ("revisions"."id" = "entries"."published_rev" and "revisions"."site_id" = "entries"."site_id") where ("entries"."site_id" = ? and "entries"."collection" = ? and "entries"."locale" = ? and "entries"."status" = 'published') order by "entries"."published_sort_key" desc, "entries"."id" desc limit ?`,
     ])
   })

@@ -67,6 +67,8 @@ export const STORE: ContentStore = {
   dueSchedules: unused,
   cancelSchedule: unused,
   unpublish: unused,
+  trashEntry: unused,
+  restoreEntry: unused,
   requestReview: unused,
   findReview: unused,
   listReviews: unused,
@@ -166,6 +168,7 @@ export const SUMMARY: EntrySummary = {
   hasUnpublishedChanges: false,
   publishedAt: null,
   scheduledAt: null,
+  deletedAt: null,
   updatedAt: '2026-10-12T12:00:00.000Z',
 }
 
@@ -252,6 +255,10 @@ export const CANNED: Canned = {
   create_draft: {
     saved: { outcome: 'saved', entry: SUMMARY, verdict: VERDICT_OK },
     refused: { outcome: 'refused', verdict: VERDICT_FAILED },
+    in_trash: {
+      outcome: 'in_trash',
+      entry: { ...SUMMARY, version: 2, deletedAt: '2026-10-12T12:00:00.000Z' },
+    },
   },
   describe_site: {
     ok: {
@@ -392,6 +399,20 @@ export const CANNED: Canned = {
     taken: { outcome: 'taken' },
     invalid: { outcome: 'invalid', problems: [PROBLEM] },
   },
+  delete_entry: {
+    trashed: {
+      outcome: 'trashed',
+      entry: { ...SUMMARY, version: 2, deletedAt: '2026-10-12T12:00:00.000Z' },
+    },
+    published: { outcome: 'published', entry: { ...SUMMARY, status: 'published', version: 2 } },
+    conflict: { outcome: 'conflict', conflict: { currentVersion: 2, headRevision: REVISION_ID } },
+    not_found: { outcome: 'not_found' },
+  },
+  restore_entry: {
+    restored: { outcome: 'restored', entry: { ...SUMMARY, version: 3 } },
+    not_trashed: { outcome: 'not_trashed', entry: SUMMARY },
+    not_found: { outcome: 'not_found' },
+  },
   delete_site: {
     trashed: { outcome: 'trashed' },
     needs_confirmation: { outcome: 'needs_confirmation', entries: 3 },
@@ -441,6 +462,8 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     validate: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
     create_site: { key: 'notes', definition: STRUCTURE },
     delete_site: { key: 'notes' },
+    delete_entry: { id: ENTRY_ID, version: 1 },
+    restore_entry: { id: ENTRY_ID },
     get_structure: {},
     make_webhook_secret: { webhook: 'newsletter' },
     restore_site: { key: 'notes' },
@@ -566,6 +589,16 @@ export function fakeHandlers(
       'create_site',
       overrides.create_site ??
         (async () => pick(CANNED.create_site, outcomes.create_site ?? 'created')),
+    ),
+    delete_entry: record(
+      'delete_entry',
+      overrides.delete_entry ??
+        (async () => pick(CANNED.delete_entry, outcomes.delete_entry ?? 'trashed')),
+    ),
+    restore_entry: record(
+      'restore_entry',
+      overrides.restore_entry ??
+        (async () => pick(CANNED.restore_entry, outcomes.restore_entry ?? 'restored')),
     ),
     delete_site: record(
       'delete_site',

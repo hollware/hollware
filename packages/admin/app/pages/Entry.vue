@@ -2,6 +2,7 @@
 import Page from '../components/Page.vue'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import VerdictList from '../components/VerdictList.vue'
@@ -22,6 +23,7 @@ type Warning = Verdict['warnings'][number]
 
 const toast = useToast()
 const m = useMessages()
+const router = useRouter()
 const site = ref<Site | null>(null)
 const entry = ref<Entry | null>(null)
 const related = ref<Summary[]>([])
@@ -36,6 +38,7 @@ const conflictOpen = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
 const unpublishOpen = ref(false)
+const trashOpen = ref(false)
 const scheduleOpen = ref(false)
 const publishAt = ref('')
 /** What publish waits for once the warnings are acknowledged: now, or a time. */
@@ -276,6 +279,41 @@ async function unpublish() {
   }
 }
 
+/** Moves the draft to the trash, and goes back to the entries of its collection. */
+async function trash() {
+  if (entry.value === null) return
+  busy.value = true
+  trashOpen.value = false
+  try {
+    const answer = await api.call('delete_entry', {
+      id: entry.value.id,
+      version: entry.value.version,
+    })
+    switch (answer.outcome) {
+      case 'trashed':
+        toast.add({
+          title: m.value.entry.trashed,
+          description: m.value.entry.trashedBody,
+          color: 'success',
+        })
+        await router.push({ path: '/entries', query: { collection: props.collection } })
+        break
+      case 'conflict':
+        conflictOpen.value = true
+        break
+      case 'published':
+      case 'not_found':
+        await load()
+        toast.add({ title: m.value.entry.notTrashed, color: 'error' })
+        break
+    }
+  } catch (error) {
+    report(error, m.value.entry.notTrashed)
+  } finally {
+    busy.value = false
+  }
+}
+
 async function reloadTheirs() {
   conflictOpen.value = false
   await load()
@@ -324,6 +362,15 @@ const tabs = computed(() => [
         variant="outline"
         :loading="busy"
         @click="unpublishOpen = true"
+      />
+      <UButton
+        v-if="entry.status === 'draft'"
+        :label="m.entry.moveToTrash"
+        icon="i-lucide-trash-2"
+        color="error"
+        variant="ghost"
+        :disabled="busy"
+        @click="trashOpen = true"
       />
     </template>
     <p v-if="missing" class="text-muted">{{ m.entry.missing }}</p>
@@ -478,6 +525,16 @@ const tabs = computed(() => [
             color="error"
             @click="unpublish"
           />
+        </template>
+      </UModal>
+
+      <UModal v-model:open="trashOpen" :title="m.entry.trashTitle">
+        <template #body>
+          <p>{{ m.entry.trashBody }}</p>
+        </template>
+        <template #footer>
+          <UButton :label="m.common.keepIt" variant="ghost" @click="trashOpen = false" />
+          <UButton :label="m.entry.moveToTrash" color="error" @click="trash" />
         </template>
       </UModal>
 

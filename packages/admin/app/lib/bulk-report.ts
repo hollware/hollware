@@ -12,6 +12,8 @@ const DONE = new Set([
   'revoked',
   'removed',
   'changed',
+  'trashed',
+  'restored',
 ])
 
 /** A toast that says what a bulk action came to: each outcome and how many. */

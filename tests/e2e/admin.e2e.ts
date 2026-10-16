@@ -8,6 +8,8 @@ import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './su
 // which asks for a review; the owner reads the review, comments on it and approves it, which
 // publishes it. Before v1.0: the owner unpublishes an entry and schedules it again, from the
 // editor, and sees what waits for review on the home page.
+// The owner moves a draft to the trash from the editor, finds it under the trash filter of the
+// entries and restores it.
 // AC-0.8-2: the owner makes a collection with a rule in the admin, an entry the rule refuses is
 // blocked, and once fixed it is published, with no deploy between.
 // AC-0.3-4: axe finds nothing serious or critical on any page of the admin or of the sign-in.
@@ -272,4 +274,66 @@ test('a page loaded before a deploy loads the new version when a file of its own
   await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
   expect(asked).toBe(2)
   await owner.unroute(file)
+})
+
+test('the owner moves a draft to the trash from the editor, finds it there and restores it', async () => {
+  // The admin is in Spanish since the tests before; Hello world is a draft again.
+  await owner.goto('/admin/entries/blog/en/hello-world')
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  await owner.getByRole('button', { name: 'Mover a la papelera' }).click()
+  await expect(owner.getByRole('dialog')).toContainText('¿Mover este borrador a la papelera?')
+  await expectAccessible(owner)
+  await owner.getByRole('dialog').getByRole('button', { name: 'Mover a la papelera' }).click()
+
+  await expect(owner.getByText('Movida a la papelera', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('heading', { name: 'Entradas', level: 1 })).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toHaveCount(0)
+
+  await owner.getByRole('combobox', { name: 'Estado' }).click()
+  await owner.getByRole('option', { name: 'En la papelera' }).click()
+  const trashed = owner.getByRole('row', { name: /^Seleccionar Hello world/ })
+  await expect(trashed).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+  await expectAccessible(owner)
+  await shot(owner, 'trash-es')
+
+  await trashed.getByRole('button', { name: 'Restaurar Hello world' }).click()
+  await expect(owner.getByText('1 restaurada', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toHaveCount(0)
+  await owner.getByRole('combobox', { name: 'Estado' }).click()
+  await owner.getByRole('option', { name: 'Cualquier estado' }).click()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
+    'borrador',
+  )
+
+  // Both drafts go to the trash at once, after a confirmation, and come back at once.
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
+  const bar = owner.getByRole('toolbar', { name: 'Acciones sobre las filas seleccionadas' })
+  await bar.getByRole('button', { name: 'Mover 2 a la papelera' }).click()
+  await expect(owner.getByRole('dialog')).toContainText('¿Mover 2 borradores a la papelera?')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Mover 2 a la papelera' }).click()
+  await expect(owner.getByText('2 movidas a la papelera', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+
+  await owner.getByRole('combobox', { name: 'Estado' }).click()
+  await owner.getByRole('option', { name: 'En la papelera' }).click()
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
+  await bar.getByRole('button', { name: 'Restaurar 2' }).click()
+  await expect(owner.getByText('2 restauradas', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+})
+
+test('the bar of every page names the site it is of, with the menu to switch to another', async () => {
+  // The admin is in Spanish since the tests before.
+  await owner.goto('/admin/collections')
+  const site = owner.getByRole('button', { name: 'Sitio playground: cambiar a otro' })
+  await expect(site).toBeVisible()
+  // Axe reads the page with no menu open: an open menu hides the rest of the page, as it should.
+  await expectAccessible(owner)
+  await site.click()
+  await expect(owner.getByRole('menuitemcheckbox', { name: /playground/ })).toBeChecked()
+  await owner.keyboard.press('Escape')
 })

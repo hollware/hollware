@@ -77,6 +77,7 @@ describe('findEntry and findEntryById', () => {
         publishedRevision: null,
         publishedAt: null,
         scheduledAt: null,
+        deletedAt: null,
         updatedAt: '2026-10-12T10:00:00.000Z',
       },
       revision: {

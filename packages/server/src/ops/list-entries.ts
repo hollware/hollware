@@ -12,6 +12,7 @@ export const listEntries: OperationHandler<'list_entries'> = async (input, conte
     locale: input.locale,
     tag: input.tag,
     status: input.status,
+    trashed: input.trashed,
     view: context.view,
     limit: input.limit,
     cursor: input.cursor,

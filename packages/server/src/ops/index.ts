@@ -22,6 +22,7 @@ import {
   requestChanges,
   requestReview,
 } from './reviews.ts'
+import { deleteEntry, restoreEntry } from './trash.ts'
 import { unpublish } from './unpublish.ts'
 import { updateDraft } from './update-draft.ts'
 import { validate } from './validate.ts'
@@ -38,6 +39,7 @@ export const handlers = defineHandlers({
   content_stats: contentStats,
   create_draft: createDraft,
   create_site: createSite,
+  delete_entry: deleteEntry,
   delete_site: deleteSite,
   describe_site: describeSite,
   get_entry: getEntry,
@@ -50,6 +52,7 @@ export const handlers = defineHandlers({
   publish,
   request_changes: requestChanges,
   request_review: requestReview,
+  restore_entry: restoreEntry,
   restore_site: restoreSite,
   set_collection: setCollection,
   unpublish,

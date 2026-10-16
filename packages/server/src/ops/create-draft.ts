@@ -44,6 +44,9 @@ export const createDraft: OperationHandler<'create_draft'> = async (input, conte
     case 'saved':
       // Contract errors do not stop a draft: the verdict says what to fix before publishing.
       return { outcome: 'saved', entry: entrySummary(written.view), verdict: verdictView(verdict) }
+    case 'in_trash':
+      // The entry in the trash keeps its slug and translation: restore it rather than make another.
+      return { outcome: 'in_trash', entry: entrySummary(written.view) }
     case 'taken':
     case 'too_large':
       return {

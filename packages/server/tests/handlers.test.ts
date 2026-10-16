@@ -13,6 +13,7 @@ const handlers: Handlers = {
   content_stats: notYet,
   create_draft: notYet,
   create_site: notYet,
+  delete_entry: notYet,
   delete_site: notYet,
   describe_site: notYet,
   get_entry: notYet,
@@ -25,6 +26,7 @@ const handlers: Handlers = {
   publish: notYet,
   request_changes: notYet,
   request_review: notYet,
+  restore_entry: notYet,
   restore_site: notYet,
   set_collection: notYet,
   unpublish: notYet,
@@ -40,8 +42,8 @@ describe('the handler table', () => {
     void validate
     // @ts-expect-error -- `validate` has no handler.
     defineHandlers(missingOne)
-    // @ts-expect-error -- `delete_entry` is no operation.
-    defineHandlers({ ...handlers, delete_entry: notYet })
+    // @ts-expect-error -- `purge_entry` is no operation.
+    defineHandlers({ ...handlers, purge_entry: notYet })
   })
 
   it('types a handler with the input and output of its spec', () => {

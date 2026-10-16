@@ -4,6 +4,7 @@ import {
   commentReview as commentReviewSpec,
   contentStats as contentStatsSpec,
   createDraft as createDraftSpec,
+  deleteEntry as deleteEntrySpec,
   defineCollection,
   defineComponent,
   defineConfig,
@@ -16,6 +17,7 @@ import {
   publish as publishSpec,
   requestChanges as requestChangesSpec,
   requestReview as requestReviewSpec,
+  restoreEntry as restoreEntrySpec,
   search as searchSpec,
   renderHtml,
   resolveConfig,
@@ -269,6 +271,10 @@ export function agent(context: OperationContext) {
       call(contentStatsSpec, handlers.content_stats, input, context),
     createDraft: (input: z.input<typeof createDraftSpec.input>) =>
       call(createDraftSpec, handlers.create_draft, input, context),
+    deleteEntry: (input: z.input<typeof deleteEntrySpec.input>) =>
+      call(deleteEntrySpec, handlers.delete_entry, input, context),
+    restoreEntry: (input: z.input<typeof restoreEntrySpec.input>) =>
+      call(restoreEntrySpec, handlers.restore_entry, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),
     getEntry: (input: z.input<typeof getEntrySpec.input>) =>
       call(getEntrySpec, handlers.get_entry, input, context),
@@ -348,6 +354,8 @@ export const UNTOUCHED: ContentStore = {
   dueSchedules: () => touched('dueSchedules'),
   cancelSchedule: () => touched('cancelSchedule'),
   unpublish: () => touched('unpublish'),
+  trashEntry: () => touched('trashEntry'),
+  restoreEntry: () => touched('restoreEntry'),
   requestReview: () => touched('requestReview'),
   findReview: () => touched('findReview'),
   listReviews: () => touched('listReviews'),

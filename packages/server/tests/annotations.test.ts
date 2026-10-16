@@ -36,7 +36,7 @@ describe('MCP hints', () => {
     })
   })
 
-  it('give the read operations read-only hints, and unpublish and the changes of structure destructive ones', () => {
+  it('give the read operations read-only hints, and unpublish, the trash of an entry and the changes of structure destructive ones', () => {
     const hints = Object.fromEntries(
       OPERATIONS.map((operation) => [
         operation.name,
@@ -53,6 +53,7 @@ describe('MCP hints', () => {
       content_stats: 'read-only',
       create_draft: 'changes',
       create_site: 'changes',
+      delete_entry: 'destructive',
       delete_site: 'destructive',
       describe_site: 'read-only',
       get_entry: 'read-only',
@@ -64,6 +65,7 @@ describe('MCP hints', () => {
       publish: 'changes',
       request_changes: 'changes',
       request_review: 'changes',
+      restore_entry: 'changes',
       restore_site: 'changes',
       search: 'read-only',
       set_collection: 'destructive',

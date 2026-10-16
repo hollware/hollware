@@ -68,6 +68,7 @@ describe('createEntry', () => {
         publishedRevision: null,
         publishedAt: null,
         scheduledAt: null,
+        deletedAt: null,
         updatedAt: NOW,
       },
       revision: {
@@ -103,6 +104,7 @@ describe('createEntry', () => {
       published_at: null,
       published_sort_key: null,
       scheduled_at: null,
+      deleted_at: null,
       created_at: NOW,
       updated_at: NOW,
     })

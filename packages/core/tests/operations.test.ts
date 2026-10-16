@@ -20,7 +20,7 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the twenty-three operations, sorted by name, as tools/list shows them', () => {
+  it('are the twenty-five operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
@@ -28,6 +28,7 @@ describe('operation specs', () => {
       'content_stats',
       'create_draft',
       'create_site',
+      'delete_entry',
       'delete_site',
       'describe_site',
       'get_entry',
@@ -39,6 +40,7 @@ describe('operation specs', () => {
       'publish',
       'request_changes',
       'request_review',
+      'restore_entry',
       'restore_site',
       'search',
       'set_collection',
@@ -87,14 +89,21 @@ describe('operation specs', () => {
       create_draft: {
         effect: 'write',
         scopes: ['content:write'],
-        outcomes: ['saved', 'refused'],
-        errors: ['refused'],
+        outcomes: ['saved', 'refused', 'in_trash'],
+        errors: ['refused', 'in_trash'],
       },
       create_site: {
         effect: 'write',
         scopes: ['schema:admin'],
         outcomes: ['created', 'taken', 'invalid'],
         errors: ['taken', 'invalid'],
+      },
+      // The trash of entries: only a draft goes there, and it comes back as it was.
+      delete_entry: {
+        effect: 'destructive',
+        scopes: ['content:write'],
+        outcomes: ['trashed', 'published', 'conflict', 'not_found'],
+        errors: ['published', 'conflict', 'not_found'],
       },
       delete_site: {
         effect: 'destructive',
@@ -150,6 +159,12 @@ describe('operation specs', () => {
         scopes: ['content:write'],
         outcomes: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
         errors: ['blocked', 'conflict', 'not_found'],
+      },
+      restore_entry: {
+        effect: 'write',
+        scopes: ['content:write'],
+        outcomes: ['restored', 'not_trashed', 'not_found'],
+        errors: ['not_trashed', 'not_found'],
       },
       restore_site: {
         effect: 'write',

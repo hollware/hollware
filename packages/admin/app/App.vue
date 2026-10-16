@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i18n/index.ts'
 import type { Output } from './lib/api.ts'
 import { entryPath, titleOf } from './lib/entries.ts'
+import { me, useSiteMenu, type Me } from './lib/me.ts'
 import { api, auth } from './lib/session.ts'
 
 /**
@@ -13,16 +14,8 @@ import { api, auth } from './lib/session.ts'
  * foot; each page is a panel beside it.
  */
 
-/** What `/v1/admin/me` says: the person, the site of the token and the sites they may switch to. */
-interface Me {
-  readonly user: { readonly id: string; readonly name: string | null } | undefined
-  readonly site: string
-  readonly sites: readonly { readonly site: string; readonly role: string }[]
-}
-
 const route = useRoute()
 const m = useMessages()
-const me = ref<Me | null>(null)
 const pending = ref(0)
 const collections = ref<string[]>([])
 
@@ -47,20 +40,7 @@ const roleKey = computed(
 )
 const role = computed(() => m.value.roles[roleKey.value] ?? roleKey.value)
 
-/** The sites of the person, to switch to: a token is for one site, so the admin signs in again. */
-const siteItems = computed<DropdownMenuItem[][]>(() => [
-  (me.value?.sites ?? []).map((membership) => ({
-    label: membership.site,
-    description: m.value.roles[membership.role] ?? membership.role,
-    icon: 'i-lucide-globe',
-    checked: membership.site === me.value?.site,
-    type: 'checkbox' as const,
-    onSelect: () => {
-      if (membership.site !== me.value?.site) void auth.switchSite(membership.site, '/admin/')
-    },
-  })),
-  [{ label: m.value.nav.newSite, icon: 'i-lucide-plus', to: '/site' }],
-])
+const siteItems = useSiteMenu()
 
 const links = computed<NavigationMenuItem[][]>(() => [
   [

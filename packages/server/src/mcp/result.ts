@@ -70,6 +70,10 @@ const OUTPUT_TOO_LARGE_FIX = {
   create_site:
     'The site was made and holds little: read it with get_structure from a token of that site.',
   delete_site: 'Nothing to ask for less of: the answer is a count. Try again.',
+  delete_entry:
+    'The operation ran and its change may have been applied: list the trash with list_entries and trashed before you repeat it.',
+  restore_entry:
+    'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   make_webhook_secret: 'Nothing to ask for less of: the answer is one secret. Try again.',
   get_structure:
     'The structure does not fit in one answer: read the collections with describe_site instead, and change them one at a time with set_collection.',

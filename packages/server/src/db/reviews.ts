@@ -1,5 +1,5 @@
 import { newId } from '@hollware/core'
-import { and, asc, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, inArray, sql, type SQL } from 'drizzle-orm'
 import type {
   Actor,
   Clock,
@@ -51,22 +51,30 @@ function toReview(
   }
 }
 
-/** The entry is still at `version`: the condition of every statement a write adds to its batch. */
-function entryAt(site: string, entryId: string, version: number) {
+/**
+ * The entry is still at `version`, and in the state `also` says: the condition of every statement
+ * a write adds to its batch.
+ */
+function entryAt(site: string, entryId: string, version: number, also: readonly SQL[] = []) {
   return sql`exists (select 1 from ${entries} where ${and(
     eq(entries.id, entryId),
     eq(entries.siteId, site),
     eq(entries.version, version),
+    ...also,
   )})`
 }
 
-/** In the batch of a new revision: the pending review asked for another one, so it is cancelled. */
+/**
+ * In the batch of a new revision: the pending review asked for another one, so it is cancelled.
+ * In the batch of a trashing, too, where `also` holds what makes the entry one the trash takes.
+ */
 export function cancelPendingReview(
   db: Db,
   site: string,
   entryId: string,
   version: number,
   now: string,
+  also: readonly SQL[] = [],
 ) {
   return db
     .update(reviews)
@@ -76,7 +84,7 @@ export function cancelPendingReview(
         eq(reviews.siteId, site),
         eq(reviews.entryId, entryId),
         eq(reviews.status, 'pending'),
-        entryAt(site, entryId, version),
+        entryAt(site, entryId, version, also),
       ),
     )
 }

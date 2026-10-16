@@ -39,6 +39,8 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     dueSchedules: (site, now) => schedules.dueSchedules(database, site, now),
     cancelSchedule: (site, entryId) => schedules.cancelSchedule(database, clock, site, entryId),
     unpublish: (site, write) => writes.unpublish(database, clock, site, write),
+    trashEntry: (site, write) => writes.trashEntry(database, clock, site, write),
+    restoreEntry: (site, entryId) => writes.restoreEntry(database, clock, site, entryId),
     requestReview: (site, write) =>
       reviews.requestReview(database, clock, site, write, () =>
         writes.whyNothingChanged(database, site, write.entryId),

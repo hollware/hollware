@@ -31,6 +31,7 @@ export const es: Messages = {
   roles: { owner: 'dueño', editor: 'editor', author: 'autor' },
   severity: { error: 'error', warning: 'advertencia' },
   nav: {
+    siteOfPage: (site: string) => `Sitio ${site}: cambiar a otro`,
     site: 'Sitio',
     newSite: 'Crear sitio',
     home: 'Inicio',
@@ -96,6 +97,14 @@ export const es: Messages = {
       revoked: (n: number) => (n === 1 ? '1 revocado' : `${n} revocados`),
       removed: (n: number) => (n === 1 ? '1 quitada' : `${n} quitadas`),
       changed: (n: number) => (n === 1 ? '1 cambiada' : `${n} cambiadas`),
+      trashed: (n: number) => (n === 1 ? '1 movida a la papelera' : `${n} movidas a la papelera`),
+      restored: (n: number) => (n === 1 ? '1 restaurada' : `${n} restauradas`),
+      not_draft: (n: number) =>
+        n === 1
+          ? '1 publicada o programada: despublícala primero'
+          : `${n} publicadas o programadas: despublícalas primero`,
+      not_trashed: (n: number) =>
+        n === 1 ? '1 no estaba en la papelera' : `${n} no estaban en la papelera`,
       failed: (n: number) => (n === 1 ? '1 falló' : `${n} fallaron`),
     },
     publish: (n: number) => `Publicar ${n}`,
@@ -105,11 +114,16 @@ export const es: Messages = {
     askChanges: (n: number) => `Pedir cambios en ${n}`,
     revoke: (n: number) => `Revocar ${n}`,
     remove: (n: number) => `Quitar ${n}`,
+    trash: (n: number) => `Mover ${n} a la papelera`,
+    restore: (n: number) => `Restaurar ${n}`,
     setRole: 'Cambiar el rol',
     unpublishTitle: (n: number) => `¿Despublicar ${n} entradas?`,
     unpublishBody:
       'Salen del sitio público: sus páginas responden 404 y desaparecen de los listados y de la búsqueda. Siguen aquí como borradores, con todas sus revisiones, y una programada deja de estarlo.',
     scheduleTitle: (n: number) => `Programar ${n} entradas`,
+    trashTitle: (n: number) => `¿Mover ${n} borradores a la papelera?`,
+    trashBody:
+      'Salen de todas las listas y de los agentes, y su revisión pendiente se cancela. No se elimina nada: restáuralos desde la papelera, con todas sus revisiones.',
     acknowledgeTitle: (n: number) => `¿Publicar ${n} entradas con estas advertencias?`,
     approveTitle: (n: number) => `¿Aprobar ${n} revisiones con estas advertencias?`,
     askChangesTitle: (n: number) => `Pedir cambios en ${n} revisiones`,
@@ -154,6 +168,12 @@ export const es: Messages = {
     draft: 'Borrador',
     scheduled: 'Programada',
     published: 'Publicada',
+    trash: 'En la papelera',
+    restore: 'Restaurar',
+    restoreOne: (title: string) => `Restaurar ${title}`,
+    restored: 'Restaurada',
+    restoredBody: 'La entrada vuelve a ser un borrador, con todas sus revisiones.',
+    notRestored: 'No se restauró',
     anyLocale: 'Cualquier idioma',
     changes: 'cambios',
     onSite: (title: string) => `${title} en el sitio`,
@@ -172,6 +192,8 @@ export const es: Messages = {
     notSlug: 'No es un slug.',
     create: 'Crear el borrador',
     notCreated: 'No se creó',
+    inTrash:
+      'Una entrada en la papelera tiene este slug o esta traducción: restáurala desde la papelera de las entradas.',
   },
   entry: {
     title: 'Entrada',
@@ -240,6 +262,13 @@ export const es: Messages = {
     draftAgain: 'La entrada vuelve a ser un borrador, con todas sus revisiones.',
     notCancelled: 'No se canceló',
     notUnpublished: 'No se despublicó',
+    moveToTrash: 'Mover a la papelera',
+    trashTitle: '¿Mover este borrador a la papelera?',
+    trashBody:
+      'Sale de todas las listas y de los agentes, y su revisión pendiente se cancela. No se elimina nada: puedes restaurarlo desde la papelera de las entradas, con todas sus revisiones.',
+    trashed: 'Movida a la papelera',
+    trashedBody: 'Restáurala desde la papelera, en la lista de entradas.',
+    notTrashed: 'No se movió a la papelera',
   },
   reviews: {
     title: 'Revisiones',
