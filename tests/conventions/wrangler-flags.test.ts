@@ -17,6 +17,7 @@ describe('wrangler flags', () => {
     expect(configs.map((config) => config.path)).toEqual([
       'apps/playground/wrangler.jsonc',
       'apps/web/wrangler.jsonc',
+      'examples/agents-worker/wrangler.jsonc',
       'examples/nuxt-blog/wrangler.jsonc',
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',

@@ -25,6 +25,14 @@ export interface ComposeOptions {
 
 const systemClock: Clock = { now: () => new Date() }
 
+/** How often the cron trigger wakes the agents, when the Worker has the `AGENTS` binding. */
+export const AGENTS_EVERY_MINUTES = 10
+
+/** Whether the run of the cron at `time` wakes the agents: on the minutes that divide by ten. */
+export function wakesAgents(time: number): boolean {
+  return Math.floor(time / 60_000) % AGENTS_EVERY_MINUTES === 0
+}
+
 /** What the MCP endpoint calls the server, in `server/discover` and `initialize`. */
 const SERVER_INFO = { name: 'hollware', title: 'Hollware', version: manifest.version }
 
@@ -83,7 +91,7 @@ export function createHollwareWith(
       handlers,
     }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025), site by site.
-    scheduled: async (_controller, env, ctx) => {
+    scheduled: async (controller, env, ctx) => {
       const each = async (site: ResolvedSite) => {
         await runDueSchedules({
           site,
@@ -101,6 +109,16 @@ export function createHollwareWith(
           await healVectors(connect(env.DB), semantic, { site: site.key, now })
           await refreshRelated(connect(env.DB), semantic, { site: site.key, now })
         }
+      }
+      const agents: unknown = env.AGENTS
+      const run: unknown =
+        typeof agents === 'object' && agents !== null ? Reflect.get(agents, 'run') : undefined
+      if (typeof run === 'function' && wakesAgents(controller.scheduledTime)) {
+        ctx.waitUntil(
+          Promise.resolve(Reflect.apply(run, agents, [])).catch((error: unknown) => {
+            writeLog({ kind: 'agents_failed', message: String(error) })
+          }),
+        )
       }
       ctx.waitUntil(
         (async () => {

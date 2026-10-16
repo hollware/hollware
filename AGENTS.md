@@ -103,6 +103,7 @@ new process group, so the child outlives its supervisor.
 - `templates/starter` — the thin project users get.
 - `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
 - `examples/nuxt-blog` — a Nuxt blog on a Worker that reads Hollware through `@hollware/nuxt`.
+- `examples/agents-worker` — the Worker of `@hollware/agents` for the playground's blog.
 - `tests/conformance/worker` — the Hollware Worker that the MCP conformance suite runs against.
 
 ## Conventions

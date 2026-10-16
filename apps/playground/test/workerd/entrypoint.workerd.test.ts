@@ -29,6 +29,13 @@ it('serves the site of hollware.config.ts over RPC', async () => {
           tagsField: 'tags',
           sortByField: 'date',
         },
+        {
+          name: 'reports',
+          routes: { es: '/informes/:slug/', en: '/en/reports/:slug/' },
+          translationGroupField: null,
+          tagsField: null,
+          sortByField: null,
+        },
       ],
     },
   })

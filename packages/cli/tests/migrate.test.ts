@@ -11,6 +11,8 @@
 // - "backs up the remote database before it applies anything": the backup before `--remote` is
 //   removed, moved after `apply`, or its arguments or file name change.
 // - "stops when the backup fails": a failed `wrangler d1 export` does not stop `apply`.
+// - "takes a Time Travel bookmark" / "stops when no bookmark": a database D1 cannot export (its
+//   full-text index) is not backed up by a bookmark, or is migrated without one.
 // - "stops when wrangler says it exported but wrote nothing" rows: a missing or empty backup
 //   file does not stop `apply`.
 // - "takes no backup when nothing is pending" / "takes no backup to only check": the backup is
@@ -214,6 +216,50 @@ describe('hollware migrate', () => {
       'hollware migrate: the backup of the remote database "DB" failed, so no migration was applied: D1 reset before export completed!',
     ])
     expect(wrangler.calls.map((call) => call.args[1])).toEqual(['migrations', 'export'])
+  })
+
+  // What wrangler 4.150.0 answers for a database with the full-text index of 0008.
+  const VIRTUAL_TABLES =
+    '\u001B[31m✘ \u001B[41;31m[\u001B[41;97mERROR\u001B[41;31m]\u001B[0m \u001B[1mD1 Export error: cannot export databases with virtual tables (like FTS5)\u001B[0m\n'
+
+  it('takes a Time Travel bookmark of a database D1 cannot export, and applies', async () => {
+    const wrangler = fakeWrangler(
+      ok(LIST_LATER_PENDING),
+      failed(VIRTUAL_TABLES),
+      ok('{\n  "bookmark": "00000017-0000001c-00005105-b11a68929d543d85e2816c2de1a5e86f"\n}\n'),
+      ok(APPLIED),
+    )
+    const project = setup(wrangler)
+
+    const { code, out } = await project.run(['migrate', '--remote'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args)).toEqual([
+      ['d1', 'migrations', 'list', 'DB', '--remote'],
+      ['d1', 'export', 'DB', '--remote', '--output', project.backup, '--skip-confirmation'],
+      ['d1', 'time-travel', 'info', 'DB', '--json'],
+      ['d1', 'migrations', 'apply', 'DB', '--remote'],
+    ])
+    expect(out.at(-1)).toBe(
+      'Applied 2 migrations to the remote database "DB":\n  0001_core.sql\n  0002_append_only.sql\nBackup taken before: the Time Travel bookmark 00000017-0000001c-00005105-b11a68929d543d85e2816c2de1a5e86f; restore it with "npx wrangler d1 time-travel restore DB --bookmark=00000017-0000001c-00005105-b11a68929d543d85e2816c2de1a5e86f"',
+    )
+  })
+
+  it('stops when no bookmark can be taken either, and applies nothing', async () => {
+    const wrangler = fakeWrangler(ok(LIST_LATER_PENDING), failed(VIRTUAL_TABLES), ok('{}'))
+    const project = setup(wrangler)
+
+    const { code, err } = await project.run(['migrate', '--remote'])
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware migrate: no Time Travel bookmark of the remote database "DB" could be taken, so no migration was applied: wrangler answered no bookmark',
+    ])
+    expect(wrangler.calls.map((call) => call.args[1])).toEqual([
+      'migrations',
+      'export',
+      'time-travel',
+    ])
   })
 
   it.each([

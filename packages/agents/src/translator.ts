@@ -1,6 +1,7 @@
 import type { Hollware, ToolOutput } from './hollware.ts'
 import type { Memory } from './memory.ts'
 import type { Model } from './model.ts'
+import { entriesOf } from './listing.ts'
 import { list, number, record, text, type Json } from './read.ts'
 
 /** How many times the translator fixes a draft the contracts refuse, before it leaves it. */
@@ -59,14 +60,16 @@ export interface TranslatorDeps {
 /**
  * For each published entry of a collection with translations whose group lacks a locale of the
  * site, writes the translation as a draft, fixes what the contracts refuse up to `FIX_ROUNDS`
- * times, and asks a person to review it. A translation is tried once: the memory keeps it, and a
- * draft in that locale, of anyone, counts as the translation.
+ * times, and asks a person to review it, at most `limit` a run. It reads each locale's entries in
+ * one listing, so a run stays within the fifty calls a free Worker has; an entry of any status
+ * in a locale counts as the translation, and the memory keeps what was tried, once it was saved or
+ * refused: a run that stops before tries it again.
  */
 export async function translateMissing(
   deps: TranslatorDeps,
   options: { readonly limit?: number } = {},
 ): Promise<{ readonly drafted: number; readonly sentToReview: number }> {
-  const limit = options.limit ?? 3
+  const limit = options.limit ?? 2
   const site = record((await deps.hollware.call('describe_site', {}))['site'])
   const given: unknown = site['locales']
   const locales = Array.isArray(given)
@@ -78,73 +81,70 @@ export async function translateMissing(
     const name = text(collection['name'])
     if (name === null || text(collection['translationGroupField']) === null) continue
     const style = text(collection['styleGuide']) ?? text(site['styleGuide']) ?? '(none)'
-    const published = list(
-      (
-        await deps.hollware.call('list_entries', {
-          collection: name,
-          status: 'published',
-          limit: 50,
-        })
-      )['entries'],
+    const byLocale = new Map<string, Json[]>()
+    for (const locale of locales)
+      byLocale.set(locale, await entriesOf(deps.hollware, { collection: name, locale }))
+    const groupsIn = new Map(
+      locales.map((locale) => [
+        locale,
+        new Set((byLocale.get(locale) ?? []).map((entry) => text(entry['translationGroup']))),
+      ]),
     )
-    for (const entry of published) {
-      const group = text(entry['translationGroup'])
-      const id = text(entry['id'])
-      if (group === null || id === null) continue
-      const present = new Set(
-        list(
-          (
-            await deps.hollware.call('get_translations', {
-              collection: name,
-              translationGroup: group,
-            })
-          )['entries'],
-        ).map((one) => String(one['locale'])),
-      )
-      for (const locale of locales.filter((one) => !present.has(one))) {
-        if (drafted >= limit) return { drafted, sentToReview }
-        const key = `translated:${id}:${locale}`
-        if ((await deps.memory.get(key)) !== null) continue
-        await deps.memory.put(key, 'tried', 90 * 86_400)
-        const source = text(
-          record(
-            (
-              await deps.hollware.call('get_entry', {
-                collection: name,
-                locale: entry['locale'],
-                slug: entry['slug'],
-              })
-            )['entry'],
-          )['markdown'],
-        )
-        if (source === null) continue
-        const translated = unfenced(
-          await deps.model([
-            { role: 'system', content: TRANSLATOR_PROMPT },
-            {
-              role: 'user',
-              content: `Translate from ${String(entry['locale'])} into ${locale}.\n\nStyle guide:\n${style}\n\nFile:\n\n${source}`,
-            },
-          ]),
-        )
-        const slug = slugOf(titleOf(translated) ?? String(entry['slug']))
-        let saved: ToolOutput = await deps.hollware.call('create_draft', {
-          collection: name,
-          locale,
-          slug,
-          markdown: translated,
-        })
-        if (saved['outcome'] === 'refused') {
-          saved = await deps.hollware.call('create_draft', {
+    for (const [source, entries] of byLocale) {
+      for (const entry of entries) {
+        const group = text(entry['translationGroup'])
+        const id = text(entry['id'])
+        if (entry['status'] !== 'published' || group === null || id === null) continue
+        for (const locale of locales) {
+          const present = groupsIn.get(locale)
+          if (locale === source || present === undefined || present.has(group)) continue
+          if (drafted >= limit) return { drafted, sentToReview }
+          // One translation of a group into a locale per run, whichever locale it comes from.
+          present.add(group)
+          const key = `translated:${id}:${locale}`
+          if ((await deps.memory.get(key)) !== null) continue
+          const source_ = text(
+            record(
+              (
+                await deps.hollware.call('get_entry', {
+                  collection: name,
+                  locale: source,
+                  slug: entry['slug'],
+                })
+              )['entry'],
+            )['markdown'],
+          )
+          if (source_ === null) continue
+          const translated = unfenced(
+            await deps.model([
+              { role: 'system', content: TRANSLATOR_PROMPT },
+              {
+                role: 'user',
+                content: `Translate from ${source} into ${locale}.\n\nStyle guide:\n${style}\n\nFile:\n\n${source_}`,
+              },
+            ]),
+          )
+          const slug = slugOf(titleOf(translated) ?? String(entry['slug']))
+          let saved: ToolOutput = await deps.hollware.call('create_draft', {
             collection: name,
             locale,
-            slug: `${slug}-${locale}`,
+            slug,
             markdown: translated,
           })
+          if (saved['outcome'] === 'refused') {
+            saved = await deps.hollware.call('create_draft', {
+              collection: name,
+              locale,
+              slug: `${slug}-${locale}`,
+              markdown: translated,
+            })
+          }
+          // Remembered once it was tried: a run that stops before this tries it again.
+          await deps.memory.put(key, String(saved['outcome']), 90 * 86_400)
+          if (saved['outcome'] !== 'saved') continue
+          drafted += 1
+          if (await fixAndAsk(deps, saved, name, locale)) sentToReview += 1
         }
-        if (saved['outcome'] !== 'saved') continue
-        drafted += 1
-        if (await fixAndAsk(deps, saved, name, locale)) sentToReview += 1
       }
     }
   }

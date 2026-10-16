@@ -121,7 +121,14 @@
         "HOLLWARE_ANALYTICS_DATASET": "hollware_staging_page_views",
       },
       "triggers": { "crons": ["* * * * *"] },
-      "services": [],
+      // Hollware's cron wakes the agents of examples/agents-worker every ten minutes (v0.6).
+      "services": [
+        {
+          "binding": "AGENTS",
+          "service": "hollware-agents-staging",
+          "entrypoint": "HollwareAgents",
+        },
+      ],
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-staging-bge-m3" }],
       "analytics_engine_datasets": [

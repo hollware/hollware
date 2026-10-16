@@ -5,7 +5,8 @@ import { ALLOWED_TOOLS, allowOnly, mcpHollware } from '../src/hollware.ts'
 // Fails when: the agents' way into Hollware (src/hollware.ts) lets a tool through that publishes
 // or decides (publish, approve_review, request_changes, unpublish), drops one they need, stops
 // sending the call as MCP JSON-RPC to the public URL's /mcp with the token and the agents' client
-// name, or stops reading the tool's output from JSON or from a server-sent event.
+// name and Host of the public URL (a service binding sends none), or stops reading the tool's
+// output from JSON or from a server-sent event.
 
 describe('the allowlist', () => {
   it('lets the reading and writing tools through, and refuses those that publish or decide', async () => {
@@ -51,7 +52,7 @@ describe('the allowlist', () => {
 
 describe('mcpHollware', () => {
   it('calls the tool over MCP with the token, and reads its output from JSON or an event', async () => {
-    const sent: { url: string; auth: string | null; body: unknown }[] = []
+    const sent: { url: string; host: string | null; auth: string | null; body: unknown }[] = []
     const answers = [
       JSON.stringify({
         jsonrpc: '2.0',
@@ -66,6 +67,7 @@ describe('mcpHollware', () => {
       fetch: async (request) => {
         sent.push({
           url: request.url,
+          host: request.headers.get('host'),
           auth: request.headers.get('authorization'),
           body: await request.json(),
         })
@@ -82,6 +84,8 @@ describe('mcpHollware', () => {
     ])
     expect(sent[1]).toMatchObject({
       url: 'https://cms.example.com/mcp',
+      // A service binding sends no Host of its own: Hollware's guard needs it.
+      host: 'cms.example.com',
       auth: 'Bearer hw_pat_secret',
       body: {
         method: 'tools/call',

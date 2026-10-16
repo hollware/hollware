@@ -1,4 +1,6 @@
 import type { Hollware } from './hollware.ts'
+import { entriesOf } from './listing.ts'
+import { mapMemory, type Memory } from './memory.ts'
 import { list, number, record, text, type Json } from './read.ts'
 
 /** Where the weekly report goes: a draft in a collection of the site, and a webhook if set. */
@@ -21,8 +23,6 @@ export interface AuditOptions {
   readonly day: string
   /** An entry read this much but not updated in these many days is out of date. */
   readonly staleDays?: number
-  /** How many published entries of each collection are checked against the contracts. */
-  readonly perCollection?: number
 }
 
 export interface Finding {
@@ -74,18 +74,96 @@ function problemsOf(verdict: Json): string[] {
   )
 }
 
+/** The memory's key of what the auditor has checked: where it is, and what it found by entry. */
+export const AUDIT_STATE = 'audit:state'
+
+/** What the auditor remembers between runs. */
+export interface AuditState {
+  readonly offset: number
+  readonly found: Readonly<
+    Record<string, { readonly problems: readonly string[]; readonly at: string }>
+  >
+}
+
+function stateOf(text_: string | null): AuditState {
+  if (text_ === null) return { offset: 0, found: {} }
+  try {
+    const parsed = record(JSON.parse(text_))
+    return {
+      offset: number(parsed['offset']) ?? 0,
+      found: Object.fromEntries(
+        Object.entries(record(parsed['found'])).map(([key, value]) => {
+          const one = record(value)
+          const problems = Array.isArray(one['problems']) ? one['problems'].map(String) : []
+          return [key, { problems, at: text(one['at']) ?? '' }]
+        }),
+      ),
+    }
+  } catch {
+    return { offset: 0, found: {} }
+  }
+}
+
+export interface StepDeps {
+  readonly hollware: Hollware
+  readonly memory: Memory
+}
+
 /**
- * The weekly audit: the most read pages whose entry has not changed in `staleDays`, and the
- * published entries that the current contracts refuse or warn about (a link to a page that is
- * gone shows up here). The report is saved as a draft (never published) in the report's
- * collection, its slug the day, and posted to the webhook when there is one. It needs no model.
+ * One step of the audit: the next `perRun` published entries of the site (outside the report's
+ * collection), each checked against the contracts as they are now, and what was found kept in the
+ * memory. A step reads a dozen entries, two calls each, so that a run stays within the fifty calls
+ * a free Worker has; the steps go round the entries, and the report is written from them.
  */
-export async function audit(
-  deps: AuditorDeps,
+export async function auditStep(
+  deps: StepDeps,
+  options: { readonly report: ReportOptions; readonly now: string; readonly perRun?: number },
+): Promise<{ readonly checked: number }> {
+  const perRun = options.perRun ?? 12
+  const site = record((await deps.hollware.call('describe_site', {}))['site'])
+  const refs: { collection: string; locale: string; slug: string }[] = []
+  for (const collection of list(site['collections'])) {
+    const name = text(collection['name'])
+    if (name === null || name === options.report.collection) continue
+    for (const entry of await entriesOf(deps.hollware, { collection: name, status: 'published' })) {
+      const locale = text(entry['locale'])
+      const slug = text(entry['slug'])
+      if (locale !== null && slug !== null) refs.push({ collection: name, locale, slug })
+    }
+  }
+  const state = stateOf(await deps.memory.get(AUDIT_STATE))
+  const found = { ...state.found }
+  const count = Math.min(perRun, refs.length)
+  for (let step = 0; step < count; step++) {
+    const ref = refs[(state.offset + step) % refs.length]
+    if (ref === undefined) continue
+    const markdown = text(
+      record((await deps.hollware.call('get_entry', { ...ref, published: true }))['entry'])[
+        'markdown'
+      ],
+    )
+    if (markdown === null) continue
+    const verdict = record((await deps.hollware.call('validate', { ...ref, markdown }))['verdict'])
+    found[`${ref.collection}/${ref.locale}/${ref.slug}`] = {
+      problems: problemsOf(verdict),
+      at: options.now,
+    }
+  }
+  const offset = refs.length === 0 ? 0 : (state.offset + count) % refs.length
+  await deps.memory.put(AUDIT_STATE, JSON.stringify({ offset, found }), 30 * 86_400)
+  return { checked: count }
+}
+
+/**
+ * The report of the audit: the most read pages whose entry has not changed in `staleDays`, and
+ * what the steps of the last eight days found. It is saved as a draft (never published) in the
+ * report's collection, its slug the day, and posted to the webhook when there is one.
+ */
+export async function writeReport(
+  deps: AuditorDeps & StepDeps,
   options: AuditOptions,
 ): Promise<{ readonly findings: number }> {
   const staleDays = options.staleDays ?? 180
-  const perCollection = options.perCollection ?? 50
   const findings: Finding[] = []
   const stats = await deps.hollware.call('content_stats', { days: 30, limit: 20 })
   const cutoff = Date.parse(options.day) - staleDays * 86_400_000
@@ -99,57 +177,20 @@ export async function audit(
       what: `${number(page['views']) ?? 0} views in 30 days, last updated ${updated.slice(0, 10)}`,
     })
   }
-  const site = record((await deps.hollware.call('describe_site', {}))['site'])
-  for (const collection of list(site['collections'])) {
-    const name = text(collection['name'])
-    if (name === null || name === options.report.collection) continue
-    const entries = list(
-      (
-        await deps.hollware.call('list_entries', {
-          collection: name,
-          status: 'published',
-          limit: perCollection,
-        })
-      )['entries'],
-    )
-    for (const entry of entries) {
-      const ref = { collection: name, locale: entry['locale'], slug: entry['slug'] }
-      const markdown = text(
-        record((await deps.hollware.call('get_entry', { ...ref, published: true }))['entry'])[
-          'markdown'
-        ],
-      )
-      if (markdown === null) continue
-      const verdict = record(
-        (await deps.hollware.call('validate', { ...ref, markdown }))['verdict'],
-      )
-      for (const problem of problemsOf(verdict)) {
-        findings.push({
-          kind: 'contract',
-          where: `${name}/${String(entry['locale'])}/${String(entry['slug'])}`,
-          what: problem,
-        })
-      }
-    }
+  const since = Date.parse(options.day) - 8 * 86_400_000
+  const state = stateOf(await deps.memory.get(AUDIT_STATE))
+  for (const [where, { problems, at }] of Object.entries(state.found).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    if (Date.parse(at) < since) continue
+    for (const problem of problems) findings.push({ kind: 'contract', where, what: problem })
   }
   const report = reportOf(options.day, findings, options.report)
   const slug = `audit-${options.day}`
-  const existing = record(
-    (
-      await deps.hollware.call('get_entry', {
-        collection: options.report.collection,
-        locale: options.report.locale,
-        slug,
-      })
-    )['entry'],
-  )
+  const where = { collection: options.report.collection, locale: options.report.locale, slug }
+  const existing = record((await deps.hollware.call('get_entry', where))['entry'])
   if (text(existing['id']) === null) {
-    await deps.hollware.call('create_draft', {
-      collection: options.report.collection,
-      locale: options.report.locale,
-      slug,
-      markdown: report,
-    })
+    await deps.hollware.call('create_draft', { ...where, markdown: report })
   } else {
     await deps.hollware.call('update_draft', {
       id: existing['id'],
@@ -159,4 +200,21 @@ export async function audit(
   }
   await deps.webhook?.(report)
   return { findings: findings.length }
+}
+
+/** A whole audit at once, every published entry and then the report: for a site with few entries. */
+export async function audit(
+  deps: AuditorDeps & Partial<StepDeps>,
+  options: AuditOptions,
+): Promise<{ readonly findings: number }> {
+  const memory = deps.memory ?? mapMemory()
+  await auditStep(
+    { hollware: deps.hollware, memory },
+    {
+      report: options.report,
+      now: `${options.day}T00:00:00.000Z`,
+      perRun: Number.POSITIVE_INFINITY,
+    },
+  )
+  return writeReport({ ...deps, memory }, options)
 }

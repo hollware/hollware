@@ -1,11 +1,13 @@
 import {
   allowOnly,
   audit,
+  auditStep,
   mapMemory,
   reviewPending,
   translateMissing,
   type Hollware,
   type Message,
+  writeReport,
 } from '@hollware/agents'
 import { OPERATIONS } from '@hollware/core'
 import { env } from 'cloudflare:workers'
@@ -25,7 +27,8 @@ import { createPost, newWorld, type World } from '../ops/world.ts'
 // the translator stops drafting the missing translation of a published entry, fixing what the
 // contracts refuse, and asking for its review, or drafts it twice; the auditor stops reporting an
 // entry read a lot and updated long ago and a published entry the contracts now refuse, as a
-// draft of the report's collection and to the webhook; or any of them publishes.
+// draft of the report's collection and to the webhook, or stops going round the entries a few at a
+// time and reporting what every step found; or any of them publishes.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -168,6 +171,34 @@ describe('the translator', () => {
   })
 })
 
+describe('the translator, interrupted', () => {
+  it('tries again a translation whose run stopped before it was saved', async () => {
+    const world = await newWorld(env.DB, 'agents-translator-retry')
+    await publishedAlone(world, 'edge-guide')
+    const memory = mapMemory()
+    const failing = async () => {
+      throw new Error('the model is down')
+    }
+    const { model } = scripted({
+      translate: blogPost({
+        title: 'Caché',
+        description: 'Del borde.',
+        translationGroup: 'edge-guide',
+      }),
+    })
+
+    const stopped = await translateMissing({
+      hollware: agentsHollware(world),
+      model: failing,
+      memory,
+    }).catch((error: unknown) => (error instanceof Error ? error.message : String(error)))
+    const retried = await translateMissing({ hollware: agentsHollware(world), model, memory })
+
+    expect(stopped).toBe('the model is down')
+    expect(retried).toEqual({ drafted: 1, sentToReview: 1 })
+  })
+})
+
 describe('the auditor', () => {
   it('reports what is read and old and what the contracts refuse, as a draft and to the webhook', async () => {
     const world = await newWorld(env.DB, 'agents-auditor')
@@ -207,5 +238,30 @@ describe('the auditor', () => {
     expect(posted[0]).not.toContain('/en/blog/fresh-guide/ (')
     // Published without its translation, which the blog's contracts refuse now.
     expect(posted[0]).toContain('- blog/en/edge-guide: error translation-pair:')
+  })
+})
+
+describe('the auditor, a step at a time', () => {
+  it('goes round the entries a few a run, and reports what every step found', async () => {
+    const world = await newWorld(env.DB, 'agents-auditor-steps')
+    await publishedAlone(world, 'first-guide')
+    await publishedAlone(world, 'second-guide')
+    const hollware = agentsHollware(world)
+    const memory = mapMemory()
+    const report = { collection: 'notes', locale: 'en' } as const
+    const step = () =>
+      auditStep({ hollware, memory }, { report, now: '2026-10-20T10:00:00.000Z', perRun: 1 })
+
+    const steps = [await step(), await step()]
+    await writeReport({ hollware, memory }, { report, day: '2026-10-20' })
+    const written = await world.agent.getEntry({
+      collection: 'notes',
+      locale: 'en',
+      slug: 'audit-2026-10-20',
+    })
+
+    expect(steps).toEqual([{ checked: 1 }, { checked: 1 }])
+    expect(written.entry?.markdown).toContain('- blog/en/first-guide: error translation-pair:')
+    expect(written.entry?.markdown).toContain('- blog/en/second-guide: error translation-pair:')
   })
 })

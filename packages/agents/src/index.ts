@@ -1,6 +1,15 @@
 export const name = '@hollware/agents'
 
-export { audit, reportOf, type AuditOptions, type Finding, type ReportOptions } from './auditor.ts'
+export {
+  audit,
+  AUDIT_STATE,
+  auditStep,
+  reportOf,
+  writeReport,
+  type AuditOptions,
+  type Finding,
+  type ReportOptions,
+} from './auditor.ts'
 export {
   ALLOWED_TOOLS,
   allowOnly,
@@ -20,8 +29,11 @@ export {
 export { AGENTS_CLIENT, reviewPending } from './reviewer.ts'
 export { slugOf, translateMissing } from './translator.ts'
 export {
-  AUDIT_CRON,
+  auditDue,
   createHollwareAgents,
+  LAST_AUDIT,
+  roleAt,
+  ROLES,
   type AgentsEnv,
   type AgentsOptions,
   type AgentsWorker,

@@ -6,6 +6,9 @@ import { list, record, text } from './read.ts'
 /** The name the agents' client gives: a comment of theirs carries it. */
 export const AGENTS_CLIENT = 'hollware-agents'
 
+/** The reviews a run comments on, at most: three calls each, out of the fifty a free run has. */
+export const MAX_REVIEWS = 8
+
 /** The longest comment the reviewer writes, under the 4,000 characters of `comment_review`. */
 export const MAX_COMMENT = 3500
 
@@ -33,6 +36,7 @@ export async function reviewPending(deps: ReviewerDeps): Promise<{ readonly comm
   const reviews = list((await deps.hollware.call('list_reviews', { status: 'pending' }))['reviews'])
   let commented = 0
   for (const review of reviews) {
+    if (commented >= MAX_REVIEWS) break
     const id = text(review['id'])
     if (id === null) continue
     const ours = list(review['comments']).some((comment) => comment['client'] === AGENTS_CLIENT)

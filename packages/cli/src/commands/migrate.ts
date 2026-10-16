@@ -10,9 +10,11 @@ export const MIGRATE_USAGE = [
   'Usage: hollware migrate [--local | --remote] [--check] [--database <name>]',
   '',
   'Applies the D1 migrations the project has not applied yet, with wrangler. Before it applies',
-  'anything to the remote database it exports a backup, and it stops if the backup fails. The',
-  'export can make the database unavailable for a moment; with nothing pending, or on a new',
-  'database that has none of the migrations yet, there is no backup.',
+  'anything to the remote database it exports a backup, and it stops if the backup fails. D1',
+  'cannot export a database with a full-text index (0.5 and later): it takes a Time Travel',
+  'bookmark instead, which restores the database as it was. The export can make the database',
+  'unavailable for a moment; with nothing pending, or on a new database that has none of the',
+  'migrations yet, there is no backup.',
   '',
   'Options:',
   '  --local            Use the local database (the default)',
@@ -122,9 +124,10 @@ async function takeBackup(io: Io, database: string): Promise<string> {
     '--skip-confirmation',
   ])
   if (exported.code !== 0) {
-    throw new CliError(
-      `the backup of ${where} failed, so no migration was applied: ${failureReason(exported)}`,
-    )
+    const reason = failureReason(exported)
+    // D1 exports no database with a virtual table, such as the full-text index of 0008.
+    if (/virtual tables?/i.test(reason)) return takeBookmark(io, database)
+    throw new CliError(`the backup of ${where} failed, so no migration was applied: ${reason}`)
   }
   if (!existsSync(file) || statSync(file).size === 0) {
     throw new CliError(
@@ -132,6 +135,32 @@ async function takeBackup(io: Io, database: string): Promise<string> {
     )
   }
   return file
+}
+
+/**
+ * The backup of a database D1 cannot export: a Time Travel bookmark of now, and the command that
+ * restores the database to it.
+ */
+async function takeBookmark(io: Io, database: string): Promise<string> {
+  const where = describeDatabase('remote', database)
+  io.out(
+    `D1 cannot export ${where}, which has a full-text index; taking a Time Travel bookmark instead ...`,
+  )
+  const info = await io.wrangler(['d1', 'time-travel', 'info', database, '--json'])
+  let bookmark: unknown = null
+  try {
+    const parsed: unknown = JSON.parse(stripAnsi(info.stdout))
+    bookmark =
+      typeof parsed === 'object' && parsed !== null && 'bookmark' in parsed ? parsed.bookmark : null
+  } catch {
+    bookmark = null
+  }
+  if (info.code !== 0 || typeof bookmark !== 'string' || bookmark === '') {
+    throw new CliError(
+      `no Time Travel bookmark of ${where} could be taken, so no migration was applied: ${info.code === 0 ? 'wrangler answered no bookmark' : failureReason(info)}`,
+    )
+  }
+  return `the Time Travel bookmark ${bookmark}; restore it with "npx wrangler d1 time-travel restore ${database} --bookmark=${bookmark}"`
 }
 
 /** `20261012T120000Z`: a moment, in UTC, that is safe in a file name. */

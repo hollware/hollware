@@ -70,6 +70,9 @@ export function mcpHollware(options: McpOptions): Hollware {
       new Request(endpoint, {
         method: 'POST',
         headers: {
+          // A request over a service binding carries no Host of its own, and Hollware's guard
+          // answers only its public host.
+          host: new URL(endpoint).host,
           authorization: `Bearer ${options.token}`,
           'content-type': 'application/json',
           accept: 'application/json, text/event-stream',

@@ -59,6 +59,18 @@ const blog = defineCollection({
 })
 
 /**
+ * The weekly reports of the auditor of @hollware/agents (v0.6): drafts that a person reads in the
+ * admin, never published, so no site has a page for them.
+ */
+const reports = defineCollection({
+  schema: z.object({
+    title: z.string().min(1),
+    description: z.string().min(1).max(200),
+  }),
+  routes: { es: '/informes/:slug/', en: '/en/reports/:slug/' },
+})
+
+/**
  * The documentation of hollware.com (v0.4): written in Hollware by agents and people, and read
  * by the site over a service binding. A page belongs to a section of the sidebar, and `order` is
  * its place in it.
@@ -101,7 +113,7 @@ export default defineConfig({
       defaultLocale: 'es',
       // The blog of the demo (examples/nuxt-blog): its pages count their views here (ADR-031).
       url: 'https://demo.hollware.com',
-      collections: { blog },
+      collections: { blog, reports },
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',
     },
   },

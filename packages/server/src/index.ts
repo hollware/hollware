@@ -66,6 +66,14 @@ export interface HollwareEnv {
   readonly HOLLWARE_ANALYTICS_ACCOUNT_ID?: string
   readonly HOLLWARE_ANALYTICS_TOKEN?: string
   readonly HOLLWARE_ANALYTICS_DATASET?: string
+  /**
+   * The agents of @hollware/agents (v0.6), over a service binding to their named entrypoint: the
+   * cron trigger of Hollware wakes them every ten minutes, so they need no cron trigger of their
+   * own (the free plan has five for the account). `wrangler types` writes it as a plain
+   * `Service`, as it cannot see the agents' entrypoint, so any binding goes in: one without `run`
+   * is not called.
+   */
+  readonly AGENTS?: object
 }
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>
