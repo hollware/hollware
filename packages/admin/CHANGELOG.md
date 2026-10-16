@@ -1,5 +1,21 @@
 # @hollware/admin
 
+## 0.9.0
+
+### Minor Changes
+
+- [`ca25564`](https://github.com/hollware/hollware/commit/ca255645591bd4a12fd857cb4ba42fe92b99414f) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Act on many rows at once: select entries to publish, schedule or unpublish them; reviews to approve them or ask for changes with one note; tokens to revoke them; and people to change their role or remove them from the site. Each runs the operation of one row, a few at a time, and a toast says how many came to each outcome; warnings to accept come back together, to accept at once.
+
+- [`7b56817`](https://github.com/hollware/hollware/commit/7b56817bd7e1c02f90b4106d69882c6a16a5e4d0) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin speaks English and Spanish: it starts in the browser's language, and the person menu switches it.
+
+- [`c9ac710`](https://github.com/hollware/hollware/commit/c9ac710464cf19773076c285784cc3300eae2957) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin is laid out as Linear lays out a workspace, with Nuxt UI's dashboard: a sidebar that collapses and resizes, with the site to work in at the top (and the sites to switch to), search on ⌘K, the sections with their icons (the reviews that wait counted, the collections of the site one click away), and the person at the foot; each page is a panel beside it, its title and its actions in the bar at the top.
+
+- [`5b594c8`](https://github.com/hollware/hollware/commit/5b594c81c23649ff67f3f7ab91f8293b8af68a69) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Every table of the admin is a data table: a filter, sorting by column and pages of 25 (entries, collections, people, invitations and tokens). The search of ⌘K finds published entries with their snippet, drafts and entries waiting for review, and goes to every page, collection, creation and site.
+
+### Patch Changes
+
+- [`5d2716d`](https://github.com/hollware/hollware/commit/5d2716d64ff3d30280e19e8d01caa70d87e55777) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin takes the whole Nuxt UI theme of hollware.com and nothing else: Nuxt UI's own radius (0.25rem, which the theme leaves as it is; 0.5rem was a leftover of the brand before), its own container width, and no pill of its own.
+
 ## 0.8.0
 
 ### Minor Changes
