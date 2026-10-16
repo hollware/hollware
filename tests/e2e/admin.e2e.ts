@@ -255,3 +255,21 @@ test('the owner publishes and unpublishes several entries at once, from the tabl
     'borrador',
   )
 })
+
+test('a page loaded before a deploy loads the new version when a file of its own is gone', async () => {
+  await owner.goto('/admin/')
+  await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
+  // As a deploy leaves it: the file of a page of the version loaded answers 404, once.
+  const file = /\/admin\/assets\/Tokens-[\w-]+\.js$/
+  let asked = 0
+  await owner.route(file, async (route) => {
+    asked++
+    if (asked === 1) await route.fulfill({ status: 404, body: '' })
+    else await route.continue()
+  })
+
+  await owner.getByRole('link', { name: 'Tokens', exact: true }).click()
+  await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
+  expect(asked).toBe(2)
+  await owner.unroute(file)
+})

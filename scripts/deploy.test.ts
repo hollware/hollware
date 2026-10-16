@@ -1,12 +1,18 @@
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { planOf, probe } from './deploy.ts'
+import { FILES, keepLive, planOf, probe } from './deploy.ts'
 
 // Fails when: a deployment of ours (scripts/deploy.ts, ADR-034) stops building the packages first
 // (the CMS takes the admin from their build), stops migrating a database before
 // the Worker that reads it is deployed, deploys a site before the CMS it reads, builds a Worker
 // for another environment than its own, or stops probing what it deployed, the admin included; or a probe passes a
-// URL that did not answer 200 thirty times in a row, or fails one that did within its budget.
+// URL that did not answer 200 thirty times in a row, or fails one that did within its budget; or a
+// deploy stops keeping the hashed files of the live version of the admin, the demo blog or
+// hollware.com in the build that replaces it (`keepLive`), keeps them for more than one deploy,
+// overwrites a file of the new build, or writes a file the live list names outside its directory.
 
 const names = (target: 'staging' | 'production') => planOf(target).steps.map((step) => step.name)
 
@@ -15,18 +21,22 @@ describe('the plan of a deployment', () => {
     expect(names('production')).toEqual([
       'build the packages',
       'build the CMS (demo)',
+      'keep the files of the live admin (demo)',
       'migrate the database of the CMS (demo)',
       'deploy the CMS (demo)',
       'build the agents (demo)',
       'deploy the agents (demo)',
       'build the demo blog',
+      'keep the files of the live demo blog',
       'deploy the demo blog',
       'build hollware.com',
+      'keep the files of the live hollware.com',
       'deploy hollware.com',
     ])
     expect(names('staging')).toEqual([
       'build the packages',
       'build the CMS (staging)',
+      'keep the files of the live admin (staging)',
       'migrate the database of the CMS (staging)',
       'deploy the CMS (staging)',
       'build the agents (staging)',
@@ -70,5 +80,67 @@ describe('probe', () => {
   it('fails a streak that a failure breaks, or one the budget does not hold', async () => {
     expect(await run([200, 200, 503, 200, 200, 500])).toBe(false)
     expect(await run([200, 200], { inARow: 3, budgetSeconds: 2 })).toBe(false)
+  })
+})
+
+describe('keepLive', () => {
+  /** A live site that serves its list and its files, and records what was asked. */
+  const site = (files: Record<string, string>) => {
+    const asked: string[] = []
+    const fetcher = async (url: string) => {
+      asked.push(url)
+      const name = url.slice('https://cms.test/admin/assets/'.length)
+      const body = files[name]
+      return body === undefined ? new Response('', { status: 404 }) : new Response(body)
+    }
+    return { asked, fetcher }
+  }
+  const build = (files: Record<string, string>) => {
+    const root = mkdtempSync(join(tmpdir(), 'keep-'))
+    const dir = join(root, 'dist', 'admin', 'assets')
+    mkdirSync(dir, { recursive: true })
+    for (const [name, body] of Object.entries(files)) writeFileSync(join(dir, name), body)
+    return { root, dir }
+  }
+  const keep = { dir: 'dist', prefix: 'admin/assets', url: 'https://cms.test' }
+
+  it('copies the live files the new build lacks, and lists the build own files only', async () => {
+    const { root, dir } = build({ 'index-new.js': 'new', 'Entries-same.js': 'mine' })
+    const live = site({
+      [FILES]: JSON.stringify(['index-old.js', 'Entries-same.js', 'gone.js']),
+      'index-old.js': 'old',
+      'Entries-same.js': 'theirs',
+    })
+
+    expect(await keepLive(root, keep, live.fetcher)).toBe(1)
+    expect(readdirSync(dir).sort()).toEqual([
+      'Entries-same.js',
+      FILES,
+      'index-new.js',
+      'index-old.js',
+    ])
+    expect(readFileSync(join(dir, 'index-old.js'), 'utf8')).toBe('old')
+    // A file of the new build is never replaced by the live one of the same name.
+    expect(readFileSync(join(dir, 'Entries-same.js'), 'utf8')).toBe('mine')
+    // The next deploy keeps what this build made, not what it kept: one deploy, no more.
+    expect(JSON.parse(readFileSync(join(dir, FILES), 'utf8'))).toEqual([
+      'Entries-same.js',
+      'index-new.js',
+    ])
+  })
+
+  it('keeps nothing from a site with no list, and nothing a list names outside the directory', async () => {
+    const first = build({ 'index-new.js': 'new' })
+    expect(await keepLive(first.root, keep, site({}).fetcher)).toBe(0)
+    expect(readdirSync(first.dir).sort()).toEqual([FILES, 'index-new.js'].sort())
+
+    const evil = build({ 'index-new.js': 'new' })
+    const live = site({
+      [FILES]: JSON.stringify(['../../escape.js', '.hidden', 'ok.js']),
+      'ok.js': 'ok',
+    })
+    expect(await keepLive(evil.root, keep, live.fetcher)).toBe(1)
+    expect(live.asked).not.toContain('https://cms.test/admin/assets/../../escape.js')
+    expect(readdirSync(join(evil.root, 'dist'))).toEqual(['admin'])
   })
 })

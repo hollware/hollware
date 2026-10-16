@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { auth } from './lib/session.ts'
+import { isStaleFile, loadAgainOnce, sessionStore } from './lib/stale.ts'
 import './app.css'
 
 // The icons travel in the bundle: the page may fetch nothing from another origin.
@@ -42,6 +43,27 @@ router.beforeEach(async (to) => {
   if ((await auth.token()) !== null) return true
   await auth.signIn(`${BASE}${to.fullPath}`)
   return false
+})
+
+// After a deploy, a page loaded before it may ask for a file the new version does not have: the
+// admin then loads the new version, at the page the person was going to, instead of staying broken.
+let going: string | null = null
+router.beforeEach((to) => {
+  going = to.fullPath
+})
+router.afterEach(() => {
+  going = null
+})
+const loadNewVersion = () =>
+  loadAgainOnce(sessionStore(), Date.now(), () => {
+    if (going === null) window.location.reload()
+    else window.location.assign(`${BASE}${going}`)
+  })
+router.onError((error: unknown) => {
+  if (isStaleFile(error)) loadNewVersion()
+})
+window.addEventListener('vite:preloadError', (event) => {
+  if (loadNewVersion()) event.preventDefault()
 })
 
 createApp(App).use(router).use(ui).mount('#app')

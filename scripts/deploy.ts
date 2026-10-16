@@ -10,7 +10,8 @@
  * fails fails the run: the previous versions stay, to roll back to with `wrangler rollback`.
  */
 import { spawnSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 export type Target = 'staging' | 'production'
@@ -21,6 +22,56 @@ export interface Step {
   readonly cwd: string
   readonly command: readonly string[]
   readonly env?: Readonly<Record<string, string>>
+  /** Instead of a command: keep the files of the live version in the build about to replace it. */
+  readonly keep?: Keep
+}
+
+/**
+ * The hashed files of a site, which a page loaded before a deploy still asks for after it: the
+ * directory of the build (`dir`, its `prefix` inside it, as the site serves it) and the site's URL.
+ */
+export interface Keep {
+  readonly dir: string
+  readonly prefix: string
+  readonly url: string
+}
+
+/** The list of a build's own hashed files, served next to them, which the next deploy reads. */
+export const FILES = '_files.json'
+
+/** A file name of a build: no directory, nothing a list could use to write elsewhere. */
+const FILE_NAME = /^[\w-][\w.-]*$/
+
+/**
+ * Keeps the previous version of a site working while the next one goes live: a page loaded before
+ * the deploy asks for its own hashed files (the admin's pages, a Nuxt site's chunks), which a
+ * deploy of assets would remove. The files the live version lists that the new build lacks are
+ * copied into the build, so they are deployed with it; the build then lists its own files only, so
+ * a file is kept for one deploy and no longer. A site with no list yet (its first deploy with
+ * this) keeps nothing.
+ */
+export async function keepLive(
+  root: string,
+  keep: Keep,
+  fetcher: (url: string) => Promise<Response>,
+): Promise<number> {
+  const dir = resolve(root, keep.dir, keep.prefix)
+  const own = readdirSync(dir)
+    .filter((name) => name !== FILES && statSync(join(dir, name)).isFile())
+    .sort()
+  const base = `${keep.url}/${keep.prefix}`
+  const listed = await fetcher(`${base}/${FILES}`)
+  const live: unknown = listed.ok ? await listed.json().catch(() => []) : []
+  let kept = 0
+  for (const name of Array.isArray(live) ? live : []) {
+    if (typeof name !== 'string' || !FILE_NAME.test(name) || own.includes(name)) continue
+    const file = await fetcher(`${base}/${name}`)
+    if (!file.ok) continue
+    writeFileSync(join(dir, name), new Uint8Array(await file.arrayBuffer()))
+    kept++
+  }
+  writeFileSync(join(dir, FILES), JSON.stringify(own))
+  return kept
 }
 
 export interface Plan {
@@ -34,11 +85,27 @@ const WRANGLER = './node_modules/.bin/wrangler'
 const NUXT = './node_modules/.bin/nuxt'
 const CLI = ['node', '../../packages/cli/src/index.ts']
 
-/** The Hollware of a target: build it, migrate its database, deploy it. */
+/** The public URL of the CMS of each target. */
+const CMS_URL = {
+  staging: 'https://hollware-staging.sergioazoc.workers.dev',
+  demo: 'https://cms.demo.hollware.com',
+} as const
+
+/** The step that keeps the live files of a site in its new build (`keepLive`). */
+function keepStep(what: string, keep: Keep): Step {
+  return { name: `keep the files of the live ${what}`, cwd: '.', command: [], keep }
+}
+
+/** The Hollware of a target: build it, keep the live admin's files, migrate, deploy it. */
 function cms(env: 'staging' | 'demo'): Step[] {
   const vars = { CLOUDFLARE_ENV: env }
   return [
     { name: `build the CMS (${env})`, cwd: 'apps/playground', command: [VP, 'build'], env: vars },
+    keepStep(`admin (${env})`, {
+      dir: 'apps/playground/dist/client',
+      prefix: 'admin/assets',
+      url: CMS_URL[env],
+    }),
     {
       name: `migrate the database of the CMS (${env})`,
       cwd: 'apps/playground',
@@ -100,6 +167,11 @@ export function planOf(target: Target): Plan {
         command: [NUXT, 'build'],
         env: { HOLLWARE_BEACON: BEACON },
       },
+      keepStep('demo blog', {
+        dir: 'examples/nuxt-blog/.output/public',
+        prefix: '_nuxt',
+        url: 'https://demo.hollware.com',
+      }),
       {
         name: 'deploy the demo blog',
         cwd: 'examples/nuxt-blog',
@@ -111,6 +183,11 @@ export function planOf(target: Target): Plan {
         command: [NUXT, 'build'],
         env: { HOLLWARE_BEACON: BEACON },
       },
+      keepStep('hollware.com', {
+        dir: 'apps/web/.output/public',
+        prefix: '_nuxt',
+        url: 'https://hollware.com',
+      }),
       {
         name: 'deploy hollware.com',
         cwd: 'apps/web',
@@ -158,6 +235,10 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
   for (const step of plan.steps) {
     console.log(`▸ ${step.name}`)
     if (argv.includes('--dry-run')) continue
+    if (step.keep !== undefined) {
+      console.log(`  kept ${await keepLive(root, step.keep, (url) => fetch(url))} files`)
+      continue
+    }
     const [command = '', ...args] = step.command
     const run = spawnSync(command, args, {
       cwd: resolve(root, step.cwd),
