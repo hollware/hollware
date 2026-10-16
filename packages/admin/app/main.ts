@@ -23,6 +23,13 @@ const router = createRouter({
       props: true,
     },
     { path: '/reviews', component: () => import('./pages/Reviews.vue') },
+    { path: '/collections', component: () => import('./pages/Collections.vue') },
+    {
+      path: '/collections/:name',
+      component: () => import('./pages/Collection.vue'),
+      props: true,
+    },
+    { path: '/site', component: () => import('./pages/Site.vue') },
     { path: '/tokens', component: () => import('./pages/Tokens.vue') },
     { path: '/people', component: () => import('./pages/People.vue') },
     { path: '/callback', component: () => import('./pages/Callback.vue'), meta: { open: true } },

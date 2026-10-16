@@ -13,7 +13,8 @@ import { boot, NOW, OTHER_SITE_KEY, SITE_KEY, type Booted } from './support.ts'
 // stops giving a link to /setup that the list of people then counts as pending; or a read token
 // made there stops being an hw_read_ token with content:read alone; or an owner stops being able
 // to give a member another role or remove them, at once for their tokens, or can demote or remove
-// the last owner of the site.
+// the last owner of the site; or /v1/admin/me stops listing the trashed sites the person owns, and
+// only those.
 
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -137,6 +138,32 @@ describe("the admin's own routes", () => {
       sites: [{ site: SITE_KEY, role: 'author' }],
     })
     expect(tokens.status).toBe(403)
+  })
+
+  it('list the sites in the trash that the person owns, and no other', async () => {
+    const worker = boot()
+    const owner = await adminPerson(worker, 'owner')
+    const [mine, theirs] = [
+      `trashed-${crypto.randomUUID().slice(0, 6)}`,
+      `kept-${crypto.randomUUID().slice(0, 6)}`,
+    ]
+    for (const [site, role] of [
+      [mine, 'owner'],
+      [theirs, 'editor'],
+    ] as const) {
+      await env.DB.batch([
+        env.DB.prepare(
+          "INSERT INTO sites (id, definition, version, deleted_at, created_at, updated_at) VALUES (?1, '{}', 2, ?2, ?2, ?2)",
+        ).bind(site, NOW),
+        env.DB.prepare(
+          'INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)',
+        ).bind(`mbr_${crypto.randomUUID()}`, site, owner.userId, role, NOW),
+      ])
+    }
+
+    const me = await (await call(worker, owner.access, '/v1/admin/me')).json<{ trash: unknown[] }>()
+
+    expect(me.trash).toEqual([{ site: mine, deletedAt: NOW }])
   })
 
   it('make a token with the scopes its maker has, once in clear, and revoke it', async () => {

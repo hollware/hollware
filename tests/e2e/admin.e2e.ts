@@ -8,6 +8,8 @@ import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './su
 // which asks for a review; the owner reads the review, comments on it and approves it, which
 // publishes it. Before v1.0: the owner unpublishes an entry and schedules it again, from the
 // editor, and sees what waits for review on the home page.
+// AC-0.8-2: the owner makes a collection with a rule in the admin, an entry the rule refuses is
+// blocked, and once fixed it is published, with no deploy between.
 // AC-0.3-4: axe finds nothing serious or critical on any page of the admin or of the sign-in.
 
 test.describe.configure({ mode: 'serial' })
@@ -109,9 +111,46 @@ test('the owner unpublishes an entry, then schedules it', async () => {
   await expect(owner.getByRole('row', { name: /^Hola mundo, otra vez/ })).toContainText('scheduled')
 })
 
+test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no deploy', async () => {
+  await owner.goto('/admin/collections')
+  await expect(owner.getByRole('heading', { name: 'Collections', level: 1 })).toBeVisible()
+  await expectAccessible(owner)
+  await owner.getByLabel('Name').fill('talks')
+  await owner.getByRole('combobox', { name: 'Start from' }).click()
+  await owner.getByRole('option', { name: 'Empty: a title alone' }).click()
+  await owner.getByRole('button', { name: 'Create the collection' }).click()
+  await expect(owner.getByRole('heading', { name: 'talks', level: 1 })).toBeVisible()
+  await expectAccessible(owner)
+
+  // A rule: a title of at most 10 characters, or no publishing.
+  await owner.getByRole('button', { name: 'Add a rule' }).click()
+  await owner.getByRole('combobox', { name: 'field*', exact: true }).click()
+  await owner.getByRole('option', { name: 'title', exact: true }).click()
+  await owner.getByRole('spinbutton', { name: 'max', exact: true }).fill('10')
+  await owner.getByRole('combobox', { name: 'Severity' }).click()
+  await owner.getByRole('option', { name: 'error', exact: true }).click()
+  await shot(owner, 'collection')
+  await owner.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(owner.getByText('Saved: it applies at once').first()).toBeVisible()
+
+  await owner.goto('/admin/entries/new?collection=talks&locale=en')
+  await owner.getByLabel('Title').fill('A talk with a long title')
+  await owner.getByLabel('Slug').fill('a-long-talk')
+  await owner.getByRole('button', { name: 'Create the draft' }).click()
+  await owner.getByRole('button', { name: 'Publish', exact: true }).click()
+  await expect(owner.getByText('Blocked', { exact: true }).first()).toBeVisible()
+
+  await writeMarkdown(owner, '---\ntitle: A talk\n---\n\nShort and plain.\n')
+  await owner.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await owner.getByRole('button', { name: 'Publish', exact: true }).click()
+  await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
+})
+
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
     ['/admin/', 'Home'],
+    ['/admin/site', 'Site'],
     ['/admin/tokens', 'Tokens'],
     ['/signin', 'Sign in'],
   ] as const) {

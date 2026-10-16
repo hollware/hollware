@@ -122,10 +122,19 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           .select({ id: users.id, name: users.name })
           .from(users)
           .where(eq(users.id, person.userId))
-        const sites = (await membershipsOf(db, person.userId)).filter((membership) =>
-          options.sites.has(membership.site),
+        const memberships = await membershipsOf(db, person.userId)
+        const sites = memberships.filter((membership) => options.sites.has(membership.site))
+        // The sites in the trash the person owns, which they may bring back (ADR-033).
+        const { results: trashed } = await c.env.DB.prepare(
+          'SELECT id, deleted_at FROM sites WHERE deleted_at IS NOT NULL',
+        ).all<{ id: string; deleted_at: string }>()
+        const owned = new Set(
+          memberships.filter((membership) => membership.role === 'owner').map((m) => m.site),
         )
-        return json({ user, site: person.site, scopes: person.scopes, sites })
+        const trash = trashed
+          .filter((row) => owned.has(row.id))
+          .map((row) => ({ site: row.id, deletedAt: row.deleted_at }))
+        return json({ user, site: person.site, scopes: person.scopes, sites, trash })
       },
       { anyone: true },
     ),

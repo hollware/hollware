@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
 import { api } from '../lib/session.ts'
 
@@ -44,6 +44,38 @@ async function invite() {
   }
 }
 
+/** The member about to be removed, while the person confirms. */
+const removing = ref<People['people'][number] | null>(null)
+const removeOpen = computed({
+  get: () => removing.value !== null,
+  set: (value) => {
+    if (!value) removing.value = null
+  },
+})
+
+async function setRole(userId: string, next: unknown) {
+  try {
+    await api.admin('people/role', { userId, role: String(next) })
+    toast.add({ title: 'Role changed', color: 'success' })
+  } catch (error) {
+    toast.add({ title: 'Not changed', description: describe(error), color: 'error' })
+  }
+  await load()
+}
+
+async function remove() {
+  const person = removing.value
+  removing.value = null
+  if (person === null) return
+  try {
+    await api.admin('people/remove', { userId: person.id })
+    toast.add({ title: `${person.name ?? person.id} is out of this site`, color: 'success' })
+  } catch (error) {
+    toast.add({ title: 'Not removed', description: describe(error), color: 'error' })
+  }
+  await load()
+}
+
 async function copy() {
   if (link.value !== null) await navigator.clipboard.writeText(link.value)
 }
@@ -81,10 +113,25 @@ async function copy() {
           <li
             v-for="person in data.people"
             :key="person.id"
-            class="flex gap-3 border-t border-default py-2"
+            class="flex items-center gap-3 border-t border-default py-2"
           >
-            <span class="font-medium">{{ person.name ?? person.id }}</span>
-            <UBadge :label="person.role" variant="subtle" />
+            <span class="min-w-0 flex-1 truncate font-medium">{{ person.name ?? person.id }}</span>
+            <USelect
+              :model-value="person.role"
+              :items="['owner', 'editor', 'author']"
+              :aria-label="`Role of ${person.name ?? person.id}`"
+              size="sm"
+              class="w-32"
+              @update:model-value="setRole(person.id, $event)"
+            />
+            <UButton
+              icon="i-lucide-user-minus"
+              color="error"
+              variant="ghost"
+              size="sm"
+              :aria-label="`Remove ${person.name ?? person.id}`"
+              @click="removing = person"
+            />
           </li>
         </ul>
       </section>
@@ -101,5 +148,17 @@ async function copy() {
         </ul>
       </section>
     </template>
+    <UModal v-model:open="removeOpen" :title="`Remove ${removing?.name ?? removing?.id ?? ''}?`">
+      <template #body>
+        <p>
+          They leave this site at once, with every token and app they had of it. Their entries and
+          revisions stay. Invite them again to bring them back.
+        </p>
+      </template>
+      <template #footer>
+        <UButton label="Keep them" variant="ghost" @click="removing = null" />
+        <UButton label="Remove" color="error" @click="remove" />
+      </template>
+    </UModal>
   </div>
 </template>
