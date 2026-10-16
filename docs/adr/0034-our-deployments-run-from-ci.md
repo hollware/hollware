@@ -9,8 +9,8 @@ Staging, the demo (its CMS, its blog and its agents) and hollware.com have been 
 ## Decision
 
 - **A workflow `deploy.yml`** builds and deploys each Worker of the repository with its environment, applies the migrations before the Worker that needs them, and checks the deployed sites with probes before it reports success.
-- **Staging is deployed on every push to `main`** whose CI passed; **production (the demo and hollware.com) when a release is final,** after `finalize` of `release.yml`, from the released commit.
-- **The job runs in the environment `deploy`,** which holds a Cloudflare API token scoped to the maintainer's account (Workers scripts, D1, KV, Queues, Vectorize, custom domains) and its account id. Actions are pinned by SHA, `permissions` are empty by default, and no step runs code from a pull request.
+- **Staging is deployed on every push to `main`**, which the hook pre-push checked as CI does; **production (the demo and hollware.com) on every push to `release`**, which its ruleset lets in only once the check of CI passed on that commit. The order and the probes are `scripts/deploy.ts`, which the maintainer may run by hand too, and whose plan a test holds: migrations before the Worker that needs them, the CMS before the sites that read it.
+- **The job runs in the environment `deploy`,** turned on by the repository variable `DEPLOY_ENABLED` once the token is there, which holds a Cloudflare API token scoped to the maintainer's account (Workers scripts, D1, KV, Queues, Vectorize, custom domains) and its account id. Actions are pinned by SHA, `permissions` are empty by default, and no step runs code from a pull request.
 - **A failed probe fails the run** and leaves the previous versions of the Workers to roll back to with `wrangler rollback`.
 
 ## Consequences
