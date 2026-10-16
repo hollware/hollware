@@ -2,48 +2,22 @@ import {
   newId,
   tagsOfChange,
   tagsOfSiteChange,
+  type EntryEvent,
+  type HollwareEvent,
   type ResolvedCollection,
   type ResolvedSite,
+  type SiteEvent,
 } from '@hollware/core'
 import type { OutboxEvent } from '../ports.ts'
 
 /** The events about an entry. */
-export type EntryEventKind = 'entry.published' | 'entry.unpublished'
-export type EventKind = EntryEventKind | 'site.changed'
+export type EntryEventKind = EntryEvent['kind']
+export type EventKind = HollwareEvent['kind']
 
-/** What every event says: which, of which site, when, and the cache tags it invalidates. */
-interface EventBase {
-  readonly id: string
-  readonly site: string
-  /** When the write was made, in ISO 8601. */
-  readonly at: string
-  /** The cache tags the change invalidates (`@hollware/core`), for a site to purge. */
-  readonly cacheTags: readonly string[]
-}
-
-/** What a subscriber gets of a site whose structure changed (ADR-033): no entry, the tags to purge. */
-export interface SiteEventPayload extends EventBase {
-  readonly kind: 'site.changed'
-}
-
-/** What a subscriber gets: an event about an entry, or about the structure of the site. */
-export type EventPayload = EntryEventPayload | SiteEventPayload
-
-/** What a subscriber gets of a publish or an unpublish: the entry, and where it lives. */
-export interface EntryEventPayload extends EventBase {
-  readonly kind: EntryEventKind
-  readonly entry: {
-    readonly id: string
-    readonly collection: string
-    readonly locale: string
-    readonly slug: string
-    readonly translationGroup: string | null
-  }
-  /** The path of the entry on the site, from the route of its collection and locale. */
-  readonly path: string | null
-  /** The URL of the entry, when the site declares its `url`. */
-  readonly url: string | null
-}
+/** What a subscriber gets: the events of `@hollware/core`, which webhooks receive as they are. */
+export type EventPayload = HollwareEvent
+export type EntryEventPayload = EntryEvent
+export type SiteEventPayload = SiteEvent
 
 /** The path of an entry: the route of its locale, with its slug in place of `:slug`. */
 export function entryPath(

@@ -1,0 +1,337 @@
+{
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Hollware read API",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/search": {
+      "get": {
+        "operationId": "search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "collection",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The published entries that match q, best first",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          }
+        }
+      }
+    },
+    "/v1/site": {
+      "get": {
+        "operationId": "describe_site",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The site",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          }
+        }
+      }
+    },
+    "/v1/{collection}": {
+      "get": {
+        "operationId": "list_entries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of published entries",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          }
+        }
+      }
+    },
+    "/v1/{collection}/translations/{group}": {
+      "get": {
+        "operationId": "get_translations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The published entries of the group",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          },
+          "404": {
+            "description": "No such group"
+          }
+        }
+      }
+    },
+    "/v1/{collection}/{locale}/{slug}": {
+      "get": {
+        "operationId": "get_entry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "locale",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "formats",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "related",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A published entry",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          },
+          "404": {
+            "description": "No such published entry"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "token": []
+    }
+  ]
+}

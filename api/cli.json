@@ -1,0 +1,131 @@
+{
+  "commands": ["deploy", "doctor", "export", "import", "init", "invite", "migrate", "token"],
+  "flags": {
+    "deploy": [
+      {
+        "help": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "doctor": [
+      {
+        "help": {
+          "type": "boolean"
+        },
+        "local": {
+          "type": "boolean"
+        },
+        "remote": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "import": [
+      {
+        "dry-run": {
+          "type": "boolean"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "publish": {
+          "type": "boolean"
+        },
+        "token-file": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "init": [
+      {
+        "database": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "local": {
+          "type": "boolean"
+        },
+        "locales": {
+          "type": "string"
+        },
+        "owner-name": {
+          "type": "string"
+        },
+        "preset": {
+          "type": "string"
+        },
+        "remote": {
+          "type": "boolean"
+        },
+        "site": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "invite": [
+      {
+        "days": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "boolean"
+        },
+        "role": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "migrate": [
+      {
+        "check": {
+          "type": "boolean"
+        },
+        "database": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "local": {
+          "type": "boolean"
+        },
+        "remote": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "token": [
+      {
+        "expires-in-days": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "scopes": {
+          "type": "string"
+        }
+      },
+      {},
+      {}
+    ]
+  }
+}

@@ -46,6 +46,7 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp run e2e:install`                                            | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token |
 | `pnpm exec vp run e2e:upgrade`                                            | A 0.3.0 project from npm, moved to this checkout and migrated; its data and token work    |
 | `pnpm exec vp run eval:search`                                            | Search quality against a deployment with semantic search (`-- --hollware <url>`)          |
+| `node scripts/api.ts --write`                                             | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks       |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                  |
 
 `vp` is Vite+. Always run the copy installed in the repository, through `pnpm exec`: a global `vp` of another version breaks the Cloudflare plugin. `AGENTS.md` writes `vp` as shorthand for `pnpm exec vp`.

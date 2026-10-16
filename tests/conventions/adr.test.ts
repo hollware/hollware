@@ -86,7 +86,7 @@ const messagesWith = (files: TextFile[], design: TextFile) => describe1(check(fi
 describe('ADRs', () => {
   it('every ADR follows the template, and the index and the design table list them all', () => {
     const files = readRepoFiles((path) => /^docs\/adr\/[^/]+$/.test(path))
-    expect(files).toHaveLength(36)
+    expect(files).toHaveLength(37)
     const violations = checkAdrs({
       files,
       design: file('docs/design.md', readText('docs/design.md')),

@@ -33,6 +33,7 @@ deleted when v1.0 ships, together with this section.
 | `vp run e2e:install`                                                      | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token |
 | `vp run e2e:upgrade`                                                      | A 0.3.0 project from npm, moved to this checkout and migrated; its data and token work    |
 | `vp run eval:search`                                                      | Search quality against a deployment with semantic search (`-- --hollware <url>`)          |
+| `node scripts/api.ts --write`                                             | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks       |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                  |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A

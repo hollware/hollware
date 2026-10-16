@@ -1,0 +1,4874 @@
+{
+  "tools": [
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgeWarnings": {
+            "default": [],
+            "description": "Warnings you accept besides those the request acknowledged.",
+            "items": {
+              "properties": {
+                "contract": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": ["contract", "path"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "approve_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["published", "blocked", "needs_acknowledgement", "not_pending", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "properties": {
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note"
+            ],
+            "type": "object"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:publish"],
+      "title": "Approve a review"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "description": "The comment, in Markdown.",
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id", "body"],
+        "type": "object"
+      },
+      "name": "comment_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "comment": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "author": {
+                "description": "The user who wrote it, or whose token their agent used.",
+                "type": "string"
+              },
+              "authorName": {
+                "type": ["string", "null"]
+              },
+              "body": {
+                "type": "string"
+              },
+              "client": {
+                "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
+                "type": ["string", "null"]
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "author", "authorName", "client", "body", "at"],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["commented", "not_pending", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Comment on a review"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "default": 30,
+            "description": "How many days back to count.",
+            "maximum": 90,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "limit": {
+            "default": 10,
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "content_stats",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["ok", "unavailable"],
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "entry": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "collection": {
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                          "type": ["string", "null"]
+                        },
+                        "frontmatter": {
+                          "additionalProperties": {},
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "hasUnpublishedChanges": {
+                          "description": "Whether the latest revision differs from the published one.",
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "description": "The id of an entry (ent_…), as the other operations return it.",
+                          "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                          "type": "string"
+                        },
+                        "locale": {
+                          "type": "string"
+                        },
+                        "publishedAt": {
+                          "description": "When the entry was first published, or null.",
+                          "type": ["string", "null"]
+                        },
+                        "scheduledAt": {
+                          "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                          "type": ["string", "null"]
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "enum": ["draft", "scheduled", "published"],
+                          "type": "string"
+                        },
+                        "tags": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "translationGroup": {
+                          "type": ["string", "null"]
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "maximum": 9007199254740991,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "collection",
+                        "locale",
+                        "slug",
+                        "translationGroup",
+                        "status",
+                        "version",
+                        "frontmatter",
+                        "tags",
+                        "hasUnpublishedChanges",
+                        "publishedAt",
+                        "scheduledAt",
+                        "deletedAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The published entry at that path, or null."
+                },
+                "path": {
+                  "type": "string"
+                },
+                "views": {
+                  "description": "Page views, sampling accounted for.",
+                  "type": "number"
+                }
+              },
+              "required": ["path", "views", "entry"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "since": {
+            "description": "The start of the count, in ISO 8601.",
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Read what readers read"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "markdown": {
+            "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The entry's path segment: lowercase letters and digits joined by hyphens, such as edge-caching-guide.",
+            "maxLength": 200,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          }
+        },
+        "required": ["collection", "locale", "slug", "markdown"],
+        "type": "object"
+      },
+      "name": "create_draft",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "description": "With saved, the new draft; with in_trash, the entry in the trash that holds it.",
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["saved", "refused", "in_trash"],
+            "type": "string"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Create a draft"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "definition": {
+            "additionalProperties": false,
+            "properties": {
+              "collections": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "components": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "example": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "props": {
+                            "additionalProperties": {},
+                            "description": "The JSON Schema of the props.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": ["props"],
+                        "type": "object"
+                      },
+                      "default": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "maxMarkdownBytes": {
+                      "anyOf": [
+                        {
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "routes": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The public path of an entry in each locale, with :slug: { \"en\": \"/blog/:slug/\" }.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "rules": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "description": "The id of the contract, when a collection lists one rule twice; its name otherwise.",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "type": "string"
+                          },
+                          "params": {
+                            "additionalProperties": {},
+                            "default": {},
+                            "description": "The parameters of the rule, as the catalog describes them.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "rule": {
+                            "description": "The name of a rule of the catalog that describe_site lists.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "severity": {
+                            "default": "error",
+                            "enum": ["error", "warning"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["rule"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "schema": {
+                      "additionalProperties": {},
+                      "description": "The JSON Schema of the frontmatter.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "sortByField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "styleGuide": {
+                      "default": null,
+                      "type": ["string", "null"]
+                    },
+                    "tagsField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "translationGroupField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    }
+                  },
+                  "required": ["schema", "routes"],
+                  "type": "object"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "cors": {
+                "additionalProperties": false,
+                "default": {
+                  "origins": []
+                },
+                "properties": {
+                  "origins": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": ["origins"],
+                "type": "object"
+              },
+              "defaultLocale": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "events": {
+                "additionalProperties": false,
+                "default": {
+                  "indexNow": null,
+                  "webhooks": []
+                },
+                "properties": {
+                  "indexNow": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "webhooks": {
+                    "default": [],
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "secret": {
+                          "description": "The Worker secret that signs the deliveries. Leave it out for Hollware to make one with make_webhook_secret and keep it sealed.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "The https URL that receives each event, signed.",
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": ["name", "url"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "locales": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "styleGuide": {
+                "default": null,
+                "type": ["string", "null"]
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": ["locales", "defaultLocale", "collections"],
+            "type": "object"
+          },
+          "key": {
+            "description": "The key of a site: lowercase letters and digits joined by hyphens, such as my-site.",
+            "type": "string"
+          }
+        },
+        "required": ["key", "definition"],
+        "type": "object"
+      },
+      "name": "create_site",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["created", "taken", "invalid"],
+            "type": "string"
+          },
+          "problems": {
+            "description": "With invalid: every problem, each with its fix.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fix": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Where, from the root: sites.<key>.collections.<name>.schema.",
+                  "type": "string"
+                }
+              },
+              "required": ["path", "message", "fix"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Create a site"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version"],
+        "type": "object"
+      },
+      "name": "delete_entry",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["trashed", "published", "conflict", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Move an entry to the trash"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "default": false,
+            "description": "true to go ahead when needs_confirmation listed what the change does to existing entries.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "The key of a site: lowercase letters and digits joined by hyphens, such as my-site.",
+            "type": "string"
+          }
+        },
+        "required": ["key"],
+        "type": "object"
+      },
+      "name": "delete_site",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "description": "With needs_confirmation: the entries the site holds.",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": ["trashed", "needs_confirmation", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Put a site in the trash"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "describe_site",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "site": {
+            "additionalProperties": false,
+            "properties": {
+              "collections": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "components": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "type": ["string", "null"]
+                          },
+                          "example": {
+                            "type": ["string", "null"]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "props": {
+                            "additionalProperties": {},
+                            "description": "The JSON Schema of the props.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": ["name", "description", "example", "props"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "contracts": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "phases": {
+                            "items": {
+                              "enum": ["write", "publish"],
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "severity": {
+                            "enum": ["error", "warning"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["id", "severity", "phases", "description"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "maxMarkdownBytes": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "routes": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The public path of an entry, per locale.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "schema": {
+                      "additionalProperties": {},
+                      "description": "The JSON Schema of the frontmatter.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "sortByField": {
+                      "description": "The frontmatter field, a date, that orders published listings, newest first; null when they follow the date of first publication.",
+                      "type": ["string", "null"]
+                    },
+                    "styleGuide": {
+                      "type": ["string", "null"]
+                    },
+                    "tagsField": {
+                      "description": "The frontmatter field with the tags, or null.",
+                      "type": ["string", "null"]
+                    },
+                    "translationGroupField": {
+                      "description": "The frontmatter field that the translations of an entry share, or null.",
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "schema",
+                    "routes",
+                    "translationGroupField",
+                    "tagsField",
+                    "sortByField",
+                    "components",
+                    "contracts",
+                    "maxMarkdownBytes",
+                    "styleGuide"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "defaultLocale": {
+                "type": "string"
+              },
+              "key": {
+                "type": "string"
+              },
+              "locales": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "styleGuide": {
+                "type": ["string", "null"]
+              },
+              "url": {
+                "description": "The public origin of the site, which starts the URL of each entry, or null.",
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["key", "locales", "defaultLocale", "url", "styleGuide", "collections"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome", "site"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Describe the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "formats": {
+            "default": ["markdown"],
+            "description": "What to return of the revision: markdown, the Comark document, or html.",
+            "items": {
+              "enum": ["markdown", "document", "html"],
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "published": {
+            "default": false,
+            "description": "Read the revision that is live instead of the latest one: not_found when the entry is not published.",
+            "type": "boolean"
+          },
+          "related": {
+            "default": false,
+            "description": "Also return the published entries closest to this one by meaning, in its collection and locale, closest first. Needs the semantic search of the deployment; empty without it.",
+            "type": "boolean"
+          },
+          "slug": {
+            "description": "The entry's path segment: lowercase letters and digits joined by hyphens, such as edge-caching-guide.",
+            "maxLength": 200,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          }
+        },
+        "required": ["collection", "locale", "slug"],
+        "type": "object"
+      },
+      "name": "get_entry",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "document": {
+                "additionalProperties": false,
+                "properties": {
+                  "frontmatter": {
+                    "additionalProperties": {},
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "meta": {
+                    "additionalProperties": {},
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "nodes": {
+                    "items": {},
+                    "type": "array"
+                  }
+                },
+                "required": ["nodes", "frontmatter", "meta"],
+                "type": "object"
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "html": {
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "lastPublication": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "acknowledged": {
+                        "description": "The warnings acknowledged to publish.",
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "contract": {
+                              "type": "string"
+                            },
+                            "path": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["contract", "path"],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "at": {
+                        "type": "string"
+                      },
+                      "revision": {
+                        "description": "The id of a revision (rev_…).",
+                        "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                        "type": "string"
+                      },
+                      "verdict": {
+                        "additionalProperties": false,
+                        "description": "The verdict of the publish phase.",
+                        "properties": {
+                          "contractsHash": {
+                            "description": "A hash of the rules the content was checked against.",
+                            "type": "string"
+                          },
+                          "errors": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "contract": {
+                                  "description": "The id of the contract.",
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "description": "What to change so that the problem goes away.",
+                                  "type": "string"
+                                },
+                                "line": {
+                                  "maximum": 9007199254740991,
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                                  "type": "string"
+                                },
+                                "severity": {
+                                  "enum": ["error", "warning"],
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["contract", "severity", "path", "message", "fix"],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "ok": {
+                            "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                            "type": "boolean"
+                          },
+                          "phase": {
+                            "enum": ["write", "publish"],
+                            "type": "string"
+                          },
+                          "warnings": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "contract": {
+                                  "description": "The id of the contract.",
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "description": "What to change so that the problem goes away.",
+                                  "type": "string"
+                                },
+                                "line": {
+                                  "maximum": 9007199254740991,
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "message": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                                  "type": "string"
+                                },
+                                "severity": {
+                                  "enum": ["error", "warning"],
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["contract", "severity", "path", "message", "fix"],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+                        "type": "object"
+                      }
+                    },
+                    "required": ["revision", "verdict", "acknowledged", "at"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "locale": {
+                "type": "string"
+              },
+              "markdown": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision this view shows.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "verdict": {
+                "additionalProperties": false,
+                "description": "The verdict of the contracts when this revision was written.",
+                "properties": {
+                  "contractsHash": {
+                    "description": "A hash of the rules the content was checked against.",
+                    "type": "string"
+                  },
+                  "errors": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "contract": {
+                          "description": "The id of the contract.",
+                          "type": "string"
+                        },
+                        "fix": {
+                          "description": "What to change so that the problem goes away.",
+                          "type": "string"
+                        },
+                        "line": {
+                          "maximum": 9007199254740991,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "path": {
+                          "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                          "type": "string"
+                        },
+                        "severity": {
+                          "enum": ["error", "warning"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["contract", "severity", "path", "message", "fix"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "ok": {
+                    "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                    "type": "boolean"
+                  },
+                  "phase": {
+                    "enum": ["write", "publish"],
+                    "type": "string"
+                  },
+                  "warnings": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "contract": {
+                          "description": "The id of the contract.",
+                          "type": "string"
+                        },
+                        "fix": {
+                          "description": "What to change so that the problem goes away.",
+                          "type": "string"
+                        },
+                        "line": {
+                          "maximum": 9007199254740991,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "path": {
+                          "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                          "type": "string"
+                        },
+                        "severity": {
+                          "enum": ["error", "warning"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["contract", "severity", "path", "message", "fix"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+                "type": "object"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt",
+              "revision",
+              "verdict",
+              "lastPublication"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          },
+          "related": {
+            "description": "When related was asked for.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                  "type": ["string", "null"]
+                },
+                "frontmatter": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hasUnpublishedChanges": {
+                  "description": "Whether the latest revision differs from the published one.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "publishedAt": {
+                  "description": "When the entry was first published, or null.",
+                  "type": ["string", "null"]
+                },
+                "scheduledAt": {
+                  "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": ["draft", "scheduled", "published"],
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "collection",
+                "locale",
+                "slug",
+                "translationGroup",
+                "status",
+                "version",
+                "frontmatter",
+                "tags",
+                "hasUnpublishedChanges",
+                "publishedAt",
+                "scheduledAt",
+                "deletedAt",
+                "updatedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Get an entry"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_structure",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "catalog": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "params": {
+                  "additionalProperties": {},
+                  "description": "The JSON Schema of its parameters.",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              },
+              "required": ["name", "description", "params"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "definition": {
+            "additionalProperties": false,
+            "properties": {
+              "collections": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "components": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "example": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "props": {
+                            "additionalProperties": {},
+                            "description": "The JSON Schema of the props.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": ["props"],
+                        "type": "object"
+                      },
+                      "default": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "maxMarkdownBytes": {
+                      "anyOf": [
+                        {
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "routes": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The public path of an entry in each locale, with :slug: { \"en\": \"/blog/:slug/\" }.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "rules": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "description": "The id of the contract, when a collection lists one rule twice; its name otherwise.",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "type": "string"
+                          },
+                          "params": {
+                            "additionalProperties": {},
+                            "default": {},
+                            "description": "The parameters of the rule, as the catalog describes them.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "rule": {
+                            "description": "The name of a rule of the catalog that describe_site lists.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "severity": {
+                            "default": "error",
+                            "enum": ["error", "warning"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["rule", "severity", "params"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "schema": {
+                      "additionalProperties": {},
+                      "description": "The JSON Schema of the frontmatter.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "sortByField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "styleGuide": {
+                      "default": null,
+                      "type": ["string", "null"]
+                    },
+                    "tagsField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "translationGroupField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    }
+                  },
+                  "required": [
+                    "schema",
+                    "routes",
+                    "translationGroupField",
+                    "tagsField",
+                    "sortByField",
+                    "components",
+                    "rules",
+                    "maxMarkdownBytes",
+                    "styleGuide"
+                  ],
+                  "type": "object"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "cors": {
+                "additionalProperties": false,
+                "default": {
+                  "origins": []
+                },
+                "properties": {
+                  "origins": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": ["origins"],
+                "type": "object"
+              },
+              "defaultLocale": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "events": {
+                "additionalProperties": false,
+                "default": {
+                  "indexNow": null,
+                  "webhooks": []
+                },
+                "properties": {
+                  "indexNow": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "webhooks": {
+                    "default": [],
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "secret": {
+                          "description": "The Worker secret that signs the deliveries. Leave it out for Hollware to make one with make_webhook_secret and keep it sealed.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "The https URL that receives each event, signed.",
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": ["name", "url"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": ["webhooks", "indexNow"],
+                "type": "object"
+              },
+              "locales": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "styleGuide": {
+                "default": null,
+                "type": ["string", "null"]
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": [
+              "locales",
+              "defaultLocale",
+              "url",
+              "styleGuide",
+              "cors",
+              "events",
+              "collections"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "site": {
+            "type": "string"
+          },
+          "version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["outcome", "site", "version", "definition", "catalog"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Get the structure of the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "translationGroup": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["collection", "translationGroup"],
+        "type": "object"
+      },
+      "name": "get_translations",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                  "type": ["string", "null"]
+                },
+                "frontmatter": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hasUnpublishedChanges": {
+                  "description": "Whether the latest revision differs from the published one.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "publishedAt": {
+                  "description": "When the entry was first published, or null.",
+                  "type": ["string", "null"]
+                },
+                "scheduledAt": {
+                  "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": ["draft", "scheduled", "published"],
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "collection",
+                "locale",
+                "slug",
+                "translationGroup",
+                "status",
+                "version",
+                "frontmatter",
+                "tags",
+                "hasUnpublishedChanges",
+                "publishedAt",
+                "scheduledAt",
+                "deletedAt",
+                "updatedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Get the translations of an entry"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "cursor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["draft", "scheduled", "published"],
+            "type": "string"
+          },
+          "tag": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "trashed": {
+            "description": "true to list the entries in the trash, last trashed first, instead of the others.",
+            "type": "boolean"
+          }
+        },
+        "required": ["collection"],
+        "type": "object"
+      },
+      "name": "list_entries",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                  "type": ["string", "null"]
+                },
+                "frontmatter": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hasUnpublishedChanges": {
+                  "description": "Whether the latest revision differs from the published one.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "publishedAt": {
+                  "description": "When the entry was first published, or null.",
+                  "type": ["string", "null"]
+                },
+                "scheduledAt": {
+                  "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": ["draft", "scheduled", "published"],
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "collection",
+                "locale",
+                "slug",
+                "translationGroup",
+                "status",
+                "version",
+                "frontmatter",
+                "tags",
+                "hasUnpublishedChanges",
+                "publishedAt",
+                "scheduledAt",
+                "deletedAt",
+                "updatedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "The cursor of the next page, or null.",
+            "type": ["string", "null"]
+          },
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome", "entries", "nextCursor"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "List entries"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "status": {
+            "default": "pending",
+            "enum": ["pending", "approved", "changes_requested", "cancelled"],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_reviews",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "reviews": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "comments": {
+                  "description": "What was said about it, oldest first.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "at": {
+                        "type": "string"
+                      },
+                      "author": {
+                        "description": "The user who wrote it, or whose token their agent used.",
+                        "type": "string"
+                      },
+                      "authorName": {
+                        "type": ["string", "null"]
+                      },
+                      "body": {
+                        "type": "string"
+                      },
+                      "client": {
+                        "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
+                        "type": ["string", "null"]
+                      },
+                      "id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["id", "author", "authorName", "client", "body", "at"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "decidedAt": {
+                  "type": ["string", "null"]
+                },
+                "decidedBy": {
+                  "type": ["string", "null"]
+                },
+                "entry": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                      "type": ["string", "null"]
+                    },
+                    "frontmatter": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "hasUnpublishedChanges": {
+                      "description": "Whether the latest revision differs from the published one.",
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "description": "The id of an entry (ent_…), as the other operations return it.",
+                      "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                      "type": "string"
+                    },
+                    "locale": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "description": "When the entry was first published, or null.",
+                      "type": ["string", "null"]
+                    },
+                    "scheduledAt": {
+                      "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                      "type": ["string", "null"]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": ["draft", "scheduled", "published"],
+                      "type": "string"
+                    },
+                    "tags": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "translationGroup": {
+                      "type": ["string", "null"]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "collection",
+                    "locale",
+                    "slug",
+                    "translationGroup",
+                    "status",
+                    "version",
+                    "frontmatter",
+                    "tags",
+                    "hasUnpublishedChanges",
+                    "publishedAt",
+                    "scheduledAt",
+                    "deletedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "entryId": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "id": {
+                  "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                  "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "note": {
+                  "description": "What the reviewer asked to change, or null.",
+                  "type": ["string", "null"]
+                },
+                "requestedAt": {
+                  "type": "string"
+                },
+                "requestedBy": {
+                  "description": "The user who asked.",
+                  "type": "string"
+                },
+                "requestedByName": {
+                  "description": "The name of the user who asked, if they gave one.",
+                  "type": ["string", "null"]
+                },
+                "revision": {
+                  "description": "The revision asked for.",
+                  "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                  "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "entryId",
+                "revision",
+                "status",
+                "requestedBy",
+                "requestedByName",
+                "requestedAt",
+                "decidedBy",
+                "decidedAt",
+                "note",
+                "entry",
+                "comments"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["outcome", "reviews"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "List the reviews"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "webhook": {
+            "description": "The name of the webhook, as the definition of the site has it.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["webhook"],
+        "type": "object"
+      },
+      "name": "make_webhook_secret",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["made", "not_found", "unavailable"],
+            "type": "string"
+          },
+          "secret": {
+            "description": "With made: the secret, shown this once.",
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Make the secret of a webhook"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgeWarnings": {
+            "default": [],
+            "description": "The warnings you accept, as needs_acknowledgement listed them.",
+            "items": {
+              "properties": {
+                "contract": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": ["contract", "path"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "group": {
+            "default": [],
+            "description": "Other entries to publish in the same step, each with the version you read: all of them are published, or none. A link between two of them counts as published, and an acknowledged warning holds for every entry that reports it.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version of the entry you read. A change against an older version answers conflict.",
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["id", "version"],
+              "type": "object"
+            },
+            "maxItems": 99,
+            "type": "array"
+          },
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "publishAt": {
+            "description": "Publish at this time instead of now, as an ISO 8601 date and time: the entry is checked now and waits as scheduled, and it is published within a minute of the time, if nobody changes it before. One entry at a time, never with group.",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version"],
+        "type": "object"
+      },
+      "name": "publish",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "failedEntry": {
+            "description": "In a group, the entry that kept the group from being published: blocked, stale, missing, or with a warning to acknowledge.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "published",
+              "scheduled",
+              "blocked",
+              "needs_acknowledgement",
+              "pending_review",
+              "conflict",
+              "not_found"
+            ],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "description": "With pending_review: the request, as list_reviews shows it.",
+            "properties": {
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note"
+            ],
+            "type": "object"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Publish an entry"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "note": {
+            "description": "What to change, for the author.",
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["id", "note"],
+        "type": "object"
+      },
+      "name": "request_changes",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["changes_requested", "not_pending", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "properties": {
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note"
+            ],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:publish"],
+      "title": "Ask for changes"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgeWarnings": {
+            "default": [],
+            "description": "The warnings you accept, as needs_acknowledgement listed them.",
+            "items": {
+              "properties": {
+                "contract": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": ["contract", "path"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version"],
+        "type": "object"
+      },
+      "name": "request_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["pending_review", "blocked", "needs_acknowledgement", "conflict", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "description": "With pending_review: the request, as list_reviews shows it.",
+            "properties": {
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note"
+            ],
+            "type": "object"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Ask for a review"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "restore_entry",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["restored", "not_trashed", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Bring an entry back from the trash"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "The key of a site: lowercase letters and digits joined by hyphens, such as my-site.",
+            "type": "string"
+          }
+        },
+        "required": ["key"],
+        "type": "object"
+      },
+      "name": "restore_site",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["restored", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Bring a site back from the trash"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 10,
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "mode": {
+            "description": "fulltext, semantic or hybrid; hybrid when not given. Semantic and hybrid need the semantic search of the deployment: without it the search is full text, and mode in the answer says so.",
+            "enum": ["fulltext", "semantic", "hybrid"],
+            "type": "string"
+          },
+          "query": {
+            "description": "The words to find, or a question; punctuation is ignored by full text.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["query"],
+        "type": "object"
+      },
+      "name": "search",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "description": "How the search was made.",
+            "enum": ["fulltext", "semantic", "hybrid"],
+            "type": "string"
+          },
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "entry": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                      "type": ["string", "null"]
+                    },
+                    "frontmatter": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "hasUnpublishedChanges": {
+                      "description": "Whether the latest revision differs from the published one.",
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "description": "The id of an entry (ent_…), as the other operations return it.",
+                      "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                      "type": "string"
+                    },
+                    "locale": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "description": "When the entry was first published, or null.",
+                      "type": ["string", "null"]
+                    },
+                    "scheduledAt": {
+                      "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                      "type": ["string", "null"]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": ["draft", "scheduled", "published"],
+                      "type": "string"
+                    },
+                    "tags": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "translationGroup": {
+                      "type": ["string", "null"]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "collection",
+                    "locale",
+                    "slug",
+                    "translationGroup",
+                    "status",
+                    "version",
+                    "frontmatter",
+                    "tags",
+                    "hasUnpublishedChanges",
+                    "publishedAt",
+                    "scheduledAt",
+                    "deletedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "score": {
+                  "description": "How well it matches: higher is better.",
+                  "type": "number"
+                },
+                "snippet": {
+                  "description": "The words around the match, the words found between [ and ]; for a match by meaning, the start of the closest part.",
+                  "type": "string"
+                }
+              },
+              "required": ["entry", "snippet", "score"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["outcome", "mode", "results"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Search entries"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "components": {
+                    "additionalProperties": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "description": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "example": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "props": {
+                          "additionalProperties": {},
+                          "description": "The JSON Schema of the props.",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "required": ["props"],
+                      "type": "object"
+                    },
+                    "default": {},
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "maxMarkdownBytes": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "routes": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "The public path of an entry in each locale, with :slug: { \"en\": \"/blog/:slug/\" }.",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "rules": {
+                    "default": [],
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "The id of the contract, when a collection lists one rule twice; its name otherwise.",
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "type": "string"
+                        },
+                        "params": {
+                          "additionalProperties": {},
+                          "default": {},
+                          "description": "The parameters of the rule, as the catalog describes them.",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "rule": {
+                          "description": "The name of a rule of the catalog that describe_site lists.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "severity": {
+                          "default": "error",
+                          "enum": ["error", "warning"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["rule"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "schema": {
+                    "additionalProperties": {},
+                    "description": "The JSON Schema of the frontmatter.",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "sortByField": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "styleGuide": {
+                    "default": null,
+                    "type": ["string", "null"]
+                  },
+                  "tagsField": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "translationGroupField": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "required": ["schema", "routes"],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The collection, or null to remove it."
+          },
+          "confirm": {
+            "default": false,
+            "description": "true to go ahead when needs_confirmation listed what the change does to existing entries.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The name of the collection: lowercase letters, digits and hyphens, such as blog.",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the structure you read with get_structure. Another one answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": ["version", "name", "collection"],
+        "type": "object"
+      },
+      "name": "set_collection",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "What became of the collection.",
+        "properties": {
+          "currentVersion": {
+            "description": "With conflict: the version to read again.",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "impact": {
+            "additionalProperties": false,
+            "description": "With needs_confirmation: what the change would do.",
+            "properties": {
+              "refused": {
+                "description": "Collections whose new schema refuses entries they hold; they stay, and their next write is checked against it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "entries": {
+                      "description": "Entries whose latest frontmatter the new schema refuses.",
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "examples": {
+                      "description": "A few of their slugs.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["collection", "entries", "examples"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "removedCollections": {
+                "description": "Collections the change removes, with how many entries each holds.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "entries"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "removedLocales": {
+                "description": "Locales the change removes, with how many entries each holds.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "locale": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["locale", "entries"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["removedCollections", "removedLocales", "refused"],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["updated", "unchanged", "invalid", "needs_confirmation", "conflict"],
+            "type": "string"
+          },
+          "problems": {
+            "description": "With invalid: every problem, each with its fix.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fix": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Where, from the root: sites.<key>.collections.<name>.schema.",
+                  "type": "string"
+                }
+              },
+              "required": ["path", "message", "fix"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "version": {
+            "description": "The version of the structure now.",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Add, change or remove a collection"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "unpublish",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["unpublished", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:publish"],
+      "title": "Unpublish an entry"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "markdown": {
+            "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version", "markdown"],
+        "type": "object"
+      },
+      "name": "update_draft",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["saved", "unchanged", "conflict", "not_found", "refused"],
+            "type": "string"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Update a draft"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "confirm": {
+            "default": false,
+            "description": "true to go ahead when needs_confirmation listed what the change does to existing entries.",
+            "type": "boolean"
+          },
+          "definition": {
+            "additionalProperties": false,
+            "properties": {
+              "collections": {
+                "additionalProperties": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "components": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "example": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "props": {
+                            "additionalProperties": {},
+                            "description": "The JSON Schema of the props.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": ["props"],
+                        "type": "object"
+                      },
+                      "default": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "maxMarkdownBytes": {
+                      "anyOf": [
+                        {
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "routes": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "description": "The public path of an entry in each locale, with :slug: { \"en\": \"/blog/:slug/\" }.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "rules": {
+                      "default": [],
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "description": "The id of the contract, when a collection lists one rule twice; its name otherwise.",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "type": "string"
+                          },
+                          "params": {
+                            "additionalProperties": {},
+                            "default": {},
+                            "description": "The parameters of the rule, as the catalog describes them.",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "rule": {
+                            "description": "The name of a rule of the catalog that describe_site lists.",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "severity": {
+                            "default": "error",
+                            "enum": ["error", "warning"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["rule"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "schema": {
+                      "additionalProperties": {},
+                      "description": "The JSON Schema of the frontmatter.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "sortByField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "styleGuide": {
+                      "default": null,
+                      "type": ["string", "null"]
+                    },
+                    "tagsField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    },
+                    "translationGroupField": {
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null
+                    }
+                  },
+                  "required": ["schema", "routes"],
+                  "type": "object"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "cors": {
+                "additionalProperties": false,
+                "default": {
+                  "origins": []
+                },
+                "properties": {
+                  "origins": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": ["origins"],
+                "type": "object"
+              },
+              "defaultLocale": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "events": {
+                "additionalProperties": false,
+                "default": {
+                  "indexNow": null,
+                  "webhooks": []
+                },
+                "properties": {
+                  "indexNow": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": ["key"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "webhooks": {
+                    "default": [],
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "secret": {
+                          "description": "The Worker secret that signs the deliveries. Leave it out for Hollware to make one with make_webhook_secret and keep it sealed.",
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "The https URL that receives each event, signed.",
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": ["name", "url"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "locales": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "styleGuide": {
+                "default": null,
+                "type": ["string", "null"]
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": ["locales", "defaultLocale", "collections"],
+            "type": "object"
+          },
+          "version": {
+            "description": "The version of the structure you read with get_structure. Another one answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": ["version", "definition"],
+        "type": "object"
+      },
+      "name": "update_site",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "What became of the definition.",
+        "properties": {
+          "currentVersion": {
+            "description": "With conflict: the version to read again.",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "impact": {
+            "additionalProperties": false,
+            "description": "With needs_confirmation: what the change would do.",
+            "properties": {
+              "refused": {
+                "description": "Collections whose new schema refuses entries they hold; they stay, and their next write is checked against it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "entries": {
+                      "description": "Entries whose latest frontmatter the new schema refuses.",
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "examples": {
+                      "description": "A few of their slugs.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["collection", "entries", "examples"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "removedCollections": {
+                "description": "Collections the change removes, with how many entries each holds.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "entries"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "removedLocales": {
+                "description": "Locales the change removes, with how many entries each holds.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "entries": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "locale": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["locale", "entries"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["removedCollections", "removedLocales", "refused"],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["updated", "unchanged", "invalid", "needs_confirmation", "conflict"],
+            "type": "string"
+          },
+          "problems": {
+            "description": "With invalid: every problem, each with its fix.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "fix": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Where, from the root: sites.<key>.collections.<name>.schema.",
+                  "type": "string"
+                }
+              },
+              "required": ["path", "message", "fix"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "version": {
+            "description": "The version of the structure now.",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Change the structure of the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "markdown": {
+            "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The entry's path segment: lowercase letters and digits joined by hyphens, such as edge-caching-guide.",
+            "maxLength": 200,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          }
+        },
+        "required": ["collection", "locale", "slug", "markdown"],
+        "type": "object"
+      },
+      "name": "validate",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome", "verdict"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Validate a Markdown file"
+    }
+  ]
+}
