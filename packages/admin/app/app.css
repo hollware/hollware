@@ -27,10 +27,6 @@
 }
 /* theme:end */
 
-:root {
-  --ui-radius: 0.5rem;
-}
-
 body {
   -webkit-font-smoothing: antialiased;
 }

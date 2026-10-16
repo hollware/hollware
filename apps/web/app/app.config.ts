@@ -9,13 +9,5 @@ export default defineAppConfig({
     selectMenu: { defaultVariants: { variant: 'subtle' } },
     inputMenu: { defaultVariants: { variant: 'subtle' } },
     inputNumber: { defaultVariants: { variant: 'subtle' } },
-    button: { slots: { base: 'font-medium' } },
-    pageHero: {
-      slots: {
-        title: 'text-gradient tracking-[-0.035em] font-semibold',
-        description: 'text-pretty',
-      },
-    },
-    pageFeature: { slots: { title: 'font-medium' } },
   },
 })

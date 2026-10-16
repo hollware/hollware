@@ -41,6 +41,22 @@ describe('the look of Hollware', () => {
     }
   })
 
+  it("keeps Nuxt UI's radius and width, which the theme leaves as they are, and no rounded pill", () => {
+    for (const css of [readText(SITE_CSS), readText(ADMIN_CSS)]) {
+      expect(css).not.toContain('--ui-radius:')
+      expect(css).not.toContain('--ui-container:')
+    }
+    // A button or a label of the site is the shape of the theme, not a pill of its own.
+    expect(readText('apps/web/app/pages/index.vue')).not.toContain('rounded-full')
+    expect(readText('packages/admin/app/App.vue')).not.toMatch(/rounded-full border/)
+  })
+
+  it('gives Nuxt UI the theme and nothing else: no slot of a component restyled', () => {
+    for (const config of [readText(SITE_CONFIG), readText(ADMIN_CONFIG)]) {
+      expect(config).not.toContain('slots:')
+    }
+  })
+
   it('is dark only: no switch of color mode, and the class dark on every page', () => {
     const sources = [
       readText('apps/web/app/components/AppHeader.vue'),

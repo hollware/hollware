@@ -70,7 +70,7 @@ const choices = computed(() =>
             </svg>
             <span class="font-semibold tracking-tight text-highlighted">Hollware</span>
             <span
-              class="rounded-full border border-default px-2 py-0.5 font-mono text-[11px] text-muted"
+              class="rounded-md border border-default px-2 py-0.5 font-mono text-[11px] text-muted"
               >admin</span
             >
           </RouterLink>

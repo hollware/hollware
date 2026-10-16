@@ -17,7 +17,7 @@ const lines = [
 
 <template>
   <div
-    class="relative overflow-hidden rounded-xl border border-default bg-muted/80 text-left shadow-2xl shadow-black/40"
+    class="relative overflow-hidden rounded-lg border border-default bg-muted/80 text-left shadow-2xl shadow-black/40"
   >
     <div class="flex items-center gap-2 border-b border-default px-4 py-3">
       <span class="size-2.5 rounded-full bg-(--ui-border-accented)" />

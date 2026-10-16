@@ -99,10 +99,10 @@ const config = `export default defineConfig({
     >
       <template #headline>
         <UBadge
-          label="v0.4 · open source · Cloudflare Workers"
+          label="v0.8 · open source · Cloudflare Workers"
           color="neutral"
           variant="outline"
-          class="rounded-full font-mono"
+          class="font-mono"
         />
       </template>
       <template #title>The CMS your agents write&nbsp;to</template>
@@ -138,19 +138,15 @@ const config = `export default defineConfig({
       title="Content that agents can write, and that you can trust"
       description="Every write goes through the same checks, whoever makes it: an agent, a person in the admin, or a script."
       :features="features"
-      :ui="{ title: 'text-gradient tracking-tight', features: 'gap-y-10' }"
+      :ui="{ features: 'gap-y-10' }"
     />
 
-    <UPageSection
-      headline="Three commands"
-      title="From nothing to live"
-      :ui="{ title: 'text-gradient tracking-tight' }"
-    >
+    <UPageSection headline="Three commands" title="From nothing to live">
       <ol class="grid gap-4 lg:grid-cols-3">
         <li
           v-for="(step, index) in steps"
           :key="step.title"
-          class="flex flex-col gap-3 rounded-xl border border-default bg-muted/40 p-6"
+          class="flex flex-col gap-3 rounded-lg border border-default bg-muted/40 p-6"
         >
           <span class="font-mono text-xs text-primary">0{{ index + 1 }}</span>
           <h3 class="font-medium text-highlighted">{{ step.title }}</h3>
@@ -177,19 +173,18 @@ const config = `export default defineConfig({
           variant: 'link',
         },
       ]"
-      :ui="{ title: 'text-gradient tracking-tight' }"
     >
       <pre
-        class="overflow-x-auto rounded-xl border border-default bg-muted/80 p-5 font-mono text-[13px] leading-relaxed text-highlighted"
+        class="overflow-x-auto rounded-lg border border-default bg-muted/80 p-5 font-mono text-[13px] leading-relaxed text-highlighted"
       ><code>{{ config }}</code></pre>
     </UPageSection>
 
     <UPageSection :ui="{ container: 'pb-28' }">
       <div
-        class="relative overflow-hidden rounded-2xl border border-default bg-muted/50 px-6 py-16 text-center"
+        class="relative overflow-hidden rounded-lg border border-default bg-muted/50 px-6 py-16 text-center"
       >
         <div class="pointer-events-none absolute inset-0 backdrop-glow" />
-        <h2 class="relative text-3xl font-semibold tracking-tight text-gradient sm:text-4xl">
+        <h2 class="relative text-3xl font-semibold text-highlighted sm:text-4xl">
           Give your agents a CMS
         </h2>
         <p class="relative mx-auto mt-4 max-w-xl text-muted">

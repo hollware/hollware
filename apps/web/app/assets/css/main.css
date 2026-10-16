@@ -27,11 +27,6 @@
 }
 /* theme:end */
 
-:root {
-  --ui-radius: 0.5rem;
-  --ui-container: 76rem;
-}
-
 body {
   font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
@@ -53,13 +48,6 @@ body {
     color-mix(in oklab, var(--color-emerald-400) 18%, transparent),
     transparent 70%
   );
-}
-
-.text-gradient {
-  background: linear-gradient(180deg, var(--ui-text-highlighted) 30%, var(--ui-text-muted));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /*
@@ -127,7 +115,7 @@ body {
     font-family: var(--font-mono);
     font-size: 0.86em;
     padding: 0.15em 0.4em;
-    border-radius: 0.35rem;
+    border-radius: calc(var(--ui-radius) * 1.5);
     background: var(--ui-bg-elevated);
     border: 1px solid var(--ui-border);
     color: var(--ui-text-highlighted);
@@ -137,7 +125,7 @@ body {
     font-size: 0.84rem;
     line-height: 1.7;
     padding: 1rem 1.15rem;
-    border-radius: 0.6rem;
+    border-radius: calc(var(--ui-radius) * 2);
     background: var(--ui-bg-muted);
     border: 1px solid var(--ui-border);
     overflow-x: auto;
@@ -166,7 +154,7 @@ body {
     font-weight: 600;
   }
   & img {
-    border-radius: 0.6rem;
+    border-radius: calc(var(--ui-radius) * 2);
     border: 1px solid var(--ui-border);
   }
   & hr {
