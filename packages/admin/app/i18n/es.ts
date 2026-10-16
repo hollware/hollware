@@ -68,6 +68,59 @@ export const es: Messages = {
     filter: 'Filtrar',
     empty: 'Todavía no hay nada aquí.',
     count: (shown: number, total: number) => `${shown} de ${total}`,
+    selectPage: 'Seleccionar las filas de esta página',
+    selectRow: (name: string) => `Seleccionar ${name}`,
+    bulk: 'Acciones sobre las filas seleccionadas',
+    selected: (count: number) => (count === 1 ? '1 seleccionada' : `${count} seleccionadas`),
+    clear: 'Quitar la selección',
+  },
+  bulk: {
+    done: 'Listo',
+    partly: 'Listo, con excepciones',
+    outcomes: {
+      published: (n: number) => (n === 1 ? '1 publicada' : `${n} publicadas`),
+      scheduled: (n: number) => (n === 1 ? '1 programada' : `${n} programadas`),
+      pending_review: (n: number) =>
+        n === 1 ? '1 enviada a revisión' : `${n} enviadas a revisión`,
+      needs_acknowledgement: (n: number) =>
+        n === 1 ? '1 con advertencias por aceptar' : `${n} con advertencias por aceptar`,
+      blocked: (n: number) =>
+        n === 1 ? '1 bloqueada por sus contratos' : `${n} bloqueadas por sus contratos`,
+      conflict: (n: number) =>
+        n === 1 ? '1 cambió mientras tanto' : `${n} cambiaron mientras tanto`,
+      not_found: (n: number) => (n === 1 ? '1 ya no existe' : `${n} ya no existen`),
+      not_pending: (n: number) => (n === 1 ? '1 ya estaba cerrada' : `${n} ya estaban cerradas`),
+      unpublished: (n: number) => (n === 1 ? '1 despublicada' : `${n} despublicadas`),
+      changes_requested: (n: number) =>
+        n === 1 ? '1 devuelta con la nota' : `${n} devueltas con la nota`,
+      revoked: (n: number) => (n === 1 ? '1 revocado' : `${n} revocados`),
+      removed: (n: number) => (n === 1 ? '1 quitada' : `${n} quitadas`),
+      changed: (n: number) => (n === 1 ? '1 cambiada' : `${n} cambiadas`),
+      failed: (n: number) => (n === 1 ? '1 falló' : `${n} fallaron`),
+    },
+    publish: (n: number) => `Publicar ${n}`,
+    schedule: (n: number) => `Programar ${n}`,
+    unpublish: (n: number) => `Despublicar ${n}`,
+    approve: (n: number) => `Aprobar ${n}`,
+    askChanges: (n: number) => `Pedir cambios en ${n}`,
+    revoke: (n: number) => `Revocar ${n}`,
+    remove: (n: number) => `Quitar ${n}`,
+    setRole: 'Cambiar el rol',
+    unpublishTitle: (n: number) => `¿Despublicar ${n} entradas?`,
+    unpublishBody:
+      'Salen del sitio público: sus páginas responden 404 y desaparecen de los listados y de la búsqueda. Siguen aquí como borradores, con todas sus revisiones, y una programada deja de estarlo.',
+    scheduleTitle: (n: number) => `Programar ${n} entradas`,
+    acknowledgeTitle: (n: number) => `¿Publicar ${n} entradas con estas advertencias?`,
+    approveTitle: (n: number) => `¿Aprobar ${n} revisiones con estas advertencias?`,
+    askChangesTitle: (n: number) => `Pedir cambios en ${n} revisiones`,
+    askChangesHelp: 'La misma nota llega a cada una.',
+    revokeTitle: (n: number) => `¿Revocar ${n} tokens?`,
+    revokeBody:
+      'Dejan de funcionar en su siguiente solicitud. Un token revocado no se puede recuperar.',
+    removeTitle: (n: number) => `¿Quitar a ${n} personas de este sitio?`,
+    removeBody:
+      'Salen de este sitio de inmediato, con cada token y aplicación que tenían en él. Sus entradas y revisiones se conservan. Un sitio siempre conserva un dueño.',
+    selectReviews: 'Seleccionar todas las revisiones pendientes',
   },
   home: {
     title: 'Inicio',

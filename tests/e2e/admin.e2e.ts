@@ -52,7 +52,7 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
 
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
   await owner.goto('/admin/entries')
-  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toContainText('published')
+  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toContainText('published')
   await expectAccessible(owner)
   await shot(owner, 'entries')
 })
@@ -108,7 +108,9 @@ test('the owner unpublishes an entry, then schedules it', async () => {
   await shot(owner, 'scheduled')
 
   await owner.goto('/admin/entries?status=scheduled')
-  await expect(owner.getByRole('row', { name: /^Hola mundo, otra vez/ })).toContainText('scheduled')
+  await expect(owner.getByRole('row', { name: /^Select Hola mundo, otra vez/ })).toContainText(
+    'scheduled',
+  )
 })
 
 test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no deploy', async () => {
@@ -164,10 +166,10 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
 
 test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.goto('/admin/entries')
-  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('hello')
-  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toHaveCount(0)
-  await expect(owner.getByRole('row', { name: /^Hello world/ })).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toBeVisible()
 
   // ⌘K waits while a field has the focus, as it should: the button of the sidebar opens it here.
   await owner.getByRole('button', { name: /^Search/ }).click()
@@ -215,9 +217,41 @@ test('the owner switches the admin to Spanish from the person menu, and it stays
   await expect(
     owner.getByRole('textbox', { name: 'Filtrar por título, slug o etiqueta' }),
   ).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Hola mundo, otra vez/ })).toContainText(
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo, otra vez/ })).toContainText(
     'programada',
   )
   await expectAccessible(owner)
   await shot(owner, 'entries-es')
+})
+
+test('the owner publishes and unpublishes several entries at once, from the table', async () => {
+  // The admin is in Spanish since the test before: the bulk actions speak it too.
+  await owner.goto('/admin/entries')
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
+  await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
+  const bar = owner.getByRole('toolbar', { name: 'Acciones sobre las filas seleccionadas' })
+  await expect(bar).toContainText('2 seleccionadas')
+  await expectAccessible(owner)
+
+  await bar.getByRole('button', { name: 'Publicar 2' }).click()
+  await expect(owner.getByText('2 publicadas', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
+    'publicada',
+  )
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toContainText(
+    'publicada',
+  )
+  await shot(owner, 'bulk-es')
+
+  // The selection stays on the rows, now published: unpublishing asks first.
+  await bar.getByRole('button', { name: 'Despublicar 2' }).click()
+  await expectAccessible(owner)
+  await owner.getByRole('dialog').getByRole('button', { name: 'Despublicar 2' }).click()
+  await expect(owner.getByText('2 despublicadas', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
+    'borrador',
+  )
+  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toContainText(
+    'borrador',
+  )
 })

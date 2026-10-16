@@ -7,6 +7,8 @@ import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
 import { formatDate, useMessages } from '../i18n/index.ts'
+import { runAll, countOutcomes } from '../lib/bulk.ts'
+import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
 
 type Token = {
@@ -93,6 +95,28 @@ async function revoke(token: Token) {
   }
 }
 
+/** Tokens chosen to be revoked together, while the person confirms. */
+const reportBulk = useBulkReport()
+const revoking = ref<Token[]>([])
+const revokeOpen = computed({
+  get: () => revoking.value.length > 0,
+  set: (value: boolean) => {
+    if (!value) revoking.value = []
+  },
+})
+const live = (token: Token) => token.revokedAt === null
+
+async function revokeMany() {
+  const chosenTokens = revoking.value
+  revoking.value = []
+  const results = await runAll(chosenTokens, async (token) => {
+    await api.admin(`tokens/${token.id}/revoke`, {})
+    return { outcome: 'revoked' }
+  })
+  reportBulk(countOutcomes(results))
+  await list()
+}
+
 async function copy() {
   if (secret.value !== null) await navigator.clipboard.writeText(secret.value)
 }
@@ -154,7 +178,20 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
           :columns="columns"
           :filter-label="m.tokens.filter"
           :empty="m.tokens.empty"
+          selectable
+          :row-label="(token: Token) => token.label"
         >
+          <template #bulk="{ selected }">
+            <UButton
+              v-if="selected.some(live)"
+              :label="m.bulk.revoke(selected.filter(live).length)"
+              icon="i-lucide-ban"
+              color="error"
+              variant="outline"
+              size="sm"
+              @click="revoking = selected.filter(live)"
+            />
+          </template>
           <template #label-cell="{ row }">
             <span class="font-medium">{{ row.original.label }}</span>
           </template>
@@ -182,6 +219,15 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
             </div>
           </template>
         </DataTable>
+        <UModal v-model:open="revokeOpen" :title="m.bulk.revokeTitle(revoking.length)">
+          <template #body>
+            <p class="text-sm">{{ m.bulk.revokeBody }}</p>
+          </template>
+          <template #footer>
+            <UButton :label="m.common.cancel" variant="ghost" @click="revoking = []" />
+            <UButton :label="m.bulk.revoke(revoking.length)" color="error" @click="revokeMany" />
+          </template>
+        </UModal>
       </template>
     </div>
   </Page>

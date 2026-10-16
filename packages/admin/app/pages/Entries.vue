@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import type { Output } from '../lib/api.ts'
+import { countOutcomes, runAll } from '../lib/bulk.ts'
+import { useBulkReport } from '../lib/bulk-report.ts'
 import { sortable } from '../lib/columns.ts'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
@@ -16,6 +18,7 @@ type Entry = Output<'list_entries'>['entries'][number]
 type Status = Entry['status']
 /** A row of the table: the entry, with its title for the filter and the sorting. */
 type Row = Entry & { title: string }
+type Warning = Output<'validate'>['verdict']['warnings'][number]
 
 const ALL = 'all'
 /** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
@@ -118,6 +121,101 @@ const columns = computed<TableColumn<Row>[]>(() => [
   { id: 'site', header: '' },
 ])
 
+/**
+ * Bulk actions on the chosen entries, each the operation of one entry: publish (or schedule) what
+ * has something to publish, and unpublish what is published or scheduled. Entries whose warnings
+ * have to be accepted come back together, to be accepted at once.
+ */
+const reportBulk = useBulkReport()
+const busy = ref(false)
+const publishable = (entry: Row) => entry.status !== 'published' || entry.hasUnpublishedChanges
+const unpublishable = (entry: Row) => entry.status !== 'draft'
+
+const unpublishing = ref<Row[]>([])
+const scheduling = ref<Row[]>([])
+const publishAt = ref('')
+const warned = ref<{ row: Row; warnings: Warning[] }[]>([])
+let warnedAt: string | undefined
+const open = (list: { value: unknown[] }) =>
+  computed({
+    get: () => list.value.length > 0,
+    set: (value: boolean) => {
+      if (!value) list.value = []
+    },
+  })
+const unpublishOpen = open(unpublishing)
+const scheduleOpen = open(scheduling)
+const warnedOpen = open(warned)
+
+async function publishMany(
+  rows: readonly Row[],
+  at?: string,
+  acknowledged: ReadonlyMap<string, readonly Warning[]> = new Map(),
+) {
+  busy.value = true
+  scheduling.value = []
+  warned.value = []
+  try {
+    const results = await runAll(rows, (row) =>
+      api.call('publish', {
+        id: row.id,
+        version: row.version,
+        acknowledgeWarnings: (acknowledged.get(row.id) ?? []).map(({ contract, path }) => ({
+          contract,
+          path,
+        })),
+        ...(at === undefined ? {} : { publishAt: at }),
+      }),
+    )
+    reportBulk(countOutcomes(results))
+    await load()
+    warnedAt = at
+    warned.value = results.flatMap((result) =>
+      'answer' in result && result.answer.outcome === 'needs_acknowledgement'
+        ? [{ row: result.item, warnings: result.answer.verdict?.warnings ?? [] }]
+        : [],
+    )
+  } finally {
+    busy.value = false
+  }
+}
+
+async function acceptWarnings() {
+  const accepted = new Map(warned.value.map(({ row, warnings }) => [row.id, warnings]))
+  await publishMany(
+    warned.value.map(({ row }) => row),
+    warnedAt,
+    accepted,
+  )
+}
+
+function openSchedule(rows: readonly Row[]) {
+  // An hour from now, to the minute, in the person's own zone: what a datetime-local input shows.
+  const soon = new Date(Date.now() + 3_600_000)
+  soon.setSeconds(0, 0)
+  publishAt.value = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16)
+  scheduling.value = [...rows]
+}
+const scheduleError = computed(() => {
+  const at = Date.parse(publishAt.value)
+  if (Number.isNaN(at)) return m.value.entry.pickDateTime
+  return at <= Date.now() ? m.value.entry.pickFuture : null
+})
+
+async function unpublishMany() {
+  const rows = unpublishing.value
+  unpublishing.value = []
+  busy.value = true
+  try {
+    reportBulk(countOutcomes(await runAll(rows, (row) => api.call('unpublish', { id: row.id }))))
+    await load()
+  } finally {
+    busy.value = false
+  }
+}
+
 const statuses = computed(() => [
   { label: m.value.entries.anyStatus, value: ALL },
   { label: m.value.entries.draft, value: 'draft' },
@@ -145,7 +243,38 @@ const locales = computed(() => [
       :loading="loading"
       :filter-label="m.entries.filter"
       :empty="m.entries.empty"
+      selectable
+      :row-label="(row: Row) => row.title"
     >
+      <template #bulk="{ selected }">
+        <UButton
+          v-if="selected.some(publishable)"
+          :label="m.bulk.publish(selected.filter(publishable).length)"
+          icon="i-lucide-send"
+          size="sm"
+          :loading="busy"
+          @click="publishMany(selected.filter(publishable))"
+        />
+        <UButton
+          v-if="selected.some(publishable)"
+          :label="m.bulk.schedule(selected.filter(publishable).length)"
+          icon="i-lucide-calendar-clock"
+          variant="outline"
+          size="sm"
+          :disabled="busy"
+          @click="openSchedule(selected.filter(publishable))"
+        />
+        <UButton
+          v-if="selected.some(unpublishable)"
+          :label="m.bulk.unpublish(selected.filter(unpublishable).length)"
+          icon="i-lucide-eye-off"
+          color="error"
+          variant="outline"
+          size="sm"
+          :disabled="busy"
+          @click="unpublishing = selected.filter(unpublishable)"
+        />
+      </template>
       <template #filters>
         <template v-if="site !== null">
           <USelect
@@ -215,5 +344,64 @@ const locales = computed(() => [
     <p v-if="truncated" class="text-sm text-muted">
       {{ m.entries.truncated(MOST) }}
     </p>
+
+    <UModal v-model:open="unpublishOpen" :title="m.bulk.unpublishTitle(unpublishing.length)">
+      <template #body>
+        <p class="text-sm">{{ m.bulk.unpublishBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="unpublishing = []" />
+        <UButton
+          :label="m.bulk.unpublish(unpublishing.length)"
+          color="error"
+          @click="unpublishMany"
+        />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="scheduleOpen" :title="m.bulk.scheduleTitle(scheduling.length)">
+      <template #body>
+        <UFormField
+          :label="m.entry.publishAt"
+          :help="m.entry.publishAtHelp"
+          :error="scheduleError ?? undefined"
+        >
+          <UInput v-model="publishAt" type="datetime-local" class="w-full" />
+        </UFormField>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="scheduling = []" />
+        <UButton
+          :label="m.bulk.schedule(scheduling.length)"
+          :disabled="scheduleError !== null"
+          @click="publishMany(scheduling, new Date(publishAt).toISOString())"
+        />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="warnedOpen" :title="m.bulk.acknowledgeTitle(warned.length)">
+      <template #body>
+        <ul class="space-y-4 text-sm">
+          <li v-for="{ row, warnings } in warned" :key="row.id">
+            <p class="font-medium">{{ row.title }}</p>
+            <ul class="mt-1 space-y-1">
+              <li v-for="(warning, index) in warnings" :key="index">
+                <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
+                {{ warning.message }}
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="warned = []" />
+        <UButton
+          :label="m.entry.publishAnyway"
+          color="warning"
+          :loading="busy"
+          @click="acceptWarnings"
+        />
+      </template>
+    </UModal>
   </Page>
 </template>

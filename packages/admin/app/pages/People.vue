@@ -7,6 +7,8 @@ import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
+import { countOutcomes, runAll } from '../lib/bulk.ts'
+import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
 
 type Member = { id: string; name: string | null; role: string; since: string }
@@ -98,6 +100,47 @@ async function remove() {
   await load()
 }
 
+/**
+ * Members chosen to be acted on together: a new role for all of them, or out of the site, each
+ * as the one-member action does it. The server keeps a site's last owner, whatever is chosen.
+ */
+const reportBulk = useBulkReport()
+const removingMany = ref<Member[]>([])
+const removeManyOpen = computed({
+  get: () => removingMany.value.length > 0,
+  set: (value: boolean) => {
+    if (!value) removingMany.value = []
+  },
+})
+const nameOf = (member: Member) => member.name ?? member.id
+
+function roleMenu(members: readonly Member[]) {
+  return roleItems(['owner', 'editor', 'author']).map((item) => ({
+    label: item.label,
+    onSelect: () => void setRoleMany(members, item.value),
+  }))
+}
+
+async function setRoleMany(members: readonly Member[], next: string) {
+  const results = await runAll(members, async (member) => {
+    await api.admin('people/role', { userId: member.id, role: next })
+    return { outcome: 'changed' }
+  })
+  reportBulk(countOutcomes(results))
+  await load()
+}
+
+async function removeMany() {
+  const members = removingMany.value
+  removingMany.value = []
+  const results = await runAll(members, async (member) => {
+    await api.admin('people/remove', { userId: member.id })
+    return { outcome: 'removed' }
+  })
+  reportBulk(countOutcomes(results))
+  await load()
+}
+
 async function copy() {
   if (link.value !== null) await navigator.clipboard.writeText(link.value)
 }
@@ -136,7 +179,28 @@ async function copy() {
             :columns="memberColumns"
             :filter-label="m.people.filter"
             :empty="m.people.empty"
+            selectable
+            :row-label="nameOf"
           >
+            <template #bulk="{ selected }">
+              <UDropdownMenu :items="roleMenu(selected)">
+                <UButton
+                  :label="m.bulk.setRole"
+                  icon="i-lucide-user-cog"
+                  variant="outline"
+                  size="sm"
+                  trailing-icon="i-lucide-chevron-down"
+                />
+              </UDropdownMenu>
+              <UButton
+                :label="m.bulk.remove(selected.length)"
+                icon="i-lucide-user-minus"
+                color="error"
+                variant="outline"
+                size="sm"
+                @click="removingMany = [...selected]"
+              />
+            </template>
             <template #name-cell="{ row }">
               <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
             </template>
@@ -182,6 +246,15 @@ async function copy() {
           </DataTable>
         </section>
       </template>
+      <UModal v-model:open="removeManyOpen" :title="m.bulk.removeTitle(removingMany.length)">
+        <template #body>
+          <p>{{ m.bulk.removeBody }}</p>
+        </template>
+        <template #footer>
+          <UButton :label="m.people.keepThem" variant="ghost" @click="removingMany = []" />
+          <UButton :label="m.bulk.remove(removingMany.length)" color="error" @click="removeMany" />
+        </template>
+      </UModal>
       <UModal
         v-model:open="removeOpen"
         :title="m.people.removeTitle(removing?.name ?? removing?.id ?? '')"
