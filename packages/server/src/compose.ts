@@ -1,4 +1,9 @@
-import { resolveConfig, type HollwareConfig, type ResolvedSite } from '@hollware/core'
+import {
+  definitionsFromConfig,
+  resolveConfig,
+  type HollwareConfig,
+  type ResolvedSite,
+} from '@hollware/core'
 import manifest from '../package.json' with { type: 'json' }
 import { createGateway } from './http/index.ts'
 import type { HollwareEnv, HollwareWorker } from './index.ts'
@@ -13,6 +18,7 @@ import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
 import { healVectors, refreshRelated } from './semantic/index-entry.ts'
+import { createSiteRegistry } from './structure/registry.ts'
 
 export interface ComposeOptions {
   /**
@@ -47,9 +53,10 @@ function writeLog(entry: object): void {
  *
  * Everything that can be built once is built here, when the user's module loads, and never again:
  *
- * - the config is resolved with `resolveConfig`, so a broken `hollware.config.ts` throws its
- *   `ConfigError` here, and the Worker fails at startup with a message that says what to change.
- *   The deployment serves every site of the config, and a token, a grant or a call names one;
+ * - the registry of the sites, which reads them from D1 (ADR-033) at the start of each request,
+ *   call, cron run and batch. A config of 0.x is turned into definitions here, so one that cannot
+ *   move throws its `ConfigError` at startup, and is written to D1 on the first request. The
+ *   deployment serves every site of D1 with a definition, and a token, a grant or a call names one;
  * - the MCP endpoint, whose tool schemas are converted once, and the Hono app of the gateway,
  *   which is `fetch`: MCP at `/mcp` behind the guard and the token check, and the other routes
  *   (`http/gateway.ts`);
@@ -61,13 +68,24 @@ function writeLog(entry: object): void {
  * included, is one JSON line written with `console.log`.
  */
 export function createHollwareWith(
-  config: HollwareConfig,
+  config: HollwareConfig | undefined,
   handlers: Handlers,
   options: ComposeOptions = {},
 ): HollwareWorker {
-  const resolved = resolveConfig(config)
-  const sites = resolved.sites
   const clock = options.clock ?? systemClock
+  // The sites live in D1 (ADR-033). A config of 0.x is checked here, so that one that cannot
+  // move fails at startup with what to change, and moves into D1 on the first request.
+  // Sites of a config are resolved first, so that a broken one says what is wrong as it always
+  // has; a config of options alone (`auth`) has none to move.
+  const moving = config?.sites !== undefined
+  if (moving) resolveConfig(config)
+  const registry = createSiteRegistry({
+    ...(moving ? { seed: definitionsFromConfig(config) } : {}),
+    now: () => clock.now(),
+    log: writeLog,
+  })
+  const { sites } = registry
+  const refresh = (db: D1Database) => registry.refresh(db)
   const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
   const deliveryDeps = (env: HollwareEnv, site: ResolvedSite): DeliveryDeps => ({
     db: connect(env.DB),
@@ -83,11 +101,13 @@ export function createHollwareWith(
   return {
     fetch: createGateway({
       sites,
+      siteKeys: registry.keys,
+      refresh,
       mcp,
       clock,
       log: writeLog,
       read: (env) => createRpc({ sites, handlers, clock, log: writeLog }, env),
-      auth: resolved.auth,
+      auth: { dynamicClientRegistration: config?.auth?.dynamicClientRegistration ?? false },
       handlers,
     }),
     // The cron trigger: publishes what was scheduled and is due (ADR-025), site by site.
@@ -122,6 +142,7 @@ export function createHollwareWith(
       }
       ctx.waitUntil(
         (async () => {
+          await refresh(env.DB)
           // One site that fails does not keep the next one waiting.
           for (const site of sites.values()) {
             await each(site).catch((error: unknown) => {
@@ -133,11 +154,12 @@ export function createHollwareWith(
     },
     // The consumer of the events Queue: delivers each event to the subscribers of its site.
     queue: async (batch, env) => {
+      await refresh(env.DB)
       await consumeEvents(batch.messages, (key) => {
         const site = sites.get(key)
         return site === undefined ? undefined : deliveryDeps(env, site)
       })
     },
-    Hollware: createEntrypoint({ sites, handlers, clock, log: writeLog }),
+    Hollware: createEntrypoint({ sites, refresh, handlers, clock, log: writeLog }),
   }
 }

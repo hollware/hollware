@@ -74,7 +74,8 @@ describe('a failure of the server', () => {
     // What the site did not get went to Hollware's log, under the id the site was given.
     const [hidden] = logged('rpc_error')
     expect(hidden).toMatchObject({ method: 'listEntries', errorCode: null })
-    expect(hidden?.['detail']).toEqual(expect.stringContaining('D1_ERROR: no such table: entries'))
+    // The first read is of the sites (ADR-033).
+    expect(hidden?.['detail']).toEqual(expect.stringContaining('D1_ERROR: no such table: sites'))
     expect(String(seen?.['fix'])).toContain(String(hidden?.['requestId']))
   })
 })

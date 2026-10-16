@@ -65,7 +65,7 @@ function collectionOf(
 export function definitionsFromConfig(config: HollwareConfig): Record<string, SiteDefinitionInput> {
   const problems = new Problems()
   const definitions: Record<string, SiteDefinitionInput> = {}
-  for (const [key, site] of Object.entries(config.sites)) {
+  for (const [key, site] of Object.entries(config.sites ?? {})) {
     const path = keyPath('sites', key)
     definitions[key] = {
       locales: [...site.locales],

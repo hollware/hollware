@@ -149,8 +149,11 @@ export interface HollwareWorker {
   ) => WorkerEntrypoint<HollwareEnv> & HollwareRpc
 }
 
-/** Builds the Worker from the config. The config is resolved once, when the Worker starts. */
-export type CreateHollware = (config: HollwareConfig) => HollwareWorker
+/**
+ * Builds the Worker. The sites live in D1 (ADR-033); a config of 0.x, when given, is moved there
+ * on the first request, for the sites that have no definition yet, and never read again.
+ */
+export type CreateHollware = (config?: HollwareConfig) => HollwareWorker
 
 /**
  * Builds the Worker from the config: `const hollware = createHollware(config)`, then

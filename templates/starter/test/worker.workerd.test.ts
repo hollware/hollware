@@ -93,6 +93,7 @@ describe('the database', () => {
       'revisions',
       'schedules',
       'sessions',
+      'site_changes',
       'sites',
       'tokens',
       'users',

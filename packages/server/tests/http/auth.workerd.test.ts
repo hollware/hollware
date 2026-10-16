@@ -170,10 +170,12 @@ describe('a request to /mcp with a token that is refused', () => {
 
     await worker.send('/mcp', { method: 'POST', body: '{}', token: seeded.token })
 
+    // The registry reads the versions of the sites first (ADR-033); then the one lookup.
+    const lookups = worker.queries.filter((query) => !query.sql.includes('FROM sites'))
     expect(worker.sessions).toEqual([])
-    expect(worker.queries).toHaveLength(1)
-    expect(worker.queries[0]?.via).toBe('primary')
-    expect(worker.queries[0]?.sql).toContain('FROM tokens')
+    expect(lookups).toHaveLength(1)
+    expect(lookups[0]?.via).toBe('primary')
+    expect(lookups[0]?.sql).toContain('FROM tokens')
   })
 
   it('does not write the last use of a token that was refused', async () => {

@@ -23,6 +23,7 @@ export const ID_PREFIXES = {
   reviewComment: 'rvc',
   schedule: 'sch',
   session: 'ses',
+  siteChange: 'sit',
   token: 'tok',
   user: 'usr',
 } as const

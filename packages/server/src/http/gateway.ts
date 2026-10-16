@@ -24,6 +24,10 @@ import { installEvents } from './events.ts'
 export interface GatewayOptions {
   /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
+  /** Their keys. When `refresh` is given, both stay current with D1. */
+  readonly siteKeys?: ReadonlySet<string>
+  /** Brings the sites in line with D1 at the start of each request (ADR-033). */
+  readonly refresh?: (db: D1Database) => Promise<void>
   /** Built once for the isolate; the gateway mounts it at `/mcp`. */
   readonly mcp: McpEndpoint
   /** The time of a request: the expiry of a token and every write are read from it. */
@@ -83,7 +87,7 @@ export type Gateway = (
  */
 export function createGateway(options: GatewayOptions): Gateway {
   const { sites, mcp, clock, log } = options
-  const siteKeys: ReadonlySet<string> = new Set(sites.keys())
+  const siteKeys: ReadonlySet<string> = options.siteKeys ?? new Set(sites.keys())
   const app = new Hono<GatewayEnv>()
   /**
    * The Worker's own context of each request. Hono hands its routes the same object under a
@@ -127,6 +131,8 @@ export function createGateway(options: GatewayOptions): Gateway {
     proceed: Proceed,
   ): Promise<Response> => {
     const requestId = c.get('requestId')
+    // A token is checked against the sites, current with D1; a request with none reads nothing.
+    if (c.req.header('authorization') !== undefined) await options.refresh?.(c.env.DB)
     /** What the check said besides the answer: why it refused, or what it threw. */
     const outcome: { refusal: Refusal | null; failure: { readonly error: unknown } | null } = {
       refusal: null,
@@ -157,8 +163,20 @@ export function createGateway(options: GatewayOptions): Gateway {
     return withRefusalBody(response, outcome.refusal !== null)
   }
 
-  /** Every origin that the config of some site lets read the site from a page. */
-  const corsOrigins = new Set([...sites.values()].flatMap((site) => site.cors.origins))
+  /** A read of the read API, the one kind of request a page of another origin may make. */
+  const isCorsRead = (request: Request): boolean => {
+    const { pathname } = new URL(request.url)
+    return (
+      ['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+      pathname.startsWith('/v1/') &&
+      // The admin's routes read too; the operations are POST, which the method already refuses.
+      !pathname.startsWith('/v1/admin/')
+    )
+  }
+
+  /** Whether the definition of some site lets pages of `origin` read it. */
+  const anyCorsOrigin = (origin: string): boolean =>
+    [...sites.values()].some((site) => site.cors.origins.includes(origin))
   /**
    * The guard lets a page of such an origin through to the read API alone, and only to read: the
    * read API then checks the origin against the site of the token.
@@ -168,13 +186,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     // The beacon of a site's pages (ADR-031): the route checks the origin against the site that
     // the beacon names, which is the only check that knows which site that is.
     if (request.method === 'POST' && pathname === '/events') return true
-    return (
-      corsOrigins.has(origin) &&
-      ['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
-      pathname.startsWith('/v1/') &&
-      // The admin's routes read too; the operations are POST, which the method already refuses.
-      !pathname.startsWith('/v1/admin/')
-    )
+    return anyCorsOrigin(origin) && isCorsRead(request)
   }
 
   /**
@@ -205,10 +217,29 @@ export function createGateway(options: GatewayOptions): Gateway {
   })
 
   app.use('*', async (c, next) => {
+    // The guard answers a request it refuses without the database, except where it has to read
+    // the sites: a page of another origin that reads the read API, or sends the beacon. Those
+    // see the sites current with D1 (ADR-033).
+    const origin = c.req.header('origin')
+    if (
+      origin !== undefined &&
+      (isCorsRead(c.req.raw) || readsFromAnyCorsOrigin(c.req.raw, origin))
+    ) {
+      await options.refresh?.(c.env.DB)
+    }
     const refusal = checkHostAndOrigin(c.req.raw, c.env.HOLLWARE_PUBLIC_URL, readsFromAnyCorsOrigin)
     if (refusal !== null) return refusal
     await next()
   })
+
+  // The routes that read the sites without a token to check first: the consent of OAuth, its
+  // token endpoint, and the beacon. A route behind a token reads them in `protect`.
+  for (const path of ['/authorize', '/oauth/*', '/events']) {
+    app.use(path, async (c, next) => {
+      await options.refresh?.(c.env.DB)
+      await next()
+    })
+  }
 
   app.get('/health', () =>
     Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } }),
@@ -283,7 +314,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     installReadApi(app, {
       read: options.read,
       corsOrigins: (site) => sites.get(site)?.cors.origins ?? [],
-      anyCorsOrigin: (origin) => corsOrigins.has(origin),
+      anyCorsOrigin,
       protect: (c, proceed) => protect(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
     })

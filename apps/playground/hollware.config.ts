@@ -39,21 +39,11 @@ const blog = defineCollection({
     // each would wait for the other to be published first.
     contracts.internalLinksResolve({ severity: 'warning' }),
     contracts.imagesHaveAlt(),
-    {
-      id: 'seo-title-length',
-      severity: 'warning',
-      description: 'A title of at most 60 characters, or a seoTitle, which search engines show.',
-      check: ({ frontmatter }) =>
-        frontmatter.title.length <= 60 || frontmatter.seoTitle !== undefined
-          ? []
-          : [
-              {
-                path: '/frontmatter/title',
-                message: `The title has ${frontmatter.title.length} characters; search engines show about 60.`,
-                fix: 'Shorten the title to 60 characters or fewer, or add a seoTitle of at most 60.',
-              },
-            ],
-    },
+    // A title of at most 60 characters, or a seoTitle, which search engines show.
+    contracts.fieldLength(
+      { field: 'title', max: 60, unless: 'seoTitle' },
+      { severity: 'warning', id: 'seo-title-length' },
+    ),
   ],
   styleGuide: 'Short paragraphs, one idea per section, and an example for every claim.',
 })

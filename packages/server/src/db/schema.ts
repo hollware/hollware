@@ -28,9 +28,21 @@ export const hollwareMeta = sqliteTable('_hollware_meta', {
   value: text('value').notNull(),
 })
 
-/** The sites of the deployment. The id is the site's key in `hollware.config.ts`. */
+/**
+ * The sites of the deployment, and their structure (ADR-033). The id is the site's key. Its
+ * definition is the JSON that `siteDefinitionData` of `@hollware/core` checks, and `version` moves
+ * with every change of it, which is what a Worker compares to know its copy is current. A row
+ * without a definition is a site the deployment does not serve yet: the CLI made it before its
+ * owner gave it one, or a 0.x deployment has not moved its config. A site in the trash has
+ * `deleted_at`, and is served no more. The columns came by `ADD COLUMN`, with no CHECK: a CHECK
+ * on them would rebuild the table, which D1 refuses while other tables point at it; the store
+ * writes only definitions it has checked.
+ */
 export const sites = sqliteTable('sites', {
   id: text('id').primaryKey(),
+  definition: text('definition'),
+  version: integer('version').notNull().default(0),
+  deletedAt: text('deleted_at'),
   ...timestamps(),
 })
 
@@ -582,6 +594,37 @@ export const entryEmbeddings = sqliteTable(
  * Comments on a review (v0.6): what a person or an agent says about the revision a review asks
  * for, before someone decides. Only a pending review takes one; they stay after the decision.
  */
+/**
+ * Every change of a site's structure (ADR-033), appended: the definition before and after, the
+ * version it made, and who made it. `before` is null when the site was made; `after` when it was
+ * put in the trash. `actor_user_id` is null for the move of a 0.x config, which the deployment
+ * makes on its own.
+ */
+export const siteChanges = sqliteTable(
+  'site_changes',
+  {
+    id: id('sit'),
+    siteId: siteId(),
+    version: integer('version').notNull(),
+    actorUserId: text('actor_user_id'),
+    /** What the client that made it said about itself, as JSON, or `null`. */
+    actorMeta: text('actor_meta'),
+    before: text('before'),
+    after: text('after'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('site_changes_id_site').on(t.id, t.siteId),
+    unique('site_changes_version').on(t.siteId, t.version),
+    foreignKey({ name: 'site_changes_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'site_changes_user', columns: [t.actorUserId], foreignColumns: [users.id] }),
+    check(
+      'site_changes_json',
+      sql`(${t.before} IS NULL OR json_valid(${t.before})) AND (${t.after} IS NULL OR json_valid(${t.after})) AND (${t.actorMeta} IS NULL OR json_valid(${t.actorMeta}))`,
+    ),
+  ],
+)
+
 export const reviewComments = sqliteTable(
   'review_comments',
   {

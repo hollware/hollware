@@ -185,7 +185,7 @@ describe('AC-0.1-16: init and tokens', () => {
     await agent.close()
     expect([described.isError, described.output['outcome']]).toEqual([false, 'ok'])
 
-    const listed = await project.hollware('token', 'list', '--local')
+    const listed = await project.hollware('token', 'list', '--local', '--site', SITE_KEY)
     expect(cells(listed.output)).toEqual([
       ['ID', 'LABEL', 'STATUS', 'EXPIRES', 'LAST USED', 'SCOPES'],
       [
@@ -215,7 +215,7 @@ describe('AC-0.1-16: init and tokens', () => {
       401,
       `Bearer realm="hollware", resource_metadata="${url}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     ])
-    const relisted = await project.hollware('token', 'list', '--local')
+    const relisted = await project.hollware('token', 'list', '--local', '--site', SITE_KEY)
     expect(cells(relisted.output)[2]?.slice(1, 3)).toEqual(['acceptance reader', 'revoked'])
   })
 

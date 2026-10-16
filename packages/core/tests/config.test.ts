@@ -59,7 +59,7 @@ describe('the define helpers', () => {
     const sites = { acme: { locales: ['en'], defaultLocale: 'en', collections: { blog } } } as const
     const config = defineConfig({ sites })
     expect(config.sites).toBe(sites)
-    expect(config.sites['acme']?.collections['blog']).toBe(blog)
+    expect(config.sites?.['acme']?.collections['blog']).toBe(blog)
   })
 
   it('give the contracts of a collection the frontmatter its schema returns', () => {

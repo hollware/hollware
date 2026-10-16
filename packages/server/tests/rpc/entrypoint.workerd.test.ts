@@ -70,7 +70,8 @@ describe('the Hollware class', () => {
   it.each(CALLS)(
     '$method hands its arguments to $tool and answers its output, over the environment, the site and the clock of the Worker',
     async ({ call, tool, input, output }) => {
-      const { worker, ctx, env, seen, sessions, clock } = boot()
+      const { worker, ctx, env, seen, sessions, clock, ready } = boot()
+      await ready()
       const instance = new worker.Hollware(ctx, env)
 
       const answer = await call(instance)
@@ -86,7 +87,8 @@ describe('the Hollware class', () => {
   )
 
   it('opens a session for each call, and never shares one between two', async () => {
-    const { worker, ctx, env, sessions } = boot()
+    const { worker, ctx, env, sessions, ready } = boot()
+    await ready()
     const instance = new worker.Hollware(ctx, env)
 
     await instance.describeSite(SITE_KEY)
@@ -96,7 +98,8 @@ describe('the Hollware class', () => {
   })
 
   it('is a class the Worker of the user extends, by the name it exports', async () => {
-    const { worker, ctx, env } = boot()
+    const { worker, ctx, env, ready } = boot()
+    await ready()
     class Hollware extends worker.Hollware {}
 
     const instance = new Hollware(ctx, env)

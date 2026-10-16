@@ -1,4 +1,5 @@
 import {
+  definitionsFromConfig,
   defineCollection,
   defineConfig,
   resolveConfig,
@@ -231,11 +232,45 @@ export interface BootOptions {
   readonly bindings?: Partial<HollwareEnv>
 }
 
+/**
+ * Makes the sites of `config` the sites of the database, and only those (ADR-033): each gets the
+ * definition of the config, and every other site goes to the trash. Two Workers of a test that
+ * share the one D1 of the test are two deployments this way, each with the sites of its config.
+ */
+export async function defineSites(db: D1Database, config: HollwareConfig, now: string) {
+  const definitions = definitionsFromConfig(config)
+  const keys = Object.keys(definitions)
+  await db.batch([
+    ...Object.entries(definitions).map(([key, definition]) =>
+      db
+        .prepare(
+          `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES (?1, ?2, 1, ?3, ?3)
+           ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = sites.version + 1, deleted_at = NULL, updated_at = excluded.updated_at`,
+        )
+        .bind(key, JSON.stringify(definition), now),
+    ),
+    db
+      .prepare(
+        `UPDATE sites SET deleted_at = ?1, version = version + 1 WHERE deleted_at IS NULL AND id NOT IN (${keys.map((_, index) => `?${index + 2}`).join(', ')})`,
+      )
+      .bind(now, ...keys),
+  ])
+}
+
 /** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
 export function boot(options: BootOptions = {}) {
   const { handlers, seen } = fakeHandlers(options.overrides, options.outcomes)
   const clock = testClock(options.now)
-  const worker: HollwareWorker = createHollwareWith(options.config ?? CONFIG, handlers, { clock })
+  const config = options.config ?? CONFIG
+  // The options of the deployment come with the Worker; its sites, from D1.
+  const worker: HollwareWorker = createHollwareWith(
+    config.auth === undefined ? undefined : { auth: config.auth },
+    handlers,
+    { clock },
+  )
+  // The sites of the config are in D1 before the first request, written by the test itself.
+  let ready: Promise<void> | undefined
+  const prepare = () => (ready ??= defineSites(env.DB, config, clock.now().toISOString()))
   const watched = watchDb(env.DB)
   const db = options.db ?? watched.db
   const environment: HollwareEnv = {
@@ -251,7 +286,7 @@ export function boot(options: BootOptions = {}) {
     const host = send.host === undefined ? HOST : send.host
     if (host !== null) headers.set('host', host)
     if (send.token !== undefined) headers.set('authorization', `Bearer ${send.token}`)
-    return worker.fetch(new Request(request, { headers }), environment, ctx)
+    return prepare().then(() => worker.fetch(new Request(request, { headers }), environment, ctx))
   }
 
   const send = (path: string, sending: SendOptions = {}) =>
@@ -281,6 +316,8 @@ export function boot(options: BootOptions = {}) {
     send,
     sendRequest,
     endpoint,
+    /** Writes the sites of the config to D1, which the first request does too. */
+    ready: prepare,
     /** Waits for everything the Worker handed to `waitUntil`. */
     settle: async () => {
       await Promise.all(waited)

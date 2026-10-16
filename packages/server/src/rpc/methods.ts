@@ -33,6 +33,8 @@ export interface RpcLogEntry {
 export interface RpcDeps {
   /** The sites this deployment serves, by key; a call names one of them. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
+  /** Brings `sites` in line with D1 before a call reads it (ADR-033); none in tests of a fixed map. */
+  readonly refresh?: (db: D1Database) => Promise<void>
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: RpcLogEntry) => void
@@ -165,10 +167,16 @@ async function run<Schema extends z.ZodType, Output>(
   build: () => unknown,
   handler: (input: z.output<Schema>, context: OperationContext) => Promise<Output>,
 ): Promise<Output> {
+  const requestId = crypto.randomUUID()
+  try {
+    await deps.refresh?.(env.DB)
+  } catch (error) {
+    // D1 down, say: the caller gets `internal` and a request id, as for a failed read.
+    throw forCaller(deps, requestId, method, error)
+  }
   const served = deps.sites.get(site)
   if (served === undefined) throw unknownSite(site, deps.sites.keys())
   const input = parseInput(schema, build())
-  const requestId = crypto.randomUUID()
   const context: OperationContext = {
     site: served,
     principal: BINDING_PRINCIPAL,

@@ -44,7 +44,7 @@ const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistr
 const TWO_SITES = defineConfig({
   ...WITH_REGISTRATION,
   sites: Object.fromEntries(
-    Object.values(CONFIG.sites).flatMap((site) => [
+    Object.values(CONFIG.sites ?? {}).flatMap((site) => [
       [SITE_KEY, site],
       [OTHER_SITE_KEY, site],
     ]),
@@ -402,7 +402,7 @@ describe('an access token', () => {
   })
 
   it('is refused by the deployment of another site, though it shares the KV and the URL', async () => {
-    const [definition] = Object.values(CONFIG.sites)
+    const [definition] = Object.values(CONFIG.sites ?? {})
     if (definition === undefined) throw new Error('the test config has no site')
     const other = boot({
       config: defineConfig({

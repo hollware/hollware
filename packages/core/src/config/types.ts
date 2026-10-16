@@ -94,10 +94,11 @@ export interface SiteDefinition {
 /** What `hollware.config.ts` exports. */
 export interface HollwareConfig {
   /**
-   * The sites, by key. The key is the site's id in the database, so it never changes once
-   * content exists. v0.1 serves exactly one site per deployment.
+   * The sites of 0.x, by key: since ADR-033 the sites live in D1, and these move there on the
+   * first request of a deployment whose D1 has no definition for them. The key is the site's id
+   * in the database, so it never changes once content exists.
    */
-  readonly sites: Readonly<Record<string, SiteDefinition>>
+  readonly sites?: Readonly<Record<string, SiteDefinition>>
   /** How MCP clients and the admin get tokens (ADR-026). */
   readonly auth?: AuthDefinition
 }

@@ -202,7 +202,17 @@ describe('hollware on a real local D1', () => {
     const [sites, users, tokens] = await rows(
       'SELECT * FROM sites; SELECT * FROM users; SELECT * FROM tokens;',
     )
-    expect(sites).toEqual([{ id: 'blog', created_at: NOW, updated_at: NOW }])
+    // The CLI makes the row; the site's definition is its owner's to give (ADR-033).
+    expect(sites).toEqual([
+      {
+        id: 'blog',
+        definition: null,
+        version: 0,
+        deleted_at: null,
+        created_at: NOW,
+        updated_at: NOW,
+      },
+    ])
     expect(users).toEqual([
       {
         id: expect.stringMatching(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/),

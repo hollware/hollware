@@ -18,7 +18,7 @@ const PAGE = 'https://site.example'
 const TWO_SITES = defineConfig({
   ...CONFIG,
   sites: Object.fromEntries(
-    Object.values(CONFIG.sites).flatMap((site) => [
+    Object.values(CONFIG.sites ?? {}).flatMap((site) => [
       [SITE_KEY, { ...site, cors: { origins: [PAGE] } }],
       [OTHER_SITE_KEY, site],
     ]),

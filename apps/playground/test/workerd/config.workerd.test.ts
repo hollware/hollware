@@ -8,7 +8,7 @@ import config from '../../hollware.config.ts'
 // (a missing translation and an unresolved link warn, an image without alt text is an error), or
 // whose seo-title-length contract stops warning about a title over 60 characters.
 
-const site = config.sites['playground']
+const site = config.sites?.['playground']
 const blog = site?.collections['blog']
 
 const FRONTMATTER = {
@@ -21,8 +21,8 @@ const FRONTMATTER = {
 
 describe('the playground config', () => {
   it('has the docs of hollware.com, and a bilingual site with a blog routed per locale', () => {
-    expect(Object.keys(config.sites)).toEqual(['docs', 'playground'])
-    expect(config.sites['docs']?.collections?.['docs']?.routes).toEqual({ en: '/docs/:slug/' })
+    expect(Object.keys(config.sites ?? {})).toEqual(['docs', 'playground'])
+    expect(config.sites?.['docs']?.collections?.['docs']?.routes).toEqual({ en: '/docs/:slug/' })
     expect(site?.locales).toEqual(['es', 'en'])
     expect(blog?.routes).toEqual({ es: '/blog/:slug/', en: '/en/blog/:slug/' })
     expect([blog?.translations?.groupBy, blog?.tags, blog?.sortBy]).toEqual([
@@ -95,8 +95,8 @@ describe('the playground config', () => {
     expect(await check('x'.repeat(61))).toEqual([
       {
         path: '/frontmatter/title',
-        message: 'The title has 61 characters; search engines show about 60.',
-        fix: 'Shorten the title to 60 characters or fewer, or add a seoTitle of at most 60.',
+        message: '"title" has 61 characters; the most is 60.',
+        fix: 'Shorten "title" to 60 characters or fewer, or add "seoTitle".',
       },
     ])
   })
