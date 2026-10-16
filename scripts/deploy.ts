@@ -73,15 +73,25 @@ function agents(env: 'staging' | 'demo'): Step[] {
 /** The Hollware whose public URL counts the views of our sites (ADR-031). */
 const BEACON = 'https://cms.demo.hollware.com'
 
+/**
+ * The packages, built first: the CMS takes the admin from the build of @hollware/admin, which a
+ * fresh checkout does not have. Without it the CMS deploys with no admin, and /admin/ is a 404.
+ */
+const PACKAGES: Step = { name: 'build the packages', cwd: '.', command: [VP, 'run', '-r', 'build'] }
+
 export function planOf(target: Target): Plan {
   if (target === 'staging') {
     return {
-      steps: [...cms('staging'), ...agents('staging')],
-      probes: ['https://hollware-staging.sergioazoc.workers.dev/health'],
+      steps: [PACKAGES, ...cms('staging'), ...agents('staging')],
+      probes: [
+        'https://hollware-staging.sergioazoc.workers.dev/health',
+        'https://hollware-staging.sergioazoc.workers.dev/admin/',
+      ],
     }
   }
   return {
     steps: [
+      PACKAGES,
       ...cms('demo'),
       ...agents('demo'),
       {
@@ -109,6 +119,7 @@ export function planOf(target: Target): Plan {
     ],
     probes: [
       'https://cms.demo.hollware.com/health',
+      'https://cms.demo.hollware.com/admin/',
       'https://demo.hollware.com/',
       'https://hollware.com/',
       'https://hollware.com/docs/quickstart/',
