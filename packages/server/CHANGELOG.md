@@ -1,5 +1,17 @@
 # @hollware/server
 
+## 0.7.0
+
+### Minor Changes
+
+- [`e43c814`](https://github.com/hollware/hollware/commit/e43c81420272ed1a0835ec681df11ac4cc259539) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An entry's summary says when a scheduled entry will be published (`scheduledAt`), and `describe_site` gives the public origin of the site (`url`), so that a client can link an entry to its page.
+
+### Patch Changes
+
+- [`f5fdd3a`](https://github.com/hollware/hollware/commit/f5fdd3a085d56bbcc1ef1277502da7592df59bab) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin is dark only, with the theme of hollware.com: Nuxt UI with black as the primary color, emerald, neutral greys, Inter and JetBrains Mono, and subtle inputs. The pages the Worker renders to sign in follow it, dark whatever the device.
+- Updated dependencies [[`e43c814`](https://github.com/hollware/hollware/commit/e43c81420272ed1a0835ec681df11ac4cc259539)]:
+  - @hollware/core@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
