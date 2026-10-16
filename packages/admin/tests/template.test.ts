@@ -5,7 +5,7 @@ import { newEntryMarkdown } from '../app/lib/template.ts'
 // Fails when: a new entry stops starting from a frontmatter with every field its collection
 // requires (app/lib/template.ts): the title first and quoted, the translation group set to the
 // slug, a date field to today, an array empty, any other string empty, and nothing that is not
-// required.
+// required; or a translation stops naming the group of the entry it translates, required or not.
 
 it('writes every required field, with a value its schema can take', () => {
   const schema = {
@@ -31,4 +31,22 @@ it('writes every required field, with a value its schema can take', () => {
   ).toBe(
     '---\ntitle: "Caching: a \\"guide\\""\ndate: 2026-10-15\ndescription: ""\ntags: []\ntranslationGroup: caching-guide\n---\n\n',
   )
+})
+
+it('names the group of the entry a translation translates', () => {
+  const schema = {
+    type: 'object',
+    properties: { title: { type: 'string' }, group: { type: 'string' } },
+    required: ['title'],
+  }
+
+  expect(
+    newEntryMarkdown(schema, {
+      title: 'Hola',
+      slug: 'hola',
+      today: '2026-10-16',
+      translationGroupField: 'group',
+      translationGroup: 'hello',
+    }),
+  ).toBe('---\ntitle: "Hola"\ngroup: "hello"\n---\n\n')
 })

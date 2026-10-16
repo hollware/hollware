@@ -4,7 +4,8 @@ import { useRoute } from 'vue-router'
 import { api, auth } from './lib/session.ts'
 
 const links = [
-  { label: 'Entries', to: '/' },
+  { label: 'Home', to: '/' },
+  { label: 'Entries', to: '/entries' },
   { label: 'Reviews', to: '/reviews' },
   { label: 'Tokens', to: '/tokens' },
   { label: 'People', to: '/people' },
@@ -50,7 +51,10 @@ const choices = computed(() =>
   <UApp>
     <div class="min-h-screen bg-default">
       <header class="sticky top-0 z-10 border-b border-default bg-default/80 backdrop-blur-md">
-        <nav class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3" aria-label="Main">
+        <nav
+          class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3"
+          aria-label="Main"
+        >
           <RouterLink to="/" class="inline-flex items-center gap-2.5">
             <svg viewBox="0 0 32 32" class="size-6" aria-hidden="true">
               <rect width="32" height="32" rx="8" class="fill-(--ui-bg-accented)" />
@@ -73,7 +77,8 @@ const choices = computed(() =>
             :key="link.to"
             :to="link.to"
             class="text-sm text-muted transition-colors hover:text-highlighted"
-            active-class="text-highlighted font-medium"
+            :active-class="link.to === '/' ? '' : 'text-highlighted font-medium'"
+            exact-active-class="text-highlighted font-medium"
           >
             {{ link.label }}
           </RouterLink>

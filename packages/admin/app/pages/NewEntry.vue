@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { api } from '../lib/session.ts'
 import { newEntryMarkdown } from '../lib/template.ts'
 
 const router = useRouter()
+const route = useRoute()
+
+/** What the link that opened the page set: a collection, a locale, the group a translation joins. */
+function queried(name: string): string | undefined {
+  const value = route.query[name]
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+const group = queried('group')
 const site = ref<Output<'describe_site'>['site'] | null>(null)
 const collection = ref('')
 const locale = ref('')
@@ -18,8 +26,15 @@ const saving = ref(false)
 
 onMounted(async () => {
   site.value = (await api.call('describe_site', {})).site
-  collection.value = site.value.collections[0]?.name ?? ''
-  locale.value = site.value.defaultLocale
+  const asked = queried('collection')
+  collection.value = site.value.collections.some((c) => c.name === asked)
+    ? (asked ?? '')
+    : (site.value.collections[0]?.name ?? '')
+  const askedLocale = queried('locale')
+  locale.value =
+    askedLocale !== undefined && site.value.locales.includes(askedLocale)
+      ? askedLocale
+      : site.value.defaultLocale
 })
 
 const validSlug = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value))
@@ -35,6 +50,7 @@ async function create() {
       slug: slug.value,
       today: new Date().toISOString().slice(0, 10),
       translationGroupField: definition?.translationGroupField ?? null,
+      ...(group === undefined ? {} : { translationGroup: group }),
     })
     const created = await api.call('create_draft', {
       collection: collection.value,
@@ -57,7 +73,13 @@ async function create() {
 
 <template>
   <form v-if="site !== null" class="max-w-lg space-y-4" @submit.prevent="create">
-    <h1 class="text-xl font-semibold">New entry</h1>
+    <h1 class="text-xl font-semibold">
+      {{ group === undefined ? 'New entry' : 'New translation' }}
+    </h1>
+    <p v-if="group !== undefined" class="text-sm text-muted">
+      It joins the translations of <span class="font-mono">{{ group }}</span
+      >.
+    </p>
     <UFormField label="Collection">
       <USelect v-model="collection" :items="site.collections.map((c) => c.name)" class="w-full" />
     </UFormField>

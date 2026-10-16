@@ -6,7 +6,8 @@ import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './su
 // writes a post and its translation in the editor, saves them and publishes. AC-0.3-2: the owner
 // invites an author, who sets up a passkey from the invitation, edits the post and publishes it,
 // which asks for a review; the owner reads the review, comments on it and approves it, which
-// publishes it.
+// publishes it. Before v1.0: the owner unpublishes an entry and schedules it again, from the
+// editor, and sees what waits for review on the home page.
 // AC-0.3-4: axe finds nothing serious or critical on any page of the admin or of the sign-in.
 
 test.describe.configure({ mode: 'serial' })
@@ -27,7 +28,7 @@ async function newEntry(page: Page, locale: 'es' | 'en', title: string, slug: st
   await page.getByLabel('Title').fill(title)
   await page.getByLabel('Slug').fill(slug)
   await page.getByRole('button', { name: 'Create the draft' }).click()
-  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
   await writeMarkdown(page, post(title, 'hello-world'))
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible()
@@ -45,11 +46,12 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
   await newEntry(owner, 'en', 'Hello world', 'hello-world')
   await newEntry(owner, 'es', 'Hola mundo', 'hola-mundo')
   await expectAccessible(owner)
-  await owner.getByRole('button', { name: 'Publish' }).click()
+  await owner.getByRole('button', { name: 'Publish', exact: true }).click()
 
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
-  await owner.goto('/admin/')
-  await expect(owner.getByRole('row', { name: /Hola mundo/ })).toContainText('published')
+  await owner.goto('/admin/entries')
+  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toContainText('published')
+  await expectAccessible(owner)
   await shot(owner, 'entries')
 })
 
@@ -69,7 +71,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await writeMarkdown(author, post('Hola mundo, otra vez', 'hello-world'))
   await author.getByRole('button', { name: 'Save' }).click()
   await expect(author.getByText('Saved', { exact: true }).first()).toBeVisible()
-  await author.getByRole('button', { name: 'Publish' }).click()
+  await author.getByRole('button', { name: 'Publish', exact: true }).click()
   await expect(author.getByText('Sent for review').first()).toBeVisible()
 
   await owner.goto('/admin/reviews')
@@ -88,13 +90,34 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
 })
 
+test('the owner unpublishes an entry, then schedules it', async () => {
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
+  await expect(owner.getByRole('navigation', { name: 'Translations' })).toContainText('en')
+  await owner.getByRole('button', { name: 'Unpublish', exact: true }).click()
+  await expectAccessible(owner)
+  await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish', exact: true }).click()
+  await expect(owner.getByText('Unpublished', { exact: true }).first()).toBeVisible()
+
+  await owner.getByRole('button', { name: 'Schedule', exact: true }).click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Schedule', exact: true }).click()
+  await expect(owner.getByText('Scheduled', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('button', { name: 'Cancel schedule' })).toBeVisible()
+  await shot(owner, 'scheduled')
+
+  await owner.goto('/admin/entries?status=scheduled')
+  await expect(owner.getByRole('row', { name: /^Hola mundo, otra vez/ })).toContainText('scheduled')
+})
+
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
+    ['/admin/', 'Home'],
     ['/admin/tokens', 'Tokens'],
     ['/signin', 'Sign in'],
   ] as const) {
     await owner.goto(path)
     await expect(owner.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
     await expectAccessible(owner)
+    await shot(owner, heading.toLowerCase().replaceAll(' ', '-'))
   }
 })

@@ -17,7 +17,8 @@ function yamlString(value: string): string {
 
 function valueFor(field: string, schema: JsonSchema, entry: NewEntry): string {
   if (field === 'title') return yamlString(entry.title)
-  if (field === entry.translationGroupField) return entry.slug
+  if (field === entry.translationGroupField)
+    return entry.translationGroup === undefined ? entry.slug : yamlString(entry.translationGroup)
   if (schema['format'] === 'date') return entry.today
   if (schema['type'] === 'array') return '[]'
   if (schema['type'] === 'boolean') return 'false'
@@ -31,6 +32,8 @@ export interface NewEntry {
   /** The date of today, as YYYY-MM-DD. */
   readonly today: string
   readonly translationGroupField: string | null
+  /** The group of the entry this one translates; a new group, the slug, when not given. */
+  readonly translationGroup?: string
 }
 
 export function newEntryMarkdown(collectionSchema: JsonSchema, entry: NewEntry): string {
@@ -38,7 +41,15 @@ export function newEntryMarkdown(collectionSchema: JsonSchema, entry: NewEntry):
   const required = Array.isArray(collectionSchema['required'])
     ? collectionSchema['required'].filter((name): name is string => typeof name === 'string')
     : []
-  const fields = ['title', ...required.filter((name) => name !== 'title')]
+  const group = entry.translationGroupField
+  const fields = [
+    'title',
+    ...required.filter((name) => name !== 'title'),
+    // A translation names its group even where the schema does not require it.
+    ...(group !== null && entry.translationGroup !== undefined && !required.includes(group)
+      ? [group]
+      : []),
+  ]
   const lines = fields.map((field) => {
     const schema = properties[field]
     return `${field}: ${valueFor(field, isRecord(schema) ? schema : {}, entry)}`

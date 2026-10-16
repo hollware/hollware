@@ -63,6 +63,7 @@
     "vite-plus": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",
+    "yaml": "catalog:",
     "zod": "catalog:"
   },
   "engines": {

@@ -14,7 +14,8 @@ const BASE = '/admin'
 const router = createRouter({
   history: createWebHistory(`${BASE}/`),
   routes: [
-    { path: '/', component: () => import('./pages/Entries.vue') },
+    { path: '/', component: () => import('./pages/Home.vue') },
+    { path: '/entries', component: () => import('./pages/Entries.vue') },
     { path: '/entries/new', component: () => import('./pages/NewEntry.vue') },
     {
       path: '/entries/:collection/:locale/:slug',

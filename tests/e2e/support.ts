@@ -35,7 +35,7 @@ export async function setUp(page: Page, link: string, name: string): Promise<voi
   await expectAccessible(page)
   await page.getByLabel('Your name').fill(name)
   await page.getByRole('button', { name: 'Create the passkey' }).click()
-  await expect(page.getByRole('heading', { name: 'Entries', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
 }
 
 /**

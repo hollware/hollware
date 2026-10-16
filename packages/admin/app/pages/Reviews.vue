@@ -168,7 +168,12 @@ async function requestChanges() {
         >
           <p class="text-muted">
             {{ item.authorName ?? item.author }}
-            <UBadge v-if="item.client !== null" :label="item.client" variant="subtle" size="sm" />
+            <UBadge
+              v-if="item.client !== null && item.client !== 'hollware-admin'"
+              :label="item.client"
+              variant="subtle"
+              size="sm"
+            />
             · {{ new Date(item.at).toLocaleString() }}
           </p>
           <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
