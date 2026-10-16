@@ -678,3 +678,44 @@ Decisions (maintainer, 2026-10-15): a plain Worker with cron triggers and a KV n
 - 2026-10-16 — The theme: the maintainer's Nuxt UI theme (decoded from the link: black as primary, emerald secondary, neutral, Inter and JetBrains Mono, subtle inputs, the dark shades of the ground and the text) in one theme block shared by hollware.com and the admin, dark only (the class `dark` on the page, Nuxt UI's color mode off, the switches gone), and the Worker's sign-in pages dark with the same ground and a white primary. Geist and the mint and ink palettes are gone from the catalog and the code. The guard `brand` holds the new rules (the same block in both stylesheets, the same colors and subtle inputs in both configs, no switch and the class on every page, the sign-in pages' ground and primary); `vp test` 4,170, `e2e:admin` 3 with axe clean. The admin's e2e takes screenshots into `HOLLWARE_SCREENSHOTS` when it is set.
 - 2026-10-16 — The admin: a home at `/admin/` (the most read pages of 30 days, or why there are none; pending reviews; unpublished work; the last audit report), the entries at `/admin/entries` (collection, locale, status and text filters kept in the query, 50 a page with Load more, the other locales of a group, scheduled times, a link to the live page from `describe_site`'s `url` and the routes), and an editor with Validate, Schedule (a `publishAt` an hour ahead by default), Unpublish or Cancel schedule behind a confirmation, a frontmatter form from the collection's JSON Schema that writes back only the frontmatter (`app/lib/frontmatter.ts`), the translations with a link that starts a missing one in its group, related entries, and ⌘S to save. Reviews show a client badge for agents only. Before it, the summary of an entry carries `scheduledAt` and `describe_site` the site's `url` (`e43c814`). `vp test` 4,175 (the libraries' mutations CAUGHT: the body kept byte for byte, the group of a translation, the origin of a page); `e2e:admin` 4 with axe clean on the home, the list, the editor with its dialogs and the reviews.
 - 2026-10-16 — The downtime, closed: the account is on Workers Paid. The three sites and the CMS deployed again (the admin, and both sites with `cache: 30`), probed every second for three minutes after the deploy and two more later: every answer 200. Workers analytics: hollware-web's `exceededResources` (CPU cut at 10 ms) stop at 02:20 UTC, before the plan changed; from 02:55 on, 760 requests succeed with a CPU p99 of 55 ms, which the free plan refused. Released as 0.7.0 (#9).
+
+## 0.8.0 — Self-administration, before v1.0 (decided 2026-10-16)
+
+**Goal:** a person or their agent runs Hollware without deploying code: sites, collections, fields, rules and members change from the admin or over MCP, at once (ADR-033). Our own deployments run from CI with no manual step (ADR-034), and what CI checks runs before a push.
+
+### Decisions (2026-10-16)
+
+- The structure lives in D1 only; new projects have no `hollware.config.ts`, and a 0.x deployment moves its config into D1 once, on its first start.
+- Rules come from a catalog with parameters; no rule is code of the user's.
+- The scope `site:admin` changes the structure: the role owner has it, and a person or an agent with a token that carries it.
+- Our deployments (staging on `main`, the demo and hollware.com on a release) run from `deploy.yml`.
+- `pre-push` runs what CI checks that can run on the maintainer's machine; CI stays for pull requests and as the backstop, since a hook can be skipped.
+
+### Blocks
+
+- [ ] S0 — ADR-033 and ADR-034 accepted; `@cfworker/json-schema` in the catalog; the definition schema of a site in `@hollware/core` (`SiteDefinition` as data), the catalog of rules with the JSON Schema of their parameters, the generic rules (length, pattern, required to publish, banned words), and the conversion of a 0.x config into a definition.
+- [ ] S1 — D1: migration `0011` (`sites`, `site_changes`); the registry of sites read from D1 with an isolate cache and a version check, in place of the resolved config everywhere the server reads a site; frontmatter validated by `@cfworker/json-schema`; the one-time move of a 0.x config.
+- [ ] S2 — Operations under `site:admin`: `create_site`, `update_site`, `delete_site` (trash, an export in R2, purged after 30 days), `restore_site`, `set_collection`, `remove_collection`, with confirmation for changes that strand or refuse entries; `describe_site` shows the definition and the catalog; webhook secrets made by Hollware and sealed with `HOLLWARE_SECRET`.
+- [ ] S3 — People: remove a member of a site and change their role (never the last owner); tokens that may carry `site:admin`.
+- [ ] S4 — Admin: Sites (create, settings, trash and restore), a collection editor (fields, routes, translations, tags, sort, components, rules from the catalog, style guide), People with remove and role.
+- [ ] S5 — CLI and starter: `hollware init` makes the first site through the operations; `hollware structure export|import` (JSON); the starter, `create-hollware` and the docs without a config; the playground, staging and the demo moved.
+- [ ] S6 — `deploy.yml`: builds and deploys staging on `main`, the demo (CMS, blog, agents) and hollware.com on a release, migrations first, probes last; the environment `deploy` with the Cloudflare token.
+- [ ] S7 — `pre-push`: `check:push`, the acceptance suite, `e2e:admin` and conformance, through the same tasks CI runs; CI keeps the install and upgrade matrix and pull requests.
+
+### Acceptance criteria (0.8.0)
+
+| #        | Criterion                                   | Check                                                                                                                                                                        |
+| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AC-0.8-1 | A fresh deployment has no structure in code | The starter has no `hollware.config.ts`; `e2e:install` creates a site with `hollware init` and publishes in it.                                                              |
+| AC-0.8-2 | The owner shapes a site in the admin        | `e2e:admin`: create a site, a collection with fields and a rule, write an entry the rule refuses, fix it and publish; no deploy between.                                     |
+| AC-0.8-3 | An agent shapes a site over MCP             | Acceptance: a token with `site:admin` adds a field with `set_collection`; the next `create_draft` is checked against it; a token without it is refused with 403.             |
+| AC-0.8-4 | Changes are safe                            | A schema that refuses existing entries asks to confirm; `delete_site` goes to the trash with an export, and `restore_site` brings it back; the last owner cannot be removed. |
+| AC-0.8-5 | 0.x moves by itself                         | `e2e:upgrade` from 0.7.0: the config's sites are in D1 after the first start, and its content and tokens still work.                                                         |
+| AC-0.8-6 | Deploys run from CI                         | A push to `main` deploys staging, and the release of 0.8.0 deploys the demo and hollware.com, each with green probes and no command by hand.                                 |
+| AC-0.8-7 | Checks run before a push                    | `.vite-hooks/pre-push` runs the tasks of CI; a guard ties the hook and `ci.yml` to the same task names.                                                                      |
+
+### Maintainer actions (0.8.0)
+
+- Accept ADR-033 and ADR-034.
+- Create a Cloudflare API token for the environment `deploy` (Workers scripts, D1, KV, Queues, Vectorize, Workers routes and custom domains) and write it to a file of the scratchpad for me to store with `gh secret set`.
+- Approve the release of 0.8.0.
