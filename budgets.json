@@ -11,9 +11,5 @@
   "lazyPackages": {
     "packages": ["comark", "@comark/html"],
     "reason": "Comark parses Markdown on a write and @comark/html renders a stored document. Both load when the first Markdown arrives (ADR-001, ADR-020), so an isolate that only reads or answers a token check never evaluates them."
-  },
-  "warmWrite": {
-    "ms": 10,
-    "reason": "The Free plan gives a request 10 ms of CPU, and Hollware must run there for a person or an agent alone (ADR-033). The warm write of the 2,027-word fixture is measured from outside, an upper bound of its CPU time, so it holding 10 ms keeps a write within the plan."
   }
 }

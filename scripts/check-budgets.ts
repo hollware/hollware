@@ -46,8 +46,6 @@ export interface Budgets {
   readonly total: Ceiling
   /** Packages that must stay out of the startup modules and in a lazy chunk. */
   readonly lazyPackages: { readonly packages: readonly string[]; readonly reason: string }
-  /** The median of the warm writes, in milliseconds: what keeps a write within the Free plan. */
-  readonly warmWrite: { readonly ms: number; readonly reason: string }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -89,24 +87,10 @@ export function parseBudgets(text: string): Budgets {
   }
   const main = readCeiling(json.main, 'main')
   const total = readCeiling(json.total, 'total')
-  const warm = json.warmWrite
-  if (
-    !isRecord(warm) ||
-    typeof warm.ms !== 'number' ||
-    !Number.isFinite(warm.ms) ||
-    warm.ms <= 0 ||
-    typeof warm.reason !== 'string' ||
-    warm.reason.trim() === ''
-  ) {
-    throw new Error(
-      'budgets.json: "warmWrite" must be { "ms": <a positive number>, "reason": "<why>" }',
-    )
-  }
   return {
     main,
     total,
     lazyPackages: { packages: lazy.packages, reason: lazy.reason },
-    warmWrite: { ms: warm.ms, reason: warm.reason },
   }
 }
 
@@ -245,17 +229,6 @@ export interface Violation {
 
 function kib(bytes: number): string {
   return `${(bytes / KIB).toFixed(2)} KiB`
-}
-
-/** What the cost of the writes breaks of the budget: equal to the ceiling passes, over it fails. */
-export function checkWriteCost(warm: number, budgets: Budgets): Violation[] {
-  if (warm <= budgets.warmWrite.ms) return []
-  return [
-    {
-      rule: 'warm-write-ceiling',
-      message: `a warm write takes ${warm.toFixed(1)} ms, over the ceiling of ${budgets.warmWrite.ms} ms in budgets.json. ${budgets.warmWrite.reason} Make the write cheaper; raising the ceiling needs a note in an ADR.`,
-    },
-  ]
 }
 
 /** What a measurement breaks of the budget. Every ceiling is hard: equal to it passes, over it fails. */
@@ -579,13 +552,11 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
           `  cold  ${cost.cold.toFixed(1)} ms  (the first request of a fresh Worker, median of ${COLD_RUNS})`,
           `  warm  ${cost.warm.toFixed(1)} ms  (median of ${COLD_RUNS * WARM_WRITES}, slowest ${cost.warmMax.toFixed(1)} ms)`,
           `  floor ${cost.floor.toFixed(1)} ms  (GET /health, median of ${COLD_RUNS * FLOOR_REQUESTS}: what a request costs through the harness)`,
-          `  Request time seen from outside, an upper bound of the CPU time of the write; the warm one has a ceiling of ${budgets.warmWrite.ms} ms.`,
+          // Wall time, with the local D1 in it, which varies from one machine to another: the CPU of a
+          // write has its ceiling in `vp run bench`, which measures the Markdown pipeline's CPU.
+          '  Request time seen from outside, an upper bound of the CPU time of the write; no ceiling: `vp run bench` holds the CPU of the pipeline.',
         ].join('\n'),
       )
-      for (const violation of checkWriteCost(cost.warm, budgets)) {
-        violations.push(violation)
-        console.error(`FAIL ${violation.rule}: ${violation.message}`)
-      }
     }
     return violations.length === 0 ? 0 : 1
   } finally {
