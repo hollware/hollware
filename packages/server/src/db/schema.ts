@@ -343,16 +343,18 @@ export const schedules = sqliteTable(
 /**
  * The effects of a publication (ADR-025), written in the batch that publishes or unpublishes: one
  * row per event. The Queue consumer delivers each event to every subscriber, and records it in
- * `deliveries`; `sent_at` says that the event was put on the Queue.
+ * `deliveries`; `sent_at` says that the event was put on the Queue. A change of the structure of
+ * the site (ADR-033) is an event too, `site.changed`, about no entry.
  */
 export const outbox = sqliteTable(
   'outbox',
   {
     id: id('evt'),
     siteId: siteId(),
-    /** `entry.published` or `entry.unpublished`. */
+    /** `entry.published`, `entry.unpublished`, or `site.changed`. */
     kind: text('kind').notNull(),
-    entryId: text('entry_id').notNull(),
+    /** The entry of an event about one, and none for `site.changed`. */
+    entryId: text('entry_id'),
     /** A JSON object: what subscribers get. */
     payload: text('payload').notNull(),
     sentAt: text('sent_at'),
@@ -362,7 +364,11 @@ export const outbox = sqliteTable(
     unique('outbox_id_site').on(t.id, t.siteId),
     index('outbox_unsent').on(t.sentAt, t.createdAt),
     foreignKey({ name: 'outbox_site', columns: [t.siteId], foreignColumns: [sites.id] }),
-    check('outbox_kind', sql`${t.kind} IN ('entry.published', 'entry.unpublished')`),
+    check(
+      'outbox_kind',
+      sql`${t.kind} IN ('entry.published', 'entry.unpublished', 'site.changed')`,
+    ),
+    check('outbox_entry', sql`(${t.kind} = 'site.changed') = (${t.entryId} IS NULL)`),
     check('outbox_json', sql`json_valid(${t.payload}) AND json_type(${t.payload}) = 'object'`),
   ],
 )

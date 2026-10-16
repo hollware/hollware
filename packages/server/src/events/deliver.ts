@@ -78,7 +78,8 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
     subscribers.push({
       name: 'indexnow',
       async send(payload) {
-        if (payload.url === null) return
+        // A change of the structure is about no page: nothing for search engines to fetch.
+        if (payload.kind === 'site.changed' || payload.url === null) return
         const key = deps.secret(indexNow.key)
         if (key === undefined) throw new Error(`the secret ${indexNow.key} is not set`)
         const request = new Request(INDEXNOW_ENDPOINT, {
@@ -96,6 +97,7 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
     subscribers.push({
       name: 'vectors',
       async send(payload) {
+        if (payload.kind === 'site.changed') return
         await syncEntryVectors(deps.db, semantic, {
           site: site.key,
           entryId: payload.entry.id,

@@ -5,7 +5,9 @@ import {
 } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
+import { connect } from '../../src/db/d1.ts'
 import { createD1Store } from '../../src/db/index.ts'
+import { deliverEvent } from '../../src/events/deliver.ts'
 import { handlers } from '../../src/ops/index.ts'
 import type { OperationContext } from '../../src/ops/types.ts'
 import { createSiteRegistry } from '../../src/structure/registry.ts'
@@ -20,7 +22,10 @@ import { createSecretStore } from '../../src/structure/store.ts'
 // confirm a change that strands entries (a removed collection or locale) or that a new schema
 // refuses, with the counts and slugs; stops writing a confirmed change with its line of
 // site_changes, and making the Worker serve it at once; or stops creating a site with its maker
-// as owner, refusing a key that exists, and trashing and restoring only a site the caller owns.
+// as owner, refusing a key that exists, and trashing and restoring only a site the caller owns; or
+// a written change stops leaving its `site.changed` event in the outbox, with the tags of the site
+// and of every list it had or has, for the Queue, while one that was not written leaves none; or
+// that event stops reaching the webhooks, or starts reaching IndexNow, which has no page to fetch.
 
 const NOW = new Date('2026-10-16T12:00:00.000Z')
 const MASTER = 'k'.repeat(40)
@@ -169,6 +174,106 @@ describe('update_site', () => {
         has: 1,
       },
     ])
+  })
+
+  it('leaves a site.changed event for the sites that cache, only for a change it wrote', async () => {
+    const { key, context } = await setUp()
+    const notified: string[] = []
+    const watched = { ...context, notify: (ids: readonly string[]) => void notified.push(...ids) }
+    const next = siteDefinitionData.parse({
+      ...BLOG,
+      collections: {
+        ...BLOG.collections,
+        talks: {
+          schema: { type: 'object' },
+          routes: { en: '/talks/:slug/', es: '/es/charlas/:slug/' },
+        },
+      },
+    })
+
+    await handlers.update_site({ version: 0, definition: next, confirm: false }, watched)
+    const done = await handlers.update_site(
+      { version: 1, definition: next, confirm: false },
+      watched,
+    )
+
+    expect(done).toEqual({ outcome: 'updated', version: 2 })
+    const { results } = await env.DB.prepare(
+      'SELECT id, kind, entry_id, payload FROM outbox WHERE site_id = ?1',
+    )
+      .bind(key)
+      .all<{ id: string; kind: string; entry_id: string | null; payload: string }>()
+    expect(results.map(({ kind, entry_id }) => [kind, entry_id])).toEqual([['site.changed', null]])
+    const [event] = results
+    expect(notified).toEqual([event?.id])
+    expect(JSON.parse(event?.payload ?? '{}')).toEqual({
+      id: event?.id,
+      kind: 'site.changed',
+      site: key,
+      at: NOW.toISOString(),
+      cacheTags: [
+        'site',
+        'list:blog:en',
+        'list:blog:es',
+        'list:blog:*',
+        'list:talks:en',
+        'list:talks:es',
+        'list:talks:*',
+      ],
+    })
+
+    const sent: string[] = []
+    const site = context.site
+    const delivered = await deliverEvent(
+      {
+        db: connect(env.DB),
+        site: {
+          ...site,
+          url: 'https://example.com',
+          events: {
+            webhooks: [{ name: 'hook', url: 'https://hooks.example.com/in', secret: 'HOOK' }],
+            indexNow: { key: 'INDEXNOW_KEY' },
+          },
+        },
+        clock: { now: () => NOW },
+        fetch: async (request) => {
+          sent.push(request.url)
+          return new Response(null, { status: 200 })
+        },
+        secret: (name) => ({ HOOK: 'whsec_hook', INDEXNOW_KEY: 'key' })[name],
+      },
+      event?.id ?? '',
+    )
+    expect(delivered).toEqual({ delivered: ['webhook:hook', 'indexnow'], failed: [] })
+    expect(sent).toEqual(['https://hooks.example.com/in'])
+  })
+
+  it('leaves no event at the store when a racing writer moved the version first', async () => {
+    const { key, seeded } = await setUp()
+    const store = createStructureStore(env.DB, () => NOW)
+    const actor = { userId: seeded.userId, meta: null }
+    const event = (id: string) => ({ id, payload: JSON.stringify({ id, kind: 'site.changed' }) })
+
+    const first = await store.write({
+      site: key,
+      expected: 1,
+      definition: siteDefinitionData.parse(BLOG),
+      actor,
+      event: event('evt_first'),
+    })
+    const late = await store.write({
+      site: key,
+      expected: 1,
+      definition: siteDefinitionData.parse(BLOG),
+      actor,
+      event: event('evt_late'),
+    })
+
+    expect([first, late]).toEqual(['written', 'conflict'])
+    const { results } = await env.DB.prepare('SELECT id FROM outbox WHERE site_id = ?1')
+      .bind(key)
+      .all<{ id: string }>()
+    expect(results.map((row) => row.id)).toEqual(['evt_first'])
   })
 
   it('answers unchanged for the definition it has', async () => {

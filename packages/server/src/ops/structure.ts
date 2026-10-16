@@ -9,6 +9,7 @@ import {
 import type { Structure, StructureActor } from '../ports.ts'
 import { actorOf } from './actor.ts'
 import { internalError } from './errors.ts'
+import { siteEventFor } from './event.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
 /**
@@ -119,15 +120,30 @@ async function change(
   const touches =
     impact.removedCollections.length + impact.removedLocales.length + impact.refused.length
   if (touches > 0 && !confirm) return { outcome: 'needs_confirmation' as const, impact }
+  // The sites that cache pages purge what the structure shows (ADR-033): the site, and the lists of
+  // every collection and locale it had or has.
+  const event = siteEventFor({
+    site: context.site.key,
+    at: context.clock.now().toISOString(),
+    collections: [
+      ...new Set([
+        ...Object.keys(current.definition.collections),
+        ...Object.keys(next.collections),
+      ]),
+    ],
+    locales: [...new Set([...current.definition.locales, ...next.locales])],
+  })
   const written = await structure.store.write({
     site: context.site.key,
     expected: version,
     definition: next,
     actor: actor(context),
+    event,
   })
   if (written === 'conflict') {
     return { outcome: 'conflict' as const, currentVersion: (await currentOf(context)).version }
   }
+  context.notify?.([event.id])
   await structure.changed()
   return { outcome: 'updated' as const, version: version + 1 }
 }

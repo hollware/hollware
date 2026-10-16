@@ -42,6 +42,7 @@ export {
   listTag,
   SITE_TAG,
   tagsOfChange,
+  tagsOfSiteChange,
   tagsOfEntries,
   type TaggedEntry,
 } from './cache.ts'

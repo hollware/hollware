@@ -482,12 +482,16 @@ export interface StructureActor {
  */
 export interface StructureStore {
   read(site: string): Promise<StoredStructure | null>
-  /** A new definition, if the version is still `expected`: `conflict` when it moved. */
+  /**
+   * A new definition, if the version is still `expected`: `conflict` when it moved. Its `event`,
+   * a `site.changed`, goes to the outbox in the same batch, and only when the definition does.
+   */
   write(input: {
     readonly site: string
     readonly expected: number
     readonly definition: unknown
     readonly actor: StructureActor
+    readonly event?: OutboxEvent
   }): Promise<'written' | 'conflict'>
   /** A new site with its definition, and its maker as owner: `taken` when the key exists, trashed or not. */
   create(input: {

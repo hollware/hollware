@@ -8,7 +8,9 @@ import { expect, it } from 'vite-plus/test'
 // owner, a token, an entry with its revision and a publication are written, as a deployment of
 // v0.2 holds them; then every later migration runs, in order, as `hollware migrate` runs them. The
 // rows must all still be there, every person with a token must be a member of its site with the
-// role they had, a passkey and a session of v0.3 must outlive the loss of their site (0006), and no foreign key may point nowhere. This is what caught a rebuild of `users` in
+// role they had, a passkey and a session of v0.3 must outlive the loss of their site (0006), an
+// event of the outbox and its delivery must outlive the rebuild of the outbox (0013), which then
+// takes an event about no entry, and no foreign key may point nowhere. This is what caught a rebuild of `users` in
 // the first 0004: with foreign keys on, as D1 always has them, dropping a table that other rows
 // point at fails the transaction (D1 answered it as "internal error").
 
@@ -44,6 +46,11 @@ const CONTENT = [
     actor_kind, actor_user_id, actor_token_id, created_at, updated_at)
     VALUES ('${ID('pub')}', 'demo', '${ID('ent')}', '${ID('rev')}', 'publish', '{}', '[]',
     'token', '${ID('usr')}', '${ID('tok')}', '${T}', '${T}')`,
+  // The event of that publication, delivered once: `deliveries` points at the outbox.
+  `INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, created_at, updated_at)
+    VALUES ('${ID('evt')}', 'demo', 'entry.published', '${ID('ent')}', '{"kind":"entry.published"}', '${T}', '${T}', '${T}')`,
+  `INSERT INTO deliveries (id, site_id, event_id, subscriber, attempts, delivered_at, created_at, updated_at)
+    VALUES ('${ID('dlv')}', 'demo', '${ID('evt')}', 'webhook:site', 1, '${T}', '${T}', '${T}')`,
 ]
 
 /** The entry published, before the search index of 0008 exists, which it must then hold. */
@@ -112,5 +119,18 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
   expect(
     db.prepare("SELECT entry_id, title FROM entries_fts WHERE entries_fts MATCH 'harbour'").all(),
   ).toEqual([{ entry_id: ID('ent'), title: 'Hello harbour' }])
+  // 0013 kept the event and its delivery, and takes a change of the site, about no entry.
+  expect(db.prepare('SELECT id, kind, entry_id FROM outbox').all()).toEqual([
+    { id: ID('evt'), kind: 'entry.published', entry_id: ID('ent') },
+  ])
+  expect(db.prepare('SELECT event_id, subscriber FROM deliveries').all()).toEqual([
+    { event_id: ID('evt'), subscriber: 'webhook:site' },
+  ])
+  db.exec(`INSERT INTO outbox (id, site_id, kind, entry_id, payload, created_at, updated_at)
+    VALUES ('evt_site', 'demo', 'site.changed', NULL, '{"kind":"site.changed"}', '${T}', '${T}')`)
+  expect(() =>
+    db.exec(`INSERT INTO outbox (id, site_id, kind, entry_id, payload, created_at, updated_at)
+      VALUES ('evt_bad', 'demo', 'entry.published', NULL, '{}', '${T}', '${T}')`),
+  ).toThrow(/CHECK constraint failed: outbox_entry/)
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

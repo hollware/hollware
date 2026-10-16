@@ -67,3 +67,20 @@ export function tagsOfChange(entry: TaggedEntry): string[] {
       : [groupTag(entry.collection, entry.translationGroup)]),
   ]
 }
+
+/**
+ * The tags a change of a site's structure invalidates (ADR-033): the pages that show the structure
+ * (`site`, such as a navigation), and every list of its collections in each locale and in every
+ * locale, as a list may change with a schema, a route or a collection that goes. `collections` and
+ * `locales` are those of the definition before and after the change, together.
+ */
+export function tagsOfSiteChange(
+  collections: readonly string[],
+  locales: readonly string[],
+): string[] {
+  const tags = new Set([SITE_TAG])
+  for (const collection of collections) {
+    for (const locale of [...locales, EVERY_LOCALE]) tags.add(listTag(collection, locale))
+  }
+  return [...tags]
+}

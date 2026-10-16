@@ -92,6 +92,13 @@
       "when": 1792164116725,
       "tag": "0012_site_secrets",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792188999946,
+      "tag": "0013_site_events",
+      "breakpoints": true
     }
   ]
 }

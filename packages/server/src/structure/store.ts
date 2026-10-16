@@ -20,13 +20,14 @@ function appendChange(
   now: string,
   before: string | null,
   after: 'definition' | 'null',
+  id: string = newId('sit'),
 ): D1PreparedStatement {
   return db
     .prepare(
       `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at)
        SELECT ?1, id, version, ?2, ?3, ?4, ${after === 'definition' ? 'definition' : 'NULL'}, ?5, ?5 FROM sites WHERE id = ?6 AND updated_at = ?5`,
     )
-    .bind(newId('sit'), actor.userId, metaOf(actor), before, now, site)
+    .bind(id, actor.userId, metaOf(actor), before, now, site)
 }
 
 export function createStructureStore(db: D1Like, now: () => Date): StructureStore {
@@ -44,8 +45,9 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
       }
     },
 
-    async write({ site, expected, definition, actor }) {
+    async write({ site, expected, definition, actor, event }) {
       const at = now().toISOString()
+      const change = newId('sit')
       const before = await db
         .prepare('SELECT definition FROM sites WHERE id = ?1')
         .bind(site)
@@ -56,7 +58,20 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
             'UPDATE sites SET definition = ?1, version = version + 1, updated_at = ?2 WHERE id = ?3 AND version = ?4 AND deleted_at IS NULL',
           )
           .bind(JSON.stringify(definition), at, site, expected),
-        appendChange(db, site, actor, at, before ?? null, 'definition'),
+        appendChange(db, site, actor, at, before ?? null, 'definition', change),
+        // The event lands only with the change it is about: the line of site_changes this write
+        // made, which a writer that lost a race does not make (its version is taken).
+        ...(event === undefined
+          ? []
+          : [
+              db
+                .prepare(
+                  `INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, created_at, updated_at)
+                   SELECT ?1, ?2, 'site.changed', NULL, ?3, NULL, ?4, ?4
+                   WHERE EXISTS (SELECT 1 FROM site_changes WHERE id = ?5 AND site_id = ?2)`,
+                )
+                .bind(event.id, site, event.payload, at, change),
+            ]),
       ])
       return (moved?.meta.changes ?? 0) === 1 ? 'written' : 'conflict'
     },
