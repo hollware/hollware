@@ -10,7 +10,8 @@ import { createNuxtHarness, nuxtFetch } from './workers.ts'
 // `useHollwareEntry`), the index from `useHollwareEntries`, the generator meta of every page; or
 // it serves a draft, or an entry that does not exist, as anything but a 404; or a page sends the
 // browser the verdict and the last publication of an entry (`forPage`); or the page stops getting
-// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's. The site is
+// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's; or `cache`
+// stops keeping rendered pages, or starts keeping errors or the /_hollware/ routes. The site is
 // examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
 // compatibility; content is published through MCP, as an agent does.
 
@@ -66,6 +67,16 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     expect(html).toContain('hollware:{site:"playground",beacon:"http://localhost"}')
     // The read token and the binding stay on the server.
     expect(html).not.toContain('binding:')
+  })
+
+  it('keeps a rendered page for 30 seconds, and never an error or a /_hollware/ route', async () => {
+    const page = await nuxtFetch(server, '/en/')
+    const route = await nuxtFetch(server, '/_hollware/entries/blog')
+    const missing = await nuxtFetch(server, '/en/blog/never-written/')
+
+    expect(page.headers.get('cache-control')).toBe('s-maxage=30, stale-while-revalidate')
+    expect(route.headers.get('cache-control') ?? '').not.toContain('s-maxage')
+    expect(missing.headers.get('cache-control') ?? '').not.toContain('s-maxage')
   })
 
   it('answers a draft and an entry that does not exist with a 404', async () => {

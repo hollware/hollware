@@ -8,7 +8,8 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@hollware/nuxt'],
   css: ['~/assets/css/main.css'],
   // HOLLWARE_BEACON, at build time, is the Hollware that counts the views of the docs (ADR-031).
-  hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '' },
+  // A page is kept 30 seconds: an approved page shows within that, and most requests render nothing.
+  hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '', cache: 30 },
   colorMode: { preference: 'dark', fallback: 'dark' },
   // Icons come from the installed collection, never fetched from a CDN at runtime.
   icon: { serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },

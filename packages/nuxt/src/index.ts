@@ -1,3 +1,4 @@
+import type { NitroRouteConfig } from 'nitropack'
 import {
   addComponent,
   addImports,
@@ -37,6 +38,12 @@ export interface ModuleOptions {
    * No views are counted when it is not set.
    */
   beacon?: string
+  /**
+   * Seconds a rendered page is kept and served again, while a fresh one is rendered in the
+   * background (`swr`): most requests then render nothing. A publish shows within this time.
+   * Errors are never kept, and the site's `/_hollware/` routes are not cached. Off when not set.
+   */
+  cache?: number
 }
 
 export type { PageEntry } from './runtime/types.ts'
@@ -87,6 +94,16 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareContent'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
+    if (options.cache !== undefined && options.cache > 0) {
+      const pages: NitroRouteConfig = { swr: options.cache }
+      const routes: NitroRouteConfig = { swr: false, cache: false }
+      // The page routes of the site; a rule the site sets itself for a path still wins there.
+      nuxt.options.routeRules = {
+        '/**': pages,
+        '/_hollware/**': routes,
+        ...nuxt.options.routeRules,
+      }
+    }
     if (options.beacon !== undefined && options.beacon !== '') {
       // Public: the browser sends the views.
       nuxt.options.runtimeConfig.public['hollware'] = { site: options.site, beacon: options.beacon }
