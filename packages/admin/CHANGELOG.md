@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 0.9.1
+
+### Patch Changes
+
+- [`7d86c7f`](https://github.com/hollware/hollware/commit/7d86c7ff6bd375d2a66f8b72648abc74746e84b8) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A page of the admin loaded before a deploy no longer breaks when it asks for a file the new version does not have: it loads the new version, at the page the person was going to (at most once in ten seconds, so a file that is truly missing still shows its error).
+
 ## 0.9.0
 
 ### Minor Changes
