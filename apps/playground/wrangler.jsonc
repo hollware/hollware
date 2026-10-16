@@ -81,8 +81,10 @@
       "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "hollware_page_views" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
       "triggers": { "crons": ["* * * * *"] },
-      // No test probe in the demo.
-      "services": [],
+      // No test probe in the demo; its agents (examples/agents-worker), woken every ten minutes.
+      "services": [
+        { "binding": "AGENTS", "service": "hollware-agents-demo", "entrypoint": "HollwareAgents" },
+      ],
       // The namespace hollware-demo-oauth in the maintainer's account (created 2026-10-14).
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "f4b6a249127848139b0cb6c400ce0e0c" }],
       "d1_databases": [

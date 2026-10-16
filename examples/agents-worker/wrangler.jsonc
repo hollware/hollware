@@ -22,6 +22,16 @@
   // Placeholder id: local development never contacts Cloudflare.
   "kv_namespaces": [{ "binding": "AGENTS_KV", "id": "00000000000000000000000000000000" }],
   "env": {
+    // Next to the demo (v0.6), in the maintainer's account. Its KV namespace is made on the first
+    // deploy; the demo's Hollware wakes it through its AGENTS binding.
+    "demo": {
+      "name": "hollware-agents-demo",
+      "workers_dev": false,
+      "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com" },
+      "services": [{ "binding": "HOLLWARE", "service": "hollware-demo" }],
+      "ai": { "binding": "AI" },
+      "kv_namespaces": [{ "binding": "AGENTS_KV" }],
+    },
     // Next to staging (v0.6), in the maintainer's account.
     "staging": {
       "name": "hollware-agents-staging",
