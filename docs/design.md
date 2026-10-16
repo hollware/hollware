@@ -75,7 +75,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-033](adr/0033-the-structure-lives-in-d1.md) | The structure lives in D1 | Accepted |
 | [ADR-034](adr/0034-our-deployments-run-from-ci.md) | Our deployments run from CI | Accepted |
 | [ADR-035](adr/0035-a-push-to-release-publishes.md) | A push to `release` publishes, with no approval of the `npm` environment | Accepted |
-| [ADR-036](adr/0036-what-1-0-promises.md) | What 1.0 promises, and how the repository keeps it | Proposed |
+| [ADR-036](adr/0036-what-1-0-promises.md) | What 1.0 promises, and how the repository keeps it | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

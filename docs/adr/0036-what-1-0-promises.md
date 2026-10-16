@@ -1,6 +1,6 @@
 # ADR-036: What 1.0 promises, and how the repository keeps it
 
-Status: Proposed (2026-10-16)
+Status: Accepted (2026-10-16)
 
 ## Context
 
