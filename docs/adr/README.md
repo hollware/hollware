@@ -50,6 +50,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 032 | Agents that never publish                                                                                   | Accepted              | [0032-agents-that-never-publish.md](0032-agents-that-never-publish.md)                                                                         |
 | 033 | The structure lives in D1                                                                                   | Accepted              | [0033-the-structure-lives-in-d1.md](0033-the-structure-lives-in-d1.md)                                                                         |
 | 034 | Our deployments run from CI                                                                                 | Accepted              | [0034-our-deployments-run-from-ci.md](0034-our-deployments-run-from-ci.md)                                                                     |
+| 035 | A push to `release` publishes, with no approval of the `npm` environment                                    | Accepted              | [0035-a-push-to-release-publishes.md](0035-a-push-to-release-publishes.md)                                                                     |
 
 ## Template
 

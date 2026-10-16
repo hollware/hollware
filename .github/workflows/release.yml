@@ -1,14 +1,14 @@
 name: Release
 
-# The release pipeline (ADR-015). `main` is for development and `release` is what ships:
+# The release pipeline (ADR-015, ADR-035). `main` is for development and `release` is what ships:
 # `release` only moves by fast-forward to a commit that is on `main`.
 #
 #   push to main:     select-mode -> version -> (merge the Version Packages pull request)
 #   push to release:  promotion-check -> pack -> publish -> finalize
 #
 # A push to `main` never packs or publishes. `publish` is the only job that may request an
-# OIDC token. It waits for the maintainer to approve the environment `npm`, checks out
-# nothing and runs no repository code: it verifies the tarballs that `pack` built and hands
+# OIDC token. It runs in the environment `npm`, which only `release` may use and which
+# waits for no one (ADR-035): it checks out nothing and runs no repository code: it verifies the tarballs that `pack` built and hands
 # them to npm with provenance.
 
 on:
@@ -167,7 +167,7 @@ jobs:
     name: Publish to npm
     needs: pack
     if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' && needs.pack.outputs.artifact-id != ''
-    environment: npm # the maintainer approves this job; the npm trusted publisher is bound to it
+    environment: npm # only `release` may use it; the npm trusted publisher is bound to it
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:

@@ -2,6 +2,8 @@
 
 Status: Accepted (2026-10-11)
 
+The approval of the `npm` environment that this record decides is gone since 2026-10-16: see [ADR-035](0035-a-push-to-release-publishes.md).
+
 ## Context
 
 [ADR-013](0013-releases-with-changesets.md) and [ADR-014](0014-release-pipeline.md) made every release pass two independent human factors. CI staged each package on npm without a 2FA prompt, and the maintainer approved each staged version on npm with 2FA. Release `0.0.1` shipped that way on 2026-10-11, and it showed the price: six packages are six separate 2FA approvals, one `npm stage approve` each and dependencies first, on top of the click that approves the GitHub environment `npm`. The maintainer decided that the second factor is not worth that friction.
