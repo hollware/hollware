@@ -10,6 +10,7 @@ import { and, desc, eq, gt, isNull } from 'drizzle-orm'
 import type { Context, Hono } from 'hono'
 import { insufficientScope } from '../auth/index.ts'
 import { isRole, ROLE_SCOPES } from '../auth/roles.ts'
+import { removeMember, setRole, type PeopleChange } from '../identity/people.ts'
 import type { Principal } from '../auth/types.ts'
 import { connect } from '../db/d1.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
@@ -44,8 +45,16 @@ function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 }
 
-function refused(message: string, fix: string, status: 400 | 403 | 404 = 400): Response {
-  return json({ code: status === 400 ? 'invalid_input' : 'forbidden', message, fix }, status)
+/** The code of each refusal: what the input breaks, who may not, what is not there, what clashes. */
+const REFUSAL_CODES = {
+  400: 'invalid_input',
+  403: 'forbidden',
+  404: 'not_found',
+  409: 'conflict',
+} as const
+
+function refused(message: string, fix: string, status: 400 | 403 | 404 | 409 = 400): Response {
+  return json({ code: REFUSAL_CODES[status], message, fix }, status)
 }
 
 function parseScopes(json: string): Scope[] {
@@ -257,6 +266,57 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         )
         .orderBy(desc(invitations.createdAt))
       return json({ people, invitations: pending })
+    }),
+  )
+
+  /** What a change of a member answers, by what it did. */
+  const answerOf = (change: PeopleChange): Response => {
+    switch (change) {
+      case 'changed':
+      case 'unchanged':
+        return json({ outcome: change })
+      case 'not_member':
+        return refused(
+          'That person is no member of this site.',
+          'Pick someone from the list of people.',
+          404,
+        )
+      case 'last_owner':
+        return refused(
+          'A site keeps at least one owner, and this is its last one.',
+          'Make another person an owner first, then change this one.',
+          409,
+        )
+    }
+  }
+
+  // Another role for a member of the site of the token: owner, editor or author.
+  app.post(
+    '/v1/admin/people/role',
+    admin(async (c, person) => {
+      const input = await body(c)
+      const role = input['role']
+      const userId = input['userId']
+      if (typeof userId !== 'string' || typeof role !== 'string' || !isRole(role)) {
+        return refused(
+          'Give the userId of a member and a role.',
+          `Send { "userId": "usr_…", "role": "owner" | "editor" | "author" }.`,
+        )
+      }
+      const now = options.clock.now().toISOString()
+      return answerOf(await setRole(c.env.DB, { site: person.site, userId, role, now }))
+    }),
+  )
+
+  // A member out of the site of the token, with every token and grant they had of it.
+  app.post(
+    '/v1/admin/people/remove',
+    admin(async (c, person) => {
+      const userId = (await body(c))['userId']
+      if (typeof userId !== 'string') {
+        return refused('Give the userId of a member.', 'Send { "userId": "usr_…" }.')
+      }
+      return answerOf(await removeMember(c.env.DB, { site: person.site, userId }))
     }),
   )
 

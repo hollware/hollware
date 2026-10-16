@@ -11,7 +11,9 @@ import { boot, NOW, OTHER_SITE_KEY, SITE_KEY, type Booted } from './support.ts'
 // reaches them; a token they make gets scopes its maker does not have, is not shown once, does not
 // work, or still works once revoked; the list shows a hash; an invitation is made for an owner, or
 // stops giving a link to /setup that the list of people then counts as pending; or a read token
-// made there stops being an hw_read_ token with content:read alone.
+// made there stops being an hw_read_ token with content:read alone; or an owner stops being able
+// to give a member another role or remove them, at once for their tokens, or can demote or remove
+// the last owner of the site.
 
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -29,7 +31,16 @@ async function adminToken(
   role: 'owner' | 'editor' | 'author',
   alsoEditorOf: readonly string[] = [],
 ): Promise<string> {
-  const { userId } = await seedToken(env.DB, SITE_KEY, { role })
+  return (await adminPerson(worker, role, alsoEditorOf)).access
+}
+
+/** The same, with the person's id and their personal token. */
+async function adminPerson(
+  worker: Booted,
+  role: 'owner' | 'editor' | 'author',
+  alsoEditorOf: readonly string[] = [],
+): Promise<{ access: string; userId: string; token: string }> {
+  const { userId, token } = await seedToken(env.DB, SITE_KEY, { role })
   for (const site of alsoEditorOf) {
     await env.DB.prepare(
       'INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)',
@@ -83,7 +94,7 @@ async function adminToken(
       resource: admin.resource,
     }).toString(),
   })
-  return (await tokens.json<{ access_token: string }>()).access_token
+  return { access: (await tokens.json<{ access_token: string }>()).access_token, userId, token }
 }
 
 function call(worker: Booted, token: string, path: string, body?: unknown) {
@@ -201,5 +212,64 @@ describe("the admin's own routes", () => {
     expect(asOwner.status).toBe(400)
     expect(people.invitations.map((invitation) => invitation.role)).toContain('author')
     expect(people.people.some((person) => person.role === 'owner')).toBe(true)
+  })
+
+  it('give a member another role, and remove one, whose token stops working at once', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const editor = await seedToken(env.DB, SITE_KEY, { role: 'editor' })
+
+    const demoted = await call(worker, owner, '/v1/admin/people/role', {
+      userId: editor.userId,
+      role: 'author',
+    })
+    const same = await call(worker, owner, '/v1/admin/people/role', {
+      userId: editor.userId,
+      role: 'author',
+    })
+    const before = await worker.send('/v1/site', { token: editor.token })
+    const removed = await call(worker, owner, '/v1/admin/people/remove', { userId: editor.userId })
+    const after = await worker.send('/v1/site', { token: editor.token })
+    const stranger = await call(worker, owner, '/v1/admin/people/remove', { userId: editor.userId })
+
+    expect([await demoted.json(), await same.json()]).toEqual([
+      { outcome: 'changed' },
+      { outcome: 'unchanged' },
+    ])
+    expect([before.status, removed.status, after.status, stranger.status]).toEqual([
+      200, 200, 401, 404,
+    ])
+  })
+
+  it('keep the last owner of the site: neither demoted nor removed until another owner exists', async () => {
+    const worker = boot()
+    const owner = await adminPerson(worker, 'owner')
+    const editor = await seedToken(env.DB, SITE_KEY, { role: 'editor' })
+    // The one owner of the site from here on.
+    await env.DB.prepare(
+      "UPDATE members SET role = 'editor' WHERE site_id = ?1 AND role = 'owner' AND user_id <> ?2",
+    )
+      .bind(SITE_KEY, owner.userId)
+      .run()
+
+    const demote = await call(worker, owner.access, '/v1/admin/people/role', {
+      userId: owner.userId,
+      role: 'editor',
+    })
+    const remove = await call(worker, owner.access, '/v1/admin/people/remove', {
+      userId: owner.userId,
+    })
+    const promoted = await call(worker, owner.access, '/v1/admin/people/role', {
+      userId: editor.userId,
+      role: 'owner',
+    })
+    const stepDown = await call(worker, owner.access, '/v1/admin/people/role', {
+      userId: owner.userId,
+      role: 'editor',
+    })
+
+    expect([demote.status, remove.status]).toEqual([409, 409])
+    expect(await demote.json()).toMatchObject({ code: 'conflict' })
+    expect([promoted.status, stepDown.status]).toEqual([200, 200])
   })
 })
