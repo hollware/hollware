@@ -6,7 +6,8 @@ import { createD1Store } from '../db/index.ts'
 import { enqueue } from '../events/run.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { McpEndpoint } from '../mcp/index.ts'
-import type { Clock } from '../ports.ts'
+import type { Clock, Structure } from '../ports.ts'
+import { createStructureStore } from '../structure/store.ts'
 import { installErrorHandling } from './errors.ts'
 import { installAdmin } from './admin.ts'
 import { installAdminApi } from './admin-api.ts'
@@ -26,8 +27,8 @@ export interface GatewayOptions {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   /** Their keys. When `refresh` is given, both stay current with D1. */
   readonly siteKeys?: ReadonlySet<string>
-  /** Brings the sites in line with D1 at the start of each request (ADR-033). */
-  readonly refresh?: (db: D1Database) => Promise<void>
+  /** Brings the sites in line with D1 (ADR-033): when stale, or at once with `force`. */
+  readonly refresh?: (db: D1Database, options?: { readonly force?: boolean }) => Promise<void>
   /** Built once for the isolate; the gateway mounts it at `/mcp`. */
   readonly mcp: McpEndpoint
   /** The time of a request: the expiry of a token and every write are read from it. */
@@ -120,6 +121,14 @@ export function createGateway(options: GatewayOptions): Gateway {
         ),
       )
     }
+
+  /** The structure of the sites in D1, and how this isolate sees a change of it at once. */
+  const structureOf = (db: D1Database): Structure => ({
+    store: createStructureStore(db, () => clock.now()),
+    changed: async () => {
+      await options.refresh?.(db, { force: true })
+    },
+  })
 
   /**
    * A protected route: the resource server of `resource` answers a request without a token and a
@@ -263,6 +272,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           notify: notify(c, requestId, site.key),
           semantic: semanticOfEnv(c.env),
           analytics: analyticsReaderOf(c.env),
+          structure: structureOf(db),
         },
       })
     }),
@@ -307,6 +317,7 @@ export function createGateway(options: GatewayOptions): Gateway {
       protect: (c, proceed) => protectWrites(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
       notify,
+      structure: structureOf,
     })
   }
 

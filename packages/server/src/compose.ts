@@ -85,7 +85,8 @@ export function createHollwareWith(
     log: writeLog,
   })
   const { sites } = registry
-  const refresh = (db: D1Database) => registry.refresh(db)
+  const refresh = (db: D1Database, options?: { readonly force?: boolean }) =>
+    registry.refresh(db, options)
   const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
   const deliveryDeps = (env: HollwareEnv, site: ResolvedSite): DeliveryDeps => ({
     db: connect(env.DB),

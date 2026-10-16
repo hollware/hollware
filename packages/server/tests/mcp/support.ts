@@ -1,4 +1,5 @@
 import {
+  siteDefinitionData,
   type OperationByName,
   type OperationName,
   type OutcomeOf,
@@ -201,6 +202,35 @@ type Canned = {
   >
 }
 
+/** A site's definition as get_structure answers it: every default filled in. */
+const STRUCTURE = siteDefinitionData.parse({
+  locales: ['en'],
+  defaultLocale: 'en',
+  collections: {
+    blog: {
+      schema: { type: 'object', properties: { title: { type: 'string' } } },
+      routes: { en: '/blog/:slug/' },
+    },
+  },
+})
+
+const PROBLEM = {
+  path: 'sites.acme.collections.blog.schema',
+  message: 'the schema of the frontmatter is not of an object',
+  fix: 'Give a JSON Schema with "type": "object" and the fields under "properties".',
+}
+
+const STRUCTURE_CHANGES: Canned['update_site'] = {
+  updated: { outcome: 'updated', version: 3 },
+  unchanged: { outcome: 'unchanged', version: 2 },
+  invalid: { outcome: 'invalid', problems: [PROBLEM] },
+  needs_confirmation: {
+    outcome: 'needs_confirmation',
+    impact: { removedCollections: [{ name: 'blog', entries: 3 }], removedLocales: [], refused: [] },
+  },
+  conflict: { outcome: 'conflict', currentVersion: 4 },
+}
+
 /** A valid output for every outcome of every operation. */
 export const CANNED: Canned = {
   approve_review: {
@@ -357,6 +387,25 @@ export const CANNED: Canned = {
   validate: {
     ok: { outcome: 'ok', verdict: VERDICT_OK },
   },
+  create_site: {
+    created: { outcome: 'created', version: 1 },
+    taken: { outcome: 'taken' },
+    invalid: { outcome: 'invalid', problems: [PROBLEM] },
+  },
+  delete_site: {
+    trashed: { outcome: 'trashed' },
+    needs_confirmation: { outcome: 'needs_confirmation', entries: 3 },
+    not_found: { outcome: 'not_found' },
+  },
+  get_structure: {
+    ok: { outcome: 'ok', site: 'acme', version: 2, definition: STRUCTURE, catalog: [] },
+  },
+  restore_site: {
+    restored: { outcome: 'restored' },
+    not_found: { outcome: 'not_found' },
+  },
+  set_collection: STRUCTURE_CHANGES,
+  update_site: STRUCTURE_CHANGES,
 }
 
 /** The canned output of one outcome, or undefined for an outcome the operation does not have. */
@@ -385,6 +434,12 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     unpublish: { id: ENTRY_ID },
     update_draft: { id: ENTRY_ID, version: 1, markdown: MARKDOWN },
     validate: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
+    create_site: { key: 'notes', definition: STRUCTURE },
+    delete_site: { key: 'notes' },
+    get_structure: {},
+    restore_site: { key: 'notes' },
+    set_collection: { version: 2, name: 'blog', collection: null },
+    update_site: { version: 2, definition: STRUCTURE },
   }
 
 // ---- fake handlers -------------------------------------------------------------------------
@@ -500,6 +555,36 @@ export function fakeHandlers(
     validate: record(
       'validate',
       overrides.validate ?? (async () => pick(CANNED.validate, outcomes.validate ?? 'ok')),
+    ),
+    create_site: record(
+      'create_site',
+      overrides.create_site ??
+        (async () => pick(CANNED.create_site, outcomes.create_site ?? 'created')),
+    ),
+    delete_site: record(
+      'delete_site',
+      overrides.delete_site ??
+        (async () => pick(CANNED.delete_site, outcomes.delete_site ?? 'trashed')),
+    ),
+    get_structure: record(
+      'get_structure',
+      overrides.get_structure ??
+        (async () => pick(CANNED.get_structure, outcomes.get_structure ?? 'ok')),
+    ),
+    restore_site: record(
+      'restore_site',
+      overrides.restore_site ??
+        (async () => pick(CANNED.restore_site, outcomes.restore_site ?? 'restored')),
+    ),
+    set_collection: record(
+      'set_collection',
+      overrides.set_collection ??
+        (async () => pick(CANNED.set_collection, outcomes.set_collection ?? 'updated')),
+    ),
+    update_site: record(
+      'update_site',
+      overrides.update_site ??
+        (async () => pick(CANNED.update_site, outcomes.update_site ?? 'updated')),
     ),
   }
   return { handlers, seen }

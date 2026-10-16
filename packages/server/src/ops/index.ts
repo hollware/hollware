@@ -5,6 +5,14 @@ import { getEntry } from './get-entry.ts'
 import { getTranslations } from './get-translations.ts'
 import { listEntries } from './list-entries.ts'
 import { search } from './search.ts'
+import {
+  createSite,
+  deleteSite,
+  getStructure,
+  restoreSite,
+  setCollection,
+  updateSite,
+} from './structure.ts'
 import { publish } from './publish.ts'
 import {
   approveReview,
@@ -28,8 +36,11 @@ export const handlers = defineHandlers({
   comment_review: commentReview,
   content_stats: contentStats,
   create_draft: createDraft,
+  create_site: createSite,
+  delete_site: deleteSite,
   describe_site: describeSite,
   get_entry: getEntry,
+  get_structure: getStructure,
   get_translations: getTranslations,
   list_entries: listEntries,
   search,
@@ -37,7 +48,10 @@ export const handlers = defineHandlers({
   publish,
   request_changes: requestChanges,
   request_review: requestReview,
+  restore_site: restoreSite,
+  set_collection: setCollection,
   unpublish,
+  update_site: updateSite,
   update_draft: updateDraft,
   validate,
 })

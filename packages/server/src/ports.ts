@@ -461,3 +461,61 @@ export interface AnalyticsReader {
     query: { readonly days: number; readonly limit: number },
   ): Promise<readonly PageCount[]>
 }
+
+/** The stored structure of a site (ADR-033), or `null` for no row or a row with no definition. */
+export interface StoredStructure {
+  readonly version: number
+  readonly definition: unknown
+  /** When the site went to the trash, or `null`. */
+  readonly deletedAt: string | null
+}
+
+/** Who changes a structure: the person, and what their client said about itself. */
+export interface StructureActor {
+  readonly userId: string
+  readonly meta: Readonly<Record<string, unknown>> | null
+}
+
+/**
+ * The structure of the sites in D1 (ADR-033): read, written with the version it was read at, and
+ * appended to `site_changes` in the same batch. A write never deletes an entry.
+ */
+export interface StructureStore {
+  read(site: string): Promise<StoredStructure | null>
+  /** A new definition, if the version is still `expected`: `conflict` when it moved. */
+  write(input: {
+    readonly site: string
+    readonly expected: number
+    readonly definition: unknown
+    readonly actor: StructureActor
+  }): Promise<'written' | 'conflict'>
+  /** A new site with its definition, and its maker as owner: `taken` when the key exists, trashed or not. */
+  create(input: {
+    readonly site: string
+    readonly definition: unknown
+    readonly actor: StructureActor
+  }): Promise<'created' | 'taken'>
+  /** Puts a site in the trash, or takes it out: `false` when it was not where it had to be. */
+  trash(site: string, actor: StructureActor): Promise<boolean>
+  restore(site: string, actor: StructureActor): Promise<boolean>
+  /** The role of a person in a site, or `null` for none. */
+  roleOf(site: string, userId: string): Promise<'owner' | 'editor' | 'author' | null>
+  /** How many entries a site holds, by collection and by locale. */
+  counts(site: string): Promise<{
+    readonly byCollection: ReadonlyMap<string, number>
+    readonly byLocale: ReadonlyMap<string, number>
+  }>
+  /** The slug and latest frontmatter of up to `limit` entries of a collection. */
+  frontmatters(
+    site: string,
+    collection: string,
+    limit: number,
+  ): Promise<readonly { readonly slug: string; readonly frontmatter: unknown }[]>
+}
+
+/** The structure, for the operations that change it, and what makes the Worker see a change at once. */
+export interface Structure {
+  readonly store: StructureStore
+  /** Brings this isolate's sites in line with D1 now, after a change. */
+  readonly changed: () => Promise<void>
+}

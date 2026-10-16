@@ -12,8 +12,11 @@ const handlers: Handlers = {
   comment_review: notYet,
   content_stats: notYet,
   create_draft: notYet,
+  create_site: notYet,
+  delete_site: notYet,
   describe_site: notYet,
   get_entry: notYet,
+  get_structure: notYet,
   get_translations: notYet,
   list_entries: notYet,
   search: notYet,
@@ -21,8 +24,11 @@ const handlers: Handlers = {
   publish: notYet,
   request_changes: notYet,
   request_review: notYet,
+  restore_site: notYet,
+  set_collection: notYet,
   unpublish: notYet,
   update_draft: notYet,
+  update_site: notYet,
   validate: notYet,
 }
 

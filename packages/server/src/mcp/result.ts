@@ -67,6 +67,16 @@ const OUTPUT_TOO_LARGE_FIX = {
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   update_draft:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
+  create_site:
+    'The site was made and holds little: read it with get_structure from a token of that site.',
+  delete_site: 'Nothing to ask for less of: the answer is a count. Try again.',
+  get_structure:
+    'The structure does not fit in one answer: read the collections with describe_site instead, and change them one at a time with set_collection.',
+  restore_site: 'Nothing to ask for less of: the answer is an outcome. Try again.',
+  set_collection:
+    'Too many problems for one answer: fix the first ones and send the collection again.',
+  update_site:
+    'Too many problems for one answer: fix the first ones, or change one collection at a time with set_collection.',
   validate:
     'The verdict lists more problems than fit in one answer. Fix the first ones and validate again.',
 } as const satisfies Record<OperationName, string>

@@ -20,6 +20,8 @@ import {
   verdict,
   version,
 } from './schemas.ts'
+import { isSiteKey } from '../config/site-key.ts'
+import { collectionDefinitionData, siteDefinitionData } from '../structure/definition.ts'
 import { defineOperation } from './types.ts'
 
 /**
@@ -448,23 +450,209 @@ export const contentStats = defineOperation({
   outcomes: { ok: { isError: false }, unavailable: { isError: true } },
 })
 
+const siteKey = z
+  .string()
+  .refine(isSiteKey, {
+    message: 'Not a site key: lowercase words joined by hyphens, such as my-site.',
+  })
+  .describe('The key of a site: lowercase letters and digits joined by hyphens, such as my-site.')
+
+const structureVersion = z
+  .number()
+  .int()
+  .min(0)
+  .describe(
+    'The version of the structure you read with get_structure. Another one answers conflict.',
+  )
+
+const confirm = z
+  .boolean()
+  .default(false)
+  .describe(
+    'true to go ahead when needs_confirmation listed what the change does to existing entries.',
+  )
+
+const problem = z.object({
+  path: z.string().describe('Where, from the root: sites.<key>.collections.<name>.schema.'),
+  message: z.string(),
+  fix: z.string(),
+})
+
+/** What a change of the structure would do to the entries a site already has. */
+const impact = z.object({
+  removedCollections: z
+    .array(z.object({ name: z.string(), entries: z.number().int() }))
+    .describe('Collections the change removes, with how many entries each holds.'),
+  removedLocales: z
+    .array(z.object({ locale: z.string(), entries: z.number().int() }))
+    .describe('Locales the change removes, with how many entries each holds.'),
+  refused: z
+    .array(
+      z.object({
+        collection: z.string(),
+        entries: z
+          .number()
+          .int()
+          .describe('Entries whose latest frontmatter the new schema refuses.'),
+        examples: z.array(z.string()).describe('A few of their slugs.'),
+      }),
+    )
+    .describe(
+      'Collections whose new schema refuses entries they hold; they stay, and their next write is checked against it.',
+    ),
+})
+
+const structureChange = z.object({
+  outcome: z.enum(['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict']),
+  version: z.number().int().optional().describe('The version of the structure now.'),
+  problems: z.array(problem).optional().describe('With invalid: every problem, each with its fix.'),
+  impact: impact.optional().describe('With needs_confirmation: what the change would do.'),
+  currentVersion: z.number().int().optional().describe('With conflict: the version to read again.'),
+})
+
+const STRUCTURE_OUTCOMES = {
+  updated: { isError: false },
+  unchanged: { isError: false },
+  invalid: { isError: true },
+  needs_confirmation: { isError: false },
+  conflict: { isError: true },
+} as const
+
+export const getStructure = defineOperation({
+  name: 'get_structure',
+  title: 'Get the structure of the site',
+  description:
+    'Gets the definition of the site as update_site and set_collection take it: its locales, URL, CORS origins, events, style guide, and each collection with the JSON Schema of its frontmatter, its routes, components and rules; with its version, and the catalog of rules a collection may use, each with the JSON Schema of its parameters.',
+  input: z.strictObject({}),
+  output: z.object({
+    outcome: z.enum(['ok']),
+    site: z.string(),
+    version: z.number().int(),
+    definition: siteDefinitionData,
+    catalog: z.array(
+      z.object({
+        name: z.string(),
+        description: z.string(),
+        params: z.record(z.string(), z.unknown()).describe('The JSON Schema of its parameters.'),
+      }),
+    ),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false } },
+})
+
+export const updateSite = defineOperation({
+  name: 'update_site',
+  title: 'Change the structure of the site',
+  description:
+    'Replaces the definition of the site with another, at once and with no deploy: read it with get_structure, change it, and send it with the version you read. Every problem is answered at its path with its fix, and nothing changes. A change that removes a collection or a locale with entries, or a schema that refuses entries the site holds, answers needs_confirmation with what it would do; send it again with confirm to go ahead. Entries are never deleted: a removed collection keeps them out of reach until it comes back.',
+  input: z.strictObject({ version: structureVersion, definition: siteDefinitionData, confirm }),
+  output: structureChange.describe('What became of the definition.'),
+  scopes: ['schema:admin'],
+  effect: 'destructive',
+  outcomes: STRUCTURE_OUTCOMES,
+})
+
+export const setCollection = defineOperation({
+  name: 'set_collection',
+  title: 'Add, change or remove a collection',
+  description:
+    'Adds the collection name to the site, replaces it, or removes it with collection null, leaving the rest of the definition as it is; with the version of the structure you read. Answers as update_site does.',
+  input: z.strictObject({
+    version: structureVersion,
+    name: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]*$/)
+      .describe('The name of the collection: lowercase letters, digits and hyphens, such as blog.'),
+    collection: collectionDefinitionData
+      .nullable()
+      .describe('The collection, or null to remove it.'),
+    confirm,
+  }),
+  output: structureChange.describe('What became of the collection.'),
+  scopes: ['schema:admin'],
+  effect: 'destructive',
+  outcomes: STRUCTURE_OUTCOMES,
+})
+
+export const createSite = defineOperation({
+  name: 'create_site',
+  title: 'Create a site',
+  description:
+    'Creates a site in this deployment, with its definition, and makes you its owner. It is served at once; to work in it, get a token of that site (the admin switches to it).',
+  input: z.strictObject({ key: siteKey, definition: siteDefinitionData }),
+  output: z.object({
+    outcome: z.enum(['created', 'taken', 'invalid']),
+    version: z.number().int().optional(),
+    problems: z
+      .array(problem)
+      .optional()
+      .describe('With invalid: every problem, each with its fix.'),
+  }),
+  scopes: ['schema:admin'],
+  effect: 'write',
+  outcomes: { created: { isError: false }, taken: { isError: true }, invalid: { isError: true } },
+})
+
+export const deleteSite = defineOperation({
+  name: 'delete_site',
+  title: 'Put a site in the trash',
+  description:
+    'Puts a site you own in the trash: it is served no more, and its tokens stop working. Nothing is deleted; restore_site brings it back, from a token of another site you own. The first call answers needs_confirmation with how many entries the site holds; call again with confirm.',
+  input: z.strictObject({ key: siteKey, confirm }),
+  output: z.object({
+    outcome: z.enum(['trashed', 'needs_confirmation', 'not_found']),
+    entries: z
+      .number()
+      .int()
+      .optional()
+      .describe('With needs_confirmation: the entries the site holds.'),
+  }),
+  scopes: ['schema:admin'],
+  effect: 'destructive',
+  outcomes: {
+    trashed: { isError: false },
+    needs_confirmation: { isError: false },
+    not_found: { isError: true },
+  },
+})
+
+export const restoreSite = defineOperation({
+  name: 'restore_site',
+  title: 'Bring a site back from the trash',
+  description:
+    'Brings back a site you own from the trash, as it was: served again, with its entries and tokens.',
+  input: z.strictObject({ key: siteKey }),
+  output: z.object({ outcome: z.enum(['restored', 'not_found']) }),
+  scopes: ['schema:admin'],
+  effect: 'write',
+  outcomes: { restored: { isError: false }, not_found: { isError: true } },
+})
+
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
   commentReview,
   contentStats,
   createDraft,
+  createSite,
+  deleteSite,
   describeSite,
   getEntry,
+  getStructure,
   getTranslations,
   listEntries,
   listReviews,
   publish,
   requestChanges,
   requestReview,
+  restoreSite,
   search,
+  setCollection,
   unpublish,
   updateDraft,
+  updateSite,
   validate,
 ] as const
 

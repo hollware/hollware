@@ -272,6 +272,7 @@ describe('the module', () => {
       'BUILT_IN_CONTRACT_IDS',
       'CATALOG',
       'REFUSAL_CONTRACT_IDS',
+      'canonicalJson',
       'catalogRule',
       'contracts',
       'describeBuiltInContracts',

@@ -11,6 +11,7 @@ export {
 } from './builtin.ts'
 export { CATALOG, catalogRule, describeCatalog, type CatalogRule } from './catalog.ts'
 export { describeContract, type ContractDescription } from './description.ts'
+export { canonicalJson } from './hash.ts'
 export {
   contracts,
   type BuiltInOptions,

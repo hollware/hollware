@@ -20,24 +20,30 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the sixteen operations, sorted by name, as tools/list shows them', () => {
+  it('are the twenty-two operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
       'comment_review',
       'content_stats',
       'create_draft',
+      'create_site',
+      'delete_site',
       'describe_site',
       'get_entry',
+      'get_structure',
       'get_translations',
       'list_entries',
       'list_reviews',
       'publish',
       'request_changes',
       'request_review',
+      'restore_site',
       'search',
+      'set_collection',
       'unpublish',
       'update_draft',
+      'update_site',
       'validate',
     ])
     expect(names).toEqual([...names].sort())
@@ -83,6 +89,18 @@ describe('operation specs', () => {
         outcomes: ['saved', 'refused'],
         errors: ['refused'],
       },
+      create_site: {
+        effect: 'write',
+        scopes: ['schema:admin'],
+        outcomes: ['created', 'taken', 'invalid'],
+        errors: ['taken', 'invalid'],
+      },
+      delete_site: {
+        effect: 'destructive',
+        scopes: ['schema:admin'],
+        outcomes: ['trashed', 'needs_confirmation', 'not_found'],
+        errors: ['not_found'],
+      },
       describe_site: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       get_entry: {
         effect: 'read',
@@ -90,6 +108,7 @@ describe('operation specs', () => {
         outcomes: ['ok', 'not_found'],
         errors: ['not_found'],
       },
+      get_structure: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       get_translations: {
         effect: 'read',
         scopes: ['content:read'],
@@ -125,7 +144,19 @@ describe('operation specs', () => {
         outcomes: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
         errors: ['blocked', 'conflict', 'not_found'],
       },
+      restore_site: {
+        effect: 'write',
+        scopes: ['schema:admin'],
+        outcomes: ['restored', 'not_found'],
+        errors: ['not_found'],
+      },
       search: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
+      set_collection: {
+        effect: 'destructive',
+        scopes: ['schema:admin'],
+        outcomes: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
+        errors: ['invalid', 'conflict'],
+      },
       unpublish: {
         effect: 'destructive',
         scopes: ['content:publish'],
@@ -137,6 +168,12 @@ describe('operation specs', () => {
         scopes: ['content:write'],
         outcomes: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
         errors: ['conflict', 'not_found', 'refused'],
+      },
+      update_site: {
+        effect: 'destructive',
+        scopes: ['schema:admin'],
+        outcomes: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
+        errors: ['invalid', 'conflict'],
       },
       validate: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
     })

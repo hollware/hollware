@@ -45,17 +45,23 @@ const TOOLS = [
   { name: 'comment_review', title: 'Comment on a review', annotations: CHANGE },
   { name: 'content_stats', title: 'Read what readers read', annotations: READ },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
+  { name: 'create_site', title: 'Create a site', annotations: CHANGE },
+  { name: 'delete_site', title: 'Put a site in the trash', annotations: DESTROY },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
+  { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
+  { name: 'restore_site', title: 'Bring a site back from the trash', annotations: CHANGE },
   { name: 'search', title: 'Search entries', annotations: READ },
+  { name: 'set_collection', title: 'Add, change or remove a collection', annotations: DESTROY },
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
+  { name: 'update_site', title: 'Change the structure of the site', annotations: DESTROY },
   { name: 'validate', title: 'Validate a Markdown file', annotations: READ },
 ]
 
@@ -64,8 +70,11 @@ const OUTCOMES: Record<string, string[]> = {
   comment_review: ['commented', 'not_pending', 'not_found'],
   content_stats: ['ok', 'unavailable'],
   create_draft: ['saved', 'refused'],
+  create_site: ['created', 'taken', 'invalid'],
+  delete_site: ['trashed', 'needs_confirmation', 'not_found'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
+  get_structure: ['ok'],
   get_translations: ['ok', 'not_found'],
   list_entries: ['ok'],
   list_reviews: ['ok'],
@@ -80,9 +89,12 @@ const OUTCOMES: Record<string, string[]> = {
   ],
   request_changes: ['changes_requested', 'not_pending', 'not_found'],
   request_review: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
+  restore_site: ['restored', 'not_found'],
   search: ['ok'],
+  set_collection: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
   unpublish: ['unpublished', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
+  update_site: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
   validate: ['ok'],
 }
 
@@ -217,9 +229,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(32)
+    expect(converters).toHaveLength(44)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 32 }, () => 1),
+      Array.from({ length: 44 }, () => 1),
     )
   })
 })
@@ -233,17 +245,23 @@ describe('the tool table', () => {
       'comment_review',
       'content_stats',
       'create_draft',
+      'create_site',
+      'delete_site',
       'describe_site',
       'get_entry',
+      'get_structure',
       'get_translations',
       'list_entries',
       'list_reviews',
       'publish',
       'request_changes',
       'request_review',
+      'restore_site',
       'search',
+      'set_collection',
       'unpublish',
       'update_draft',
+      'update_site',
       'validate',
     ])
   })
