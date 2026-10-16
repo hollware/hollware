@@ -1,4 +1,4 @@
-import { newId, type ResolvedCollection, type ResolvedSite } from '@hollware/core'
+import { newId, tagsOfChange, type ResolvedCollection, type ResolvedSite } from '@hollware/core'
 import type { OutboxEvent } from '../ports.ts'
 
 export type EventKind = 'entry.published' | 'entry.unpublished'
@@ -21,6 +21,8 @@ export interface EventPayload {
   readonly path: string | null
   /** The URL of the entry, when the site declares its `url`. */
   readonly url: string | null
+  /** The cache tags the change invalidates (`tagsOfChange` of `@hollware/core`), for a site to purge. */
+  readonly cacheTags: readonly string[]
 }
 
 /** The path of an entry: the route of its locale, with its slug in place of `:slug`. */
@@ -51,6 +53,7 @@ export function eventFor(input: {
     entry: input.entry,
     path,
     url: path === null || input.site.url === null ? null : `${input.site.url}${path}`,
+    cacheTags: tagsOfChange(input.entry),
   }
   return { id, payload: JSON.stringify(payload) }
 }

@@ -102,6 +102,8 @@ describe('the outbox', () => {
       entry: { id, collection: 'blog', locale: 'en', slug: 'pair-en', translationGroup: 'pair' },
       path: '/en/blog/pair-en/',
       url: 'https://example.com/en/blog/pair-en/',
+      // What a site purges: the entry, the list of its collection in its locale, its group.
+      cacheTags: [`entry:${id}`, 'list:blog:en', 'group:blog:pair'],
     })
   })
 })
