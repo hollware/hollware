@@ -1,0 +1,5 @@
+# Every check of CI that runs on this machine, before anything leaves it (vite.config.ts, the task
+# check:local). A push to `release` only moves a commit of main that already passed it.
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  [ "$remote_ref" = "refs/heads/release" ] || exec vp run check:local
+done

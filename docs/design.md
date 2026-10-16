@@ -72,8 +72,8 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-030](adr/0030-vectors-as-derived-data.md) | Vectors as derived data | Accepted |
 | [ADR-031](adr/0031-page-views-without-personal-data.md) | Page views without personal data | Accepted |
 | [ADR-032](adr/0032-agents-that-never-publish.md) | Agents that never publish | Accepted |
-| [ADR-033](adr/0033-the-structure-lives-in-d1.md) | The structure lives in D1 | Proposed |
-| [ADR-034](adr/0034-our-deployments-run-from-ci.md) | Our deployments run from CI | Proposed |
+| [ADR-033](adr/0033-the-structure-lives-in-d1.md) | The structure lives in D1 | Accepted |
+| [ADR-034](adr/0034-our-deployments-run-from-ci.md) | Our deployments run from CI | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

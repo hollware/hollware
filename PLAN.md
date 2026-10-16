@@ -700,7 +700,7 @@ Decisions (maintainer, 2026-10-15): a plain Worker with cron triggers and a KV n
 - [ ] S4 — Admin: Sites (create, settings, trash and restore), a collection editor (fields, routes, translations, tags, sort, components, rules from the catalog, style guide), People with remove and role.
 - [ ] S5 — CLI and starter: `hollware init` makes the first site through the operations; `hollware structure export|import` (JSON); the starter, `create-hollware` and the docs without a config; the playground, staging and the demo moved.
 - [ ] S6 — `deploy.yml`: builds and deploys staging on `main`, the demo (CMS, blog, agents) and hollware.com on a release, migrations first, probes last; the environment `deploy` with the Cloudflare token.
-- [ ] S7 — `pre-push`: `check:push`, the acceptance suite, `e2e:admin` and conformance, through the same tasks CI runs; CI keeps the install and upgrade matrix and pull requests.
+- [x] S7 — `pre-push`: `check:push`, the acceptance suite, `e2e:admin` and conformance, through the same tasks CI runs; CI keeps the install and upgrade matrix and pull requests.
 
 ### Acceptance criteria (0.8.0)
 
@@ -716,6 +716,10 @@ Decisions (maintainer, 2026-10-15): a plain Worker with cron triggers and a KV n
 
 ### Maintainer actions (0.8.0)
 
-- Accept ADR-033 and ADR-034.
+- ~~Accept ADR-033 and ADR-034.~~ Accepted on 2026-10-16.
 - Create a Cloudflare API token for the environment `deploy` (Workers scripts, D1, KV, Queues, Vectorize, Workers routes and custom domains) and write it to a file of the scratchpad for me to store with `gh secret set`.
 - Approve the release of 0.8.0.
+
+### Verification log (0.8.0)
+
+- 2026-10-16 — S7: `.vite-hooks/pre-push` runs `check:local` (check:push, acceptance, e2e:admin, conformance), and skips a push to `release` alone; CI keeps `e2e:upgrade` (CI_ONLY), the install matrix (a script, not a task) and pull requests. The guard `pre-push` ties the hook and `ci.yml` to the same tasks; mutations CAUGHT (a task dropped from check:local, the hook running check:push instead).

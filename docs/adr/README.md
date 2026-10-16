@@ -48,8 +48,8 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 030 | Vectors as derived data                                                                                     | Accepted              | [0030-vectors-as-derived-data.md](0030-vectors-as-derived-data.md)                                                                             |
 | 031 | Page views without personal data                                                                            | Accepted              | [0031-page-views-without-personal-data.md](0031-page-views-without-personal-data.md)                                                           |
 | 032 | Agents that never publish                                                                                   | Accepted              | [0032-agents-that-never-publish.md](0032-agents-that-never-publish.md)                                                                         |
-| 033 | The structure lives in D1                                                                                   | Proposed              | [0033-the-structure-lives-in-d1.md](0033-the-structure-lives-in-d1.md)                                                                         |
-| 034 | Our deployments run from CI                                                                                 | Proposed              | [0034-our-deployments-run-from-ci.md](0034-our-deployments-run-from-ci.md)                                                                     |
+| 033 | The structure lives in D1                                                                                   | Accepted              | [0033-the-structure-lives-in-d1.md](0033-the-structure-lives-in-d1.md)                                                                         |
+| 034 | Our deployments run from CI                                                                                 | Accepted              | [0034-our-deployments-run-from-ci.md](0034-our-deployments-run-from-ci.md)                                                                     |
 
 ## Template
 

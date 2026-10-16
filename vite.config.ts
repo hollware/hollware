@@ -80,8 +80,8 @@ export default defineConfig({
   run: {
     cache: { scripts: false, tasks: true },
     tasks: {
-      // The pre-commit hook runs check:commit; CI runs check:push, and test:conformance,
-      // test:acceptance and e2e:admin in jobs of their own.
+      // The pre-commit hook runs check:commit and the pre-push hook check:local; CI runs
+      // check:push, and test:conformance, test:acceptance and e2e:admin in jobs of their own.
       'check:commit': { command: 'vp check', cache: false },
       // The Markdown pipeline's budget: the p95 CPU time of a write of the 2,027-word fixture.
       bench: {
@@ -118,6 +118,17 @@ export default defineConfig({
         command: [
           'vp test run --config tests/conformance/vitest.config.ts',
           'node tests/conformance/run.ts',
+        ],
+        cache: false,
+      },
+      // What the hook pre-push runs: every task of ci.yml that can run on this machine (the guard
+      // pre-push holds it). A push that skips the hook meets the same tasks in CI.
+      'check:local': {
+        command: [
+          'vp run check:push',
+          'vp run test:acceptance',
+          'vp run e2e:admin',
+          'vp run test:conformance',
         ],
         cache: false,
       },

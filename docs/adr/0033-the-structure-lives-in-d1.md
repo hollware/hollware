@@ -1,6 +1,6 @@
 # ADR-033: The structure lives in D1
 
-Status: Proposed (2026-10-16)
+Status: Accepted (2026-10-16)
 
 ## Context
 

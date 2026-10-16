@@ -1,6 +1,6 @@
 # ADR-034: Our deployments run from CI
 
-Status: Proposed (2026-10-16)
+Status: Accepted (2026-10-16)
 
 ## Context
 

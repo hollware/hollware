@@ -61,6 +61,7 @@ describe('commands in AGENTS.md', () => {
         'bench',
         'check:budgets',
         'check:commit',
+        'check:local',
         'check:push',
         'e2e:admin',
         'e2e:install',

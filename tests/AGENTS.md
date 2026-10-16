@@ -17,6 +17,7 @@ Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a 
 What each guard binds, one line per file of `tests/conventions/` and `tests/meta/`. A new guard adds its line here.
 
 - `tests/conventions/manifests.test.ts`: the six packages share one manifest shape and version; `exports` and `bin` point at the source and `publishConfig` at `dist`; apps and templates are private.
+- `tests/conventions/pre-push.test.ts`: the hook pre-push runs `check:local`, which runs the tasks of `ci.yml` but `CI_ONLY`.
 - `tests/conventions/build-order.test.ts`: `check:push` runs `vp check` and `vp test` before anything builds, so CI proves that no package needs another one built.
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
@@ -39,7 +40,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`. Each job is gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes and finalizes) and chained by `needs`, and `publish` is isolated. Runs go one at a time per ref: no cancel and no job-level group. The steps that run `promotion-check.sh` and `finalize-release.sh` pass exactly the env their script reads and check out the full history. `finalize_only` is wired: a boolean input, the promotion check skipped, pack and publish skipped with it, and finalize run after the skipped publish with `RELEASE_SHA` empty or the commit named in a `release_sha` input. `ci.yml` runs on `release` without the changeset gate and with `fetch-depth: 0`.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`. Each job is gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes and finalizes) and chained by `needs`, and `publish` is isolated. Runs go one at a time per ref: no cancel and no job-level group. The steps that run `promotion-check.sh` and `finalize-release.sh` pass exactly the env their script reads and check out the full history. `finalize_only` (a boolean input) skips the promotion check, pack and publish, and runs finalize for `RELEASE_SHA` or a `release_sha` input. `ci.yml` runs on `release` without the changeset gate and with `fetch-depth: 0`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
