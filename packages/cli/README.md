@@ -63,8 +63,9 @@ reported, and the command exits with code 1. The token never appears in its outp
 
 `init`, `migrate`, `deploy`, `doctor` and `token` run the project's own `wrangler` (the nearest
 `node_modules/.bin/wrangler`) against its D1 database, and read the binding from `wrangler.jsonc`.
-`import` speaks MCP to `<url>/mcp` with the token as a bearer token. The CLI never loads
-`hollware.config.ts`.
+`import` speaks MCP to `<url>/mcp` with the token as a bearer token. The structure of the sites
+lives in the database (ADR-033): `init` gives a new site its first definition from a preset, and
+its owner shapes it in the admin, or an agent over MCP.
 
 ## Links
 

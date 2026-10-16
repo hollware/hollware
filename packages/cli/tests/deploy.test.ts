@@ -99,8 +99,8 @@ describe('hollware deploy', () => {
         '',
         'Commit wrangler.jsonc: it holds the ids of what the deploy created, and the public URL.',
         '',
-        'Next: create your site and its owner in the remote database, with the key of the site in',
-        'hollware.config.ts. It prints a token for your agents and a link to set up your passkey:',
+        'Next: create your site and its owner in the remote database. It prints a token for your',
+        'agents and a link to set up your passkey; shape the site in the admin afterwards:',
         '  hollware init --site <key> --remote',
       ].join('\n'),
     ])

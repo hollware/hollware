@@ -1,14 +1,14 @@
 # My Hollware
 
 A [Hollware](https://hollware.com) project: a headless CMS on Cloudflare Workers that your agents
-write to over MCP. The config says what your content is; every write is checked against it.
+write to over MCP. Your sites, their collections and their rules live in the database: shape them
+in the admin, or let an agent do it, and every write is checked against them. No deploy.
 
 ## What is inside
 
 | Path                        | What it is                                                                         |
 | --------------------------- | ---------------------------------------------------------------------------------- |
-| `hollware.config.ts`        | Your sites and their collections: the schema of the frontmatter, routes, guidance  |
-| `src/worker.ts`             | The Worker: `createHollware(config)` builds it                                     |
+| `src/worker.ts`             | The Worker: `createHollware()` builds it                                           |
 | `wrangler.jsonc`            | The Worker, its D1 database, its KV namespace, its queues and its public URL       |
 | `vite.config.ts`            | Vite with the Cloudflare plugin, and the admin at `/admin/`                        |
 | `vitest.config.ts`, `test/` | Tests that run inside workerd                                                      |
@@ -26,7 +26,7 @@ its owner and a first token. To do it again on a new local database:
 
 ```sh
 pnpm exec hollware migrate --local
-pnpm exec hollware init --site my-site --local
+pnpm exec hollware init --site my-site --local   # --preset blog|docs|empty --locales en,es
 ```
 
 `init` prints a personal token once, and a link to set up your passkey for the admin. Give the

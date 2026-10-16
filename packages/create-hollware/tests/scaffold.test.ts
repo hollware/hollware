@@ -10,7 +10,7 @@ import { create, type Io, type RunResult } from '../src/scaffold.ts'
 // database and its queues, the key of the site, Hollware's exact version for every Hollware
 // dependency, a .gitignore), writes into a directory that is not empty, stops running git init,
 // pnpm's allowed build scripts when pnpm installs, the install, the migrations and init in that order and in the project, stops printing init's
-// answer and the `claude mcp add` line with the token, or goes on after a step failed. The
+// answer and the `claude mcp add` line, stops handing --preset and --locales to init, with the token, or goes on after a step failed. The
 // programs it runs are not ours, so they are the one thing faked; the template is the real one,
 // made from templates/starter.
 
@@ -80,8 +80,10 @@ describe('create-hollware <dir>', () => {
     expect(read('wrangler.jsonc')).toContain('"database_name": "blog-cms"')
     expect(read('wrangler.jsonc')).toContain('"dead_letter_queue": "blog-cms-events-dlq"')
     expect(read('wrangler.jsonc')).not.toContain('my-hollware')
-    expect(read('hollware.config.ts')).toContain("    'blog': {\n")
-    expect(read('hollware.config.ts')).not.toContain('my-site')
+    // No config: the structure lives in the database (ADR-033); the README names the site.
+    expect(existsSync(join(cwd, 'blog-cms', 'hollware.config.ts'))).toBe(false)
+    expect(read('README.md')).toContain('hollware init --site blog --local')
+    expect(read('README.md')).not.toContain('my-site')
     expect(existsSync(join(cwd, 'blog-cms', '.gitignore'))).toBe(true)
     expect(existsSync(join(cwd, 'blog-cms', 'gitignore'))).toBe(false)
     // npm needs no pnpm settings.
@@ -116,6 +118,19 @@ describe('create-hollware <dir>', () => {
     expect(out.at(-1)).toContain(
       `claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer ${TOKEN}"`,
     )
+  })
+
+  it('hands --preset and --locales to init, as given', async () => {
+    const { io, calls, cwd } = world()
+
+    await create(['blog-cms', '--preset', 'docs', '--locales', 'es,en', '--no-git'], io)
+
+    const project = join(cwd, 'blog-cms')
+    expect(calls.at(-1)).toEqual({
+      command: join(project, 'node_modules', '.bin', 'hollware'),
+      args: ['init', '--site', 'my-site', '--preset', 'docs', '--locales', 'es,en', '--local'],
+      cwd: project,
+    })
   })
 
   it('refuses a directory that is not empty, and writes nothing', async () => {

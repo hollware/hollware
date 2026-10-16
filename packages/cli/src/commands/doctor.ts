@@ -152,7 +152,7 @@ async function checkDatabase(io: Io, target: Target): Promise<Finding[]> {
       ? pass(`the ${target} database has an owner`)
       : fail(
           `the ${target} database has no owner yet`,
-          `Run "hollware init --site <key> --${target}", with the key of your site in hollware.config.ts.`,
+          `Run "hollware init --site <key> --${target}", with the key your site is to have, such as my-site.`,
         ),
   ]
 }

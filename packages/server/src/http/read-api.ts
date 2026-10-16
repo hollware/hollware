@@ -147,7 +147,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
           {
             code: 'forbidden_origin',
             message: `The site "${principal.site}" does not let pages of ${crossOrigin} read it.`,
-            fix: `Add "${crossOrigin}" to cors.origins of the site in hollware.config.ts, or read from a server.`,
+            fix: `Add "${crossOrigin}" to the cors.origins of the site (in the admin, Site, or with update_site), or read from a server.`,
           },
           403,
           // Hollware's own origin, so that the OAuth library reflects no other one onto it.

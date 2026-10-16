@@ -53,7 +53,7 @@ describe('the hollware bin, run as a process', () => {
     const { code, stdout, stderr } = await exec([installed.bin, 'init'])
     expect(stdout).toBe('')
     expect(stderr).toBe(
-      'hollware init: --site is required: name the site, as in hollware.config.ts. Run "hollware init --help" for the options.\n',
+      'hollware init: --site is required: name the site, such as --site my-site. Run "hollware init --help" for the options.\n',
     )
     expect(code).toBe(1)
   })

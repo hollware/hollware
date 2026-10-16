@@ -104,7 +104,7 @@ describe('hollware doctor', () => {
     ])
     expect(second.out[0]?.split('\n').slice(-2)).toEqual([
       'FAIL  the local database has no owner yet',
-      '      Run "hollware init --site <key> --local", with the key of your site in hollware.config.ts.',
+      '      Run "hollware init --site <key> --local", with the key your site is to have, such as my-site.',
     ])
     expect(second.err).toEqual(['hollware doctor: 1 problem to fix.'])
   })

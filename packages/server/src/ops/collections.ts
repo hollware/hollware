@@ -52,6 +52,6 @@ export function collectionOfEntry(site: ResolvedSite, entry: StoredEntry): Resol
   throw new HollwareError(
     'unknown_collection',
     `The entry ${entry.id} belongs to the collection ${shown(entry.collection)}, which the config of the site no longer declares.`,
-    `Ask whoever maintains hollware.config.ts to declare the collection ${shown(entry.collection)} again: the entry and its revisions are kept.`,
+    `Ask an owner of the site to add the collection ${shown(entry.collection)} again, with set_collection or in the admin: the entry and its revisions are kept.`,
   )
 }

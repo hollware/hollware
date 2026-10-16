@@ -1,5 +1,12 @@
-import { hashPersonalToken, PERSONAL_TOKEN_TTL_DAYS, SCOPES } from '@hollware/core'
-import { rmSync, writeFileSync } from 'node:fs'
+import {
+  hashPersonalToken,
+  PERSONAL_TOKEN_TTL_DAYS,
+  PRESETS,
+  SCOPES,
+  sitePreset,
+  type Preset,
+} from '@hollware/core'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFlags } from '../args.ts'
 import {
@@ -30,17 +37,23 @@ import {
 } from '../sql.ts'
 
 export const INIT_USAGE = [
-  'Usage: hollware init --site <key> [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
+  'Usage: hollware init --site <key> [--preset <blog | docs | empty>] [--locales <list>]',
+  '                     [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
   '',
   "Creates a site, its owner and the owner's first personal token in the project's D1 database,",
   'in one step, and prints the token once, with a link to set up the passkey of the admin (valid',
   'for 7 days). On a database that has an owner already, it adds the site to that owner, who signs',
   'in to the admin as before, and prints a token of the new site. It does nothing when the site',
   'has an owner.',
+  'The site starts from a preset, which its owner then shapes in the admin, or an agent over MCP',
+  '(ADR-033). A project with a hollware.config.ts keeps it instead: the Worker moves it into the',
+  'database on its first request.',
   'Run "hollware migrate" first: the database needs its tables.',
   '',
   'Options:',
-  '  --site <key>         The site, by the key it has in hollware.config.ts (required)',
+  '  --site <key>         The key of the site, such as my-site; it never changes (required)',
+  '  --preset <preset>    blog, docs or empty: a title alone (default: blog)',
+  '  --locales <list>     The locales, comma-separated, the first the default (default: en)',
   '  --local              Use the local database (the default)',
   '  --remote             Use the database in Cloudflare',
   '  --owner-name <name>  The name of the owner',
@@ -61,6 +74,8 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       local: { type: 'boolean' },
       remote: { type: 'boolean' },
       'owner-name': { type: 'string' },
+      preset: { type: 'string' },
+      locales: { type: 'string' },
       database: { type: 'string' },
       url: { type: 'string' },
       help: { type: 'boolean' },
@@ -71,9 +86,10 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     return 0
   }
   if (values.site === undefined) {
-    throw new UsageError('--site is required: name the site, as in hollware.config.ts.')
+    throw new UsageError('--site is required: name the site, such as --site my-site.')
   }
   const site = parseSiteKey(values.site)
+  const definition = initialDefinition(io.cwd, values.preset, values.locales)
   const ownerName =
     values['owner-name'] === undefined ? undefined : parseOwnerName(values['owner-name'])
   const target = chooseTarget(values)
@@ -90,7 +106,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   }
   const [first] = owners
   if (first !== undefined && typeof first['id'] === 'string') {
-    return await addSite(io, { site, ownerId: first['id'], database, target })
+    return await addSite(io, { site, ownerId: first['id'], database, target, definition })
   }
 
   const now = io.now()
@@ -112,6 +128,9 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   })
   // Drawn last, so that the ids and secrets above stay what they were before members existed.
   const memberId = newId(io, 'member')
+  // And the change of the structure after it, for the same reason.
+  const structure =
+    definition === null ? undefined : { definition, changeId: newId(io, 'siteChange') }
   const script = initScript({
     site,
     ownerId,
@@ -127,6 +146,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       expiresAt,
       now: timestamp,
     },
+    structure,
   }).concat(`${setup}\n`)
 
   const directory = io.tempDir()
@@ -168,18 +188,28 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
 /** `init` for one more site of a deployment whose owner exists: that owner owns the new site too. */
 async function addSite(
   io: Io,
-  where: { site: string; ownerId: string; database: string; target: Target },
+  where: {
+    site: string
+    ownerId: string
+    database: string
+    target: Target
+    definition: unknown
+  },
 ): Promise<number> {
-  const { site, ownerId, database, target } = where
+  const { site, ownerId, database, target, definition } = where
   const now = io.now()
   const timestamp = now.toISOString()
   const tokenId = newId(io, 'token')
   const secret = newPersonalToken(io)
   const expiresAt = inDays(now, PERSONAL_TOKEN_TTL_DAYS)
+  const memberId = newId(io, 'member')
+  const structure =
+    definition === null ? undefined : { definition, changeId: newId(io, 'siteChange') }
   const script = anotherSiteScript({
     site,
     ownerId,
-    memberId: newId(io, 'member'),
+    memberId,
+    structure,
     token: {
       id: tokenId,
       site,
@@ -217,4 +247,41 @@ async function addSite(
     ].join('\n'),
   )
   return 0
+}
+
+/** A locale tag, as a site's definition takes it: `en`, `es-CL`. */
+const LOCALE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/
+
+/**
+ * The first definition of the site (ADR-033), from `--preset` and `--locales`; `null` for a
+ * project with a hollware.config.ts, whose Worker moves it into the database on its first request.
+ */
+export function initialDefinition(
+  cwd: string,
+  preset: string | undefined,
+  locales: string | undefined,
+): unknown {
+  if (existsSync(join(cwd, 'hollware.config.ts'))) {
+    if (preset !== undefined || locales !== undefined) {
+      throw new UsageError(
+        'this project has a hollware.config.ts, which the Worker moves into the database: leave out --preset and --locales, or delete the config first.',
+      )
+    }
+    return null
+  }
+  const chosen = preset ?? 'blog'
+  if (!PRESETS.some((name) => name === chosen)) {
+    throw new UsageError(`--preset is one of ${PRESETS.join(', ')}, not "${chosen}".`)
+  }
+  const list = (locales ?? 'en')
+    .split(',')
+    .map((locale) => locale.trim())
+    .filter((locale) => locale !== '')
+  const bad = list.find((locale) => !LOCALE.test(locale))
+  if (list.length === 0 || bad !== undefined) {
+    throw new UsageError(
+      `--locales is a comma-separated list of locales, such as en,es; "${bad ?? ''}" is not one.`,
+    )
+  }
+  return sitePreset(chosen as Preset, list, list[0] ?? 'en')
 }

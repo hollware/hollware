@@ -1,14 +1,15 @@
+import { sitePreset } from '@hollware/core'
 import type { HollwareRpc } from '@hollware/server'
 import { env, exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
 import worker from '../src/worker.ts'
 
-// Fails when: src/worker.ts stops exporting `{ fetch: hollware.fetch }` of createHollware(config)
+// Fails when: src/worker.ts stops exporting `{ fetch: hollware.fetch }` of createHollware()
 // as the Worker, so that GET /health for the public URL of wrangler.jsonc (localhost:5199) stops
 // answering 200, or another Host stops being a 403; when it stops exporting the class `Hollware`
-// that sites read over a service binding, or builds it from another config than hollware.config.ts
-// (describeSite must answer the site `my-site`); or when the D1 binding of wrangler.jsonc stops
+// that sites read over a service binding, or stops serving the sites of the database (ADR-033:
+// describeSite must answer the site that `hollware init` makes); or when the D1 binding of wrangler.jsonc stops
 // pointing `migrations_dir` at the migrations of @hollware/server, so that its tables are missing.
 
 // A request made inside workerd has no Host header of its own: a browser or curl would send one.
@@ -45,7 +46,14 @@ describe('the Worker over HTTP', () => {
 })
 
 describe('the Hollware class', () => {
-  it('serves the site of hollware.config.ts over RPC', async () => {
+  it('serves the site of the database over RPC, as hollware init makes it', async () => {
+    const definition = sitePreset('blog', ['en', 'es'], 'en')
+    await env.DB.prepare(
+      "INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('my-site', ?1, 1, 'now', 'now')",
+    )
+      .bind(JSON.stringify(definition))
+      .run()
+
     const answer = await rpc.describeSite('my-site')
 
     expect(answer).toMatchObject({

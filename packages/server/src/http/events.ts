@@ -70,7 +70,7 @@ export function installEvents(
         403,
         'forbidden_origin',
         `Only pages of the site "${site.key}" count its views.`,
-        `Set url of the site in hollware.config.ts to the origin of its pages, or add the origin to cors.origins.`,
+        `Set the url of the site to the origin of its pages, or add the origin to its cors.origins: in the admin, Site, or with update_site.`,
       )
     }
     const cf: unknown = Reflect.get(c.req.raw, 'cf')

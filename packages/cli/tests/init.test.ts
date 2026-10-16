@@ -24,11 +24,13 @@
 //   default permissions, or is left behind.
 // - "removes the SQL file and prints no token when wrangler fails": the `finally` that removes
 //   the directory is gone, or the token is printed before the script succeeded.
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, d1Failed, fakeWrangler, type FakeWrangler } from './support/fake-wrangler.ts'
+import { initialDefinition } from '../src/commands/init.ts'
 import { run } from './support/io.ts'
 import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 
@@ -66,20 +68,26 @@ function setup(
   }
 }
 
+/** The definition of the preset blog in English, as the site's first (ADR-033). */
+const BLOG_DEFINITION =
+  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description","date"]}}}}'
+
 const SCRIPT = [
-  "INSERT INTO sites (id, created_at, updated_at) VALUES ('blog', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
+  `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('blog', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00R30C1G60R30C1G6', 'blog', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00W3GE1R70W3GE1R7', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'blog' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',
 ].join('\n')
 
 /** The script of `init --site docs` on a database whose owner owns `blog`. */
 const ANOTHER_SITE = [
-  "INSERT INTO sites (id, created_at, updated_at) VALUES ('docs', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO NOTHING;",
+  `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('docs', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00C1G60R30C1G60R3', 'docs', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00G2081040G208104', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'docs' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   '',
 ].join('\n')
 const SECRET_OF_ANOTHER = `hw_pat_${'2'.repeat(52)}`
@@ -256,7 +264,7 @@ describe('hollware init', () => {
   it.each([
     [
       [],
-      /^hollware init: --site is required: name the site, as in hollware\.config\.ts\. Run "hollware init --help" for the options\.$/,
+      /^hollware init: --site is required: name the site, such as --site my-site\. Run "hollware init --help" for the options\.$/,
     ],
     [['--site', 'Blog'], /^hollware init: invalid --site "Blog": a site key is lowercase letters/],
     [
@@ -315,5 +323,31 @@ describe('hollware init', () => {
       'hollware init: wrangler could not run the SQL: UNIQUE constraint failed: users.id: SQLITE_CONSTRAINT',
     ])
     expect(existsSync(project.scratch)).toBe(false)
+  })
+})
+
+describe('the first definition of a site', () => {
+  it('is the preset, in the locales given, the first the default', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'init-definition-'))
+
+    expect(initialDefinition(cwd, 'docs', 'es, en')).toMatchObject({
+      locales: ['es', 'en'],
+      defaultLocale: 'es',
+      collections: { docs: { routes: { es: '/docs/:slug/', en: '/en/docs/:slug/' } } },
+    })
+    expect(() => initialDefinition(cwd, 'wiki', undefined)).toThrow(
+      '--preset is one of blog, docs, empty',
+    )
+    expect(() => initialDefinition(cwd, undefined, 'en,EN!')).toThrow('"EN!" is not one')
+  })
+
+  it('is none in a project with a hollware.config.ts, which moves on its own', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'init-definition-'))
+    writeFileSync(join(cwd, 'hollware.config.ts'), 'export default {}\n')
+
+    expect(initialDefinition(cwd, undefined, undefined)).toBeNull()
+    expect(() => initialDefinition(cwd, 'blog', undefined)).toThrow(
+      'leave out --preset and --locales',
+    )
   })
 })

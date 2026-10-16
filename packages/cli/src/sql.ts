@@ -149,6 +149,12 @@ export function insertToken(token: NewToken): string {
   return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at${kind[0]}) VALUES (${quote(token.id)}, ${quote(token.site)}, ${quote(token.userId)}, ${quote(token.label)}, ${quote(token.hash)}, ${quote(JSON.stringify(token.scopes))}, ${quote(token.expiresAt)}, ${quote(token.now)}, ${quote(token.now)}${kind[1]});`
 }
 
+/** The definition `init` gives a site (ADR-033), with the id of the change that records it. */
+export interface InitialStructure {
+  definition: unknown
+  changeId: string
+}
+
 export interface FirstSite {
   site: string
   ownerId: string
@@ -156,6 +162,29 @@ export interface FirstSite {
   memberId: string
   ownerName: string | undefined
   token: NewToken
+  /** The site's first definition; none for a project whose hollware.config.ts moves on its own. */
+  structure?: InitialStructure | undefined
+}
+
+/** The row of the site: with a definition, given only to a site that has none yet. */
+function siteRow(site: string, now: string, structure: InitialStructure | undefined): string {
+  if (structure === undefined) {
+    return `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(now)}, ${quote(now)}) ON CONFLICT (id) DO NOTHING;`
+  }
+  return `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES (${quote(site)}, ${quote(JSON.stringify(structure.definition))}, 1, ${quote(now)}, ${quote(now)}) ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`
+}
+
+/** The change that made version 1 of the site, by its owner, if this script made it. */
+function siteChange(
+  site: string,
+  ownerId: string,
+  now: string,
+  structure: InitialStructure | undefined,
+): string[] {
+  if (structure === undefined) return []
+  return [
+    `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT ${quote(structure.changeId)}, id, 1, ${quote(ownerId)}, NULL, NULL, definition, ${quote(now)}, ${quote(now)} FROM sites WHERE id = ${quote(site)} AND version = 1 AND updated_at = ${quote(now)};`,
+  ]
 }
 
 /**
@@ -163,13 +192,21 @@ export interface FirstSite {
  * member of the site with the role owner, and the owner's first token. `users.role` gets the
  * owner too, the one name of a role that its CHECK and `members` share.
  */
-export function initScript({ site, ownerId, memberId, ownerName, token }: FirstSite): string {
+export function initScript({
+  site,
+  ownerId,
+  memberId,
+  ownerName,
+  token,
+  structure,
+}: FirstSite): string {
   const name = ownerName === undefined ? 'NULL' : quote(ownerName)
   return [
-    `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(token.now)}, ${quote(token.now)}) ON CONFLICT (id) DO NOTHING;`,
+    siteRow(site, token.now, structure),
     `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
+    ...siteChange(site, ownerId, token.now, structure),
     '',
   ].join('\n')
 }
@@ -179,17 +216,25 @@ export interface AnotherSite {
   ownerId: string
   memberId: string
   token: NewToken
+  structure?: InitialStructure | undefined
 }
 
 /**
  * What `init` writes for a site of a deployment that has an owner already: the site, the owner as
  * its owner too (one person across the sites of a deployment), and a token of that site.
  */
-export function anotherSiteScript({ site, ownerId, memberId, token }: AnotherSite): string {
+export function anotherSiteScript({
+  site,
+  ownerId,
+  memberId,
+  token,
+  structure,
+}: AnotherSite): string {
   return [
-    `INSERT INTO sites (id, created_at, updated_at) VALUES (${quote(site)}, ${quote(token.now)}, ${quote(token.now)}) ON CONFLICT (id) DO NOTHING;`,
+    siteRow(site, token.now, structure),
     `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
+    ...siteChange(site, ownerId, token.now, structure),
     '',
   ].join('\n')
 }

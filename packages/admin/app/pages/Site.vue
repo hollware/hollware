@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { when } from '../lib/entries.ts'
-import { sitePreset, type Preset } from '../lib/presets.ts'
+import { sitePreset, type Preset } from '@hollware/core'
 import { api, auth } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 

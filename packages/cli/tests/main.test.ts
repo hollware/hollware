@@ -192,7 +192,7 @@ describe('an error of a command', () => {
       ],
     })
     expect((await run(['init'])).err).toEqual([
-      'hollware init: --site is required: name the site, as in hollware.config.ts. Run "hollware init --help" for the options.',
+      'hollware init: --site is required: name the site, such as --site my-site. Run "hollware init --help" for the options.',
     ])
   })
 

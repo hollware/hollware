@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import StructureDialogs from '../components/StructureDialogs.vue'
 import type { Output } from '../lib/api.ts'
-import { collectionPreset, type Preset } from '../lib/presets.ts'
+import { collectionPreset, type Preset } from '@hollware/core'
 import { api } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 

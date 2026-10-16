@@ -1,14 +1,16 @@
-import type { Output } from './api.ts'
+import type { CollectionDefinitionData, SiteDefinitionData } from './definition.ts'
 
 /**
- * Where a new collection or site starts (ADR-033): a blog, docs, or nothing. Each is a definition
+ * Where a new collection or site starts (ADR-033), in the admin and in `hollware init`: a blog, docs, or nothing. Each is a definition
  * the person then changes, with a route per locale that the collection's name begins.
  */
 
-type Definition = Output<'get_structure'>['definition']
-export type CollectionDefinition = Definition['collections'][string]
+type Definition = SiteDefinitionData
+type CollectionDefinition = CollectionDefinitionData
 
-export type Preset = 'blog' | 'docs' | 'empty'
+export const PRESETS = ['blog', 'docs', 'empty'] as const
+
+export type Preset = (typeof PRESETS)[number]
 
 /** The path of an entry in each locale: the default one at the root, the others under theirs. */
 export function routesFor(

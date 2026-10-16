@@ -113,8 +113,8 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
       ...(owners.length === 0
         ? [
             '',
-            'Next: create your site and its owner in the remote database, with the key of the site in',
-            'hollware.config.ts. It prints a token for your agents and a link to set up your passkey:',
+            'Next: create your site and its owner in the remote database. It prints a token for your',
+            'agents and a link to set up your passkey; shape the site in the admin afterwards:',
             '  hollware init --site <key> --remote',
           ]
         : []),

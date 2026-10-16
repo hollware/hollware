@@ -34,7 +34,9 @@ export const USAGE = [
   '',
   'Options:',
   '  --name <name>    The name of the Worker and of its database (default: the name of <dir>)',
-  '  --site <key>     The key of your site in hollware.config.ts (default: my-site)',
+  '  --site <key>     The key of your site, such as my-site; it never changes (default: my-site)',
+  '  --preset <name>  What the site starts with: blog, docs or empty (default: blog)',
+  '  --locales <list> Its locales, comma-separated, the first the default (default: en)',
   '  --pm <npm|pnpm>  The package manager that installs (default: npm)',
   '  --yes            Take the defaults: <dir> is my-hollware when it is not given',
   '  --no-install     Do not install, migrate or make the site',
@@ -55,7 +57,7 @@ export class CreateError extends Error {
 
 /** A Worker's name: lowercase letters, digits and hyphens, as Cloudflare takes it. */
 const WORKER_NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
-/** A site key, as hollware.config.ts takes it. */
+/** A site key, as a site's definition takes it (ADR-033). */
 const SITE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 /** What `@hollware/*` and `hollware` say in the template's package.json. */
 const VERSION_PLACEHOLDER = 'HOLLWARE_VERSION'
@@ -68,6 +70,8 @@ export interface Choices {
   readonly pm: 'npm' | 'pnpm'
   readonly install: boolean
   readonly git: boolean
+  /** `--preset` and `--locales` as given, for `hollware init`, which checks them. */
+  readonly initFlags: readonly string[]
 }
 
 /** The choices of a run, from its arguments. */
@@ -80,6 +84,8 @@ export function readChoices(argv: readonly string[]): Choices {
         options: {
           name: { type: 'string' },
           site: { type: 'string' },
+          preset: { type: 'string' },
+          locales: { type: 'string' },
           pm: { type: 'string' },
           yes: { type: 'boolean' },
           'no-install': { type: 'boolean' },
@@ -117,6 +123,10 @@ export function readChoices(argv: readonly string[]): Choices {
     pm,
     install: values['no-install'] !== true,
     git: values['no-git'] !== true,
+    initFlags: [
+      ...(values.preset === undefined ? [] : ['--preset', values.preset]),
+      ...(values.locales === undefined ? [] : ['--locales', values.locales]),
+    ],
   }
 }
 
@@ -141,7 +151,7 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
     // Queue names are unique in an account: each project has its own.
     ['hollware-events', `${choices.name}-events`],
   ])
-  for (const file of ['hollware.config.ts', 'README.md']) {
+  for (const file of ['README.md']) {
     replaceIn(join(target, file), [['my-site', choices.site]])
   }
   if (choices.pm === 'pnpm') writeFileSync(join(target, 'pnpm-workspace.yaml'), PNPM_WORKSPACE)
@@ -184,7 +194,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
         `  cd ${choices.dir}`,
         `  ${choices.pm} install`,
         `  ${choices.pm} exec hollware migrate --local`,
-        `  ${choices.pm} exec hollware init --site ${choices.site} --local`,
+        `  ${choices.pm} exec hollware init --site ${[choices.site, ...choices.initFlags].join(' ')} --local`,
       ].join('\n'),
     )
     return 0
@@ -198,7 +208,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
     io,
     'Making the site',
     hollware,
-    ['init', '--site', choices.site, '--local'],
+    ['init', '--site', choices.site, ...choices.initFlags, '--local'],
     target,
   )
   io.out(init.stdout.trim())

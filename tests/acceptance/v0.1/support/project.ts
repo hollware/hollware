@@ -105,6 +105,12 @@ export function createProject(): Project {
   rmSync(join(directory, '.wrangler'), { recursive: true, force: true })
   symlinkSync(join(REPOSITORY, 'node_modules'), join(directory, 'node_modules'))
   pointAtMigrations(directory)
+  // The playground is a project with a config, which its Worker moves into the database (ADR-033):
+  // `hollware init` sees it there, as in apps/playground, and leaves the structure to the move.
+  cpSync(
+    join(REPOSITORY, 'apps', 'playground', 'hollware.config.ts'),
+    join(directory, 'hollware.config.ts'),
+  )
 
   const env: NodeJS.ProcessEnv = { ...process.env, WRANGLER_SEND_METRICS: 'false' }
   const cli = cliCommand(REPOSITORY)

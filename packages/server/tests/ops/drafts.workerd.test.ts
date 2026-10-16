@@ -684,7 +684,7 @@ describe('update_draft', () => {
       name: 'HollwareError',
       code: 'unknown_collection',
       message: `The entry ${id} belongs to the collection "legacy", which the config of the site no longer declares.`,
-      fix: 'Ask whoever maintains hollware.config.ts to declare the collection "legacy" again: the entry and its revisions are kept.',
+      fix: 'Ask an owner of the site to add the collection "legacy" again, with set_collection or in the admin: the entry and its revisions are kept.',
     })
     await expect(world.agent.publish({ id, version: 1 })).rejects.toMatchObject({
       code: 'unknown_collection',

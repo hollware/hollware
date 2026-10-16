@@ -20,7 +20,7 @@ export function id(prefix: IdPrefix) {
 }
 
 /**
- * The site a row belongs to: the site's key in `hollware.config.ts`, which is also the id of its
+ * The site a row belongs to: the site's key, which is also the id of its
  * row in `sites`. Every table but the deployment-wide ones carries it (ADR-006).
  */
 export function siteId() {
