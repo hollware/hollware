@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
 import { onMounted, ref } from 'vue'
 import DiffView from '../components/DiffView.vue'
@@ -130,97 +131,99 @@ async function requestChanges() {
 </script>
 
 <template>
-  <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-    <section aria-label="Pending reviews" class="space-y-2">
-      <h1 class="text-xl font-semibold">Reviews</h1>
-      <p v-if="reviews.length === 0" class="text-muted">Nothing waits for review.</p>
-      <button
-        v-for="review in reviews"
-        :key="review.id"
-        type="button"
-        class="block w-full rounded border p-2 text-left text-sm"
-        :class="chosen?.id === review.id ? 'border-primary' : 'border-default'"
-        @click="choose(review)"
-      >
-        <span class="font-medium">{{
-          review.entry.frontmatter['title'] ?? review.entry.slug
-        }}</span>
-        <span class="block text-muted">
-          {{ review.entry.locale }} · asked by {{ review.requestedByName ?? review.requestedBy }} ·
-          {{ new Date(review.requestedAt).toLocaleString() }}
-        </span>
-      </button>
-    </section>
-    <section v-if="chosen !== null" aria-label="The review" class="space-y-4">
-      <p class="text-sm text-muted">
-        On the left what is live ({{ live === '' ? 'nothing yet' : 'the published revision' }}), on
-        the right the revision asked for.
-      </p>
-      <DiffView :original="live" :modified="asked" />
-      <VerdictList :verdict="verdict" />
-      <section aria-label="Comments" class="space-y-2">
-        <h2 class="text-sm font-semibold">Comments</h2>
-        <p v-if="chosen.comments.length === 0" class="text-sm text-muted">No comments yet.</p>
-        <article
-          v-for="item in chosen.comments"
-          :key="item.id"
-          class="rounded border border-default p-3 text-sm"
+  <Page title="Reviews">
+    <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
+      <section aria-label="Pending reviews" class="space-y-2">
+        <p v-if="reviews.length === 0" class="text-muted">Nothing waits for review.</p>
+        <button
+          v-for="review in reviews"
+          :key="review.id"
+          type="button"
+          class="block w-full rounded border p-2 text-left text-sm"
+          :class="chosen?.id === review.id ? 'border-primary' : 'border-default'"
+          @click="choose(review)"
         >
-          <p class="text-muted">
-            {{ item.authorName ?? item.author }}
-            <UBadge
-              v-if="item.client !== null && item.client !== 'hollware-admin'"
-              :label="item.client"
-              variant="subtle"
-              size="sm"
+          <span class="font-medium">{{
+            review.entry.frontmatter['title'] ?? review.entry.slug
+          }}</span>
+          <span class="block text-muted">
+            {{ review.entry.locale }} · asked by
+            {{ review.requestedByName ?? review.requestedBy }} ·
+            {{ new Date(review.requestedAt).toLocaleString() }}
+          </span>
+        </button>
+      </section>
+      <section v-if="chosen !== null" aria-label="The review" class="space-y-4">
+        <p class="text-sm text-muted">
+          On the left what is live ({{ live === '' ? 'nothing yet' : 'the published revision' }}),
+          on the right the revision asked for.
+        </p>
+        <DiffView :original="live" :modified="asked" />
+        <VerdictList :verdict="verdict" />
+        <section aria-label="Comments" class="space-y-2">
+          <h2 class="text-sm font-semibold">Comments</h2>
+          <p v-if="chosen.comments.length === 0" class="text-sm text-muted">No comments yet.</p>
+          <article
+            v-for="item in chosen.comments"
+            :key="item.id"
+            class="rounded border border-default p-3 text-sm"
+          >
+            <p class="text-muted">
+              {{ item.authorName ?? item.author }}
+              <UBadge
+                v-if="item.client !== null && item.client !== 'hollware-admin'"
+                :label="item.client"
+                variant="subtle"
+                size="sm"
+              />
+              · {{ new Date(item.at).toLocaleString() }}
+            </p>
+            <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
+          </article>
+          <div class="flex items-end gap-3">
+            <UFormField label="Comment" class="flex-1">
+              <UTextarea v-model="comment" class="w-full" :rows="2" />
+            </UFormField>
+            <UButton
+              label="Comment"
+              variant="outline"
+              :loading="busy"
+              :disabled="comment.trim() === ''"
+              @click="addComment"
             />
-            · {{ new Date(item.at).toLocaleString() }}
-          </p>
-          <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
-        </article>
-        <div class="flex items-end gap-3">
-          <UFormField label="Comment" class="flex-1">
-            <UTextarea v-model="comment" class="w-full" :rows="2" />
+          </div>
+        </section>
+        <div class="flex flex-wrap items-end gap-3">
+          <UButton label="Approve and publish" color="success" :loading="busy" @click="approve()" />
+          <UFormField label="What to change" class="min-w-64 flex-1">
+            <UTextarea v-model="note" class="w-full" :rows="2" />
           </UFormField>
           <UButton
-            label="Comment"
+            label="Ask for changes"
+            color="warning"
             variant="outline"
             :loading="busy"
-            :disabled="comment.trim() === ''"
-            @click="addComment"
+            :disabled="note.trim() === ''"
+            @click="requestChanges"
           />
         </div>
       </section>
-      <div class="flex flex-wrap items-end gap-3">
-        <UButton label="Approve and publish" color="success" :loading="busy" @click="approve()" />
-        <UFormField label="What to change" class="min-w-64 flex-1">
-          <UTextarea v-model="note" class="w-full" :rows="2" />
-        </UFormField>
-        <UButton
-          label="Ask for changes"
-          color="warning"
-          variant="outline"
-          :loading="busy"
-          :disabled="note.trim() === ''"
-          @click="requestChanges"
-        />
-      </div>
-    </section>
 
-    <UModal v-model:open="acknowledgeOpen" title="Approve with these warnings?">
-      <template #body>
-        <ul class="space-y-2 text-sm">
-          <li v-for="(warning, index) in warnings" :key="index">
-            <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
-            <p>{{ warning.message }}</p>
-            <p class="text-muted">{{ warning.fix }}</p>
-          </li>
-        </ul>
-      </template>
-      <template #footer>
-        <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
-        <UButton label="Approve anyway" color="warning" @click="approve(warnings)" />
-      </template>
-    </UModal>
-  </div>
+      <UModal v-model:open="acknowledgeOpen" title="Approve with these warnings?">
+        <template #body>
+          <ul class="space-y-2 text-sm">
+            <li v-for="(warning, index) in warnings" :key="index">
+              <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
+              <p>{{ warning.message }}</p>
+              <p class="text-muted">{{ warning.fix }}</p>
+            </li>
+          </ul>
+        </template>
+        <template #footer>
+          <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
+          <UButton label="Approve anyway" color="warning" @click="approve(warnings)" />
+        </template>
+      </UModal>
+    </div>
+  </Page>
 </template>

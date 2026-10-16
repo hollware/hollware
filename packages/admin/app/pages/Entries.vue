@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Output } from '../lib/api.ts'
@@ -121,99 +122,106 @@ const locales = computed(() => [
 </script>
 
 <template>
-  <div class="space-y-5">
-    <div class="flex flex-wrap items-center gap-3">
-      <h1 class="text-xl font-semibold">Entries</h1>
+  <Page title="Entries">
+    <template #actions>
       <UButton
-        class="ml-auto"
         label="New entry"
         icon="i-lucide-plus"
         :to="{ path: '/entries/new', query: collection === '' ? {} : { collection } }"
       />
-    </div>
-    <div v-if="site !== null" class="flex flex-wrap items-center gap-2">
-      <USelect
-        v-model="collection"
-        :items="site.collections.map((c) => c.name)"
-        aria-label="Collection"
-        class="w-40"
-      />
-      <USelect v-model="locale" :items="locales" aria-label="Locale" class="w-36" />
-      <USelect v-model="status" :items="statuses" aria-label="Status" class="w-36" />
-      <UInput
-        v-model="text"
-        icon="i-lucide-search"
-        placeholder="Filter by title, slug or tag"
-        aria-label="Filter"
-        class="min-w-0 flex-1 basis-56"
-      />
-    </div>
+    </template>
+    <div class="space-y-5">
+      <div v-if="site !== null" class="flex flex-wrap items-center gap-2">
+        <USelect
+          v-model="collection"
+          :items="site.collections.map((c) => c.name)"
+          aria-label="Collection"
+          class="w-40"
+        />
+        <USelect v-model="locale" :items="locales" aria-label="Locale" class="w-36" />
+        <USelect v-model="status" :items="statuses" aria-label="Status" class="w-36" />
+        <UInput
+          v-model="text"
+          icon="i-lucide-search"
+          placeholder="Filter by title, slug or tag"
+          aria-label="Filter"
+          class="min-w-0 flex-1 basis-56"
+        />
+      </div>
 
-    <p v-if="loading && entries.length === 0" class="text-muted">Loading…</p>
-    <p v-else-if="shown.length === 0" class="text-muted">
-      {{ entries.length === 0 ? 'No entries here yet.' : 'No loaded entry matches the filter.' }}
-    </p>
-    <div v-else class="overflow-x-auto rounded-lg border border-default">
-      <table class="w-full text-sm">
-        <thead class="bg-elevated/50 text-left text-xs tracking-wide text-muted uppercase">
-          <tr>
-            <th class="px-4 py-2 font-medium">Title</th>
-            <th class="px-4 py-2 font-medium">Locale</th>
-            <th class="px-4 py-2 font-medium">Status</th>
-            <th class="px-4 py-2 font-medium">Updated</th>
-            <th class="px-4 py-2"><span class="sr-only">On the site</span></th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-default">
-          <tr v-for="entry in shown" :key="entry.id">
-            <td class="max-w-0 px-4 py-2.5">
-              <RouterLink :to="entryPath(entry)" class="block truncate font-medium hover:underline">
-                {{ titleOf(entry) }}
-              </RouterLink>
-              <span class="block truncate font-mono text-xs text-muted">{{ entry.slug }}</span>
-            </td>
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              <span class="font-mono">{{ entry.locale }}</span>
-              <RouterLink
-                v-for="other in translationsOf(entry)"
-                :key="other.id"
-                :to="entryPath(other)"
-                :aria-label="`${titleOf(other)} (${other.locale})`"
-                class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
-                >{{ other.locale }}</RouterLink
-              >
-            </td>
-            <td class="px-4 py-2.5 whitespace-nowrap">
-              <UBadge :label="entry.status" :color="STATUS_COLOR[entry.status]" variant="subtle" />
-              <UBadge
-                v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
-                label="changes"
-                color="warning"
-                variant="outline"
-                class="ml-1"
-              />
-              <span v-if="entry.scheduledAt !== null" class="block text-xs text-muted">{{
-                when(entry.scheduledAt)
-              }}</span>
-            </td>
-            <td class="px-4 py-2.5 whitespace-nowrap text-muted">{{ when(entry.updatedAt) }}</td>
-            <td class="px-4 py-2.5 text-right">
-              <UButton
-                v-if="liveUrl(entry) !== null"
-                :to="liveUrl(entry) ?? undefined"
-                target="_blank"
-                icon="i-lucide-external-link"
-                variant="ghost"
-                size="sm"
-                :aria-label="`${titleOf(entry)} on the site`"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <p v-if="loading && entries.length === 0" class="text-muted">Loading…</p>
+      <p v-else-if="shown.length === 0" class="text-muted">
+        {{ entries.length === 0 ? 'No entries here yet.' : 'No loaded entry matches the filter.' }}
+      </p>
+      <div v-else class="overflow-x-auto rounded-lg border border-default">
+        <table class="w-full text-sm">
+          <thead class="bg-elevated/50 text-left text-xs tracking-wide text-muted uppercase">
+            <tr>
+              <th class="px-4 py-2 font-medium">Title</th>
+              <th class="px-4 py-2 font-medium">Locale</th>
+              <th class="px-4 py-2 font-medium">Status</th>
+              <th class="px-4 py-2 font-medium">Updated</th>
+              <th class="px-4 py-2"><span class="sr-only">On the site</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-default">
+            <tr v-for="entry in shown" :key="entry.id">
+              <td class="max-w-0 px-4 py-2.5">
+                <RouterLink
+                  :to="entryPath(entry)"
+                  class="block truncate font-medium hover:underline"
+                >
+                  {{ titleOf(entry) }}
+                </RouterLink>
+                <span class="block truncate font-mono text-xs text-muted">{{ entry.slug }}</span>
+              </td>
+              <td class="px-4 py-2.5 whitespace-nowrap">
+                <span class="font-mono">{{ entry.locale }}</span>
+                <RouterLink
+                  v-for="other in translationsOf(entry)"
+                  :key="other.id"
+                  :to="entryPath(other)"
+                  :aria-label="`${titleOf(other)} (${other.locale})`"
+                  class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
+                  >{{ other.locale }}</RouterLink
+                >
+              </td>
+              <td class="px-4 py-2.5 whitespace-nowrap">
+                <UBadge
+                  :label="entry.status"
+                  :color="STATUS_COLOR[entry.status]"
+                  variant="subtle"
+                />
+                <UBadge
+                  v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
+                  label="changes"
+                  color="warning"
+                  variant="outline"
+                  class="ml-1"
+                />
+                <span v-if="entry.scheduledAt !== null" class="block text-xs text-muted">{{
+                  when(entry.scheduledAt)
+                }}</span>
+              </td>
+              <td class="px-4 py-2.5 whitespace-nowrap text-muted">{{ when(entry.updatedAt) }}</td>
+              <td class="px-4 py-2.5 text-right">
+                <UButton
+                  v-if="liveUrl(entry) !== null"
+                  :to="liveUrl(entry) ?? undefined"
+                  target="_blank"
+                  icon="i-lucide-external-link"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="`${titleOf(entry)} on the site`"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="cursor !== null" class="flex justify-center">
+        <UButton label="Load more" variant="outline" :loading="loading" @click="load(true)" />
+      </div>
     </div>
-    <div v-if="cursor !== null" class="flex justify-center">
-      <UButton label="Load more" variant="outline" :loading="loading" @click="load(true)" />
-    </div>
-  </div>
+  </Page>
 </template>

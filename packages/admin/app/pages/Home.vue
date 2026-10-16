@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { computed, onMounted, ref } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { entryPath, STATUS_COLOR, titleOf, when } from '../lib/entries.ts'
@@ -44,113 +45,117 @@ const count = new Intl.NumberFormat()
 </script>
 
 <template>
-  <div class="space-y-8">
-    <h1 class="text-xl font-semibold">Home</h1>
-
-    <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
-      <section aria-labelledby="read" class="space-y-3 rounded-lg border border-default p-5">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 id="read" class="font-semibold">Most read, last 30 days</h2>
-          <span v-if="stats?.outcome === 'ok'" class="font-mono text-sm text-muted tabular-nums"
-            >{{ count.format(totalViews) }} views</span
-          >
-        </div>
-        <p v-if="stats === null" class="text-sm text-muted">Loading…</p>
-        <p v-else-if="stats.outcome === 'unavailable'" class="text-sm text-muted">
-          This deployment has no analytics. Bind Analytics Engine and add the beacon to the site to
-          see what readers read.
-        </p>
-        <p v-else-if="(stats.pages ?? []).length === 0" class="text-sm text-muted">
-          No page views yet.
-        </p>
-        <ol v-else class="space-y-2">
-          <li v-for="page in stats.pages" :key="page.path" class="space-y-1 text-sm">
-            <div class="flex items-baseline justify-between gap-3">
-              <RouterLink
-                v-if="page.entry !== null"
-                :to="entryPath(page.entry)"
-                class="min-w-0 truncate font-medium hover:underline"
-                >{{ titleOf(page.entry) }}</RouterLink
-              >
-              <span v-else class="min-w-0 truncate font-mono text-muted">{{ page.path }}</span>
-              <span class="font-mono text-muted tabular-nums">{{ count.format(page.views) }}</span>
-            </div>
-            <div class="h-1 rounded-full bg-elevated" aria-hidden="true">
-              <div
-                class="h-1 rounded-full bg-secondary"
-                :style="{ width: `${(page.views / topViews) * 100}%` }"
-              />
-            </div>
-          </li>
-        </ol>
-      </section>
-
-      <section aria-labelledby="waiting" class="space-y-3 rounded-lg border border-default p-5">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 id="waiting" class="font-semibold">Waiting for review</h2>
-          <RouterLink to="/reviews" class="text-sm text-muted hover:text-highlighted"
-            >All reviews</RouterLink
-          >
-        </div>
-        <p v-if="reviews === null" class="text-sm text-muted">Loading…</p>
-        <p v-else-if="reviews.length === 0" class="text-sm text-muted">Nothing waits for review.</p>
-        <ul v-else class="divide-y divide-default text-sm">
-          <li v-for="item in reviews" :key="item.id" class="py-2">
-            <RouterLink to="/reviews" class="font-medium hover:underline">{{
-              titleOf(item.entry)
-            }}</RouterLink>
-            <p class="text-muted">
-              asked by {{ item.requestedByName ?? item.requestedBy }} ·
-              {{ when(item.requestedAt) }}
-            </p>
-          </li>
-        </ul>
-      </section>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
-      <section aria-labelledby="drafts" class="space-y-3">
-        <div class="flex items-baseline justify-between gap-3">
-          <h2 id="drafts" class="font-semibold">Unpublished work</h2>
-          <RouterLink to="/entries" class="text-sm text-muted hover:text-highlighted"
-            >All entries</RouterLink
-          >
-        </div>
-        <p v-if="drafts === null" class="text-sm text-muted">Loading…</p>
-        <p v-else-if="drafts.length === 0" class="text-sm text-muted">
-          Everything written is published.
-        </p>
-        <ul v-else class="divide-y divide-default rounded-lg border border-default text-sm">
-          <li v-for="entry in drafts" :key="entry.id" class="flex items-center gap-3 px-4 py-2.5">
-            <RouterLink
-              :to="entryPath(entry)"
-              class="min-w-0 flex-1 truncate font-medium hover:underline"
-              >{{ titleOf(entry) }}</RouterLink
+  <Page title="Home">
+    <div class="space-y-8">
+      <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <section aria-labelledby="read" class="space-y-3 rounded-lg border border-default p-5">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="read" class="font-semibold">Most read, last 30 days</h2>
+            <span v-if="stats?.outcome === 'ok'" class="font-mono text-sm text-muted tabular-nums"
+              >{{ count.format(totalViews) }} views</span
             >
-            <span class="font-mono text-xs text-muted">{{ entry.locale }}</span>
-            <UBadge
-              :label="entry.status === 'published' ? 'changes' : entry.status"
-              :color="entry.status === 'published' ? 'warning' : STATUS_COLOR[entry.status]"
-              variant="subtle"
-            />
-          </li>
-        </ul>
-      </section>
+          </div>
+          <p v-if="stats === null" class="text-sm text-muted">Loading…</p>
+          <p v-else-if="stats.outcome === 'unavailable'" class="text-sm text-muted">
+            This deployment has no analytics. Bind Analytics Engine and add the beacon to the site
+            to see what readers read.
+          </p>
+          <p v-else-if="(stats.pages ?? []).length === 0" class="text-sm text-muted">
+            No page views yet.
+          </p>
+          <ol v-else class="space-y-2">
+            <li v-for="page in stats.pages" :key="page.path" class="space-y-1 text-sm">
+              <div class="flex items-baseline justify-between gap-3">
+                <RouterLink
+                  v-if="page.entry !== null"
+                  :to="entryPath(page.entry)"
+                  class="min-w-0 truncate font-medium hover:underline"
+                  >{{ titleOf(page.entry) }}</RouterLink
+                >
+                <span v-else class="min-w-0 truncate font-mono text-muted">{{ page.path }}</span>
+                <span class="font-mono text-muted tabular-nums">{{
+                  count.format(page.views)
+                }}</span>
+              </div>
+              <div class="h-1 rounded-full bg-elevated" aria-hidden="true">
+                <div
+                  class="h-1 rounded-full bg-secondary"
+                  :style="{ width: `${(page.views / topViews) * 100}%` }"
+                />
+              </div>
+            </li>
+          </ol>
+        </section>
 
-      <section aria-labelledby="audit" class="space-y-3">
-        <h2 id="audit" class="font-semibold">Last audit</h2>
-        <p v-if="audit === null" class="text-sm text-muted">
-          No audit report yet. The auditor of @hollware/agents writes one a week.
-        </p>
-        <RouterLink
-          v-else
-          :to="entryPath(audit)"
-          class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
-        >
-          <p class="font-medium">{{ titleOf(audit) }}</p>
-          <p class="text-muted">Written {{ when(audit.updatedAt) }}</p>
-        </RouterLink>
-      </section>
+        <section aria-labelledby="waiting" class="space-y-3 rounded-lg border border-default p-5">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="waiting" class="font-semibold">Waiting for review</h2>
+            <RouterLink to="/reviews" class="text-sm text-muted hover:text-highlighted"
+              >All reviews</RouterLink
+            >
+          </div>
+          <p v-if="reviews === null" class="text-sm text-muted">Loading…</p>
+          <p v-else-if="reviews.length === 0" class="text-sm text-muted">
+            Nothing waits for review.
+          </p>
+          <ul v-else class="divide-y divide-default text-sm">
+            <li v-for="item in reviews" :key="item.id" class="py-2">
+              <RouterLink to="/reviews" class="font-medium hover:underline">{{
+                titleOf(item.entry)
+              }}</RouterLink>
+              <p class="text-muted">
+                asked by {{ item.requestedByName ?? item.requestedBy }} ·
+                {{ when(item.requestedAt) }}
+              </p>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <section aria-labelledby="drafts" class="space-y-3">
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="drafts" class="font-semibold">Unpublished work</h2>
+            <RouterLink to="/entries" class="text-sm text-muted hover:text-highlighted"
+              >All entries</RouterLink
+            >
+          </div>
+          <p v-if="drafts === null" class="text-sm text-muted">Loading…</p>
+          <p v-else-if="drafts.length === 0" class="text-sm text-muted">
+            Everything written is published.
+          </p>
+          <ul v-else class="divide-y divide-default rounded-lg border border-default text-sm">
+            <li v-for="entry in drafts" :key="entry.id" class="flex items-center gap-3 px-4 py-2.5">
+              <RouterLink
+                :to="entryPath(entry)"
+                class="min-w-0 flex-1 truncate font-medium hover:underline"
+                >{{ titleOf(entry) }}</RouterLink
+              >
+              <span class="font-mono text-xs text-muted">{{ entry.locale }}</span>
+              <UBadge
+                :label="entry.status === 'published' ? 'changes' : entry.status"
+                :color="entry.status === 'published' ? 'warning' : STATUS_COLOR[entry.status]"
+                variant="subtle"
+              />
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="audit" class="space-y-3">
+          <h2 id="audit" class="font-semibold">Last audit</h2>
+          <p v-if="audit === null" class="text-sm text-muted">
+            No audit report yet. The auditor of @hollware/agents writes one a week.
+          </p>
+          <RouterLink
+            v-else
+            :to="entryPath(audit)"
+            class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
+          >
+            <p class="font-medium">{{ titleOf(audit) }}</p>
+            <p class="text-muted">Written {{ when(audit.updatedAt) }}</p>
+          </RouterLink>
+        </section>
+      </div>
     </div>
-  </div>
+  </Page>
 </template>

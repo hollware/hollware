@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, ref, watch } from 'vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
@@ -281,216 +282,217 @@ const tabs = [
 </script>
 
 <template>
-  <p v-if="missing" class="text-muted">There is no such entry.</p>
-  <div v-else-if="entry !== null" class="space-y-5">
-    <div class="space-y-3">
-      <div class="flex flex-wrap items-start gap-3">
-        <div class="min-w-0 flex-1 space-y-1">
-          <h1 class="text-xl font-semibold text-balance">{{ titleOf(entry) }}</h1>
-          <p class="flex flex-wrap items-center gap-2 text-sm text-muted">
-            <UBadge :label="entry.status" :color="STATUS_COLOR[entry.status]" variant="subtle" />
-            <UBadge
-              v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
-              label="unpublished changes"
-              color="warning"
-              variant="outline"
-            />
-            <span v-if="entry.scheduledAt !== null">publishes {{ when(entry.scheduledAt) }}</span>
-            <span class="font-mono"
-              >{{ entry.collection }}/{{ entry.slug }} · v{{ entry.version }}</span
-            >
-            <span v-if="dirty" class="text-warning">unsaved</span>
-          </p>
+  <Page :title="entry === null ? 'Entry' : titleOf(entry)">
+    <template v-if="entry !== null" #actions>
+      <UButton
+        v-if="liveUrl !== null"
+        :to="liveUrl"
+        target="_blank"
+        label="View on site"
+        icon="i-lucide-external-link"
+        variant="ghost"
+      />
+      <UButton label="Validate" variant="outline" :loading="busy" @click="check" />
+      <UButton label="Save" :loading="busy" :disabled="!dirty" @click="save" />
+      <UButton
+        label="Publish"
+        color="secondary"
+        :loading="busy"
+        :disabled="!canPublish"
+        @click="publish()"
+      />
+      <UButton
+        v-if="entry.status === 'draft'"
+        label="Schedule"
+        icon="i-lucide-calendar-clock"
+        variant="outline"
+        :disabled="dirty"
+        @click="openSchedule"
+      />
+      <UButton
+        v-if="entry.status !== 'draft'"
+        :label="entry.status === 'scheduled' ? 'Cancel schedule' : 'Unpublish'"
+        color="error"
+        variant="outline"
+        :loading="busy"
+        @click="unpublishOpen = true"
+      />
+    </template>
+    <p v-if="missing" class="text-muted">There is no such entry.</p>
+    <div v-else-if="entry !== null" class="space-y-5">
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-start gap-3">
+          <div class="min-w-0 flex-1 space-y-1">
+            <p class="flex flex-wrap items-center gap-2 text-sm text-muted">
+              <UBadge :label="entry.status" :color="STATUS_COLOR[entry.status]" variant="subtle" />
+              <UBadge
+                v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
+                label="unpublished changes"
+                color="warning"
+                variant="outline"
+              />
+              <span v-if="entry.scheduledAt !== null">publishes {{ when(entry.scheduledAt) }}</span>
+              <span class="font-mono"
+                >{{ entry.collection }}/{{ entry.slug }} · v{{ entry.version }}</span
+              >
+              <span v-if="dirty" class="text-warning">unsaved</span>
+            </p>
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <nav
+          v-if="entry.translationGroup !== null"
+          aria-label="Translations"
+          class="flex flex-wrap items-center gap-2 text-sm"
+        >
+          <span class="text-muted">Translations</span>
+          <template v-for="other in translations" :key="other.id">
+            <span
+              v-if="other.id === entry.id"
+              aria-current="page"
+              class="rounded-md bg-elevated px-2 py-0.5 font-mono text-highlighted"
+              >{{ other.locale }}</span
+            >
+            <RouterLink
+              v-else
+              :to="entryPath(other)"
+              :aria-label="`${titleOf(other)} (${other.locale})`"
+              class="rounded-md border border-default px-2 py-0.5 font-mono hover:bg-elevated"
+              >{{ other.locale }}</RouterLink
+            >
+          </template>
           <UButton
-            v-if="liveUrl !== null"
-            :to="liveUrl"
-            target="_blank"
-            label="View on site"
-            icon="i-lucide-external-link"
+            v-for="locale in untranslated"
+            :key="locale"
+            :to="{
+              path: '/entries/new',
+              query: { collection: entry.collection, locale, group: entry.translationGroup },
+            }"
+            :label="`Translate to ${locale}`"
+            icon="i-lucide-plus"
+            size="xs"
             variant="ghost"
           />
-          <UButton label="Validate" variant="outline" :loading="busy" @click="check" />
-          <UButton label="Save" :loading="busy" :disabled="!dirty" @click="save" />
-          <UButton
-            label="Publish"
-            color="secondary"
-            :loading="busy"
-            :disabled="!canPublish"
-            @click="publish()"
-          />
-          <UButton
-            v-if="entry.status === 'draft'"
-            label="Schedule"
-            icon="i-lucide-calendar-clock"
-            variant="outline"
-            :disabled="dirty"
-            @click="openSchedule"
-          />
-          <UButton
-            v-if="entry.status !== 'draft'"
-            :label="entry.status === 'scheduled' ? 'Cancel schedule' : 'Unpublish'"
-            color="error"
-            variant="outline"
-            :loading="busy"
-            @click="unpublishOpen = true"
-          />
-        </div>
+        </nav>
       </div>
-      <nav
-        v-if="entry.translationGroup !== null"
-        aria-label="Translations"
-        class="flex flex-wrap items-center gap-2 text-sm"
-      >
-        <span class="text-muted">Translations</span>
-        <template v-for="other in translations" :key="other.id">
-          <span
-            v-if="other.id === entry.id"
-            aria-current="page"
-            class="rounded-md bg-elevated px-2 py-0.5 font-mono text-highlighted"
-            >{{ other.locale }}</span
-          >
-          <RouterLink
-            v-else
-            :to="entryPath(other)"
-            :aria-label="`${titleOf(other)} (${other.locale})`"
-            class="rounded-md border border-default px-2 py-0.5 font-mono hover:bg-elevated"
-            >{{ other.locale }}</RouterLink
-          >
-        </template>
-        <UButton
-          v-for="locale in untranslated"
-          :key="locale"
-          :to="{
-            path: '/entries/new',
-            query: { collection: entry.collection, locale, group: entry.translationGroup },
-          }"
-          :label="`Translate to ${locale}`"
-          icon="i-lucide-plus"
-          size="xs"
-          variant="ghost"
-        />
-      </nav>
-    </div>
 
-    <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <MarkdownEditor v-model="text" :diagnostics="diagnostics" />
-      <UTabs :items="tabs" default-value="fields" class="min-w-0" variant="link">
-        <template #fields>
-          <div class="pt-3">
-            <FrontmatterForm v-model="text" :schema="definition?.schema ?? {}" />
-          </div>
-        </template>
-        <template #checks>
-          <div class="pt-3">
-            <VerdictList :verdict="verdict" />
-          </div>
-        </template>
-        <template #preview>
-          <section
-            aria-label="Preview of the saved revision"
-            class="prose mt-3 max-w-none rounded border border-default p-4"
-          >
-            <!-- The HTML that Hollware renders from Comark, which escapes what it does not know. -->
-            <div v-html="entry.html ?? ''" />
-          </section>
-        </template>
-        <template #related>
-          <div class="space-y-2 pt-3 text-sm">
-            <p v-if="related.length === 0" class="text-muted">
-              Nothing related yet. Related entries come from the semantic search of the deployment,
-              for published entries.
-            </p>
-            <RouterLink
-              v-for="other in related"
-              :key="other.id"
-              :to="entryPath(other)"
-              class="block rounded border border-default px-3 py-2 hover:bg-elevated"
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <MarkdownEditor v-model="text" :diagnostics="diagnostics" />
+        <UTabs :items="tabs" default-value="fields" class="min-w-0" variant="link">
+          <template #fields>
+            <div class="pt-3">
+              <FrontmatterForm v-model="text" :schema="definition?.schema ?? {}" />
+            </div>
+          </template>
+          <template #checks>
+            <div class="pt-3">
+              <VerdictList :verdict="verdict" />
+            </div>
+          </template>
+          <template #preview>
+            <section
+              aria-label="Preview of the saved revision"
+              class="prose mt-3 max-w-none rounded border border-default p-4"
             >
-              <span class="font-medium">{{ titleOf(other) }}</span>
-              <span class="block font-mono text-xs text-muted">{{ other.slug }}</span>
-            </RouterLink>
-          </div>
+              <!-- The HTML that Hollware renders from Comark, which escapes what it does not know. -->
+              <div v-html="entry.html ?? ''" />
+            </section>
+          </template>
+          <template #related>
+            <div class="space-y-2 pt-3 text-sm">
+              <p v-if="related.length === 0" class="text-muted">
+                Nothing related yet. Related entries come from the semantic search of the
+                deployment, for published entries.
+              </p>
+              <RouterLink
+                v-for="other in related"
+                :key="other.id"
+                :to="entryPath(other)"
+                class="block rounded border border-default px-3 py-2 hover:bg-elevated"
+              >
+                <span class="font-medium">{{ titleOf(other) }}</span>
+                <span class="block font-mono text-xs text-muted">{{ other.slug }}</span>
+              </RouterLink>
+            </div>
+          </template>
+        </UTabs>
+      </div>
+
+      <UModal v-model:open="conflictOpen" title="Someone changed this entry">
+        <template #body>
+          <p>
+            The entry is at a newer version than the one you edited. Copy what you wrote if you need
+            it, then load the newer version.
+          </p>
         </template>
-      </UTabs>
+        <template #footer>
+          <UButton label="Keep editing" variant="ghost" @click="conflictOpen = false" />
+          <UButton label="Load the newer version" color="warning" @click="reloadTheirs" />
+        </template>
+      </UModal>
+
+      <UModal v-model:open="acknowledgeOpen" title="Publish with these warnings?">
+        <template #body>
+          <ul class="space-y-2 text-sm">
+            <li v-for="(warning, index) in warnings" :key="index">
+              <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
+              <p>{{ warning.message }}</p>
+              <p class="text-muted">{{ warning.fix }}</p>
+            </li>
+          </ul>
+        </template>
+        <template #footer>
+          <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
+          <UButton
+            :label="pendingAt === undefined ? 'Publish anyway' : 'Schedule anyway'"
+            color="warning"
+            @click="publish(warnings, pendingAt)"
+          />
+        </template>
+      </UModal>
+
+      <UModal
+        v-model:open="unpublishOpen"
+        :title="entry.status === 'scheduled' ? 'Cancel the schedule?' : 'Unpublish this entry?'"
+      >
+        <template #body>
+          <p v-if="entry.status === 'scheduled'">
+            The entry stays a draft and is not published at {{ when(entry.scheduledAt ?? '') }}.
+          </p>
+          <p v-else>
+            The entry leaves the public site: its page answers 404 and it drops out of listings and
+            search. It stays here as a draft, with all its revisions, and can be published again.
+          </p>
+        </template>
+        <template #footer>
+          <UButton label="Keep it" variant="ghost" @click="unpublishOpen = false" />
+          <UButton
+            :label="entry.status === 'scheduled' ? 'Cancel the schedule' : 'Unpublish'"
+            color="error"
+            @click="unpublish"
+          />
+        </template>
+      </UModal>
+
+      <UModal v-model:open="scheduleOpen" title="Schedule the publication">
+        <template #body>
+          <UFormField
+            label="Publish at"
+            help="In your time zone. It is published within a minute of the time, unless it changes first."
+            :error="scheduleError ?? undefined"
+          >
+            <UInput v-model="publishAt" type="datetime-local" class="w-full" />
+          </UFormField>
+        </template>
+        <template #footer>
+          <UButton label="Cancel" variant="ghost" @click="scheduleOpen = false" />
+          <UButton
+            label="Schedule"
+            :disabled="scheduleError !== null"
+            @click="publish([], new Date(publishAt).toISOString())"
+          />
+        </template>
+      </UModal>
     </div>
-
-    <UModal v-model:open="conflictOpen" title="Someone changed this entry">
-      <template #body>
-        <p>
-          The entry is at a newer version than the one you edited. Copy what you wrote if you need
-          it, then load the newer version.
-        </p>
-      </template>
-      <template #footer>
-        <UButton label="Keep editing" variant="ghost" @click="conflictOpen = false" />
-        <UButton label="Load the newer version" color="warning" @click="reloadTheirs" />
-      </template>
-    </UModal>
-
-    <UModal v-model:open="acknowledgeOpen" title="Publish with these warnings?">
-      <template #body>
-        <ul class="space-y-2 text-sm">
-          <li v-for="(warning, index) in warnings" :key="index">
-            <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
-            <p>{{ warning.message }}</p>
-            <p class="text-muted">{{ warning.fix }}</p>
-          </li>
-        </ul>
-      </template>
-      <template #footer>
-        <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
-        <UButton
-          :label="pendingAt === undefined ? 'Publish anyway' : 'Schedule anyway'"
-          color="warning"
-          @click="publish(warnings, pendingAt)"
-        />
-      </template>
-    </UModal>
-
-    <UModal
-      v-model:open="unpublishOpen"
-      :title="entry.status === 'scheduled' ? 'Cancel the schedule?' : 'Unpublish this entry?'"
-    >
-      <template #body>
-        <p v-if="entry.status === 'scheduled'">
-          The entry stays a draft and is not published at {{ when(entry.scheduledAt ?? '') }}.
-        </p>
-        <p v-else>
-          The entry leaves the public site: its page answers 404 and it drops out of listings and
-          search. It stays here as a draft, with all its revisions, and can be published again.
-        </p>
-      </template>
-      <template #footer>
-        <UButton label="Keep it" variant="ghost" @click="unpublishOpen = false" />
-        <UButton
-          :label="entry.status === 'scheduled' ? 'Cancel the schedule' : 'Unpublish'"
-          color="error"
-          @click="unpublish"
-        />
-      </template>
-    </UModal>
-
-    <UModal v-model:open="scheduleOpen" title="Schedule the publication">
-      <template #body>
-        <UFormField
-          label="Publish at"
-          help="In your time zone. It is published within a minute of the time, unless it changes first."
-          :error="scheduleError ?? undefined"
-        >
-          <UInput v-model="publishAt" type="datetime-local" class="w-full" />
-        </UFormField>
-      </template>
-      <template #footer>
-        <UButton label="Cancel" variant="ghost" @click="scheduleOpen = false" />
-        <UButton
-          label="Schedule"
-          :disabled="scheduleError !== null"
-          @click="publish([], new Date(publishAt).toISOString())"
-        />
-      </template>
-    </UModal>
-  </div>
-  <p v-else class="text-muted">Loading…</p>
+    <p v-else class="text-muted">Loading…</p>
+  </Page>
 </template>

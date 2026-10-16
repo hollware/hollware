@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -141,15 +142,11 @@ async function remove() {
 </script>
 
 <template>
-  <p v-if="missing" class="text-muted">There is no collection "{{ name }}".</p>
-  <div v-else-if="collection !== null && builder !== null && structure !== null" class="space-y-8">
-    <div class="flex flex-wrap items-center gap-3">
-      <div class="min-w-0 flex-1">
-        <h1 class="text-xl font-semibold">{{ name }}</h1>
-        <p class="text-sm text-muted">
-          A change applies at once to every new save and publish; nothing is deployed.
-        </p>
-      </div>
+  <Page
+    :title="name"
+    description="A change applies at once to every new save and publish; nothing is deployed."
+  >
+    <template v-if="collection !== null" #actions>
       <UButton
         label="Remove"
         color="error"
@@ -163,232 +160,237 @@ async function remove() {
         :disabled="formProblems.length > 0"
         @click="save"
       />
-    </div>
+    </template>
+    <p v-if="missing" class="text-muted">There is no collection "{{ name }}".</p>
+    <div
+      v-else-if="collection !== null && builder !== null && structure !== null"
+      class="space-y-8"
+    >
+      <StructureDialogs
+        :impact="change.impact.value"
+        :problems="change.problems.value"
+        :conflict="change.conflict.value"
+        :failure="change.failure.value"
+        @confirm="change.confirmPending"
+        @cancel="change.cancel"
+        @reload="load"
+      />
+      <UAlert v-if="formProblems.length > 0" color="warning" title="Fix these to save">
+        <template #description>
+          <ul class="mt-1 list-disc pl-5">
+            <li v-for="problem in formProblems" :key="problem">{{ problem }}</li>
+          </ul>
+        </template>
+      </UAlert>
 
-    <StructureDialogs
-      :impact="change.impact.value"
-      :problems="change.problems.value"
-      :conflict="change.conflict.value"
-      :failure="change.failure.value"
-      @confirm="change.confirmPending"
-      @cancel="change.cancel"
-      @reload="load"
-    />
-    <UAlert v-if="formProblems.length > 0" color="warning" title="Fix these to save">
-      <template #description>
-        <ul class="mt-1 list-disc pl-5">
-          <li v-for="problem in formProblems" :key="problem">{{ problem }}</li>
-        </ul>
-      </template>
-    </UAlert>
-
-    <section aria-labelledby="fields" class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 id="fields" class="font-semibold">Fields of the frontmatter</h2>
-        <UButton
-          label="Add a field"
-          icon="i-lucide-plus"
-          variant="outline"
-          size="sm"
-          @click="addField"
-        />
-      </div>
-      <div class="divide-y divide-default rounded-lg border border-default">
-        <div
-          v-for="(field, index) in builder.fields"
-          :key="index"
-          class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_10rem_auto]"
-        >
-          <div class="grid min-w-0 gap-3 sm:grid-cols-2">
-            <UFormField label="Name">
-              <UInput v-model="field.key" class="w-full font-mono" />
-            </UFormField>
-            <UFormField label="Description">
-              <UInput v-model="field.description" class="w-full" />
-            </UFormField>
-            <template v-if="BOUNDED.includes(field.kind)">
-              <UFormField
-                :label="
-                  field.kind === 'text'
-                    ? 'Fewest characters'
-                    : field.kind === 'list'
-                      ? 'Fewest items'
-                      : 'Least'
-                "
-              >
-                <UInputNumber
-                  :model-value="field.min ?? undefined"
-                  class="w-full"
-                  @update:model-value="field.min = $event ?? null"
-                />
+      <section aria-labelledby="fields" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 id="fields" class="font-semibold">Fields of the frontmatter</h2>
+          <UButton
+            label="Add a field"
+            icon="i-lucide-plus"
+            variant="outline"
+            size="sm"
+            @click="addField"
+          />
+        </div>
+        <div class="divide-y divide-default rounded-lg border border-default">
+          <div
+            v-for="(field, index) in builder.fields"
+            :key="index"
+            class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_10rem_auto]"
+          >
+            <div class="grid min-w-0 gap-3 sm:grid-cols-2">
+              <UFormField label="Name">
+                <UInput v-model="field.key" class="w-full font-mono" />
               </UFormField>
-              <UFormField
-                :label="
-                  field.kind === 'text'
-                    ? 'Most characters'
-                    : field.kind === 'list'
-                      ? 'Most items'
-                      : 'Most'
-                "
-              >
-                <UInputNumber
-                  :model-value="field.max ?? undefined"
-                  class="w-full"
-                  @update:model-value="field.max = $event ?? null"
-                />
+              <UFormField label="Description">
+                <UInput v-model="field.description" class="w-full" />
               </UFormField>
-            </template>
-            <UFormField v-if="field.kind === 'choice'" label="Values" class="sm:col-span-2">
-              <UInputTags v-model="field.options" class="w-full" />
-            </UFormField>
-          </div>
-          <div class="space-y-3">
-            <UFormField label="Kind">
-              <USelect v-model="field.kind" :items="KINDS" class="w-full" />
-            </UFormField>
-            <USwitch v-model="field.required" label="Required" />
-          </div>
-          <div class="flex items-start gap-1">
-            <UButton
-              icon="i-lucide-arrow-up"
-              variant="ghost"
-              size="sm"
-              :disabled="index === 0"
-              :aria-label="`Move ${field.key} up`"
-              @click="move(index, -1)"
-            />
-            <UButton
-              icon="i-lucide-arrow-down"
-              variant="ghost"
-              size="sm"
-              :disabled="index === builder.fields.length - 1"
-              :aria-label="`Move ${field.key} down`"
-              @click="move(index, 1)"
-            />
-            <UButton
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="sm"
-              :aria-label="`Remove ${field.key}`"
-              @click="builder.fields.splice(index, 1)"
-            />
+              <template v-if="BOUNDED.includes(field.kind)">
+                <UFormField
+                  :label="
+                    field.kind === 'text'
+                      ? 'Fewest characters'
+                      : field.kind === 'list'
+                        ? 'Fewest items'
+                        : 'Least'
+                  "
+                >
+                  <UInputNumber
+                    :model-value="field.min ?? undefined"
+                    class="w-full"
+                    @update:model-value="field.min = $event ?? null"
+                  />
+                </UFormField>
+                <UFormField
+                  :label="
+                    field.kind === 'text'
+                      ? 'Most characters'
+                      : field.kind === 'list'
+                        ? 'Most items'
+                        : 'Most'
+                  "
+                >
+                  <UInputNumber
+                    :model-value="field.max ?? undefined"
+                    class="w-full"
+                    @update:model-value="field.max = $event ?? null"
+                  />
+                </UFormField>
+              </template>
+              <UFormField v-if="field.kind === 'choice'" label="Values" class="sm:col-span-2">
+                <UInputTags v-model="field.options" class="w-full" />
+              </UFormField>
+            </div>
+            <div class="space-y-3">
+              <UFormField label="Kind">
+                <USelect v-model="field.kind" :items="KINDS" class="w-full" />
+              </UFormField>
+              <USwitch v-model="field.required" label="Required" />
+            </div>
+            <div class="flex items-start gap-1">
+              <UButton
+                icon="i-lucide-arrow-up"
+                variant="ghost"
+                size="sm"
+                :disabled="index === 0"
+                :aria-label="`Move ${field.key} up`"
+                @click="move(index, -1)"
+              />
+              <UButton
+                icon="i-lucide-arrow-down"
+                variant="ghost"
+                size="sm"
+                :disabled="index === builder.fields.length - 1"
+                :aria-label="`Move ${field.key} down`"
+                @click="move(index, 1)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="sm"
+                :aria-label="`Remove ${field.key}`"
+                @click="builder.fields.splice(index, 1)"
+              />
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section aria-labelledby="routes" class="space-y-3">
-      <h2 id="routes" class="font-semibold">Pages on the site</h2>
-      <div class="grid gap-3 sm:grid-cols-2">
-        <UFormField
-          v-for="locale in structure.definition.locales"
-          :key="locale"
-          :label="`Path in ${locale}`"
-          help="With :slug where the entry's slug goes."
-        >
-          <UInput
-            :model-value="collection.routes[locale] ?? ''"
-            class="w-full font-mono"
-            @update:model-value="
-              collection.routes = { ...collection.routes, [locale]: String($event) }
-            "
-          />
-        </UFormField>
-      </div>
-      <div class="grid gap-3 sm:grid-cols-3">
-        <UFormField
-          label="Translations share"
-          help="The field that the translations of an entry share."
-        >
-          <USelect
-            :model-value="collection.translationGroupField ?? NONE"
-            :items="optionalFields"
-            class="w-full"
-            @update:model-value="
-              collection.translationGroupField = $event === NONE ? null : String($event)
-            "
-          />
-        </UFormField>
-        <UFormField label="Tags" help="A list of texts.">
-          <USelect
-            :model-value="collection.tagsField ?? NONE"
-            :items="optionalFields"
-            class="w-full"
-            @update:model-value="collection.tagsField = $event === NONE ? null : String($event)"
-          />
-        </UFormField>
-        <UFormField label="Newest first by" help="A date; the first publication otherwise.">
-          <USelect
-            :model-value="collection.sortByField ?? NONE"
-            :items="optionalFields"
-            class="w-full"
-            @update:model-value="collection.sortByField = $event === NONE ? null : String($event)"
-          />
-        </UFormField>
-      </div>
-    </section>
+      <section aria-labelledby="routes" class="space-y-3">
+        <h2 id="routes" class="font-semibold">Pages on the site</h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <UFormField
+            v-for="locale in structure.definition.locales"
+            :key="locale"
+            :label="`Path in ${locale}`"
+            help="With :slug where the entry's slug goes."
+          >
+            <UInput
+              :model-value="collection.routes[locale] ?? ''"
+              class="w-full font-mono"
+              @update:model-value="
+                collection.routes = { ...collection.routes, [locale]: String($event) }
+              "
+            />
+          </UFormField>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <UFormField
+            label="Translations share"
+            help="The field that the translations of an entry share."
+          >
+            <USelect
+              :model-value="collection.translationGroupField ?? NONE"
+              :items="optionalFields"
+              class="w-full"
+              @update:model-value="
+                collection.translationGroupField = $event === NONE ? null : String($event)
+              "
+            />
+          </UFormField>
+          <UFormField label="Tags" help="A list of texts.">
+            <USelect
+              :model-value="collection.tagsField ?? NONE"
+              :items="optionalFields"
+              class="w-full"
+              @update:model-value="collection.tagsField = $event === NONE ? null : String($event)"
+            />
+          </UFormField>
+          <UFormField label="Newest first by" help="A date; the first publication otherwise.">
+            <USelect
+              :model-value="collection.sortByField ?? NONE"
+              :items="optionalFields"
+              class="w-full"
+              @update:model-value="collection.sortByField = $event === NONE ? null : String($event)"
+            />
+          </UFormField>
+        </div>
+      </section>
 
-    <section aria-labelledby="rules" class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 id="rules" class="font-semibold">Rules</h2>
-        <UButton
-          label="Add a rule"
-          icon="i-lucide-plus"
-          variant="outline"
-          size="sm"
-          @click="addRule"
-        />
-      </div>
-      <p class="text-sm text-muted">
-        Every write and publish is checked against them, besides the schema, the components and
-        content safety. An error blocks publishing; a warning has to be acknowledged.
-      </p>
-      <p v-if="collection.rules.length === 0" class="text-sm text-muted">No rules.</p>
-      <RuleEditor
-        v-for="(rule, index) in collection.rules"
-        :key="index"
-        :rule="rule"
-        :catalog="structure.catalog"
-        :fields="fieldKeys"
-        @remove="collection.rules.splice(index, 1)"
-      />
-    </section>
-
-    <section aria-labelledby="guide" class="space-y-3">
-      <h2 id="guide" class="font-semibold">For whoever writes here</h2>
-      <UFormField
-        label="Style guide"
-        help="Markdown. Agents read it with describe_site before they write."
-      >
-        <UTextarea
-          :model-value="collection.styleGuide ?? ''"
-          :rows="4"
-          autoresize
-          class="w-full"
-          @update:model-value="collection.styleGuide = $event === '' ? null : String($event)"
-        />
-      </UFormField>
-      <UFormField
-        label="Components"
-        help="The components the body may use, as JSON: { name: { props, description, example } }."
-      >
-        <UTextarea v-model="components" :rows="6" autoresize class="w-full font-mono text-xs" />
-      </UFormField>
-    </section>
-
-    <UModal v-model:open="removeOpen" :title="`Remove the collection ${name}?`">
-      <template #body>
-        <p>
-          Its entries are not deleted: they are out of reach until a collection of this name comes
-          back.
+      <section aria-labelledby="rules" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 id="rules" class="font-semibold">Rules</h2>
+          <UButton
+            label="Add a rule"
+            icon="i-lucide-plus"
+            variant="outline"
+            size="sm"
+            @click="addRule"
+          />
+        </div>
+        <p class="text-sm text-muted">
+          Every write and publish is checked against them, besides the schema, the components and
+          content safety. An error blocks publishing; a warning has to be acknowledged.
         </p>
-      </template>
-      <template #footer>
-        <UButton label="Keep it" variant="ghost" @click="removeOpen = false" />
-        <UButton label="Remove" color="error" @click="remove" />
-      </template>
-    </UModal>
-  </div>
-  <p v-else class="text-muted">Loading…</p>
+        <p v-if="collection.rules.length === 0" class="text-sm text-muted">No rules.</p>
+        <RuleEditor
+          v-for="(rule, index) in collection.rules"
+          :key="index"
+          :rule="rule"
+          :catalog="structure.catalog"
+          :fields="fieldKeys"
+          @remove="collection.rules.splice(index, 1)"
+        />
+      </section>
+
+      <section aria-labelledby="guide" class="space-y-3">
+        <h2 id="guide" class="font-semibold">For whoever writes here</h2>
+        <UFormField
+          label="Style guide"
+          help="Markdown. Agents read it with describe_site before they write."
+        >
+          <UTextarea
+            :model-value="collection.styleGuide ?? ''"
+            :rows="4"
+            autoresize
+            class="w-full"
+            @update:model-value="collection.styleGuide = $event === '' ? null : String($event)"
+          />
+        </UFormField>
+        <UFormField
+          label="Components"
+          help="The components the body may use, as JSON: { name: { props, description, example } }."
+        >
+          <UTextarea v-model="components" :rows="6" autoresize class="w-full font-mono text-xs" />
+        </UFormField>
+      </section>
+
+      <UModal v-model:open="removeOpen" :title="`Remove the collection ${name}?`">
+        <template #body>
+          <p>
+            Its entries are not deleted: they are out of reach until a collection of this name comes
+            back.
+          </p>
+        </template>
+        <template #footer>
+          <UButton label="Keep it" variant="ghost" @click="removeOpen = false" />
+          <UButton label="Remove" color="error" @click="remove" />
+        </template>
+      </UModal>
+    </div>
+    <p v-else class="text-muted">Loading…</p>
+  </Page>
 </template>

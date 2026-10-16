@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -59,59 +60,58 @@ const PRESETS = [
 </script>
 
 <template>
-  <div class="space-y-8">
-    <div>
-      <h1 class="text-xl font-semibold">Collections</h1>
-      <p class="text-sm text-muted">
-        The kinds of entry of this site, with their fields and rules. A change applies at once.
-      </p>
-    </div>
-    <p v-if="structure === null" class="text-muted">Loading…</p>
-    <ul v-else class="divide-y divide-default rounded-lg border border-default">
-      <li v-for="[key, collection] in collections" :key="key">
-        <RouterLink
-          :to="`/collections/${key}`"
-          class="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-elevated"
-        >
-          <span class="font-medium">{{ key }}</span>
-          <span class="text-sm text-muted">
-            {{ fieldCount(collection.schema) }}
-            fields · {{ collection.rules.length }} rules
-          </span>
-          <span class="ml-auto font-mono text-xs text-muted">{{
-            Object.values(collection.routes)[0]
-          }}</span>
-        </RouterLink>
-      </li>
-    </ul>
+  <Page
+    title="Collections"
+    description="The kinds of entry of this site, with their fields and rules. A change applies at once."
+  >
+    <div class="space-y-8">
+      <p v-if="structure === null" class="text-muted">Loading…</p>
+      <ul v-else class="divide-y divide-default rounded-lg border border-default">
+        <li v-for="[key, collection] in collections" :key="key">
+          <RouterLink
+            :to="`/collections/${key}`"
+            class="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-elevated"
+          >
+            <span class="font-medium">{{ key }}</span>
+            <span class="text-sm text-muted">
+              {{ fieldCount(collection.schema) }}
+              fields · {{ collection.rules.length }} rules
+            </span>
+            <span class="ml-auto font-mono text-xs text-muted">{{
+              Object.values(collection.routes)[0]
+            }}</span>
+          </RouterLink>
+        </li>
+      </ul>
 
-    <form class="max-w-lg space-y-4" @submit.prevent="create">
-      <h2 class="font-semibold">New collection</h2>
-      <UFormField
-        label="Name"
-        help="Lowercase letters, digits and hyphens, such as talks."
-        :error="name !== '' && !validName ? 'Not a free name.' : undefined"
-      >
-        <UInput v-model="name" class="w-full font-mono" />
-      </UFormField>
-      <UFormField label="Start from">
-        <USelect v-model="preset" :items="PRESETS" class="w-full" />
-      </UFormField>
-      <UButton
-        type="submit"
-        label="Create the collection"
-        :disabled="!validName"
-        :loading="change.busy.value"
-      />
-      <StructureDialogs
-        :impact="change.impact.value"
-        :problems="change.problems.value"
-        :conflict="change.conflict.value"
-        :failure="change.failure.value"
-        @confirm="change.confirmPending"
-        @cancel="change.cancel"
-        @reload="load"
-      />
-    </form>
-  </div>
+      <form class="max-w-lg space-y-4" @submit.prevent="create">
+        <h2 class="font-semibold">New collection</h2>
+        <UFormField
+          label="Name"
+          help="Lowercase letters, digits and hyphens, such as talks."
+          :error="name !== '' && !validName ? 'Not a free name.' : undefined"
+        >
+          <UInput v-model="name" class="w-full font-mono" />
+        </UFormField>
+        <UFormField label="Start from">
+          <USelect v-model="preset" :items="PRESETS" class="w-full" />
+        </UFormField>
+        <UButton
+          type="submit"
+          label="Create the collection"
+          :disabled="!validName"
+          :loading="change.busy.value"
+        />
+        <StructureDialogs
+          :impact="change.impact.value"
+          :problems="change.problems.value"
+          :conflict="change.conflict.value"
+          :failure="change.failure.value"
+          @confirm="change.confirmPending"
+          @cancel="change.cancel"
+          @reload="load"
+        />
+      </form>
+    </div>
+  </Page>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
@@ -202,211 +203,216 @@ const PRESETS = [
 </script>
 
 <template>
-  <div v-if="structure !== null && me !== null" class="space-y-10">
-    <div>
-      <h1 class="text-xl font-semibold">Site</h1>
-      <p class="text-sm text-muted">
-        <span class="font-mono">{{ me.site }}</span> · version {{ structure.version }} of its
-        structure. A change applies at once; nothing is deployed.
-      </p>
-    </div>
+  <Page title="Site">
+    <div v-if="structure !== null && me !== null" class="space-y-10">
+      <div>
+        <p class="text-sm text-muted">
+          <span class="font-mono">{{ me.site }}</span> · version {{ structure.version }} of its
+          structure. A change applies at once; nothing is deployed.
+        </p>
+      </div>
 
-    <form class="max-w-2xl space-y-4" aria-labelledby="settings" @submit.prevent="saveSettings">
-      <h2 id="settings" class="font-semibold">Settings</h2>
-      <UFormField
-        label="Locales"
-        help="Such as en or es-CL. Removing one keeps its entries, out of reach."
-      >
-        <UInputTags v-model="locales" class="w-full" />
-      </UFormField>
-      <UFormField label="Default locale">
-        <USelect v-model="defaultLocale" :items="locales" class="w-full" />
-      </UFormField>
-      <UFormField
-        label="Public URL"
-        help="The origin of the site, such as https://example.com: links to entries start with it."
-      >
-        <UInput v-model="url" class="w-full" placeholder="https://example.com" />
-      </UFormField>
-      <UFormField
-        label="Origins that read from the browser"
-        help="Pages of these origins may read published content with a read token."
-      >
-        <UInputTags v-model="origins" class="w-full" />
-      </UFormField>
-      <UFormField
-        label="Style guide of the site"
-        help="Markdown, for whoever writes anywhere in the site."
-      >
-        <UTextarea v-model="styleGuide" :rows="4" autoresize class="w-full" />
-      </UFormField>
-      <UButton type="submit" label="Save the settings" :loading="change.busy.value" />
-      <StructureDialogs
-        :impact="change.impact.value"
-        :problems="change.problems.value"
-        :conflict="change.conflict.value"
-        :failure="change.failure.value"
-        @confirm="change.confirmPending"
-        @cancel="change.cancel"
-        @reload="load"
-      />
-    </form>
-
-    <section aria-labelledby="webhooks" class="max-w-2xl space-y-4">
-      <h2 id="webhooks" class="font-semibold">Webhooks</h2>
-      <p class="text-sm text-muted">
-        Every publish, update and unpublish is sent, signed, to each of them: a site that keeps its
-        pages in a cache purges them, a newsletter drafts an issue.
-      </p>
-      <ul
-        v-if="webhooks.length > 0"
-        class="divide-y divide-default rounded-lg border border-default text-sm"
-      >
-        <li
-          v-for="webhook in webhooks"
-          :key="webhook.name"
-          class="flex flex-wrap items-center gap-3 px-4 py-2.5"
+      <form class="max-w-2xl space-y-4" aria-labelledby="settings" @submit.prevent="saveSettings">
+        <h2 id="settings" class="font-semibold">Settings</h2>
+        <UFormField
+          label="Locales"
+          help="Such as en or es-CL. Removing one keeps its entries, out of reach."
         >
-          <span class="font-mono">{{ webhook.name }}</span>
-          <span class="min-w-0 flex-1 truncate text-muted">{{ webhook.url }}</span>
-          <span class="text-xs text-muted">{{
-            webhook.secret === undefined
-              ? "signed by Hollware's secret"
-              : `signed by ${webhook.secret}`
-          }}</span>
-          <UButton
-            v-if="webhook.secret === undefined"
-            label="New secret"
-            size="xs"
-            variant="outline"
-            @click="makeSecret(webhook.name)"
-          />
-          <UButton
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="ghost"
-            size="xs"
-            :aria-label="`Remove the webhook ${webhook.name}`"
-            @click="saveWebhooks(webhooks.filter((other) => other.name !== webhook.name))"
-          />
-        </li>
-      </ul>
-      <UAlert
-        v-if="madeSecret !== null"
-        color="success"
-        :title="`The secret of ${madeSecret.webhook}: give it to the receiver now, it is shown once`"
-        :description="madeSecret.secret"
-        :actions="[
-          { label: 'Copy', onClick: copySecret },
-          { label: 'Done', onClick: () => (madeSecret = null) },
-        ]"
-      />
-      <form
-        class="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
-        @submit.prevent="addWebhook"
-      >
-        <UFormField label="Name">
-          <UInput v-model="hookName" class="w-full font-mono" placeholder="site" />
+          <UInputTags v-model="locales" class="w-full" />
         </UFormField>
-        <UFormField label="URL">
-          <UInput
-            v-model="hookUrl"
-            class="w-full"
-            placeholder="https://example.com/_hollware/webhook"
-          />
+        <UFormField label="Default locale">
+          <USelect v-model="defaultLocale" :items="locales" class="w-full" />
         </UFormField>
-        <UButton type="submit" label="Add" :disabled="!validHook" :loading="change.busy.value" />
+        <UFormField
+          label="Public URL"
+          help="The origin of the site, such as https://example.com: links to entries start with it."
+        >
+          <UInput v-model="url" class="w-full" placeholder="https://example.com" />
+        </UFormField>
+        <UFormField
+          label="Origins that read from the browser"
+          help="Pages of these origins may read published content with a read token."
+        >
+          <UInputTags v-model="origins" class="w-full" />
+        </UFormField>
+        <UFormField
+          label="Style guide of the site"
+          help="Markdown, for whoever writes anywhere in the site."
+        >
+          <UTextarea v-model="styleGuide" :rows="4" autoresize class="w-full" />
+        </UFormField>
+        <UButton type="submit" label="Save the settings" :loading="change.busy.value" />
+        <StructureDialogs
+          :impact="change.impact.value"
+          :problems="change.problems.value"
+          :conflict="change.conflict.value"
+          :failure="change.failure.value"
+          @confirm="change.confirmPending"
+          @cancel="change.cancel"
+          @reload="load"
+        />
       </form>
-    </section>
 
-    <section aria-labelledby="sites" class="max-w-2xl space-y-4">
-      <h2 id="sites" class="font-semibold">Your sites</h2>
-      <ul class="divide-y divide-default rounded-lg border border-default text-sm">
-        <li
-          v-for="membership in me.sites"
-          :key="membership.site"
-          class="flex items-center gap-3 px-4 py-2.5"
+      <section aria-labelledby="webhooks" class="max-w-2xl space-y-4">
+        <h2 id="webhooks" class="font-semibold">Webhooks</h2>
+        <p class="text-sm text-muted">
+          Every publish, update and unpublish is sent, signed, to each of them: a site that keeps
+          its pages in a cache purges them, a newsletter drafts an issue.
+        </p>
+        <ul
+          v-if="webhooks.length > 0"
+          class="divide-y divide-default rounded-lg border border-default text-sm"
         >
-          <span class="font-mono">{{ membership.site }}</span>
-          <span class="text-muted">{{ membership.role }}</span>
-          <span v-if="membership.site === me.site" class="ml-auto text-xs text-muted"
-            >this one</span
+          <li
+            v-for="webhook in webhooks"
+            :key="webhook.name"
+            class="flex flex-wrap items-center gap-3 px-4 py-2.5"
           >
-          <UButton
-            v-else
-            class="ml-auto"
-            label="Switch"
-            size="xs"
-            variant="outline"
-            @click="auth.switchSite(membership.site, '/admin/')"
-          />
-        </li>
-      </ul>
-      <form
-        class="grid gap-3 rounded-lg border border-default p-4 sm:grid-cols-2"
-        @submit.prevent="createSite"
-      >
-        <h3 class="text-sm font-semibold sm:col-span-2">New site</h3>
-        <UFormField label="Key" help="Lowercase words joined by hyphens. It never changes.">
-          <UInput v-model="newKey" class="w-full font-mono" />
-        </UFormField>
-        <UFormField label="Start from">
-          <USelect v-model="newPreset" :items="PRESETS" class="w-full" />
-        </UFormField>
-        <UFormField label="Locales" help="The first is the default." class="sm:col-span-2">
-          <UInputTags v-model="newLocales" class="w-full" />
-        </UFormField>
-        <div class="sm:col-span-2">
-          <UButton
-            type="submit"
-            label="Create the site"
-            :disabled="!validKey || newLocales.length === 0"
-            :loading="busy"
-          />
-        </div>
-      </form>
-      <div v-if="me.trash.length > 0" class="space-y-2">
-        <h3 class="text-sm font-semibold">In the trash</h3>
-        <ul class="divide-y divide-default rounded-lg border border-default text-sm">
-          <li v-for="item in me.trash" :key="item.site" class="flex items-center gap-3 px-4 py-2.5">
-            <span class="font-mono">{{ item.site }}</span>
-            <span class="text-muted">since {{ when(item.deletedAt) }}</span>
+            <span class="font-mono">{{ webhook.name }}</span>
+            <span class="min-w-0 flex-1 truncate text-muted">{{ webhook.url }}</span>
+            <span class="text-xs text-muted">{{
+              webhook.secret === undefined
+                ? "signed by Hollware's secret"
+                : `signed by ${webhook.secret}`
+            }}</span>
             <UButton
-              class="ml-auto"
-              label="Restore"
+              v-if="webhook.secret === undefined"
+              label="New secret"
               size="xs"
               variant="outline"
-              @click="restore(item.site)"
+              @click="makeSecret(webhook.name)"
+            />
+            <UButton
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :aria-label="`Remove the webhook ${webhook.name}`"
+              @click="saveWebhooks(webhooks.filter((other) => other.name !== webhook.name))"
             />
           </li>
         </ul>
-      </div>
-    </section>
+        <UAlert
+          v-if="madeSecret !== null"
+          color="success"
+          :title="`The secret of ${madeSecret.webhook}: give it to the receiver now, it is shown once`"
+          :description="madeSecret.secret"
+          :actions="[
+            { label: 'Copy', onClick: copySecret },
+            { label: 'Done', onClick: () => (madeSecret = null) },
+          ]"
+        />
+        <form
+          class="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
+          @submit.prevent="addWebhook"
+        >
+          <UFormField label="Name">
+            <UInput v-model="hookName" class="w-full font-mono" placeholder="site" />
+          </UFormField>
+          <UFormField label="URL">
+            <UInput
+              v-model="hookUrl"
+              class="w-full"
+              placeholder="https://example.com/_hollware/webhook"
+            />
+          </UFormField>
+          <UButton type="submit" label="Add" :disabled="!validHook" :loading="change.busy.value" />
+        </form>
+      </section>
 
-    <section
-      aria-labelledby="danger"
-      class="max-w-2xl space-y-3 rounded-lg border border-error/40 p-4"
-    >
-      <h2 id="danger" class="font-semibold">Put this site in the trash</h2>
-      <p class="text-sm text-muted">
-        It is served no more and its tokens stop working. Nothing is deleted: restore it from
-        another site you own.
-      </p>
-      <UButton label="Put it in the trash" color="error" variant="outline" @click="askDelete" />
-    </section>
+      <section aria-labelledby="sites" class="max-w-2xl space-y-4">
+        <h2 id="sites" class="font-semibold">Your sites</h2>
+        <ul class="divide-y divide-default rounded-lg border border-default text-sm">
+          <li
+            v-for="membership in me.sites"
+            :key="membership.site"
+            class="flex items-center gap-3 px-4 py-2.5"
+          >
+            <span class="font-mono">{{ membership.site }}</span>
+            <span class="text-muted">{{ membership.role }}</span>
+            <span v-if="membership.site === me.site" class="ml-auto text-xs text-muted"
+              >this one</span
+            >
+            <UButton
+              v-else
+              class="ml-auto"
+              label="Switch"
+              size="xs"
+              variant="outline"
+              @click="auth.switchSite(membership.site, '/admin/')"
+            />
+          </li>
+        </ul>
+        <form
+          class="grid gap-3 rounded-lg border border-default p-4 sm:grid-cols-2"
+          @submit.prevent="createSite"
+        >
+          <h3 class="text-sm font-semibold sm:col-span-2">New site</h3>
+          <UFormField label="Key" help="Lowercase words joined by hyphens. It never changes.">
+            <UInput v-model="newKey" class="w-full font-mono" />
+          </UFormField>
+          <UFormField label="Start from">
+            <USelect v-model="newPreset" :items="PRESETS" class="w-full" />
+          </UFormField>
+          <UFormField label="Locales" help="The first is the default." class="sm:col-span-2">
+            <UInputTags v-model="newLocales" class="w-full" />
+          </UFormField>
+          <div class="sm:col-span-2">
+            <UButton
+              type="submit"
+              label="Create the site"
+              :disabled="!validKey || newLocales.length === 0"
+              :loading="busy"
+            />
+          </div>
+        </form>
+        <div v-if="me.trash.length > 0" class="space-y-2">
+          <h3 class="text-sm font-semibold">In the trash</h3>
+          <ul class="divide-y divide-default rounded-lg border border-default text-sm">
+            <li
+              v-for="item in me.trash"
+              :key="item.site"
+              class="flex items-center gap-3 px-4 py-2.5"
+            >
+              <span class="font-mono">{{ item.site }}</span>
+              <span class="text-muted">since {{ when(item.deletedAt) }}</span>
+              <UButton
+                class="ml-auto"
+                label="Restore"
+                size="xs"
+                variant="outline"
+                @click="restore(item.site)"
+              />
+            </li>
+          </ul>
+        </div>
+      </section>
 
-    <UModal v-model:open="deleteOpen" :title="`Put ${me.site} in the trash?`">
-      <template #body>
-        <p>
-          It holds {{ deleteEntries }} entries. Its pages stop being served, and its tokens stop
-          working.
+      <section
+        aria-labelledby="danger"
+        class="max-w-2xl space-y-3 rounded-lg border border-error/40 p-4"
+      >
+        <h2 id="danger" class="font-semibold">Put this site in the trash</h2>
+        <p class="text-sm text-muted">
+          It is served no more and its tokens stop working. Nothing is deleted: restore it from
+          another site you own.
         </p>
-      </template>
-      <template #footer>
-        <UButton label="Keep it" variant="ghost" @click="deleteOpen = false" />
-        <UButton label="Put it in the trash" color="error" @click="deleteSite" />
-      </template>
-    </UModal>
-  </div>
-  <p v-else class="text-muted">Loading…</p>
+        <UButton label="Put it in the trash" color="error" variant="outline" @click="askDelete" />
+      </section>
+
+      <UModal v-model:open="deleteOpen" :title="`Put ${me.site} in the trash?`">
+        <template #body>
+          <p>
+            It holds {{ deleteEntries }} entries. Its pages stop being served, and its tokens stop
+            working.
+          </p>
+        </template>
+        <template #footer>
+          <UButton label="Keep it" variant="ghost" @click="deleteOpen = false" />
+          <UButton label="Put it in the trash" color="error" @click="deleteSite" />
+        </template>
+      </UModal>
+    </div>
+    <p v-else class="text-muted">Loading…</p>
+  </Page>
 </template>
