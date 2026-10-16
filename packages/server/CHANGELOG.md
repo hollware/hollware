@@ -1,5 +1,26 @@
 # @hollware/server
 
+## 0.8.0
+
+### Minor Changes
+
+- [`ed861e0`](https://github.com/hollware/hollware/commit/ed861e0c33e33c24a95c1385d620ff55446f134d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin shapes the site with no deploy (ADR-033): Collections lists them and makes one from a preset (a blog, docs, or a title alone); the editor of a collection edits its fields (kind, bounds, choices, required, order), its paths per locale, the fields of translations, tags and order, its rules from the catalog with their parameters, its style guide and its components, and asks to confirm a change that touches existing entries. Site edits the locales, the public URL, the origins that read from the browser and the style guide, makes a new site, puts this one in the trash and restores one. People gives a member another role or removes them. `/v1/admin/me` lists the trashed sites the person owns.
+
+- [`501174a`](https://github.com/hollware/hollware/commit/501174a4b9cd7e0a5191fa587c09e39f71ff3bd7) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Cache tags are part of the contract: `entryTag`, `listTag`, `groupTag`, `SITE_TAG`, `tagsOfEntries` and `tagsOfChange` of `@hollware/core` name what a page shows, and every event's payload carries `cacheTags`, the tags the change invalidates (the entry, the list of its collection in its locale, its translations), for a site to purge.
+
+- [`3ff1b9a`](https://github.com/hollware/hollware/commit/3ff1b9a63880a61dda9f2267a11a6f2867fef725) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The owners of a site manage its people from the admin: `POST /v1/admin/people/role` gives a member another role, and `POST /v1/admin/people/remove` takes one out of the site, whose tokens and grants of it stop working at once. A site always keeps one owner: the statement that would demote or remove its last one changes nothing (409 `conflict`). A refusal of the admin's routes now carries `not_found` for 404 and `conflict` for 409.
+
+- [`f2f2c3d`](https://github.com/hollware/hollware/commit/f2f2c3d6ac6123d26bc1bc0d2b668b61d42afd9d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The sites live in D1 (ADR-033). Migration `0011_structure` gives `sites` a definition, a version and `deleted_at`, and adds `site_changes`. The Worker reads the sites from D1 through a registry that polls their versions at most once a second per isolate and compiles again only a site that changed, keeping the last good copy of one that stops compiling. `createHollware()` takes no config; a 0.x config, when given, moves into D1 on the first request for the sites that have no definition, and is never read again. `HollwareConfig.sites` is optional, so `createHollware({ auth })` sets the options of the deployment alone.
+
+- [`3f3cb16`](https://github.com/hollware/hollware/commit/3f3cb16b9779defecc14c95b6607989a3dd22367) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Six operations change the structure of the sites with no deploy (ADR-033), under the scope `schema:admin` that owners have: `get_structure` reads the definition, its version and the catalog of rules; `update_site` and `set_collection` replace the definition or one collection at the version read, answering every problem at its path, and asking to confirm a change that strands entries (a removed collection or locale) or that a new schema refuses (with counts and slugs); `create_site` makes a site with its maker as owner; `delete_site` puts a site its owner confirms in the trash, and `restore_site` brings it back. Every change is appended to `site_changes` with its actor, and the Worker serves it at once.
+
+- [`286149b`](https://github.com/hollware/hollware/commit/286149b7106adb84b5ee02b0433dc780b50be6e3) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Webhooks need no Worker secret of their own (ADR-033): one that names none is signed with a secret Hollware makes with the new operation `make_webhook_secret`, answers once, and keeps sealed in D1 (migration `0012_site_secrets`) under `HOLLWARE_SECRET`, which `hollware deploy` now makes when the Worker has none. The admin's Site adds and removes webhooks and makes their secrets. A site in the trash keeps its rows until it is restored.
+
+### Patch Changes
+
+- Updated dependencies [[`501174a`](https://github.com/hollware/hollware/commit/501174a4b9cd7e0a5191fa587c09e39f71ff3bd7), [`eaa743d`](https://github.com/hollware/hollware/commit/eaa743d4f6a6cb7ec5977f73379e6f414f43403f), [`f2f2c3d`](https://github.com/hollware/hollware/commit/f2f2c3d6ac6123d26bc1bc0d2b668b61d42afd9d), [`d1ea96e`](https://github.com/hollware/hollware/commit/d1ea96e61df8a7b58e0a9b5e76b85abdddc78a7a), [`3f3cb16`](https://github.com/hollware/hollware/commit/3f3cb16b9779defecc14c95b6607989a3dd22367), [`286149b`](https://github.com/hollware/hollware/commit/286149b7106adb84b5ee02b0433dc780b50be6e3)]:
+  - @hollware/core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
