@@ -11,6 +11,15 @@ catalogMode: prefer
 # Exact versions only. Each one was published at least 24 hours before it was
 # pinned, so it already passes minimumReleaseAge. Keep the list sorted.
 catalog:
+  # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
+  # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
+  # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
+  # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
+  # The h3 and nitropack that nuxt 4.6.1 runs on: @hollware/nuxt imports both in its runtime.
+  # Vite+ ships Vite as @voidzero-dev/vite-plus-core; every package resolves `vite` to it.
+  # comark 0.7.0 pins markdown-exit 1.1.0-beta.2 itself (see the v0.1 spike S3).
+  # needs it as a real peer dependency.
+  # would install zod twice. core and server declare it as a peer, ^4.2.0 (ADR-017).
   '@axe-core/playwright': 4.13.0
   '@cfworker/json-schema': 4.1.1
   '@changesets/changelog-github': 1.0.1
@@ -34,7 +43,6 @@ catalog:
   '@iconify/vue': 5.0.3
   '@lezer/highlight': 1.2.5
   '@modelcontextprotocol/client': 2.3.1
-  # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   '@modelcontextprotocol/conformance': 0.2.0-alpha.12
   '@modelcontextprotocol/server': 2.3.1
   '@nuxt/kit': 4.6.1
@@ -42,16 +50,14 @@ catalog:
   '@playwright/test': 1.64.0
   '@simplewebauthn/server': 14.0.3
   '@standard-schema/spec': 1.1.0
+  '@tanstack/vue-table': 8.21.3
   '@types/node': 24.19.2
   '@vitejs/plugin-vue': 6.0.10
   codemirror: 6.0.2
-  # comark 0.7.0 pins markdown-exit 1.1.0-beta.2 itself (see the v0.1 spike S3).
   comark: 0.7.0
   drizzle-kit: 0.31.11
   drizzle-orm: 0.45.4
-  # The h3 and nitropack that nuxt 4.6.1 runs on: @hollware/nuxt imports both in its runtime.
   h3: 1.15.11
-  # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
   hono: 5.0.0-rc.1
   nitropack: 2.13.4
   nuxt: 4.6.1
@@ -59,18 +65,13 @@ catalog:
   publint: 0.3.25
   tailwindcss: 4.3.3
   typescript: 7.0.2
-  # Vite+ ships Vite as @voidzero-dev/vite-plus-core; every package resolves `vite` to it.
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
-  # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
-  # needs it as a real peer dependency.
   vitest: 5.0.3
   vue: 3.5.44
   vue-router: 5.4.0
   wrangler: 4.150.0
   yaml: 2.9.1
-  # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
-  # would install zod twice. core and server declare it as a peer, ^4.2.0 (ADR-017).
   zod: 4.6.5
 
 overrides:

@@ -115,7 +115,7 @@ test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no d
   await owner.goto('/admin/collections')
   await expect(owner.getByRole('heading', { name: 'Collections', level: 1 })).toBeVisible()
   await expectAccessible(owner)
-  await owner.getByLabel('Name').fill('talks')
+  await owner.getByRole('textbox', { name: 'Name', exact: true }).fill('talks')
   await owner.getByRole('combobox', { name: 'Start from' }).click()
   await owner.getByRole('option', { name: 'Empty: a title alone' }).click()
   await owner.getByRole('button', { name: 'Create the collection' }).click()
@@ -160,6 +160,23 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expect(owner.getByText(/^whsec_[0-9a-f]{64}$/)).toBeVisible()
   await expect(owner.getByText("signed by Hollware's secret")).toBeVisible()
   await expectAccessible(owner)
+})
+
+test('finds an entry from ⌘K, and filters the table of entries', async () => {
+  await owner.goto('/admin/entries')
+  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toBeVisible()
+  await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('hello')
+  await expect(owner.getByRole('row', { name: /^Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('row', { name: /^Hello world/ })).toBeVisible()
+
+  // ⌘K waits while a field has the focus, as it should: the button of the sidebar opens it here.
+  await owner.getByRole('button', { name: /^Search/ }).click()
+  await owner.getByPlaceholder('Search entries, or go anywhere…').fill('hello')
+  await owner
+    .getByRole('option', { name: /Hello world/ })
+    .first()
+    .click()
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
 })
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {

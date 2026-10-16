@@ -2,6 +2,8 @@
 import type { CommandPaletteGroup, DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import type { Output } from './lib/api.ts'
+import { entryPath, titleOf } from './lib/entries.ts'
 import { api, auth } from './lib/session.ts'
 
 /**
@@ -87,36 +89,132 @@ const links = computed<NavigationMenuItem[][]>(() => [
   ],
 ])
 
-const searchGroups = computed<CommandPaletteGroup[]>(() => [
-  {
-    id: 'go',
-    label: 'Go to',
-    items: links.value
-      .flat()
-      .flatMap((item) =>
-        item.type === 'label' || item.to === undefined
-          ? []
-          : [{ label: String(item.label), icon: item.icon, to: item.to }],
-      ),
-  },
-  {
-    id: 'collections',
-    label: 'Collections',
-    items: collections.value.map((name) => ({
-      label: name,
-      icon: 'i-lucide-layers',
-      to: `/collections/${name}`,
-    })),
-  },
-  {
-    id: 'create',
-    label: 'Create',
-    items: [
-      { label: 'New entry', icon: 'i-lucide-plus', to: '/entries/new' },
-      { label: 'New site', icon: 'i-lucide-plus', to: '/site' },
-    ],
-  },
-])
+/**
+ * What ⌘K finds: the sections and collections to go to, what to create, the sites to switch to,
+ * and content. Published entries come from Hollware's own `search` (full text and meaning, with a
+ * snippet), drafts by their title or slug (search sees only what is published), and the reviews
+ * that wait; the server's answers are shown as they come, not filtered again.
+ */
+const searchOpen = ref(false)
+const term = ref('')
+const searching = ref(false)
+type Entry = Output<'list_entries'>['entries'][number]
+const found = ref<Output<'search'>['results']>([])
+const drafts = ref<Entry[] | null>(null)
+const waiting = ref<Output<'list_reviews'>['reviews']>([])
+
+watch(searchOpen, async (open) => {
+  if (!open || drafts.value !== null) return
+  const lists = await Promise.all(
+    collections.value.map((collection) =>
+      api.call('list_entries', { collection, status: 'draft', limit: 100 }),
+    ),
+  )
+  drafts.value = lists.flatMap((list) => list.entries)
+  waiting.value = (await api.call('list_reviews', { status: 'pending', limit: 50 })).reviews
+})
+
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(term, (query) => {
+  clearTimeout(timer)
+  if (query.trim().length < 2) {
+    found.value = []
+    return
+  }
+  timer = setTimeout(async () => {
+    searching.value = true
+    try {
+      found.value = (await api.call('search', { query, limit: 8 })).results
+    } finally {
+      searching.value = false
+    }
+  }, 250)
+})
+
+const searchGroups = computed<CommandPaletteGroup[]>(() => {
+  const query = term.value.trim().toLowerCase()
+  const matches = (text: string) => query.length >= 2 && text.toLowerCase().includes(query)
+  return [
+    {
+      id: 'published',
+      label: 'Published',
+      ignoreFilter: true,
+      items: found.value.map(({ entry, snippet }) => ({
+        label: titleOf(entry),
+        suffix: `${entry.collection} · ${entry.locale}`,
+        description: snippet.replace(/[[\]]/g, ''),
+        icon: 'i-lucide-file-text',
+        to: entryPath(entry),
+      })),
+    },
+    {
+      id: 'drafts',
+      label: 'Drafts',
+      ignoreFilter: true,
+      items: (drafts.value ?? [])
+        .filter((entry) => matches(titleOf(entry)) || matches(entry.slug))
+        .slice(0, 8)
+        .map((entry) => ({
+          label: titleOf(entry),
+          suffix: `${entry.collection} · ${entry.locale}`,
+          icon: 'i-lucide-file-pen-line',
+          to: entryPath(entry),
+        })),
+    },
+    {
+      id: 'reviews',
+      label: 'Waiting for review',
+      items: waiting.value.map((review) => ({
+        label: titleOf(review.entry),
+        suffix: `asked by ${review.requestedByName ?? review.requestedBy}`,
+        icon: 'i-lucide-inbox',
+        to: '/reviews',
+      })),
+    },
+    {
+      id: 'go',
+      label: 'Go to',
+      items: [
+        ...links.value
+          .flat()
+          .flatMap((item) =>
+            item.type === 'label' || item.to === undefined
+              ? []
+              : [{ label: String(item.label), icon: item.icon, to: item.to }],
+          ),
+        { label: 'Collections', icon: 'i-lucide-layers', to: '/collections' },
+        ...collections.value.map((name) => ({
+          label: `Collection ${name}`,
+          icon: 'i-lucide-layers',
+          to: `/collections/${name}`,
+        })),
+      ],
+    },
+    {
+      id: 'create',
+      label: 'Create',
+      items: [
+        { label: 'New entry', icon: 'i-lucide-plus', to: '/entries/new' },
+        { label: 'New collection', icon: 'i-lucide-plus', to: '/collections' },
+        { label: 'New site', icon: 'i-lucide-plus', to: '/site' },
+        { label: 'Invite someone', icon: 'i-lucide-user-plus', to: '/people' },
+        { label: 'New token', icon: 'i-lucide-key-round', to: '/tokens' },
+      ],
+    },
+    {
+      id: 'sites',
+      label: 'Switch site',
+      items: (me.value?.sites ?? [])
+        .filter((membership) => membership.site !== me.value?.site)
+        .map((membership) => ({
+          label: membership.site,
+          suffix: membership.role,
+          icon: 'i-lucide-globe',
+          onSelect: () => void auth.switchSite(membership.site, '/admin/'),
+        })),
+    },
+  ]
+})
 
 const personItems = computed<DropdownMenuItem[][]>(() => [
   [
@@ -216,7 +314,14 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
         </template>
       </UDashboardSidebar>
 
-      <UDashboardSearch :groups="searchGroups" :color-mode="false" />
+      <UDashboardSearch
+        v-model:open="searchOpen"
+        v-model:search-term="term"
+        :groups="searchGroups"
+        :loading="searching"
+        :color-mode="false"
+        placeholder="Search entries, or go anywhere…"
+      />
 
       <RouterView />
     </UDashboardGroup>

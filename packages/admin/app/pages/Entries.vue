@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import Page from '../components/Page.vue'
+import type { TableColumn } from '@nuxt/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import DataTable from '../components/DataTable.vue'
+import Page from '../components/Page.vue'
 import type { Output } from '../lib/api.ts'
+import { sortable } from '../lib/columns.ts'
 import { entryPath, STATUS_COLOR, titleOf, when } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
@@ -10,18 +13,21 @@ import { pageUrl } from '../lib/site.ts'
 type Site = Output<'describe_site'>['site']
 type Entry = Output<'list_entries'>['entries'][number]
 type Status = Entry['status']
+/** A row of the table: the entry, with its title for the filter and the sorting. */
+type Row = Entry & { title: string }
 
 const ALL = 'all'
-const PAGE = 50
+/** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
+const MOST = 2000
 
 const route = useRoute()
 const router = useRouter()
 const site = ref<Site | null>(null)
 const entries = ref<Entry[]>([])
-const cursor = ref<string | null>(null)
 const loading = ref(false)
+const truncated = ref(false)
 
-// The filters live in the query, so a filtered list can be linked to and comes back on Back.
+// The filters of the server live in the query, so a filtered list can be linked to.
 function queried(name: string, fallback: string): string {
   const value = route.query[name]
   return typeof value === 'string' && value !== '' ? value : fallback
@@ -29,7 +35,6 @@ function queried(name: string, fallback: string): string {
 const collection = ref(queried('collection', ''))
 const locale = ref(queried('locale', ALL))
 const status = ref(queried('status', ALL))
-const text = ref(queried('q', ''))
 
 const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === collection.value),
@@ -40,55 +45,49 @@ onMounted(async () => {
   if (!site.value.collections.some((candidate) => candidate.name === collection.value)) {
     collection.value = site.value.collections[0]?.name ?? ''
   }
-  await load(false)
+  await load()
 })
 
-async function load(more: boolean) {
+async function load() {
   if (collection.value === '') return
   loading.value = true
   try {
-    const answer = await api.call('list_entries', {
-      collection: collection.value,
-      limit: PAGE,
-      ...(locale.value === ALL ? {} : { locale: locale.value }),
-      ...(status.value === ALL ? {} : { status: status.value as Status }),
-      ...(more && cursor.value !== null ? { cursor: cursor.value } : {}),
-    })
-    entries.value = more ? [...entries.value, ...answer.entries] : answer.entries
-    cursor.value = answer.nextCursor
+    const all: Entry[] = []
+    let cursor: string | null = null
+    do {
+      const answer: Output<'list_entries'> = await api.call('list_entries', {
+        collection: collection.value,
+        limit: 100,
+        ...(locale.value === ALL ? {} : { locale: locale.value }),
+        ...(status.value === ALL ? {} : { status: status.value as Status }),
+        ...(cursor === null ? {} : { cursor }),
+      })
+      all.push(...answer.entries)
+      cursor = answer.nextCursor
+    } while (cursor !== null && all.length < MOST)
+    entries.value = all
+    truncated.value = cursor !== null
   } finally {
     loading.value = false
   }
 }
 
 watch([collection, locale, status], async () => {
-  await router.replace({ query: filters() })
-  await load(false)
-})
-watch(text, async () => {
-  await router.replace({ query: filters() })
-})
-
-function filters(): Record<string, string> {
-  return Object.fromEntries(
-    [
-      ['collection', collection.value],
-      ['locale', locale.value],
-      ['status', status.value],
-      ['q', text.value],
-    ].filter(([, value]) => value !== '' && value !== ALL),
-  )
-}
-
-/** The loaded entries that hold every word of the text filter, in their title, slug or tags. */
-const shown = computed(() => {
-  const words = text.value.toLowerCase().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return entries.value
-  return entries.value.filter((entry) => {
-    const haystack = [titleOf(entry), entry.slug, ...entry.tags].join(' ').toLowerCase()
-    return words.every((word) => haystack.includes(word))
+  await router.replace({
+    query: Object.fromEntries(
+      [
+        ['collection', collection.value],
+        ['locale', locale.value],
+        ['status', status.value],
+      ].filter(([, value]) => value !== '' && value !== ALL),
+    ),
   })
+  await load()
 })
+
+const rows = computed<Row[]>(() =>
+  entries.value.map((entry) => ({ ...entry, title: titleOf(entry) })),
+)
 
 /** The other locales of each translation group among the loaded entries. */
 const siblings = computed(() => {
@@ -108,6 +107,14 @@ function liveUrl(entry: Entry): string | null {
   if (entry.status !== 'published' || definition.value === undefined) return null
   return pageUrl(site.value?.url ?? null, definition.value.routes, entry.locale, entry.slug)
 }
+
+const columns: TableColumn<Row>[] = [
+  { accessorKey: 'title', header: sortable('Title') },
+  { accessorKey: 'locale', header: sortable('Locale') },
+  { accessorKey: 'status', header: sortable('Status') },
+  { accessorKey: 'updatedAt', header: sortable('Updated') },
+  { id: 'site', header: '' },
+]
 
 const statuses = [
   { label: 'Any status', value: ALL },
@@ -130,98 +137,81 @@ const locales = computed(() => [
         :to="{ path: '/entries/new', query: collection === '' ? {} : { collection } }"
       />
     </template>
-    <div class="space-y-5">
-      <div v-if="site !== null" class="flex flex-wrap items-center gap-2">
-        <USelect
-          v-model="collection"
-          :items="site.collections.map((c) => c.name)"
-          aria-label="Collection"
-          class="w-40"
+    <DataTable
+      :data="rows"
+      :columns="columns"
+      :loading="loading"
+      filter-label="Filter by title, slug or tag"
+      empty="No entries here yet."
+    >
+      <template #filters>
+        <template v-if="site !== null">
+          <USelect
+            v-model="collection"
+            :items="site.collections.map((c) => c.name)"
+            aria-label="Collection"
+            class="w-40"
+          />
+          <USelect v-model="locale" :items="locales" aria-label="Locale" class="w-36" />
+          <USelect v-model="status" :items="statuses" aria-label="Status" class="w-36" />
+        </template>
+      </template>
+      <template #title-cell="{ row }">
+        <RouterLink
+          :to="entryPath(row.original)"
+          class="block max-w-md truncate font-medium hover:underline"
+        >
+          {{ row.original.title }}
+        </RouterLink>
+        <span class="block truncate font-mono text-xs text-muted">{{ row.original.slug }}</span>
+      </template>
+      <template #locale-cell="{ row }">
+        <span class="font-mono">{{ row.original.locale }}</span>
+        <RouterLink
+          v-for="other in translationsOf(row.original)"
+          :key="other.id"
+          :to="entryPath(other)"
+          :aria-label="`${titleOf(other)} (${other.locale})`"
+          class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
+          >{{ other.locale }}</RouterLink
+        >
+      </template>
+      <template #status-cell="{ row }">
+        <UBadge
+          :label="row.original.status"
+          :color="STATUS_COLOR[row.original.status]"
+          variant="subtle"
         />
-        <USelect v-model="locale" :items="locales" aria-label="Locale" class="w-36" />
-        <USelect v-model="status" :items="statuses" aria-label="Status" class="w-36" />
-        <UInput
-          v-model="text"
-          icon="i-lucide-search"
-          placeholder="Filter by title, slug or tag"
-          aria-label="Filter"
-          class="min-w-0 flex-1 basis-56"
+        <UBadge
+          v-if="row.original.status === 'published' && row.original.hasUnpublishedChanges"
+          label="changes"
+          color="warning"
+          variant="outline"
+          class="ml-1"
         />
-      </div>
-
-      <p v-if="loading && entries.length === 0" class="text-muted">Loading…</p>
-      <p v-else-if="shown.length === 0" class="text-muted">
-        {{ entries.length === 0 ? 'No entries here yet.' : 'No loaded entry matches the filter.' }}
-      </p>
-      <div v-else class="overflow-x-auto rounded-lg border border-default">
-        <table class="w-full text-sm">
-          <thead class="bg-elevated/50 text-left text-xs tracking-wide text-muted uppercase">
-            <tr>
-              <th class="px-4 py-2 font-medium">Title</th>
-              <th class="px-4 py-2 font-medium">Locale</th>
-              <th class="px-4 py-2 font-medium">Status</th>
-              <th class="px-4 py-2 font-medium">Updated</th>
-              <th class="px-4 py-2"><span class="sr-only">On the site</span></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-default">
-            <tr v-for="entry in shown" :key="entry.id">
-              <td class="max-w-0 px-4 py-2.5">
-                <RouterLink
-                  :to="entryPath(entry)"
-                  class="block truncate font-medium hover:underline"
-                >
-                  {{ titleOf(entry) }}
-                </RouterLink>
-                <span class="block truncate font-mono text-xs text-muted">{{ entry.slug }}</span>
-              </td>
-              <td class="px-4 py-2.5 whitespace-nowrap">
-                <span class="font-mono">{{ entry.locale }}</span>
-                <RouterLink
-                  v-for="other in translationsOf(entry)"
-                  :key="other.id"
-                  :to="entryPath(other)"
-                  :aria-label="`${titleOf(other)} (${other.locale})`"
-                  class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
-                  >{{ other.locale }}</RouterLink
-                >
-              </td>
-              <td class="px-4 py-2.5 whitespace-nowrap">
-                <UBadge
-                  :label="entry.status"
-                  :color="STATUS_COLOR[entry.status]"
-                  variant="subtle"
-                />
-                <UBadge
-                  v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
-                  label="changes"
-                  color="warning"
-                  variant="outline"
-                  class="ml-1"
-                />
-                <span v-if="entry.scheduledAt !== null" class="block text-xs text-muted">{{
-                  when(entry.scheduledAt)
-                }}</span>
-              </td>
-              <td class="px-4 py-2.5 whitespace-nowrap text-muted">{{ when(entry.updatedAt) }}</td>
-              <td class="px-4 py-2.5 text-right">
-                <UButton
-                  v-if="liveUrl(entry) !== null"
-                  :to="liveUrl(entry) ?? undefined"
-                  target="_blank"
-                  icon="i-lucide-external-link"
-                  variant="ghost"
-                  size="sm"
-                  :aria-label="`${titleOf(entry)} on the site`"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="cursor !== null" class="flex justify-center">
-        <UButton label="Load more" variant="outline" :loading="loading" @click="load(true)" />
-      </div>
-    </div>
+        <span v-if="row.original.scheduledAt !== null" class="block text-xs text-muted">{{
+          when(row.original.scheduledAt)
+        }}</span>
+      </template>
+      <template #updatedAt-cell="{ row }">
+        <span class="text-muted">{{ when(row.original.updatedAt) }}</span>
+      </template>
+      <template #site-cell="{ row }">
+        <div class="text-right">
+          <UButton
+            v-if="liveUrl(row.original) !== null"
+            :to="liveUrl(row.original) ?? undefined"
+            target="_blank"
+            icon="i-lucide-external-link"
+            variant="ghost"
+            size="sm"
+            :aria-label="`${row.original.title} on the site`"
+          />
+        </div>
+      </template>
+    </DataTable>
+    <p v-if="truncated" class="text-sm text-muted">
+      The first {{ MOST }} entries: narrow the list by locale or status to see the others.
+    </p>
   </Page>
 </template>

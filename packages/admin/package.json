@@ -53,6 +53,7 @@
     "@iconify/vue": "catalog:",
     "@lezer/highlight": "catalog:",
     "@nuxt/ui": "catalog:",
+    "@tanstack/vue-table": "catalog:",
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
     "codemirror": "catalog:",

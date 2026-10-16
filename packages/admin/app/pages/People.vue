@@ -1,14 +1,31 @@
 <script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
+import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
+import { sortable } from '../lib/columns.ts'
+import { when } from '../lib/entries.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
 import { api } from '../lib/session.ts'
 
+type Member = { id: string; name: string | null; role: string; since: string }
+type Invitation = { id: string; role: string; expiresAt: string }
 interface People {
-  people: { id: string; name: string | null; role: string; since: string }[]
-  invitations: { id: string; role: string; expiresAt: string }[]
+  people: Member[]
+  invitations: Invitation[]
 }
+
+const memberColumns: TableColumn<Member>[] = [
+  { accessorKey: 'name', header: sortable('Name') },
+  { accessorKey: 'role', header: sortable('Role') },
+  { accessorKey: 'since', header: sortable('Since') },
+  { id: 'actions', header: '' },
+]
+const invitationColumns: TableColumn<Invitation>[] = [
+  { accessorKey: 'role', header: sortable('Role') },
+  { accessorKey: 'expiresAt', header: sortable('Valid until') },
+]
 
 const toast = useToast()
 const data = ref<People | null>(null)
@@ -110,46 +127,49 @@ async function copy() {
         />
         <section aria-label="Members" class="space-y-2">
           <h2 class="font-medium">Members</h2>
-          <ul class="text-sm">
-            <li
-              v-for="person in data.people"
-              :key="person.id"
-              class="flex items-center gap-3 border-t border-default py-2"
-            >
-              <span class="min-w-0 flex-1 truncate font-medium">{{
-                person.name ?? person.id
-              }}</span>
+          <DataTable
+            :data="data.people"
+            :columns="memberColumns"
+            filter-label="Filter by name or role"
+            empty="No members."
+          >
+            <template #name-cell="{ row }">
+              <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
+            </template>
+            <template #role-cell="{ row }">
               <USelect
-                :model-value="person.role"
+                :model-value="row.original.role"
                 :items="['owner', 'editor', 'author']"
-                :aria-label="`Role of ${person.name ?? person.id}`"
+                :aria-label="`Role of ${row.original.name ?? row.original.id}`"
                 size="sm"
                 class="w-32"
-                @update:model-value="setRole(person.id, $event)"
+                @update:model-value="setRole(row.original.id, $event)"
               />
-              <UButton
-                icon="i-lucide-user-minus"
-                color="error"
-                variant="ghost"
-                size="sm"
-                :aria-label="`Remove ${person.name ?? person.id}`"
-                @click="removing = person"
-              />
-            </li>
-          </ul>
+            </template>
+            <template #since-cell="{ row }">{{ when(row.original.since) }}</template>
+            <template #actions-cell="{ row }">
+              <div class="text-right">
+                <UButton
+                  icon="i-lucide-user-minus"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="`Remove ${row.original.name ?? row.original.id}`"
+                  @click="removing = row.original"
+                />
+              </div>
+            </template>
+          </DataTable>
         </section>
         <section v-if="data.invitations.length > 0" aria-label="Invitations" class="space-y-2">
           <h2 class="font-medium">Waiting invitations</h2>
-          <ul class="text-sm">
-            <li
-              v-for="invitation in data.invitations"
-              :key="invitation.id"
-              class="border-t border-default py-2"
-            >
-              {{ invitation.role }} · until
-              {{ new Date(invitation.expiresAt).toLocaleDateString() }}
-            </li>
-          </ul>
+          <DataTable
+            :data="data.invitations"
+            :columns="invitationColumns"
+            filter-label="Filter by role"
+          >
+            <template #expiresAt-cell="{ row }">{{ when(row.original.expiresAt) }}</template>
+          </DataTable>
         </section>
       </template>
       <UModal v-model:open="removeOpen" :title="`Remove ${removing?.name ?? removing?.id ?? ''}?`">

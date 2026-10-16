@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
+import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
+import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
 import { api } from '../lib/session.ts'
 
-interface Token {
+type Token = {
   id: string
   kind: 'personal' | 'read'
   label: string
@@ -18,6 +21,16 @@ interface Token {
 }
 
 const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
+
+const columns: TableColumn<Token>[] = [
+  { accessorKey: 'label', header: sortable('Label') },
+  { accessorKey: 'kind', header: sortable('Kind') },
+  { accessorKey: 'user', header: sortable('Person') },
+  { accessorKey: 'scopes', header: 'Scopes' },
+  { accessorKey: 'expiresAt', header: sortable('Expires') },
+  { accessorKey: 'lastUsedAt', header: sortable('Last used') },
+  { id: 'actions', header: '' },
+]
 
 const toast = useToast()
 const tokens = ref<Token[]>([])
@@ -129,45 +142,39 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
             { label: 'Done', onClick: () => (secret = null) },
           ]"
         />
-        <table class="w-full text-sm">
-          <thead class="text-left text-muted">
-            <tr>
-              <th class="py-2">Label</th>
-              <th>Kind</th>
-              <th>Person</th>
-              <th>Scopes</th>
-              <th>Expires</th>
-              <th>Last used</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="token in tokens" :key="token.id" class="border-t border-default">
-              <td class="py-2 font-medium">{{ token.label }}</td>
-              <td>{{ token.kind }}</td>
-              <td>{{ token.user ?? '—' }}</td>
-              <td class="font-mono text-xs">{{ token.scopes.join(' ') }}</td>
-              <td>{{ day(token.expiresAt) }}</td>
-              <td>{{ day(token.lastUsedAt) }}</td>
-              <td class="text-right">
-                <UBadge
-                  v-if="token.revokedAt !== null"
-                  label="revoked"
-                  color="neutral"
-                  variant="subtle"
-                />
-                <UButton
-                  v-else
-                  label="Revoke"
-                  color="error"
-                  variant="ghost"
-                  size="sm"
-                  @click="revoke(token)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <DataTable
+          :data="tokens"
+          :columns="columns"
+          filter-label="Filter by label, person or scope"
+          empty="No tokens yet."
+        >
+          <template #label-cell="{ row }">
+            <span class="font-medium">{{ row.original.label }}</span>
+          </template>
+          <template #scopes-cell="{ row }">
+            <span class="font-mono text-xs">{{ row.original.scopes.join(' ') }}</span>
+          </template>
+          <template #expiresAt-cell="{ row }">{{ day(row.original.expiresAt) }}</template>
+          <template #lastUsedAt-cell="{ row }">{{ day(row.original.lastUsedAt) }}</template>
+          <template #actions-cell="{ row }">
+            <div class="text-right">
+              <UBadge
+                v-if="row.original.revokedAt !== null"
+                label="revoked"
+                color="neutral"
+                variant="subtle"
+              />
+              <UButton
+                v-else
+                label="Revoke"
+                color="error"
+                variant="ghost"
+                size="sm"
+                @click="revoke(row.original)"
+              />
+            </div>
+          </template>
+        </DataTable>
       </template>
     </div>
   </Page>

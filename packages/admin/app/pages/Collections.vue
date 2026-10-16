@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import type { TableColumn } from '@nuxt/ui'
+import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
+import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -21,6 +24,22 @@ async function load() {
 onMounted(load)
 
 const collections = computed(() => Object.entries(structure.value?.definition.collections ?? {}))
+type Row = { name: string; fields: number; rules: number; path: string }
+const rows = computed<Row[]>(() =>
+  collections.value.map(([name, collection]) => ({
+    name,
+    fields: fieldCount(collection.schema),
+    rules: collection.rules.length,
+    path: Object.values(collection.routes)[0] ?? '',
+  })),
+)
+const columns: TableColumn<Row>[] = [
+  { accessorKey: 'name', header: sortable('Name') },
+  { accessorKey: 'fields', header: sortable('Fields') },
+  { accessorKey: 'rules', header: sortable('Rules') },
+  { accessorKey: 'path', header: 'Path' },
+]
+
 const validName = computed(
   () =>
     /^[a-z][a-z0-9-]*$/.test(name.value) &&
@@ -66,23 +85,24 @@ const PRESETS = [
   >
     <div class="space-y-8">
       <p v-if="structure === null" class="text-muted">Loading…</p>
-      <ul v-else class="divide-y divide-default rounded-lg border border-default">
-        <li v-for="[key, collection] in collections" :key="key">
+      <DataTable
+        v-else
+        :data="rows"
+        :columns="columns"
+        filter-label="Filter by name or path"
+        empty="No collections yet."
+      >
+        <template #name-cell="{ row }">
           <RouterLink
-            :to="`/collections/${key}`"
-            class="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-elevated"
+            :to="`/collections/${row.original.name}`"
+            class="font-medium hover:underline"
+            >{{ row.original.name }}</RouterLink
           >
-            <span class="font-medium">{{ key }}</span>
-            <span class="text-sm text-muted">
-              {{ fieldCount(collection.schema) }}
-              fields · {{ collection.rules.length }} rules
-            </span>
-            <span class="ml-auto font-mono text-xs text-muted">{{
-              Object.values(collection.routes)[0]
-            }}</span>
-          </RouterLink>
-        </li>
-      </ul>
+        </template>
+        <template #path-cell="{ row }">
+          <span class="font-mono text-xs text-muted">{{ row.original.path }}</span>
+        </template>
+      </DataTable>
 
       <form class="max-w-lg space-y-4" @submit.prevent="create">
         <h2 class="font-semibold">New collection</h2>

@@ -12,7 +12,7 @@ const features = [
     icon: 'i-lucide-shield-check',
     title: 'Contracts on every write',
     description:
-      'The schema of your frontmatter, your components and your rules check each draft. A draft that breaks one is saved anyway, with the fix an agent can apply.',
+      'The schema of your frontmatter, your components and the rules you pick from a catalog check each draft. A draft that breaks one is saved anyway, with the fix an agent can apply.',
   },
   {
     icon: 'i-lucide-plug',
@@ -29,7 +29,7 @@ const features = [
     icon: 'i-lucide-zap',
     title: 'Read at the edge',
     description:
-      'A Worker reads published content over a service binding: no network, no token. Anywhere else, the read API and a read token.',
+      'A Worker reads published content over a service binding: no network, no token. Pages stay at the edge, and are purged by tag the moment you publish.',
   },
   {
     icon: 'i-lucide-users',
@@ -49,12 +49,14 @@ const steps = [
   {
     title: 'Create a project',
     code: 'npm create hollware my-cms',
-    description: 'A config, a Worker and a local database, with your site, its owner and a token.',
+    description:
+      'A Worker and a local database, with your site from a preset, its owner and a token.',
   },
   {
     title: 'Connect your agent',
     code: 'claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer hw_pat_…"',
-    description: 'It reads your contracts with describe_site, then writes and publishes drafts.',
+    description:
+      'It reads your site with describe_site, then writes, validates and publishes drafts.',
   },
   {
     title: 'Deploy it',
@@ -64,25 +66,25 @@ const steps = [
   },
 ]
 
-const config = `export default defineConfig({
-  sites: {
-    blog: {
-      locales: ['en', 'es'],
-      defaultLocale: 'en',
-      collections: {
-        posts: defineCollection({
-          schema: z.object({
-            title: z.string().min(1),
-            description: z.string().max(160),
-            date: z.iso.date(),
-          }),
-          routes: { en: '/blog/:slug/', es: '/es/blog/:slug/' },
-          contracts: [contracts.imagesHaveAlt()],
-        }),
+const shaping = `// An agent adds a required field to the blog, over MCP
+set_collection({
+  version: 4,
+  name: 'posts',
+  collection: {
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', minLength: 1 },
+        subtitle: { type: 'string', minLength: 1 },
       },
+      required: ['title', 'subtitle'],
     },
+    routes: { en: '/blog/:slug/', es: '/es/blog/:slug/' },
+    rules: [{ rule: 'field-length', params: { field: 'title', max: 60 } }],
   },
-})`
+})
+// → needs_confirmation: 3 entries have no subtitle.
+//   Confirm, and every write after it is checked against it.`
 </script>
 
 <template>
@@ -161,13 +163,13 @@ const config = `export default defineConfig({
 
     <UPageSection
       orientation="horizontal"
-      headline="hollware.config.ts"
-      title="Your contracts are code"
-      description="One file says what your content is: its schema, its routes per locale, its components and its rules. Agents read it before they write, and every write is checked against it."
+      headline="No deploy"
+      title="Shape your content as you go"
+      description="Your collections, their fields and their rules live with your content. Change them in the admin, or let an agent do it over MCP: it says what a change would do to the entries you have, and applies at once."
       :links="[
         {
-          label: 'How contracts work',
-          to: '/docs/contracts/',
+          label: 'Configure your content',
+          to: '/docs/configure-your-content/',
           trailingIcon: 'i-lucide-arrow-right',
           color: 'neutral',
           variant: 'link',
@@ -176,7 +178,7 @@ const config = `export default defineConfig({
     >
       <pre
         class="overflow-x-auto rounded-lg border border-default bg-muted/80 p-5 font-mono text-[13px] leading-relaxed text-highlighted"
-      ><code>{{ config }}</code></pre>
+      ><code>{{ shaping }}</code></pre>
     </UPageSection>
 
     <UPageSection :ui="{ container: 'pb-28' }">

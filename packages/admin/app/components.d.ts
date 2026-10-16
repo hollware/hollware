@@ -33,9 +33,11 @@ declare module 'vue' {
     UInputTags: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/InputTags.vue')['default']
     UModal: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     UNavigationMenu: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/NavigationMenu.vue')['default']
+    UPagination: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Pagination.vue')['default']
     USelect: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USelectMenu: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/SelectMenu.vue')['default']
     USwitch: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Switch.vue')['default']
+    UTable: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Table.vue')['default']
     UTabs: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Tabs.vue')['default']
     UTextarea: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Textarea.vue')['default']
   }

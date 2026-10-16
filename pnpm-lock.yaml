@@ -254,6 +254,9 @@ catalogs:
     '@standard-schema/spec':
       specifier: 1.1.0
       version: 1.1.0
+    '@tanstack/vue-table':
+      specifier: 8.21.3
+      version: 8.21.3
     '@types/node':
       specifier: 24.19.2
       version: 24.19.2
@@ -579,6 +582,9 @@ importers:
       '@nuxt/ui':
         specifier: 'catalog:'
         version: 4.11.3(de764ef50ce7b34faacc3f479e9de31b)
+      '@tanstack/vue-table':
+        specifier: 'catalog:'
+        version: 8.21.3(vue@3.5.44(typescript@7.0.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
