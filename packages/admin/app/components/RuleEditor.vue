@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { paramInputs } from '../lib/params.ts'
+import { useMessages } from '../i18n/index.ts'
 
 type Rule = Output<'get_structure'>['definition']['collections'][string]['rules'][number]
 type CatalogRule = Output<'get_structure'>['catalog'][number]
@@ -16,8 +17,13 @@ const emit = defineEmits<{ remove: [] }>()
 
 const entry = computed(() => props.catalog.find((candidate) => candidate.name === props.rule.rule))
 const inputs = computed(() => (entry.value === undefined ? [] : paramInputs(entry.value.params)))
+const m = useMessages()
 /** No field, for a parameter that may name none. */
-const NONE = '(none)'
+const NONE = computed(() => m.value.common.none)
+const severities = computed(() => [
+  { label: m.value.severity.error, value: 'error' },
+  { label: m.value.severity.warning, value: 'warning' },
+])
 const names = computed(() => props.catalog.map((candidate) => candidate.name))
 
 function value(key: string): unknown {
@@ -43,7 +49,7 @@ function setRule(name: string) {
 <template>
   <div class="space-y-3 rounded-lg border border-default p-4">
     <div class="flex flex-wrap items-end gap-3">
-      <UFormField label="Rule" class="min-w-0 flex-1">
+      <UFormField :label="m.rule.rule" class="min-w-0 flex-1">
         <USelect
           :model-value="rule.rule"
           :items="names"
@@ -51,14 +57,14 @@ function setRule(name: string) {
           @update:model-value="setRule(String($event))"
         />
       </UFormField>
-      <UFormField label="Severity">
-        <USelect v-model="rule.severity" :items="['error', 'warning']" class="w-32" />
+      <UFormField :label="m.rule.severity">
+        <USelect v-model="rule.severity" :items="severities" class="w-32" />
       </UFormField>
       <UButton
         icon="i-lucide-trash-2"
         color="error"
         variant="ghost"
-        :aria-label="`Remove the rule ${rule.rule}`"
+        :aria-label="m.rule.remove(rule.rule)"
         @click="emit('remove')"
       />
     </div>

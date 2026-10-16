@@ -72,7 +72,7 @@ const docs = defineCollection({
     section: z.enum(['start', 'guides', 'concepts', 'reference']),
     order: z.number().int().min(0).max(999),
   }),
-  routes: { en: '/docs/:slug/' },
+  routes: { en: '/docs/:slug/', es: '/es/docs/:slug/' },
   components: {
     callout: defineComponent({
       props: z.strictObject({ type: z.enum(['note', 'tip', 'warning']) }),
@@ -92,11 +92,12 @@ const docs = defineCollection({
 export default defineConfig({
   sites: {
     docs: {
-      locales: ['en'],
+      locales: ['en', 'es'],
       defaultLocale: 'en',
       url: 'https://hollware.com',
       collections: { docs },
-      styleGuide: 'Plain international English.',
+      styleGuide:
+        'Plain international English, and neutral Spanish with tú and no regional idioms. A page in Spanish keeps the slug of its English page.',
     },
     playground: {
       locales: ['es', 'en'],

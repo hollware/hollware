@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { en } from '../app/i18n/en.ts'
 
 import {
   fieldsFromSchema,
@@ -85,11 +86,14 @@ describe('schemaFromFields', () => {
 describe('problemsOf', () => {
   it('names a bad name, a repeated one, inverted bounds and an empty choice', () => {
     expect(
-      problemsOf([
-        { ...newField('1st', 'text') },
-        { ...newField('a', 'text'), min: 5, max: 2 },
-        newField('a', 'choice'),
-      ]),
+      problemsOf(
+        [
+          { ...newField('1st', 'text') },
+          { ...newField('a', 'text'), min: 5, max: 2 },
+          newField('a', 'choice'),
+        ],
+        en.collection.problems,
+      ),
     ).toEqual([
       '"1st" is not a field name: letters, digits and _, not starting with a digit.',
       '"a": the least is more than the most.',

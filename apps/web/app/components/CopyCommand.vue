@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{ command: string }>()
+const { m } = useLocale()
 const copied = ref(false)
 
 async function copy() {
@@ -21,7 +22,7 @@ async function copy() {
     <span class="text-highlighted">{{ command }}</span>
     <UButton
       :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-      :aria-label="copied ? 'Copied' : 'Copy the command'"
+      :aria-label="copied ? m.copy.copied : m.copy.copy"
       color="neutral"
       variant="ghost"
       size="xs"

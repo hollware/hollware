@@ -63,9 +63,8 @@ describe('the look of Hollware', () => {
       readText('packages/admin/app/App.vue'),
     ]
     for (const source of sources) expect(source).not.toContain('ColorMode')
-    expect(readText('apps/web/nuxt.config.ts')).toContain(
-      "htmlAttrs: { lang: 'en', class: 'dark' }",
-    )
+    // The language is each page's (apps/web/app/app.vue); the class is the same on all of them.
+    expect(readText('apps/web/nuxt.config.ts')).toContain("htmlAttrs: { class: 'dark' }")
     expect(readText('apps/web/nuxt.config.ts')).toContain('ui: { colorMode: false }')
     expect(readText('packages/admin/app/index.html')).toContain('<html lang="en" class="dark">')
     expect(readText(ADMIN_CONFIG)).toContain('colorMode: false')

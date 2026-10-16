@@ -2,6 +2,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import { getPaginationRowModel, type SortingState } from '@tanstack/vue-table'
 import { computed, ref, useTemplateRef } from 'vue'
+import { useMessages } from '../i18n/index.ts'
 
 /**
  * Every table of the admin: Nuxt UI's table with a filter over every column, columns that sort,
@@ -18,8 +19,11 @@ const props = withDefaults(
     loading?: boolean
     empty?: string
   }>(),
-  { filterLabel: 'Filter', pageSize: 25, loading: false, empty: 'Nothing here yet.' },
+  { filterLabel: undefined, pageSize: 25, loading: false, empty: undefined },
 )
+
+const m = useMessages()
+const filterText = computed(() => props.filterLabel ?? m.value.table.filter)
 
 const table = useTemplateRef('table')
 const filter = ref('')
@@ -38,8 +42,8 @@ const rows = computed(() => [...props.data])
       <UInput
         v-model="filter"
         icon="i-lucide-search"
-        :placeholder="filterLabel"
-        :aria-label="filterLabel"
+        :placeholder="filterText"
+        :aria-label="filterText"
         class="min-w-0 flex-1 basis-56"
       />
     </div>
@@ -51,7 +55,7 @@ const rows = computed(() => [...props.data])
       :data="rows"
       :columns="columns"
       :loading="loading"
-      :empty="empty"
+      :empty="empty ?? m.table.empty"
       :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
       class="rounded-lg border border-default"
     >
@@ -60,7 +64,7 @@ const rows = computed(() => [...props.data])
       </template>
     </UTable>
     <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
-      <span class="tabular-nums">{{ filtered }} of {{ data.length }}</span>
+      <span class="tabular-nums">{{ m.table.count(filtered, data.length) }}</span>
       <UPagination
         v-if="filtered > pagination.pageSize"
         :page="pagination.pageIndex + 1"

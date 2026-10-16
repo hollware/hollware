@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useMessages } from '../i18n/index.ts'
 import { fieldsOf, readFrontmatter, writeFrontmatter, type Field } from '../lib/frontmatter.ts'
 
 /**
@@ -10,6 +11,7 @@ import { fieldsOf, readFrontmatter, writeFrontmatter, type Field } from '../lib/
 const props = defineProps<{ modelValue: string; schema: Readonly<Record<string, unknown>> }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
+const m = useMessages()
 const fields = computed(() => fieldsOf(props.schema))
 const values = computed(() => readFrontmatter(props.modelValue))
 
@@ -34,12 +36,9 @@ function number(field: Field): number | undefined {
 
 <template>
   <p v-if="values === null" class="text-sm text-muted">
-    The frontmatter does not read as YAML between two <code>---</code> lines. Fix it in the
-    Markdown, and its fields come back here.
+    {{ m.frontmatter.notYamlBefore }}<code>---</code>{{ m.frontmatter.notYamlAfter }}
   </p>
-  <p v-else-if="fields.length === 0" class="text-sm text-muted">
-    The collection describes no field this form can show. Edit the frontmatter in the Markdown.
-  </p>
+  <p v-else-if="fields.length === 0" class="text-sm text-muted">{{ m.frontmatter.noFields }}</p>
   <form v-else class="space-y-4" @submit.prevent>
     <UFormField
       v-for="field in fields"

@@ -2,6 +2,7 @@
 import type { CommandPaletteGroup, DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i18n/index.ts'
 import type { Output } from './lib/api.ts'
 import { entryPath, titleOf } from './lib/entries.ts'
 import { api, auth } from './lib/session.ts'
@@ -20,6 +21,7 @@ interface Me {
 }
 
 const route = useRoute()
+const m = useMessages()
 const me = ref<Me | null>(null)
 const pending = ref(0)
 const collections = ref<string[]>([])
@@ -40,13 +42,16 @@ watch(
   { immediate: true },
 )
 
-const role = computed(() => me.value?.sites.find((m) => m.site === me.value?.site)?.role ?? '')
+const roleKey = computed(
+  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role ?? '',
+)
+const role = computed(() => m.value.roles[roleKey.value] ?? roleKey.value)
 
 /** The sites of the person, to switch to: a token is for one site, so the admin signs in again. */
 const siteItems = computed<DropdownMenuItem[][]>(() => [
   (me.value?.sites ?? []).map((membership) => ({
     label: membership.site,
-    description: membership.role,
+    description: m.value.roles[membership.role] ?? membership.role,
     icon: 'i-lucide-globe',
     checked: membership.site === me.value?.site,
     type: 'checkbox' as const,
@@ -54,38 +59,38 @@ const siteItems = computed<DropdownMenuItem[][]>(() => [
       if (membership.site !== me.value?.site) void auth.switchSite(membership.site, '/admin/')
     },
   })),
-  [{ label: 'New site', icon: 'i-lucide-plus', to: '/site' }],
+  [{ label: m.value.nav.newSite, icon: 'i-lucide-plus', to: '/site' }],
 ])
 
 const links = computed<NavigationMenuItem[][]>(() => [
   [
-    { label: 'Home', icon: 'i-lucide-house', to: '/', exact: true },
-    { label: 'Entries', icon: 'i-lucide-file-text', to: '/entries' },
+    { label: m.value.nav.home, icon: 'i-lucide-house', to: '/', exact: true },
+    { label: m.value.nav.entries, icon: 'i-lucide-file-text', to: '/entries' },
     {
-      label: 'Reviews',
+      label: m.value.nav.reviews,
       icon: 'i-lucide-inbox',
       to: '/reviews',
       ...(pending.value > 0 ? { badge: String(pending.value) } : {}),
     },
   ],
   [
-    { label: 'Structure', type: 'label' },
+    { label: m.value.nav.structure, type: 'label' },
     {
       // A trigger with no link of its own: one with both marks a span as expanded, which axe refuses.
-      label: 'Collections',
+      label: m.value.nav.collections,
       icon: 'i-lucide-layers',
       defaultOpen: true,
       children: [
-        { label: 'All collections', to: '/collections', exact: true },
+        { label: m.value.nav.allCollections, to: '/collections', exact: true },
         ...collections.value.map((name) => ({ label: name, to: `/collections/${name}` })),
       ],
     },
-    { label: 'Site', icon: 'i-lucide-globe', to: '/site' },
+    { label: m.value.nav.site, icon: 'i-lucide-globe', to: '/site' },
   ],
   [
-    { label: 'Settings', type: 'label' },
-    { label: 'People', icon: 'i-lucide-users', to: '/people' },
-    { label: 'Tokens', icon: 'i-lucide-key-round', to: '/tokens' },
+    { label: m.value.nav.settings, type: 'label' },
+    { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
+    { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
   ],
 ])
 
@@ -137,7 +142,7 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
   return [
     {
       id: 'published',
-      label: 'Published',
+      label: m.value.search.published,
       ignoreFilter: true,
       items: found.value.map(({ entry, snippet }) => ({
         label: titleOf(entry),
@@ -149,7 +154,7 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
     },
     {
       id: 'drafts',
-      label: 'Drafts',
+      label: m.value.search.drafts,
       ignoreFilter: true,
       items: (drafts.value ?? [])
         .filter((entry) => matches(titleOf(entry)) || matches(entry.slug))
@@ -163,17 +168,17 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
     },
     {
       id: 'reviews',
-      label: 'Waiting for review',
+      label: m.value.search.waiting,
       items: waiting.value.map((review) => ({
         label: titleOf(review.entry),
-        suffix: `asked by ${review.requestedByName ?? review.requestedBy}`,
+        suffix: m.value.search.askedBy(review.requestedByName ?? review.requestedBy),
         icon: 'i-lucide-inbox',
         to: '/reviews',
       })),
     },
     {
       id: 'go',
-      label: 'Go to',
+      label: m.value.search.goTo,
       items: [
         ...links.value
           .flat()
@@ -182,9 +187,9 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
               ? []
               : [{ label: String(item.label), icon: item.icon, to: item.to }],
           ),
-        { label: 'Collections', icon: 'i-lucide-layers', to: '/collections' },
+        { label: m.value.nav.collections, icon: 'i-lucide-layers', to: '/collections' },
         ...collections.value.map((name) => ({
-          label: `Collection ${name}`,
+          label: m.value.search.collection(name),
           icon: 'i-lucide-layers',
           to: `/collections/${name}`,
         })),
@@ -192,23 +197,23 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
     },
     {
       id: 'create',
-      label: 'Create',
+      label: m.value.search.create,
       items: [
-        { label: 'New entry', icon: 'i-lucide-plus', to: '/entries/new' },
-        { label: 'New collection', icon: 'i-lucide-plus', to: '/collections' },
-        { label: 'New site', icon: 'i-lucide-plus', to: '/site' },
-        { label: 'Invite someone', icon: 'i-lucide-user-plus', to: '/people' },
-        { label: 'New token', icon: 'i-lucide-key-round', to: '/tokens' },
+        { label: m.value.search.newEntry, icon: 'i-lucide-plus', to: '/entries/new' },
+        { label: m.value.search.newCollection, icon: 'i-lucide-plus', to: '/collections' },
+        { label: m.value.search.newSite, icon: 'i-lucide-plus', to: '/site' },
+        { label: m.value.search.invite, icon: 'i-lucide-user-plus', to: '/people' },
+        { label: m.value.search.newToken, icon: 'i-lucide-key-round', to: '/tokens' },
       ],
     },
     {
       id: 'sites',
-      label: 'Switch site',
+      label: m.value.search.switchSite,
       items: (me.value?.sites ?? [])
         .filter((membership) => membership.site !== me.value?.site)
         .map((membership) => ({
           label: membership.site,
-          suffix: membership.role,
+          suffix: m.value.roles[membership.role] ?? membership.role,
           icon: 'i-lucide-globe',
           onSelect: () => void auth.switchSite(membership.site, '/admin/'),
         })),
@@ -219,14 +224,26 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
 const personItems = computed<DropdownMenuItem[][]>(() => [
   [
     {
-      label: me.value?.user?.name ?? 'You',
-      description: `${role.value} of ${me.value?.site ?? ''}`,
+      label: me.value?.user?.name ?? m.value.person.you,
+      description: m.value.person.roleOf(role.value, me.value?.site ?? ''),
       type: 'label',
     },
   ],
   [
-    { label: 'Tokens', icon: 'i-lucide-key-round', to: '/tokens' },
-    { label: 'People', icon: 'i-lucide-users', to: '/people' },
+    { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
+    { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
+    {
+      label: m.value.person.language,
+      icon: 'i-lucide-languages',
+      children: [
+        LANGUAGES.map(({ locale, name }) => ({
+          label: name,
+          type: 'checkbox' as const,
+          checked: currentLocale.value === locale,
+          onSelect: () => setLocale(locale),
+        })),
+      ],
+    },
   ],
 ])
 
@@ -234,7 +251,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <RouterView v-if="route.meta['open'] === true" />
     <UDashboardGroup v-else unit="rem">
       <UDashboardSidebar
@@ -257,7 +274,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
               :trailing-icon="collapsed ? undefined : 'i-lucide-chevrons-up-down'"
               class="data-[state=open]:bg-elevated"
               :ui="{ trailingIcon: 'text-dimmed ms-auto' }"
-              aria-label="Site"
+              :aria-label="m.nav.site"
             >
               <svg viewBox="0 0 32 32" class="size-5 shrink-0" aria-hidden="true">
                 <rect width="32" height="32" rx="8" class="fill-(--ui-bg-accented)" />
@@ -302,7 +319,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
               block
               :square="collapsed"
               class="data-[state=open]:bg-elevated"
-              aria-label="You"
+              :aria-label="m.person.you"
             >
               <UAvatar :text="initial" size="2xs" />
               <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? '' }}</span>
@@ -320,7 +337,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
         :groups="searchGroups"
         :loading="searching"
         :color-mode="false"
-        placeholder="Search entries, or go anywhere…"
+        :placeholder="m.search.placeholder"
       />
 
       <RouterView />

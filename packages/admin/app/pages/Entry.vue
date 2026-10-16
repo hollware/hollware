@@ -7,7 +7,8 @@ import MarkdownEditor from '../components/MarkdownEditor.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { diagnosticsOf } from '../lib/diagnostics.ts'
-import { entryPath, STATUS_COLOR, titleOf, when } from '../lib/entries.ts'
+import { formatDateTime, useMessages } from '../i18n/index.ts'
+import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 
@@ -20,6 +21,7 @@ type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
 
 const toast = useToast()
+const m = useMessages()
 const site = ref<Site | null>(null)
 const entry = ref<Entry | null>(null)
 const related = ref<Summary[]>([])
@@ -124,12 +126,12 @@ async function check() {
     toast.add({
       title:
         errors.length === 0 && found.length === 0
-          ? 'Every contract passes'
-          : `${errors.length} errors, ${found.length} warnings`,
+          ? m.value.entry.allPass
+          : m.value.entry.counts(errors.length, found.length),
       color: errors.length > 0 ? 'error' : found.length > 0 ? 'warning' : 'success',
     })
   } catch (error) {
-    report(error, 'Not checked')
+    report(error, m.value.entry.notChecked)
   } finally {
     busy.value = false
   }
@@ -149,7 +151,7 @@ async function save() {
       case 'unchanged':
         await load()
         toast.add({
-          title: answer.outcome === 'saved' ? 'Saved' : 'Nothing changed',
+          title: answer.outcome === 'saved' ? m.value.entry.saved : m.value.entry.nothingChanged,
           color: 'success',
         })
         break
@@ -159,8 +161,8 @@ async function save() {
       case 'refused':
         verdict.value = answer.verdict ?? verdict.value
         toast.add({
-          title: 'Not saved',
-          description: 'See what the contracts say.',
+          title: m.value.entry.notSaved,
+          description: m.value.entry.seeContracts,
           color: 'error',
         })
         break
@@ -169,7 +171,7 @@ async function save() {
         break
     }
   } catch (error) {
-    report(error, 'Not saved')
+    report(error, m.value.entry.notSaved)
   } finally {
     busy.value = false
   }
@@ -192,20 +194,22 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
     switch (answer.outcome) {
       case 'published':
         await load()
-        toast.add({ title: 'Published', color: 'success' })
+        toast.add({ title: m.value.entry.published, color: 'success' })
         break
       case 'scheduled':
         await load()
         toast.add({
-          title: 'Scheduled',
-          description: `It is published at ${when(answer.entry?.scheduledAt ?? at ?? '')}.`,
+          title: m.value.entry.scheduled,
+          description: m.value.entry.publishedAt(
+            formatDateTime(answer.entry?.scheduledAt ?? at ?? ''),
+          ),
           color: 'info',
         })
         break
       case 'pending_review':
         toast.add({
-          title: 'Sent for review',
-          description: 'A person who may publish will approve it, or ask for changes.',
+          title: m.value.entry.sentForReview,
+          description: m.value.entry.reviewNext,
           color: 'info',
         })
         break
@@ -216,7 +220,11 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
         break
       case 'blocked':
         verdict.value = answer.verdict ?? verdict.value
-        toast.add({ title: 'Blocked', description: 'Fix the errors first.', color: 'error' })
+        toast.add({
+          title: m.value.entry.blocked,
+          description: m.value.entry.fixErrors,
+          color: 'error',
+        })
         break
       case 'conflict':
         conflictOpen.value = true
@@ -226,7 +234,7 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
         break
     }
   } catch (error) {
-    report(error, at === undefined ? 'Not published' : 'Not scheduled')
+    report(error, at === undefined ? m.value.entry.notPublished : m.value.entry.notScheduled)
   } finally {
     busy.value = false
   }
@@ -244,8 +252,8 @@ function openSchedule() {
 
 const scheduleError = computed(() => {
   const at = Date.parse(publishAt.value)
-  if (Number.isNaN(at)) return 'Pick a date and a time.'
-  return at <= Date.now() ? 'Pick a time in the future.' : null
+  if (Number.isNaN(at)) return m.value.entry.pickDateTime
+  return at <= Date.now() ? m.value.entry.pickFuture : null
 })
 
 async function unpublish() {
@@ -257,12 +265,12 @@ async function unpublish() {
     await api.call('unpublish', { id: entry.value.id })
     await load()
     toast.add({
-      title: wasScheduled ? 'Schedule cancelled' : 'Unpublished',
-      description: 'The entry is a draft again, with all its revisions.',
+      title: wasScheduled ? m.value.entry.scheduleCancelled : m.value.entry.unpublished,
+      description: m.value.entry.draftAgain,
       color: 'success',
     })
   } catch (error) {
-    report(error, wasScheduled ? 'Not cancelled' : 'Not unpublished')
+    report(error, wasScheduled ? m.value.entry.notCancelled : m.value.entry.notUnpublished)
   } finally {
     busy.value = false
   }
@@ -273,29 +281,29 @@ async function reloadTheirs() {
   await load()
 }
 
-const tabs = [
-  { label: 'Fields', slot: 'fields' as const, value: 'fields' },
-  { label: 'Checks', slot: 'checks' as const, value: 'checks' },
-  { label: 'Preview', slot: 'preview' as const, value: 'preview' },
-  { label: 'Related', slot: 'related' as const, value: 'related' },
-]
+const tabs = computed(() => [
+  { label: m.value.entry.tabs.fields, slot: 'fields' as const, value: 'fields' },
+  { label: m.value.entry.tabs.checks, slot: 'checks' as const, value: 'checks' },
+  { label: m.value.entry.tabs.preview, slot: 'preview' as const, value: 'preview' },
+  { label: m.value.entry.tabs.related, slot: 'related' as const, value: 'related' },
+])
 </script>
 
 <template>
-  <Page :title="entry === null ? 'Entry' : titleOf(entry)">
+  <Page :title="entry === null ? m.entry.title : titleOf(entry)">
     <template v-if="entry !== null" #actions>
       <UButton
         v-if="liveUrl !== null"
         :to="liveUrl"
         target="_blank"
-        label="View on site"
+        :label="m.entry.viewOnSite"
         icon="i-lucide-external-link"
         variant="ghost"
       />
-      <UButton label="Validate" variant="outline" :loading="busy" @click="check" />
-      <UButton label="Save" :loading="busy" :disabled="!dirty" @click="save" />
+      <UButton :label="m.entry.validate" variant="outline" :loading="busy" @click="check" />
+      <UButton :label="m.entry.save" :loading="busy" :disabled="!dirty" @click="save" />
       <UButton
-        label="Publish"
+        :label="m.entry.publish"
         color="secondary"
         :loading="busy"
         :disabled="!canPublish"
@@ -303,7 +311,7 @@ const tabs = [
       />
       <UButton
         v-if="entry.status === 'draft'"
-        label="Schedule"
+        :label="m.entry.schedule"
         icon="i-lucide-calendar-clock"
         variant="outline"
         :disabled="dirty"
@@ -311,40 +319,47 @@ const tabs = [
       />
       <UButton
         v-if="entry.status !== 'draft'"
-        :label="entry.status === 'scheduled' ? 'Cancel schedule' : 'Unpublish'"
+        :label="entry.status === 'scheduled' ? m.entry.cancelSchedule : m.entry.unpublish"
         color="error"
         variant="outline"
         :loading="busy"
         @click="unpublishOpen = true"
       />
     </template>
-    <p v-if="missing" class="text-muted">There is no such entry.</p>
+    <p v-if="missing" class="text-muted">{{ m.entry.missing }}</p>
     <div v-else-if="entry !== null" class="space-y-5">
       <div class="space-y-3">
         <div class="flex flex-wrap items-start gap-3">
           <div class="min-w-0 flex-1 space-y-1">
             <p class="flex flex-wrap items-center gap-2 text-sm text-muted">
-              <UBadge :label="entry.status" :color="STATUS_COLOR[entry.status]" variant="subtle" />
+              <UBadge
+                :label="m.status[entry.status]"
+                :color="STATUS_COLOR[entry.status]"
+                variant="subtle"
+              />
               <UBadge
                 v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
-                label="unpublished changes"
+                :label="m.entry.unpublishedChanges"
                 color="warning"
                 variant="outline"
               />
-              <span v-if="entry.scheduledAt !== null">publishes {{ when(entry.scheduledAt) }}</span>
+              <span v-if="entry.scheduledAt !== null">{{
+                m.entry.publishes(formatDateTime(entry.scheduledAt))
+              }}</span>
               <span class="font-mono"
-                >{{ entry.collection }}/{{ entry.slug }} · v{{ entry.version }}</span
+                >{{ entry.collection }}/{{ entry.slug }} ·
+                {{ m.entry.version(entry.version) }}</span
               >
-              <span v-if="dirty" class="text-warning">unsaved</span>
+              <span v-if="dirty" class="text-warning">{{ m.entry.unsaved }}</span>
             </p>
           </div>
         </div>
         <nav
           v-if="entry.translationGroup !== null"
-          aria-label="Translations"
+          :aria-label="m.entry.translations"
           class="flex flex-wrap items-center gap-2 text-sm"
         >
-          <span class="text-muted">Translations</span>
+          <span class="text-muted">{{ m.entry.translations }}</span>
           <template v-for="other in translations" :key="other.id">
             <span
               v-if="other.id === entry.id"
@@ -367,7 +382,7 @@ const tabs = [
               path: '/entries/new',
               query: { collection: entry.collection, locale, group: entry.translationGroup },
             }"
-            :label="`Translate to ${locale}`"
+            :label="m.entry.translateTo(locale)"
             icon="i-lucide-plus"
             size="xs"
             variant="ghost"
@@ -390,7 +405,7 @@ const tabs = [
           </template>
           <template #preview>
             <section
-              aria-label="Preview of the saved revision"
+              :aria-label="m.entry.preview"
               class="prose mt-3 max-w-none rounded border border-default p-4"
             >
               <!-- The HTML that Hollware renders from Comark, which escapes what it does not know. -->
@@ -400,8 +415,7 @@ const tabs = [
           <template #related>
             <div class="space-y-2 pt-3 text-sm">
               <p v-if="related.length === 0" class="text-muted">
-                Nothing related yet. Related entries come from the semantic search of the
-                deployment, for published entries.
+                {{ m.entry.noRelated }}
               </p>
               <RouterLink
                 v-for="other in related"
@@ -417,20 +431,17 @@ const tabs = [
         </UTabs>
       </div>
 
-      <UModal v-model:open="conflictOpen" title="Someone changed this entry">
+      <UModal v-model:open="conflictOpen" :title="m.entry.conflictTitle">
         <template #body>
-          <p>
-            The entry is at a newer version than the one you edited. Copy what you wrote if you need
-            it, then load the newer version.
-          </p>
+          <p>{{ m.entry.conflictBody }}</p>
         </template>
         <template #footer>
-          <UButton label="Keep editing" variant="ghost" @click="conflictOpen = false" />
-          <UButton label="Load the newer version" color="warning" @click="reloadTheirs" />
+          <UButton :label="m.entry.keepEditing" variant="ghost" @click="conflictOpen = false" />
+          <UButton :label="m.entry.loadNewer" color="warning" @click="reloadTheirs" />
         </template>
       </UModal>
 
-      <UModal v-model:open="acknowledgeOpen" title="Publish with these warnings?">
+      <UModal v-model:open="acknowledgeOpen" :title="m.entry.acknowledgeTitle">
         <template #body>
           <ul class="space-y-2 text-sm">
             <li v-for="(warning, index) in warnings" :key="index">
@@ -441,9 +452,9 @@ const tabs = [
           </ul>
         </template>
         <template #footer>
-          <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
+          <UButton :label="m.common.cancel" variant="ghost" @click="acknowledgeOpen = false" />
           <UButton
-            :label="pendingAt === undefined ? 'Publish anyway' : 'Schedule anyway'"
+            :label="pendingAt === undefined ? m.entry.publishAnyway : m.entry.scheduleAnyway"
             color="warning"
             @click="publish(warnings, pendingAt)"
           />
@@ -452,47 +463,44 @@ const tabs = [
 
       <UModal
         v-model:open="unpublishOpen"
-        :title="entry.status === 'scheduled' ? 'Cancel the schedule?' : 'Unpublish this entry?'"
+        :title="entry.status === 'scheduled' ? m.entry.cancelScheduleTitle : m.entry.unpublishTitle"
       >
         <template #body>
           <p v-if="entry.status === 'scheduled'">
-            The entry stays a draft and is not published at {{ when(entry.scheduledAt ?? '') }}.
+            {{ m.entry.notPublishedAt(formatDateTime(entry.scheduledAt ?? '')) }}
           </p>
-          <p v-else>
-            The entry leaves the public site: its page answers 404 and it drops out of listings and
-            search. It stays here as a draft, with all its revisions, and can be published again.
-          </p>
+          <p v-else>{{ m.entry.unpublishBody }}</p>
         </template>
         <template #footer>
-          <UButton label="Keep it" variant="ghost" @click="unpublishOpen = false" />
+          <UButton :label="m.common.keepIt" variant="ghost" @click="unpublishOpen = false" />
           <UButton
-            :label="entry.status === 'scheduled' ? 'Cancel the schedule' : 'Unpublish'"
+            :label="entry.status === 'scheduled' ? m.entry.cancelTheSchedule : m.entry.unpublish"
             color="error"
             @click="unpublish"
           />
         </template>
       </UModal>
 
-      <UModal v-model:open="scheduleOpen" title="Schedule the publication">
+      <UModal v-model:open="scheduleOpen" :title="m.entry.scheduleTitle">
         <template #body>
           <UFormField
-            label="Publish at"
-            help="In your time zone. It is published within a minute of the time, unless it changes first."
+            :label="m.entry.publishAt"
+            :help="m.entry.publishAtHelp"
             :error="scheduleError ?? undefined"
           >
             <UInput v-model="publishAt" type="datetime-local" class="w-full" />
           </UFormField>
         </template>
         <template #footer>
-          <UButton label="Cancel" variant="ghost" @click="scheduleOpen = false" />
+          <UButton :label="m.common.cancel" variant="ghost" @click="scheduleOpen = false" />
           <UButton
-            label="Schedule"
+            :label="m.entry.schedule"
             :disabled="scheduleError !== null"
             @click="publish([], new Date(publishAt).toISOString())"
           />
         </template>
       </UModal>
     </div>
-    <p v-else class="text-muted">Loading…</p>
+    <p v-else class="text-muted">{{ m.common.loading }}</p>
   </Page>
 </template>

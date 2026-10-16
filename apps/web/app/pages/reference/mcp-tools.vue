@@ -16,12 +16,12 @@ const tools = OPERATIONS.map((operation) => ({
   input: JSON.stringify(z.toJSONSchema(operation.input, { io: 'input' }), null, 2),
 })).sort((a, b) => a.name.localeCompare(b.name))
 
-const pages = await useDocsPages()
+const { locale, m } = useLocale()
+const pages = await useDocsPages(locale.value)
 
 useSeoMeta({
-  title: 'MCP tools',
-  description:
-    'Every tool of the Hollware MCP server: what it does, the scopes it needs and its input.',
+  title: () => m.value.tools.title,
+  description: () => m.value.tools.description,
 })
 </script>
 
@@ -34,12 +34,13 @@ useSeoMeta({
         </div>
       </aside>
       <article class="min-w-0">
-        <p class="font-mono text-xs text-primary">Reference</p>
-        <h1 class="mt-2 text-4xl font-semibold tracking-tight text-highlighted">MCP tools</h1>
-        <p class="mt-3 max-w-2xl text-lg text-muted">
-          The {{ tools.length }} tools of <code class="font-mono">/mcp</code>, as
-          <code class="font-mono">tools/list</code> describes them. A tool checks its scopes when it
-          runs: a token without them gets a 403 that names what is missing.
+        <p class="font-mono text-xs text-primary">{{ m.docs.sections.reference }}</p>
+        <h1 class="mt-2 text-4xl font-semibold tracking-tight text-highlighted">
+          {{ m.tools.title }}
+        </h1>
+        <p class="mt-3 max-w-2xl text-lg text-muted">{{ m.tools.intro(tools.length) }}</p>
+        <p v-if="m.tools.untranslated" class="mt-2 max-w-2xl text-sm text-dimmed">
+          {{ m.tools.untranslated }}
         </p>
         <USeparator class="my-8" />
         <section
@@ -66,10 +67,10 @@ useSeoMeta({
               class="font-mono"
             />
           </div>
-          <p class="mt-3 max-w-3xl text-muted">{{ tool.description }}</p>
+          <p class="mt-3 max-w-3xl text-muted" lang="en">{{ tool.description }}</p>
           <details class="mt-4 group">
             <summary class="cursor-pointer text-sm text-dimmed hover:text-highlighted">
-              Input schema
+              {{ m.tools.input }}
             </summary>
             <pre
               class="mt-3 overflow-x-auto rounded-lg border border-default bg-muted p-4 font-mono text-xs leading-relaxed text-highlighted"

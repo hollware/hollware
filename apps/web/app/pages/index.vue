@@ -1,73 +1,46 @@
 <script setup lang="ts">
 import { OPERATIONS } from '@hollware/core'
 
+const { m, to } = useLocale()
+
 useSeoMeta({
   title: '',
-  description:
-    'Hollware is an open-source headless CMS on Cloudflare Workers. Agents write Markdown over MCP, contracts check every write, and your sites read it over Workers RPC.',
+  description: () => m.value.seo.description,
 })
 
-const features = [
-  {
-    icon: 'i-lucide-shield-check',
-    title: 'Contracts on every write',
-    description:
-      'The schema of your frontmatter, your components and the rules you pick from a catalog check each draft. A draft that breaks one is saved anyway, with the fix an agent can apply.',
-  },
-  {
-    icon: 'i-lucide-plug',
-    title: 'MCP, natively',
-    description: `${OPERATIONS.length} tools over both revisions of the protocol, with personal tokens or OAuth. Claude Code, claude.ai and any MCP client write to it.`,
-  },
-  {
-    icon: 'i-lucide-database',
-    title: 'One source of truth',
-    description:
-      'D1 keeps every entry and every revision, append only. Markdown goes in and comes back out byte for byte, never locked in a format of ours.',
-  },
-  {
-    icon: 'i-lucide-zap',
-    title: 'Read at the edge',
-    description:
-      'A Worker reads published content over a service binding: no network, no token. Pages stay at the edge, and are purged by tag the moment you publish.',
-  },
-  {
-    icon: 'i-lucide-users',
-    title: 'People stay in the loop',
-    description:
-      'Passkeys, roles per site and a review queue: an author’s agent asks to publish, and an editor approves the diff in the admin.',
-  },
-  {
-    icon: 'i-lucide-server',
-    title: 'Yours to run',
-    description:
-      'It deploys to your own Cloudflare account in one command, built for the limits of the free plan. MIT licensed, no service in between.',
-  },
-]
+const features = computed(() => {
+  const words = m.value.home.features
+  return [
+    { icon: 'i-lucide-shield-check', ...words.contracts },
+    {
+      icon: 'i-lucide-plug',
+      title: words.mcp.title,
+      description: words.mcp.description(OPERATIONS.length),
+    },
+    { icon: 'i-lucide-database', ...words.truth },
+    { icon: 'i-lucide-zap', ...words.edge },
+    { icon: 'i-lucide-users', ...words.people },
+    { icon: 'i-lucide-server', ...words.yours },
+  ]
+})
 
-const steps = [
-  {
-    title: 'Create a project',
-    code: 'npm create hollware my-cms',
-    description:
-      'A Worker and a local database, with your site from a preset, its owner and a token.',
-  },
-  {
-    title: 'Connect your agent',
-    code: 'claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer hw_pat_…"',
-    description:
-      'It reads your site with describe_site, then writes, validates and publishes drafts.',
-  },
-  {
-    title: 'Deploy it',
-    code: 'npm run deploy',
-    description:
-      'Hollware creates its database, namespace and queues on your account, and migrates.',
-  },
-]
+const steps = computed(() => {
+  const words = m.value.home.steps
+  return [
+    { ...words.create, code: 'npm create hollware my-cms' },
+    {
+      ...words.connect,
+      code: 'claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer hw_pat_…"',
+    },
+    { ...words.deploy, code: 'npm run deploy' },
+  ]
+})
 
-const shaping = `// An agent adds a required field to the blog, over MCP
-set_collection({
+// The code is the same in every language; its comments are the reader's.
+const shaping = computed(() =>
+  [
+    m.value.home.shaping.comment,
+    `set_collection({
   version: 4,
   name: 'posts',
   collection: {
@@ -82,9 +55,10 @@ set_collection({
     routes: { en: '/blog/:slug/', es: '/es/blog/:slug/' },
     rules: [{ rule: 'field-length', params: { field: 'title', max: 60 } }],
   },
-})
-// → needs_confirmation: 3 entries have no subtitle.
-//   Confirm, and every write after it is checked against it.`
+})`,
+    ...m.value.home.shaping.answer,
+  ].join('\n'),
+)
 </script>
 
 <template>
@@ -100,24 +74,16 @@ set_collection({
       }"
     >
       <template #headline>
-        <UBadge
-          label="v0.8 · open source · Cloudflare Workers"
-          color="neutral"
-          variant="outline"
-          class="font-mono"
-        />
+        <UBadge :label="m.home.badge" color="neutral" variant="outline" class="font-mono" />
       </template>
-      <template #title>The CMS your agents write&nbsp;to</template>
-      <template #description>
-        Hollware is a headless CMS native to Cloudflare Workers. Agents write Markdown over MCP,
-        contracts check every write, D1 keeps the content, and your sites read it over Workers RPC.
-      </template>
+      <template #title>{{ m.home.title }}</template>
+      <template #description>{{ m.home.description }}</template>
       <template #links>
         <div class="flex flex-col items-start gap-4">
           <CopyCommand command="npm create hollware my-cms" />
           <div class="flex flex-wrap gap-3">
-            <UButton to="/docs/" size="lg" trailing-icon="i-lucide-arrow-right">
-              Read the docs
+            <UButton :to="to('/docs/')" size="lg" trailing-icon="i-lucide-arrow-right">
+              {{ m.home.readDocs }}
             </UButton>
             <UButton
               to="https://github.com/hollware/hollware"
@@ -136,14 +102,14 @@ set_collection({
     </UPageHero>
 
     <UPageSection
-      headline="Why Hollware"
-      title="Content that agents can write, and that you can trust"
-      description="Every write goes through the same checks, whoever makes it: an agent, a person in the admin, or a script."
+      :headline="m.home.why.headline"
+      :title="m.home.why.title"
+      :description="m.home.why.description"
       :features="features"
       :ui="{ features: 'gap-y-10' }"
     />
 
-    <UPageSection headline="Three commands" title="From nothing to live">
+    <UPageSection :headline="m.home.steps.headline" :title="m.home.steps.title">
       <ol class="grid gap-4 lg:grid-cols-3">
         <li
           v-for="(step, index) in steps"
@@ -163,13 +129,13 @@ set_collection({
 
     <UPageSection
       orientation="horizontal"
-      headline="No deploy"
-      title="Shape your content as you go"
-      description="Your collections, their fields and their rules live with your content. Change them in the admin, or let an agent do it over MCP: it says what a change would do to the entries you have, and applies at once."
+      :headline="m.home.shaping.headline"
+      :title="m.home.shaping.title"
+      :description="m.home.shaping.description"
       :links="[
         {
-          label: 'Configure your content',
-          to: '/docs/configure-your-content/',
+          label: m.home.shaping.link,
+          to: to('/docs/configure-your-content/'),
           trailingIcon: 'i-lucide-arrow-right',
           color: 'neutral',
           variant: 'link',
@@ -187,10 +153,10 @@ set_collection({
       >
         <div class="pointer-events-none absolute inset-0 backdrop-glow" />
         <h2 class="relative text-3xl font-semibold text-highlighted sm:text-4xl">
-          Give your agents a CMS
+          {{ m.home.cta.title }}
         </h2>
         <p class="relative mx-auto mt-4 max-w-xl text-muted">
-          Running on your own Cloudflare account in a few minutes.
+          {{ m.home.cta.description }}
         </p>
         <div class="relative mt-8 flex justify-center">
           <CopyCommand command="npm create hollware my-cms" />

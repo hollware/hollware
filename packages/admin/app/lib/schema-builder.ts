@@ -6,6 +6,8 @@
  * over as a schema of its new kind.
  */
 
+import type { Messages } from '../i18n/en.ts'
+
 type Json = Record<string, unknown>
 
 export type BuilderKind =
@@ -179,22 +181,23 @@ export function newField(key: string, kind: BuilderKind): BuilderField {
 }
 
 /** What is wrong with the fields, for the form to say before anything is sent. */
-export function problemsOf(fields: readonly BuilderField[]): string[] {
+export function problemsOf(
+  fields: readonly BuilderField[],
+  text: Messages['collection']['problems'],
+): string[] {
   const problems: string[] = []
   const seen = new Set<string>()
   for (const field of fields) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.key)) {
-      problems.push(
-        `"${field.key}" is not a field name: letters, digits and _, not starting with a digit.`,
-      )
+      problems.push(text.notName(field.key))
     }
-    if (seen.has(field.key)) problems.push(`"${field.key}" is there twice.`)
+    if (seen.has(field.key)) problems.push(text.twice(field.key))
     seen.add(field.key)
     if (field.min !== null && field.max !== null && field.min > field.max) {
-      problems.push(`"${field.key}": the least is more than the most.`)
+      problems.push(text.bounds(field.key))
     }
     if (field.kind === 'choice' && field.options.length === 0) {
-      problems.push(`"${field.key}": a choice needs at least one value.`)
+      problems.push(text.choice(field.key))
     }
   }
   return problems

@@ -4,12 +4,14 @@ import { MergeView } from '@codemirror/merge'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
 /** The Markdown that is live beside the revision asked for, read-only, with what changed marked. */
 const props = defineProps<{ original: string; modified: string }>()
 
 const host = ref<HTMLElement | null>(null)
+const m = useMessages()
 let view: MergeView | null = null
 
 const readOnly = [
@@ -28,14 +30,14 @@ function mount() {
       doc: props.original,
       extensions: [
         readOnly,
-        EditorView.contentAttributes.of({ 'aria-label': 'The Markdown that is live' }),
+        EditorView.contentAttributes.of({ 'aria-label': m.value.editor.live }),
       ],
     },
     b: {
       doc: props.modified,
       extensions: [
         readOnly,
-        EditorView.contentAttributes.of({ 'aria-label': 'The Markdown asked for' }),
+        EditorView.contentAttributes.of({ 'aria-label': m.value.editor.asked }),
       ],
     },
     parent: host.value,

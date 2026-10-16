@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import type { Messages } from '../i18n/en.ts'
 import { ApiError, type Output } from './api.ts'
 
 /**
@@ -65,19 +66,14 @@ export function useStructureChange(onDone: (answer: Change) => Promise<void> | v
 }
 
 /** The lines of an impact, as a person reads them. */
-export function impactLines(impact: Impact): string[] {
+export function impactLines(impact: Impact, text: Messages['structure']): string[] {
   return [
-    ...impact.removedCollections.map(
-      (removed) =>
-        `The collection "${removed.name}" goes, and its ${removed.entries} entries are out of reach until it comes back.`,
+    ...impact.removedCollections.map((removed) =>
+      text.removedCollection(removed.name, removed.entries),
     ),
-    ...impact.removedLocales.map(
-      (removed) =>
-        `The locale "${removed.locale}" goes, and its ${removed.entries} entries are out of reach until it comes back.`,
-    ),
-    ...impact.refused.map(
-      (refused) =>
-        `The new schema of "${refused.collection}" refuses ${refused.entries} of its entries (${refused.examples.join(', ')}): they stay, and each is checked against it at its next save.`,
+    ...impact.removedLocales.map((removed) => text.removedLocale(removed.locale, removed.entries)),
+    ...impact.refused.map((refused) =>
+      text.refused(refused.collection, refused.entries, refused.examples.join(', ')),
     ),
   ]
 }

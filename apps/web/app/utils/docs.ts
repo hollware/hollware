@@ -1,12 +1,8 @@
 import type { PageEntry } from '@hollware/nuxt'
 
-/** The sections of the sidebar, in their order, with the label a reader sees. */
-export const SECTIONS = [
-  { key: 'start', label: 'Getting started' },
-  { key: 'guides', label: 'Guides' },
-  { key: 'concepts', label: 'Concepts' },
-  { key: 'reference', label: 'Reference' },
-] as const
+/** The sections of the sidebar, in their order; their labels are words of each language. */
+export const SECTIONS = ['start', 'guides', 'concepts', 'reference'] as const
+export type Section = (typeof SECTIONS)[number]
 
 export interface DocLink {
   readonly slug: string
@@ -15,13 +11,15 @@ export interface DocLink {
   readonly section: string
   readonly order: number
   readonly to: string
+  /** The locale the page is written in, which is the reader's unless it is not translated yet. */
+  readonly locale: string
 }
 
 /** A string of the frontmatter, or `fallback` when the field holds anything else. */
 const text = (value: unknown, fallback: string) => (typeof value === 'string' ? value : fallback)
 
-/** A documentation page as the sidebar and the surround need it. */
-export function docLink(entry: PageEntry): DocLink {
+/** A documentation page as the sidebar and the surround need it, at its path in `locale`. */
+export function docLink(entry: PageEntry, locale = 'en'): DocLink {
   const front = entry.frontmatter
   return {
     slug: entry.slug,
@@ -29,18 +27,28 @@ export function docLink(entry: PageEntry): DocLink {
     description: text(front['description'], ''),
     section: text(front['section'], 'guides'),
     order: typeof front['order'] === 'number' ? front['order'] : 999,
-    to: `/docs/${entry.slug}/`,
+    to: `${locale === 'en' ? '' : `/${locale}`}/docs/${entry.slug}/`,
+    locale: entry.locale,
   }
 }
 
-/** The pages in reading order: section by section, then by `order`, then by title. */
-export function readingOrder(entries: readonly PageEntry[]): DocLink[] {
+/**
+ * The pages in reading order, at their paths in `locale`: section by section, then by `order`,
+ * then by title. A page of `fallback` stands for one with its slug that `entries` lacks, so a
+ * page not translated yet is still in the sidebar, in the language it is written in.
+ */
+export function readingOrder(
+  entries: readonly PageEntry[],
+  locale = 'en',
+  fallback: readonly PageEntry[] = [],
+): DocLink[] {
   const rank = (section: string) => {
-    const index = SECTIONS.findIndex((candidate) => candidate.key === section)
+    const index = SECTIONS.findIndex((candidate) => candidate === section)
     return index === -1 ? SECTIONS.length : index
   }
-  return entries
-    .map(docLink)
+  const slugs = new Set(entries.map((entry) => entry.slug))
+  return [...entries, ...fallback.filter((entry) => !slugs.has(entry.slug))]
+    .map((entry) => docLink(entry, locale))
     .sort(
       (a, b) =>
         rank(a.section) - rank(b.section) || a.order - b.order || a.title.localeCompare(b.title),

@@ -3,7 +3,7 @@ import type { TableColumn } from '@nuxt/ui'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
-import { when } from '../lib/entries.ts'
+import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
@@ -16,16 +16,20 @@ interface People {
   invitations: Invitation[]
 }
 
-const memberColumns: TableColumn<Member>[] = [
-  { accessorKey: 'name', header: sortable('Name') },
-  { accessorKey: 'role', header: sortable('Role') },
-  { accessorKey: 'since', header: sortable('Since') },
+const m = useMessages()
+const memberColumns = computed<TableColumn<Member>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
+  { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
+  { accessorKey: 'since', header: sortable(m.value.people.columns.since) },
   { id: 'actions', header: '' },
-]
-const invitationColumns: TableColumn<Invitation>[] = [
-  { accessorKey: 'role', header: sortable('Role') },
-  { accessorKey: 'expiresAt', header: sortable('Valid until') },
-]
+])
+const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
+  { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
+  { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
+])
+/** The roles to pick, each with its name in the admin's language. */
+const roleItems = (roles: readonly string[]) =>
+  roles.map((value) => ({ label: m.value.roles[value] ?? value, value }))
 
 const toast = useToast()
 const data = ref<People | null>(null)
@@ -56,7 +60,7 @@ async function invite() {
     link.value = (await api.admin<{ link: string }>('invitations', { role: role.value })).link
     await load()
   } catch (error) {
-    toast.add({ title: 'Not invited', description: describe(error), color: 'error' })
+    toast.add({ title: m.value.people.notInvited, description: describe(error), color: 'error' })
   } finally {
     busy.value = false
   }
@@ -74,9 +78,9 @@ const removeOpen = computed({
 async function setRole(userId: string, next: unknown) {
   try {
     await api.admin('people/role', { userId, role: String(next) })
-    toast.add({ title: 'Role changed', color: 'success' })
+    toast.add({ title: m.value.people.roleChanged, color: 'success' })
   } catch (error) {
-    toast.add({ title: 'Not changed', description: describe(error), color: 'error' })
+    toast.add({ title: m.value.people.notChanged, description: describe(error), color: 'error' })
   }
   await load()
 }
@@ -87,9 +91,9 @@ async function remove() {
   if (person === null) return
   try {
     await api.admin('people/remove', { userId: person.id })
-    toast.add({ title: `${person.name ?? person.id} is out of this site`, color: 'success' })
+    toast.add({ title: m.value.people.out(person.name ?? person.id), color: 'success' })
   } catch (error) {
-    toast.add({ title: 'Not removed', description: describe(error), color: 'error' })
+    toast.add({ title: m.value.people.notRemoved, description: describe(error), color: 'error' })
   }
   await load()
 }
@@ -100,38 +104,38 @@ async function copy() {
 </script>
 
 <template>
-  <Page title="People">
+  <Page :title="m.people.title">
     <div class="space-y-6">
       <UAlert
         v-if="failure !== null"
         color="warning"
-        title="Only an owner invites people"
+        :title="m.people.ownerOnly"
         :description="failure"
       />
       <template v-else-if="data !== null">
         <form class="flex items-end gap-3" @submit.prevent="invite">
-          <UFormField label="Role" help="An editor publishes; an author's posts go through review.">
-            <USelect v-model="role" :items="['author', 'editor']" class="w-40" />
+          <UFormField :label="m.people.role" :help="m.people.roleHelp">
+            <USelect v-model="role" :items="roleItems(['author', 'editor'])" class="w-40" />
           </UFormField>
-          <UButton type="submit" label="Invite" :loading="busy" />
+          <UButton type="submit" :label="m.people.invite" :loading="busy" />
         </form>
         <UAlert
           v-if="link !== null"
           color="success"
-          title="Send this link to the person: it works once, for 7 days"
+          :title="m.people.linkShown"
           :description="link"
           :actions="[
-            { label: 'Copy', onClick: copy },
-            { label: 'Done', onClick: () => (link = null) },
+            { label: m.common.copy, onClick: copy },
+            { label: m.common.done, onClick: () => (link = null) },
           ]"
         />
-        <section aria-label="Members" class="space-y-2">
-          <h2 class="font-medium">Members</h2>
+        <section :aria-label="m.people.members" class="space-y-2">
+          <h2 class="font-medium">{{ m.people.members }}</h2>
           <DataTable
             :data="data.people"
             :columns="memberColumns"
-            filter-label="Filter by name or role"
-            empty="No members."
+            :filter-label="m.people.filter"
+            :empty="m.people.empty"
           >
             <template #name-cell="{ row }">
               <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
@@ -139,14 +143,14 @@ async function copy() {
             <template #role-cell="{ row }">
               <USelect
                 :model-value="row.original.role"
-                :items="['owner', 'editor', 'author']"
-                :aria-label="`Role of ${row.original.name ?? row.original.id}`"
+                :items="roleItems(['owner', 'editor', 'author'])"
+                :aria-label="m.people.roleOf(row.original.name ?? row.original.id)"
                 size="sm"
                 class="w-32"
                 @update:model-value="setRole(row.original.id, $event)"
               />
             </template>
-            <template #since-cell="{ row }">{{ when(row.original.since) }}</template>
+            <template #since-cell="{ row }">{{ formatDateTime(row.original.since) }}</template>
             <template #actions-cell="{ row }">
               <div class="text-right">
                 <UButton
@@ -154,34 +158,40 @@ async function copy() {
                   color="error"
                   variant="ghost"
                   size="sm"
-                  :aria-label="`Remove ${row.original.name ?? row.original.id}`"
+                  :aria-label="m.people.remove(row.original.name ?? row.original.id)"
                   @click="removing = row.original"
                 />
               </div>
             </template>
           </DataTable>
         </section>
-        <section v-if="data.invitations.length > 0" aria-label="Invitations" class="space-y-2">
-          <h2 class="font-medium">Waiting invitations</h2>
+        <section
+          v-if="data.invitations.length > 0"
+          :aria-label="m.people.invitations"
+          class="space-y-2"
+        >
+          <h2 class="font-medium">{{ m.people.waiting }}</h2>
           <DataTable
             :data="data.invitations"
             :columns="invitationColumns"
-            filter-label="Filter by role"
+            :filter-label="m.people.filterRole"
           >
-            <template #expiresAt-cell="{ row }">{{ when(row.original.expiresAt) }}</template>
+            <template #expiresAt-cell="{ row }">{{
+              formatDateTime(row.original.expiresAt)
+            }}</template>
           </DataTable>
         </section>
       </template>
-      <UModal v-model:open="removeOpen" :title="`Remove ${removing?.name ?? removing?.id ?? ''}?`">
+      <UModal
+        v-model:open="removeOpen"
+        :title="m.people.removeTitle(removing?.name ?? removing?.id ?? '')"
+      >
         <template #body>
-          <p>
-            They leave this site at once, with every token and app they had of it. Their entries and
-            revisions stay. Invite them again to bring them back.
-          </p>
+          <p>{{ m.people.removeBody }}</p>
         </template>
         <template #footer>
-          <UButton label="Keep them" variant="ghost" @click="removing = null" />
-          <UButton label="Remove" color="error" @click="remove" />
+          <UButton :label="m.people.keepThem" variant="ghost" @click="removing = null" />
+          <UButton :label="m.common.remove" color="error" @click="remove" />
         </template>
       </UModal>
     </div>

@@ -5,6 +5,7 @@ import { onMounted, ref } from 'vue'
 import DiffView from '../components/DiffView.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
+import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 
 type Review = Output<'list_reviews'>['reviews'][number]
@@ -12,6 +13,7 @@ type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
 
 const toast = useToast()
+const m = useMessages()
 const reviews = ref<Review[]>([])
 const chosen = ref<Review | null>(null)
 const live = ref('')
@@ -65,7 +67,7 @@ async function approve(acknowledged: readonly Warning[] = []) {
     })
     switch (answer.outcome) {
       case 'published':
-        toast.add({ title: 'Approved and published', color: 'success' })
+        toast.add({ title: m.value.reviews.approved, color: 'success' })
         await list()
         break
       case 'needs_acknowledgement':
@@ -75,19 +77,19 @@ async function approve(acknowledged: readonly Warning[] = []) {
       case 'blocked':
         verdict.value = answer.verdict ?? verdict.value
         toast.add({
-          title: 'Blocked',
-          description: 'The contracts report errors now.',
+          title: m.value.reviews.blocked,
+          description: m.value.reviews.errorsNow,
           color: 'error',
         })
         break
       case 'not_pending':
       case 'not_found':
-        toast.add({ title: 'This review is closed', color: 'warning' })
+        toast.add({ title: m.value.reviews.closed, color: 'warning' })
         await list()
         break
     }
   } catch (error) {
-    report(error, 'Not approved')
+    report(error, m.value.reviews.notApproved)
   } finally {
     busy.value = false
   }
@@ -102,11 +104,11 @@ async function addComment() {
       chosen.value = { ...chosen.value, comments: [...chosen.value.comments, answer.comment] }
       comment.value = ''
     } else {
-      toast.add({ title: 'This review is closed', color: 'warning' })
+      toast.add({ title: m.value.reviews.closed, color: 'warning' })
       await list()
     }
   } catch (error) {
-    report(error, 'Not sent')
+    report(error, m.value.reviews.notSent)
   } finally {
     busy.value = false
   }
@@ -118,12 +120,15 @@ async function requestChanges() {
   try {
     const answer = await api.call('request_changes', { id: chosen.value.id, note: note.value })
     toast.add({
-      title: answer.outcome === 'changes_requested' ? 'Changes requested' : 'This review is closed',
+      title:
+        answer.outcome === 'changes_requested'
+          ? m.value.reviews.changesRequested
+          : m.value.reviews.closed,
       color: answer.outcome === 'changes_requested' ? 'success' : 'warning',
     })
     await list()
   } catch (error) {
-    report(error, 'Not sent')
+    report(error, m.value.reviews.notSent)
   } finally {
     busy.value = false
   }
@@ -131,10 +136,10 @@ async function requestChanges() {
 </script>
 
 <template>
-  <Page title="Reviews">
+  <Page :title="m.reviews.title">
     <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-      <section aria-label="Pending reviews" class="space-y-2">
-        <p v-if="reviews.length === 0" class="text-muted">Nothing waits for review.</p>
+      <section :aria-label="m.reviews.pending" class="space-y-2">
+        <p v-if="reviews.length === 0" class="text-muted">{{ m.common.nothingWaits }}</p>
         <button
           v-for="review in reviews"
           :key="review.id"
@@ -147,22 +152,27 @@ async function requestChanges() {
             review.entry.frontmatter['title'] ?? review.entry.slug
           }}</span>
           <span class="block text-muted">
-            {{ review.entry.locale }} · asked by
-            {{ review.requestedByName ?? review.requestedBy }} ·
-            {{ new Date(review.requestedAt).toLocaleString() }}
+            {{
+              m.reviews.requested(
+                review.entry.locale,
+                review.requestedByName ?? review.requestedBy,
+                formatDateTime(review.requestedAt),
+              )
+            }}
           </span>
         </button>
       </section>
-      <section v-if="chosen !== null" aria-label="The review" class="space-y-4">
+      <section v-if="chosen !== null" :aria-label="m.reviews.review" class="space-y-4">
         <p class="text-sm text-muted">
-          On the left what is live ({{ live === '' ? 'nothing yet' : 'the published revision' }}),
-          on the right the revision asked for.
+          {{ m.reviews.sides(live !== '') }}
         </p>
         <DiffView :original="live" :modified="asked" />
         <VerdictList :verdict="verdict" />
-        <section aria-label="Comments" class="space-y-2">
-          <h2 class="text-sm font-semibold">Comments</h2>
-          <p v-if="chosen.comments.length === 0" class="text-sm text-muted">No comments yet.</p>
+        <section :aria-label="m.reviews.comments" class="space-y-2">
+          <h2 class="text-sm font-semibold">{{ m.reviews.comments }}</h2>
+          <p v-if="chosen.comments.length === 0" class="text-sm text-muted">
+            {{ m.reviews.noComments }}
+          </p>
           <article
             v-for="item in chosen.comments"
             :key="item.id"
@@ -176,16 +186,16 @@ async function requestChanges() {
                 variant="subtle"
                 size="sm"
               />
-              · {{ new Date(item.at).toLocaleString() }}
+              · {{ formatDateTime(item.at) }}
             </p>
             <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
           </article>
           <div class="flex items-end gap-3">
-            <UFormField label="Comment" class="flex-1">
+            <UFormField :label="m.reviews.comment" class="flex-1">
               <UTextarea v-model="comment" class="w-full" :rows="2" />
             </UFormField>
             <UButton
-              label="Comment"
+              :label="m.reviews.comment"
               variant="outline"
               :loading="busy"
               :disabled="comment.trim() === ''"
@@ -194,12 +204,12 @@ async function requestChanges() {
           </div>
         </section>
         <div class="flex flex-wrap items-end gap-3">
-          <UButton label="Approve and publish" color="success" :loading="busy" @click="approve()" />
-          <UFormField label="What to change" class="min-w-64 flex-1">
+          <UButton :label="m.reviews.approve" color="success" :loading="busy" @click="approve()" />
+          <UFormField :label="m.reviews.whatToChange" class="min-w-64 flex-1">
             <UTextarea v-model="note" class="w-full" :rows="2" />
           </UFormField>
           <UButton
-            label="Ask for changes"
+            :label="m.reviews.askChanges"
             color="warning"
             variant="outline"
             :loading="busy"
@@ -209,7 +219,7 @@ async function requestChanges() {
         </div>
       </section>
 
-      <UModal v-model:open="acknowledgeOpen" title="Approve with these warnings?">
+      <UModal v-model:open="acknowledgeOpen" :title="m.reviews.approveTitle">
         <template #body>
           <ul class="space-y-2 text-sm">
             <li v-for="(warning, index) in warnings" :key="index">
@@ -220,8 +230,8 @@ async function requestChanges() {
           </ul>
         </template>
         <template #footer>
-          <UButton label="Cancel" variant="ghost" @click="acknowledgeOpen = false" />
-          <UButton label="Approve anyway" color="warning" @click="approve(warnings)" />
+          <UButton :label="m.common.cancel" variant="ghost" @click="acknowledgeOpen = false" />
+          <UButton :label="m.reviews.approveAnyway" color="warning" @click="approve(warnings)" />
         </template>
       </UModal>
     </div>

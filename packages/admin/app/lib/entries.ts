@@ -17,8 +17,3 @@ export function entryPath(entry: {
 }
 
 export const STATUS_COLOR = { draft: 'neutral', scheduled: 'info', published: 'success' } as const
-
-/** A date and time as the person reads them, in their locale and zone. */
-export function when(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}

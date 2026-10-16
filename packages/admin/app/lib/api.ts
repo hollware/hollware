@@ -1,5 +1,6 @@
 import type { OperationByName, OperationName } from '@hollware/core'
 import type * as z from 'zod'
+import { en, type Messages } from '../i18n/en.ts'
 import type { Auth } from './auth.ts'
 
 /**
@@ -29,9 +30,12 @@ export interface ApiDeps {
   readonly auth: Auth
   /** Where the person is in the admin, to come back to after signing in. */
   readonly here: () => string
+  /** The texts of an error the server gives none for, in the admin's language; English if not given. */
+  readonly text?: () => Messages['api']
 }
 
 export function createApi(deps: ApiDeps) {
+  const text = deps.text ?? (() => en.api)
   /** A request with the token; on a refusal of the token, the person signs in again. */
   async function send(path: string, init: RequestInit): Promise<unknown> {
     const token = await deps.auth.token()
@@ -53,8 +57,8 @@ export function createApi(deps: ApiDeps) {
       const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
       throw new ApiError(
         error.code ?? 'internal',
-        error.message ?? `The server answered ${response.status}.`,
-        error.fix ?? 'Try again.',
+        error.message ?? text().answered(response.status),
+        error.fix ?? text().tryAgain,
       )
     }
     return body

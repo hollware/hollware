@@ -1,6 +1,7 @@
 import UButton from '@nuxt/ui/components/Button.vue'
 import type { Column } from '@tanstack/vue-table'
 import { h } from 'vue'
+import { useMessages } from '../i18n/index.ts'
 
 /**
  * The header of a column of a table that sorts: its label as a button that sorts it up, then
@@ -20,7 +21,7 @@ export function sortable<Row>(label: string) {
             ? 'i-lucide-arrow-down-wide-narrow'
             : 'i-lucide-arrow-up-down',
       class: '-mx-2.5',
-      'aria-label': `Sort by ${label.toLowerCase()}`,
+      'aria-label': useMessages().value.common.sortBy(label),
       onClick: () => column.toggleSorting(sorted === 'asc'),
     })
   }

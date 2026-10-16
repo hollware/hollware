@@ -178,6 +178,42 @@ export const INVISIBLE_CHARACTER_FILES: ExceptionList = {
   ],
 }
 
+/**
+ * Texts that a template of the admin may show as they are, outside its messages (guard
+ * `admin-messages`). The value is the text, trimmed, as the template holds it. None is needed
+ * today: a brand or a code identifier goes through the messages too.
+ */
+export const ADMIN_TEXT_LITERALS: ExceptionList = {
+  max: 0,
+  entries: [],
+}
+
+/**
+ * Texts that a template of hollware.com (`apps/web`) may show as they are, outside its messages
+ * (guard `admin-messages`, run on the site too). The value is the text, trimmed, as it stands.
+ */
+export const WEB_TEXT_LITERALS: ExceptionList = {
+  max: 4,
+  entries: [
+    {
+      value: 'llms.txt',
+      reason: 'The name of a file of the site for language models, the same in every language.',
+    },
+    {
+      value: 'GitHub',
+      reason: 'The name of a service, on the button that leads to the repository.',
+    },
+    {
+      value: 'Hollware',
+      reason: 'The name of the product, the title of the header in every language.',
+    },
+    {
+      value: 'agent → hollware /mcp',
+      reason: 'The title bar of the agent session on the landing page: an endpoint, not words.',
+    },
+  ],
+}
+
 /** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
 function byValue(list: TestRunnerList): ExceptionList {
   return {
@@ -194,6 +230,8 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   TABLES_WITHOUT_SITE,
   TABLES_WITHOUT_SHARED_COLUMNS,
   INVISIBLE_CHARACTER_FILES,
+  ADMIN_TEXT_LITERALS,
+  WEB_TEXT_LITERALS,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

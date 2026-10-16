@@ -4,8 +4,9 @@ import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
+import { formatDate, useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 
 type Token = {
@@ -22,15 +23,16 @@ type Token = {
 
 const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
 
-const columns: TableColumn<Token>[] = [
-  { accessorKey: 'label', header: sortable('Label') },
-  { accessorKey: 'kind', header: sortable('Kind') },
-  { accessorKey: 'user', header: sortable('Person') },
-  { accessorKey: 'scopes', header: 'Scopes' },
-  { accessorKey: 'expiresAt', header: sortable('Expires') },
-  { accessorKey: 'lastUsedAt', header: sortable('Last used') },
+const m = useMessages()
+const columns = computed<TableColumn<Token>[]>(() => [
+  { accessorKey: 'label', header: sortable(m.value.tokens.columns.label) },
+  { accessorKey: 'kind', header: sortable(m.value.tokens.columns.kind) },
+  { accessorKey: 'user', header: sortable(m.value.tokens.columns.person) },
+  { accessorKey: 'scopes', header: m.value.tokens.columns.scopes },
+  { accessorKey: 'expiresAt', header: sortable(m.value.tokens.columns.expires) },
+  { accessorKey: 'lastUsedAt', header: sortable(m.value.tokens.columns.lastUsed) },
   { id: 'actions', header: '' },
-]
+])
 
 const toast = useToast()
 const tokens = ref<Token[]>([])
@@ -75,7 +77,7 @@ async function make() {
     label.value = ''
     await list()
   } catch (error) {
-    toast.add({ title: 'Not made', description: describe(error), color: 'error' })
+    toast.add({ title: m.value.tokens.notMade, description: describe(error), color: 'error' })
   } finally {
     busy.value = false
   }
@@ -84,10 +86,10 @@ async function make() {
 async function revoke(token: Token) {
   try {
     await api.admin(`tokens/${token.id}/revoke`, {})
-    toast.add({ title: `Revoked ${token.label}`, color: 'success' })
+    toast.add({ title: m.value.tokens.revokedToast(token.label), color: 'success' })
     await list()
   } catch (error) {
-    toast.add({ title: 'Not revoked', description: describe(error), color: 'error' })
+    toast.add({ title: m.value.tokens.notRevoked, description: describe(error), color: 'error' })
   }
 }
 
@@ -95,33 +97,38 @@ async function copy() {
   if (secret.value !== null) await navigator.clipboard.writeText(secret.value)
 }
 
-const day = (value: string | null) => (value === null ? '—' : new Date(value).toLocaleDateString())
+const day = (value: string | null) => (value === null ? '—' : formatDate(value))
 </script>
 
 <template>
-  <Page title="Tokens">
+  <Page :title="m.tokens.title">
     <div class="space-y-6">
       <UAlert
         v-if="failure !== null"
         color="warning"
-        title="Only an owner manages tokens"
+        :title="m.tokens.ownerOnly"
         :description="failure"
       />
       <template v-else>
         <form class="flex max-w-3xl flex-wrap items-end gap-4" @submit.prevent="make">
-          <UFormField label="Label" class="min-w-56 flex-1">
-            <UInput v-model="label" class="w-full" placeholder="What the token is for" required />
+          <UFormField :label="m.tokens.label" class="min-w-56 flex-1">
+            <UInput
+              v-model="label"
+              class="w-full"
+              :placeholder="m.tokens.labelPlaceholder"
+              required
+            />
           </UFormField>
-          <UFormField label="Days">
+          <UFormField :label="m.tokens.days">
             <UInput v-model.number="days" type="number" :min="1" :max="365" class="w-24" />
           </UFormField>
           <UCheckbox
             v-model="read"
-            label="Read token"
-            description="Reads published content over the read API, and nothing else"
+            :label="m.tokens.read"
+            :description="m.tokens.readDescription"
           />
           <fieldset v-if="!read" class="flex flex-wrap gap-3">
-            <legend class="sr-only">Scopes</legend>
+            <legend class="sr-only">{{ m.tokens.scopes }}</legend>
             <UCheckbox
               v-for="scope in SCOPES"
               :key="scope"
@@ -130,23 +137,23 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
               @update:model-value="(on) => toggle(scope, on === true)"
             />
           </fieldset>
-          <UButton type="submit" label="Make a token" :loading="busy" />
+          <UButton type="submit" :label="m.tokens.make" :loading="busy" />
         </form>
         <UAlert
           v-if="secret !== null"
           color="success"
-          title="Copy the token now: it is not shown again"
+          :title="m.tokens.copyNow"
           :description="secret"
           :actions="[
-            { label: 'Copy', onClick: copy },
-            { label: 'Done', onClick: () => (secret = null) },
+            { label: m.common.copy, onClick: copy },
+            { label: m.common.done, onClick: () => (secret = null) },
           ]"
         />
         <DataTable
           :data="tokens"
           :columns="columns"
-          filter-label="Filter by label, person or scope"
-          empty="No tokens yet."
+          :filter-label="m.tokens.filter"
+          :empty="m.tokens.empty"
         >
           <template #label-cell="{ row }">
             <span class="font-medium">{{ row.original.label }}</span>
@@ -160,13 +167,13 @@ const day = (value: string | null) => (value === null ? '—' : new Date(value).
             <div class="text-right">
               <UBadge
                 v-if="row.original.revokedAt !== null"
-                label="revoked"
+                :label="m.tokens.revoked"
                 color="neutral"
                 variant="subtle"
               />
               <UButton
                 v-else
-                label="Revoke"
+                :label="m.tokens.revoke"
                 color="error"
                 variant="ghost"
                 size="sm"

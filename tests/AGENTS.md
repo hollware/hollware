@@ -10,7 +10,7 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/conformance/` runs the MCP conformance suite against the Worker of `tests/conformance/worker` (`vp run test:conformance`, ADR-022): its runner, its token proxy, its probes, its baselines and its must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
-Exceptions live only in `tests/guards/exceptions.ts`, each with a reason, and a list may only shrink. Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
+Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read the name of the failing test: a command that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
 
 ## Guards
 
@@ -51,6 +51,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/invisible-characters.test.ts`: no text file holds a bidirectional control, a zero-width mark, a byte order mark or a line or paragraph separator, outside `INVISIBLE_CHARACTER_FILES`.
 - `tests/conventions/legacy-role.test.ts`: no package source reads `users.role`; the role of a person in a site is in `members`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
+- `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
 - `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
 - `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.
 - `tests/meta/agents-commands.test.ts`: the `vp run`, `pnpm --filter` and `node` commands `AGENTS.md` cites exist.

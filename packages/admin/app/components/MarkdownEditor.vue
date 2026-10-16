@@ -6,6 +6,7 @@ import { EditorView } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { Diagnostic } from '../lib/diagnostics.ts'
+import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
 /**
@@ -16,6 +17,7 @@ const props = defineProps<{ modelValue: string; diagnostics: readonly Diagnostic
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const host = ref<HTMLElement | null>(null)
+const m = useMessages()
 
 let view: EditorView | null = null
 
@@ -29,7 +31,7 @@ function stateOf(text: string): EditorState {
       EditorState.lineSeparator.of(text.includes('\r\n') ? '\r\n' : '\n'),
       EditorView.lineWrapping,
       theme,
-      EditorView.contentAttributes.of({ 'aria-label': 'Markdown of the entry' }),
+      EditorView.contentAttributes.of({ 'aria-label': m.value.editor.markdown }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) emit('update:modelValue', update.state.doc.toString())
       }),

@@ -1,3 +1,4 @@
+import { en, type Messages } from '../i18n/en.ts'
 import { challengeOf, randomValue } from './pkce.ts'
 
 /**
@@ -37,6 +38,8 @@ export interface AuthDeps {
   readonly navigate: (url: string) => void
   readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
   readonly now: () => number
+  /** The texts of a failed sign-in, in the admin's language; English if not given. */
+  readonly text?: () => Messages['auth']
 }
 
 const PENDING = 'hollware:sign-in'
@@ -53,11 +56,11 @@ export class SignInError extends Error {
 export function createAuth(deps: AuthDeps) {
   let config: Promise<AdminConfig> | null = null
   let tokens: Tokens | null = null
+  const text = deps.text ?? (() => en.auth)
 
   const loadConfig = (): Promise<AdminConfig> => {
     config ??= deps.fetch('/admin/config.json').then(async (response) => {
-      if (!response.ok)
-        throw new SignInError(`The admin could not read its settings (${response.status}).`)
+      if (!response.ok) throw new SignInError(text().noSettings(response.status))
       return (await response.json()) as AdminConfig
     })
     return config
@@ -140,10 +143,7 @@ export function createAuth(deps: AuthDeps) {
         code === null ||
         callback.searchParams.get('state') !== pending.state
       ) {
-        throw new SignInError(
-          callback.searchParams.get('error_description') ??
-            'The sign-in did not come back as it left. Sign in again.',
-        )
+        throw new SignInError(callback.searchParams.get('error_description') ?? text().lost)
       }
       const settings = await loadConfig()
       const answer = await exchange({
@@ -152,7 +152,7 @@ export function createAuth(deps: AuthDeps) {
         redirect_uri: settings.redirectUri,
         code_verifier: pending.verifier,
       })
-      if (answer === null) throw new SignInError('The sign-in was refused. Sign in again.')
+      if (answer === null) throw new SignInError(text().refused)
       keep(answer)
       return pending.returnTo
     },

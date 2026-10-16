@@ -9,10 +9,12 @@ import { useRouter } from 'vue-router'
 import StructureDialogs from '../components/StructureDialogs.vue'
 import type { Output } from '../lib/api.ts'
 import { collectionPreset, type Preset } from '@hollware/core'
+import { useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 
 const toast = useToast()
+const m = useMessages()
 const router = useRouter()
 const structure = ref<Output<'get_structure'> | null>(null)
 const name = ref('')
@@ -33,12 +35,12 @@ const rows = computed<Row[]>(() =>
     path: Object.values(collection.routes)[0] ?? '',
   })),
 )
-const columns: TableColumn<Row>[] = [
-  { accessorKey: 'name', header: sortable('Name') },
-  { accessorKey: 'fields', header: sortable('Fields') },
-  { accessorKey: 'rules', header: sortable('Rules') },
-  { accessorKey: 'path', header: 'Path' },
-]
+const columns = computed<TableColumn<Row>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.collections.columns.name) },
+  { accessorKey: 'fields', header: sortable(m.value.collections.columns.fields) },
+  { accessorKey: 'rules', header: sortable(m.value.collections.columns.rules) },
+  { accessorKey: 'path', header: m.value.collections.columns.path },
+])
 
 const validName = computed(
   () =>
@@ -47,7 +49,7 @@ const validName = computed(
 )
 
 const change = useStructureChange(async () => {
-  toast.add({ title: `The collection ${name.value} is there`, color: 'success' })
+  toast.add({ title: m.value.collections.created(name.value), color: 'success' })
   await router.push(`/collections/${name.value}`)
 })
 
@@ -71,26 +73,23 @@ function fieldCount(schema: Readonly<Record<string, unknown>>): number {
   return typeof properties === 'object' && properties !== null ? Object.keys(properties).length : 0
 }
 
-const PRESETS = [
-  { label: 'A blog: title, description, date, tags', value: 'blog' },
-  { label: 'Docs: title, description, order', value: 'docs' },
-  { label: 'Empty: a title alone', value: 'empty' },
-]
+const PRESETS = computed(() => [
+  { label: m.value.collections.presets.blog, value: 'blog' },
+  { label: m.value.collections.presets.docs, value: 'docs' },
+  { label: m.value.collections.presets.empty, value: 'empty' },
+])
 </script>
 
 <template>
-  <Page
-    title="Collections"
-    description="The kinds of entry of this site, with their fields and rules. A change applies at once."
-  >
+  <Page :title="m.collections.title" :description="m.collections.description">
     <div class="space-y-8">
-      <p v-if="structure === null" class="text-muted">Loading…</p>
+      <p v-if="structure === null" class="text-muted">{{ m.common.loading }}</p>
       <DataTable
         v-else
         :data="rows"
         :columns="columns"
-        filter-label="Filter by name or path"
-        empty="No collections yet."
+        :filter-label="m.collections.filter"
+        :empty="m.collections.empty"
       >
         <template #name-cell="{ row }">
           <RouterLink
@@ -105,20 +104,20 @@ const PRESETS = [
       </DataTable>
 
       <form class="max-w-lg space-y-4" @submit.prevent="create">
-        <h2 class="font-semibold">New collection</h2>
+        <h2 class="font-semibold">{{ m.collections.newCollection }}</h2>
         <UFormField
-          label="Name"
-          help="Lowercase letters, digits and hyphens, such as talks."
-          :error="name !== '' && !validName ? 'Not a free name.' : undefined"
+          :label="m.common.name"
+          :help="m.collections.nameHelp"
+          :error="name !== '' && !validName ? m.collections.notFree : undefined"
         >
           <UInput v-model="name" class="w-full font-mono" />
         </UFormField>
-        <UFormField label="Start from">
+        <UFormField :label="m.common.startFrom">
           <USelect v-model="preset" :items="PRESETS" class="w-full" />
         </UFormField>
         <UButton
           type="submit"
-          label="Create the collection"
+          :label="m.collections.create"
           :disabled="!validName"
           :loading="change.busy.value"
         />

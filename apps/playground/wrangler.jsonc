@@ -15,6 +15,9 @@
   ],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
+  // Workers Logs: every invocation of a deployment, with the status it answered, so an answer a
+  // reader saw can be told from one Cloudflare gave before the Worker ran.
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
   // Every minute: publishes the scheduled entries whose time has come (ADR-025).
   "triggers": { "crons": ["* * * * *"] },
   // The publication events (ADR-025): the Worker sends them, consumes them, and keeps the ones it

@@ -15,8 +15,10 @@ import { createWebHarness, webFetch } from './workers.ts'
 // component and the sidebar in reading order (`readingOrder` of app/utils/docs.ts); a draft as a
 // 404; the Markdown of a page at /docs/<slug>.md (server/middleware/markdown.ts); llms.txt with
 // every page in reading order; the MCP tools page, and its Markdown, generated from @hollware/core; or the landing
-// page with the install command. The docs are written through MCP to the site `docs`, as an
-// agent writes them.
+// page with the install command. In Spanish (under /es/, app/composables/useLocale.ts): the site's
+// own words, `<html lang="es">` and the alternates of each language; a page of the docs read in
+// Spanish, or in English with a notice while it is not translated; its Markdown at
+// /es/docs/<slug>.md. The docs are written through MCP to the site `docs`, as an agent writes them.
 
 const server = createWebHarness()
 
@@ -55,6 +57,12 @@ beforeAll(async () => {
       1,
       '## Install\n\n```sh\nnpm create hollware my-cms\n```\n\n::callout{type="tip"}\nKeep the token.\n::',
     ),
+  })
+  await publishNew(agent, {
+    collection: 'docs',
+    locale: 'es',
+    slug: 'first-steps',
+    markdown: page('Primeros pasos', 'start', 1, '## Instalar\n\nUn comando.'),
   })
   await createDraft(agent, {
     collection: 'docs',
@@ -120,5 +128,44 @@ describe('hollware.com', () => {
     expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
+  })
+
+  it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {
+    const home = await (await webFetch(server, '/es/')).text()
+
+    expect(home).toMatch(/<html[^>]* lang="es"/)
+    expect(home).toContain('El CMS en el que escriben tus')
+    expect(home).toContain('href="/es/docs/"')
+    expect(home).toContain('<link rel="alternate" hreflang="en" href="https://hollware.com/">')
+    expect(home).toContain('<link rel="alternate" hreflang="es" href="https://hollware.com/es/">')
+    expect(await (await webFetch(server, '/')).text()).toMatch(/<html[^>]* lang="en"/)
+  })
+
+  it('reads a page of the docs in Spanish, or in English with a notice until it is translated', async () => {
+    const translated = await (await webFetch(server, '/es/docs/first-steps/')).text()
+    const english = await webFetch(server, '/es/docs/a-concept/')
+    const html = await english.text()
+
+    expect(translated).toContain('<title>Primeros pasos · Hollware</title>')
+    expect(translated).toContain('<h2 id="instalar">Instalar</h2>')
+    expect(translated).not.toContain('todavía no está traducida')
+    // The sidebar in Spanish: its sections, its links, and the page that is only in English.
+    expect(translated).toContain('Primeros pasos</')
+    expect(translated).toContain('href="/es/docs/a-concept/"')
+    expect(english.status).toBe(200)
+    expect(html).toContain('One idea, in a few words.')
+    expect(html).toContain('Esta página todavía no está traducida al español')
+    expect(html).toContain('lang="en"')
+    expect((await webFetch(server, '/es/docs/unfinished/')).status).toBe(404)
+  })
+
+  it('serves the Markdown of a page in Spanish', async () => {
+    const markdown = await webFetch(server, '/es/docs/first-steps.md')
+
+    expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
+    expect(await markdown.text()).toBe(
+      page('Primeros pasos', 'start', 1, '## Instalar\n\nUn comando.'),
+    )
+    expect((await webFetch(server, '/es/docs/a-concept.md')).status).toBe(404)
   })
 })

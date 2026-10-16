@@ -4,9 +4,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
+import { useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 import { newEntryMarkdown } from '../lib/template.ts'
 
+const m = useMessages()
 const router = useRouter()
 const route = useRoute()
 
@@ -73,30 +75,35 @@ async function create() {
 </script>
 
 <template>
-  <Page :title="group === undefined ? 'New entry' : 'New translation'">
+  <Page :title="group === undefined ? m.newEntry.title : m.newEntry.translation">
     <form v-if="site !== null" class="max-w-lg space-y-4" @submit.prevent="create">
       <p v-if="group !== undefined" class="text-sm text-muted">
-        It joins the translations of <span class="font-mono">{{ group }}</span
+        {{ m.newEntry.joins }}<span class="font-mono">{{ group }}</span
         >.
       </p>
-      <UFormField label="Collection">
+      <UFormField :label="m.newEntry.collection">
         <USelect v-model="collection" :items="site.collections.map((c) => c.name)" class="w-full" />
       </UFormField>
-      <UFormField label="Locale">
+      <UFormField :label="m.newEntry.locale">
         <USelect v-model="locale" :items="site.locales" class="w-full" />
       </UFormField>
-      <UFormField label="Title">
+      <UFormField :label="m.newEntry.entryTitle">
         <UInput v-model="title" class="w-full" required />
       </UFormField>
       <UFormField
-        label="Slug"
-        help="Lowercase letters and digits joined by hyphens, such as edge-caching-guide."
-        :error="slug !== '' && !validSlug ? 'Not a slug.' : undefined"
+        :label="m.newEntry.slug"
+        :help="m.newEntry.slugHelp"
+        :error="slug !== '' && !validSlug ? m.newEntry.notSlug : undefined"
       >
         <UInput v-model="slug" class="w-full" required />
       </UFormField>
-      <UButton type="submit" label="Create the draft" :loading="saving" :disabled="!validSlug" />
-      <UAlert v-if="failure !== null" color="error" title="Not created" :description="failure" />
+      <UButton type="submit" :label="m.newEntry.create" :loading="saving" :disabled="!validSlug" />
+      <UAlert
+        v-if="failure !== null"
+        color="error"
+        :title="m.newEntry.notCreated"
+        :description="failure"
+      />
       <VerdictList :verdict="refusal" />
     </form>
   </Page>

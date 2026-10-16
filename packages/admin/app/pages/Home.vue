@@ -2,13 +2,15 @@
 import Page from '../components/Page.vue'
 import { computed, onMounted, ref } from 'vue'
 import type { Output } from '../lib/api.ts'
-import { entryPath, STATUS_COLOR, titleOf, when } from '../lib/entries.ts'
+import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
+import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
 type Stats = Output<'content_stats'>
 type Review = Output<'list_reviews'>['reviews'][number]
 
+const m = useMessages()
 const stats = ref<Stats | null>(null)
 const reviews = ref<Review[] | null>(null)
 const drafts = ref<Entry[] | null>(null)
@@ -41,27 +43,27 @@ const topViews = computed(() =>
 const totalViews = computed(() =>
   (stats.value?.pages ?? []).reduce((sum, page) => sum + page.views, 0),
 )
-const count = new Intl.NumberFormat()
 </script>
 
 <template>
-  <Page title="Home">
+  <Page :title="m.home.title">
     <div class="space-y-8">
       <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section aria-labelledby="read" class="space-y-3 rounded-lg border border-default p-5">
           <div class="flex items-baseline justify-between gap-3">
-            <h2 id="read" class="font-semibold">Most read, last 30 days</h2>
-            <span v-if="stats?.outcome === 'ok'" class="font-mono text-sm text-muted tabular-nums"
-              >{{ count.format(totalViews) }} views</span
+            <h2 id="read" class="font-semibold">{{ m.home.mostRead }}</h2>
+            <span
+              v-if="stats?.outcome === 'ok'"
+              class="font-mono text-sm text-muted tabular-nums"
+              >{{ m.home.views(formatNumber(totalViews)) }}</span
             >
           </div>
-          <p v-if="stats === null" class="text-sm text-muted">Loading…</p>
+          <p v-if="stats === null" class="text-sm text-muted">{{ m.common.loading }}</p>
           <p v-else-if="stats.outcome === 'unavailable'" class="text-sm text-muted">
-            This deployment has no analytics. Bind Analytics Engine and add the beacon to the site
-            to see what readers read.
+            {{ m.home.noAnalytics }}
           </p>
           <p v-else-if="(stats.pages ?? []).length === 0" class="text-sm text-muted">
-            No page views yet.
+            {{ m.home.noViews }}
           </p>
           <ol v-else class="space-y-2">
             <li v-for="page in stats.pages" :key="page.path" class="space-y-1 text-sm">
@@ -74,7 +76,7 @@ const count = new Intl.NumberFormat()
                 >
                 <span v-else class="min-w-0 truncate font-mono text-muted">{{ page.path }}</span>
                 <span class="font-mono text-muted tabular-nums">{{
-                  count.format(page.views)
+                  formatNumber(page.views)
                 }}</span>
               </div>
               <div class="h-1 rounded-full bg-elevated" aria-hidden="true">
@@ -89,14 +91,14 @@ const count = new Intl.NumberFormat()
 
         <section aria-labelledby="waiting" class="space-y-3 rounded-lg border border-default p-5">
           <div class="flex items-baseline justify-between gap-3">
-            <h2 id="waiting" class="font-semibold">Waiting for review</h2>
-            <RouterLink to="/reviews" class="text-sm text-muted hover:text-highlighted"
-              >All reviews</RouterLink
-            >
+            <h2 id="waiting" class="font-semibold">{{ m.home.waiting }}</h2>
+            <RouterLink to="/reviews" class="text-sm text-muted hover:text-highlighted">{{
+              m.home.allReviews
+            }}</RouterLink>
           </div>
-          <p v-if="reviews === null" class="text-sm text-muted">Loading…</p>
+          <p v-if="reviews === null" class="text-sm text-muted">{{ m.common.loading }}</p>
           <p v-else-if="reviews.length === 0" class="text-sm text-muted">
-            Nothing waits for review.
+            {{ m.common.nothingWaits }}
           </p>
           <ul v-else class="divide-y divide-default text-sm">
             <li v-for="item in reviews" :key="item.id" class="py-2">
@@ -104,8 +106,12 @@ const count = new Intl.NumberFormat()
                 titleOf(item.entry)
               }}</RouterLink>
               <p class="text-muted">
-                asked by {{ item.requestedByName ?? item.requestedBy }} ·
-                {{ when(item.requestedAt) }}
+                {{
+                  m.home.askedBy(
+                    item.requestedByName ?? item.requestedBy,
+                    formatDateTime(item.requestedAt),
+                  )
+                }}
               </p>
             </li>
           </ul>
@@ -115,14 +121,14 @@ const count = new Intl.NumberFormat()
       <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section aria-labelledby="drafts" class="space-y-3">
           <div class="flex items-baseline justify-between gap-3">
-            <h2 id="drafts" class="font-semibold">Unpublished work</h2>
-            <RouterLink to="/entries" class="text-sm text-muted hover:text-highlighted"
-              >All entries</RouterLink
-            >
+            <h2 id="drafts" class="font-semibold">{{ m.home.unpublished }}</h2>
+            <RouterLink to="/entries" class="text-sm text-muted hover:text-highlighted">{{
+              m.home.allEntries
+            }}</RouterLink>
           </div>
-          <p v-if="drafts === null" class="text-sm text-muted">Loading…</p>
+          <p v-if="drafts === null" class="text-sm text-muted">{{ m.common.loading }}</p>
           <p v-else-if="drafts.length === 0" class="text-sm text-muted">
-            Everything written is published.
+            {{ m.home.allPublished }}
           </p>
           <ul v-else class="divide-y divide-default rounded-lg border border-default text-sm">
             <li v-for="entry in drafts" :key="entry.id" class="flex items-center gap-3 px-4 py-2.5">
@@ -133,7 +139,7 @@ const count = new Intl.NumberFormat()
               >
               <span class="font-mono text-xs text-muted">{{ entry.locale }}</span>
               <UBadge
-                :label="entry.status === 'published' ? 'changes' : entry.status"
+                :label="entry.status === 'published' ? m.home.changes : m.status[entry.status]"
                 :color="entry.status === 'published' ? 'warning' : STATUS_COLOR[entry.status]"
                 variant="subtle"
               />
@@ -142,9 +148,9 @@ const count = new Intl.NumberFormat()
         </section>
 
         <section aria-labelledby="audit" class="space-y-3">
-          <h2 id="audit" class="font-semibold">Last audit</h2>
+          <h2 id="audit" class="font-semibold">{{ m.home.lastAudit }}</h2>
           <p v-if="audit === null" class="text-sm text-muted">
-            No audit report yet. The auditor of @hollware/agents writes one a week.
+            {{ m.home.noAudit }}
           </p>
           <RouterLink
             v-else
@@ -152,7 +158,7 @@ const count = new Intl.NumberFormat()
             class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
           >
             <p class="font-medium">{{ titleOf(audit) }}</p>
-            <p class="text-muted">Written {{ when(audit.updatedAt) }}</p>
+            <p class="text-muted">{{ m.home.written(formatDateTime(audit.updatedAt)) }}</p>
           </RouterLink>
         </section>
       </div>

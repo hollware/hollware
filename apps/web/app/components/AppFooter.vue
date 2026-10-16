@@ -1,9 +1,11 @@
+<script setup lang="ts">
+const { m } = useLocale()
+</script>
+
 <template>
   <UFooter class="border-t border-default">
     <template #left>
-      <p class="text-sm text-muted">
-        Hollware is open source, MIT. Made for agents, kept by people.
-      </p>
+      <p class="text-sm text-muted">{{ m.footer }}</p>
     </template>
     <template #right>
       <UButton
@@ -20,7 +22,7 @@
         icon="i-lucide-github"
         color="neutral"
         variant="ghost"
-        aria-label="Hollware on GitHub"
+        :aria-label="m.nav.github"
       />
     </template>
   </UFooter>

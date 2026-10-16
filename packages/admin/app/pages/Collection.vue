@@ -16,6 +16,7 @@ import {
   type BuilderKind,
   type BuilderSchema,
 } from '../lib/schema-builder.ts'
+import { useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 
@@ -25,6 +26,7 @@ type Structure = Output<'get_structure'>
 type Collection = Structure['definition']['collections'][string]
 
 const toast = useToast()
+const m = useMessages()
 const router = useRouter()
 const structure = ref<Structure | null>(null)
 const missing = ref(false)
@@ -33,17 +35,20 @@ const collection = ref<Collection | null>(null)
 const components = ref('')
 const removeOpen = ref(false)
 
-const KINDS: { label: string; value: BuilderKind }[] = [
-  { label: 'Text', value: 'text' },
-  { label: 'Date', value: 'date' },
-  { label: 'Date and time', value: 'datetime' },
-  { label: 'Choice', value: 'choice' },
-  { label: 'List of texts', value: 'list' },
-  { label: 'Number', value: 'number' },
-  { label: 'Whole number', value: 'integer' },
-  { label: 'Yes or no', value: 'switch' },
-  { label: 'Other (JSON Schema)', value: 'other' },
+const KIND_ORDER: readonly BuilderKind[] = [
+  'text',
+  'date',
+  'datetime',
+  'choice',
+  'list',
+  'number',
+  'integer',
+  'switch',
+  'other',
 ]
+const KINDS = computed(() =>
+  KIND_ORDER.map((value) => ({ label: m.value.collection.kinds[value], value })),
+)
 /** The components of a collection, as the server checks them. */
 const componentsData = collectionDefinitionData.shape.components
 
@@ -63,11 +68,11 @@ watch(() => props.name, load, { immediate: true })
 
 const fieldKeys = computed(() => (builder.value?.fields ?? []).map((field) => field.key))
 /** A select of no field: Reka's selects take no empty value, so none has a name of its own. */
-const NONE = '(none)'
-const optionalFields = computed(() => [NONE, ...fieldKeys.value])
+const NONE = computed(() => m.value.common.none)
+const optionalFields = computed(() => [NONE.value, ...fieldKeys.value])
 const formProblems = computed(() => [
-  ...problemsOf(builder.value?.fields ?? []),
-  ...(componentsValue() === undefined ? ['The components are not a JSON object.'] : []),
+  ...problemsOf(builder.value?.fields ?? [], m.value.collection.problems),
+  ...(componentsValue() === undefined ? [m.value.collection.notJson] : []),
 ])
 
 function componentsValue(): Collection['components'] | undefined {
@@ -97,7 +102,8 @@ function addRule() {
 
 const change = useStructureChange(async (answer) => {
   toast.add({
-    title: answer.outcome === 'updated' ? 'Saved: it applies at once' : 'Nothing changed',
+    title:
+      answer.outcome === 'updated' ? m.value.common.savedApplies : m.value.common.nothingChanged,
     color: 'success',
   })
   await load()
@@ -142,26 +148,23 @@ async function remove() {
 </script>
 
 <template>
-  <Page
-    :title="name"
-    description="A change applies at once to every new save and publish; nothing is deployed."
-  >
+  <Page :title="name" :description="m.collection.description">
     <template v-if="collection !== null" #actions>
       <UButton
-        label="Remove"
+        :label="m.common.remove"
         color="error"
         variant="outline"
         :loading="change.busy.value"
         @click="removeOpen = true"
       />
       <UButton
-        label="Save"
+        :label="m.common.save"
         :loading="change.busy.value"
         :disabled="formProblems.length > 0"
         @click="save"
       />
     </template>
-    <p v-if="missing" class="text-muted">There is no collection "{{ name }}".</p>
+    <p v-if="missing" class="text-muted">{{ m.collection.missing(name) }}</p>
     <div
       v-else-if="collection !== null && builder !== null && structure !== null"
       class="space-y-8"
@@ -175,7 +178,7 @@ async function remove() {
         @cancel="change.cancel"
         @reload="load"
       />
-      <UAlert v-if="formProblems.length > 0" color="warning" title="Fix these to save">
+      <UAlert v-if="formProblems.length > 0" color="warning" :title="m.collection.fixToSave">
         <template #description>
           <ul class="mt-1 list-disc pl-5">
             <li v-for="problem in formProblems" :key="problem">{{ problem }}</li>
@@ -185,9 +188,9 @@ async function remove() {
 
       <section aria-labelledby="fields" class="space-y-3">
         <div class="flex items-center justify-between">
-          <h2 id="fields" class="font-semibold">Fields of the frontmatter</h2>
+          <h2 id="fields" class="font-semibold">{{ m.collection.fields }}</h2>
           <UButton
-            label="Add a field"
+            :label="m.collection.addField"
             icon="i-lucide-plus"
             variant="outline"
             size="sm"
@@ -201,20 +204,20 @@ async function remove() {
             class="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_10rem_auto]"
           >
             <div class="grid min-w-0 gap-3 sm:grid-cols-2">
-              <UFormField label="Name">
+              <UFormField :label="m.common.name">
                 <UInput v-model="field.key" class="w-full font-mono" />
               </UFormField>
-              <UFormField label="Description">
+              <UFormField :label="m.collection.fieldDescription">
                 <UInput v-model="field.description" class="w-full" />
               </UFormField>
               <template v-if="BOUNDED.includes(field.kind)">
                 <UFormField
                   :label="
                     field.kind === 'text'
-                      ? 'Fewest characters'
+                      ? m.collection.fewestCharacters
                       : field.kind === 'list'
-                        ? 'Fewest items'
-                        : 'Least'
+                        ? m.collection.fewestItems
+                        : m.collection.least
                   "
                 >
                   <UInputNumber
@@ -226,10 +229,10 @@ async function remove() {
                 <UFormField
                   :label="
                     field.kind === 'text'
-                      ? 'Most characters'
+                      ? m.collection.mostCharacters
                       : field.kind === 'list'
-                        ? 'Most items'
-                        : 'Most'
+                        ? m.collection.mostItems
+                        : m.collection.most
                   "
                 >
                   <UInputNumber
@@ -239,15 +242,19 @@ async function remove() {
                   />
                 </UFormField>
               </template>
-              <UFormField v-if="field.kind === 'choice'" label="Values" class="sm:col-span-2">
+              <UFormField
+                v-if="field.kind === 'choice'"
+                :label="m.collection.values"
+                class="sm:col-span-2"
+              >
                 <UInputTags v-model="field.options" class="w-full" />
               </UFormField>
             </div>
             <div class="space-y-3">
-              <UFormField label="Kind">
+              <UFormField :label="m.collection.kind">
                 <USelect v-model="field.kind" :items="KINDS" class="w-full" />
               </UFormField>
-              <USwitch v-model="field.required" label="Required" />
+              <USwitch v-model="field.required" :label="m.collection.required" />
             </div>
             <div class="flex items-start gap-1">
               <UButton
@@ -255,7 +262,7 @@ async function remove() {
                 variant="ghost"
                 size="sm"
                 :disabled="index === 0"
-                :aria-label="`Move ${field.key} up`"
+                :aria-label="m.collection.moveUp(field.key)"
                 @click="move(index, -1)"
               />
               <UButton
@@ -263,7 +270,7 @@ async function remove() {
                 variant="ghost"
                 size="sm"
                 :disabled="index === builder.fields.length - 1"
-                :aria-label="`Move ${field.key} down`"
+                :aria-label="m.collection.moveDown(field.key)"
                 @click="move(index, 1)"
               />
               <UButton
@@ -271,7 +278,7 @@ async function remove() {
                 color="error"
                 variant="ghost"
                 size="sm"
-                :aria-label="`Remove ${field.key}`"
+                :aria-label="m.collection.removeField(field.key)"
                 @click="builder.fields.splice(index, 1)"
               />
             </div>
@@ -280,13 +287,13 @@ async function remove() {
       </section>
 
       <section aria-labelledby="routes" class="space-y-3">
-        <h2 id="routes" class="font-semibold">Pages on the site</h2>
+        <h2 id="routes" class="font-semibold">{{ m.collection.pages }}</h2>
         <div class="grid gap-3 sm:grid-cols-2">
           <UFormField
             v-for="locale in structure.definition.locales"
             :key="locale"
-            :label="`Path in ${locale}`"
-            help="With :slug where the entry's slug goes."
+            :label="m.collection.pathIn(locale)"
+            :help="m.collection.pathHelp"
           >
             <UInput
               :model-value="collection.routes[locale] ?? ''"
@@ -299,8 +306,8 @@ async function remove() {
         </div>
         <div class="grid gap-3 sm:grid-cols-3">
           <UFormField
-            label="Translations share"
-            help="The field that the translations of an entry share."
+            :label="m.collection.translationsShare"
+            :help="m.collection.translationsShareHelp"
           >
             <USelect
               :model-value="collection.translationGroupField ?? NONE"
@@ -311,7 +318,7 @@ async function remove() {
               "
             />
           </UFormField>
-          <UFormField label="Tags" help="A list of texts.">
+          <UFormField :label="m.collection.tags" :help="m.collection.tagsHelp">
             <USelect
               :model-value="collection.tagsField ?? NONE"
               :items="optionalFields"
@@ -319,7 +326,7 @@ async function remove() {
               @update:model-value="collection.tagsField = $event === NONE ? null : String($event)"
             />
           </UFormField>
-          <UFormField label="Newest first by" help="A date; the first publication otherwise.">
+          <UFormField :label="m.collection.newestFirst" :help="m.collection.newestFirstHelp">
             <USelect
               :model-value="collection.sortByField ?? NONE"
               :items="optionalFields"
@@ -332,9 +339,9 @@ async function remove() {
 
       <section aria-labelledby="rules" class="space-y-3">
         <div class="flex items-center justify-between">
-          <h2 id="rules" class="font-semibold">Rules</h2>
+          <h2 id="rules" class="font-semibold">{{ m.collection.rules }}</h2>
           <UButton
-            label="Add a rule"
+            :label="m.collection.addRule"
             icon="i-lucide-plus"
             variant="outline"
             size="sm"
@@ -342,10 +349,11 @@ async function remove() {
           />
         </div>
         <p class="text-sm text-muted">
-          Every write and publish is checked against them, besides the schema, the components and
-          content safety. An error blocks publishing; a warning has to be acknowledged.
+          {{ m.collection.rulesNote }}
         </p>
-        <p v-if="collection.rules.length === 0" class="text-sm text-muted">No rules.</p>
+        <p v-if="collection.rules.length === 0" class="text-sm text-muted">
+          {{ m.collection.noRules }}
+        </p>
         <RuleEditor
           v-for="(rule, index) in collection.rules"
           :key="index"
@@ -357,11 +365,8 @@ async function remove() {
       </section>
 
       <section aria-labelledby="guide" class="space-y-3">
-        <h2 id="guide" class="font-semibold">For whoever writes here</h2>
-        <UFormField
-          label="Style guide"
-          help="Markdown. Agents read it with describe_site before they write."
-        >
+        <h2 id="guide" class="font-semibold">{{ m.collection.forWriters }}</h2>
+        <UFormField :label="m.collection.styleGuide" :help="m.collection.styleGuideHelp">
           <UTextarea
             :model-value="collection.styleGuide ?? ''"
             :rows="4"
@@ -370,27 +375,21 @@ async function remove() {
             @update:model-value="collection.styleGuide = $event === '' ? null : String($event)"
           />
         </UFormField>
-        <UFormField
-          label="Components"
-          help="The components the body may use, as JSON: { name: { props, description, example } }."
-        >
+        <UFormField :label="m.collection.components" :help="m.collection.componentsHelp">
           <UTextarea v-model="components" :rows="6" autoresize class="w-full font-mono text-xs" />
         </UFormField>
       </section>
 
-      <UModal v-model:open="removeOpen" :title="`Remove the collection ${name}?`">
+      <UModal v-model:open="removeOpen" :title="m.collection.removeTitle(name)">
         <template #body>
-          <p>
-            Its entries are not deleted: they are out of reach until a collection of this name comes
-            back.
-          </p>
+          <p>{{ m.collection.removeBody }}</p>
         </template>
         <template #footer>
-          <UButton label="Keep it" variant="ghost" @click="removeOpen = false" />
-          <UButton label="Remove" color="error" @click="remove" />
+          <UButton :label="m.common.keepIt" variant="ghost" @click="removeOpen = false" />
+          <UButton :label="m.common.remove" color="error" @click="remove" />
         </template>
       </UModal>
     </div>
-    <p v-else class="text-muted">Loading…</p>
+    <p v-else class="text-muted">{{ m.common.loading }}</p>
   </Page>
 </template>

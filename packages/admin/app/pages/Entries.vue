@@ -6,7 +6,8 @@ import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import type { Output } from '../lib/api.ts'
 import { sortable } from '../lib/columns.ts'
-import { entryPath, STATUS_COLOR, titleOf, when } from '../lib/entries.ts'
+import { formatDateTime, useMessages } from '../i18n/index.ts'
+import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 
@@ -20,6 +21,7 @@ const ALL = 'all'
 /** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
 const MOST = 2000
 
+const m = useMessages()
 const route = useRoute()
 const router = useRouter()
 const site = ref<Site | null>(null)
@@ -108,31 +110,31 @@ function liveUrl(entry: Entry): string | null {
   return pageUrl(site.value?.url ?? null, definition.value.routes, entry.locale, entry.slug)
 }
 
-const columns: TableColumn<Row>[] = [
-  { accessorKey: 'title', header: sortable('Title') },
-  { accessorKey: 'locale', header: sortable('Locale') },
-  { accessorKey: 'status', header: sortable('Status') },
-  { accessorKey: 'updatedAt', header: sortable('Updated') },
+const columns = computed<TableColumn<Row>[]>(() => [
+  { accessorKey: 'title', header: sortable(m.value.entries.columns.title) },
+  { accessorKey: 'locale', header: sortable(m.value.entries.columns.locale) },
+  { accessorKey: 'status', header: sortable(m.value.entries.columns.status) },
+  { accessorKey: 'updatedAt', header: sortable(m.value.entries.columns.updated) },
   { id: 'site', header: '' },
-]
+])
 
-const statuses = [
-  { label: 'Any status', value: ALL },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Scheduled', value: 'scheduled' },
-  { label: 'Published', value: 'published' },
-]
+const statuses = computed(() => [
+  { label: m.value.entries.anyStatus, value: ALL },
+  { label: m.value.entries.draft, value: 'draft' },
+  { label: m.value.entries.scheduled, value: 'scheduled' },
+  { label: m.value.entries.published, value: 'published' },
+])
 const locales = computed(() => [
-  { label: 'Any locale', value: ALL },
+  { label: m.value.entries.anyLocale, value: ALL },
   ...(site.value?.locales ?? []).map((value) => ({ label: value, value })),
 ])
 </script>
 
 <template>
-  <Page title="Entries">
+  <Page :title="m.entries.title">
     <template #actions>
       <UButton
-        label="New entry"
+        :label="m.entries.newEntry"
         icon="i-lucide-plus"
         :to="{ path: '/entries/new', query: collection === '' ? {} : { collection } }"
       />
@@ -141,19 +143,19 @@ const locales = computed(() => [
       :data="rows"
       :columns="columns"
       :loading="loading"
-      filter-label="Filter by title, slug or tag"
-      empty="No entries here yet."
+      :filter-label="m.entries.filter"
+      :empty="m.entries.empty"
     >
       <template #filters>
         <template v-if="site !== null">
           <USelect
             v-model="collection"
             :items="site.collections.map((c) => c.name)"
-            aria-label="Collection"
+            :aria-label="m.entries.collection"
             class="w-40"
           />
-          <USelect v-model="locale" :items="locales" aria-label="Locale" class="w-36" />
-          <USelect v-model="status" :items="statuses" aria-label="Status" class="w-36" />
+          <USelect v-model="locale" :items="locales" :aria-label="m.entries.locale" class="w-44" />
+          <USelect v-model="status" :items="statuses" :aria-label="m.entries.status" class="w-44" />
         </template>
       </template>
       <template #title-cell="{ row }">
@@ -178,23 +180,23 @@ const locales = computed(() => [
       </template>
       <template #status-cell="{ row }">
         <UBadge
-          :label="row.original.status"
+          :label="m.status[row.original.status]"
           :color="STATUS_COLOR[row.original.status]"
           variant="subtle"
         />
         <UBadge
           v-if="row.original.status === 'published' && row.original.hasUnpublishedChanges"
-          label="changes"
+          :label="m.entries.changes"
           color="warning"
           variant="outline"
           class="ml-1"
         />
         <span v-if="row.original.scheduledAt !== null" class="block text-xs text-muted">{{
-          when(row.original.scheduledAt)
+          formatDateTime(row.original.scheduledAt)
         }}</span>
       </template>
       <template #updatedAt-cell="{ row }">
-        <span class="text-muted">{{ when(row.original.updatedAt) }}</span>
+        <span class="text-muted">{{ formatDateTime(row.original.updatedAt) }}</span>
       </template>
       <template #site-cell="{ row }">
         <div class="text-right">
@@ -205,13 +207,13 @@ const locales = computed(() => [
             icon="i-lucide-external-link"
             variant="ghost"
             size="sm"
-            :aria-label="`${row.original.title} on the site`"
+            :aria-label="m.entries.onSite(row.original.title)"
           />
         </div>
       </template>
     </DataTable>
     <p v-if="truncated" class="text-sm text-muted">
-      The first {{ MOST }} entries: narrow the list by locale or status to see the others.
+      {{ m.entries.truncated(MOST) }}
     </p>
   </Page>
 </template>

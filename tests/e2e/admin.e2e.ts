@@ -192,3 +192,32 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
     await shot(owner, heading.toLowerCase().replaceAll(' ', '-'))
   }
 })
+
+test('the owner switches the admin to Spanish from the person menu, and it stays Spanish', async () => {
+  await owner.goto('/admin/')
+  await expect(owner.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
+  await owner.getByRole('button', { name: 'You', exact: true }).click()
+  await owner.getByRole('menuitem', { name: 'Language' }).click()
+  await owner.getByRole('menuitemcheckbox', { name: 'Español' }).click()
+
+  await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
+  await expect(owner.locator('html')).toHaveAttribute('lang', 'es')
+  await expect(owner.getByRole('link', { name: 'Entradas', exact: true })).toBeVisible()
+  await expect(owner.getByRole('link', { name: 'Revisiones', exact: true })).toBeVisible()
+  await expect(owner.getByRole('heading', { name: 'Lo más leído, últimos 30 días' })).toBeVisible()
+  await expectAccessible(owner)
+
+  await owner.reload()
+  await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
+  await expect(owner.locator('html')).toHaveAttribute('lang', 'es')
+  await owner.goto('/admin/entries')
+  await expect(owner.getByRole('heading', { name: 'Entradas', level: 1 })).toBeVisible()
+  await expect(
+    owner.getByRole('textbox', { name: 'Filtrar por título, slug o etiqueta' }),
+  ).toBeVisible()
+  await expect(owner.getByRole('row', { name: /^Hola mundo, otra vez/ })).toContainText(
+    'programada',
+  )
+  await expectAccessible(owner)
+  await shot(owner, 'entries-es')
+})
