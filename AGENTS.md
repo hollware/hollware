@@ -78,7 +78,7 @@ new process group, so the child outlives its supervisor.
   a built Worker which Node.js globals it has. It is no route, so the gateway's guard has no
   exception for it.
 - `budgets.json` holds the ceilings of the built playground Worker, minified and gzipped (main
-  module 250 KiB, all modules 400 KiB, fixed before measuring); raising one needs a note in an ADR.
+  module 250 KiB, all modules 450 KiB; a warm write 10 ms, the CPU of a request on the Free plan); raising one needs a note in an ADR.
   `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
   (read from the source maps of the build), and logs startup and the cost of a write.
 - The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:

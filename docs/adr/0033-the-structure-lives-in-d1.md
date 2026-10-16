@@ -26,6 +26,7 @@ Two facts make it possible: no config of the repository writes a contract of its
 - Custom rules in code are gone; a rule the catalog lacks is a new rule of the catalog.
 - Every request that needs a site reads it from D1 once in a while; a write reads it once.
 - The tests seed the structure as data, as the playground's deployments do.
+- **The ceiling of the whole Worker goes from 400 to 450 KiB gzipped** (`budgets.json`, 2026-10-16): the validator and the operations of the structure bring it to 392 KiB, and the admin's routes to come would pass 400. Cloudflare's own limit is 3 MB on the Free plan, so the ceiling stays one of startup cost, which the main module's ceiling of 250 KiB holds. A new ceiling keeps Hollware on the Free plan: the warm write of the 2,027-word fixture holds 10 ms, the CPU a request gets there.
 
 ## Alternatives considered
 

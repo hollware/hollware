@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import {
   checkBudgets,
+  checkWriteCost,
   gzipBytes,
   measureBuild,
   median,
@@ -46,6 +47,7 @@ const BUDGETS: Budgets = {
     packages: ['comark', '@comark/html'],
     reason: 'Both load when the first Markdown arrives.',
   },
+  warmWrite: { ms: 10, reason: 'The Free plan.' },
 }
 
 const KIB = 1024
@@ -76,7 +78,8 @@ describe('budgets.json', () => {
     )
 
     expect(budgets.main.gzipKiB).toBe(250)
-    expect(budgets.total.gzipKiB).toBe(400)
+    expect(budgets.total.gzipKiB).toBe(450)
+    expect(budgets.warmWrite.ms).toBe(10)
     expect(budgets.lazyPackages.packages).toEqual(['comark', '@comark/html'])
   })
 
@@ -89,6 +92,7 @@ describe('budgets.json', () => {
       '"total"',
     ],
     ['a ceiling without its reason', { ...BUDGETS, main: { gzipKiB: 250, reason: ' ' } }, '"main"'],
+    ['no write ceiling', { ...BUDGETS, warmWrite: undefined }, '"warmWrite"'],
     [
       'no lazy package',
       { ...BUDGETS, lazyPackages: { packages: [], reason: 'x' } },
@@ -96,6 +100,19 @@ describe('budgets.json', () => {
     ],
   ])('refuses %s', (_name, json, mentions) => {
     expect(() => parseBudgets(JSON.stringify(json))).toThrow(mentions)
+  })
+})
+
+describe('checkWriteCost', () => {
+  it('passes a warm write at its ceiling, and fails one over it, with what it is for', () => {
+    expect(checkWriteCost(10, BUDGETS)).toEqual([])
+    expect(checkWriteCost(10.1, BUDGETS)).toEqual([
+      {
+        rule: 'warm-write-ceiling',
+        message:
+          'a warm write takes 10.1 ms, over the ceiling of 10 ms in budgets.json. The Free plan. Make the write cheaper; raising the ceiling needs a note in an ADR.',
+      },
+    ])
   })
 })
 

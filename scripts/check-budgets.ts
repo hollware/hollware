@@ -46,6 +46,8 @@ export interface Budgets {
   readonly total: Ceiling
   /** Packages that must stay out of the startup modules and in a lazy chunk. */
   readonly lazyPackages: { readonly packages: readonly string[]; readonly reason: string }
+  /** The median of the warm writes, in milliseconds: what keeps a write within the Free plan. */
+  readonly warmWrite: { readonly ms: number; readonly reason: string }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -85,10 +87,26 @@ export function parseBudgets(text: string): Budgets {
       'budgets.json: "lazyPackages" must be { "packages": [<names>], "reason": "<why>" } with at least one name',
     )
   }
+  const main = readCeiling(json.main, 'main')
+  const total = readCeiling(json.total, 'total')
+  const warm = json.warmWrite
+  if (
+    !isRecord(warm) ||
+    typeof warm.ms !== 'number' ||
+    !Number.isFinite(warm.ms) ||
+    warm.ms <= 0 ||
+    typeof warm.reason !== 'string' ||
+    warm.reason.trim() === ''
+  ) {
+    throw new Error(
+      'budgets.json: "warmWrite" must be { "ms": <a positive number>, "reason": "<why>" }',
+    )
+  }
   return {
-    main: readCeiling(json.main, 'main'),
-    total: readCeiling(json.total, 'total'),
+    main,
+    total,
     lazyPackages: { packages: lazy.packages, reason: lazy.reason },
+    warmWrite: { ms: warm.ms, reason: warm.reason },
   }
 }
 
@@ -216,12 +234,28 @@ export function measureBuild(directory: string): Measurement {
 }
 
 export interface Violation {
-  readonly rule: 'main-ceiling' | 'total-ceiling' | 'not-lazy' | 'no-lazy-chunk'
+  readonly rule:
+    | 'main-ceiling'
+    | 'total-ceiling'
+    | 'not-lazy'
+    | 'no-lazy-chunk'
+    | 'warm-write-ceiling'
   readonly message: string
 }
 
 function kib(bytes: number): string {
   return `${(bytes / KIB).toFixed(2)} KiB`
+}
+
+/** What the cost of the writes breaks of the budget: equal to the ceiling passes, over it fails. */
+export function checkWriteCost(warm: number, budgets: Budgets): Violation[] {
+  if (warm <= budgets.warmWrite.ms) return []
+  return [
+    {
+      rule: 'warm-write-ceiling',
+      message: `a warm write takes ${warm.toFixed(1)} ms, over the ceiling of ${budgets.warmWrite.ms} ms in budgets.json. ${budgets.warmWrite.reason} Make the write cheaper; raising the ceiling needs a note in an ADR.`,
+    },
+  ]
 }
 
 /** What a measurement breaks of the budget. Every ceiling is hard: equal to it passes, over it fails. */
@@ -523,7 +557,7 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     const workerDirectory = buildPlayground(root, outDir, env)
     const measurement = measureBuild(workerDirectory)
     console.log(report(measurement, budgets))
-    const violations = checkBudgets(measurement, budgets)
+    const violations = [...checkBudgets(measurement, budgets)]
     if (violations.length === 0) {
       const lazy = measurement.modules.filter((module) => !module.startup).length
       console.log(
@@ -545,9 +579,13 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
           `  cold  ${cost.cold.toFixed(1)} ms  (the first request of a fresh Worker, median of ${COLD_RUNS})`,
           `  warm  ${cost.warm.toFixed(1)} ms  (median of ${COLD_RUNS * WARM_WRITES}, slowest ${cost.warmMax.toFixed(1)} ms)`,
           `  floor ${cost.floor.toFixed(1)} ms  (GET /health, median of ${COLD_RUNS * FLOOR_REQUESTS}: what a request costs through the harness)`,
-          '  Request time seen from outside, an upper bound of the CPU time of the write; no ceiling.',
+          `  Request time seen from outside, an upper bound of the CPU time of the write; the warm one has a ceiling of ${budgets.warmWrite.ms} ms.`,
         ].join('\n'),
       )
+      for (const violation of checkWriteCost(cost.warm, budgets)) {
+        violations.push(violation)
+        console.error(`FAIL ${violation.rule}: ${violation.message}`)
+      }
     }
     return violations.length === 0 ? 0 : 1
   } finally {
