@@ -19,5 +19,6 @@ export default defineEventHandler(async (event) => {
   const page = await answer(event, () =>
     reader.listEntries(site, getRouterParam(event, 'collection') ?? '', options),
   )
-  return { outcome: page.outcome, entries: page.entries.map(forPage), nextCursor: page.nextCursor }
+  const entries = page.entries.map(forPage).flatMap((entry) => (entry === undefined ? [] : [entry]))
+  return { outcome: page.outcome, entries, nextCursor: page.nextCursor }
 })

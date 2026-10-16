@@ -37,6 +37,7 @@ export * from './webhooks.ts'
 export { CHUNK_LIMITS, CHUNKER_VERSION, chunksOf, type Chunk } from './search/chunks.ts'
 export {
   entryTag,
+  EVERY_LOCALE,
   groupTag,
   listTag,
   SITE_TAG,

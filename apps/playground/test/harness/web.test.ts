@@ -96,7 +96,10 @@ describe('hollware.com', () => {
   })
 
   it('lists every page for language models, in reading order', async () => {
-    const text = await (await webFetch(server, '/llms.txt')).text()
+    const llms = await webFetch(server, '/llms.txt')
+    const text = await llms.text()
+    // A route of the site's own that reads through useHollware is tagged by the reader (S8).
+    expect((llms.headers.get('cache-tag') ?? '').split(',')).toContain('list:docs:en')
 
     expect(text).toContain(
       '- [First steps](https://hollware.com/docs/first-steps.md): The page First steps of the docs, written by a test.\n- [A concept](https://hollware.com/docs/a-concept.md)',

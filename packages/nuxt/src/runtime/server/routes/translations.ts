@@ -11,5 +11,8 @@ export default defineEventHandler(async (event) => {
       getRouterParam(event, 'group') ?? '',
     ),
   )
-  return { outcome: group.outcome, entries: (group.entries ?? []).map(forPage) }
+  const entries = (group.entries ?? [])
+    .map(forPage)
+    .flatMap((entry) => (entry === undefined ? [] : [entry]))
+  return { outcome: group.outcome, entries }
 })

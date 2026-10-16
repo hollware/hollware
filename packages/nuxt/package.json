@@ -39,6 +39,7 @@
   "dependencies": {
     "@comark/vue": "catalog:",
     "@hollware/client": "workspace:*",
+    "@hollware/core": "workspace:*",
     "@nuxt/kit": "catalog:"
   },
   "devDependencies": {

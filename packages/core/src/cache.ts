@@ -6,7 +6,8 @@
  * with no space or comma, which every cache that purges by tag takes.
  *
  * - `entry:<id>`: a page that shows the entry, its own or one that embeds it;
- * - `list:<collection>:<locale>`: a page that lists the entries of a collection in a locale;
+ * - `list:<collection>:<locale>`: a page that lists the entries of a collection in a locale, and
+ *   `list:<collection>:*` one that lists them in every locale;
  * - `group:<collection>:<group>`: a page that links to the translations of a group;
  * - `site`: a page that shows the structure of the site, such as its navigation.
  */
@@ -36,6 +37,9 @@ export function groupTag(collection: string, group: string): string {
   return cut(`group:${part(collection)}:${part(group)}`)
 }
 
+/** The locale of a list of every locale. */
+export const EVERY_LOCALE = '*'
+
 /** What a summary of an entry says that tags derive from. */
 export interface TaggedEntry {
   readonly id: string
@@ -51,12 +55,13 @@ export function tagsOfEntries(entries: readonly TaggedEntry[]): string[] {
 
 /**
  * The tags an event about an entry invalidates: the pages that show it, the lists of its
- * collection in its locale, and the pages that link to its translations.
+ * collection in its locale and in every locale, and the pages that link to its translations.
  */
 export function tagsOfChange(entry: TaggedEntry): string[] {
   return [
     entryTag(entry.id),
     listTag(entry.collection, entry.locale),
+    listTag(entry.collection, EVERY_LOCALE),
     ...(entry.translationGroup === null
       ? []
       : [groupTag(entry.collection, entry.translationGroup)]),

@@ -8,6 +8,9 @@
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
+  // Workers Cache (S8): pages are kept at the edge, served without running the Worker, and purged
+  // by tag when Hollware's webhook says what changed (@hollware/nuxt, cache: 'purge').
+  "cache": { "enabled": true },
   "services": [
     // Hollware over a service binding: no network and no token. `service` is the name of the
     // Hollware Worker, and `Hollware` its read-only entrypoint.

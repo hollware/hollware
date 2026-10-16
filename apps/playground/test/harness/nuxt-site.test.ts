@@ -2,7 +2,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { contentFixture } from '../../../../tests/fixtures/content.ts'
 import { agentWith, createDraft, migrate, publishNew, seedOwnerToken } from './support.ts'
-import { createNuxtHarness, nuxtFetch } from './workers.ts'
+import {
+  createNuxtHarness,
+  NUXT_HOLLWARE_WEBHOOK_SECRET,
+  NUXT_WORKER,
+  nuxtFetch,
+  SITE_URL,
+} from './workers.ts'
+import { EVENT_ID_HEADER, SIGNATURE_HEADER, signWebhook, TIMESTAMP_HEADER } from '@hollware/core'
 
 // Fails when: @hollware/nuxt (packages/nuxt) stops letting a Nuxt site on Cloudflare read
 // Hollware over its service binding: the page of a published entry rendered on the server from
@@ -10,8 +17,9 @@ import { createNuxtHarness, nuxtFetch } from './workers.ts'
 // `useHollwareEntry`), the index from `useHollwareEntries`, the generator meta of every page; or
 // it serves a draft, or an entry that does not exist, as anything but a 404; or a page sends the
 // browser the verdict and the last publication of an entry (`forPage`); or the page stops getting
-// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's; or `cache`
-// stops keeping rendered pages, or starts keeping errors or the /_hollware/ routes. The site is
+// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's; or a page
+// stops carrying the cache tags of what it showed for the edge to keep, or an error starts to;
+// or the webhook purges for an event whose signature does not hold (S8). The site is
 // examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
 // compatibility; content is published through MCP, as an agent does.
 
@@ -69,14 +77,42 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     expect(html).not.toContain('binding:')
   })
 
-  it('keeps a rendered page for 30 seconds, and never an error or a /_hollware/ route', async () => {
+  it('tags each page with what it showed for the edge to keep, and never an error', async () => {
     const page = await nuxtFetch(server, '/en/')
-    const route = await nuxtFetch(server, '/_hollware/entries/blog')
+    const route = await nuxtFetch(server, '/_hollware/entries/blog?locale=en')
     const missing = await nuxtFetch(server, '/en/blog/never-written/')
 
-    expect(page.headers.get('cache-control')).toBe('s-maxage=30, stale-while-revalidate')
-    expect(route.headers.get('cache-control') ?? '').not.toContain('s-maxage')
-    expect(missing.headers.get('cache-control') ?? '').not.toContain('s-maxage')
+    const tags = (page.headers.get('cache-tag') ?? '').split(',')
+    expect(tags).toContain('list:blog:en')
+    expect(tags.filter((tag) => tag.startsWith('entry:ent_')).length).toBeGreaterThan(0)
+    expect(page.headers.get('cloudflare-cdn-cache-control')).toBe('max-age=31536000')
+    expect(page.headers.get('cache-control')).toBe('public, max-age=0, must-revalidate')
+    expect((route.headers.get('cache-tag') ?? '').split(',')).toContain('list:blog:en')
+    expect(missing.headers.get('cache-tag')).toBeNull()
+  })
+
+  it('takes a signed event of Hollware to purge, and refuses one whose signature does not hold', async () => {
+    const body = JSON.stringify({ id: 'evt_1', cacheTags: ['list:blog:en'] })
+    const send = async (secret: string) => {
+      const timestamp = Math.floor(Date.now() / 1000)
+      return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}/_hollware/webhook`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [EVENT_ID_HEADER]: 'evt_1',
+          [TIMESTAMP_HEADER]: String(timestamp),
+          [SIGNATURE_HEADER]: await signWebhook(secret, timestamp, body),
+        },
+        body,
+      })
+    }
+
+    const forged = await send(`whsec_${'6'.repeat(64)}`)
+    const signed = await send(NUXT_HOLLWARE_WEBHOOK_SECRET)
+
+    expect(forged.status).toBe(401)
+    // The harness has no Workers Cache to purge; the signature held, and the route says what it lacks.
+    expect([200, 501]).toContain(signed.status)
   })
 
   it('answers a draft and an entry that does not exist with a 404', async () => {

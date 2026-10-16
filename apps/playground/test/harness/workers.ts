@@ -49,7 +49,7 @@ export function createWebHarness() {
         configPath: new URL('wrangler.json', BUILT.hollware),
         vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
       },
-      { configPath: new URL('wrangler.json', BUILT_WEB) },
+      { configPath: new URL('wrangler.json', BUILT_WEB), vars: { NUXT_HOLLWARE_WEBHOOK_SECRET } },
     ],
   })
 }
@@ -70,10 +70,13 @@ export function createNuxtHarness() {
         configPath: new URL('wrangler.json', BUILT.hollware),
         vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
       },
-      { configPath: new URL('wrangler.json', BUILT.nuxt) },
+      { configPath: new URL('wrangler.json', BUILT.nuxt), vars: { NUXT_HOLLWARE_WEBHOOK_SECRET } },
     ],
   })
 }
+
+/** The secret of Hollware's webhook to the Nuxt blog in the tests, which signs its events. */
+export const NUXT_HOLLWARE_WEBHOOK_SECRET = `whsec_${'5'.repeat(64)}`
 
 /** A request to the Nuxt blog, at SITE_URL. */
 export function nuxtFetch(server: TestHarness, path: string) {

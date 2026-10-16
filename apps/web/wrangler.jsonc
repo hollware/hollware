@@ -9,6 +9,8 @@
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
   // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
+  // Workers Cache (S8): pages are kept at the edge and purged by tag by Hollware's webhook.
+  "cache": { "enabled": true },
   "services": [
     // The docs, read over a service binding from the Hollware that holds them: locally and in the
     // tests the playground; on Cloudflare the demo deployment (`env.production`).

@@ -5,6 +5,7 @@ import {
   addPlugin,
   addServerHandler,
   addServerImports,
+  addServerPlugin,
   createResolver,
   defineNuxtModule,
 } from '@nuxt/kit'
@@ -39,11 +40,20 @@ export interface ModuleOptions {
    */
   beacon?: string
   /**
-   * Seconds a rendered page is kept and served again, while a fresh one is rendered in the
-   * background (`swr`): most requests then render nothing. A publish shows within this time.
-   * Errors are never kept, and the site's `/_hollware/` routes are not cached. Off when not set.
+   * How the pages that read Hollware are kept (S8):
+   *
+   * - `'purge'`: in Cloudflare's Workers Cache, which serves them without running the Worker, each
+   *   tagged with what it showed, until Hollware's webhook to `/_hollware/webhook` (signed with
+   *   `NUXT_HOLLWARE_WEBHOOK_SECRET`) purges what changed: a publish, an edit or an unpublish shows
+   *   in seconds everywhere. It needs `"cache": { "enabled": true }` in the site's wrangler.jsonc.
+   * - a number of seconds: kept by Nitro (`swr`) in each isolate, and rendered again in the
+   *   background once that old; a change shows within that time.
+   *
+   * Errors are never kept. Off when not set.
    */
-  cache?: number
+  cache?: number | 'purge'
+  /** The secret of Hollware's webhook to this site, for `cache: 'purge'`; prefer `NUXT_HOLLWARE_WEBHOOK_SECRET`. */
+  webhookSecret?: string
 }
 
 export type { PageEntry } from './runtime/types.ts'
@@ -75,6 +85,8 @@ export default defineNuxtModule<ModuleOptions>({
       binding: options.binding,
       url: options.url ?? '',
       token: options.token ?? '',
+      // Of Hollware's webhook, for `cache: 'purge'`: NUXT_HOLLWARE_WEBHOOK_SECRET sets it at runtime.
+      webhookSecret: options.webhookSecret ?? '',
     }
     addServerImports([{ name: 'useHollware', from: resolve('./runtime/server/reader') }])
     for (const [route, handler] of ROUTES) {
@@ -94,7 +106,15 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareContent'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
-    if (options.cache !== undefined && options.cache > 0) {
+    if (options.cache === 'purge') {
+      addServerPlugin(resolve('./runtime/server/cache'))
+      addServerHandler({
+        route: '/_hollware/webhook',
+        method: 'post',
+        handler: resolve('./runtime/server/routes/webhook'),
+      })
+    }
+    if (typeof options.cache === 'number' && options.cache > 0) {
       const pages: NitroRouteConfig = { swr: options.cache }
       const routes: NitroRouteConfig = { swr: false, cache: false }
       // The page routes of the site; a rule the site sets itself for a path still wins there.

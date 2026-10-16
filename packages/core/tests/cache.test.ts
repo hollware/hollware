@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { entryTag, groupTag, listTag, tagsOfChange, tagsOfEntries } from '../src/cache.ts'
 
 // Fails when: a cache tag of Hollware's (src/cache.ts) stops being what the contract says (the
-// entry, the list of a collection in a locale, the translations of a group); holds a character a
+// entry, the list of a collection in a locale or in every locale, the translations of a group); holds a character a
 // cache refuses (a space, a comma, an apostrophe) or more than 1,024; or the tags of a change stop
 // being the entry, its list and its group, or a page's stop naming each entry it shows once.
 
@@ -26,9 +26,10 @@ describe('cache tags', () => {
     expect(tagsOfChange(ENTRY)).toEqual([
       'entry:ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
       'list:blog:es',
+      'list:blog:*',
       'group:blog:hola%2C%20mundo',
     ])
-    expect(tagsOfChange({ ...ENTRY, translationGroup: null })).toHaveLength(2)
+    expect(tagsOfChange({ ...ENTRY, translationGroup: null })).toHaveLength(3)
     expect(tagsOfEntries([ENTRY, ENTRY])).toEqual(['entry:ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW'])
   })
 })

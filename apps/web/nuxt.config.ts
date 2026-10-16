@@ -8,8 +8,9 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@hollware/nuxt'],
   css: ['~/assets/css/main.css'],
   // HOLLWARE_BEACON, at build time, is the Hollware that counts the views of the docs (ADR-031).
-  // A page is kept 30 seconds: an approved page shows within that, and most requests render nothing.
-  hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '', cache: 30 },
+  // Pages are kept in Workers Cache until Hollware's webhook purges what changed (S8): an approved
+  // page shows in seconds, and most requests run nothing. NUXT_HOLLWARE_WEBHOOK_SECRET checks it.
+  hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '', cache: 'purge' },
   // Dark only: the page carries the class, and nothing switches it.
   ui: { colorMode: false },
   // Icons come from the installed collection, never fetched from a CDN at runtime.
