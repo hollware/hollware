@@ -85,6 +85,13 @@
       "when": 1792122873793,
       "tag": "0011_structure",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792164116725,
+      "tag": "0012_site_secrets",
+      "breakpoints": true
     }
   ]
 }

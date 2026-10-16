@@ -51,9 +51,14 @@ export const collectionDefinitionData = z.strictObject({
 
 export const webhookDefinition = z.strictObject({
   name: z.string().min(1),
-  url: z.string().min(1),
-  /** The Worker secret that signs its deliveries. */
-  secret: z.string().min(1),
+  url: z.string().min(1).describe('The https URL that receives each event, signed.'),
+  secret: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      'The Worker secret that signs the deliveries. Leave it out for Hollware to make one with make_webhook_secret and keep it sealed.',
+    ),
 })
 
 export const siteDefinitionData = z.strictObject({

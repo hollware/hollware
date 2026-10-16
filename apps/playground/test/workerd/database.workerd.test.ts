@@ -39,6 +39,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'schedules',
     'sessions',
     'site_changes',
+    'site_secrets',
     'sites',
     'tokens',
     'users',

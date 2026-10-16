@@ -518,4 +518,10 @@ export interface Structure {
   readonly store: StructureStore
   /** Brings this isolate's sites in line with D1 now, after a change. */
   readonly changed: () => Promise<void>
+  /**
+   * The secrets Hollware makes and keeps sealed (ADR-033): a new one for `name`, which replaces
+   * the one before and is answered in clear this once; `null` where the deployment has no
+   * `HOLLWARE_SECRET` to seal it with.
+   */
+  readonly secrets?: { make(site: string, name: string): Promise<string | null> }
 }

@@ -87,8 +87,13 @@ function readWebhook(path: string, raw: unknown, problems: Problems): ResolvedWe
       'Give the https URL that receives the events.',
     )
   }
-  const secret = readBindingName(keyPath(path, 'secret'), raw['secret'], problems)
-  if (typeof name !== 'string' || !NAME.test(name) || !urlOk || secret === null) return null
+  // Without one, the secret is Hollware's own, sealed in the database (ADR-033).
+  const secret =
+    raw['secret'] === undefined
+      ? null
+      : readBindingName(keyPath(path, 'secret'), raw['secret'], problems)
+  if (typeof name !== 'string' || !NAME.test(name) || !urlOk) return null
+  if (raw['secret'] !== undefined && secret === null) return null
   return { name, url: String(url), secret }
 }
 

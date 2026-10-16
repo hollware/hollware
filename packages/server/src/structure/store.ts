@@ -153,3 +153,25 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
     },
   }
 }
+
+/** The sealed secrets of the structure of a site (ADR-033), by name. */
+export function createSecretStore(db: D1Like, now: () => Date) {
+  return {
+    async read(site: string, name: string): Promise<string | null> {
+      return db
+        .prepare('SELECT sealed FROM site_secrets WHERE site_id = ?1 AND name = ?2')
+        .bind(site, name)
+        .first<string>('sealed')
+    },
+    async write(site: string, name: string, sealed: string): Promise<void> {
+      const at = now().toISOString()
+      await db
+        .prepare(
+          `INSERT INTO site_secrets (id, site_id, name, sealed, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)
+           ON CONFLICT (site_id, name) DO UPDATE SET sealed = excluded.sealed, updated_at = excluded.updated_at`,
+        )
+        .bind(newId('sec'), site, name, sealed, at)
+        .run()
+    },
+  }
+}

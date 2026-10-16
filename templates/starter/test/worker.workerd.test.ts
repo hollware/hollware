@@ -102,6 +102,7 @@ describe('the database', () => {
       'schedules',
       'sessions',
       'site_changes',
+      'site_secrets',
       'sites',
       'tokens',
       'users',

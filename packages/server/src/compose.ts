@@ -19,6 +19,8 @@ import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
 import { healVectors, refreshRelated } from './semantic/index-entry.ts'
 import { createSiteRegistry } from './structure/registry.ts'
+import { unseal } from './structure/seal.ts'
+import { createSecretStore } from './structure/store.ts'
 
 export interface ComposeOptions {
   /**
@@ -98,6 +100,15 @@ export function createHollwareWith(
       return typeof value === 'string' ? value : undefined
     },
     semantic: semanticOfEnv(env),
+    ownSecret: async (webhook) => {
+      const master = env.HOLLWARE_SECRET
+      if (master === undefined) return undefined
+      const sealed = await createSecretStore(env.DB, () => clock.now()).read(
+        site.key,
+        `webhook:${webhook}`,
+      )
+      return sealed === null ? undefined : ((await unseal(master, sealed)) ?? undefined)
+    },
   })
   return {
     fetch: createGateway({

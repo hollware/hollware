@@ -46,13 +46,18 @@ const DEPLOYED = [
 const LIST_ALL_PENDING =
   'Migrations to be applied:\n┌───────────────┐\n│ Name          │\n├───────────────┤\n│ 0000_init.sql │\n└───────────────┘\n'
 const APPLIED = '🚣 10 commands executed successfully.\n'
+/** What `wrangler secret list` prints: none, or the master secret of Hollware. */
+const NO_SECRETS = '[]'
+const HAS_MASTER = '[{"name":"HOLLWARE_SECRET","type":"secret_text"}]'
 
 function setup(wrangler: FakeWrangler, url: string) {
   const cwd = temp.make({ 'wrangler.jsonc': wranglerJsonc(url) })
+  const scratch = temp.make({})
   return {
     cwd,
+    scratch,
     config: () => readFileSync(join(cwd, 'wrangler.jsonc'), 'utf8'),
-    run: (argv: string[]) => run(argv, { cwd, wrangler: wrangler.run }),
+    run: (argv: string[]) => run(argv, { cwd, wrangler: wrangler.run, tempDir: () => scratch }),
   }
 }
 
@@ -61,6 +66,8 @@ describe('hollware deploy', () => {
     const wrangler = fakeWrangler(
       ok(DEPLOYED),
       ok(DEPLOYED),
+      ok(NO_SECRETS),
+      ok('✨ Success! Uploaded 1 secret.'),
       ok(LIST_ALL_PENDING),
       ok(APPLIED),
       d1([]),
@@ -74,6 +81,8 @@ describe('hollware deploy', () => {
     expect(wrangler.calls.map((call) => call.args)).toEqual([
       ['deploy'],
       ['deploy'],
+      ['secret', 'list'],
+      ['secret', 'bulk', join(project.scratch, 'secrets.json')],
       ['d1', 'migrations', 'list', 'DB', '--remote'],
       ['d1', 'migrations', 'apply', 'DB', '--remote'],
       [
@@ -90,6 +99,7 @@ describe('hollware deploy', () => {
     expect(out).toEqual([
       'Deploying with wrangler ...',
       'Set HOLLWARE_PUBLIC_URL to https://my-hollware.ada.workers.dev in wrangler.jsonc. Deploying again with it ...',
+      'Made HOLLWARE_SECRET, which seals the secrets Hollware makes, such as those of webhooks.',
       'Applied 1 migration to the remote database "DB":\n  0000_init.sql',
       [
         'Hollware is live at https://my-hollware.ada.workers.dev.',
@@ -109,6 +119,7 @@ describe('hollware deploy', () => {
   it('keeps a public URL that is not localhost, and deploys once', async () => {
     const wrangler = fakeWrangler(
       ok(DEPLOYED),
+      ok(HAS_MASTER),
       ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1', site: 'blog' }]),
     )
@@ -117,7 +128,7 @@ describe('hollware deploy', () => {
     const { code, out } = await project.run(['deploy'])
 
     expect(code).toBe(0)
-    expect(wrangler.calls.map((call) => call.args[0])).toEqual(['deploy', 'd1', 'd1'])
+    expect(wrangler.calls.map((call) => call.args[0])).toEqual(['deploy', 'secret', 'd1', 'd1'])
     expect(project.config()).toBe(wranglerJsonc('https://cms.example.com'))
     expect(out.at(-1)).toBe(
       [
@@ -135,6 +146,7 @@ describe('hollware deploy', () => {
     const wrangler = fakeWrangler(
       ok(DEPLOYED),
       ok(DEPLOYED),
+      ok(HAS_MASTER),
       ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1' }]),
     )

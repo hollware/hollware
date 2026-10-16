@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { query, resolveDatabase } from '../d1.ts'
@@ -99,6 +99,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
     await wranglerDeploy(io)
   }
 
+  await ensureMasterSecret(io)
   await migrate(['--remote', '--database', database], io)
 
   const [owners = []] = await query(io.wrangler, database, 'remote', ownerQuery())
@@ -121,4 +122,39 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
     ].join('\n'),
   )
   return 0
+}
+
+/** The Worker secret that seals the secrets Hollware makes for the structure (ADR-033). */
+export const MASTER_SECRET = 'HOLLWARE_SECRET'
+
+/**
+ * Gives the Worker its `HOLLWARE_SECRET` when it has none: 32 random bytes in hex, through a file
+ * that only the user may read, deleted at once, so the value is never printed nor kept. One the
+ * Worker has is left as it is: a new one would leave the sealed secrets unopenable.
+ */
+export async function ensureMasterSecret(io: Io): Promise<void> {
+  const listed = await io.wrangler(['secret', 'list'])
+  if (listed.code !== 0) {
+    throw new CliError(
+      `wrangler could not list the secrets of the Worker: ${failureReason(listed)}.`,
+    )
+  }
+  if (listed.stdout.includes(`"${MASTER_SECRET}"`)) return
+  const value = Array.from(io.randomBytes(32), (byte) => byte.toString(16).padStart(2, '0')).join(
+    '',
+  )
+  const directory = io.tempDir()
+  try {
+    const file = join(directory, 'secrets.json')
+    writeFileSync(file, JSON.stringify({ [MASTER_SECRET]: value }), { mode: 0o600 })
+    const put = await io.wrangler(['secret', 'bulk', file])
+    if (put.code !== 0) {
+      throw new CliError(`wrangler could not set ${MASTER_SECRET}: ${failureReason(put)}.`)
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+  io.out(
+    `Made ${MASTER_SECRET}, which seals the secrets Hollware makes, such as those of webhooks.`,
+  )
 }

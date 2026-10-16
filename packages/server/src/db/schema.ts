@@ -625,6 +625,27 @@ export const siteChanges = sqliteTable(
   ],
 )
 
+/**
+ * The secrets Hollware makes for the structure of a site (ADR-033), such as the key that signs a
+ * webhook's deliveries: sealed with AES-GCM under the Worker secret `HOLLWARE_SECRET`, so that the
+ * database alone never holds one in clear. One per name and site.
+ */
+export const siteSecrets = sqliteTable(
+  'site_secrets',
+  {
+    id: id('sec'),
+    siteId: siteId(),
+    name: text('name').notNull(),
+    sealed: text('sealed').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('site_secrets_id_site').on(t.id, t.siteId),
+    unique('site_secrets_name').on(t.siteId, t.name),
+    foreignKey({ name: 'site_secrets_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+  ],
+)
+
 export const reviewComments = sqliteTable(
   'review_comments',
   {

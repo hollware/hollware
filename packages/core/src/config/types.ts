@@ -84,7 +84,8 @@ export interface SiteDefinition {
     readonly webhooks?: readonly {
       readonly name: string
       readonly url: string
-      readonly secret: string
+      /** The Worker secret that signs; Hollware's own sealed one when it is left out. */
+      readonly secret?: string
     }[]
     /** Tells IndexNow the URLs that changed; `key` names the Worker secret with the key. */
     readonly indexNow?: { readonly key: string }
@@ -142,11 +143,14 @@ export interface ResolvedSite {
   readonly events: ResolvedEvents
 }
 
-/** A webhook of a site; `secret` names the Worker secret that signs its deliveries. */
+/**
+ * A webhook of a site. `secret` names the Worker secret that signs its deliveries; `null` when the
+ * secret is Hollware's own, made by `make_webhook_secret` and sealed in the database (ADR-033).
+ */
 export interface ResolvedWebhook {
   readonly name: string
   readonly url: string
-  readonly secret: string
+  readonly secret: string | null
 }
 
 /** Who hears about the publications of a site. */

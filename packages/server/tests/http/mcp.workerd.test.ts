@@ -35,6 +35,7 @@ const TOOLS = [
   'get_translations',
   'list_entries',
   'list_reviews',
+  'make_webhook_secret',
   'publish',
   'request_changes',
   'request_review',

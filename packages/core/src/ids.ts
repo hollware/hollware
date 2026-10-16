@@ -24,6 +24,7 @@ export const ID_PREFIXES = {
   schedule: 'sch',
   session: 'ses',
   siteChange: 'sit',
+  siteSecret: 'sec',
   token: 'tok',
   user: 'usr',
 } as const

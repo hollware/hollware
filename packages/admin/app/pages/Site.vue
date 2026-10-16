@@ -29,6 +29,62 @@ const newKey = ref('')
 const newLocales = ref<string[]>(['en'])
 const newPreset = ref<Preset>('blog')
 const busy = ref(false)
+const hookName = ref('')
+const hookUrl = ref('')
+/** The secret just made for a webhook: shown this once. */
+const madeSecret = ref<{ webhook: string; secret: string } | null>(null)
+
+const webhooks = computed(() => structure.value?.definition.events.webhooks ?? [])
+const validHook = computed(
+  () =>
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(hookName.value) &&
+    /^https:\/\/\S+$/.test(hookUrl.value) &&
+    !webhooks.value.some((webhook) => webhook.name === hookName.value),
+)
+
+async function saveWebhooks(next: Structure['definition']['events']['webhooks']) {
+  const current = structure.value
+  if (current === null) return
+  const definition = {
+    ...current.definition,
+    events: { ...current.definition.events, webhooks: next },
+  }
+  await change.run((confirm) =>
+    api.call('update_site', { version: current.version, definition, confirm }),
+  )
+}
+
+async function addWebhook() {
+  const name = hookName.value
+  await saveWebhooks([...webhooks.value, { name, url: hookUrl.value }])
+  hookName.value = ''
+  hookUrl.value = ''
+  await makeSecret(name)
+}
+
+async function makeSecret(webhook: string) {
+  try {
+    const answer = await api.call('make_webhook_secret', { webhook })
+    if (answer.outcome === 'made' && answer.secret !== undefined) {
+      madeSecret.value = { webhook, secret: answer.secret }
+    } else {
+      toast.add({
+        title: 'No secret made',
+        description:
+          answer.outcome === 'unavailable'
+            ? 'This deployment has no HOLLWARE_SECRET to seal it with: hollware deploy makes one.'
+            : 'That webhook is signed by a Worker secret of its own.',
+        color: 'warning',
+      })
+    }
+  } catch (error) {
+    toast.add({ title: 'No secret made', description: describe(error), color: 'error' })
+  }
+}
+
+async function copySecret() {
+  if (madeSecret.value !== null) await navigator.clipboard.writeText(madeSecret.value.secret)
+}
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
@@ -195,6 +251,73 @@ const PRESETS = [
         @reload="load"
       />
     </form>
+
+    <section aria-labelledby="webhooks" class="max-w-2xl space-y-4">
+      <h2 id="webhooks" class="font-semibold">Webhooks</h2>
+      <p class="text-sm text-muted">
+        Every publish, update and unpublish is sent, signed, to each of them: a site that keeps its
+        pages in a cache purges them, a newsletter drafts an issue.
+      </p>
+      <ul
+        v-if="webhooks.length > 0"
+        class="divide-y divide-default rounded-lg border border-default text-sm"
+      >
+        <li
+          v-for="webhook in webhooks"
+          :key="webhook.name"
+          class="flex flex-wrap items-center gap-3 px-4 py-2.5"
+        >
+          <span class="font-mono">{{ webhook.name }}</span>
+          <span class="min-w-0 flex-1 truncate text-muted">{{ webhook.url }}</span>
+          <span class="text-xs text-muted">{{
+            webhook.secret === undefined
+              ? "signed by Hollware's secret"
+              : `signed by ${webhook.secret}`
+          }}</span>
+          <UButton
+            v-if="webhook.secret === undefined"
+            label="New secret"
+            size="xs"
+            variant="outline"
+            @click="makeSecret(webhook.name)"
+          />
+          <UButton
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            size="xs"
+            :aria-label="`Remove the webhook ${webhook.name}`"
+            @click="saveWebhooks(webhooks.filter((other) => other.name !== webhook.name))"
+          />
+        </li>
+      </ul>
+      <UAlert
+        v-if="madeSecret !== null"
+        color="success"
+        :title="`The secret of ${madeSecret.webhook}: give it to the receiver now, it is shown once`"
+        :description="madeSecret.secret"
+        :actions="[
+          { label: 'Copy', onClick: copySecret },
+          { label: 'Done', onClick: () => (madeSecret = null) },
+        ]"
+      />
+      <form
+        class="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
+        @submit.prevent="addWebhook"
+      >
+        <UFormField label="Name">
+          <UInput v-model="hookName" class="w-full font-mono" placeholder="site" />
+        </UFormField>
+        <UFormField label="URL">
+          <UInput
+            v-model="hookUrl"
+            class="w-full"
+            placeholder="https://example.com/_hollware/webhook"
+          />
+        </UFormField>
+        <UButton type="submit" label="Add" :disabled="!validHook" :loading="change.busy.value" />
+      </form>
+    </section>
 
     <section aria-labelledby="sites" class="max-w-2xl space-y-4">
       <h2 id="sites" class="font-semibold">Your sites</h2>

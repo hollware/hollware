@@ -630,6 +630,30 @@ export const restoreSite = defineOperation({
   outcomes: { restored: { isError: false }, not_found: { isError: true } },
 })
 
+export const makeWebhookSecret = defineOperation({
+  name: 'make_webhook_secret',
+  title: 'Make the secret of a webhook',
+  description:
+    "Makes a new secret for a webhook of the site that names no Worker secret of its own, keeps it sealed, and answers it once: give it to the receiver, which checks each delivery's signature with it. A new one replaces the old at once. unavailable when the deployment has no HOLLWARE_SECRET to seal it with.",
+  input: z.strictObject({
+    webhook: z
+      .string()
+      .min(1)
+      .describe('The name of the webhook, as the definition of the site has it.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['made', 'not_found', 'unavailable']),
+    secret: z.string().optional().describe('With made: the secret, shown this once.'),
+  }),
+  scopes: ['schema:admin'],
+  effect: 'write',
+  outcomes: {
+    made: { isError: false },
+    not_found: { isError: true },
+    unavailable: { isError: true },
+  },
+})
+
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
@@ -644,6 +668,7 @@ export const OPERATIONS = [
   getTranslations,
   listEntries,
   listReviews,
+  makeWebhookSecret,
   publish,
   requestChanges,
   requestReview,

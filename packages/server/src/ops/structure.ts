@@ -199,3 +199,17 @@ export const restoreSite: OperationHandler<'restore_site'> = async (input, conte
   await structure.changed()
   return { outcome: 'restored' }
 }
+
+export const makeWebhookSecret: OperationHandler<'make_webhook_secret'> = async (
+  input,
+  context,
+) => {
+  const structure = structureOf(context)
+  const { definition } = await currentOf(context)
+  const webhook = definition.events.webhooks.find((candidate) => candidate.name === input.webhook)
+  // A webhook signed by a Worker secret of its own has nothing for Hollware to make.
+  if (webhook === undefined || webhook.secret !== undefined) return { outcome: 'not_found' }
+  const secret =
+    (await structure.secrets?.make(context.site.key, `webhook:${webhook.name}`)) ?? null
+  return secret === null ? { outcome: 'unavailable' } : { outcome: 'made', secret }
+}

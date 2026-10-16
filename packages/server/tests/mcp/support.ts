@@ -397,6 +397,11 @@ export const CANNED: Canned = {
     needs_confirmation: { outcome: 'needs_confirmation', entries: 3 },
     not_found: { outcome: 'not_found' },
   },
+  make_webhook_secret: {
+    made: { outcome: 'made', secret: `whsec_${'a'.repeat(64)}` },
+    not_found: { outcome: 'not_found' },
+    unavailable: { outcome: 'unavailable' },
+  },
   get_structure: {
     ok: { outcome: 'ok', site: 'acme', version: 2, definition: STRUCTURE, catalog: [] },
   },
@@ -437,6 +442,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     create_site: { key: 'notes', definition: STRUCTURE },
     delete_site: { key: 'notes' },
     get_structure: {},
+    make_webhook_secret: { webhook: 'newsletter' },
     restore_site: { key: 'notes' },
     set_collection: { version: 2, name: 'blog', collection: null },
     update_site: { version: 2, definition: STRUCTURE },
@@ -565,6 +571,11 @@ export function fakeHandlers(
       'delete_site',
       overrides.delete_site ??
         (async () => pick(CANNED.delete_site, outcomes.delete_site ?? 'trashed')),
+    ),
+    make_webhook_secret: record(
+      'make_webhook_secret',
+      overrides.make_webhook_secret ??
+        (async () => pick(CANNED.make_webhook_secret, outcomes.make_webhook_secret ?? 'made')),
     ),
     get_structure: record(
       'get_structure',

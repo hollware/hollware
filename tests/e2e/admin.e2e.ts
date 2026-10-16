@@ -147,6 +147,21 @@ test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no d
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
 })
 
+test('the owner adds a webhook, whose secret Hollware makes and shows once', async () => {
+  await owner.goto('/admin/site')
+  await expect(owner.getByRole('heading', { name: 'Webhooks' })).toBeVisible()
+  await owner.getByRole('textbox', { name: 'Name', exact: true }).last().fill('site')
+  await owner.getByLabel('URL', { exact: true }).fill('https://example.com/_hollware/webhook')
+  await owner.getByRole('button', { name: 'Add', exact: true }).click()
+
+  await expect(
+    owner.getByText('The secret of site: give it to the receiver now, it is shown once'),
+  ).toBeVisible()
+  await expect(owner.getByText(/^whsec_[0-9a-f]{64}$/)).toBeVisible()
+  await expect(owner.getByText("signed by Hollware's secret")).toBeVisible()
+  await expectAccessible(owner)
+})
+
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
     ['/admin/', 'Home'],

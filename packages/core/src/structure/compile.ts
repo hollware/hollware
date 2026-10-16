@@ -106,7 +106,11 @@ function compileSite(path: string, site: SiteDefinitionData, problems: Problems)
     ...(site.styleGuide === null ? {} : { styleGuide: site.styleGuide }),
     cors: { origins: site.cors.origins },
     events: {
-      webhooks: site.events.webhooks,
+      webhooks: site.events.webhooks.map((webhook) => ({
+        name: webhook.name,
+        url: webhook.url,
+        ...(webhook.secret === undefined ? {} : { secret: webhook.secret }),
+      })),
       ...(site.events.indexNow === null ? {} : { indexNow: site.events.indexNow }),
     },
   }

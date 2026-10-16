@@ -15,14 +15,15 @@ Two facts make it possible: no config of the repository writes a contract of its
 - **Rules come from a catalog, with parameters.** A collection lists `{ contract, severity, params }`; each contract of the catalog declares the JSON Schema of its parameters, so the admin builds its form and an agent reads it in `describe_site`. The catalog gains generic rules (a field's length, a pattern, a field required to publish, words that may not appear) next to those of today. No rule is code of the user's.
 - **Frontmatter is validated with `@cfworker/json-schema`,** which runs in Workers without `eval`. The schemas a contract hash covers are the stored JSON, so a verdict still says which rules it answered to.
 - **The Worker reads a site's definition from D1, through a cache of the isolate** that a version check keeps fresh: a write reads the current definition in its own request; a read may use one a few seconds old.
-- **New operations, under the scope `schema:admin`,** which the role owner has and a personal token may carry: `create_site`, `update_site`, `delete_site` (to the trash, with an export kept in R2; purged after 30 days), `restore_site`, `set_collection` and `remove_collection`. A change that would leave entries without a collection, or entries the new schema refuses, says so and asks to confirm, as publish asks for warnings. `describe_site` shows the definition and the catalog.
-- **Secrets of the structure live in D1, sealed.** The signing secret of a webhook is made by Hollware, shown once, and stored sealed with AES-GCM under the Worker secret `HOLLWARE_SECRET`; the IndexNow key is public by design and stored as it is.
+- **New operations, under the scope `schema:admin`,** which the role owner has and a personal token may carry: `create_site`, `update_site`, `delete_site` (to the trash), `restore_site`, `set_collection` and `remove_collection`. A change that would leave entries without a collection, or entries the new schema refuses, says so and asks to confirm, as publish asks for warnings. `describe_site` shows the definition and the catalog.
+- **A site in the trash keeps its rows, for good.** Its revisions, their tags and its publications are append-only (ADR-017), guarded by triggers that no purge may weaken, so nothing deletes them: the trash is a state, not a countdown. A site comes back with `restore_site`, as it was.
+- **Secrets of the structure live in D1, sealed.** A webhook that names no Worker secret is signed by one Hollware makes with `make_webhook_secret`, answered once, and stored in `site_secrets` sealed with AES-GCM under a key that is the SHA-256 of the Worker secret `HOLLWARE_SECRET`, which `hollware deploy` makes when the Worker has none. A webhook may still name a Worker secret of its own, as in 0.x. The IndexNow key still names a Worker secret.
 - **A deployment of 0.x moves once.** On its first start, a Worker whose D1 has no sites and that is given the config of before writes each site of that config as its first definition, and from then on ignores it. New projects have no config.
 
 ## Consequences
 
 - Sites, collections, fields, rules and members change from the admin or over MCP, at once, with no deploy.
-- A change of structure is audited and can be undone, and a deleted site waits 30 days in the trash.
+- A change of structure is audited and can be undone, and a deleted site waits in the trash until its owner brings it back.
 - Custom rules in code are gone; a rule the catalog lacks is a new rule of the catalog.
 - Every request that needs a site reads it from D1 once in a while; a write reads it once.
 - The tests seed the structure as data, as the playground's deployments do.

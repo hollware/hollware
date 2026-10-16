@@ -29,6 +29,11 @@ export interface DeliveryDeps {
   readonly fetch: (request: Request) => Promise<Response>
   /** The value of a Worker secret by its name, or `undefined` when it is not set. */
   readonly secret: (name: string) => string | undefined
+  /**
+   * Hollware's own secret of a webhook of the site, sealed in the database (ADR-033), opened; or
+   * `undefined` when it has none, or it does not open. Absent where no webhook has one.
+   */
+  readonly ownSecret?: (webhook: string) => Promise<string | undefined>
   /** The model and the vector index, when the Worker has both; semantic search is off without. */
   readonly semantic?: Semantic | null
 }
@@ -44,8 +49,15 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
   const subscribers: Subscriber[] = site.events.webhooks.map((webhook) => ({
     name: `webhook:${webhook.name}`,
     async send(payload, body) {
-      const secret = deps.secret(webhook.secret)
-      if (secret === undefined) throw new Error(`the secret ${webhook.secret} is not set`)
+      const secret =
+        webhook.secret === null ? await deps.ownSecret?.(webhook.name) : deps.secret(webhook.secret)
+      if (secret === undefined) {
+        throw new Error(
+          webhook.secret === null
+            ? `the webhook ${webhook.name} has no secret of Hollware's yet: make it with make_webhook_secret`
+            : `the secret ${webhook.secret} is not set`,
+        )
+      }
       const timestamp = Math.floor(deps.clock.now().getTime() / 1000)
       const request = new Request(webhook.url, {
         method: 'POST',

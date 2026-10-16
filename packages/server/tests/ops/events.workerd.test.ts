@@ -159,6 +159,41 @@ describe('deliveries', () => {
     ])
   })
 
+  it("sign with Hollware's own secret a webhook that names none, and fail one that has none yet", async () => {
+    const world = await newWorld(env.DB, 'own-secret')
+    await published(world)
+    const [event] = await outboxOf(world)
+    const own = (secrets: Record<string, string>): DeliveryDeps => ({
+      ...deps(world, net.fetch),
+      site: {
+        ...withEvents(world.tenant.site),
+        events: {
+          webhooks: [{ name: 'hook', url: 'https://hooks.example.com/in', secret: null }],
+          indexNow: null,
+        },
+      },
+      ownSecret: async (webhook) => secrets[webhook],
+    })
+    const net = network()
+
+    const without = await deliverEvent(own({}), event?.id ?? '')
+    const signed = await deliverEvent(own({ hook: 'whsec_own' }), event?.id ?? '')
+
+    expect([without, signed]).toEqual([
+      { delivered: [], failed: ['webhook:hook'] },
+      { delivered: ['webhook:hook'], failed: [] },
+    ])
+    const [hook] = net.sent
+    expect(
+      await verifyWebhook({
+        secret: 'whsec_own',
+        body: hook?.body ?? '',
+        headers: hook?.headers ?? new Headers(),
+        now: Math.floor(Date.parse('2026-10-13T10:00:00.000Z') / 1000),
+      }),
+    ).toBe(true)
+  })
+
   it('retry only the subscriber that failed, and never send an event twice', async () => {
     const world = await newWorld(env.DB, 'retry')
     await published(world)

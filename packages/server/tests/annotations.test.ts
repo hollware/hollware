@@ -60,6 +60,7 @@ describe('MCP hints', () => {
       get_translations: 'read-only',
       list_entries: 'read-only',
       list_reviews: 'read-only',
+      make_webhook_secret: 'changes',
       publish: 'changes',
       request_changes: 'changes',
       request_review: 'changes',

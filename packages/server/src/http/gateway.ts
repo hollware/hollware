@@ -7,7 +7,8 @@ import { enqueue } from '../events/run.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { McpEndpoint } from '../mcp/index.ts'
 import type { Clock, Structure } from '../ports.ts'
-import { createStructureStore } from '../structure/store.ts'
+import { newWebhookSecret, seal } from '../structure/seal.ts'
+import { createSecretStore, createStructureStore } from '../structure/store.ts'
 import { installErrorHandling } from './errors.ts'
 import { installAdmin } from './admin.ts'
 import { installAdminApi } from './admin-api.ts'
@@ -123,10 +124,18 @@ export function createGateway(options: GatewayOptions): Gateway {
     }
 
   /** The structure of the sites in D1, and how this isolate sees a change of it at once. */
-  const structureOf = (db: D1Database): Structure => ({
+  const structureOf = (db: D1Database, master?: string): Structure => ({
     store: createStructureStore(db, () => clock.now()),
     changed: async () => {
       await options.refresh?.(db, { force: true })
+    },
+    secrets: {
+      make: async (site, name) => {
+        if (master === undefined) return null
+        const secret = newWebhookSecret()
+        await createSecretStore(db, () => clock.now()).write(site, name, await seal(master, secret))
+        return secret
+      },
     },
   })
 
@@ -272,7 +281,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           notify: notify(c, requestId, site.key),
           semantic: semanticOfEnv(c.env),
           analytics: analyticsReaderOf(c.env),
-          structure: structureOf(db),
+          structure: structureOf(db, c.env.HOLLWARE_SECRET),
         },
       })
     }),

@@ -53,6 +53,7 @@ const TOOLS = [
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
+  { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
@@ -78,6 +79,7 @@ const OUTCOMES: Record<string, string[]> = {
   get_translations: ['ok', 'not_found'],
   list_entries: ['ok'],
   list_reviews: ['ok'],
+  make_webhook_secret: ['made', 'not_found', 'unavailable'],
   publish: [
     'published',
     'scheduled',
@@ -229,9 +231,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(44)
+    expect(converters).toHaveLength(46)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 44 }, () => 1),
+      Array.from({ length: 46 }, () => 1),
     )
   })
 })
@@ -253,6 +255,7 @@ describe('the tool table', () => {
       'get_translations',
       'list_entries',
       'list_reviews',
+      'make_webhook_secret',
       'publish',
       'request_changes',
       'request_review',

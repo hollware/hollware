@@ -21,6 +21,7 @@ const handlers: Handlers = {
   list_entries: notYet,
   search: notYet,
   list_reviews: notYet,
+  make_webhook_secret: notYet,
   publish: notYet,
   request_changes: notYet,
   request_review: notYet,

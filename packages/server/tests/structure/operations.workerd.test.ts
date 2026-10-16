@@ -11,6 +11,8 @@ import type { OperationContext } from '../../src/ops/types.ts'
 import { createSiteRegistry } from '../../src/structure/registry.ts'
 import { createStructureStore } from '../../src/structure/store.ts'
 import { seedSite } from '../support/sites.ts'
+import { seal, unseal } from '../../src/structure/seal.ts'
+import { createSecretStore } from '../../src/structure/store.ts'
 
 // Fails when: an operation on the structure (src/ops/structure.ts, src/structure/store.ts) stops
 // answering with the definition and its version; stops refusing a definition that does not
@@ -21,6 +23,7 @@ import { seedSite } from '../support/sites.ts'
 // as owner, refusing a key that exists, and trashing and restoring only a site the caller owns.
 
 const NOW = new Date('2026-10-16T12:00:00.000Z')
+const MASTER = 'k'.repeat(40)
 
 const BLOG: SiteDefinitionInput = {
   locales: ['en', 'es'],
@@ -61,6 +64,16 @@ async function setUp() {
       structure: {
         store: createStructureStore(env.DB, () => NOW),
         changed: () => registry.refresh(env.DB, { force: true }),
+        secrets: {
+          make: async (site, name) => {
+            await createSecretStore(env.DB, () => NOW).write(
+              site,
+              name,
+              await seal(MASTER, 'whsec_made'),
+            )
+            return 'whsec_made'
+          },
+        },
       },
     }
   }
@@ -251,5 +264,33 @@ describe('create_site, delete_site and restore_site', () => {
     expect(await handlers.restore_site({ key }, stranger)).toEqual({ outcome: 'not_found' })
     expect(await handlers.restore_site({ key }, context)).toEqual({ outcome: 'restored' })
     expect(registry.keys.has(key)).toBe(true)
+  })
+})
+
+describe('make_webhook_secret', () => {
+  it('makes a sealed secret for a webhook that names none, and for no other', async () => {
+    const { key, context } = await setUp()
+    const definition = siteDefinitionData.parse({
+      ...BLOG,
+      events: {
+        webhooks: [
+          { name: 'site', url: 'https://example.com/_hollware/webhook' },
+          { name: 'legacy', url: 'https://example.com/in', secret: 'LEGACY_SECRET' },
+        ],
+      },
+    })
+    await handlers.update_site({ version: 1, definition, confirm: false }, context)
+
+    const made = await handlers.make_webhook_secret({ webhook: 'site' }, context)
+    const legacy = await handlers.make_webhook_secret({ webhook: 'legacy' }, context)
+    const missing = await handlers.make_webhook_secret({ webhook: 'nope' }, context)
+
+    expect([made, legacy, missing]).toEqual([
+      { outcome: 'made', secret: 'whsec_made' },
+      { outcome: 'not_found' },
+      { outcome: 'not_found' },
+    ])
+    const sealed = await createSecretStore(env.DB, () => NOW).read(key, 'webhook:site')
+    expect(await unseal(MASTER, sealed ?? '')).toBe('whsec_made')
   })
 })

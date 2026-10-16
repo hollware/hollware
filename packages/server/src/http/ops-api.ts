@@ -31,7 +31,7 @@ export interface OpsApiOptions {
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
   /** What a write that committed events hands to the Queue, after the answer. */
   /** The structure of the sites, for the operations that change it (ADR-033). */
-  readonly structure?: (db: D1Database) => Structure
+  readonly structure?: (db: D1Database, master?: string) => Structure
   readonly notify: (
     c: Context<GatewayEnv>,
     requestId: string,
@@ -99,7 +99,9 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         notify: options.notify(c, requestId, site.key),
         semantic: semanticOfEnv(c.env),
         analytics: analyticsReaderOf(c.env),
-        ...(options.structure === undefined ? {} : { structure: options.structure(c.env.DB) }),
+        ...(options.structure === undefined
+          ? {}
+          : { structure: options.structure(c.env.DB, c.env.HOLLWARE_SECRET) }),
       }
       try {
         const output = spec.output.parse(await invoke(options.handlers, spec, parsed.data, context))

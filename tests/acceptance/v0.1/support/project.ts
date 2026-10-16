@@ -67,7 +67,12 @@ export interface Project {
    * name and not an address there, as WebAuthn does, asks for `localhost`; the port is a free one
    * unless it says which.
    */
-  start(options?: { readonly hostname?: 'localhost'; readonly port?: number }): Promise<string>
+  start(options?: {
+    readonly hostname?: 'localhost'
+    readonly port?: number
+    /** More variables of the Worker, such as HOLLWARE_SECRET. */
+    readonly vars?: Readonly<Record<string, string>>
+  }): Promise<string>
   /** Stops what the project started and deletes its directories. */
   close(): Promise<void>
 }
@@ -148,6 +153,10 @@ export function createProject(): Project {
           '--show-interactive-dev-session=false',
           '--var',
           `HOLLWARE_PUBLIC_URL:${url}`,
+          ...Object.entries(options.vars ?? {}).flatMap(([name, value]) => [
+            '--var',
+            `${name}:${value}`,
+          ]),
         ],
         cwd: directory,
         env,

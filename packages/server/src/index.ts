@@ -40,6 +40,11 @@ export interface HollwareEnv {
    */
   readonly HOLLWARE_PUBLIC_URL: string
   /**
+   * The key that seals the secrets Hollware makes for the structure, such as those that sign
+   * webhooks (ADR-033): at least 32 characters, which `hollware deploy` makes when it is missing.
+   */
+  readonly HOLLWARE_SECRET?: string
+  /**
    * The KV namespace of the OAuth server (ADR-026): its clients, grants and tokens, all by hash.
    * Personal tokens work without it; OAuth does not.
    */
