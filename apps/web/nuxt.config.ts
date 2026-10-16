@@ -10,12 +10,13 @@ export default defineNuxtConfig({
   // HOLLWARE_BEACON, at build time, is the Hollware that counts the views of the docs (ADR-031).
   // A page is kept 30 seconds: an approved page shows within that, and most requests render nothing.
   hollware: { site: 'docs', beacon: process.env['HOLLWARE_BEACON'] ?? '', cache: 30 },
-  colorMode: { preference: 'dark', fallback: 'dark' },
+  // Dark only: the page carries the class, and nothing switches it.
+  ui: { colorMode: false },
   // Icons come from the installed collection, never fetched from a CDN at runtime.
   icon: { serverBundle: { collections: ['lucide'] }, clientBundle: { scan: true } },
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
+      htmlAttrs: { lang: 'en', class: 'dark' },
       link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     },
   },

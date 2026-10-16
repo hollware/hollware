@@ -95,3 +95,13 @@ export function post(title: string, group: string): string {
     '',
   ].join('\n')
 }
+
+/**
+ * A screenshot of the page, full length, into the directory of HOLLWARE_SCREENSHOTS when it is
+ * set, to look at the admin by eye; nothing otherwise.
+ */
+export async function shot(page: Page, name: string): Promise<void> {
+  const directory = process.env['HOLLWARE_SCREENSHOTS']
+  if (directory === undefined || directory === '') return
+  await page.screenshot({ path: `${directory}/${name}.png`, fullPage: true })
+}

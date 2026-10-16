@@ -1,73 +1,34 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 /* The fonts travel in the bundle: the admin's policy lets it fetch nothing from another origin. */
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
-/*
- * The look of hollware.com (apps/web/app/assets/css/main.css): ink greys, one mint accent, Geist.
- * tests/conventions/brand.test.ts holds the two palettes to the same values.
+/* theme:start
+ * The theme of Hollware, the same in hollware.com and the admin (tests/conventions/brand.test.ts):
+ * Nuxt UI with black as the primary color (white on the dark ground), emerald as the secondary,
+ * neutral greys, Inter and JetBrains Mono. Dark only.
  */
 @theme static {
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
-
-  --color-mint-50: #edfdf7;
-  --color-mint-100: #d2faea;
-  --color-mint-200: #a8f3d6;
-  --color-mint-300: #72eabd;
-  --color-mint-400: #3ee6a8;
-  --color-mint-500: #17c98a;
-  --color-mint-600: #0ca372;
-  --color-mint-700: #0c825d;
-  --color-mint-800: #0e664b;
-  --color-mint-900: #0d543f;
-  --color-mint-950: #032f23;
-
-  --color-ink-50: #f6f7f8;
-  --color-ink-100: #eceef0;
-  --color-ink-200: #d6dadf;
-  --color-ink-300: #b3bac2;
-  --color-ink-400: #8a939e;
-  --color-ink-500: #6b7480;
-  --color-ink-600: #545c66;
-  --color-ink-700: #3c424a;
-  --color-ink-800: #23272c;
-  --color-ink-900: #15181b;
-  --color-ink-950: #0b0d0e;
-}
-
-/*
- * Nuxt UI's colors in light mode are the 500 shades, and white text on most of them is under the
- * 4.5:1 contrast of WCAG AA (axe's color-contrast). The admin uses the 800 shades instead, which
- * pass, and keeps Nuxt UI's own shades in dark mode, where the text on them is dark.
- */
-:root {
-  --ui-radius: 0.5rem;
-  --ui-primary: var(--ui-color-primary-800);
-  --ui-secondary: var(--ui-color-secondary-800);
-  --ui-success: var(--ui-color-success-800);
-  --ui-info: var(--ui-color-info-800);
-  --ui-warning: var(--ui-color-warning-800);
-  --ui-error: var(--ui-color-error-800);
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 .dark {
-  --ui-primary: var(--ui-color-primary-400);
-  --ui-secondary: var(--ui-color-secondary-400);
-  --ui-success: var(--ui-color-success-400);
-  --ui-info: var(--ui-color-info-400);
-  --ui-warning: var(--ui-color-warning-400);
-  --ui-error: var(--ui-color-error-400);
-  --ui-bg: #08090a;
-  --ui-bg-muted: #0f1113;
-  --ui-bg-elevated: #131619;
-  --ui-bg-accented: #1b1f23;
-  --ui-border: rgb(255 255 255 / 0.08);
-  --ui-border-muted: rgb(255 255 255 / 0.05);
-  --ui-border-accented: rgb(255 255 255 / 0.14);
-  --ui-text-muted: #8a939e;
-  --ui-text-dimmed: #6b7480;
+  --ui-primary: white;
+  --ui-bg: var(--ui-color-neutral-950);
+  --ui-bg-muted: var(--ui-color-neutral-900);
+  --ui-bg-elevated: var(--ui-color-neutral-900);
+  --ui-bg-accented: var(--ui-color-neutral-800);
+  --ui-text: var(--ui-color-neutral-100);
+  --ui-text-highlighted: var(--ui-color-neutral-50);
+  --ui-bg-inverted: var(--ui-color-neutral-50);
+  --ui-border-inverted: var(--ui-color-neutral-50);
+}
+/* theme:end */
+
+:root {
+  --ui-radius: 0.5rem;
 }
 
 body {

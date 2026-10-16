@@ -18,7 +18,6 @@ declare module 'vue' {
     UBadge: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Badge.vue')['default']
     UButton: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Button.vue')['default']
     UCheckbox: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Checkbox.vue')['default']
-    UColorModeButton: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/color-mode/ColorModeButton.vue')['default']
     UFormField: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
     UInput: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UModal: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.11.3_de764ef50ce7b34faacc3f479e9de31b/node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']

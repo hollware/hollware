@@ -11,8 +11,8 @@
     "types:check": "wrangler types --check"
   },
   "dependencies": {
-    "@fontsource-variable/geist": "catalog:",
-    "@fontsource-variable/geist-mono": "catalog:",
+    "@fontsource-variable/inter": "catalog:",
+    "@fontsource-variable/jetbrains-mono": "catalog:",
     "@hollware/core": "workspace:*",
     "@hollware/nuxt": "workspace:*",
     "@iconify-json/lucide": "catalog:",

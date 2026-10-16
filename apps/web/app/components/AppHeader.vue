@@ -20,7 +20,6 @@ const links = [
     <UNavigationMenu :items="links" variant="link" :ui="{ linkLeadingIcon: 'hidden' }" />
 
     <template #right>
-      <UColorModeButton color="neutral" variant="ghost" />
       <UButton
         to="https://github.com/hollware/hollware"
         target="_blank"

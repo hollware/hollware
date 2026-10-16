@@ -8,10 +8,10 @@
 
 /**
  * The look of hollware.com and the admin, with nothing to fetch: the page's policy loads no font,
- * so the type is the system's. Ink greys and the mint accent, dark when the device is.
+ * so the type is the system's. Dark only, the neutral greys of the theme, white as the primary
+ * color and emerald for the mark (tests/conventions/brand.test.ts).
  */
-const STYLE = `:root{color-scheme:light dark;--bg:#f6f7f8;--card:#fff;--fg:#15181b;--muted:#545c66;--line:#d6dadf;--accent:#0c825d;--on-accent:#fff;--danger:#b42318}
-@media (prefers-color-scheme:dark){:root{--bg:#08090a;--card:#0f1113;--fg:#eceef0;--muted:#8a939e;--line:rgb(255 255 255/.1);--accent:#3ee6a8;--on-accent:#04140d;--danger:#ff8a80}}
+const STYLE = `:root{color-scheme:dark;--bg:#0a0a0a;--card:#171717;--fg:#f5f5f5;--muted:#a3a3a3;--line:rgb(255 255 255/.1);--accent:#fafafa;--on-accent:#0a0a0a;--mark:#34d399;--danger:#ff8a80}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem 1rem;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
 main{width:100%;max-width:26rem;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2rem}
 .brand{display:flex;align-items:center;gap:.6rem;margin-bottom:1.75rem;font-weight:600;letter-spacing:-.01em}.brand svg{width:26px;height:26px}
@@ -25,7 +25,7 @@ button:not([value=deny]){background:var(--accent);border-color:var(--accent);col
 [role=alert]{color:var(--danger)}`
 
 /** The mark of Hollware, before the title of every page. */
-const BRAND = `<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor" opacity=".08"/><path d="M9 8v16M23 8v16M9 16h14" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" fill="none"/></svg>Hollware</div>`
+const BRAND = `<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor" opacity=".08"/><path d="M9 8v16M23 8v16M9 16h14" stroke="var(--mark)" stroke-width="3" stroke-linecap="round" fill="none"/></svg>Hollware</div>`
 
 const POST = `async function post(path, body) {
   const response = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })

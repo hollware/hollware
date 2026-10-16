@@ -88,7 +88,6 @@ const choices = computed(() =>
               />
               <span v-else class="font-mono text-xs text-muted">{{ me.site }}</span>
             </template>
-            <UColorModeButton color="neutral" variant="ghost" />
           </div>
         </nav>
       </header>

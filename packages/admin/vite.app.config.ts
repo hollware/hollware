@@ -50,7 +50,24 @@ export default defineConfig({
   root: 'app',
   base: '/admin/',
   // Nuxt UI's components resolve where a template uses them; composables are imported by name.
-  plugins: [vue(), ui({ autoImport: false, ui: { colors: { primary: 'mint', neutral: 'ink' } } })],
+  plugins: [
+    vue(),
+    ui({
+      autoImport: false,
+      // Dark only: the page carries the class, and nothing switches it.
+      colorMode: false,
+      // The theme of hollware.com (apps/web/app/app.config.ts; tests/conventions/brand.test.ts).
+      ui: {
+        colors: { primary: 'neutral', secondary: 'emerald', neutral: 'neutral' },
+        input: { defaultVariants: { variant: 'subtle' } },
+        textarea: { defaultVariants: { variant: 'subtle' } },
+        select: { defaultVariants: { variant: 'subtle' } },
+        selectMenu: { defaultVariants: { variant: 'subtle' } },
+        inputMenu: { defaultVariants: { variant: 'subtle' } },
+        inputNumber: { defaultVariants: { variant: 'subtle' } },
+      },
+    }),
+  ],
   define: { __HOLLWARE_ICONS__: JSON.stringify(icons()) },
   build: {
     outDir: '../dist/client/admin',
