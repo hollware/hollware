@@ -254,7 +254,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
               :trailing-icon="collapsed ? undefined : 'i-lucide-chevrons-up-down'"
               class="data-[state=open]:bg-elevated"
               :ui="{ trailingIcon: 'text-dimmed ms-auto' }"
-              :aria-label="m.nav.site"
+              :aria-label="`${me?.site ?? 'Hollware'} · ${m.nav.site}`"
             >
               <svg viewBox="0 0 32 32" class="size-5 shrink-0" aria-hidden="true">
                 <rect width="32" height="32" rx="8" class="fill-(--ui-bg-accented)" />
@@ -299,13 +299,11 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
               block
               :square="collapsed"
               class="data-[state=open]:bg-elevated"
-              :aria-label="m.person.you"
+              :aria-label="collapsed ? `${me?.user?.name ?? m.person.you} · ${role}` : undefined"
             >
-              <UAvatar :text="initial" size="2xs" />
+              <UAvatar :text="initial" size="2xs" aria-hidden="true" />
               <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? '' }}</span>
-              <span v-if="!collapsed" class="ms-auto font-mono text-xs text-dimmed">{{
-                role
-              }}</span>
+              <span v-if="!collapsed" class="ms-auto font-mono text-xs text-muted">{{ role }}</span>
             </UButton>
           </UDropdownMenu>
         </template>

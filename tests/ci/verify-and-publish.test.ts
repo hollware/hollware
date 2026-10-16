@@ -402,7 +402,9 @@ describe('the publish job of release.yml', () => {
       expect(result.summary).toBe('')
     })
 
-    test('an old npm cannot do trusted publishing', () => {
+    // It runs the job seven times, each a few processes of a shell: under the load of the whole
+    // suite that takes more than the default 5 s (it timed out three times on 2026-10-16).
+    test('an old npm cannot do trusted publishing', { timeout: 30_000 }, () => {
       writePlan(goodPlan())
       for (const old of ['11.5.0', '11.4.9', '10.9.2']) {
         const result = runJob({ STUB_NPM_VERSION: old })

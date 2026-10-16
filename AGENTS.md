@@ -50,8 +50,8 @@ new process group, so the child outlives its supervisor.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
   its `src` type-checks against the web platform only (ADR-018).
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
-- Keep `fsModuleCache: false` in workerd test configs: with `true`, Vitest 5 and
-  `@cloudflare/vitest-plugin` fail to read their module cache (workers-sdk#15618).
+- Keep `fsModuleCache: false` in workerd test configs: workers-sdk#15618 is fixed, but the
+  module cache saved no test time here (measured 2026-10-16).
 - `vp dev` starts through a launcher: stopping the launcher leaves the dev server and
   workerd running. Stop the process that listens on the port instead.
 - `compatibility_date` must not be newer than the workerd that wrangler bundles.

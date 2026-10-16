@@ -200,7 +200,7 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
 test('the owner switches the admin to Spanish from the person menu, and it stays Spanish', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
-  await owner.getByRole('button', { name: 'You', exact: true }).click()
+  await owner.getByRole('button', { name: /^Olga/ }).click()
   await owner.getByRole('menuitem', { name: 'Language' }).click()
   await owner.getByRole('menuitemcheckbox', { name: 'Español' }).click()
 

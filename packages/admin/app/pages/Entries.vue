@@ -369,7 +369,7 @@ const locales = computed(() => [
           v-for="other in translationsOf(row.original)"
           :key="other.id"
           :to="entryPath(other)"
-          :aria-label="`${titleOf(other)} (${other.locale})`"
+          :aria-label="`${other.locale} · ${titleOf(other)}`"
           class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
           >{{ other.locale }}</RouterLink
         >

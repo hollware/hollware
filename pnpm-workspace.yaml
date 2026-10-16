@@ -14,18 +14,18 @@ catalog:
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
   # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
-  # The exact Vitest that vite-plus 1.1.0 depends on. @cloudflare/vitest-plugin
+  # The exact Vitest that vite-plus 1.2.0 depends on. @cloudflare/vitest-plugin
   # The h3 and nitropack that nuxt 4.6.1 runs on: @hollware/nuxt imports both in its runtime.
   # Vite+ ships Vite as @voidzero-dev/vite-plus-core; every package resolves `vite` to it.
   # comark 0.7.0 pins markdown-exit 1.1.0-beta.2 itself (see the v0.1 spike S3).
   # needs it as a real peer dependency.
   # would install zod twice. core and server declare it as a peer, ^4.2.0 (ADR-017).
-  '@axe-core/playwright': 4.13.0
+  '@axe-core/playwright': 4.14.0
   '@cfworker/json-schema': 4.1.1
   '@changesets/changelog-github': 1.0.1
   '@changesets/cli': 3.0.3
-  '@cloudflare/vite-plugin': 1.63.2
-  '@cloudflare/vitest-plugin': 1.4.1
+  '@cloudflare/vite-plugin': 1.64.0
+  '@cloudflare/vitest-plugin': 1.4.3
   '@cloudflare/workers-oauth-provider': 1.2.3
   '@codemirror/commands': 6.11.1
   '@codemirror/lang-markdown': 6.5.2
@@ -38,7 +38,7 @@ catalog:
   '@comark/vue': 0.7.0
   '@fontsource-variable/inter': 5.3.0
   '@fontsource-variable/jetbrains-mono': 5.3.0
-  '@iconify-json/lucide': 1.2.143
+  '@iconify-json/lucide': 1.2.144
   '@iconify/utils': 3.1.7
   '@iconify/vue': 5.0.3
   '@lezer/highlight': 1.2.5
@@ -46,8 +46,8 @@ catalog:
   '@modelcontextprotocol/conformance': 0.2.0-alpha.12
   '@modelcontextprotocol/server': 2.3.1
   '@nuxt/kit': 4.6.1
-  '@nuxt/ui': 4.11.3
-  '@playwright/test': 1.64.0
+  '@nuxt/ui': 4.12.0
+  '@playwright/test': 1.64.1
   '@simplewebauthn/server': 14.0.3
   '@standard-schema/spec': 1.1.0
   '@tanstack/vue-table': 8.21.3
@@ -65,14 +65,14 @@ catalog:
   publint: 0.3.25
   tailwindcss: 4.3.3
   typescript: 7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
-  vite-plus: 1.1.0
-  vitest: 5.0.3
+  vite: npm:@voidzero-dev/vite-plus-core@1.2.0
+  vite-plus: 1.2.0
+  vitest: 5.0.4
   vue: 3.5.44
   vue-router: 5.4.0
-  wrangler: 4.150.0
+  wrangler: 4.151.0
   yaml: 2.9.1
-  zod: 4.6.5
+  zod: 4.6.7
 
 overrides:
   vite@*: 'catalog:'

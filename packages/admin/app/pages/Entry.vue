@@ -417,7 +417,7 @@ const tabs = computed(() => [
             <RouterLink
               v-else
               :to="entryPath(other)"
-              :aria-label="`${titleOf(other)} (${other.locale})`"
+              :aria-label="`${other.locale} · ${titleOf(other)}`"
               class="rounded-md border border-default px-2 py-0.5 font-mono hover:bg-elevated"
               >{{ other.locale }}</RouterLink
             >
