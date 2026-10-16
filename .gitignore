@@ -51,3 +51,6 @@ playwright-report
 
 # Made from templates/starter by scripts/sync-starter.ts when create-hollware builds or packs
 packages/create-hollware/template/
+
+# What vp pack of create-hollware emits beside the script it imports
+scripts/*.d.ts
