@@ -21,6 +21,11 @@ export const CHUNK_LIMITS = { summary: 1200, section: 2000 } as const
 
 type Node = EntryDocument['nodes'][number]
 
+/** The text a reader sees in a document, its blocks on lines of their own. */
+export function documentText(document: EntryDocument): string {
+  return document.nodes.map((node) => textOf(node)).join('\n')
+}
+
 /** The text a reader sees in a node: its strings, never its tag, attributes or comments. */
 function textOf(node: Node): string {
   if (typeof node === 'string') return node

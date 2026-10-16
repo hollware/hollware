@@ -181,11 +181,15 @@ describe('contracts.custom', () => {
 })
 
 describe('the contracts namespace', () => {
-  it('has the three built-in factories and custom', () => {
+  it('has the factories of the catalog and custom', () => {
     expect(Object.keys(contracts).toSorted()).toStrictEqual([
+      'bannedWords',
       'custom',
+      'fieldLength',
+      'fieldPattern',
       'imagesHaveAlt',
       'internalLinksResolve',
+      'requiredToPublish',
       'translationPair',
     ])
   })

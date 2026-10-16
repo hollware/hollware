@@ -9,6 +9,7 @@ export {
   REFUSAL_CONTRACT_IDS,
   type BuiltInContractId,
 } from './builtin.ts'
+export { CATALOG, catalogRule, describeCatalog, type CatalogRule } from './catalog.ts'
 export { describeContract, type ContractDescription } from './description.ts'
 export {
   contracts,

@@ -37,6 +37,7 @@
     "publint": "publint --strict"
   },
   "dependencies": {
+    "@cfworker/json-schema": "catalog:",
     "@comark/html": "catalog:",
     "@standard-schema/spec": "catalog:",
     "comark": "catalog:"

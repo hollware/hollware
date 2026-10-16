@@ -12,6 +12,7 @@ catalogMode: prefer
 # pinned, so it already passes minimumReleaseAge. Keep the list sorted.
 catalog:
   '@axe-core/playwright': 4.13.0
+  '@cfworker/json-schema': 4.1.1
   '@changesets/changelog-github': 1.0.1
   '@changesets/cli': 3.0.3
   '@cloudflare/vite-plugin': 1.63.2

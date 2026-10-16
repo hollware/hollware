@@ -270,9 +270,12 @@ describe('the module', () => {
   it('exports what the package entry wires up', () => {
     expect(Object.keys(api).toSorted()).toStrictEqual([
       'BUILT_IN_CONTRACT_IDS',
+      'CATALOG',
       'REFUSAL_CONTRACT_IDS',
+      'catalogRule',
       'contracts',
       'describeBuiltInContracts',
+      'describeCatalog',
       'describeContract',
       'isBuiltInContract',
       'runContracts',

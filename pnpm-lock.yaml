@@ -167,6 +167,9 @@ catalogs:
     '@axe-core/playwright':
       specifier: 4.13.0
       version: 4.13.0
+    '@cfworker/json-schema':
+      specifier: 4.1.1
+      version: 4.1.1
     '@changesets/changelog-github':
       specifier: 1.0.1
       version: 1.0.1
@@ -339,7 +342,7 @@ importers:
         version: 2.3.1
       '@modelcontextprotocol/conformance':
         specifier: 'catalog:'
-        version: 0.2.0-alpha.12(supports-color@10.2.2)
+        version: 0.2.0-alpha.12(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.64.0
@@ -690,6 +693,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@cfworker/json-schema':
+        specifier: 'catalog:'
+        version: 4.1.1
       '@comark/html':
         specifier: 'catalog:'
         version: 0.7.0
@@ -1046,6 +1052,9 @@ packages:
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
     engines: {node: '>=18'}
+
+  '@cfworker/json-schema@4.1.1':
+    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@changesets/apply-release-plan@8.1.1':
     resolution: {integrity: sha512-nk2Hbq3M9NeHMdaIRBDvawKrQJzXB9sGyBUE5yWnIKtvdcNCPj75zBekJYr0gTT2ecJH3eFeTrc8eisPImcv0Q==}
@@ -7518,6 +7527,8 @@ snapshots:
     dependencies:
       fontkitten: 1.0.3
 
+  '@cfworker/json-schema@4.1.1': {}
+
   '@changesets/apply-release-plan@8.1.1':
     dependencies:
       '@changesets/config': 4.0.1
@@ -8449,9 +8460,9 @@ snapshots:
       pkce-challenge: 5.0.1
       zod: 4.6.5
 
-  '@modelcontextprotocol/conformance@0.2.0-alpha.12(supports-color@10.2.2)':
+  '@modelcontextprotocol/conformance@0.2.0-alpha.12(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.32.1(supports-color@10.2.2)(zod@4.6.5)
+      '@modelcontextprotocol/sdk': 1.32.1(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.5)
       '@octokit/rest': 22.0.1
       ajv: 8.20.0
       ajv-formats: 3.0.1
@@ -8470,7 +8481,7 @@ snapshots:
     dependencies:
       zod: 4.6.5
 
-  '@modelcontextprotocol/sdk@1.32.1(supports-color@10.2.2)(zod@4.6.5)':
+  '@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.5)':
     dependencies:
       '@hono/node-server': 2.1.4(hono@4.13.13)
       ajv: 8.20.0
@@ -8489,6 +8500,8 @@ snapshots:
       raw-body: 3.0.2
       zod: 4.6.5
       zod-to-json-schema: 3.25.2(zod@4.6.5)
+    optionalDependencies:
+      '@cfworker/json-schema': 4.1.1
     transitivePeerDependencies:
       - supports-color
 

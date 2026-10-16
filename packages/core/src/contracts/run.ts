@@ -162,7 +162,10 @@ export async function runContracts(input: RunContractsInput): Promise<Verdict> {
     warnings,
     contractsHash: await hashContracts(
       schemaSnapshot(collection),
-      [SCHEMA_CONTRACT, ...contracts].map((contract) => describeContract(contract)),
+      [SCHEMA_CONTRACT, ...contracts].map((contract) => ({
+        ...describeContract(contract),
+        params: contract.rule?.params,
+      })),
     ),
   }
 }

@@ -38,14 +38,23 @@ export async function sha256Hex(text: string): Promise<string> {
  */
 export function hashContracts(
   snapshot: SchemaSnapshot,
-  contracts: readonly ContractDescription[],
+  contracts: readonly (ContractDescription & {
+    readonly params?: Readonly<Record<string, unknown>> | undefined
+  })[],
 ): Promise<string> {
   return sha256Hex(
     canonicalJson({
       components: Object.fromEntries(snapshot.components),
       contracts: contracts
         .toSorted((left, right) => compareText(left.id, right.id))
-        .map(({ id, phases, severity }) => ({ id, phases, severity })),
+        .map(({ id, phases, severity, params }) => ({
+          id,
+          phases,
+          severity,
+          // The parameters of a rule of the catalog (ADR-033); none for a rule that takes none, so
+          // that the hash of a verdict made before parameters existed stays the same.
+          params: params === undefined || Object.keys(params).length === 0 ? undefined : params,
+        })),
       frontmatter: snapshot.frontmatter,
     }),
   )

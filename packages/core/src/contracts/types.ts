@@ -118,6 +118,11 @@ export interface Contract<Frontmatter = Record<string, unknown>> {
   readonly phases?: readonly Phase[]
   /** What the rule asks for, as `describe_site` shows it to agents. */
   readonly description: string
+  /**
+   * The rule of the catalog this contract is, with its parameters (ADR-033): what a site's
+   * definition stores for it. A contract of the site's own code has none.
+   */
+  readonly rule?: { readonly name: string; readonly params: Readonly<Record<string, unknown>> }
   /** The problems it finds; an empty list passes. */
   check(
     context: ContractContext<Frontmatter>,

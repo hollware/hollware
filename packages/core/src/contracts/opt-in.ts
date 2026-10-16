@@ -1,4 +1,5 @@
 import { registerBuiltIn } from './registry.ts'
+import { bannedWords, fieldLength, fieldPattern, requiredToPublish } from './rules.ts'
 import { runtimeOf } from './runtime.ts'
 import { clip, isRecord, pointer, quote } from './text.ts'
 import type {
@@ -19,6 +20,8 @@ import type {
 export interface BuiltInOptions {
   /** `error` unless given: an error blocks publishing, a warning has to be acknowledged. */
   readonly severity?: Severity
+  /** The id of the contract, when a collection lists the rule twice; the rule's name otherwise. */
+  readonly id?: string
 }
 
 /**
@@ -30,7 +33,8 @@ export interface BuiltInOptions {
 function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
-      id: 'translation-pair',
+      id: options.id ?? 'translation-pair',
+      rule: { name: 'translation-pair', params: {} },
       severity: options.severity ?? 'error',
       phases: ['publish'],
       description:
@@ -74,7 +78,8 @@ function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
 function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
-      id: 'internal-links-resolve',
+      id: options.id ?? 'internal-links-resolve',
+      rule: { name: 'internal-links-resolve', params: {} },
       severity: options.severity ?? 'error',
       phases: ['publish'],
       description:
@@ -145,7 +150,8 @@ function isThisEntry(target: Target, context: ContractContext<unknown>): boolean
 function imagesHaveAlt(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
-      id: 'images-have-alt',
+      id: options.id ?? 'images-have-alt',
+      rule: { name: 'images-have-alt', params: {} },
       severity: options.severity ?? 'error',
       phases: ['write', 'publish'],
       description: 'Every image has alt text that describes it.',
@@ -216,8 +222,12 @@ function custom<Frontmatter = Record<string, unknown>>(
 }
 
 export const contracts = {
+  bannedWords,
   custom,
+  fieldLength,
+  fieldPattern,
   imagesHaveAlt,
   internalLinksResolve,
+  requiredToPublish,
   translationPair,
 } as const

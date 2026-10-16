@@ -2,6 +2,7 @@ export const name = '@hollware/core'
 
 export * from './config/index.ts'
 export * from './contracts/index.ts'
+export * from './structure/index.ts'
 export { ERROR_CODES, HollwareError, type ErrorCode } from './errors.ts'
 export { ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
 export type {
