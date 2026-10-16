@@ -1,5 +1,11 @@
 # @hollware/core
 
+## 0.7.0
+
+### Minor Changes
+
+- [`e43c814`](https://github.com/hollware/hollware/commit/e43c81420272ed1a0835ec681df11ac4cc259539) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An entry's summary says when a scheduled entry will be published (`scheduledAt`), and `describe_site` gives the public origin of the site (`url`), so that a client can link an entry to its page.
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,5 +1,16 @@
 # @hollware/nuxt
 
+## 0.7.0
+
+### Minor Changes
+
+- [`aa2c244`](https://github.com/hollware/hollware/commit/aa2c244d80bc2e392c11bbcbe52572068ccb4fd1) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The option `cache` keeps a rendered page for that many seconds and serves it again while a fresh one renders in the background (Nitro's `swr`), so that most requests render nothing: on the Workers free plan, a server-rendered page can cost more than the 10 ms of CPU a request has. Errors and the `/_hollware/` routes are never kept.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

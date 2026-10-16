@@ -1,5 +1,13 @@
 # @hollware/admin
 
+## 0.7.0
+
+### Minor Changes
+
+- [`2350777`](https://github.com/hollware/hollware/commit/2350777371cc9ec731214a51a96c9d97303d40fa) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin gets a home page (what readers read, what waits for review, unpublished work and the last audit), a list of entries with filters for locale, status and text, paged, with translations and a link to the site, and an editor that unpublishes, schedules and cancels a schedule, validates on demand, edits the frontmatter as a form beside the Markdown, switches between translations, starts a missing one, and shows related entries.
+
+- [`f5fdd3a`](https://github.com/hollware/hollware/commit/f5fdd3a085d56bbcc1ef1277502da7592df59bab) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin is dark only, with the theme of hollware.com: Nuxt UI with black as the primary color, emerald, neutral greys, Inter and JetBrains Mono, and subtle inputs. The pages the Worker renders to sign in follow it, dark whatever the device.
+
 ## 0.6.0
 
 ### Minor Changes
