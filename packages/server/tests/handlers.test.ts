@@ -46,6 +46,7 @@ describe('the handler table', () => {
           key: context.site.key,
           locales: [...context.site.locales],
           defaultLocale: context.site.defaultLocale,
+          url: context.site.url,
           styleGuide: context.site.styleGuide,
           collections: [],
         },

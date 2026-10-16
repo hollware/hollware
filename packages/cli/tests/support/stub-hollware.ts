@@ -175,6 +175,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       tags: [],
       hasUnpublishedChanges: entry.published !== entry.revisions.length - 1,
       publishedAt: entry.published === null ? null : STUB_TIME,
+      scheduledAt: null,
       updatedAt: STUB_TIME,
     }
   }

@@ -65,6 +65,7 @@ export function entrySummary(view: EntrySummaryView): EntrySummary {
     tags: [...revision.tags],
     hasUnpublishedChanges: entry.publishedRevision !== entry.headRevision,
     publishedAt: entry.publishedAt,
+    scheduledAt: entry.scheduledAt,
     updatedAt: entry.updatedAt,
   }
 }

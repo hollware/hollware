@@ -38,6 +38,8 @@ export interface StoredEntry {
   readonly publishedRevision: string | null
   /** When the entry was first published; republishing keeps it. */
   readonly publishedAt: string | null
+  /** When a scheduled entry will be published, or `null`. */
+  readonly scheduledAt: string | null
   readonly updatedAt: string
 }
 

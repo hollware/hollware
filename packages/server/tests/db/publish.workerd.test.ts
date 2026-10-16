@@ -122,6 +122,7 @@ describe('publish', () => {
       headRevision: id('rev_a'),
       publishedRevision: id('rev_a'),
       publishedAt: T3,
+      scheduledAt: null,
       updatedAt: T3,
     })
     expect(result.view.revision).toMatchObject({
@@ -374,6 +375,7 @@ describe('unpublish', () => {
       headRevision: id('rev_a'),
       publishedRevision: null,
       publishedAt: T1,
+      scheduledAt: null,
       updatedAt: T3,
     })
     expect(result.view.revision.id).toBe(id('rev_a'))

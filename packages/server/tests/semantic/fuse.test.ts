@@ -20,6 +20,7 @@ function hit(id: string, snippet: string): SearchHit {
       headRevision: `rev_${id}`,
       publishedRevision: `rev_${id}`,
       publishedAt: '2026-10-15T10:00:00.000Z',
+      scheduledAt: null,
       updatedAt: '2026-10-15T10:00:00.000Z',
     },
     revision: { id: `rev_${id}`, frontmatter: {}, tags: [] },

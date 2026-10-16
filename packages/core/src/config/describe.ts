@@ -77,6 +77,7 @@ export function describeResolvedSite(
       key: site.key,
       locales: [...site.locales],
       defaultLocale: site.defaultLocale,
+      url: site.url,
       styleGuide: site.styleGuide,
       collections: [...site.collections.values()].map((collection) =>
         describeCollection(collection, builtIn),

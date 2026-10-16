@@ -60,7 +60,7 @@ const OUTCOMES = [
 ] as const
 
 const LIST_TEXT =
-  '{"outcome":"ok","entries":[{"id":"ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW","collection":"blog","locale":"en","slug":"hello-world","translationGroup":"hello","status":"draft","version":1,"frontmatter":{"title":"Hello world"},"tags":["news"],"hasUnpublishedChanges":false,"publishedAt":null,"updatedAt":"2026-10-12T12:00:00.000Z"}],"nextCursor":null}'
+  '{"outcome":"ok","entries":[{"id":"ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW","collection":"blog","locale":"en","slug":"hello-world","translationGroup":"hello","status":"draft","version":1,"frontmatter":{"title":"Hello world"},"tags":["news"],"hasUnpublishedChanges":false,"publishedAt":null,"scheduledAt":null,"updatedAt":"2026-10-12T12:00:00.000Z"}],"nextCursor":null}'
 
 const LIST_OUTPUT = {
   outcome: 'ok',
@@ -77,6 +77,7 @@ const LIST_OUTPUT = {
       tags: ['news'],
       hasUnpublishedChanges: false,
       publishedAt: null,
+      scheduledAt: null,
       updatedAt: '2026-10-12T12:00:00.000Z',
     },
   ],
@@ -369,11 +370,11 @@ describe('an error', () => {
 })
 
 describe('the output cap', () => {
-  /** A `get_entry` answer whose JSON is the base of 487 bytes plus the bytes of the Markdown. */
+  /** A `get_entry` answer whose JSON is the base of 506 bytes plus the bytes of the Markdown. */
   const entryWith = (markdown: string): Overrides => ({
     get_entry: async () => ({ outcome: 'ok', entry: { ...ENTRY, markdown } }),
   })
-  const BASE_BYTES = 487
+  const BASE_BYTES = 506
 
   it('lets through an answer of exactly the cap, and refuses one byte more', async () => {
     const atCap = endpointWith(entryWith('a'.repeat(OUTPUT_CAP_BYTES - BASE_BYTES)))
@@ -403,7 +404,7 @@ describe('the output cap', () => {
     expect(answer.result.isError).toBe(true)
     expect(textOf(answer.result)).toMatchObject({
       code: 'output_too_large',
-      message: 'The answer of get_entry is 1200487 bytes, over the cap of 1048576 bytes.',
+      message: 'The answer of get_entry is 1200506 bytes, over the cap of 1048576 bytes.',
     })
   })
 

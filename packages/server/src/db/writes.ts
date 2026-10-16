@@ -211,6 +211,7 @@ export async function createEntry(
         headRevision: revisionId,
         publishedRevision: null,
         publishedAt: null,
+        scheduledAt: null,
         updatedAt: now,
       },
       revision: storedRevision({ id: revisionId, entryId, now, revision: entry.revision, tags }),

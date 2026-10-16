@@ -47,6 +47,7 @@ const docsConfig = (collections: Record<string, unknown> = {}) => ({
     docs: {
       locales: ['en', 'es'],
       defaultLocale: 'en',
+      url: 'https://docs.example.com',
       styleGuide: 'Write for beginners.',
       collections: {
         guides: {
@@ -91,6 +92,7 @@ describe('describeResolvedSite', () => {
       key: 'docs',
       locales: ['en', 'es'],
       defaultLocale: 'en',
+      url: 'https://docs.example.com',
       styleGuide: 'Write for beginners.',
       collections: [
         {
@@ -181,6 +183,7 @@ describe('describeResolvedSite', () => {
       key: 'notes',
       locales: ['en'],
       defaultLocale: 'en',
+      url: null,
       styleGuide: null,
       collections: [
         {

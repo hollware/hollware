@@ -139,6 +139,7 @@ describe('list_entries', () => {
       tags: ['agents'],
       hasUnpublishedChanges: true,
       publishedAt: null,
+      scheduledAt: null,
       updatedAt: '2026-10-13T10:20:00.000Z',
     })
   })

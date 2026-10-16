@@ -67,6 +67,7 @@ describe('createEntry', () => {
         headRevision: revision.id,
         publishedRevision: null,
         publishedAt: null,
+        scheduledAt: null,
         updatedAt: NOW,
       },
       revision: {

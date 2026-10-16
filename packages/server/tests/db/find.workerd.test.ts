@@ -76,6 +76,7 @@ describe('findEntry and findEntryById', () => {
         headRevision: id('rev_a'),
         publishedRevision: null,
         publishedAt: null,
+        scheduledAt: null,
         updatedAt: '2026-10-12T10:00:00.000Z',
       },
       revision: {

@@ -164,6 +164,7 @@ export const SUMMARY: EntrySummary = {
   tags: ['news'],
   hasUnpublishedChanges: false,
   publishedAt: null,
+  scheduledAt: null,
   updatedAt: '2026-10-12T12:00:00.000Z',
 }
 
@@ -229,6 +230,7 @@ export const CANNED: Canned = {
         key: 'playground',
         locales: ['en', 'es'],
         defaultLocale: 'en',
+        url: null,
         styleGuide: null,
         collections: [],
       },

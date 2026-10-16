@@ -35,6 +35,7 @@ const VIEW: EntryView = {
     headRevision: REVISION,
     publishedRevision: null,
     publishedAt: null,
+    scheduledAt: null,
     updatedAt: '2026-10-13T09:00:00.000Z',
   },
   revision: {

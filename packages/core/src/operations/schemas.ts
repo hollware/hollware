@@ -92,6 +92,10 @@ export const entrySummary = z.object({
     .boolean()
     .describe('Whether the latest revision differs from the published one.'),
   publishedAt: z.string().nullable().describe('When the entry was first published, or null.'),
+  scheduledAt: z
+    .string()
+    .nullable()
+    .describe('When a scheduled entry will be published, or null for one that is not scheduled.'),
   updatedAt: z.string(),
 })
 
@@ -209,6 +213,10 @@ export const siteDescription = z.object({
   key: z.string(),
   locales: z.array(z.string()),
   defaultLocale: z.string(),
+  url: z
+    .string()
+    .nullable()
+    .describe('The public origin of the site, which starts the URL of each entry, or null.'),
   styleGuide: z.string().nullable(),
   collections: z.array(collectionDescription),
 })
