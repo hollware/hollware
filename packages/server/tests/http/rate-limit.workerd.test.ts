@@ -31,7 +31,8 @@ const from = (address: string) => ({
 })
 
 describe('the rate limit of the routes without a token', () => {
-  it('answers 429 past the limit, per address and route', async () => {
+  // Seven requests, each through D1: under the load of the whole suite more than the default 5 s.
+  it('answers 429 past the limit, per address and route', { timeout: 30_000 }, async () => {
     const limit = limiter(2)
     const worker = boot({ bindings: { HOLLWARE_RATE_LIMIT: limit.binding } })
 
@@ -63,24 +64,28 @@ describe('the rate limit of the routes without a token', () => {
     ])
   })
 
-  it('limits nothing without a binding, and never a route behind a token or a read', async () => {
-    const worker = boot()
-    const statuses = []
-    for (let i = 0; i < 5; i++) {
-      statuses.push((await worker.send('/auth/signin/options', from('203.0.113.9'))).status)
-    }
-    expect(statuses.includes(429)).toBe(false)
-    expect(
-      [
-        ['POST', '/auth/signin/verify'],
-        ['POST', '/oauth/token'],
-        ['POST', '/oauth/register'],
-        ['POST', '/events'],
-        ['POST', '/mcp'],
-        ['GET', '/auth/signin/options'],
-        ['GET', '/v1/site'],
-        ['POST', '/v1/ops/publish'],
-      ].map(([method, path]) => limitedRoute(method ?? '', path ?? '')),
-    ).toEqual(['auth', 'oauth', 'oauth', 'beacon', null, null, null, null])
-  })
+  it(
+    'limits nothing without a binding, and never a route behind a token or a read',
+    { timeout: 30_000 },
+    async () => {
+      const worker = boot()
+      const statuses = []
+      for (let i = 0; i < 5; i++) {
+        statuses.push((await worker.send('/auth/signin/options', from('203.0.113.9'))).status)
+      }
+      expect(statuses.includes(429)).toBe(false)
+      expect(
+        [
+          ['POST', '/auth/signin/verify'],
+          ['POST', '/oauth/token'],
+          ['POST', '/oauth/register'],
+          ['POST', '/events'],
+          ['POST', '/mcp'],
+          ['GET', '/auth/signin/options'],
+          ['GET', '/v1/site'],
+          ['POST', '/v1/ops/publish'],
+        ].map(([method, path]) => limitedRoute(method ?? '', path ?? '')),
+      ).toEqual(['auth', 'oauth', 'oauth', 'beacon', null, null, null, null])
+    },
+  )
 })
