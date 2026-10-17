@@ -20,12 +20,12 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/pre-push.test.ts`: the hook pre-push runs `check:local`, which runs the tasks of `ci.yml` but `CI_ONLY`.
 - `tests/conventions/build-order.test.ts`: `check:push` runs `vp check` and `vp test` before anything builds, so CI proves that no package needs another one built.
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one.
-- `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md` anywhere, tracked or not.
+- `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md`, tracked or not.
 - `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, no Node global, no Cloudflare dependency; its `src` type-checks against the web platform only, and every one of its tests runs in Node and in workerd.
 - `tests/conventions/server-types.test.ts`: `packages/server/src` type-checks with the generated Workers runtime types only, so a Node global is a type error.
 - `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and its timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to another site's table carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration that a `@hollware/server@*` release tag holds is edited or removed, and the release tags are there to compare.
-- `tests/conventions/declared-imports.test.ts`: every bare import is declared by the package that makes it.
+- `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
 - `tests/conventions/brand.test.ts`: hollware.com and the admin share one dark-only theme (one theme block: Inter, JetBrains Mono, neutral greys; black as primary and emerald in both Nuxt UI configs, Nuxt UI's radius and width, no slot changed), and the sign-in pages of the Worker are dark with the same ground and primary.
 - `tests/conventions/starter-template.test.ts`: the template that create-hollware ships is made by `scripts/sync-starter.ts` from `templates/starter` when the package builds or packs, and is never committed: the starter's files, the catalog's exact versions, Hollware's own as `HOLLWARE_VERSION`, a tsconfig that stands alone.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
@@ -44,7 +44,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
-- `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address across the docs.
+- `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
 - `tests/conventions/code-of-conduct.test.ts`: no template placeholder, one contact address.
 - `tests/conventions/personal-email.test.ts`: no personal email address in any file.

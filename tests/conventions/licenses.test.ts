@@ -18,7 +18,7 @@ describe('licenses', () => {
       root: readBytesIfExists('LICENSE'),
       packages: dirs.map((dir) => ({ dir, license: readBytesIfExists(`${dir}/LICENSE`) })),
     })
-    expect(dirs).toHaveLength(9)
+    expect(dirs).toHaveLength(10)
     expect(describeViolations(violations)).toEqual([])
   })
 

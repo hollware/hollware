@@ -20,6 +20,7 @@ describe('wrangler flags', () => {
       'examples/agents-worker/wrangler.jsonc',
       'examples/astro-blog/wrangler.jsonc',
       'examples/nuxt-blog/wrangler.jsonc',
+      'examples/react-router-blog/wrangler.jsonc',
       'examples/worker-site/wrangler.jsonc',
       'packages/server/wrangler.jsonc',
       'templates/starter/wrangler.jsonc',

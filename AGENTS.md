@@ -46,13 +46,12 @@ new process group, so the child outlives its supervisor.
 - The playground is a Hollware project (`apps/playground/src/index.ts` is `createHollware(config)`),
   and `examples/worker-site` is the site that reads it over a service binding. The playground has
   two test projects: `playground:workerd` (inside workerd, through `@cloudflare/vitest-plugin`) and
-  `playground:harness` (Node, through wrangler's `createTestHarness` over the Vite builds of both
-  Workers). Run both with `pnpm --filter @hollware/playground run test`.
+  `playground:harness` (Node, wrangler's `createTestHarness` over the built Workers). Run both
+  with `pnpm --filter @hollware/playground run test`.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
   its `src` type-checks against the web platform only (ADR-018).
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
-- Keep `fsModuleCache: false` in workerd test configs: workers-sdk#15618 is fixed, but the
-  module cache saved no test time here (measured 2026-10-16).
+- Keep `fsModuleCache: false` in workerd test configs: the module cache saved no test time.
 - `vp dev` starts through a launcher: stopping the launcher leaves the dev server and
   workerd running. Stop the process that listens on the port instead.
 - `compatibility_date` must not be newer than the workerd that wrangler bundles.
@@ -71,9 +70,9 @@ new process group, so the child outlives its supervisor.
   site is reached that way (`siteFetch`). Content is created as an agent creates it, through
   `agentWith(...)` and MCP; the personal token that lets it in (`seedOwnerToken(...)`, in
   `apps/playground/test/harness/support.ts`) is the one thing a test writes to D1 itself.
-- Cloudflare's `Service<...>` turns every RPC answer that holds `unknown` (an entry's frontmatter,
-  its document) into `never`: read a binding through `HollwareRpc` of `@hollware/server`, as
-  `examples/worker-site/src/env.ts` does.
+- Cloudflare's `Service<...>` turns an RPC answer that holds `unknown` (frontmatter, a document)
+  into `never`: read a binding through `HollwareRpc` of `@hollware/server` (see
+  `examples/worker-site/src/env.ts`).
 - The `Probe` entrypoint of the playground (`apps/playground/src/probe.ts`) and of the example
   (`examples/worker-site/src/probe.ts`), each bound to itself as `PROBE`, is how a Node.js test asks
   a built Worker which Node.js globals it has. It is no route, so the gateway's guard has no
@@ -85,10 +84,9 @@ new process group, so the child outlives its supervisor.
 - The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:
   Vite's host check would answer first and hide a missing DNS-rebinding guard. The run resets
   its local D1 and seeds it with the CLI; CI runs it in a job of its own.
-- Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, which
-  works in Node and inside workerd (`tests/fixtures/README.md`). Rows of a second site,
-  for the tests that one site cannot reach another, come from
-  `packages/server/tests/support/sites.ts`.
+- Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, in Node
+  or workerd (`tests/fixtures/README.md`). Rows of a second site, to test that one site
+  cannot reach another, come from `packages/server/tests/support/sites.ts`.
 
 ## Layout
 
@@ -100,6 +98,7 @@ new process group, so the child outlives its supervisor.
 - `packages/create-hollware` — `npm create hollware`.
 - `packages/nuxt` — `@hollware/nuxt`: reads Hollware from a Nuxt site.
 - `packages/astro` — `@hollware/astro`: Astro content loaders for Hollware.
+- `packages/react` — `@hollware/react`: Hollware for React apps.
 - `packages/agents` — `@hollware/agents`: a reviewer, a translator and an auditor that never publish.
 - `apps/playground` — a local Hollware instance for development.
 - `apps/web` — hollware.com: the landing page and the docs, read from Hollware.
@@ -107,6 +106,7 @@ new process group, so the child outlives its supervisor.
 - `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
 - `examples/nuxt-blog` — a Nuxt blog on a Worker that reads Hollware through `@hollware/nuxt`.
 - `examples/astro-blog` — an Astro blog on a Worker, through `@hollware/astro`.
+- `examples/react-router-blog` — a React Router blog.
 - `examples/agents-worker` — the Worker of `@hollware/agents` for the playground's blog.
 - `tests/conformance/worker` — the Hollware Worker that the MCP conformance suite runs against.
 

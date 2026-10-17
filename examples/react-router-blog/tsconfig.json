@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "types": ["vite/client", "@react-router/dev/rsc-types"],
+    "rootDirs": [".", "./.react-router/types"]
+  },
+  "include": ["app", "workers", "worker-configuration.d.ts", "*.ts"],
+  "exclude": ["build"]
+}

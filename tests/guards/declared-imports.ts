@@ -16,7 +16,9 @@ import { dependencySpecs, parseManifests } from './workspace.ts'
  * root. Allowed without a declaration: relative imports, `node:*`, `cloudflare:*` and the
  * package's own name. Subpaths are normalized (`vite-plus/test` is `vite-plus`,
  * `@scope/pkg/x` is `@scope/pkg`). Anything else that is not a bare package name (`#alias`,
- * `~/x`, `https://...`, `virtual:x`) is reported, because nothing resolves it for a consumer.
+ * `~/x`, `https://...`, `virtual:x`) is reported, because nothing resolves it for a consumer,
+ * but for the `<file>#<specifier>` entries of `allowedVirtualImports`: the module that a
+ * framework's Vite plugin makes at build time. An entry that no import uses is reported too.
  */
 
 export interface DeclaredImportsInput {
@@ -24,6 +26,8 @@ export interface DeclaredImportsInput {
   manifests: readonly TextFile[]
   /** The source files to scan, with their text. */
   sources: readonly TextFile[]
+  /** `<file>#<specifier>` of the imports of a module that a build plugin makes (`VIRTUAL_IMPORTS`). */
+  allowedVirtualImports?: readonly string[]
 }
 
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/
@@ -71,6 +75,8 @@ export function checkDeclaredImports(input: DeclaredImportsInput): Violation[] {
     ),
   }))
 
+  const allowed = new Set(input.allowedVirtualImports ?? [])
+  const used = new Set<string>()
   for (const file of input.sources) {
     const owner = ownerOf(file.path, packages)
     const analysis = analyzeSource(file.path, file.text)
@@ -85,6 +91,10 @@ export function checkDeclaredImports(input: DeclaredImportsInput): Violation[] {
       if (/^\.\.?(?:\/|$)/.test(specifier)) continue
       if (specifier.startsWith('node:') || specifier.startsWith('cloudflare:')) continue
       const name = packageOf(specifier)
+      if (allowed.has(`${file.path}#${specifier}`)) {
+        used.add(`${file.path}#${specifier}`)
+        continue
+      }
       if (name === undefined) {
         violations.push({
           rule: 'declared-imports/unsupported',
@@ -103,6 +113,14 @@ export function checkDeclaredImports(input: DeclaredImportsInput): Violation[] {
           : `line ${line} imports "${specifier}" (package ${name}), which ${manifest} does not declare: add it to dependencies, devDependencies or peerDependencies`,
       })
     }
+  }
+  for (const entry of allowed) {
+    if (used.has(entry)) continue
+    violations.push({
+      rule: 'declared-imports/unused-exception',
+      file: 'tests/guards/exceptions.ts',
+      message: `the allowed virtual import \`${entry}\` is no longer needed (no such import): remove it from VIRTUAL_IMPORTS and lower its max`,
+    })
   }
   return violations
 }

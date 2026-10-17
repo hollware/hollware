@@ -74,6 +74,21 @@ export const ZIZMOR_IGNORES: ExceptionList = {
   ],
 }
 
+/**
+ * Imports of a module that a framework's Vite plugin makes at build time, so no package has it
+ * (guard `declared-imports`). The value is `<file>#<specifier>`.
+ */
+export const VIRTUAL_IMPORTS: ExceptionList = {
+  max: 1,
+  entries: [
+    {
+      value: 'examples/react-router-blog/workers/app.ts#virtual:react-router/server-build',
+      reason:
+        'The Worker entry that React Router documents for Cloudflare imports the server build that its Vite plugin makes of the routes; there is no way to write that file without it.',
+    },
+  ],
+}
+
 /** A directory of tests that run through a task of their own, and not through `vp test`. */
 export interface TestRunner {
   /** The directory, with a trailing `/`. The root `vite.config.ts` excludes it from `repo`. */
@@ -226,6 +241,7 @@ function byValue(list: TestRunnerList): ExceptionList {
 export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   MISSING_DOC_PATHS,
   ZIZMOR_IGNORES,
+  VIRTUAL_IMPORTS,
   OTHER_TEST_RUNNERS: byValue(OTHER_TEST_RUNNERS),
   TABLES_WITHOUT_SITE,
   TABLES_WITHOUT_SHARED_COLUMNS,

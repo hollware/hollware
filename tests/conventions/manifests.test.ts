@@ -6,6 +6,7 @@ import clientConfig from '../../packages/client/vite.config.ts'
 import coreConfig from '../../packages/core/vite.config.ts'
 import createHollwareConfig from '../../packages/create-hollware/vite.config.ts'
 import astroConfig from '../../packages/astro/vite.config.ts'
+import reactConfig from '../../packages/react/vite.config.ts'
 import nuxtConfig from '../../packages/nuxt/vite.config.ts'
 import serverConfig from '../../packages/server/vite.config.ts'
 import { checkManifests, type ManifestsInput } from '../guards/manifests.ts'
@@ -55,6 +56,7 @@ describe('package manifests', () => {
         'packages/core': devExportsOf(coreConfig),
         'packages/create-hollware': devExportsOf(createHollwareConfig),
         'packages/nuxt': devExportsOf(nuxtConfig),
+        'packages/react': devExportsOf(reactConfig),
         'packages/server': devExportsOf(serverConfig),
       },
     })

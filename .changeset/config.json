@@ -15,6 +15,7 @@
     [
       "@hollware/core",
       "@hollware/astro",
+      "@hollware/react",
       "@hollware/nuxt",
       "@hollware/server",
       "@hollware/client",

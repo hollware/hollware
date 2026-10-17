@@ -99,6 +99,7 @@ describe('test projects', () => {
       'apps/playground/test/harness/lost-connection.test.ts',
       'apps/playground/test/harness/node-globals.test.ts',
       'apps/playground/test/harness/nuxt-site.test.ts',
+      'apps/playground/test/harness/react-router-site.test.ts',
       'apps/playground/test/harness/rpc.test.ts',
       'apps/playground/test/harness/site.test.ts',
       'apps/playground/test/harness/web.test.ts',

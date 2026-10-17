@@ -132,19 +132,3 @@ export function asError(error: unknown): Error {
   }
   return error instanceof Error ? error : new Error(String(error))
 }
-
-function isReader(value: unknown): value is HollwareReader {
-  return typeof value === 'object' && value !== null && 'getEntry' in value
-}
-
-/**
- * A service binding to the `Hollware` entrypoint as a reader. `wrangler types` cannot see across
- * Workers, so the binding comes typed as `Service`: this checks it is there, and gives the
- * mistake a name when it is not.
- */
-export function hollwareBinding(binding: unknown, name = 'HOLLWARE'): HollwareReader {
-  if (isReader(binding)) return binding
-  throw new Error(
-    `Hollware: the Worker has no service binding ${name} to the Hollware entrypoint: add it to services in wrangler.jsonc.`,
-  )
-}

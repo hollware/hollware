@@ -58,7 +58,7 @@ Each stage ends with an exit criterion that can be verified. The stage-by-stage 
 
 ## Packages
 
-Nine packages, released together at one version, in the order they arrived.
+Ten packages, released together at one version, in the order they arrived.
 
 | Package                                       | What it will be                                                                            | Arrives in |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
@@ -70,6 +70,7 @@ Nine packages, released together at one version, in the order they arrived.
 | [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                                            | v0.4       |
 | [`@hollware/nuxt`](packages/nuxt)             | Reads Hollware from a Nuxt site, over a service binding or HTTP.                           | v0.4       |
 | [`@hollware/astro`](packages/astro)           | Reads Hollware from an Astro site, as content loaders, over a service binding or HTTP.     | v0.10      |
+| [`@hollware/react`](packages/react)           | Reads Hollware from any React app: server helpers, previews, a component for an entry.     | v0.10      |
 | [`@hollware/agents`](packages/agents)         | A reviewer, a translator and a weekly auditor on a Worker; none publishes.                 | v0.6       |
 
 ## Documentation

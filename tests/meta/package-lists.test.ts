@@ -94,8 +94,8 @@ function realInput() {
 describe('package lists', () => {
   it('AGENTS.md, README.md and .changeset/README.md list the packages that exist', () => {
     const { workspaceDirs, workspaceNames, published } = realInput()
-    expect(workspaceDirs).toHaveLength(17)
-    expect(published).toHaveLength(9)
+    expect(workspaceDirs).toHaveLength(19)
+    expect(published).toHaveLength(10)
     const violations = checkPackageLists({
       agents: file('AGENTS.md', readText('AGENTS.md')),
       readme: file('README.md', readText('README.md')),

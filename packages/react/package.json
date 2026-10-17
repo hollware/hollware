@@ -1,0 +1,61 @@
+{
+  "name": "@hollware/react",
+  "version": "0.10.0",
+  "description": "Read Hollware from any React app: server helpers, previews and a component that renders an entry's Comark document.",
+  "homepage": "https://hollware.com",
+  "bugs": {
+    "url": "https://github.com/hollware/hollware/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hollware/hollware.git",
+    "directory": "packages/react"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test",
+    "publint": "publint --strict"
+  },
+  "dependencies": {
+    "@comark/react": "catalog:",
+    "@hollware/client": "workspace:*",
+    "@hollware/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "publint": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

@@ -53,6 +53,8 @@ export const BUILT = {
   nuxt: new URL('../../../../examples/nuxt-blog/.output/server/', import.meta.url),
   // The Astro adapter writes the Worker and its wrangler.json to dist/server.
   astro: new URL('../../../../examples/astro-blog/dist/server/', import.meta.url),
+  // React Router's Vite build writes the Worker and its wrangler.json to build/server.
+  reactRouter: new URL('../../../../examples/react-router-blog/build/server/', import.meta.url),
 }
 
 /** The built hollware.com (`apps/web`), Worker and wrangler.json, as Nuxt writes them. */
@@ -125,6 +127,27 @@ export function createAstroHarness() {
 /** A request to the Astro blog, at SITE_URL. */
 export function astroFetch(server: TestHarness, path: string, init?: SiteInit) {
   return server.getWorker(ASTRO_WORKER).fetch(`${SITE_URL}${path}`, init)
+}
+
+/** The name of the React Router example's Worker (`examples/react-router-blog`). */
+export const REACT_ROUTER_WORKER = 'hollware-react-router-blog'
+
+/** The built Hollware Worker and the React Router blog, which reads it over its service binding. */
+export function createReactRouterHarness() {
+  return createTestHarness({
+    workers: [
+      {
+        configPath: new URL('wrangler.json', BUILT.hollware),
+        vars: HOLLWARE_VARS,
+      },
+      { configPath: new URL('wrangler.json', BUILT.reactRouter) },
+    ],
+  })
+}
+
+/** A request to the React Router blog, at SITE_URL. */
+export function reactRouterFetch(server: TestHarness, path: string, init?: SiteInit) {
+  return server.getWorker(REACT_ROUTER_WORKER).fetch(`${SITE_URL}${path}`, init)
 }
 
 /**

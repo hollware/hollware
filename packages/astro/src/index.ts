@@ -20,7 +20,8 @@ export type {
   Translation,
 } from './source.ts'
 export type { HollwareReader } from '@hollware/client'
-export { createSource, hollwareBinding } from './source.ts'
+export { createSource } from './source.ts'
+export { hollwareBinding } from '@hollware/client'
 export { hollwarePreview, refusePreview, type HollwarePreviewLocals } from './preview.ts'
 
 /** The options of `hollwareLoader`. */

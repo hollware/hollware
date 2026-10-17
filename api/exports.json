@@ -84,6 +84,7 @@
       "createClient": "value",
       "exchangeHeaders": "value",
       "exchangePreviewLink": "value",
+      "hollwareBinding": "value",
       "isPreviewRefusal": "value",
       "isPreviewToken": "value",
       "isSecureRequest": "value",
@@ -293,6 +294,32 @@
       "PageEntry": "type",
       "ROUTES": "value",
       "name": "value"
+    }
+  },
+  "@hollware/react": {
+    ".": {
+      "EntryAnswer": "type",
+      "EntryPage": "type",
+      "GetEntryOptions": "type",
+      "Hollware": "type",
+      "HollwareContent": "value",
+      "HollwareContentProps": "type",
+      "HollwareOptions": "type",
+      "HollwareReader": "type",
+      "ListEntriesOptions": "type",
+      "PREVIEW_COOKIE": "value",
+      "PageDocument": "type",
+      "PageEntry": "type",
+      "PageSummary": "type",
+      "ReaderOptions": "type",
+      "Translation": "type",
+      "createHollware": "value",
+      "hollwareBinding": "value",
+      "isPreviewRequest": "value",
+      "name": "value",
+      "previewCookieClear": "value",
+      "previewHeaders": "value",
+      "previewRedirect": "value"
     }
   },
   "@hollware/server": {

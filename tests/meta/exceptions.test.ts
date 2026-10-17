@@ -23,6 +23,7 @@ describe('exception lists', () => {
       'OTHER_TEST_RUNNERS',
       'TABLES_WITHOUT_SHARED_COLUMNS',
       'TABLES_WITHOUT_SITE',
+      'VIRTUAL_IMPORTS',
       'WEB_TEXT_LITERALS',
       'ZIZMOR_IGNORES',
     ])

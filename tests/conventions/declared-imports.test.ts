@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { checkDeclaredImports, isScannedSource, packageOf } from '../guards/declared-imports.ts'
+import { exceptionValues, VIRTUAL_IMPORTS } from '../guards/exceptions.ts'
 import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
@@ -7,7 +8,9 @@ import { workspaceManifests } from '../support/workspace.ts'
 
 // Fails when: a .ts or .js file anywhere in the repository imports a package that the
 // package.json of its own package (the root one for scripts/, tests/ and vite.config.ts)
-// does not list in dependencies, devDependencies or peerDependencies.
+// does not list in dependencies, devDependencies or peerDependencies, or imports a module no
+// package has (`virtual:x`) that VIRTUAL_IMPORTS does not allow for that file; or an entry of
+// VIRTUAL_IMPORTS is imported by no file.
 
 describe('declared imports', () => {
   it('every bare import of the repository is declared by the package that makes it', () => {
@@ -22,7 +25,11 @@ describe('declared imports', () => {
         'apps/playground/test/workerd/database.workerd.test.ts',
       ]),
     )
-    const violations = checkDeclaredImports({ manifests: workspaceManifests(), sources })
+    const violations = checkDeclaredImports({
+      manifests: workspaceManifests(),
+      sources,
+      allowedVirtualImports: exceptionValues(VIRTUAL_IMPORTS),
+    })
     expect(describeViolations(violations)).toEqual([])
   })
 
@@ -142,6 +149,40 @@ describe('declared imports', () => {
       expect(result[0]?.message).toBe(
         'line 1 imports "#internal/a", which is not a package name or a relative path: a consumer cannot resolve it',
       )
+    })
+
+    it('allows a virtual import for the file that VIRTUAL_IMPORTS names, and for no other', () => {
+      const allowed = ['packages/core/src/a.ts#virtual:e']
+      const text = "import e from 'virtual:e'\n"
+      const run = (path: string) =>
+        checkDeclaredImports({
+          manifests,
+          sources: [file(path, text)],
+          allowedVirtualImports: allowed,
+        }).map((violation) => violation.rule)
+
+      expect(run('packages/core/src/a.ts')).toEqual([])
+      expect(run('packages/core/src/b.ts')).toEqual([
+        'declared-imports/unsupported',
+        'declared-imports/unused-exception',
+      ])
+    })
+
+    it('reports an allowed virtual import that no file makes', () => {
+      expect(
+        checkDeclaredImports({
+          manifests,
+          sources: [file('packages/core/src/a.ts', 'export {}\n')],
+          allowedVirtualImports: ['packages/core/src/a.ts#virtual:e'],
+        }),
+      ).toEqual([
+        {
+          rule: 'declared-imports/unused-exception',
+          file: 'tests/guards/exceptions.ts',
+          message:
+            'the allowed virtual import `packages/core/src/a.ts#virtual:e` is no longer needed (no such import): remove it from VIRTUAL_IMPORTS and lower its max',
+        },
+      ])
     })
 
     it('reports a file that does not parse', () => {
