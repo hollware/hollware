@@ -105,7 +105,12 @@ function upgrade(project: string, version: string): void {
 }
 
 async function main(): Promise<void> {
-  const { values } = parseArgs({ options: { from: { type: 'string', default: '0.3.0' } } })
+  // `vp run e2e:upgrade -- --from <version>` hands the script its `--` too.
+  const argv = process.argv.slice(2)
+  const { values } = parseArgs({
+    args: argv[0] === '--' ? argv.slice(1) : argv,
+    options: { from: { type: 'string', default: '0.3.0' } },
+  })
   const from = values.from ?? '0.3.0'
   const work = mkdtempSync(join(tmpdir(), 'hollware-e2e-upgrade-'))
   const version = e2eVersion()
