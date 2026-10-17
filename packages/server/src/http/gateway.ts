@@ -255,6 +255,23 @@ export function createGateway(options: GatewayOptions): Gateway {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID())
     await next()
+    // Every answer of the Worker: no type sniffing, and HTTPS only from the first visit on when
+    // the public URL is https. A route that set either keeps its own.
+    const https = c.env.HOLLWARE_PUBLIC_URL?.startsWith('https://') === true
+    const missing =
+      !c.res.headers.has('x-content-type-options') ||
+      (https && !c.res.headers.has('strict-transport-security'))
+    if (!missing) return
+    const headers = new Headers(c.res.headers)
+    if (!headers.has('x-content-type-options')) headers.set('x-content-type-options', 'nosniff')
+    if (https && !headers.has('strict-transport-security')) {
+      headers.set('strict-transport-security', 'max-age=31536000')
+    }
+    c.res = new Response(c.res.body, {
+      status: c.res.status,
+      statusText: c.res.statusText,
+      headers,
+    })
   })
 
   app.use('*', async (c, next) => {

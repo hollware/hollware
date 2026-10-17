@@ -44,11 +44,29 @@ describe('the admin', () => {
     for (const response of [root, deep]) {
       expect(response.status).toBe(200)
       expect(await response.text()).toBe(PAGE)
-      const policy = response.headers.get('content-security-policy') ?? ''
-      expect(policy).toContain("script-src 'self'")
-      expect(policy).toContain("frame-ancestors 'none'")
+      expect(Object.fromEntries(response.headers)).toMatchObject({
+        'content-security-policy':
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        'cross-origin-opener-policy': 'same-origin',
+        'cross-origin-resource-policy': 'same-origin',
+        'permissions-policy':
+          'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
+        'strict-transport-security': 'max-age=31536000',
+        'x-content-type-options': 'nosniff',
+      })
     }
     expect(asked).toEqual(['/admin/', '/admin/'])
+  })
+
+  it('says nothing of HTTPS when the public URL is http, as in local development', async () => {
+    const { fetcher } = assets()
+    // The OAuth server takes http on a loopback host only.
+    const worker = boot({ assets: fetcher, publicUrl: 'http://localhost' })
+
+    const page = await worker.send('/admin/', { host: 'localhost' })
+
+    expect([page.status, page.headers.has('strict-transport-security')]).toEqual([200, false])
+    expect(page.headers.get('x-content-type-options')).toBe('nosniff')
   })
 
   it('passes a file of the build on as it is, and says when the admin is not installed', async () => {

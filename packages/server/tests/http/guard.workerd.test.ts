@@ -13,11 +13,24 @@ import { boot, SITE_KEY, wire, type SendOptions } from './support.ts'
 // is a 403, each with its body and its headers, and a refused request reaches no handler and no
 // database. The guard itself is `src/auth/guard.ts`; this is where it is wired in.
 
-const HEADERS = { 'cache-control': 'no-store', 'content-type': 'application/json' }
+/** What every answer of the Worker carries (src/http/gateway.ts): HSTS when the public URL is https. */
+const HEADERS = {
+  'cache-control': 'no-store',
+  'content-type': 'application/json',
+  'strict-transport-security': 'max-age=31536000',
+  'x-content-type-options': 'nosniff',
+}
+
+/** With no usable public URL, nothing says the Worker is reached over https. */
+const MISCONFIGURED_HEADERS = {
+  'cache-control': 'no-store',
+  'content-type': 'application/json',
+  'x-content-type-options': 'nosniff',
+}
 
 const MISCONFIGURED = {
   status: 500,
-  headers: HEADERS,
+  headers: MISCONFIGURED_HEADERS,
   body: {
     code: 'misconfigured',
     message: 'HOLLWARE_PUBLIC_URL is required: it is missing, or it is not an http or https URL.',

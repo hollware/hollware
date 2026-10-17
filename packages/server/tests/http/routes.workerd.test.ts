@@ -14,7 +14,13 @@ import { boot, brokenDb, captureLogs, restoreLogs, wire } from './support.ts'
 
 const REQUEST_ID = '0f3a8c52-7b1d-4e6a-9c04-5d2e8a1f6b37'
 
-const HEADERS = { 'cache-control': 'no-store', 'content-type': 'application/json' }
+/** What every answer of the Worker carries (src/http/gateway.ts), its public URL being https. */
+const HEADERS = {
+  'cache-control': 'no-store',
+  'content-type': 'application/json',
+  'strict-transport-security': 'max-age=31536000',
+  'x-content-type-options': 'nosniff',
+}
 
 const NOT_FOUND = {
   status: 404,

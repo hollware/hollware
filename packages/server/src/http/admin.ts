@@ -1,3 +1,4 @@
+import { PAGE_ISOLATION } from '../identity/pages.ts'
 import { SCOPES } from '@hollware/core'
 import type { Context, Hono } from 'hono'
 import { adminClient } from '../oauth/admin.ts'
@@ -70,6 +71,7 @@ export function installAdmin(
     headers.set('cache-control', 'no-store')
     headers.set('x-content-type-options', 'nosniff')
     headers.set('referrer-policy', 'no-referrer')
+    for (const [name, value] of Object.entries(PAGE_ISOLATION)) headers.set(name, value)
     return new Response(answer.body, { status: 200, headers })
   }
   app.get('/admin', (c) => c.redirect('/admin/', 301))

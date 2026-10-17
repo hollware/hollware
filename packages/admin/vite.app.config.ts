@@ -6,6 +6,7 @@ import { getIcons } from '@iconify/utils'
 import ui from '@nuxt/ui/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite-plus'
+import { assetHeaders } from './headers.ts'
 
 /**
  * The single-page app of the admin (ADR-026), built apart from the package's entry (`vite.config.ts`
@@ -67,6 +68,7 @@ export default defineConfig({
         inputNumber: { defaultVariants: { variant: 'subtle' } },
       },
     }),
+    assetHeaders(fileURLToPath(new URL('dist/client', import.meta.url))),
   ],
   define: { __HOLLWARE_ICONS__: JSON.stringify(icons()) },
   build: {

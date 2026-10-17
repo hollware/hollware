@@ -25,6 +25,22 @@ button{margin-top:1.25rem;padding:.6rem 1rem;font:inherit;font-weight:500;cursor
 button:not([value=deny]){background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 [role=alert]{color:var(--danger)}`
 
+/**
+ * The SHA-256 of STYLE, base64: the policy of every page allows that one stylesheet and no other
+ * inline style (a test computes it again from STYLE, so the two cannot part).
+ */
+export const STYLE_HASH = 'sha256-XfLw/v21Jfp0bukRAqh1+Rz82lWrWpdy2GbGduQqpqY='
+
+/**
+ * What every page of the Worker says besides its policy: no window of another origin keeps a hold
+ * on it, no other origin embeds it, and it asks for no device.
+ */
+export const PAGE_ISOLATION: Readonly<Record<string, string>> = {
+  'cross-origin-opener-policy': 'same-origin',
+  'cross-origin-resource-policy': 'same-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
+}
+
 /** The mark of Hollware, before the title of every page. */
 const BRAND = `<div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor" opacity=".08"/><path d="M9 8v16M23 8v16M9 16h14" stroke="var(--mark)" stroke-width="3" stroke-linecap="round" fill="none"/></svg>Hollware</div>`
 
@@ -136,9 +152,10 @@ export function pageHeaders(nonce: string): Record<string, string> {
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
-    'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`,
+    'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src '${STYLE_HASH}'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
+    ...PAGE_ISOLATION,
   }
 }
 
@@ -256,8 +273,9 @@ export function plainPageHeaders(): Record<string, string> {
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
-    'content-security-policy': `default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'`,
+    'content-security-policy': `default-src 'none'; style-src '${STYLE_HASH}'; base-uri 'none'; frame-ancestors 'none'`,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
+    ...PAGE_ISOLATION,
   }
 }
