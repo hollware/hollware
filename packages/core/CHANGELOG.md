@@ -1,5 +1,17 @@
 # @hollware/core
 
+## 0.10.0
+
+### Minor Changes
+
+- [`eb4df6d`](https://github.com/hollware/hollware/commit/eb4df6dd3a8eafc7b04266478a2f0950adea0bbc) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Entries have a trash: `delete_entry` moves a draft there and cancels its pending review, `restore_entry` brings it back as the draft it was, `list_entries` lists it with `trashed: true`, every summary carries `deletedAt`, `create_draft` answers `in_trash` for the slug a trashed entry keeps, migration `0014_entry_trash` adds the column, and the admin trashes a draft from the editor and lists, trashes and restores entries in bulk under the filter "In the trash".
+
+- [`6a8e7b5`](https://github.com/hollware/hollware/commit/6a8e7b57f894722d808f1708b353884ad2f0a6d7) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The events of webhooks are a schema of `@hollware/core` now: `hollwareEvent` (with `entryEvent` and `siteEvent`, and their types), and `parseHollwareEvent(body)`, which reads the body of a webhook once its signature holds, and answers null for a body that is no event this version knows.
+
+- [`ad56b86`](https://github.com/hollware/hollware/commit/ad56b8656041396926ab9b1de602cf15519a5f38) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Security: a site's definition can no longer send a secret of the Worker out. IndexNow's `key` is the key itself now, which is public (8 to 128 letters, digits or hyphens; `INDEXNOW_KEY`), not the name of a Worker secret, and a webhook may not name a secret of Hollware or of Cloudflare (`HOLLWARE_*`, `CLOUDFLARE_*`, `CF_*`). Before, an owner of one site, or an agent with `schema:admin`, could name `HOLLWARE_SECRET` as an IndexNow key and have its value sent to IndexNow. A stored definition of the old form is served with IndexNow off, and logs `indexnow_off`; set the key itself to turn it on. The sign-in page also goes back only to a page of its own origin: a `return_to` such as `/\evil.example` could send a person to another host after their passkey.
+
+- [`75341bf`](https://github.com/hollware/hollware/commit/75341bf1134084e2ac8b316a661ee46fe863b1ca) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A change of a site's structure is an event too: `site.changed`, sent to the site's webhooks with the cache tags it invalidates (`site`, and every list of the collections and locales the site had or has, `tagsOfSiteChange`), so a site that caches its pages purges its navigation and lists when a collection, a route or a locale changes, with no publish. The event carries no entry, and IndexNow is not told of it. Migration `0013_site_events` rebuilds the outbox to take it, keeping every event and delivery.
+
 ## 0.9.1
 
 No changes in this release.

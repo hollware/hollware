@@ -1,5 +1,18 @@
 # hollware
 
+## 0.10.0
+
+### Minor Changes
+
+- [`2d70e42`](https://github.com/hollware/hollware/commit/2d70e428142983d3859dbc68450dfa9510baabc2) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware export <directory>` writes the entries of a site over MCP as `<collection>/<locale>/<slug>.md`, byte for byte as Hollware keeps them, so that `hollware import` takes them back unchanged, with `--published`, `--collection`, `--locale`, `--site` and `--dry-run`.
+
+- [`2d70e42`](https://github.com/hollware/hollware/commit/2d70e428142983d3859dbc68450dfa9510baabc2) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware import --from nuxt-content` moves a Nuxt Content site to Hollware: the pages of its `content/` routed as Nuxt Content routes them, their Markdown kept, a `title` from their first heading when they have none, and with `--locale-dirs` their locale from the first folder and their translations tied in a group.
+
+### Patch Changes
+
+- Updated dependencies [[`eb4df6d`](https://github.com/hollware/hollware/commit/eb4df6dd3a8eafc7b04266478a2f0950adea0bbc), [`6a8e7b5`](https://github.com/hollware/hollware/commit/6a8e7b57f894722d808f1708b353884ad2f0a6d7), [`ad56b86`](https://github.com/hollware/hollware/commit/ad56b8656041396926ab9b1de602cf15519a5f38), [`75341bf`](https://github.com/hollware/hollware/commit/75341bf1134084e2ac8b316a661ee46fe863b1ca)]:
+  - @hollware/core@0.10.0
+
 ## 0.9.1
 
 ### Patch Changes
