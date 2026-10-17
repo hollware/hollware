@@ -508,6 +508,7 @@ export const en = {
     },
   },
   tokens: {
+    never: 'Never expires',
     title: 'Tokens',
     ownerOnly: 'Only an owner manages tokens',
     label: 'Label',

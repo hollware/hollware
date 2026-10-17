@@ -8,7 +8,8 @@ import { boot, NOW, OTHER_SITE_KEY, SITE_KEY, type Booted } from './support.ts'
 
 // Fails when: the admin's own routes (src/http/admin-api.ts) stop being the admin's alone: a
 // personal token, even an owner's with schema:admin, or an admin token without schema:admin,
-// reaches them; a token they make gets scopes its maker does not have, is not shown once, does not
+// reaches them; a token they make gets scopes its maker does not have, expires when no days were
+// given or does not when they were (T-26), is not shown once, does not
 // work, or still works once revoked; the list shows a hash; an invitation is made for an owner, or
 // stops giving a link to /setup that the list of people then counts as pending; or a read token
 // made there stops being an hw_read_ token with content:read alone; or an owner stops being able
@@ -192,6 +193,31 @@ describe("the admin's own routes", () => {
     expect(row).not.toHaveProperty('hash')
     expect(JSON.stringify(listed)).not.toContain(created.secret)
     expect([before.status, after.status]).toEqual([200, 401])
+  })
+
+  it('make a token that never expires when no days are given, and one that does when they are (T-26)', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+
+    const forever = await (
+      await call(worker, owner, '/v1/admin/tokens', { label: 'CI', scopes: ['content:read'] })
+    ).json<{ expiresAt: string | null }>()
+    const month = await (
+      await call(worker, owner, '/v1/admin/tokens', {
+        label: 'Laptop',
+        scopes: ['content:read'],
+        expiresInDays: 30,
+      })
+    ).json<{ expiresAt: string | null }>()
+    const wrong = await call(worker, owner, '/v1/admin/tokens', {
+      label: 'Bad',
+      scopes: ['content:read'],
+      expiresInDays: 0,
+    })
+
+    expect(forever.expiresAt).toBe(null)
+    expect(month.expiresAt).toBe(new Date(Date.parse(NOW) + 30 * 86_400_000).toISOString())
+    expect(wrong.status).toBe(400)
   })
 
   it('make a read token that reads and nothing else, whatever scopes it asks for', async () => {

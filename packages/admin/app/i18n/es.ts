@@ -534,6 +534,7 @@ export const es: Messages = {
     },
   },
   tokens: {
+    never: 'Sin vencimiento',
     title: 'Tokens',
     ownerOnly: 'Solo un dueño administra los tokens',
     label: 'Etiqueta',

@@ -139,14 +139,15 @@ export interface NewToken {
   /** The SHA-256 of the token, in hex. */
   hash: string
   scopes: readonly Scope[]
-  expiresAt: string
+  /** When it stops working, or `null` for a token that never expires. */
+  expiresAt: string | null
   now: string
 }
 
 /** The row of a new token. */
 export function insertToken(token: NewToken): string {
   const kind = token.kind === undefined ? ['', ''] : [', kind', `, ${quote(token.kind)}`]
-  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at${kind[0]}) VALUES (${quote(token.id)}, ${quote(token.site)}, ${quote(token.userId)}, ${quote(token.label)}, ${quote(token.hash)}, ${quote(JSON.stringify(token.scopes))}, ${quote(token.expiresAt)}, ${quote(token.now)}, ${quote(token.now)}${kind[1]});`
+  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at${kind[0]}) VALUES (${quote(token.id)}, ${quote(token.site)}, ${quote(token.userId)}, ${quote(token.label)}, ${quote(token.hash)}, ${quote(JSON.stringify(token.scopes))}, ${token.expiresAt === null ? 'NULL' : quote(token.expiresAt)}, ${quote(token.now)}, ${quote(token.now)}${kind[1]});`
 }
 
 /** The definition `init` gives a site (ADR-033), with the id of the change that records it. */

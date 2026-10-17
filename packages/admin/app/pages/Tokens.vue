@@ -41,7 +41,8 @@ const tokens = ref<Token[]>([])
 const failure = ref<string | null>(null)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
-const days = ref(90)
+/** The days the token lasts; empty for a token that never expires (T-26). */
+const days = ref<number | undefined>(undefined)
 /** A read token reads published content over the read API, and nothing else. */
 const read = ref(false)
 /** The secret of the token just made: shown once, never again. */
@@ -73,7 +74,7 @@ async function make() {
     const made = await api.admin<{ secret: string }>('tokens', {
       label: label.value,
       ...(read.value ? { kind: 'read' } : { scopes: chosen.value }),
-      expiresInDays: days.value,
+      ...(typeof days.value === 'number' && days.value > 0 ? { expiresInDays: days.value } : {}),
     })
     secret.value = made.secret
     label.value = ''
@@ -144,7 +145,14 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
             />
           </UFormField>
           <UFormField :label="m.tokens.days">
-            <UInput v-model.number="days" type="number" :min="1" :max="365" class="w-24" />
+            <UInput
+              v-model.number="days"
+              type="number"
+              :min="1"
+              :max="365"
+              :placeholder="m.tokens.never"
+              class="w-40"
+            />
           </UFormField>
           <UCheckbox
             v-model="read"

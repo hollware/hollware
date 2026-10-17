@@ -1,4 +1,4 @@
-import { hashPersonalToken, PERSONAL_TOKEN_TTL_DAYS, type Scope } from '@hollware/core'
+import { hashPersonalToken, type Scope } from '@hollware/core'
 import { parseFlags } from '../args.ts'
 import { chooseTarget, query, resolveDatabase, type Row } from '../d1.ts'
 import { inDays, newId, newPersonalToken, newReadToken } from '../entropy.ts'
@@ -50,7 +50,7 @@ export const TOKEN_CREATE_USAGE = [
   '  --read                  A read token: content:read, published content, the read API only',
   '  --scopes <list>         Comma-separated: content:read, content:write, content:publish, schema:admin',
   '                          (default: content:read,content:write)',
-  `  --expires-in-days <n>   Days until it expires, 1 to 365 (default: ${PERSONAL_TOKEN_TTL_DAYS})`,
+  '  --expires-in-days <n>   Days until it expires, 1 to 365; without it, the token never expires',
   ...WHERE_FLAGS,
 ].join('\n')
 
@@ -135,10 +135,9 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
     : values.scopes === undefined
       ? DEFAULT_SCOPES
       : parseScopes(values.scopes)
+  // Without --expires-in-days the token never expires: the person chooses (T-26, accepted).
   const days =
-    values['expires-in-days'] === undefined
-      ? PERSONAL_TOKEN_TTL_DAYS
-      : parseExpiresInDays(values['expires-in-days'])
+    values['expires-in-days'] === undefined ? null : parseExpiresInDays(values['expires-in-days'])
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
 
@@ -157,7 +156,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   const now = io.now()
   const id = newId(io, 'token')
   const secret = read ? newReadToken(io) : newPersonalToken(io)
-  const expiresAt = inDays(now, days)
+  const expiresAt = days === null ? null : inDays(now, days)
   await query(
     io.wrangler,
     database,
@@ -180,7 +179,9 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       '',
       `Label    ${label}`,
       `Scopes   ${scopes.join(' ')}`,
-      `Expires  ${expiresAt} (in ${days} ${days === 1 ? 'day' : 'days'})`,
+      days === null || expiresAt === null
+        ? 'Expires  never (revoke it with hollware token revoke)'
+        : `Expires  ${expiresAt} (in ${days} ${days === 1 ? 'day' : 'days'})`,
       '',
       'The token. It is shown only once: Hollware keeps just its hash.',
       '',

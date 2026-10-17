@@ -36,8 +36,6 @@ import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provi
  * another client, never reaches them, even an owner's. A leaked token cannot mint the next one.
  */
 
-/** A personal token lasts this long unless the person says otherwise (as `hollware token create`). */
-const TOKEN_DAYS = 90
 const INVITATION_DAYS = 7
 
 export interface AdminApiOptions {
@@ -76,11 +74,23 @@ function parseScopes(json: string): Scope[] {
   }
 }
 
-function daysFrom(value: unknown, fallback: number): number | null {
+/** The days an invitation lasts: `fallback` when left out, a whole number from 1 to 365, or null. */
+function invitationDays(value: unknown, fallback: number): number | null {
   if (value === undefined) return fallback
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
     ? value
     : null
+}
+
+/**
+ * The days a token lasts: none (`null`) when they are left out, so it never expires (T-26: the
+ * person chooses), or a whole number from 1 to 365; `undefined` for anything else.
+ */
+function daysFrom(value: unknown): number | null | undefined {
+  if (value === undefined || value === null) return null
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
+    ? value
+    : undefined
 }
 
 /** At most this many grants of a person are read: pages of the library's listing, 100 each. */
@@ -245,11 +255,11 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           `Choose among ${person.scopes.join(', ')}.`,
         )
       }
-      const days = daysFrom(input['expiresInDays'], TOKEN_DAYS)
-      if (days === null)
+      const days = daysFrom(input['expiresInDays'])
+      if (days === undefined)
         return refused(
           'expiresInDays is a whole number from 1 to 365.',
-          'Leave it out for 90 days.',
+          'Leave it out for a token that never expires.',
         )
       const now = options.clock.now()
       const secret = kind === 'read' ? generateReadToken() : generatePersonalToken()
@@ -261,7 +271,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         label,
         hash: await hashPersonalToken(secret),
         scopes: JSON.stringify(scopes),
-        expiresAt: new Date(now.getTime() + days * 86_400_000).toISOString(),
+        expiresAt: days === null ? null : new Date(now.getTime() + days * 86_400_000).toISOString(),
         revokedAt: null,
         lastUsedAt: null,
         createdAt: now.toISOString(),
@@ -384,7 +394,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           `Use role "editor" (${ROLE_SCOPES.editor.join(', ')}) or "author" (${ROLE_SCOPES.author.join(', ')}).`,
         )
       }
-      const days = daysFrom(input['days'], INVITATION_DAYS)
+      const days = invitationDays(input['days'], INVITATION_DAYS)
       if (days === null)
         return refused('days is a whole number from 1 to 365.', 'Leave it out for 7 days.')
       const made = await createInvitation(connect(c.env.DB), {

@@ -201,7 +201,8 @@ describe('AC-0.1-16: init and tokens', () => {
         'content:read content:write content:publish schema:admin',
       ],
       // Its use is recorded after the answer, so it may not show yet.
-      ['<tok>', 'acceptance reader', 'active', '<time>', usedOrNot, 'content:read'],
+      // Created without --expires-in-days, so it never expires (T-26).
+      ['<tok>', 'acceptance reader', 'active', 'never', usedOrNot, 'content:read'],
     ])
 
     const revoked = await project.hollware('token', 'revoke', '--local', String(id))

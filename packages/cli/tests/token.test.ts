@@ -2,7 +2,8 @@
 // - "create: asks for the site and the owner, inserts the token and prints it once": the
 //   statements or their arguments change (the context query, the INSERT, its columns), the hash
 //   stored is not the SHA-256 of the printed token, the token is stored, the default scopes or
-//   the 90 days change, or the token is printed more than once.
+//   a token without --expires-in-days stops never expiring (T-26), or the token is printed more
+//   than once.
 // - "create makes a read token with --read …": `--read` stops making an `hw_read_` token, stored
 //   with the kind read and content:read alone, or lets --scopes widen it.
 // - "create takes the scopes, the expiry and the site from the flags" rows: `--scopes`,
@@ -67,8 +68,9 @@ function createAnswers() {
   return [d1([{ id: 'blog' }], [{ id: OWNER_ID }]), d1([])]
 }
 
-function insertSql(label: string, scopes: string, expiresAt: string, site = 'blog'): string {
-  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', '${site}', '${OWNER_ID}', ${label}, '${HASH}', '${scopes}', '${expiresAt}', '${NOW}', '${NOW}');`
+function insertSql(label: string, scopes: string, expiresAt: string | null, site = 'blog'): string {
+  const expires = expiresAt === null ? 'NULL' : `'${expiresAt}'`
+  return `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', '${site}', '${OWNER_ID}', ${label}, '${HASH}', '${scopes}', ${expires}, '${NOW}', '${NOW}');`
 }
 
 describe('hollware token create', () => {
@@ -89,7 +91,7 @@ describe('hollware token create', () => {
         '--local',
         '--json',
         '--command',
-        insertSql("'ci'", '["content:read","content:write"]', '2027-01-10T12:00:00.000Z'),
+        insertSql("'ci'", '["content:read","content:write"]', null),
       ],
     ])
     expect(wrangler.calls[1]?.args[6]).not.toContain(SECRET)
@@ -99,7 +101,7 @@ describe('hollware token create', () => {
         '',
         'Label    ci',
         'Scopes   content:read content:write',
-        'Expires  2027-01-10T12:00:00.000Z (in 90 days)',
+        'Expires  never (revoke it with hollware token revoke)',
         '',
         'The token. It is shown only once: Hollware keeps just its hash.',
         '',
@@ -128,7 +130,7 @@ describe('hollware token create', () => {
     expect(err).toEqual([])
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.args[6]).toBe(
-      `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at, kind) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'site', '269a65ac0cce4966bd7249c4d1c7ed1630d16df2900df4a04839632e04fd8158', '["content:read"]', '2027-01-10T12:00:00.000Z', '${NOW}', '${NOW}', 'read');`,
+      `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at, kind) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'site', '269a65ac0cce4966bd7249c4d1c7ed1630d16df2900df4a04839632e04fd8158', '["content:read"]', NULL, '${NOW}', '${NOW}', 'read');`,
     )
     expect(out[0]?.split('\n')[0]).toBe(`Created read token ${TOKEN_ID} for the site "blog".`)
     expect(out.join('\n').split(secret)).toHaveLength(2)
@@ -151,8 +153,8 @@ describe('hollware token create', () => {
     [
       ['--scopes', 'content:publish, schema:admin'],
       '["content:publish","schema:admin"]',
-      '2027-01-10T12:00:00.000Z',
-      '90 days',
+      null,
+      'never',
     ],
     [
       ['--expires-in-days', '1'],
@@ -184,7 +186,11 @@ describe('hollware token create', () => {
 
       expect(code).toBe(0)
       expect(wrangler.calls[1]?.args[6]).toBe(insertSql("'ci'", scopes, expiresAt))
-      expect(out[0]).toContain(`Expires  ${expiresAt} (in ${days})`)
+      expect(out[0]).toContain(
+        expiresAt === null
+          ? 'Expires  never (revoke it with hollware token revoke)'
+          : `Expires  ${expiresAt} (in ${days})`,
+      )
     },
   )
 
@@ -196,7 +202,7 @@ describe('hollware token create', () => {
 
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql("'ci'", '["content:read","content:write"]', '2027-01-10T12:00:00.000Z', 'docs'),
+      insertSql("'ci'", '["content:read","content:write"]', null, 'docs'),
     )
     expect(out[0]?.split('\n')[0]).toBe(`Created token ${TOKEN_ID} for the site "docs".`)
   })
@@ -214,7 +220,7 @@ describe('hollware token create', () => {
 
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql(literal, '["content:read","content:write"]', '2027-01-10T12:00:00.000Z'),
+      insertSql(literal, '["content:read","content:write"]', null),
     )
     expect(out[0]).toContain(`Label    ${label}\n`)
   })
@@ -226,7 +232,7 @@ describe('hollware token create', () => {
     await project.run(['token', 'create', '--label', '  ci  '])
 
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql("'ci'", '["content:read","content:write"]', '2027-01-10T12:00:00.000Z'),
+      insertSql("'ci'", '["content:read","content:write"]', null),
     )
   })
 
