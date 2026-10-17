@@ -1,5 +1,11 @@
 # @hollware/core
 
+## 1.0.0-rc.0
+
+### Major Changes
+
+- [`b47f74a`](https://github.com/hollware/hollware/commit/b47f74aefaf518df6cc95b8cf9f33388b488cd22) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Hollware 1.0: from this release on, a minor or patch version keeps working everything an agent, a site, a script or a project built against an earlier 1.x (ADR-036): the MCP tools with their scopes and schemas, the read API at `/v1`, the RPC entrypoint `Hollware`, the events of webhooks, the CLI's commands and flags, every package's exports, and the migrations already shipped. Every package of Hollware takes this version. See "Versions and stability" in the docs.
+
 ## 0.11.0
 
 ### Minor Changes
