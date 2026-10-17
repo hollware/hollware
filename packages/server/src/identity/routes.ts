@@ -7,6 +7,14 @@ import type { Clock } from '../ports.ts'
 import type { Ceremony } from './ceremonies.ts'
 import { pageHeaders, setupPage, signInPage } from './pages.ts'
 import { endSession } from './store.ts'
+import {
+  personActor,
+  type AuditActor,
+  type AuditLine,
+  type AuditLog,
+  type AuditSite,
+} from '../audit/log.ts'
+import { writeForPerson } from '../audit/person.ts'
 
 /**
  * The ceremonies, with SimpleWebAuthn and its parsers, in a chunk of their own: only these four
@@ -39,7 +47,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * of this browser's cookie ends, and the cookie with it (T-44). The Origin guard of the gateway
  * refuses a sign-out posted from a page of another origin.
  */
-export function installIdentity(app: Hono<GatewayEnv>, options: { readonly clock: Clock }): void {
+export interface IdentityOptions {
+  readonly clock: Clock
+  /** A site of the deployment as the activity log needs it, current with D1, or `undefined`. */
+  readonly site: (c: Context<GatewayEnv>, key: string) => Promise<AuditSite | undefined>
+  /** The activity log of a request, for a person signed in with their passkey (ADR-037). */
+  readonly audit: (c: Context<GatewayEnv>, actor: AuditActor) => AuditLog
+}
+
+export function installIdentity(app: Hono<GatewayEnv>, options: IdentityOptions): void {
+  /** A line of the person's own sign-in, in each of their sites. */
+  const audited = (c: Context<GatewayEnv>, userId: string, line: AuditLine) =>
+    writeForPerson(
+      c.env.DB,
+      options.audit(c, personActor(userId)),
+      (key) => options.site(c, key),
+      userId,
+      line,
+    )
+
   const ceremony = (c: Context<GatewayEnv>): Ceremony => ({
     db: connect(c.env.DB),
     publicUrl: c.env.HOLLWARE_PUBLIC_URL,
@@ -105,6 +131,11 @@ export function installIdentity(app: Hono<GatewayEnv>, options: { readonly clock
         name: text(input['name']),
         label: text(input['label']),
       })
+      await audited(c, answer.userId, {
+        action: 'invitation.accept',
+        outcome: 'ok',
+        target: { type: 'user', id: answer.userId },
+      })
       return c.json({ ok: true }, 200, { 'set-cookie': sessionCookie(answer.session) })
     }),
   )
@@ -130,13 +161,25 @@ export function installIdentity(app: Hono<GatewayEnv>, options: { readonly clock
         challengeId: text(input['challengeId']),
         response: JSON.parse(JSON.stringify(response)),
       })
+      await audited(c, answer.userId, {
+        action: 'session.sign_in',
+        outcome: 'ok',
+        target: { type: 'user', id: answer.userId },
+      })
       return c.json({ ok: true }, 200, { 'set-cookie': sessionCookie(answer.session) })
     }),
   )
 
   app.post(SIGN_OUT_PATH, async (c) => {
     const secret = getCookie(c, SESSION_COOKIE)
-    if (secret !== undefined) await endSession(connect(c.env.DB), secret)
+    const userId = secret === undefined ? null : await endSession(connect(c.env.DB), secret)
+    if (userId !== null) {
+      await audited(c, userId, {
+        action: 'session.sign_out',
+        outcome: 'ok',
+        target: { type: 'user', id: userId },
+      })
+    }
     return c.json({ ok: true }, 200, { 'set-cookie': ENDED_COOKIE, 'cache-control': 'no-store' })
   })
 }

@@ -686,3 +686,57 @@ export const reviewComments = sqliteTable(
     check('review_comments_body', sql`length(${t.body}) BETWEEN 1 AND 4000`),
   ],
 )
+
+/**
+ * The activity log (ADR-037): one line for every change of a site and every refusal, with who
+ * did it, through what, on what, and how it ended. Append-only, as revisions are: triggers refuse
+ * an update, a replace and the delete of a line younger than the retention its site chose.
+ * `actor_user_id` has no foreign key on purpose: a line outlives the person it names.
+ */
+export const auditLog = sqliteTable(
+  'audit_log',
+  {
+    id: id('aud'),
+    siteId: siteId(),
+    /** One of `AUDIT_ACTIONS` of `@hollware/core`. */
+    action: text('action').notNull(),
+    outcome: text('outcome').notNull(),
+    /** The code of the error the caller got, when the outcome is not `ok`. */
+    errorCode: text('error_code'),
+    actorKind: text('actor_kind').notNull(),
+    actorUserId: text('actor_user_id'),
+    actorTokenId: text('actor_token_id'),
+    /** The OAuth client a person allowed: its metadata document URL, or its registered id. */
+    actorClientId: text('actor_client_id'),
+    /** What the client said about itself (its MCP client, its model), as JSON: its own claim. */
+    actorMeta: text('actor_meta'),
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    /** A small object about the change (a role, a label, scopes): never a secret or content. */
+    detail: text('detail'),
+    requestId: text('request_id'),
+    /** HMAC-SHA256 of the address under a key of the site, when the site keeps addresses. */
+    ipHash: text('ip_hash'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('audit_log_id_site').on(t.id, t.siteId),
+    index('audit_log_site_time').on(t.siteId, t.createdAt, t.id),
+    index('audit_log_actor').on(t.siteId, t.actorUserId, t.createdAt),
+    index('audit_log_target').on(t.siteId, t.targetType, t.targetId, t.createdAt),
+    foreignKey({ name: 'audit_log_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    check('audit_log_outcome', sql`${t.outcome} IN ('ok', 'denied', 'failed')`),
+    check(
+      'audit_log_actor_kind',
+      sql`${t.actorKind} IN ('user', 'token', 'oauth_client', 'system')`,
+    ),
+    check(
+      'audit_log_json',
+      sql`(${t.actorMeta} IS NULL OR json_valid(${t.actorMeta})) AND (${t.detail} IS NULL OR json_valid(${t.detail}))`,
+    ),
+    check(
+      'audit_log_sizes',
+      sql`length(${t.action}) <= 64 AND (${t.detail} IS NULL OR length(${t.detail}) <= 2000) AND (${t.actorMeta} IS NULL OR length(${t.actorMeta}) <= 2000)`,
+    ),
+  ],
+)

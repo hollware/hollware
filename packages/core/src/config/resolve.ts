@@ -1,5 +1,6 @@
 import { readCollection, type SiteContext } from './collection.ts'
 import { ConfigError, Problems } from './config-error.ts'
+import { readAudit } from './audit.ts'
 import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
@@ -152,7 +153,8 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
   const url = readSiteUrl(keyPath(path, 'url'), raw['url'], problems)
   const cors = readCors(keyPath(path, 'cors'), raw['cors'], problems)
   const events = readEvents(keyPath(path, 'events'), raw['events'], url, problems)
-  return { key, locales, defaultLocale, styleGuide, collections, url, cors, events }
+  const audit = readAudit(keyPath(path, 'audit'), raw['audit'], problems)
+  return { key, locales, defaultLocale, styleGuide, collections, url, cors, events, audit }
 }
 
 function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> {

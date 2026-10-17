@@ -113,6 +113,7 @@ function compileSite(path: string, site: SiteDefinitionData, problems: Problems)
       })),
       ...(site.events.indexNow === null ? {} : { indexNow: site.events.indexNow }),
     },
+    audit: site.audit,
   }
 }
 

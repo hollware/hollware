@@ -1,3 +1,4 @@
+import type { AuditLogEntry } from '../audit/log.ts'
 import type { HollwareEnv } from '../index.ts'
 import type { Refusal } from '../oauth/server.ts'
 
@@ -61,3 +62,4 @@ export type GatewayLogEntry =
   | EnqueueFailedLog
   | OAuthErrorLog
   | RateLimitedLog
+  | AuditLogEntry

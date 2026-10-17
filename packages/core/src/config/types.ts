@@ -87,8 +87,15 @@ export interface SiteDefinition {
       /** The Worker secret that signs; Hollware's own sealed one when it is left out. */
       readonly secret?: string
     }[]
-    /** Tells IndexNow the URLs that changed; `key` names the Worker secret with the key. */
+    /** Tells IndexNow the URLs that changed; `key` is the key itself, which is public. */
     readonly indexNow?: { readonly key: string }
+  }
+  /** What the site's activity log keeps (ADR-037): no addresses, and forever, by default. */
+  readonly audit?: {
+    /** `hashed` keeps a keyed hash of the address of each request; `off` keeps nothing of it. */
+    readonly ipAddresses?: 'off' | 'hashed'
+    /** How many days a line is kept, 30 to 3650; `null` keeps the log as long as the site. */
+    readonly retentionDays?: number | null
   }
 }
 
@@ -141,6 +148,13 @@ export interface ResolvedSite {
   /** The origins that may call the read API from a page, each as `URL.origin` gives it. */
   readonly cors: { readonly origins: readonly string[] }
   readonly events: ResolvedEvents
+  readonly audit: ResolvedAudit
+}
+
+/** What the activity log of a site keeps (ADR-037). */
+export interface ResolvedAudit {
+  readonly ipAddresses: 'off' | 'hashed'
+  readonly retentionDays: number | null
 }
 
 /**

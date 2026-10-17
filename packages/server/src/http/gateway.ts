@@ -5,7 +5,9 @@ import { connect } from '../db/d1.ts'
 import { createD1Store } from '../db/index.ts'
 import { enqueue } from '../events/run.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
-import type { McpEndpoint } from '../mcp/index.ts'
+import type { AuditLogFor, McpEndpoint } from '../mcp/index.ts'
+import { actorOf, createAuditLog, type AuditActor } from '../audit/log.ts'
+import type { RequestPrincipal } from '../auth/types.ts'
 import type { Clock, Structure } from '../ports.ts'
 import { newWebhookSecret, seal } from '../structure/seal.ts'
 import { createSecretStore, createStructureStore } from '../structure/store.ts'
@@ -17,6 +19,7 @@ import { installReadApi } from './read-api.ts'
 import type { Handlers } from '../ops/types.ts'
 import { installIdentity } from '../identity/routes.ts'
 import { installAuthorize } from '../oauth/authorize.ts'
+import { adminClient } from '../oauth/admin.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
@@ -139,6 +142,19 @@ export function createGateway(options: GatewayOptions): Gateway {
       },
     },
   })
+
+  /**
+   * The activity log of a request (ADR-037), for an actor known once the client has said what it
+   * is. A person in the admin is a `user`; any other OAuth client, an `oauth_client`.
+   */
+  const auditOf =
+    (
+      c: Context<GatewayEnv>,
+      principal: RequestPrincipal,
+      adminClientId: string | null,
+    ): AuditLogFor =>
+    (meta) =>
+      auditAs(c, actorOf(principal, meta, adminClientId))
 
   /**
    * A protected route: the resource server of `resource` answers a request without a token and a
@@ -305,6 +321,17 @@ export function createGateway(options: GatewayOptions): Gateway {
           analytics: analyticsReaderOf(c.env),
           structure: structureOf(db, c.env.HOLLWARE_SECRET),
         },
+        // A read token never gets here; the admin's client never calls MCP.
+        ...(principal.kind === 'read'
+          ? {}
+          : {
+              audit: {
+                log: auditOf(c, principal, null),
+                defer: (work: Promise<void>) => {
+                  c.executionCtx.waitUntil(work)
+                },
+              },
+            }),
       })
     }),
   )
@@ -322,17 +349,36 @@ export function createGateway(options: GatewayOptions): Gateway {
   }
   // The rest of the authorization server: its metadata (RFC 8414), the token endpoint, which
   // revokes too, and registration when the config turns it on. `/authorize` is ours.
-  installAuthorize(app, { sites: siteKeys, clock, oauth })
+  /** The activity log of a request for an actor the route knows itself (ADR-037). */
+  const auditAs = (c: Context<GatewayEnv>, actor: AuditActor) =>
+    createAuditLog({
+      db: c.env.DB,
+      actor,
+      requestId: c.get('requestId'),
+      address: c.req.header('cf-connecting-ip') ?? null,
+      master: c.env.HOLLWARE_SECRET,
+      now: () => clock.now(),
+      log,
+    })
+  /** A site as the activity log needs it, current with D1: a route of no token refreshed nothing. */
+  const auditSite = async (c: Context<GatewayEnv>, key: string) => {
+    await options.refresh?.(c.env.DB)
+    return sites.get(key)
+  }
+  installAuthorize(app, { sites: siteKeys, clock, oauth, site: auditSite, audit: auditAs })
   const authorizationServer = (c: Context<GatewayEnv>) =>
     oauth(c.env.HOLLWARE_PUBLIC_URL).authorizationServer.fetch(c.req.raw, c.env, workerContext(c))
   app.all('/.well-known/oauth-authorization-server', authorizationServer)
   app.all('/oauth/*', authorizationServer)
 
-  installIdentity(app, { clock })
+  installIdentity(app, { clock, site: auditSite, audit: auditAs })
   installAdmin(app, { oauth })
 
   installAdminApi(app, {
     sites: siteKeys,
+    site: (key) => sites.get(key),
+    audit: async (c, principal) =>
+      auditOf(c, principal, (await adminClient(oauth(c.env.HOLLWARE_PUBLIC_URL), c.env)).clientId),
     clock,
     oauth,
     protect: (c, proceed) => protectWrites(c, 'v1', proceed),
@@ -349,6 +395,12 @@ export function createGateway(options: GatewayOptions): Gateway {
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
       notify,
       structure: structureOf,
+      audit: async (c, principal) =>
+        auditOf(
+          c,
+          principal,
+          (await adminClient(oauth(c.env.HOLLWARE_PUBLIC_URL), c.env)).clientId,
+        ),
     })
   }
 

@@ -71,6 +71,10 @@ const links = computed<NavigationMenuItem[][]>(() => [
     { label: m.value.nav.settings, type: 'label' },
     { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
     { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
+    // The log names people and their tokens: only an owner reads it.
+    ...(roleKey.value === 'owner'
+      ? [{ label: m.value.nav.activity, icon: 'i-lucide-scroll-text', to: '/activity' }]
+      : []),
   ],
 ])
 

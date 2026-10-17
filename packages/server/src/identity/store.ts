@@ -276,8 +276,12 @@ export async function removePasskey(
 }
 
 /** Ends the session of a cookie, whoever's it is: the one browser that holds it signs out. */
-export async function endSession(db: Db, secret: string): Promise<void> {
-  await db.delete(sessions).where(eq(sessions.hash, await hashSecret(secret)))
+export async function endSession(db: Db, secret: string): Promise<string | null> {
+  const [ended] = await db
+    .delete(sessions)
+    .where(eq(sessions.hash, await hashSecret(secret)))
+    .returning({ userId: sessions.userId })
+  return ended?.userId ?? null
 }
 
 /** Ends every session of a person (T-44): each browser signs in with a passkey again. */

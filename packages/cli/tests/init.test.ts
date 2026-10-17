@@ -30,7 +30,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, d1Failed, fakeWrangler, type FakeWrangler } from './support/fake-wrangler.ts'
-import { initialDefinition } from '../src/commands/init.ts'
+import { activityNote, auditOf, initialDefinition } from '../src/commands/init.ts'
 import { run } from './support/io.ts'
 import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 
@@ -70,7 +70,7 @@ function setup(
 
 /** The definition of the preset blog in English, as the site's first (ADR-033). */
 const BLOG_DEFINITION =
-  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description","date"]}}}}'
+  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description","date"]}}}}'
 
 const SCRIPT = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('blog', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
@@ -135,6 +135,8 @@ describe('hollware init', () => {
         '    hollware import <directory> --url <your Hollware URL> --token-file <file>',
         '  An MCP client sends it as the header "Authorization: Bearer <token>" to <your Hollware URL>/mcp.',
         '  More tokens: hollware token create --label <text>',
+        '',
+        'The activity log of the site keeps no address and keeps every line; an owner changes that in the admin (Site, Activity log).',
       ].join('\n'),
     ])
     expect(out.join('\n').split(SECRET)).toHaveLength(2)
@@ -347,7 +349,39 @@ describe('the first definition of a site', () => {
 
     expect(initialDefinition(cwd, undefined, undefined)).toBeNull()
     expect(() => initialDefinition(cwd, 'blog', undefined)).toThrow(
-      'leave out --preset and --locales',
+      'leave out --preset, --locales, --ip-addresses and --audit-retention-days',
     )
+    expect(() =>
+      initialDefinition(cwd, undefined, undefined, auditOf('hashed', undefined)),
+    ).toThrow('leave out --preset, --locales, --ip-addresses and --audit-retention-days')
+  })
+})
+
+describe('what the activity log of the new site keeps (ADR-037)', () => {
+  it('keeps no address and every line unless a flag says otherwise', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'init-audit-'))
+
+    expect([
+      Reflect.get(Object(initialDefinition(cwd, undefined, undefined)), 'audit'),
+      Reflect.get(
+        Object(initialDefinition(cwd, undefined, undefined, auditOf('hashed', '90'))),
+        'audit',
+      ),
+    ]).toEqual([
+      { ipAddresses: 'off', retentionDays: null },
+      { ipAddresses: 'hashed', retentionDays: 90 },
+    ])
+    expect(activityNote(auditOf('hashed', '30'))).toBe(
+      'The activity log of the site keeps a keyed hash of the address of each request and keeps each line 30 days; an owner changes that in the admin (Site, Activity log).',
+    )
+  })
+
+  it.each([
+    ['an address kept raw', 'raw', undefined, '--ip-addresses is off or hashed, not "raw".'],
+    ['29 days', undefined, '29', 'not "29"'],
+    ['3651 days', undefined, '3651', 'not "3651"'],
+    ['days that are no number', undefined, '90d', 'not "90d"'],
+  ])('refuses %s', (_name, addresses, days, message) => {
+    expect(() => auditOf(addresses, days)).toThrow(message)
   })
 })

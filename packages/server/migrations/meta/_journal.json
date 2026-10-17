@@ -113,6 +113,13 @@
       "when": 1792202683651,
       "tag": "0015_site_changes_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1792246270578,
+      "tag": "0016_audit_log",
+      "breakpoints": true
     }
   ]
 }

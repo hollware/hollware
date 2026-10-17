@@ -188,13 +188,39 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
     ['/admin/', 'Home'],
     ['/admin/site', 'Site'],
     ['/admin/tokens', 'Tokens'],
+    ['/admin/activity', 'Activity'],
     ['/signin', 'Sign in'],
   ] as const) {
     await owner.goto(path)
     await expect(owner.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
+    // The log loads after the page: axe reads it with its lines in.
+    if (heading === 'Activity') {
+      await expect(owner.getByRole('row', { name: /Published an entry/ }).first()).toBeVisible()
+    }
     await expectAccessible(owner)
     await shot(owner, heading.toLowerCase().replaceAll(' ', '-'))
   }
+})
+
+test('the owner reads the activity log: what was done, by whom, and the detail of a line', async () => {
+  await owner.goto('/admin/activity')
+  await expect(owner.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible()
+  const published = owner.getByRole('row', { name: /Published an entry/ }).first()
+  await expect(published).toContainText('Olga')
+  await expect(published).toContainText('person')
+  await expect(published).toContainText('ok')
+
+  await published.getByRole('button', { name: 'Show the detail of publish' }).click()
+  await expect(owner.getByRole('dialog').getByText('Declared by the client')).toBeVisible()
+  await expectAccessible(owner)
+  await owner.keyboard.press('Escape')
+
+  // A filter by action asks the server again: only the lines of that action stay.
+  await owner.getByRole('combobox', { name: 'Action' }).click()
+  await owner.getByRole('option', { name: 'Approved a review' }).click()
+  await expect(owner.getByRole('row', { name: /Approved a review/ }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /Published an entry/ })).toHaveCount(0)
+  await shot(owner, 'activity-filtered')
 })
 
 test('the owner switches the admin to Spanish from the person menu, and it stays Spanish', async () => {

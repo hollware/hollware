@@ -42,6 +42,7 @@ export const SITE: ResolvedSite = {
   url: null,
   cors: { origins: [] },
   events: { webhooks: [], indexNow: null },
+  audit: { ipAddresses: 'off', retentionDays: null },
 }
 
 const unused = (): never => {

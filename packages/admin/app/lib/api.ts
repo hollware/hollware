@@ -37,7 +37,11 @@ export interface ApiDeps {
 export function createApi(deps: ApiDeps) {
   const text = deps.text ?? (() => en.api)
   /** A request with the token; on a refusal of the token, the person signs in again. */
-  async function send(path: string, init: RequestInit): Promise<unknown> {
+  async function sendFor<Answer>(
+    path: string,
+    init: RequestInit,
+    read: (response: Response) => Promise<Answer>,
+  ): Promise<Answer> {
     const token = await deps.auth.token()
     if (token === null) {
       await deps.auth.signIn(deps.here())
@@ -52,17 +56,17 @@ export function createApi(deps: ApiDeps) {
       await deps.auth.signIn(deps.here())
       return new Promise<never>(() => {})
     }
+    if (response.ok) return read(response)
     const body: unknown = await response.json()
-    if (!response.ok) {
-      const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
-      throw new ApiError(
-        error.code ?? 'internal',
-        error.message ?? text().answered(response.status),
-        error.fix ?? text().tryAgain,
-      )
-    }
-    return body
+    const error = (body ?? {}) as { code?: string; message?: string; fix?: string }
+    throw new ApiError(
+      error.code ?? 'internal',
+      error.message ?? text().answered(response.status),
+      error.fix ?? text().tryAgain,
+    )
   }
+  const send = (path: string, init: RequestInit): Promise<unknown> =>
+    sendFor(path, init, (response) => response.json() as Promise<unknown>)
 
   return {
     /** An operation, as the MCP tool of that name takes and answers it. */
@@ -72,6 +76,11 @@ export function createApi(deps: ApiDeps) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
       })) as Output<Name>
+    },
+
+    /** A file of the admin's own routes, such as the CSV of the activity log, with the token. */
+    async file(path: string): Promise<Blob> {
+      return sendFor(`/v1/admin/${path}`, { method: 'GET' }, (response) => response.blob())
     },
 
     /** One of the admin's own routes, `/v1/admin/…`: tokens and invitations. */

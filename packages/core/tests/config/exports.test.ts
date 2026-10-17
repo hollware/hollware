@@ -33,7 +33,10 @@ import * as entry from './entry.ts'
 describe('the config module', () => {
   it('exports these values, and the package entry re-exports them', () => {
     expect(Object.keys(config).sort()).toEqual([
+      'AUDIT_RETENTION_MAX_DAYS',
+      'AUDIT_RETENTION_MIN_DAYS',
       'ConfigError',
+      'DEFAULT_AUDIT',
       'DEFAULT_MAX_MARKDOWN_BYTES',
       'INDEXNOW_KEY',
       'MAX_MARKDOWN_BYTES_CEILING',

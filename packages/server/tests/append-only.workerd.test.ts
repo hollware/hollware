@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 // matching an id (or, for tags, a revision and tag) that is taken; or one of these tables gains a
 // column that is neither in its `_immutable` trigger nor listed as derived below, or a unique key
 // that its `_no_replace` trigger does not check; or site_changes can be changed, deleted or
-// replaced by its id (migrations/0015, T-83).
+// replaced by its id (migrations/0015, T-83); or a line of audit_log can be changed, replaced, or
+// deleted before its site's retention has passed, or kept after it (migrations/0016, ADR-037).
 
 const TABLES = [
   {
@@ -132,11 +133,15 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, and the three of site_changes', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, and the three of site_changes and of audit_log', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
     expect(results).toEqual([
+      // migrations/0016_audit_log.sql (ADR-037).
+      { name: 'audit_log_immutable', tbl_name: 'audit_log' },
+      { name: 'audit_log_no_delete', tbl_name: 'audit_log' },
+      { name: 'audit_log_no_replace', tbl_name: 'audit_log' },
       // migrations/0008_search.sql: the full-text index follows what is published.
       { name: 'entries_fts_publication', tbl_name: 'entries' },
       { name: 'entries_fts_removal', tbl_name: 'entries' },
@@ -179,6 +184,75 @@ describe('append-only tables', () => {
         "INSERT OR REPLACE INTO site_changes (id, site_id, version, created_at, updated_at) SELECT ?1, site_id, 2, 'x', 'x' FROM site_changes WHERE id = ?1",
       ),
     ).rejects.toThrow('append-only: a change of the structure is written once')
+  })
+
+  describe('audit_log (ADR-037)', () => {
+    /** A site whose definition keeps the log for `retention` days, or forever with `null`. */
+    async function siteKeeping(retention: unknown): Promise<string> {
+      const site = `log-${crypto.randomUUID().slice(0, 8)}`
+      await env.DB.prepare(
+        "INSERT INTO sites (id, definition, created_at, updated_at) VALUES (?1, ?2, 'now', 'now')",
+      )
+        .bind(site, JSON.stringify({ audit: { retentionDays: retention } }))
+        .run()
+      return site
+    }
+
+    /** A line of the site, written `daysAgo` days ago. */
+    async function line(site: string, daysAgo: number): Promise<string> {
+      const id = newId('aud')
+      const at = new Date(Date.now() - daysAgo * 86_400_000).toISOString()
+      await env.DB.prepare(
+        "INSERT INTO audit_log (id, site_id, action, outcome, actor_kind, created_at, updated_at) VALUES (?1, ?2, 'publish', 'ok', 'user', ?3, ?3)",
+      )
+        .bind(id, site, at)
+        .run()
+      return id
+    }
+
+    const remove = (id: string) =>
+      env.DB.prepare('DELETE FROM audit_log WHERE id = ?1').bind(id).run()
+
+    it('never changes a line, nor replaces one by its id', async () => {
+      const id = await line(await siteKeeping(null), 0)
+
+      await expect(
+        env.DB.prepare("UPDATE audit_log SET outcome = 'denied' WHERE id = ?1").bind(id).run(),
+      ).rejects.toThrow('append-only: a line of the activity log never changes')
+      await expect(
+        env.DB.prepare(
+          "INSERT OR REPLACE INTO audit_log (id, site_id, action, outcome, actor_kind, created_at, updated_at) SELECT id, site_id, 'publish', 'denied', 'user', 'x', 'x' FROM audit_log WHERE id = ?1",
+        )
+          .bind(id)
+          .run(),
+      ).rejects.toThrow('append-only: a line of the activity log is written once')
+    })
+
+    it('deletes a line only once it is older than the retention of its site', async () => {
+      const site = await siteKeeping(30)
+      const recent = await line(site, 29)
+      const old = await line(site, 31)
+
+      await expect(remove(recent)).rejects.toThrow(
+        'append-only: a line of the activity log is kept for the retention of its site',
+      )
+      await remove(old)
+      expect([await rowCount('audit_log', recent), await rowCount('audit_log', old)]).toEqual([
+        1, 0,
+      ])
+    })
+
+    it.each([
+      ['no retention', null],
+      ['a retention below 30 days, written around the operations', 1],
+      ['a retention that is no whole number', '30'],
+    ])('keeps every line of a site with %s', async (_name, retention) => {
+      const id = await line(await siteKeeping(retention), 4000)
+
+      await expect(remove(id)).rejects.toThrow(
+        'append-only: a line of the activity log is kept for the retention of its site',
+      )
+    })
   })
 
   describe.each(TABLES)('$table', (spec) => {

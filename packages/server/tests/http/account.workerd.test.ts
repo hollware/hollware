@@ -215,6 +215,16 @@ async function authorizeWith(worker: Booted, adminClient: string, cookie: string
   return new URL(response.headers.get('location') ?? '', PUBLIC_URL).pathname
 }
 
+/** The lines of the activity log of a person's own action (ADR-037): outcome, code and target. */
+async function auditOf(userId: string, action: string) {
+  const { results } = await env.DB.prepare(
+    'SELECT outcome, error_code, target_id FROM audit_log WHERE actor_user_id = ?1 AND action = ?2 ORDER BY created_at, id',
+  )
+    .bind(userId, action)
+    .all<{ outcome: string; error_code: string | null; target_id: string }>()
+  return results.map((row) => [row.outcome, row.error_code, row.target_id])
+}
+
 describe("a person's passkeys (T-54)", () => {
   it('lists them by label and dates, never their key or credential id', async () => {
     const worker = boot()
@@ -248,6 +258,10 @@ describe("a person's passkeys (T-54)", () => {
     expect(last.status).toBe(409)
     expect(await last.json()).toMatchObject({ code: 'conflict' })
     expect(await passkeyIds(me.userId)).toEqual([phone])
+    expect(await auditOf(me.userId, 'passkey.remove')).toEqual([
+      ['ok', null, laptop],
+      ['failed', 'conflict', phone],
+    ])
   })
 
   it("refuses another person's passkey, though the person has two of their own", async () => {
@@ -317,6 +331,10 @@ describe('the apps a person connected (T-45)', () => {
     expect(await refreshStatus(worker, app.clientId, app.refresh)).toBe(400)
     expect(admin.status).toBe(409)
     expect((await call(worker, me.access, '/v1/admin/account')).status).toBe(200)
+    expect(await auditOf(me.userId, 'app.revoke')).toEqual([
+      ['ok', null, grant],
+      ['failed', 'conflict', ours],
+    ])
   })
 
   it("refuses another person's grant, which keeps working", async () => {

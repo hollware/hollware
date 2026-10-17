@@ -1,3 +1,4 @@
+import { systemActor, type AuditActor, type AuditLog } from '../audit/log.ts'
 import type { ResolvedSite, Scope } from '@hollware/core'
 import type { Handlers } from '../ops/types.ts'
 import type { Principal } from '../auth/types.ts'
@@ -51,6 +52,11 @@ export async function runDueSchedules(input: {
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: object) => void
+  /**
+   * The activity log (ADR-037), for the deployment acting for the person who scheduled each
+   * entry; without it, no line is written.
+   */
+  readonly audit?: (actor: AuditActor, requestId: string) => AuditLog
 }): Promise<ScheduleRun> {
   const { site, store, handlers, clock, log } = input
   const due = await store.dueSchedules(site.key, clock.now().toISOString())
@@ -81,6 +87,16 @@ export async function runDueSchedules(input: {
       await store.cancelSchedule(site.key, schedule.entryId)
       cancelled += 1
     }
+    await input.audit?.(systemActor(schedule.actor.userId), requestId).write(site, {
+      action: 'schedule.publish',
+      outcome: answer.outcome === 'published' ? 'ok' : 'failed',
+      errorCode: answer.outcome === 'published' ? null : answer.outcome,
+      target: { type: 'entry', id: schedule.entryId },
+      detail: {
+        scheduledAt: schedule.scheduledAt,
+        scheduledBy: { kind: schedule.actor.kind, tokenId: schedule.actor.tokenId },
+      },
+    })
     log({
       kind: 'schedule',
       requestId,

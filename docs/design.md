@@ -76,6 +76,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-034](adr/0034-our-deployments-run-from-ci.md) | Our deployments run from CI | Accepted |
 | [ADR-035](adr/0035-a-push-to-release-publishes.md) | A push to `release` publishes, with no approval of the `npm` environment | Accepted |
 | [ADR-036](adr/0036-what-1-0-promises.md) | What 1.0 promises, and how the repository keeps it | Accepted |
+| [ADR-037](adr/0037-an-activity-log-of-who-did-what.md) | An activity log of who did what | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

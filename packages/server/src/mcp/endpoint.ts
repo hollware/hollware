@@ -19,6 +19,7 @@ import { answerResult, errorResult, readAnswer, type Answer } from './result.ts'
 import { scopeChallenge } from './scopes.ts'
 import { within } from './timeout.ts'
 import { createToolTable } from './tools.ts'
+import { operationLine } from '../audit/operations.ts'
 import type { McpCall, McpEndpoint, McpEndpointOptions, McpLogEntry } from './types.ts'
 import { REFRESH_CONTENT, refreshContentText } from './prompts.ts'
 import { invoke } from '../ops/invoke.ts'
@@ -99,6 +100,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
       client: declaredClient(envelope),
     }
     let outcome: string | null = null
+    let answered: unknown = null
     let isError = false
     let failure: HollwareError | null = null
     let result: CallToolResult | InputRequiredResult
@@ -107,6 +109,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
     const record = (answer: Answer): Answer => {
       outcome = answer.outcome
       isError = answer.isError
+      answered = answer.output
       return answer
     }
 
@@ -152,6 +155,16 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
       result = errorResult(failure)
     }
 
+    const line = operationLine(
+      spec,
+      input,
+      context.site.key,
+      failure === null ? { output: answered } : { errorCode: failure.code },
+    )
+    if (line !== null && call.audit !== undefined) {
+      await call.audit.log(context.client).write(context.site, line)
+    }
+
     emit({
       kind: 'call',
       requestId: call.requestId,
@@ -184,7 +197,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
           inputSchema: tool.input,
           outputSchema: tool.output,
           annotations: EFFECT_ANNOTATIONS[tool.spec.effect],
-          scopeChallenge: scopeChallenge(tool, () =>
+          scopeChallenge: scopeChallenge(tool, () => {
             emit({
               kind: 'call',
               requestId: call.requestId,
@@ -194,8 +207,14 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
               isError: true,
               durationMs: 0,
               detail: null,
-            }),
-          ),
+            })
+            const line = operationLine(tool.spec, null, call.context.site.key, {
+              errorCode: 'insufficient_scope',
+            })
+            if (line !== null && call.audit !== undefined) {
+              call.audit.defer(call.audit.log(null).write(call.context.site, line))
+            }
+          }),
         },
         (input, mcp) => runTool(tool.spec, input, mcp, call, request.era),
       )

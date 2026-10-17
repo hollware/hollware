@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { handlers } from '../../src/ops/index.ts'
 import { runDueSchedules } from '../../src/schedule/run.ts'
+import { createAuditLog, type AuditActor } from '../../src/audit/log.ts'
 import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
 import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 
@@ -40,13 +41,27 @@ async function post(world: World) {
   return created.entry.id
 }
 
-function run(world: World) {
+function run(world: World, audited = false) {
   return runDueSchedules({
     site: world.tenant.site,
     store: world.store,
     handlers,
     clock: world.time.clock,
     log: () => {},
+    ...(audited
+      ? {
+          audit: (actor: AuditActor, requestId: string) =>
+            createAuditLog({
+              db: env.DB,
+              actor,
+              requestId,
+              address: null,
+              master: undefined,
+              now: () => world.time.clock.now(),
+              log: () => {},
+            }),
+        }
+      : {}),
   })
 }
 
@@ -107,6 +122,41 @@ describe('publishAt', () => {
       publication?.acknowledged,
     ]).toEqual([world.tenant.userId, world.tenant.tokenId, JSON.stringify([TITLE_ACK])])
     expect(await run(world)).toEqual({ published: 0, cancelled: 0 })
+  })
+
+  it('writes a line of the activity log for what it publishes, as the deployment for who scheduled it (ADR-037)', async () => {
+    const world = await newWorld(env.DB, 'schedule-audit')
+    const id = await post(world)
+    await world.agent.publish({
+      id,
+      version: 1,
+      publishAt: LATER,
+      acknowledgeWarnings: [TITLE_ACK],
+    })
+
+    world.time.set(LATER)
+    await run(world, true)
+
+    const { results } = await env.DB.prepare(
+      'SELECT action, outcome, actor_kind, actor_user_id, actor_token_id, target_type, target_id, detail FROM audit_log WHERE site_id = ?1',
+    )
+      .bind(world.tenant.key)
+      .all()
+    expect(results).toEqual([
+      {
+        action: 'schedule.publish',
+        outcome: 'ok',
+        actor_kind: 'system',
+        actor_user_id: world.tenant.userId,
+        actor_token_id: null,
+        target_type: 'entry',
+        target_id: id,
+        detail: JSON.stringify({
+          scheduledAt: LATER,
+          scheduledBy: { kind: 'token', tokenId: world.tenant.tokenId },
+        }),
+      },
+    ])
   })
 
   it('takes an entry that changed after it was scheduled back to a draft at the time', async () => {

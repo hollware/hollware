@@ -1,4 +1,5 @@
 import * as z from 'zod'
+import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
 
 /**
  * The definition of a site as data (ADR-033): what D1 stores for it and what the operations that
@@ -76,6 +77,27 @@ export const siteDefinitionData = z.strictObject({
         .default(null),
     })
     .default({ webhooks: [], indexNow: null }),
+  audit: z
+    .strictObject({
+      ipAddresses: z
+        .enum(['off', 'hashed'])
+        .default('off')
+        .describe(
+          'Whether the activity log keeps the address of each request, as a hash keyed by the site, or nothing of it.',
+        ),
+      retentionDays: z
+        .number()
+        .int()
+        .min(AUDIT_RETENTION_MIN_DAYS)
+        .max(AUDIT_RETENTION_MAX_DAYS)
+        .nullable()
+        .default(null)
+        .describe(
+          'The days each line of the activity log is kept; null keeps it as long as the site.',
+        ),
+    })
+    .default({ ipAddresses: 'off', retentionDays: null })
+    .describe('What the activity log of the site keeps (ADR-037). Only an owner should change it.'),
   collections: z.record(z.string(), collectionDefinitionData),
 })
 

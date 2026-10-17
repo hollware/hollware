@@ -1,3 +1,4 @@
+import { personActor, type AuditActor, type AuditLog, type AuditSite } from '../audit/log.ts'
 import { isScope, type Scope } from '@hollware/core'
 import {
   AuthorizationError,
@@ -21,6 +22,10 @@ export interface AuthorizeOptions {
   readonly sites: ReadonlySet<string>
   readonly clock: Clock
   readonly oauth: (publicUrl: string) => OAuth
+  /** A site of the deployment as the activity log needs it, current with D1, or `undefined`. */
+  readonly site?: (c: Context<GatewayEnv>, key: string) => Promise<AuditSite | undefined>
+  /** The activity log of a request, for the person who allows an app (ADR-037). */
+  readonly audit?: (c: Context<GatewayEnv>, actor: AuditActor) => AuditLog
 }
 
 /** What a client gets when it asks for no scope: the baseline that `/mcp` and `/v1` name. */
@@ -216,6 +221,15 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
         scope,
         props,
       })
+      const site = await options.site?.(c, membership.site)
+      if (site !== undefined && options.audit !== undefined) {
+        await options.audit(c, personActor(signedIn.userId)).write(site, {
+          action: 'app.allow',
+          outcome: 'ok',
+          target: { type: 'client', id: approved.request.clientId },
+          detail: { scopes: scope },
+        })
+      }
       approved.headers.set('location', redirectTo)
       return new Response(null, { status: 302, headers: approved.headers })
     } catch (error) {

@@ -37,6 +37,10 @@ export const USAGE = [
   '  --site <key>     The key of your site, such as my-site; it never changes (default: my-site)',
   '  --preset <name>  What the site starts with: blog, docs or empty (default: blog)',
   '  --locales <list> Its locales, comma-separated, the first the default (default: en)',
+  '  --ip-addresses <off|hashed>',
+  '                   Whether the activity log keeps a keyed hash of each address (default: off)',
+  '  --audit-retention-days <n>',
+  '                   Days each line of the activity log is kept, 30 to 3650 (default: forever)',
   '  --pm <npm|pnpm>  The package manager that installs (default: npm)',
   '  --yes            Take the defaults: <dir> is my-hollware when it is not given',
   '  --no-install     Do not install, migrate or make the site',
@@ -70,7 +74,10 @@ export interface Choices {
   readonly pm: 'npm' | 'pnpm'
   readonly install: boolean
   readonly git: boolean
-  /** `--preset` and `--locales` as given, for `hollware init`, which checks them. */
+  /**
+   * `--preset`, `--locales`, `--ip-addresses` and `--audit-retention-days` as given, for
+   * `hollware init`, which checks them.
+   */
   readonly initFlags: readonly string[]
 }
 
@@ -86,6 +93,8 @@ export function readChoices(argv: readonly string[]): Choices {
           site: { type: 'string' },
           preset: { type: 'string' },
           locales: { type: 'string' },
+          'ip-addresses': { type: 'string' },
+          'audit-retention-days': { type: 'string' },
           pm: { type: 'string' },
           yes: { type: 'boolean' },
           'no-install': { type: 'boolean' },
@@ -126,6 +135,10 @@ export function readChoices(argv: readonly string[]): Choices {
     initFlags: [
       ...(values.preset === undefined ? [] : ['--preset', values.preset]),
       ...(values.locales === undefined ? [] : ['--locales', values.locales]),
+      ...(values['ip-addresses'] === undefined ? [] : ['--ip-addresses', values['ip-addresses']]),
+      ...(values['audit-retention-days'] === undefined
+        ? []
+        : ['--audit-retention-days', values['audit-retention-days']]),
     ],
   }
 }

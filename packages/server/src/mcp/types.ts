@@ -1,3 +1,4 @@
+import type { AuditLog } from '../audit/log.ts'
 import type { ErrorCode } from '@hollware/core'
 import type { Implementation } from '@modelcontextprotocol/server'
 import type { Principal } from '../auth/types.ts'
@@ -25,7 +26,19 @@ export interface McpCall {
    * The client is not here either: it is whatever the MCP client says about itself.
    */
   readonly context: Omit<OperationContext, 'principal' | 'requestId' | 'client' | 'view'>
+  /**
+   * The activity log of the request (ADR-037): every call of a tool that is not a read writes a
+   * line, refused ones too. `defer` keeps the Worker alive for a line written after the answer.
+   * Absent in the tests of the endpoint alone.
+   */
+  readonly audit?: {
+    readonly log: AuditLogFor
+    readonly defer: (work: Promise<void>) => void
+  }
 }
+
+/** The log of a request whose actor is known once the client has said what it is. */
+export type AuditLogFor = (meta: Readonly<Record<string, unknown>> | null) => AuditLog
 
 /** One line per call of a tool: what happened, never what was asked. */
 export interface McpCallLog {

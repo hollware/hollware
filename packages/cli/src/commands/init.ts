@@ -1,4 +1,6 @@
 import {
+  AUDIT_RETENTION_MAX_DAYS,
+  AUDIT_RETENTION_MIN_DAYS,
   hashPersonalToken,
   PERSONAL_TOKEN_TTL_DAYS,
   PRESETS,
@@ -39,6 +41,7 @@ import {
 export const INIT_USAGE = [
   'Usage: hollware init --site <key> [--preset <blog | docs | empty>] [--locales <list>]',
   '                     [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
+  '                     [--ip-addresses <off | hashed>] [--audit-retention-days <n>]',
   '',
   "Creates a site, its owner and the owner's first personal token in the project's D1 database,",
   'in one step, and prints the token once, with a link to set up the passkey of the admin (valid',
@@ -59,6 +62,11 @@ export const INIT_USAGE = [
   '  --owner-name <name>  The name of the owner',
   '  --database <name>    The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
   '  --url <url>          The public URL of Hollware, for the link (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
+  '  --ip-addresses <off | hashed>',
+  '                       Whether the activity log keeps a keyed hash of the address of each request',
+  '                       (default: off, nothing of it): an address is personal data',
+  '  --audit-retention-days <n>',
+  '                       The days each line of the activity log is kept, 30 to 3650 (default: forever)',
   '  --help               Show this help',
 ].join('\n')
 
@@ -78,6 +86,8 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       locales: { type: 'string' },
       database: { type: 'string' },
       url: { type: 'string' },
+      'ip-addresses': { type: 'string' },
+      'audit-retention-days': { type: 'string' },
       help: { type: 'boolean' },
     },
   })
@@ -89,7 +99,8 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     throw new UsageError('--site is required: name the site, such as --site my-site.')
   }
   const site = parseSiteKey(values.site)
-  const definition = initialDefinition(io.cwd, values.preset, values.locales)
+  const audit = auditOf(values['ip-addresses'], values['audit-retention-days'])
+  const definition = initialDefinition(io.cwd, values.preset, values.locales, audit)
   const ownerName =
     values['owner-name'] === undefined ? undefined : parseOwnerName(values['owner-name'])
   const target = chooseTarget(values)
@@ -106,7 +117,14 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   }
   const [first] = owners
   if (first !== undefined && typeof first['id'] === 'string') {
-    return await addSite(io, { site, ownerId: first['id'], database, target, definition })
+    return await addSite(io, {
+      site,
+      ownerId: first['id'],
+      database,
+      target,
+      definition,
+      audit,
+    })
   }
 
   const now = io.now()
@@ -180,6 +198,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       '    hollware import <directory> --url <your Hollware URL> --token-file <file>',
       '  An MCP client sends it as the header "Authorization: Bearer <token>" to <your Hollware URL>/mcp.',
       '  More tokens: hollware token create --label <text>',
+      ...(definition === null ? [] : ['', activityNote(audit)]),
     ].join('\n'),
   )
   return 0
@@ -194,6 +213,7 @@ async function addSite(
     database: string
     target: Target
     definition: unknown
+    audit: AuditChoice
   },
 ): Promise<number> {
   const { site, ownerId, database, target, definition } = where
@@ -244,6 +264,7 @@ async function addSite(
       secret,
       '',
       'The owner signs in to the admin as before, with the same passkey, and switches to the site.',
+      ...(definition === null ? [] : ['', activityNote(where.audit)]),
     ].join('\n'),
   )
   return 0
@@ -260,11 +281,12 @@ export function initialDefinition(
   cwd: string,
   preset: string | undefined,
   locales: string | undefined,
+  audit: AuditChoice = DEFAULT_AUDIT_CHOICE,
 ): unknown {
   if (existsSync(join(cwd, 'hollware.config.ts'))) {
-    if (preset !== undefined || locales !== undefined) {
+    if (preset !== undefined || locales !== undefined || audit.given) {
       throw new UsageError(
-        'this project has a hollware.config.ts, which the Worker moves into the database: leave out --preset and --locales, or delete the config first.',
+        'this project has a hollware.config.ts, which the Worker moves into the database: leave out --preset, --locales, --ip-addresses and --audit-retention-days, or delete the config first.',
       )
     }
     return null
@@ -283,5 +305,55 @@ export function initialDefinition(
       `--locales is a comma-separated list of locales, such as en,es; "${bad ?? ''}" is not one.`,
     )
   }
-  return sitePreset(chosen as Preset, list, list[0] ?? 'en')
+  return {
+    ...sitePreset(chosen as Preset, list, list[0] ?? 'en'),
+    audit: { ipAddresses: audit.ipAddresses, retentionDays: audit.retentionDays },
+  }
+}
+
+/** What the activity log of the new site keeps (ADR-037), and whether a flag said so. */
+export interface AuditChoice {
+  readonly ipAddresses: 'off' | 'hashed'
+  readonly retentionDays: number | null
+  readonly given: boolean
+}
+
+const DEFAULT_AUDIT_CHOICE: AuditChoice = { ipAddresses: 'off', retentionDays: null, given: false }
+
+/** `--ip-addresses` and `--audit-retention-days`, checked; the defaults when both are left out. */
+export function auditOf(addresses: string | undefined, days: string | undefined): AuditChoice {
+  if (addresses !== undefined && addresses !== 'off' && addresses !== 'hashed') {
+    throw new UsageError(`--ip-addresses is off or hashed, not "${addresses}".`)
+  }
+  let retentionDays: number | null = null
+  if (days !== undefined) {
+    retentionDays = /^\d+$/.test(days) ? Number(days) : Number.NaN
+    if (
+      !Number.isInteger(retentionDays) ||
+      retentionDays < AUDIT_RETENTION_MIN_DAYS ||
+      retentionDays > AUDIT_RETENTION_MAX_DAYS
+    ) {
+      throw new UsageError(
+        `--audit-retention-days is a whole number from ${AUDIT_RETENTION_MIN_DAYS} to ${AUDIT_RETENTION_MAX_DAYS}, not "${days}". Leave it out to keep every line.`,
+      )
+    }
+  }
+  return {
+    ipAddresses: addresses === 'hashed' ? 'hashed' : 'off',
+    retentionDays,
+    given: addresses !== undefined || days !== undefined,
+  }
+}
+
+/** What `init` says of the activity log of the new site, and where its owner changes it. */
+export function activityNote(audit: AuditChoice): string {
+  const addresses =
+    audit.ipAddresses === 'hashed'
+      ? 'keeps a keyed hash of the address of each request'
+      : 'keeps no address'
+  const kept =
+    audit.retentionDays === null
+      ? 'keeps every line'
+      : `keeps each line ${audit.retentionDays} days`
+  return `The activity log of the site ${addresses} and ${kept}; an owner changes that in the admin (Site, Activity log).`
 }

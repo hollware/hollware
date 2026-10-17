@@ -123,6 +123,7 @@ export function siteOf(
     url: null,
     cors: { origins: [] },
     events: { webhooks: [], indexNow: null },
+    audit: { ipAddresses: 'off', retentionDays: null },
   }
 }
 

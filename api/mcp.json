@@ -708,6 +708,37 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "audit": {
+                "additionalProperties": false,
+                "default": {
+                  "ipAddresses": "off",
+                  "retentionDays": null
+                },
+                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "properties": {
+                  "ipAddresses": {
+                    "default": "off",
+                    "description": "Whether the activity log keeps the address of each request, as a hash keyed by the site, or nothing of it.",
+                    "enum": ["off", "hashed"],
+                    "type": "string"
+                  },
+                  "retentionDays": {
+                    "anyOf": [
+                      {
+                        "maximum": 3650,
+                        "minimum": 30,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The days each line of the activity log is kept; null keeps it as long as the site."
+                  }
+                },
+                "type": "object"
+              },
               "collections": {
                 "additionalProperties": {
                   "additionalProperties": false,
@@ -1871,6 +1902,38 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "audit": {
+                "additionalProperties": false,
+                "default": {
+                  "ipAddresses": "off",
+                  "retentionDays": null
+                },
+                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "properties": {
+                  "ipAddresses": {
+                    "default": "off",
+                    "description": "Whether the activity log keeps the address of each request, as a hash keyed by the site, or nothing of it.",
+                    "enum": ["off", "hashed"],
+                    "type": "string"
+                  },
+                  "retentionDays": {
+                    "anyOf": [
+                      {
+                        "maximum": 3650,
+                        "minimum": 30,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The days each line of the activity log is kept; null keeps it as long as the site."
+                  }
+                },
+                "required": ["ipAddresses", "retentionDays"],
+                "type": "object"
+              },
               "collections": {
                 "additionalProperties": {
                   "additionalProperties": false,
@@ -2138,6 +2201,7 @@
               "styleGuide",
               "cors",
               "events",
+              "audit",
               "collections"
             ],
             "type": "object"
@@ -4352,6 +4416,37 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "audit": {
+                "additionalProperties": false,
+                "default": {
+                  "ipAddresses": "off",
+                  "retentionDays": null
+                },
+                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "properties": {
+                  "ipAddresses": {
+                    "default": "off",
+                    "description": "Whether the activity log keeps the address of each request, as a hash keyed by the site, or nothing of it.",
+                    "enum": ["off", "hashed"],
+                    "type": "string"
+                  },
+                  "retentionDays": {
+                    "anyOf": [
+                      {
+                        "maximum": 3650,
+                        "minimum": 30,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The days each line of the activity log is kept; null keeps it as long as the site."
+                  }
+                },
+                "type": "object"
+              },
               "collections": {
                 "additionalProperties": {
                   "additionalProperties": false,

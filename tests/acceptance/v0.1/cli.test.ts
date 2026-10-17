@@ -96,6 +96,10 @@ describe('AC-0.1-10: migrations', () => {
     )
 
     expect(rows?.map((row) => row['name'])).toEqual([
+      // migrations/0016: the activity log (ADR-037).
+      'audit_log_immutable',
+      'audit_log_no_delete',
+      'audit_log_no_replace',
       // The full-text index follows what is published (0008).
       'entries_fts_publication',
       'entries_fts_removal',

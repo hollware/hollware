@@ -90,11 +90,17 @@
     ],
     "init": [
       {
+        "audit-retention-days": {
+          "type": "string"
+        },
         "database": {
           "type": "string"
         },
         "help": {
           "type": "boolean"
+        },
+        "ip-addresses": {
+          "type": "string"
         },
         "local": {
           "type": "boolean"

@@ -34,6 +34,7 @@ declare module 'vue' {
     UModal: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/Modal.vue')['default']
     UNavigationMenu: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/NavigationMenu.vue')['default']
     UPagination: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/Pagination.vue')['default']
+    URadioGroup: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/RadioGroup.vue')['default']
     USelect: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USelectMenu: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/SelectMenu.vue')['default']
     USeparator: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_195e11ba50ac1e4ab2016c933f918f4c/node_modules/@nuxt/ui/dist/runtime/components/Separator.vue')['default']

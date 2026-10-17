@@ -99,6 +99,7 @@ describe('resolveConfig', () => {
       url: null,
       cors: { origins: [] },
       events: { webhooks: [], indexNow: null },
+      audit: { ipAddresses: 'off', retentionDays: null },
       collections: new Map([
         [
           'blog',
@@ -194,6 +195,7 @@ describe('resolveConfig', () => {
       url: null,
       cors: { origins: [] },
       events: { webhooks: [], indexNow: null },
+      audit: { ipAddresses: 'off', retentionDays: null },
       collections: new Map([
         [
           'posts',

@@ -63,6 +63,22 @@ it('calls an operation and an admin route with the token', async () => {
   ])
 })
 
+it('fetches a file of the admin with the token, and reads it as it is', async () => {
+  const w = world(() => new Response('a,b\r\n1,2\r\n', { headers: { 'content-type': 'text/csv' } }))
+
+  const file = await w.api.file('activity.csv?action=publish')
+
+  expect(await file.text()).toBe('a,b\r\n1,2\r\n')
+  expect(w.sent).toEqual([
+    {
+      url: '/v1/admin/activity.csv?action=publish',
+      method: 'GET',
+      authorization: 'Bearer access-1',
+      body: '',
+    },
+  ])
+})
+
 it('sends the person to sign in again on a 401, back to where they were', async () => {
   const w = world(() => new Response(null, { status: 401 }))
 

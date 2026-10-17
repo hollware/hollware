@@ -1,5 +1,6 @@
 export { createMcpEndpoint } from './endpoint.ts'
 export type {
+  AuditLogFor,
   McpCall,
   McpCallLog,
   McpEndpoint,

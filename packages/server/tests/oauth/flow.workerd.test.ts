@@ -28,7 +28,8 @@ import {
 // for an access token that `/mcp` accepts as the person, through the client, with the scopes the
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
 // refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
-// another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
+// another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
+// consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
   restoreLogs()
@@ -390,6 +391,21 @@ describe('an access token', () => {
 
     expect(tokens.scope).toBe('content:read content:write')
     expect(answer.status).toBe(200)
+    // The consent is a line of the site's activity log, as the person (ADR-037).
+    const { results } = await env.DB.prepare(
+      "SELECT action, actor_kind, target_type, target_id, detail FROM audit_log WHERE actor_user_id = ?1 AND action = 'app.allow'",
+    )
+      .bind(userId)
+      .all()
+    expect(results).toEqual([
+      {
+        action: 'app.allow',
+        actor_kind: 'user',
+        target_type: 'client',
+        target_id: clientId,
+        detail: '{"scopes":["content:read","content:write"]}',
+      },
+    ])
     expect(onlyCall(worker.seen).context.principal).toEqual({
       kind: 'oauth',
       userId,

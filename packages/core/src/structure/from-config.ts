@@ -77,6 +77,14 @@ export function definitionsFromConfig(config: HollwareConfig): Record<string, Si
         webhooks: (site.events?.webhooks ?? []).map((webhook) => ({ ...webhook })),
         indexNow: site.events?.indexNow ?? null,
       },
+      ...(site.audit === undefined
+        ? {}
+        : {
+            audit: {
+              ipAddresses: site.audit.ipAddresses ?? 'off',
+              retentionDays: site.audit.retentionDays ?? null,
+            },
+          }),
       collections: Object.fromEntries(
         Object.entries(site.collections).map(([name, collection]) => [
           name,

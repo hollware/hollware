@@ -10,7 +10,7 @@ import { create, type Io, type RunResult } from '../src/scaffold.ts'
 // database and its queues, the key of the site, Hollware's exact version for every Hollware
 // dependency, a .gitignore), writes into a directory that is not empty, stops running git init,
 // pnpm's allowed build scripts when pnpm installs, the install, the migrations and init in that order and in the project, stops printing init's
-// answer and the `claude mcp add` line, stops handing --preset and --locales to init, with the token, or goes on after a step failed. The
+// answer and the `claude mcp add` line, stops handing --preset, --locales, --ip-addresses and --audit-retention-days to init, with the token, or goes on after a step failed. The
 // programs it runs are not ours, so they are the one thing faked; the template is the real one,
 // made from templates/starter.
 
@@ -120,15 +120,42 @@ describe('create-hollware <dir>', () => {
     )
   })
 
-  it('hands --preset and --locales to init, as given', async () => {
+  it('hands --preset, --locales and what the activity log keeps to init, as given', async () => {
     const { io, calls, cwd } = world()
 
-    await create(['blog-cms', '--preset', 'docs', '--locales', 'es,en', '--no-git'], io)
+    await create(
+      [
+        'blog-cms',
+        '--preset',
+        'docs',
+        '--locales',
+        'es,en',
+        '--ip-addresses',
+        'hashed',
+        '--audit-retention-days',
+        '365',
+        '--no-git',
+      ],
+      io,
+    )
 
     const project = join(cwd, 'blog-cms')
     expect(calls.at(-1)).toEqual({
       command: join(project, 'node_modules', '.bin', 'hollware'),
-      args: ['init', '--site', 'my-site', '--preset', 'docs', '--locales', 'es,en', '--local'],
+      args: [
+        'init',
+        '--site',
+        'my-site',
+        '--preset',
+        'docs',
+        '--locales',
+        'es,en',
+        '--ip-addresses',
+        'hashed',
+        '--audit-retention-days',
+        '365',
+        '--local',
+      ],
       cwd: project,
     })
   })

@@ -8,6 +8,8 @@ import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { sitePreset, type Preset } from '@hollware/core'
 import { api, auth } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
+import { parseRetention } from '../lib/activity.ts'
+import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '@hollware/core'
 
 type Structure = Output<'get_structure'>
 interface Me {
@@ -31,6 +33,10 @@ const newKey = ref('')
 const newLocales = ref<string[]>(['en'])
 const newPreset = ref<Preset>('blog')
 const busy = ref(false)
+const ipAddresses = ref<'off' | 'hashed'>('off')
+const keepForever = ref(true)
+const retentionDays = ref<number | undefined>(undefined)
+const retentionError = ref<string | null>(null)
 const hookName = ref('')
 const hookUrl = ref('')
 /** The secret just made for a webhook: shown this once. */
@@ -99,6 +105,10 @@ async function load() {
   url.value = read.definition.url ?? ''
   origins.value = [...read.definition.cors.origins]
   styleGuide.value = read.definition.styleGuide ?? ''
+  ipAddresses.value = read.definition.audit.ipAddresses
+  keepForever.value = read.definition.audit.retentionDays === null
+  retentionDays.value = read.definition.audit.retentionDays ?? undefined
+  retentionError.value = null
 }
 onMounted(load)
 
@@ -121,6 +131,24 @@ async function saveSettings() {
     url: url.value.trim() === '' ? null : url.value.trim(),
     cors: { origins: [...origins.value] },
     styleGuide: styleGuide.value.trim() === '' ? null : styleGuide.value,
+  }
+  await change.run((confirm) =>
+    api.call('update_site', { version: current.version, definition, confirm }),
+  )
+}
+
+async function saveActivity() {
+  const current = structure.value
+  if (current === null) return
+  const retention = parseRetention(keepForever.value, retentionDays.value)
+  if (!retention.ok) {
+    retentionError.value = m.value.site.retentionInvalid(retention.min, retention.max)
+    return
+  }
+  retentionError.value = null
+  const definition = {
+    ...current.definition,
+    audit: { ipAddresses: ipAddresses.value, retentionDays: retention.days },
   }
   await change.run((confirm) =>
     api.call('update_site', { version: current.version, definition, confirm }),
@@ -242,6 +270,45 @@ const PRESETS = computed(() => [
           @cancel="change.cancel"
           @reload="load"
         />
+      </form>
+
+      <form
+        class="max-w-2xl space-y-4"
+        aria-labelledby="activity-log"
+        novalidate
+        @submit.prevent="saveActivity"
+      >
+        <h2 id="activity-log" class="font-semibold">{{ m.site.activityTitle }}</h2>
+        <p class="text-sm text-muted">{{ m.site.activityNote }}</p>
+        <URadioGroup
+          v-model="ipAddresses"
+          :legend="m.site.ipAddresses"
+          :description="m.site.ipHelp"
+          :items="[
+            { label: m.site.ipOff, value: 'off' },
+            { label: m.site.ipHashed, value: 'hashed' },
+          ]"
+        />
+        <URadioGroup
+          :model-value="keepForever ? 'forever' : 'days'"
+          :legend="m.site.retention"
+          :description="m.site.retentionHelp"
+          :items="[
+            { label: m.site.retentionForever, value: 'forever' },
+            { label: m.site.retentionDays, value: 'days' },
+          ]"
+          @update:model-value="(value) => (keepForever = value === 'forever')"
+        />
+        <UFormField v-if="!keepForever" :label="m.site.days" :error="retentionError ?? undefined">
+          <UInput
+            v-model.number="retentionDays"
+            type="number"
+            :min="AUDIT_RETENTION_MIN_DAYS"
+            :max="AUDIT_RETENTION_MAX_DAYS"
+            class="w-40"
+          />
+        </UFormField>
+        <UButton type="submit" :label="m.site.saveActivity" :loading="change.busy.value" />
       </form>
 
       <section aria-labelledby="webhooks" class="max-w-2xl space-y-4">

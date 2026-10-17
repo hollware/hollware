@@ -13,6 +13,7 @@ import type { Clock } from './ports.ts'
 import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
 import { dropExpired } from './identity/store.ts'
+import { createAuditLog, dropExpiredLines } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
@@ -132,7 +133,19 @@ export function createHollwareWith(
           handlers,
           clock,
           log: writeLog,
+          audit: (actor, requestId) =>
+            createAuditLog({
+              db: env.DB,
+              actor,
+              requestId,
+              address: null,
+              master: env.HOLLWARE_SECRET,
+              now: () => clock.now(),
+              log: writeLog,
+            }),
         })
+        // The lines of the activity log past the retention the owner chose (ADR-037).
+        await dropExpiredLines(env.DB, site, clock.now())
         // Then the outbox, which holds the events of what was just published, too.
         await sweepOutbox({ queue: env.EVENTS, deps: deliveryDeps(env, site) })
         // And the vectors that no event brought in line (v0.5), a few entries each minute.
