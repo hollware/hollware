@@ -343,8 +343,11 @@ test('signing in goes back to a page of this Hollware, and never to another host
   await owner.goto('/signin?return_to=%2Fadmin%2Ftokens')
   await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
   await expect(owner).toHaveURL(/\/admin\/tokens$/)
+  // The admin goes on loading (its session, then the page): the next visit waits for it to settle.
+  await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
 
   await owner.goto('/signin?return_to=%2F%5Cevil.example')
   await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
   await expect(owner).toHaveURL(new RegExp(`^${target().url}/admin/$`))
+  await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
 })
