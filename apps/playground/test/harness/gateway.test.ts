@@ -135,9 +135,12 @@ describe('the OAuth server of the built Worker', () => {
 })
 
 describe('a deployment without HOLLWARE_PUBLIC_URL', () => {
-  const alone = createHarnessWithoutPublicUrl()
+  // Made when its tests start, not when the file is read: a harness made then ran next to the one
+  // above while its tests ran, and a request of theirs lost its connection (CI, 2026-10-17).
+  let alone: ReturnType<typeof createHarnessWithoutPublicUrl>
 
   beforeAll(async () => {
+    alone = createHarnessWithoutPublicUrl()
     await alone.server.listen()
   })
 
