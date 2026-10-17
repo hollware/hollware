@@ -2,6 +2,19 @@ import type { describeSite, getEntry, getTranslations, listEntries, search } fro
 import type * as z from 'zod'
 
 export { signWebhook, verifyWebhook, type WebhookCheck } from '@hollware/core'
+export {
+  clearedPreviewCookie,
+  exchangeHeaders,
+  exchangePreviewLink,
+  isPreviewRefusal,
+  isPreviewToken,
+  isSecureRequest,
+  PREVIEW_COOKIE,
+  PREVIEW_COOKIE_MAX_AGE,
+  previewCookie,
+  previewTokenFromCookie,
+  type PreviewExchange,
+} from './preview.ts'
 
 export const name = '@hollware/client'
 

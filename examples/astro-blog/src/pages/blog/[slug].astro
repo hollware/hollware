@@ -1,16 +1,18 @@
 ---
+import { refusePreview } from '@hollware/astro'
 import { getLiveEntry, render } from 'astro:content'
 import Page from '../../layouts/Page.astro'
 
-// A page opened from the admin's "Preview on the site" carries a preview token: it reads the
-// latest revision of its entry, a draft included, and nothing may keep the answer.
-const preview = Astro.url.searchParams.get('hollware-preview') ?? undefined
-const noStore = preview === undefined ? {} : { 'cache-control': 'no-store' }
-if (preview !== undefined) Astro.response.headers.set('cache-control', 'no-store')
+// src/middleware.ts exchanged the link of the admin's "Preview on the site" for a cookie: the token
+// is in `Astro.locals`, it reads the latest revision of its entry, a draft included, and the
+// middleware answers `no-store`. A token that expired or is not valid is refused: the middleware
+// clears the cookie.
+const preview = Astro.locals.hollwarePreview
 
 const { entry, error } = await getLiveEntry('blog', { id: Astro.params.slug ?? '', preview })
 if (error || !entry) {
-  return new Response('Not found', { status: 404, headers: noStore })
+  if (error) refusePreview(Astro.locals, error)
+  return new Response('Not found', { status: 404 })
 }
 const { Content } = await render(entry)
 ---

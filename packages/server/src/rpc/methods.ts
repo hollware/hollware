@@ -69,7 +69,7 @@ function unknownSite(site: string, served: Iterable<string>): HollwareError {
 /** What a caller that presents a preview token that does not hold is told. */
 function previewRefused(message: string): HollwareError {
   return new HollwareError(
-    'invalid_input',
+    'invalid_preview',
     message,
     'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
   )

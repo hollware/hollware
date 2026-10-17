@@ -1,7 +1,7 @@
 import type { HollwareReader } from '@hollware/client'
-import { PREVIEW_QUERY_PARAM } from '@hollware/core'
-import { useFetch, useRequestEvent, useRoute } from 'nuxt/app'
-import { entryTags, groupTags, listTags, previewOf, recordTags, siteTags } from './tags.ts'
+import { appendResponseHeader, type H3Event } from 'h3'
+import { useFetch, useRequestEvent } from 'nuxt/app'
+import { entryTags, groupTags, listTags, recordTags, siteTags } from './tags.ts'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { PageEntry } from './types.ts'
 
@@ -23,10 +23,12 @@ function pageRequest() {
 
 /**
  * An entry, with its Comark document; `data` is null while it loads, `error` a 404 when it is not
- * published. When the page's URL carries `?hollware-preview=<token>` (the admin's "Preview on the
- * site"), it reads the latest revision of that entry instead: a draft too. The page then records
- * no cache tags and answers `no-store`, so nothing keeps it; a token that does not hold (expired,
- * of another entry) is an error, never the published version.
+ * published. A visitor who opened the admin's "Preview on the site" link has the token in the
+ * `hollware_preview` cookie (the server exchanged it for the link's `?hollware-preview=`), and the
+ * `/_hollware/entry` route reads the latest revision of that entry instead: a draft too. The page
+ * then answers `no-store`; a token that does not hold (expired, of another entry) is an error,
+ * never the published version, and when Hollware says it expired or is invalid the response
+ * clears the cookie.
  */
 export function useHollwareEntry(
   collection: MaybeRefOrGetter<string>,
@@ -37,18 +39,20 @@ export function useHollwareEntry(
     () =>
       `/_hollware/entry/${encodeURIComponent(toValue(collection))}/${encodeURIComponent(toValue(locale))}/${encodeURIComponent(toValue(slug))}`,
   )
-  const route = useRoute()
-  const preview = computed(() => previewOf(route.query))
   const event = pageRequest()
   return useFetch<{ outcome: 'ok'; entry: PageEntry }>(path, {
-    // A preview has a payload of its own: it never takes the published entry's place.
-    key: `${path.value}${preview.value === undefined ? '' : '?preview'}`,
-    query: computed(() =>
-      preview.value === undefined ? {} : { [PREVIEW_QUERY_PARAM]: preview.value },
-    ),
     transform: (answer) => {
-      if (preview.value === undefined) recordTags(event, entryTags(answer.entry))
+      recordTags(event, entryTags(answer.entry))
       return answer
+    },
+    // The route's refusal clears the cookie on its own answer, which is the page's own request
+    // to the server: hand the same `Set-Cookie` to the response of the page.
+    onResponseError: ({ response }) => {
+      if (event === undefined) return
+      for (const cookie of response.headers.getSetCookie()) {
+        // Nitro hands the page the event of h3, whichever type Nuxt gives it.
+        appendResponseHeader(event as unknown as H3Event, 'set-cookie', cookie)
+      }
     },
   })
 }

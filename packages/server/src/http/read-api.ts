@@ -48,6 +48,7 @@ function crossOriginOf(c: Context<GatewayEnv>): string | null {
 
 const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
   invalid_input: 400,
+  invalid_preview: 400,
   unknown_collection: 404,
   unknown_locale: 404,
 }

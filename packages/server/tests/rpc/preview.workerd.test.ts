@@ -86,7 +86,10 @@ describe('getEntry with a preview token', () => {
     )
 
     expect(stillGood.outcome).toBe('ok')
-    expect([error.code, error.message]).toEqual(['invalid_input', 'This preview link has expired.'])
+    expect([error.code, error.message]).toEqual([
+      'invalid_preview',
+      'This preview link has expired.',
+    ])
     expect(error.fix).toBe(
       'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
     )

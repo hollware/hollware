@@ -10,6 +10,8 @@ export const ERROR_CODES = [
   'unknown_collection',
   /** The input names a locale the site does not have. */
   'unknown_locale',
+  /** A preview link that has expired, or is not one Hollware made for this site (T-103). */
+  'invalid_preview',
   /** The token lacks a scope the operation requires; the message names every missing scope. */
   'insufficient_scope',
   /** The answer would exceed the output cap. Hollware never truncates content. */

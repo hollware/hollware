@@ -107,8 +107,10 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareContent'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
-    // Always: a page opened with a preview token is never kept, whatever `cache` is.
+    // Always: a page read with a preview token is never kept, whatever `cache` is, and the link
+    // of "Preview on the site" is exchanged for the cookie that holds the token.
     addServerPlugin(resolve('./runtime/server/preview'))
+    addServerHandler({ middleware: true, handler: resolve('./runtime/server/preview-exchange') })
     if (options.cache === 'purge') {
       addServerPlugin(resolve('./runtime/server/cache'))
       addServerHandler({

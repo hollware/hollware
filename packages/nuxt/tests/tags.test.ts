@@ -5,7 +5,6 @@ import {
   entryTags,
   groupTags,
   listTags,
-  previewOf,
   recordTags,
   tagsOf,
 } from '../src/runtime/tags.ts'
@@ -39,17 +38,5 @@ describe('the tags of a response', () => {
       edgeHeaders(['entry:ent_1'], 200, 'POST'),
       edgeHeaders([], 200, 'GET'),
     ]).toEqual([null, null, null])
-  })
-})
-
-describe('the preview token of a URL', () => {
-  it('is the non-empty string of hollware-preview, and nothing else', () => {
-    expect([
-      previewOf({ 'hollware-preview': 'hw_prv_a.b' }),
-      previewOf({ 'hollware-preview': '' }),
-      previewOf({ 'hollware-preview': ['x', 'y'] }),
-      previewOf({ preview: 'hw_prv_a.b' }),
-      previewOf({}),
-    ]).toEqual(['hw_prv_a.b', undefined, undefined, undefined, undefined])
   })
 })

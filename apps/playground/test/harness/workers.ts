@@ -95,12 +95,15 @@ export function createNuxtHarness() {
   })
 }
 
+/** The init of a request to a site: its headers, and whether it follows a redirect. */
+type SiteInit = Parameters<ReturnType<TestHarness['getWorker']>['fetch']>[1]
+
 /** The secret of Hollware's webhook to the Nuxt blog in the tests, which signs its events. */
 export const NUXT_HOLLWARE_WEBHOOK_SECRET = `whsec_${'5'.repeat(64)}`
 
 /** A request to the Nuxt blog, at SITE_URL. */
-export function nuxtFetch(server: TestHarness, path: string) {
-  return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}${path}`)
+export function nuxtFetch(server: TestHarness, path: string, init?: SiteInit) {
+  return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}${path}`, init)
 }
 
 /** The name of the Astro example's Worker (`examples/astro-blog`). */
@@ -120,8 +123,8 @@ export function createAstroHarness() {
 }
 
 /** A request to the Astro blog, at SITE_URL. */
-export function astroFetch(server: TestHarness, path: string) {
-  return server.getWorker(ASTRO_WORKER).fetch(`${SITE_URL}${path}`)
+export function astroFetch(server: TestHarness, path: string, init?: SiteInit) {
+  return server.getWorker(ASTRO_WORKER).fetch(`${SITE_URL}${path}`, init)
 }
 
 /**

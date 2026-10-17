@@ -21,6 +21,7 @@ export type {
 } from './source.ts'
 export type { HollwareReader } from '@hollware/client'
 export { createSource, hollwareBinding } from './source.ts'
+export { hollwarePreview, refusePreview, type HollwarePreviewLocals } from './preview.ts'
 
 /** The options of `hollwareLoader`. */
 export type HollwareLoaderOptions = SourceOptions & ReaderOptions

@@ -81,19 +81,45 @@ reaches the browser.
 ## Previews
 
 "Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`: a
-signed link for one entry, valid for one hour. A live collection reads the latest revision of that
-entry, a draft included, when `getLiveEntry` gets the token in its filter, and the page must not be
-cached:
+signed link for one entry, valid for one hour. `hollwarePreview()`, a middleware, exchanges the link
+for a cookie: a `303` to the same URL without the parameter (other parameters kept), with the token
+in `hollware_preview` (`HttpOnly`, `SameSite=Lax`, `Path=/`, an hour, and `Secure` on every request
+but `http://localhost` and `http://127.0.0.1`). The token is in a URL once, but for the first
+request's line in the logs; a value not shaped like a token sets no cookie. Every later request
+finds the token in `Astro.locals.hollwarePreview`, and its response is `no-store`:
+
+```ts
+// src/middleware.ts
+import { hollwarePreview } from '@hollware/astro'
+export const onRequest = hollwarePreview()
+```
+
+```ts
+// src/env.d.ts
+import type { HollwarePreviewLocals } from '@hollware/astro'
+
+declare global {
+  namespace App {
+    interface Locals extends HollwarePreviewLocals {}
+  }
+}
+```
+
+A live collection reads the latest revision of the entry, a draft included, when `getLiveEntry`
+gets the token in its filter:
 
 ```astro
 ---
-const preview = Astro.url.searchParams.get('hollware-preview') ?? undefined
-if (preview) Astro.response.headers.set('cache-control', 'no-store')
+import { refusePreview } from '@hollware/astro'
+const preview = Astro.locals.hollwarePreview
 const { entry, error } = await getLiveEntry('blog', { id: Astro.params.slug!, preview })
+if (error) refusePreview(Astro.locals, error)
 ---
 ```
 
 A token that is expired, forged or for another entry is an `error`, never the published version.
+`refusePreview` makes the response clear the cookie when Hollware says the token expired or is not
+valid; a token for another entry is answered as no entry and keeps it.
 The build-time `hollwareLoader` has no preview: a static page is built once, for everyone, so it
 only ever holds published content.
 

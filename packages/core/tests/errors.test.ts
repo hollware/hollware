@@ -11,6 +11,7 @@ describe('HollwareError', () => {
       'invalid_input',
       'unknown_collection',
       'unknown_locale',
+      'invalid_preview',
       'insufficient_scope',
       'output_too_large',
       'timeout',

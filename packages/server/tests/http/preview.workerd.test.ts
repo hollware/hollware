@@ -214,7 +214,7 @@ describe('the read API with a preview token', () => {
     expect(await another.json()).toEqual(await missing.json())
     expect(expired.headers.get('cache-control')).toBe('no-store')
     expect(await expired.json()).toEqual({
-      code: 'invalid_input',
+      code: 'invalid_preview',
       message: 'This preview link has expired.',
       fix: 'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
     })

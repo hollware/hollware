@@ -11,8 +11,13 @@ The Astro content loaders of Hollware. Boundary rules for this package:
 - It imports Astro as types only, and nothing of Cloudflare: a live loader gets its service
   binding through a function the site writes (`() => env.HOLLWARE`).
 - Drafts are left out, but for one case: a live loader's `loadEntry` takes `{ id, preview }` and
-  reads the latest revision of the entry a preview token names (`@hollware/nuxt` does the same
-  from the page's URL). A previewed entry carries no `cacheHint`, and the page sets `no-store`.
-  The build-time `hollwareLoader` has no preview: it is static, and holds published content only.
+  reads the latest revision of the entry a preview token names. The token reaches the page through
+  `hollwarePreview()` (`src/preview.ts`), a middleware that exchanges `?hollware-preview=<token>`
+  for the `hollware_preview` cookie with a `303`, puts the token on `Astro.locals`, and answers
+  every request that has one `no-store`; `refusePreview` clears the cookie for a token Hollware
+  says expired or is invalid, never for another entry's. The shape, the cookie and the URL without
+  the parameter are pure functions of `@hollware/client`. A previewed entry carries no
+  `cacheHint`. The build-time `hollwareLoader` has no preview: it is static, and holds published
+  content only.
 - `examples/astro-blog` is its proof: `apps/playground/test/harness/astro-site.test.ts` builds it
   and reads the playground over the service binding.
