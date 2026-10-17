@@ -133,7 +133,8 @@ export function createGateway(options: GatewayOptions): Gateway {
       make: async (site, name) => {
         if (master === undefined) return null
         const secret = newWebhookSecret()
-        await createSecretStore(db, () => clock.now()).write(site, name, await seal(master, secret))
+        const sealed = await seal(master, secret, { site, name })
+        await createSecretStore(db, () => clock.now()).write(site, name, sealed)
         return secret
       },
     },

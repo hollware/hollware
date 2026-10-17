@@ -74,7 +74,7 @@ async function setUp() {
             await createSecretStore(env.DB, () => NOW).write(
               site,
               name,
-              await seal(MASTER, 'whsec_made'),
+              await seal(MASTER, 'whsec_made', { site, name }),
             )
             return 'whsec_made'
           },
@@ -457,6 +457,8 @@ describe('make_webhook_secret', () => {
       { outcome: 'not_found' },
     ])
     const sealed = await createSecretStore(env.DB, () => NOW).read(key, 'webhook:site')
-    expect(await unseal(MASTER, sealed ?? '')).toBe('whsec_made')
+    expect(await unseal(MASTER, sealed ?? '', { site: key, name: 'webhook:site' })).toBe(
+      'whsec_made',
+    )
   })
 })

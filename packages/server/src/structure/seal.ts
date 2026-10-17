@@ -1,12 +1,23 @@
 /**
  * Sealing a secret of the structure (ADR-033) under the Worker secret `HOLLWARE_SECRET`, so that
  * the database alone never holds one in clear: AES-GCM with a 256-bit key that is the SHA-256 of
- * that secret, and a fresh 96-bit nonce each time. What is stored is `v1.` and the base64url of
- * the nonce and the ciphertext with its tag. A sealed value that was tampered with, or sealed
- * under another `HOLLWARE_SECRET`, does not open.
+ * that secret, and a fresh 96-bit nonce each time. What is stored is `v2.` and the base64url of
+ * the nonce and the ciphertext with its tag, sealed with the site and the name of the secret as
+ * associated data: a value moved to another row of D1 does not open there (T-71 of the threat
+ * model). One that was tampered with, or sealed under another `HOLLWARE_SECRET`, does not open.
+ * A `v1.` value, sealed before the place was bound, still opens wherever it is.
  */
 
-const PREFIX = 'v1.'
+const PREFIX = 'v2.'
+const BEFORE_PLACES = 'v1.'
+
+/** Where a sealed secret belongs: the site and the name it is stored under. */
+export interface Place {
+  readonly site: string
+  readonly name: string
+}
+
+const placeOf = (place: Place) => new TextEncoder().encode(`${place.site}\n${place.name}`)
 
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -30,11 +41,11 @@ async function keyOf(master: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', digest, 'AES-GCM', false, ['encrypt', 'decrypt'])
 }
 
-export async function seal(master: string, value: string): Promise<string> {
+export async function seal(master: string, value: string, place: Place): Promise<string> {
   const nonce = crypto.getRandomValues(new Uint8Array(12))
   const cipher = new Uint8Array(
     await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
+      { name: 'AES-GCM', iv: nonce, additionalData: placeOf(place) },
       await keyOf(master),
       new TextEncoder().encode(value),
     ),
@@ -45,13 +56,18 @@ export async function seal(master: string, value: string): Promise<string> {
   return `${PREFIX}${base64url(sealed)}`
 }
 
-/** The value of a sealed secret, or `null` when it does not open under `master`. */
-export async function unseal(master: string, sealed: string): Promise<string | null> {
-  if (!sealed.startsWith(PREFIX)) return null
+/** The value of a sealed secret, or `null` when it does not open under `master` at `place`. */
+export async function unseal(master: string, sealed: string, place: Place): Promise<string | null> {
+  const bound = sealed.startsWith(PREFIX)
+  if (!bound && !sealed.startsWith(BEFORE_PLACES)) return null
   try {
     const bytes = fromBase64url(sealed.slice(PREFIX.length))
     const plain = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: bytes.slice(0, 12) },
+      {
+        name: 'AES-GCM',
+        iv: bytes.slice(0, 12),
+        ...(bound ? { additionalData: placeOf(place) } : {}),
+      },
       await keyOf(master),
       bytes.slice(12),
     )

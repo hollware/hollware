@@ -104,11 +104,11 @@ export function createHollwareWith(
     ownSecret: async (webhook) => {
       const master = env.HOLLWARE_SECRET
       if (master === undefined) return undefined
-      const sealed = await createSecretStore(env.DB, () => clock.now()).read(
-        site.key,
-        `webhook:${webhook}`,
-      )
-      return sealed === null ? undefined : ((await unseal(master, sealed)) ?? undefined)
+      const name = `webhook:${webhook}`
+      const sealed = await createSecretStore(env.DB, () => clock.now()).read(site.key, name)
+      return sealed === null
+        ? undefined
+        : ((await unseal(master, sealed, { site: site.key, name })) ?? undefined)
     },
   })
   return {
