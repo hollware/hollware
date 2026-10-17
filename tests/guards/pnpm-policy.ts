@@ -10,7 +10,8 @@ import type { TextFile, Violation } from './types.ts'
  *   `no-downgrade`.
  * - Every `allowBuilds` entry carries a trailing `# reason`.
  * - Every `minimumReleaseAgeExclude` and `trustPolicyExclude` entry is one exact `name@version`
- *   with a trailing `# reason; expires YYYY-MM-DD` comment whose date has not passed.
+ *   with a trailing `# reason; expires YYYY-MM-DD` comment whose date has not passed; so is
+ *   every advisory `auditConfig.ignoreGhsas` passes over, each one GHSA id.
  * - Every catalog version is exact: no `^`, `~`, `*` or range, `npm:` aliases included. The
  *   keys stay sorted, as the file says.
  * - The root `packageManager` pins pnpm with its `sha512` hash.
@@ -29,6 +30,7 @@ export const MINIMUM_RELEASE_AGE = 1440
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const NPM_ALIAS = /^npm:(?:@[^/@]+\/)?[^/@]+@(.+)$/
 const EXACT_PACKAGE_VERSION = /^(?:@[^/@]+\/)?[^/@\s]+@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
+const GHSA_ID = /^GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}$/
 const PACKAGE_MANAGER = /^pnpm@\d+\.\d+\.\d+\+sha512\.[0-9a-f]{128}$/
 
 /** Whether a catalog value is an exact version, or an `npm:` alias of one. */
@@ -88,19 +90,35 @@ export function checkPnpmPolicy(input: PnpmPolicyInput): Violation[] {
   }
 
   // Each exception to a policy is one exact version, with why and until when.
-  for (const [key, policy] of [
-    ['minimumReleaseAgeExclude', 'minimumReleaseAge'],
-    ['trustPolicyExclude', 'trustPolicy'],
-  ] as const) {
-    const exclude = doc.get(key, true)
+  const exceptions = [
+    {
+      key: 'minimumReleaseAgeExclude',
+      policy: 'minimumReleaseAge',
+      exclude: doc.get('minimumReleaseAgeExclude', true),
+      entry: EXACT_PACKAGE_VERSION,
+      what: 'one exact name@version, never a range or a pattern',
+    },
+    {
+      key: 'trustPolicyExclude',
+      policy: 'trustPolicy',
+      exclude: doc.get('trustPolicyExclude', true),
+      entry: EXACT_PACKAGE_VERSION,
+      what: 'one exact name@version, never a range or a pattern',
+    },
+    {
+      key: 'auditConfig.ignoreGhsas',
+      policy: 'the audit',
+      exclude: doc.getIn(['auditConfig', 'ignoreGhsas'], true),
+      entry: GHSA_ID,
+      what: 'one GHSA id of an advisory, such as GHSA-xxxx-xxxx-xxxx',
+    },
+  ] as const
+  for (const { key, policy, exclude, entry: pattern, what } of exceptions) {
     if (isSeq(exclude)) {
       for (const item of exclude.items) {
         const entry = scalarString(item) ?? JSON.stringify(plain(item))
-        if (!EXACT_PACKAGE_VERSION.test(entry)) {
-          report(
-            'exclude-entry',
-            `${key} entry ${entry} must be one exact name@version, never a range or a pattern`,
-          )
+        if (!pattern.test(entry)) {
+          report('exclude-entry', `${key} entry ${entry} must be ${what}`)
         }
         const comment = isScalar(item) ? (yaml.trailingComment(item) ?? '') : ''
         const expires = /\bexpires (\d{4}-\d{2}-\d{2})\b/.exec(comment)?.[1]

@@ -6,7 +6,8 @@ import { readText } from '../support/repo.ts'
 
 // Fails when: pnpm-workspace.yaml lowers minimumReleaseAge below 1440, drops trustPolicy:
 // no-downgrade, lists an allowBuilds entry without a "# reason", lists a
-// minimumReleaseAgeExclude or trustPolicyExclude entry that is not exact, has no reason, has no "expires YYYY-MM-DD"
+// minimumReleaseAgeExclude or trustPolicyExclude entry that is not exact, or an auditConfig.ignoreGhsas
+// entry that is no GHSA id, has no reason, has no "expires YYYY-MM-DD"
 // or has expired, pins a catalog version that is not exact, or leaves the catalog unsorted;
 // or the root packageManager loses its sha512 hash.
 
@@ -105,6 +106,23 @@ describe('pnpm policy', () => {
         'pnpm-policy/exclude-entry: trustPolicyExclude entry cssnano@^9 must be one exact name@version, never a range or a pattern',
         'pnpm-policy/exclude-reason: trustPolicyExclude entry cssnano@^9 needs a trailing "# <reason>; expires YYYY-MM-DD" comment with a reason',
         'pnpm-policy/exclude-expired: trustPolicyExclude entry semver@6.3.1 expired on 2026-10-10: remove it and let trustPolicy apply',
+      ])
+    })
+
+    it('holds the advisories the audit passes over to the same rules: one GHSA id, a reason, not expired', () => {
+      expect(
+        messages({
+          exclude: [
+            'auditConfig:',
+            '  ignoreGhsas:',
+            '    - GHSA-86w9-cpqp-85rv # no fix yet, dev server only; expires 2026-10-20',
+            '    - CVE-2026-1 # a CVE is no advisory id; expires 2026-10-20',
+            '    - GHSA-vfj7-8cjw-p6xm # build globs only; expires 2026-10-10',
+          ].join('\n'),
+        }),
+      ).toEqual([
+        'pnpm-policy/exclude-entry: auditConfig.ignoreGhsas entry CVE-2026-1 must be one GHSA id of an advisory, such as GHSA-xxxx-xxxx-xxxx',
+        'pnpm-policy/exclude-expired: auditConfig.ignoreGhsas entry GHSA-vfj7-8cjw-p6xm expired on 2026-10-10: remove it and let the audit apply',
       ])
     })
 

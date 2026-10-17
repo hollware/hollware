@@ -89,6 +89,13 @@ minimumReleaseAge: 1440
 trustPolicy: no-downgrade
 # Exact versions that trustPolicy refuses while their publisher is the same one. Each needs a
 # reason and an expiry date, as minimumReleaseAgeExclude does.
+# Advisories that `pnpm audit` passes over while they have no fixed version and reach no published
+# package (T-92 of docs/security/threat-model.md). Each needs a reason and an expiry date, as the
+# excludes above do; the release audits the published packages whatever this says.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv # node-forge <=1.4.0, through listhen, Nuxt's dev server, in apps/web and examples/nuxt-blog only; fix in review, digitalbazaar/forge#1152; expires 2026-11-17
+    - GHSA-vfj7-8cjw-p6xm # braces <=3.0.3, through nitropack's globs of the build config, in apps/web and examples/nuxt-blog only; fix in review, micromatch/braces#70; expires 2026-11-17
 trustPolicyExclude:
   - semver@6.3.1 # @babel/core 7 (through nuxt's vite-builder) pins the semver 6 line, published before npm had provenance; expires 2026-11-15
   - cssnano@9.8.0 # nuxt 4.6.1 needs ^9.4.0; from 9.1.2 npm writes the same trusted publisher id without its "oidc:" prefix; expires 2026-11-15

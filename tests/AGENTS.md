@@ -29,9 +29,9 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/brand.test.ts`: hollware.com and the admin share one dark-only theme (one theme block: Inter, JetBrains Mono, neutral greys; black as primary and emerald in both Nuxt UI configs, Nuxt UI's radius and width, no slot changed), and the sign-in pages of the Worker are dark with the same ground and primary.
 - `tests/conventions/starter-template.test.ts`: the template that create-hollware ships is made by `scripts/sync-starter.ts` from `templates/starter` when the package builds or packs, and is never committed: the starter's files, the catalog's exact versions, Hollware's own as `HOLLWARE_VERSION`, a tsconfig that stands alone.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a peer that is a caret range and also a dev dependency from the catalog.
-- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in what the workspace packages and apps install.
+- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in the workspace.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
-- `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds and excludes, exact catalog.
+- `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds, excludes, ignored advisories, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
 - `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` lists `no_nodejs_compat` and `no_nodejs_compat_v2` and no positive Node.js flag; outside `templates/`, `send_metrics` is false; a Worker of Hollware (D1 binding `DB`) lists `global_fetch_strictly_public` and binds `OAUTH_KV` in every environment with bindings of its own.
 - `tests/conventions/worker-projects.test.ts`: every Wrangler config sits in a workspace package that defines `build` and `types:check`, and `types:check` names a config below the package directory.
