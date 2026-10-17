@@ -302,7 +302,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
               :aria-label="collapsed ? `${me?.user?.name ?? m.person.you} · ${role}` : undefined"
             >
               <UAvatar :text="initial" size="2xs" aria-hidden="true" />
-              <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? '' }}</span>
+              <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? m.person.you }}</span>
               <span v-if="!collapsed" class="ms-auto font-mono text-xs text-muted">{{ role }}</span>
             </UButton>
           </UDropdownMenu>
