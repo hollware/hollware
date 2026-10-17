@@ -173,3 +173,24 @@ export function createHarnessWithoutPublicUrl() {
     },
   }
 }
+
+/** What miniflare answers when its connection to the Worker drops: no answer of the Worker's. */
+const LOST_CONNECTION = 'Network connection lost.'
+
+/**
+ * A request sent again, once, when miniflare lost its connection to the Worker before the Worker
+ * answered: a 500 whose body is miniflare's own error, with no line of the Worker's in its log.
+ * Seen in CI only, about one run in three since 2026-10-17, always on one request of
+ * gateway.test.ts (reported to cloudflare/workers-sdk). Any answer of the Worker, a 500 of its own
+ * included, is returned as it is, and so is a second lost connection.
+ */
+export async function retryingLostConnection<
+  Answer extends { readonly status: number; clone(): { text(): Promise<string> } },
+>(send: () => Promise<Answer>, log: (message: string) => void = console.warn): Promise<Answer> {
+  const first = await send()
+  if (first.status !== 500) return first
+  const body = await first.clone().text()
+  if (!body.startsWith(`Error: ${LOST_CONNECTION}`)) return first
+  log(`miniflare lost its connection to the Worker; sending the request once more`)
+  return send()
+}

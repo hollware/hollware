@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { agentWith, migrate, seedOwnerToken, type Agent } from './support.ts'
-import { createHarnessWithoutPublicUrl, createPlaygroundHarness, HOLLWARE_URL } from './workers.ts'
+import {
+  createHarnessWithoutPublicUrl,
+  createPlaygroundHarness,
+  HOLLWARE_URL,
+  retryingLostConnection,
+} from './workers.ts'
 
 // Fails when: the gateway of the built Hollware Worker (packages/server/src/http, src/auth) stops
 // answering what AC-0.1-6 says, as the Worker runs outside the test runner of the server: a request
@@ -21,6 +26,10 @@ let token: string
 const HEALTH = `${HOLLWARE_URL}/health`
 
 function mcpRequest(url: string, headers: Record<string, string>) {
+  return retryingLostConnection(() => sendMcp(url, headers))
+}
+
+function sendMcp(url: string, headers: Record<string, string>) {
   return server.fetch(url, {
     method: 'POST',
     headers: {
