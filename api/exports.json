@@ -44,6 +44,27 @@
       "writeReport": "value"
     }
   },
+  "@hollware/astro": {
+    ".": {
+      "HollwareCollectionFilter": "type",
+      "HollwareLoaderOptions": "type",
+      "HollwareReader": "type",
+      "ListOptions": "type",
+      "LoadContext": "type",
+      "ReaderOptions": "type",
+      "Source": "type",
+      "SourceEntry": "type",
+      "SourceOptions": "type",
+      "Translation": "type",
+      "createSource": "value",
+      "hollwareBinding": "value",
+      "hollwareLiveLoader": "value",
+      "hollwareLoader": "value",
+      "hollwareTranslations": "value",
+      "loadInto": "value",
+      "name": "value"
+    }
+  },
   "@hollware/client": {
     ".": {
       "ClientOptions": "type",

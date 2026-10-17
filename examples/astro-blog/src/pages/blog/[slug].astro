@@ -1,0 +1,17 @@
+---
+import { getLiveEntry, render } from 'astro:content'
+import Page from '../../layouts/Page.astro'
+
+const { entry, error } = await getLiveEntry('blog', Astro.params.slug ?? '')
+if (error || !entry) {
+  return new Response('Not found', { status: 404 })
+}
+const { Content } = await render(entry)
+---
+
+<Page title={String(entry.data['title'] ?? entry.id)}>
+  <article>
+    <h1>{String(entry.data['title'] ?? entry.id)}</h1>
+    <Content />
+  </article>
+</Page>

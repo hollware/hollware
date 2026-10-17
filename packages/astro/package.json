@@ -1,0 +1,56 @@
+{
+  "name": "@hollware/astro",
+  "version": "0.10.0",
+  "description": "Read Hollware from an Astro site: a content loader, over a service binding or HTTP.",
+  "homepage": "https://hollware.com",
+  "bugs": {
+    "url": "https://github.com/hollware/hollware/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hollware/hollware.git",
+    "directory": "packages/astro"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test",
+    "publint": "publint --strict"
+  },
+  "dependencies": {
+    "@hollware/client": "workspace:*",
+    "@hollware/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "astro": "catalog:",
+    "publint": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "astro": "^7.4.0"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

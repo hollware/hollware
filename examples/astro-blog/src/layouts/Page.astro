@@ -1,0 +1,20 @@
+---
+interface Props {
+  title: string
+}
+const { title } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content="Hollware" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <nav><a href="/">Blog</a></nav>
+    <main><slot /></main>
+  </body>
+</html>

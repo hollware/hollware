@@ -14,6 +14,7 @@
   "fixed": [
     [
       "@hollware/core",
+      "@hollware/astro",
       "@hollware/nuxt",
       "@hollware/server",
       "@hollware/client",

@@ -11,6 +11,7 @@ catalogMode: prefer
 # Exact versions only. Each one was published at least 24 hours before it was
 # pinned, so it already passes minimumReleaseAge. Keep the list sorted.
 catalog:
+  '@astrojs/cloudflare': 14.4.0
   # A pre-release: the 2026-07-28 requirement sets exist only in the 0.2 alphas.
   # A release candidate, chosen with Hono 4.13.13 as the fallback (ADR-003, spike S1).
   # The copy the lockfile already holds through @cloudflare/vitest-plugin: pinning a newer one
@@ -53,6 +54,7 @@ catalog:
   '@tanstack/vue-table': 8.21.3
   '@types/node': 24.19.2
   '@vitejs/plugin-vue': 6.0.10
+  astro: 7.4.0
   codemirror: 6.0.2
   comark: 0.7.0
   drizzle-kit: 0.31.11
@@ -76,6 +78,9 @@ catalog:
 
 overrides:
   vite@*: 'catalog:'
+  # @cloudflare/vitest-plugin 1.4.3 pins zod 4.6.5 exactly; one zod for the workspace
+  # (tests/conventions/single-copies.test.ts), the catalog's, a patch release above it.
+  zod@4.6.5: 'catalog:'
 
 peerDependencyRules:
   allowAny:
@@ -87,8 +92,6 @@ peerDependencyRules:
 # exact minimumReleaseAgeExclude entry with a reason and an expiry date.
 minimumReleaseAge: 1440
 trustPolicy: no-downgrade
-# Exact versions that trustPolicy refuses while their publisher is the same one. Each needs a
-# reason and an expiry date, as minimumReleaseAgeExclude does.
 # Advisories that `pnpm audit` passes over while they have no fixed version and reach no published
 # package (T-92 of docs/security/threat-model.md). Each needs a reason and an expiry date, as the
 # excludes above do; the release audits the published packages whatever this says.
@@ -96,6 +99,8 @@ auditConfig:
   ignoreGhsas:
     - GHSA-86w9-cpqp-85rv # node-forge <=1.4.0, through listhen, Nuxt's dev server, in apps/web and examples/nuxt-blog only; fix in review, digitalbazaar/forge#1152; expires 2026-11-17
     - GHSA-vfj7-8cjw-p6xm # braces <=3.0.3, through nitropack's globs of the build config, in apps/web and examples/nuxt-blog only; fix in review, micromatch/braces#70; expires 2026-11-17
+# Exact versions that trustPolicy refuses while their publisher is the same one. Each needs a
+# reason and an expiry date, as minimumReleaseAgeExclude does.
 trustPolicyExclude:
   - semver@6.3.1 # @babel/core 7 (through nuxt's vite-builder) pins the semver 6 line, published before npm had provenance; expires 2026-11-15
   - cssnano@9.8.0 # nuxt 4.6.1 needs ^9.4.0; from 9.1.2 npm writes the same trusted publisher id without its "oidc:" prefix; expires 2026-11-15

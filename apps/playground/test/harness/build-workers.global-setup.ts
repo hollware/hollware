@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 // The projects whose Workers the harness tests run: Hollware (this project), the example site
-// and, below, the Nuxt example.
+// and, below, the Nuxt and Astro examples.
 const projects = [
   new URL('../../', import.meta.url),
   new URL('../../../../examples/worker-site/', import.meta.url),
@@ -30,4 +30,11 @@ export default function buildWorkers() {
       env: { ...process.env, HOLLWARE_BEACON: 'http://localhost' },
     })
   }
+  // The Astro example builds with Astro, which runs Vite itself.
+  const astro = new URL('../../../../examples/astro-blog/', import.meta.url)
+  execFileSync(fileURLToPath(new URL('node_modules/.bin/astro', astro)), ['build'], {
+    cwd: fileURLToPath(astro),
+    stdio: 'pipe',
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+  })
 }

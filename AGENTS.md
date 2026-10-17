@@ -17,24 +17,24 @@ deleted when v1.0 ships, together with this section.
 
 ## Commands
 
-| Command                                                                   | What it does                                                                              |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                           |
-| `vp check`                                                                | Format, lint and type-check the whole repo                                                |
-| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                               |
-| `vp run -r build`                                                         | Build every package                                                                       |
-| `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95         |
-| `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup         |
-| `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types                      |
-| `vp run check:local`                                                      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance               |
-| `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions           |
-| `vp run test:acceptance`                                                  | The acceptance suite of the stage, against the built playground and example site          |
-| `vp run e2e:admin`                                                        | The admin in Chromium with a virtual passkey and axe (`playwright install chromium` once) |
-| `vp run e2e:install`                                                      | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token |
-| `vp run e2e:upgrade`                                                      | A 0.3.0 project from npm, moved to this checkout and migrated; its data and token work    |
-| `vp run eval:search`                                                      | Search quality against a deployment with semantic search (`-- --hollware <url>`)          |
-| `node scripts/api.ts --write`                                             | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks       |
-| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                  |
+| Command                                                                   | What it does                                                                      |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                   |
+| `vp check`                                                                | Format, lint and type-check the whole repo                                        |
+| `vp test`                                                                 | Run every test project; `vp test --project <name>` runs one                       |
+| `vp run -r build`                                                         | Build every package                                                               |
+| `vp run bench`                                                            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
+| `vp run check:budgets`                                                    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
+| `vp run check:push`                                                       | The CI check job: check, test, bench, build, budgets, publint, types              |
+| `vp run check:local`                                                      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance       |
+| `vp run test:conformance`                                                 | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
+| `vp run test:acceptance`                                                  | The acceptance suite of the stage, against the built playground and example site  |
+| `vp run e2e:admin`                                                        | Admin in Chromium, virtual passkey and axe (`playwright install chromium` once)   |
+| `vp run e2e:install`                                                      | `create-hollware` from this checkout, then MCP, publish and a read token          |
+| `vp run e2e:upgrade`                                                      | A 0.3.0 project from npm, moved to this checkout, migrated; data and token work   |
+| `vp run eval:search`                                                      | Search quality against a deployment with semantic search (`-- --hollware <url>`)  |
+| `node scripts/api.ts --write`                                             | Writes the public API, `api/` (ADR-036); `api-check.ts --against <ref>`: breaks   |
+| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
 Always run the project-local `vp` (through `pnpm exec` or package scripts). A
 global `vp` of another version breaks the Cloudflare plugin. Supervised servers are
@@ -99,12 +99,14 @@ new process group, so the child outlives its supervisor.
 - `packages/cli` — the `hollware` CLI.
 - `packages/create-hollware` — `npm create hollware`.
 - `packages/nuxt` — `@hollware/nuxt`: reads Hollware from a Nuxt site.
+- `packages/astro` — `@hollware/astro`: Astro content loaders for Hollware.
 - `packages/agents` — `@hollware/agents`: a reviewer, a translator and an auditor that never publish.
 - `apps/playground` — a local Hollware instance for development.
 - `apps/web` — hollware.com: the landing page and the docs, read from Hollware.
 - `templates/starter` — the thin project users get.
 - `examples/worker-site` — a blog on a Worker that reads Hollware over a service binding.
 - `examples/nuxt-blog` — a Nuxt blog on a Worker that reads Hollware through `@hollware/nuxt`.
+- `examples/astro-blog` — an Astro blog on a Worker, through `@hollware/astro`.
 - `examples/agents-worker` — the Worker of `@hollware/agents` for the playground's blog.
 - `tests/conformance/worker` — the Hollware Worker that the MCP conformance suite runs against.
 

@@ -42,6 +42,8 @@ export const BUILT = {
   hollware: new URL('../../dist/hollware_playground/', import.meta.url),
   // Nuxt's Cloudflare preset writes the Worker and its wrangler.json to .output/server.
   nuxt: new URL('../../../../examples/nuxt-blog/.output/server/', import.meta.url),
+  // The Astro adapter writes the Worker and its wrangler.json to dist/server.
+  astro: new URL('../../../../examples/astro-blog/dist/server/', import.meta.url),
 }
 
 /** The built hollware.com (`apps/web`), Worker and wrangler.json, as Nuxt writes them. */
@@ -90,6 +92,27 @@ export const NUXT_HOLLWARE_WEBHOOK_SECRET = `whsec_${'5'.repeat(64)}`
 /** A request to the Nuxt blog, at SITE_URL. */
 export function nuxtFetch(server: TestHarness, path: string) {
   return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}${path}`)
+}
+
+/** The name of the Astro example's Worker (`examples/astro-blog`). */
+export const ASTRO_WORKER = 'hollware-astro-blog'
+
+/** The built Hollware Worker and the Astro blog, which reads it over its service binding. */
+export function createAstroHarness() {
+  return createTestHarness({
+    workers: [
+      {
+        configPath: new URL('wrangler.json', BUILT.hollware),
+        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+      },
+      { configPath: new URL('wrangler.json', BUILT.astro) },
+    ],
+  })
+}
+
+/** A request to the Astro blog, at SITE_URL. */
+export function astroFetch(server: TestHarness, path: string) {
+  return server.getWorker(ASTRO_WORKER).fetch(`${SITE_URL}${path}`)
 }
 
 /**
