@@ -5,6 +5,15 @@ import { fileURLToPath } from 'node:url'
 import { createTestHarness, type TestHarness } from 'wrangler'
 
 /**
+ * Wrangler registers every Worker it runs by name in a dev registry, which is one directory for the
+ * whole machine by default. The files of these tests run at once, each with a `hollware-playground`
+ * of its own, and a request could reach the one of a file that had just closed it: "Network
+ * connection lost" (seen in CI, 2026-10-17). Each test process keeps its Workers in a registry of
+ * its own; the Workers of one harness bind one another without it.
+ */
+process.env['WRANGLER_REGISTRY_PATH'] = mkdtempSync(join(tmpdir(), 'hollware-registry-'))
+
+/**
  * The one harness pattern (the v0.1 plan): every request to Hollware goes to HOLLWARE_URL, and the
  * Hollware Worker gets it as its HOLLWARE_PUBLIC_URL, so the Host and Origin it checks are the
  * ones the tests send.
