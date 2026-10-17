@@ -13,5 +13,6 @@
   "0011_structure.sql": "f09b81d1cc1fa69fa398bd08629ba14c7261774caa0bec4ba94dcad12e092b23",
   "0012_site_secrets.sql": "296637f45a6ad24b114c4d3ed0a1b4131e62eadfb7fdba45237d01762447f667",
   "0013_site_events.sql": "9adcdd6cc48b5c64f53a1d91d1106b307334abe0d95e6f597d369afb0e16013b",
-  "0014_entry_trash.sql": "dc512b6403e2d85907dc1696d7a1478cbf85db6c50521e22eea90c9bffaabd77"
+  "0014_entry_trash.sql": "dc512b6403e2d85907dc1696d7a1478cbf85db6c50521e22eea90c9bffaabd77",
+  "0015_site_changes_append_only.sql": "9ca40f9a48e5b2d7e9b9ebf0fad9cd1de7c9d6ad350fc6588b156abfe545b4bc"
 }

@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest'
 // trigger stops covering a column, or covers a derived one; a `_no_replace` trigger stops
 // matching an id (or, for tags, a revision and tag) that is taken; or one of these tables gains a
 // column that is neither in its `_immutable` trigger nor listed as derived below, or a unique key
-// that its `_no_replace` trigger does not check.
+// that its `_no_replace` trigger does not check; or site_changes can be changed, deleted or
+// replaced by its id (migrations/0015, T-83).
 
 const TABLES = [
   {
@@ -131,7 +132,7 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, and the two of search', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, and the three of site_changes', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
@@ -148,7 +149,36 @@ describe('append-only tables', () => {
       { name: 'revisions_immutable', tbl_name: 'revisions' },
       { name: 'revisions_no_delete', tbl_name: 'revisions' },
       { name: 'revisions_no_replace', tbl_name: 'revisions' },
+      // migrations/0015_site_changes_append_only.sql (T-83).
+      { name: 'site_changes_immutable', tbl_name: 'site_changes' },
+      { name: 'site_changes_no_delete', tbl_name: 'site_changes' },
+      { name: 'site_changes_no_replace', tbl_name: 'site_changes' },
     ])
+  })
+
+  it('keep site_changes as it was written: no line is changed, deleted or replaced (T-83)', async () => {
+    const site = `audit-${crypto.randomUUID().slice(0, 8)}`
+    await env.DB.prepare("INSERT INTO sites (id, created_at, updated_at) VALUES (?1, 'now', 'now')")
+      .bind(site)
+      .run()
+    await env.DB.prepare(
+      "INSERT INTO site_changes (id, site_id, version, created_at, updated_at) VALUES (?1, ?2, 1, 'now', 'now')",
+    )
+      .bind(`sit_${site}`, site)
+      .run()
+    const attempt = (sql: string) => env.DB.prepare(sql).bind(`sit_${site}`).run()
+
+    await expect(attempt("UPDATE site_changes SET after = '{}' WHERE id = ?1")).rejects.toThrow(
+      'append-only: a change of the structure never changes',
+    )
+    await expect(attempt('DELETE FROM site_changes WHERE id = ?1')).rejects.toThrow(
+      'append-only: a change of the structure is never deleted',
+    )
+    await expect(
+      attempt(
+        "INSERT OR REPLACE INTO site_changes (id, site_id, version, created_at, updated_at) SELECT ?1, site_id, 2, 'x', 'x' FROM site_changes WHERE id = ?1",
+      ),
+    ).rejects.toThrow('append-only: a change of the structure is written once')
   })
 
   describe.each(TABLES)('$table', (spec) => {
