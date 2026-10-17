@@ -31,11 +31,63 @@ export function partsAt(root: string, ref: string, files: readonly string[]) {
   return parts
 }
 
+/** The version of a release tag of `@hollware/core`, as `[major, minor, patch, prerelease]`. */
+function versionOf(tag: string): [number, number, number, string] | null {
+  const match = /^@hollware\/core@(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(tag)
+  if (match === null) return null
+  return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] ?? '']
+}
+
+/**
+ * The tag that holds the promise of ADR-036: the newest release of `@hollware/core` from
+ * 1.0.0-rc.0 on, a release candidate included, or `null` before there is one. Among tags of one
+ * version, a release outranks its candidates; candidates are ordered by their number.
+ */
+export function promisedTag(tags: readonly string[]): string | null {
+  const ranked = tags
+    .map((tag) => ({ tag, version: versionOf(tag) }))
+    .filter((item): item is { tag: string; version: [number, number, number, string] } => {
+      return item.version !== null && item.version[0] >= 1
+    })
+  const order = (a: [number, number, number, string], b: [number, number, number, string]) => {
+    for (let index = 0; index < 3; index++) {
+      const difference = Number(a[index]) - Number(b[index])
+      if (difference !== 0) return difference
+    }
+    if (a[3] === b[3]) return 0
+    if (a[3] === '') return 1
+    if (b[3] === '') return -1
+    return a[3].localeCompare(b[3], 'en', { numeric: true })
+  }
+  ranked.sort((a, b) => order(a.version, b.version))
+  return ranked.at(-1)?.tag ?? null
+}
+
 export async function main(root: string, argv: readonly string[]): Promise<number> {
-  const at = argv.indexOf('--against')
-  const ref = argv[at + 1]
-  if (at === -1 || ref === undefined) {
-    console.error('Usage: node scripts/api-check.ts --against <git ref>')
+  let ref: string | undefined
+  if (argv.includes('--against-promise')) {
+    const tags = execFileSync('git', ['tag', '--list', '@hollware/core@*'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter((tag) => tag !== '')
+    const promised = promisedTag(tags)
+    if (promised === null) {
+      console.log(
+        'No release of 1.x yet: the public API promises nothing to compare with (ADR-036).',
+      )
+      return 0
+    }
+    ref = promised
+  } else {
+    const at = argv.indexOf('--against')
+    ref = at === -1 ? undefined : argv[at + 1]
+  }
+  if (ref === undefined) {
+    console.error(
+      'Usage: node scripts/api-check.ts --against <git ref> | --against-promise (the newest release from 1.0.0-rc.0 on)',
+    )
     return 2
   }
   const now = await surfaceOf(root)

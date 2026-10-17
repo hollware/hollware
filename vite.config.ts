@@ -108,7 +108,14 @@ export default defineConfig({
       // local registry that proxies npm, in an empty directory (scripts/e2e-install.ts and
       // scripts/e2e-upgrade.ts). They need the network.
       'e2e:install': { command: 'node scripts/e2e-install.ts', cache: false },
-      'e2e:upgrade': { command: 'node scripts/e2e-upgrade.ts --from 0.3.0', cache: false },
+      'e2e:upgrade': { command: 'node scripts/e2e-upgrade.ts', cache: false },
+      // The integrations of 1.0 (AC-1.0-3): Nuxt, Astro and React Router sites, built, reading the
+      // built playground over their bindings: published entries, drafts refused, and previews.
+      'e2e:integrations': {
+        command:
+          'vp test run --project playground:harness apps/playground/test/harness/nuxt-site.test.ts apps/playground/test/harness/astro-site.test.ts apps/playground/test/harness/react-router-site.test.ts',
+        cache: false,
+      },
       // The search evaluation (v0.5, AC-0.5-2) against a deployment with semantic search:
       // `vp run eval:search -- --hollware <url> --token-file <file> [--seed]`.
       'eval:search': { command: 'node scripts/eval-search.ts', cache: false },

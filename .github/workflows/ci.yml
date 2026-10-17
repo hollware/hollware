@@ -54,6 +54,11 @@ jobs:
       - name: Check, test, bench, build, budgets, publint and types
         run: vp run check:push
 
+      # From the first release candidate of 1.0 on, the public API (api/) keeps every promise of
+      # the newest release (ADR-036); before it, there is nothing to compare with.
+      - name: Check the public API against the newest promise
+        run: node scripts/api-check.ts --against-promise
+
   # The acceptance suite of the stage, against the built playground and the example site: in
   # process through wrangler's test harness, and over HTTP through `wrangler dev` and the CLI.
   acceptance:
@@ -150,7 +155,13 @@ jobs:
           PM: ${{ matrix.pm }}
 
   upgrade:
-    name: Upgrade from 0.3.0
+    name: Upgrade from ${{ matrix.from }}
+    # The oldest release the upgrade path covers, and the newest, which a release candidate of the
+    # next must take as it is (ADR-036).
+    strategy:
+      fail-fast: false
+      matrix:
+        from: ['0.3.0', '0.11.0']
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -170,8 +181,10 @@ jobs:
           node-version-file: .node-version
           cache: true
 
-      - name: Upgrade a project of 0.3.0
-        run: vp run e2e:upgrade
+      - name: Upgrade a project of an earlier release
+        run: vp run e2e:upgrade -- --from "$FROM"
+        env:
+          FROM: ${{ matrix.from }}
 
   # The MCP conformance suite against `wrangler dev` of a Hollware Worker, for both revisions of
   # the specification (ADR-022). It runs beside `check`, which it does not wait for.

@@ -45,6 +45,19 @@ type Manifest = {
   overrides?: Record<string, string>
 }
 
+/** How many migrations this checkout ships that `@hollware/server@<from>` did not. */
+function newMigrations(from: string): number {
+  const list = (ref: string | null) =>
+    execFileSync('git', ['ls-tree', '--name-only', ref ?? 'HEAD', 'packages/server/migrations/'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter((name) => name.endsWith('.sql'))
+  const before = new Set(list(`@hollware/server@${from}`))
+  return list(null).filter((name) => !before.has(name)).length
+}
+
 /** Writes the project of the release `from`, as its create-hollware would have, into `project`. */
 function writeOldProject(from: string, project: string): void {
   const old = mkdtempSync(join(tmpdir(), 'hollware-e2e-old-'))
@@ -122,8 +135,15 @@ async function main(): Promise<void> {
     await run('npm', ['install'], project, env)
     const migrated = await run(hollware, ['migrate', '--local'], project, env)
     process.stdout.write(migrated)
-    if (!/^Applied \d+ migrations? to the local database/.test(migrated)) {
-      fail('the upgrade applied no migration')
+    // The migrations this checkout ships that the release `from` did not: each is applied once,
+    // and a release with none to add applies nothing.
+    const added = newMigrations(from)
+    const expected =
+      added === 0
+        ? /^No pending migrations on the local database/
+        : new RegExp(`^Applied ${added} migrations? to the local database`)
+    if (!expected.test(migrated)) {
+      fail(`the upgrade from ${from} should apply ${added} migration(s), and printed: ${migrated}`)
     }
 
     step('What the old release made still works')

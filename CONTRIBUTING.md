@@ -30,24 +30,27 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 
 ## Commands
 
-| Command                                                                   | What it does                                                                              |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `pnpm install`                                                            | Install dependencies (pnpm version comes from `packageManager`)                           |
-| `pnpm exec vp check`                                                      | Format, lint and type-check the whole repo                                                |
-| `pnpm exec vp test`                                                       | Run every test project; `--project <name>` runs one                                       |
-| `pnpm exec vp run -r build`                                               | Build every package                                                                       |
-| `pnpm exec vp run bench`                                                  | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95         |
-| `pnpm exec vp run check:budgets`                                          | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup         |
-| `pnpm exec vp run check:push`                                             | The CI check job: check, test, bench, build, budgets, publint, types                      |
-| `pnpm exec vp run check:local`                                            | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance               |
-| `pnpm exec vp run test:conformance`                                       | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions           |
-| `pnpm exec vp run test:acceptance`                                        | The acceptance suite of the stage, against the built playground and example site          |
-| `pnpm exec vp run e2e:admin`                                              | The admin in Chromium with a virtual passkey and axe (`playwright install chromium` once) |
-| `pnpm exec vp run e2e:install`                                            | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token |
-| `pnpm exec vp run e2e:upgrade`                                            | A 0.3.0 project from npm, moved to this checkout and migrated; its data and token work    |
-| `pnpm exec vp run eval:search`                                            | Search quality against a deployment with semantic search (`-- --hollware <url>`)          |
-| `node scripts/api.ts --write`                                             | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks       |
-| `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                                  |
+| Command                             | What it does                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm install`                      | Install dependencies (pnpm version comes from `packageManager`)                                    |
+| `pnpm exec vp check`                | Format, lint and type-check the whole repo                                                         |
+| `pnpm exec vp test`                 | Run every test project; `--project <name>` runs one                                                |
+| `pnpm exec vp run -r build`         | Build every package                                                                                |
+| `pnpm exec vp run bench`            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95                  |
+| `pnpm exec vp run check:budgets`    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup                  |
+| `pnpm exec vp run check:push`       | The CI check job: check, test, bench, build, budgets, publint, types                               |
+| `pnpm exec vp run check:local`      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance                        |
+| `pnpm exec vp run test:conformance` | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions                    |
+| `pnpm exec vp run test:acceptance`  | The acceptance suite of the stage, against the built playground and example site                   |
+| `pnpm exec vp run e2e:admin`        | The admin in Chromium with a virtual passkey and axe (`playwright install chromium` once)          |
+| `pnpm exec vp run e2e:install`      | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token          |
+| `pnpm exec vp run e2e:upgrade`      | A project of 0.3.0 (`-- --from <version>`) from npm, moved here, migrated; its data and token work |
+| `pnpm exec vp run e2e:integrations` | The Nuxt, Astro and React Router examples over the built playground, previews included             |
+| `pnpm exec vp run eval:search`      | Search quality against a deployment with semantic search (`-- --hollware <url>`)                   |
+| `node scripts/api.ts --write`       | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks                |
+
+The mutation probe, `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>`,
+prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
 
 `vp` is Vite+. Always run the copy installed in the repository, through `pnpm exec`: a global `vp` of another version breaks the Cloudflare plugin. `AGENTS.md` writes `vp` as shorthand for `pnpm exec vp`.
 
