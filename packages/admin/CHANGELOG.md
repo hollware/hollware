@@ -1,5 +1,9 @@
 # @hollware/admin
 
+## 1.0.0-rc.0
+
+No changes in this release.
+
 ## 0.11.0
 
 ### Minor Changes

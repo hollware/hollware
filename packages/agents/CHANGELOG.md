@@ -1,5 +1,12 @@
 # @hollware/agents
 
+## 1.0.0-rc.0
+
+### Patch Changes
+
+- Updated dependencies [[`b47f74a`](https://github.com/hollware/hollware/commit/b47f74aefaf518df6cc95b8cf9f33388b488cd22)]:
+  - @hollware/core@1.0.0-rc.0
+
 ## 0.11.0
 
 ### Patch Changes
