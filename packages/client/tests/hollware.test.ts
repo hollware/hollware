@@ -1,7 +1,6 @@
-import type { HollwareReader } from '@hollware/client'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { createHollware, hollwareBinding } from '../src/index.ts'
+import { createHollware, hollwareBinding, type HollwareReader } from '../src/index.ts'
 
 // Fails when: getEntry stops reading the Comark document, or stops passing the preview token of
 // the request's cookie (or of `options.preview`, which wins) to the reader, or marks an answer a

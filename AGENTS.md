@@ -36,7 +36,7 @@ deleted when v1.0 ships, together with this section.
 | `node scripts/api.ts --write`                                             | Writes the public API, `api/` (ADR-036); `api-check.ts --against <ref>`: breaks   |
 | `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>` | Mutation probe: prints `CAUGHT`, `NOT CAUGHT` or `ERROR`                          |
 
-Always run the project-local `vp` (through `pnpm exec` or package scripts). A
+Always run the project-local `vp` (`pnpm exec` or package scripts). A
 global `vp` of another version breaks the Cloudflare plugin. Supervised servers are
 started with their local binary, never with `pnpm dev`: pnpm 12 runs scripts in a
 new process group, so the child outlives its supervisor.
@@ -46,21 +46,21 @@ new process group, so the child outlives its supervisor.
 - The playground is a Hollware project (`apps/playground/src/index.ts` is `createHollware(config)`),
   and `examples/worker-site` is the site that reads it over a service binding. The playground has
   two test projects: `playground:workerd` (inside workerd, through `@cloudflare/vitest-plugin`) and
-  `playground:harness` (Node, wrangler's `createTestHarness` over the built Workers). Run both
-  with `pnpm --filter @hollware/playground run test`.
+  `playground:harness` (Node, wrangler's `createTestHarness` over the built Workers). Run both with
+  `pnpm --filter @hollware/playground run test`.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
   its `src` type-checks against the web platform only (ADR-018).
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
 - Keep `fsModuleCache: false` in workerd test configs: the module cache saved no test time.
-- `vp dev` starts through a launcher: stopping the launcher leaves the dev server and
-  workerd running. Stop the process that listens on the port instead.
+- `vp dev` starts through a launcher: stopping it leaves the dev server and
+  workerd running; stop the process that listens on the port.
 - `compatibility_date` must not be newer than the workerd that wrangler bundles.
 - Workers turn Node.js compatibility on by default from the 2026-08-04 compatibility date.
   Every `wrangler.jsonc` here opts out with `no_nodejs_compat` and `no_nodejs_compat_v2`,
   and Hollware's own set `send_metrics: false`.
 - The test runner of `@cloudflare/vitest-plugin` keeps Node.js compatibility on whatever
-  the flags say, so a workerd test never proves that code runs without Node.js. The
-  playground's harness test proves it on the built Workers.
+  the flags say, so a workerd test never proves that code runs without Node.js; the
+  playground's harness test does, on the built Workers.
 - Harness tests reach Hollware at `http://localhost` and give the Worker that URL as
   its `HOLLWARE_PUBLIC_URL`: the harness hands a Worker every URL as `http`, and the OAuth
   server takes `http` only on a loopback host. Build the harness with `createPlaygroundHarness()`
@@ -75,15 +75,14 @@ new process group, so the child outlives its supervisor.
   `examples/worker-site/src/env.ts`).
 - The `Probe` entrypoint of the playground (`apps/playground/src/probe.ts`) and of the example
   (`examples/worker-site/src/probe.ts`), each bound to itself as `PROBE`, is how a Node.js test asks
-  a built Worker which Node.js globals it has. It is no route, so the gateway's guard has no
-  exception for it.
+  a built Worker for its Node.js globals. It is no route, so the gateway's guard has no exception.
 - `budgets.json` holds the ceilings of the built playground Worker, minified and gzipped (main
   module 250 KiB, all modules 450 KiB; the CPU of a write is `vp run bench`'s); raising one needs a note in an ADR.
   `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
   (read from the source maps of the build), and logs startup and the cost of a write.
 - The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:
   Vite's host check would answer first and hide a missing DNS-rebinding guard. The run resets
-  its local D1 and seeds it with the CLI; CI runs it in a job of its own.
+  its local D1, seeds it with the CLI, and CI runs it in a job of its own.
 - Test content is synthetic and shared: load it with `tests/fixtures/content.ts`, in Node
   or workerd (`tests/fixtures/README.md`). Rows of a second site, to test that one site
   cannot reach another, come from `packages/server/tests/support/sites.ts`.
@@ -99,6 +98,7 @@ new process group, so the child outlives its supervisor.
 - `packages/nuxt` — `@hollware/nuxt`: reads Hollware from a Nuxt site.
 - `packages/astro` — `@hollware/astro`: Astro content loaders for Hollware.
 - `packages/react` — `@hollware/react`: Hollware for React apps.
+- `packages/vue` — `@hollware/vue`: Hollware for Vue apps.
 - `packages/agents` — `@hollware/agents`: a reviewer, a translator and an auditor that never publish.
 - `apps/playground` — a local Hollware instance for development.
 - `apps/web` — hollware.com: the landing page and the docs, read from Hollware.

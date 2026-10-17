@@ -5,7 +5,7 @@ import {
   isPreviewRefusal,
   isSecureRequest,
   previewTokenFromCookie,
-} from '@hollware/client'
+} from './preview.ts'
 
 /**
  * Previews of drafts (T-103 of docs/security/threat-model.md) for any code that handles a

@@ -1,0 +1,57 @@
+{
+  "name": "@hollware/vue",
+  "version": "0.10.0",
+  "description": "Read Hollware from any Vue 3 app that is not Nuxt: a component that renders an entry's Comark document, server helpers, and composables for a browser-only app.",
+  "homepage": "https://hollware.com",
+  "bugs": {
+    "url": "https://github.com/hollware/hollware/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hollware/hollware.git",
+    "directory": "packages/vue"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test",
+    "publint": "publint --strict"
+  },
+  "dependencies": {
+    "@comark/vue": "catalog:",
+    "@hollware/client": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "publint": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "vue": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

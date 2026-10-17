@@ -16,6 +16,27 @@ export {
   type PreviewExchange,
 } from './preview.ts'
 
+export {
+  createHollware,
+  type EntryAnswer,
+  type EntryPage,
+  type GetEntryOptions,
+  type Hollware,
+  type HollwareOptions,
+  type ListEntriesOptions,
+  type PageDocument,
+  type PageEntry,
+  type PageSummary,
+  type ReaderOptions,
+  type Translation,
+} from './hollware.ts'
+export {
+  isPreviewRequest,
+  previewCookieClear,
+  previewHeaders,
+  previewRedirect,
+} from './preview-request.ts'
+
 export const name = '@hollware/client'
 
 type Output<Spec extends { output: z.ZodType }> = z.output<Spec['output']>
@@ -215,7 +236,7 @@ function isReader(value: unknown): value is HollwareReader {
 /**
  * A service binding to the `Hollware` entrypoint as a reader. `wrangler types` cannot see across
  * Workers, so the binding comes typed as `Service`: this checks it is there, and gives the
- * mistake a name when it is not. `@hollware/astro` and `@hollware/react` re-export it.
+ * mistake a name when it is not. `@hollware/astro`, `@hollware/react` and `@hollware/vue` re-export it.
  */
 export function hollwareBinding(binding: unknown, name = 'HOLLWARE'): HollwareReader {
   if (isReader(binding)) return binding

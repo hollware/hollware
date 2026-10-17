@@ -8,6 +8,7 @@ import createHollwareConfig from '../../packages/create-hollware/vite.config.ts'
 import astroConfig from '../../packages/astro/vite.config.ts'
 import reactConfig from '../../packages/react/vite.config.ts'
 import nuxtConfig from '../../packages/nuxt/vite.config.ts'
+import vueConfig from '../../packages/vue/vite.config.ts'
 import serverConfig from '../../packages/server/vite.config.ts'
 import { checkManifests, type ManifestsInput } from '../guards/manifests.ts'
 import { describeViolations } from '../guards/types.ts'
@@ -58,6 +59,7 @@ describe('package manifests', () => {
         'packages/nuxt': devExportsOf(nuxtConfig),
         'packages/react': devExportsOf(reactConfig),
         'packages/server': devExportsOf(serverConfig),
+        'packages/vue': devExportsOf(vueConfig),
       },
     })
     expect(describeViolations(violations)).toEqual([])

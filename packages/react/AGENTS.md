@@ -14,7 +14,9 @@ The React helpers of Hollware. Boundary rules for this package:
   that imports only `<HollwareContent>`; `react-router-site.test.ts` proves it.
 - A read of a preview answers `preview: true` and the page is `no-store` (`previewHeaders`). The
   shape of the token, the cookie and the URL without the parameter are pure functions of
-  `@hollware/client`, shared with `@hollware/nuxt` and `@hollware/astro`.
+  `@hollware/client`, shared with `@hollware/nuxt` and `@hollware/astro`. The helpers themselves
+  (`createHollware`, `previewRedirect`, ...) live there too, shared with `@hollware/vue`, and this
+  package only re-exports them (`tests/reexports.test.ts`).
 - `<HollwareContent>` renders the Comark document with `@comark/react`'s `MarkdownDocument`,
   imported from its own subpath so no parser reaches the bundle. It is a plain component, with no
   hook and no `'use client'`, so it serves a Server Component and hydrates in the browser.

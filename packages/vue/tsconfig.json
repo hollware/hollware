@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Vue and its renderers declare their types for bundlers, as the apps that use this
+    // package resolve them.
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"]
+  },
+  "include": ["src", "tests", "vite.config.ts"]
+}

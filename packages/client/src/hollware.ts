@@ -1,9 +1,5 @@
-import {
-  createClient,
-  isPreviewToken,
-  previewTokenFromCookie,
-  type HollwareReader,
-} from '@hollware/client'
+import { createClient, type HollwareReader } from './index.ts'
+import { isPreviewToken, previewTokenFromCookie } from './preview.ts'
 
 /** Where to read from: a reader (a service binding is one), or a Hollware URL and a read token. */
 export type ReaderOptions =
@@ -43,7 +39,7 @@ export interface PageSummary {
   readonly updatedAt: string
 }
 
-/** The document of an entry: what `<HollwareContent>` renders. */
+/** The document of an entry: what `<HollwareContent>` of `@hollware/react` and `@hollware/vue` renders. */
 export interface PageDocument {
   readonly nodes: readonly unknown[]
   readonly frontmatter: Record<string, unknown>
@@ -161,7 +157,7 @@ function summaryOf(entry: SummaryFields): PageSummary {
 }
 
 /**
- * The read side of a Hollware site for a React app, whatever its framework: a React Router
+ * The read side of a Hollware site for any app that renders on a server, whatever its framework: a React Router
  * loader, a Next.js Server Component, a TanStack Start server function. It reads published
  * content, through a service binding or over HTTP, and it never runs in the browser: a loader's
  * data goes there, and `PageEntry` holds only what a reader sees.
