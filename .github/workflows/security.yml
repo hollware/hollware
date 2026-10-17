@@ -136,3 +136,44 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/repo-settings.ts
+
+  zap:
+    name: ZAP baseline of staging
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The passive scan of OWASP ZAP over staging as a browser reaches it: the headers, cookies,
+      # redirects and pages of the Worker, the admin's shell and the sign-in pages. The image is
+      # ZAP 2.17.0 by its digest; -I fails only on a rule set to FAIL in .github/zap/rules.tsv.
+      - name: Scan staging
+        env:
+          ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:5ccfff9a411743ab2615136a2edd7416bec9ce41572fa94e935df38c14adb2b6
+        run: |
+          mkdir -p zap
+          cp .github/zap/rules.tsv zap/rules.tsv
+          chmod -R a+rwX zap
+          status=0
+          for target in / /admin/ /signin /setup; do
+            name=$(echo "$target" | tr -c 'a-z0-9\n' '-')
+            docker run --rm -v "$PWD/zap:/zap/wrk:rw" "$ZAP_IMAGE" zap-baseline.py \
+              -t "https://hollware-staging.sergioazoc.workers.dev${target}" \
+              -c rules.tsv -I -j \
+              -r "report${name}.html" -J "report${name}.json" || status=$?
+          done
+          exit "$status"
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-reports
+          path: zap/
+          retention-days: 30

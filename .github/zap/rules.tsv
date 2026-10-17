@@ -1,0 +1,3 @@
+# What the ZAP baseline scan of staging does with each of its rules (security.yml, "ZAP baseline
+# of staging"): WARN reports, FAIL fails the job, IGNORE drops it, with the reason as its last
+# column. Rules not listed warn. A rule moves to IGNORE only with a reason here.
