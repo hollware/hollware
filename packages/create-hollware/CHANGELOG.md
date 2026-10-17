@@ -1,5 +1,15 @@
 # create-hollware
 
+## 0.11.0
+
+### Minor Changes
+
+- [`069c95f`](https://github.com/hollware/hollware/commit/069c95f1e940ea4f9ac013cac3a69d5ad5d7732d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An activity log of who did what (ADR-037). Every operation that is not a read, every change of tokens, people and invitations in the admin, sign-in and sign-out, an invitation accepted, an app allowed or revoked, and each scheduled publication write a line: who did it as Hollware verified it (a person, a token, an app, or the deployment), what the client declared apart, the action, its target and its outcome, refusals of a scope included. The log is append-only in D1 (migration `0016_audit_log`). Owners read it on the admin's Activity page and download it as CSV.
+
+  The owner decides what it keeps, in the site's `audit`: `ipAddresses` is `off` by default (`hashed` keeps an HMAC of each address keyed by the site, never the address), and `retentionDays` is `null` by default (forever), or 30 to 3650 days. `hollware init` and `npm create hollware` take `--ip-addresses` and `--audit-retention-days`.
+
+- [`1b3f3a2`](https://github.com/hollware/hollware/commit/1b3f3a27d6f42852fae1761ca34a9269e19f0609) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The routes anyone may call without a token (sign-in and passkeys, OAuth's token and registration endpoints, the beacon) are rate limited per address when the Worker has a Workers Rate Limiting binding, `HOLLWARE_RATE_LIMIT`, which new projects get (60 requests a minute): past it they answer 429 with Retry-After. And the cron trigger drops the expired sessions and the sign-in challenges nobody took, which anyone could make pile up a row a request.
+
 ## 0.10.0
 
 ### Patch Changes
