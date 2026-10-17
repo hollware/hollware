@@ -7,7 +7,8 @@ import { boot, SITE_KEY } from './support.ts'
 // Fails when: the beacon (`POST /events`, src/http/events.ts) stops counting a view of a page of
 // the site (its url or its cors.origins) with the site, the path without its query and the
 // country, and nothing else; stops refusing a page of another origin, a request with no origin,
-// a body that names no site or no path, or one too large; or the guard's exception for it
+// a body that names no site or no path, or one too large, read no further than its limit; answers
+// a site it does not serve as it answers another origin (T-09); or the guard's exception for it
 // (src/http/gateway.ts) lets a page of a site's origin reach anything but `POST /events`.
 
 const OTHER = 'other-blog'
@@ -131,11 +132,37 @@ describe('the beacon', () => {
     ]
 
     expect(answers).toEqual([
-      [400, 'invalid_input'],
+      [403, 'forbidden_origin'],
       [400, 'invalid_input'],
       [400, 'invalid_input'],
       [413, 'too_large'],
     ])
+    expect(points).toEqual([])
+  })
+
+  it('answers a site it does not serve as it answers a page of another origin (T-09)', async () => {
+    const { beacon } = withAnalytics()
+
+    const unknown = await beacon('https://blog.test', view('/a/', 'nope'))
+    const elsewhere = await beacon('https://evil.test', view('/a/'))
+
+    expect([unknown.status, await unknown.text()]).toEqual([
+      elsewhere.status,
+      await elsewhere.text(),
+    ])
+    expect(unknown.status).toBe(403)
+  })
+
+  it('refuses a body that says it is too large before reading it (T-08)', async () => {
+    const { worker, points } = withAnalytics()
+
+    const answer = await worker.send('/events', {
+      method: 'POST',
+      headers: { origin: 'https://blog.test', 'content-length': '1000000' },
+      body: view('/a/'),
+    })
+
+    expect(await codeOf(answer)).toEqual([413, 'too_large'])
     expect(points).toEqual([])
   })
 

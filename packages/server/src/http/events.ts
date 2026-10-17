@@ -18,6 +18,36 @@ function refusal(status: 400 | 403 | 413, code: string, message: string, fix: st
   return Response.json({ code, message, fix }, { status, headers: { 'cache-control': 'no-store' } })
 }
 
+/**
+ * The text of a body of at most `limit` bytes, or `null` for a longer one: read no further than
+ * the limit, so a large body costs no more memory than a small one (T-08 of the threat model).
+ */
+async function boundedText(request: Request, limit: number): Promise<string | null> {
+  const declared = Number(request.headers.get('content-length') ?? Number.NaN)
+  if (Number.isFinite(declared) && declared > limit) return null
+  if (request.body === null) return ''
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > limit) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
+}
+
 /** The path of a view without its query and fragment, or `null` when it is no path. */
 function pathOf(value: unknown): string | null {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null
@@ -37,8 +67,8 @@ export function installEvents(
   options: { readonly sites: ReadonlyMap<string, ResolvedSite> },
 ): void {
   app.post('/events', async (c) => {
-    const text = await c.req.text()
-    if (new TextEncoder().encode(text).byteLength > MAX_BEACON_BYTES) {
+    const text = await boundedText(c.req.raw, MAX_BEACON_BYTES)
+    if (text === null) {
       return refusal(
         413,
         'too_large',
@@ -53,24 +83,26 @@ export function installEvents(
       body = null
     }
     const key = typeof body === 'object' && body !== null && 'site' in body ? body.site : null
-    const site = typeof key === 'string' ? options.sites.get(key) : undefined
     const path =
       typeof body === 'object' && body !== null && 'path' in body ? pathOf(body.path) : null
-    if (site === undefined || path === null) {
+    if (typeof key !== 'string' || path === null) {
       return refusal(
         400,
         'invalid_input',
-        'A beacon is JSON with the key of a site this Hollware serves and the path of a page.',
+        'A beacon is JSON with the key of a site and the path of a page.',
         'Send { "site": "<site key>", "path": "/<path of the page>" }.',
       )
     }
+    // A site this Hollware does not serve, and one it serves that a page of another origin names,
+    // get the same answer, which names no site: the beacon never tells which keys exist (T-09).
+    const site = options.sites.get(key)
     const origin = c.req.header('origin') ?? null
-    if (origin === null || !pageOriginsOf(site).includes(origin)) {
+    if (site === undefined || origin === null || !pageOriginsOf(site).includes(origin)) {
       return refusal(
         403,
         'forbidden_origin',
-        `Only pages of the site "${site.key}" count its views.`,
-        `Set the url of the site to the origin of its pages, or add the origin to its cors.origins: in the admin, Site, or with update_site.`,
+        'This page does not count views of that site.',
+        'Set the url of the site to the origin of its pages, or add the origin to its cors.origins: in the admin, Site, or with update_site.',
       )
     }
     const cf: unknown = Reflect.get(c.req.raw, 'cf')
