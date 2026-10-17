@@ -267,6 +267,7 @@
       "PageView": "type",
       "Principal": "type",
       "PublishWrite": "type",
+      "RateLimiter": "type",
       "RelatedEntry": "type",
       "ReviewStatus": "type",
       "RevisionSummary": "type",

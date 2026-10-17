@@ -49,6 +49,13 @@ export interface HollwareEnv {
    * Personal tokens work without it; OAuth does not.
    */
   readonly OAUTH_KV: KVNamespace
+  /**
+   * A Workers Rate Limiting binding (`ratelimits` in wrangler.jsonc): with it, the routes anyone
+   * may call without a token (sign-in and passkeys, OAuth's token and registration, the beacon)
+   * answer 429 past its limit, per address and route (T-10 of docs/security/threat-model.md).
+   * Without it, nothing is limited.
+   */
+  readonly HOLLWARE_RATE_LIMIT?: RateLimiter
   /** The static assets of the Worker, which hold the admin at `/admin/`; without them, no admin. */
   readonly ASSETS?: Fetcher
   /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
@@ -166,3 +173,8 @@ export type CreateHollware = (config?: HollwareConfig) => HollwareWorker
  * The config is resolved once, here; a broken one throws its `ConfigError`.
  */
 export const createHollware: CreateHollware = (config) => createHollwareWith(config, handlers)
+
+/** What a Workers Rate Limiting binding answers: whether one more request for `key` fits. */
+export interface RateLimiter {
+  limit(options: { readonly key: string }): Promise<{ readonly success: boolean }>
+}

@@ -241,9 +241,17 @@ export async function membershipsOf(
   return rows.map((row) => ({ site: row.site, role: roleOf(row.role) }))
 }
 
-/** Drops the sessions that have expired; the cron trigger calls it. */
-export async function dropExpiredSessions(db: Db, now: Date): Promise<void> {
-  await db.delete(sessions).where(lte(sessions.expiresAt, now.toISOString()))
+/**
+ * Drops what of sign-in has expired: the sessions, and the WebAuthn challenges that nobody took.
+ * Anyone may ask for a challenge (`/auth/signin/options`), so without this the table would grow
+ * by a row for every request (T-11 of docs/security/threat-model.md). The cron trigger calls it.
+ */
+export async function dropExpired(db: Db, now: Date): Promise<void> {
+  const at = now.toISOString()
+  await db.batch([
+    db.delete(sessions).where(lte(sessions.expiresAt, at)),
+    db.delete(authChallenges).where(lte(authChallenges.expiresAt, at)),
+  ])
 }
 
 /** An invitation by its id, used or not: what a registration redeems. */

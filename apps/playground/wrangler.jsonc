@@ -48,6 +48,14 @@
   // tests never contact Cloudflare; a deploy needs the id of a namespace made with
   // `wrangler kv namespace create`.
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  // The routes anyone may call without a token, limited per address (T-10).
+  "ratelimits": [
+    {
+      "name": "HOLLWARE_RATE_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -90,6 +98,13 @@
       ],
       // The namespace hollware-demo-oauth in the maintainer's account (created 2026-10-14).
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "f4b6a249127848139b0cb6c400ce0e0c" }],
+      "ratelimits": [
+        {
+          "name": "HOLLWARE_RATE_LIMIT",
+          "namespace_id": "1101",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -140,6 +155,13 @@
         { "binding": "ANALYTICS", "dataset": "hollware_staging_page_views" },
       ],
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e85a150e74794fd6a8d5d83625d6e0ed" }],
+      "ratelimits": [
+        {
+          "name": "HOLLWARE_RATE_LIMIT",
+          "namespace_id": "1201",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
       "d1_databases": [
         {
           "binding": "DB",

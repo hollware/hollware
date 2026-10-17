@@ -250,6 +250,27 @@ export function createGateway(options: GatewayOptions): Gateway {
     await next()
   })
 
+  // The routes anyone may call without a token, limited per address and route when the Worker
+  // has a rate limiting binding (T-10): a person or a site never comes near the limit, a script
+  // that hammers sign-in, the token endpoint or the beacon does.
+  app.use('*', async (c, next) => {
+    const limiter = c.env.HOLLWARE_RATE_LIMIT
+    const group = limitedRoute(c.req.method, new URL(c.req.url).pathname)
+    if (limiter === undefined || group === null) return next()
+    const address = c.req.header('cf-connecting-ip') ?? 'unknown'
+    const { success } = await limiter.limit({ key: `${group}:${address}` })
+    if (success) return next()
+    log({ kind: 'rate_limited', requestId: c.get('requestId'), route: group })
+    return Response.json(
+      {
+        code: 'rate_limited',
+        message: 'Too many requests from this address to this route.',
+        fix: 'Wait a minute and try again.',
+      },
+      { status: 429, headers: { 'retry-after': '60', 'cache-control': 'no-store' } },
+    )
+  })
+
   // The routes that read the sites without a token to check first: the consent of OAuth, its
   // token endpoint, and the beacon. A route behind a token reads them in `protect`.
   for (const path of ['/authorize', '/oauth/*', '/events']) {
@@ -348,4 +369,13 @@ export function createGateway(options: GatewayOptions): Gateway {
     contexts.set(request, ctx)
     return await app.fetch(request, env, ctx)
   }
+}
+
+/** The group of a route that is rate limited, or `null` for one that is not (T-10). */
+export function limitedRoute(method: string, pathname: string): string | null {
+  if (method !== 'POST') return null
+  if (pathname.startsWith('/auth/')) return 'auth'
+  if (pathname === '/oauth/token' || pathname === '/oauth/register') return 'oauth'
+  if (pathname === '/events') return 'beacon'
+  return null
 }

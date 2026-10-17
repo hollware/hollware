@@ -48,4 +48,16 @@ export interface OAuthErrorLog {
 }
 
 /** What the gateway writes to the log, besides the lines of the MCP endpoint. */
-export type GatewayLogEntry = AuthRefusedLog | RequestErrorLog | EnqueueFailedLog | OAuthErrorLog
+/** A request a route without a token refused past the rate limit (T-10). */
+export interface RateLimitedLog {
+  readonly kind: 'rate_limited'
+  readonly requestId: string
+  readonly route: string
+}
+
+export type GatewayLogEntry =
+  | AuthRefusedLog
+  | RequestErrorLog
+  | EnqueueFailedLog
+  | OAuthErrorLog
+  | RateLimitedLog

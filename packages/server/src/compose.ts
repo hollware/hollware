@@ -12,6 +12,7 @@ import type { Handlers } from './ops/types.ts'
 import type { Clock } from './ports.ts'
 import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
+import { dropExpired } from './identity/store.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
@@ -154,6 +155,10 @@ export function createHollwareWith(
       }
       ctx.waitUntil(
         (async () => {
+          // What of sign-in has expired, once a run for the whole deployment (T-11).
+          await dropExpired(connect(env.DB), clock.now()).catch((error: unknown) => {
+            writeLog({ kind: 'cron_failed', site: null, message: String(error) })
+          })
           await refresh(env.DB)
           // One site that fails does not keep the next one waiting.
           for (const site of sites.values()) {

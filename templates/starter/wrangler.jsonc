@@ -40,6 +40,15 @@
   // The OAuth server's clients, grants and tokens (ADR-026). No id: the first `hollware deploy`
   // creates the namespace and writes its id here.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // Sign-in, OAuth's token endpoint and the beacon take at most 60 requests a minute from one
+  // address each: what a person or a site sends never comes near it.
+  "ratelimits": [
+    {
+      "name": "HOLLWARE_RATE_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",
