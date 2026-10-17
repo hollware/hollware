@@ -434,7 +434,7 @@ The CLI installs and maintains an instance.
 hollware init              # the site, its owner and a first personal token (v0.1)
 hollware migrate           # applies the D1 migrations of the installed version
 hollware import ./content/blog --site acme
-hollware export --to markdown   # v0.2
+hollware export ./backup --url https://cms.example.com --token-file ./token.txt
 hollware reparse --all     # v0.2, after upgrading Comark
 ```
 

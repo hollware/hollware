@@ -8,20 +8,28 @@ import {
   updateDraft,
   validate,
 } from '@hollware/core'
-import { readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import type * as z from 'zod'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable } from '../format.ts'
-import { readCorpus, type ContentFile } from '../import/corpus.ts'
+import { readCorpus, type ContentFile, type Corpus } from '../import/corpus.ts'
+import {
+  corpusFromEmdash,
+  EmdashError,
+  siteFromPackage,
+  siteFromSeed,
+} from '../import/from-emdash.ts'
+import { corpusFromNuxtContent } from '../import/from-nuxt-content.ts'
+import { TarError } from '../import/tar.ts'
 import { openSession, ToolFailure, type Session } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
 
 export const IMPORT_USAGE = [
   'Usage: hollware import <directory> --url <hollware url> (--token-file <file> | token on stdin)',
-  '                       [--publish] [--dry-run]',
+  '                       [--publish] [--dry-run] [--from markdown | nuxt-content | emdash]',
   '',
   'Sends the Markdown files of a directory to a running Hollware over MCP, as drafts. The files',
   'are <directory>/<collection>/<locale>/<slug>.md. Every file is validated first: if one would be',
@@ -33,6 +41,14 @@ export const IMPORT_USAGE = [
   '  --token-file <file>  A file with a personal token; without it, the token is read from stdin',
   '  --publish            Then publish the entries that have unpublished changes, acknowledging no warnings',
   '  --dry-run            Only validate: write nothing, publish nothing',
+  '  --from <source>      What the directory is: markdown (the default), the content/ of a Nuxt',
+  '                       Content site, or an EmDash site (a .emdash package, its unpacked files,',
+  '                       or a seed.json)',
+  '  --collection <name>  nuxt-content: the collection its pages go to',
+  '  --locale <code>      nuxt-content and an EmDash seed: the locale of every page (default en)',
+  '  --locale-dirs        nuxt-content: the first folder of each page is its locale',
+  '  --group-field <name> nuxt-content and emdash: the field of a translation group (default',
+  '                       translationGroup)',
   '  --help               Show this help',
   '',
   'The token needs content:read and content:write, and content:publish for --publish: without it,',
@@ -52,12 +68,24 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       'token-file': { type: 'string' },
       publish: { type: 'boolean' },
       'dry-run': { type: 'boolean' },
+      from: { type: 'string' },
+      collection: { type: 'string' },
+      locale: { type: 'string' },
+      'locale-dirs': { type: 'boolean' },
+      'group-field': { type: 'string' },
       help: { type: 'boolean' },
     },
   })
   if (values.help === true) {
     io.out(IMPORT_USAGE)
     return 0
+  }
+  const from = values.from ?? 'markdown'
+  if (from !== 'markdown' && from !== 'nuxt-content' && from !== 'emdash') {
+    throw new UsageError(`--from takes markdown, nuxt-content or emdash, not "${printable(from)}".`)
+  }
+  if (from === 'nuxt-content' && values.collection === undefined) {
+    throw new UsageError('--from nuxt-content needs --collection: the collection its pages go to.')
   }
   const [directory, ...extra] = positionals
   if (directory === undefined || extra.length > 0) {
@@ -70,7 +98,16 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
   }
   const endpoint = mcpEndpoint(values.url)
   const root = resolve(io.cwd, directory)
-  if (!isDirectory(root)) throw new CliError(`${directory} is not a directory.`)
+  // An EmDash package or seed is a file; every other source is a directory.
+  if (!isDirectory(root) && !(from === 'emdash' && isFile(root))) {
+    throw new CliError(`${directory} is not a directory.`)
+  }
+  const source = sourceOf(from, root, directory, {
+    collection: values.collection ?? '',
+    locale: values.locale ?? 'en',
+    localeDirs: values['locale-dirs'] === true,
+    groupField: values['group-field'] ?? 'translationGroup',
+  })
   const token = await readToken(io, values['token-file'])
   try {
     return await importFiles({
@@ -78,18 +115,83 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       token,
       endpoint,
       directory,
-      root,
+      source,
       publish: values.publish === true,
       dryRun: values['dry-run'] === true,
     })
   } catch (error) {
-    // Whatever the command says, the token is not in it: not even in a message of the server.
-    if (error instanceof CliError) throw new CliError(redact(error.message, token))
-    const reason = (error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ')
-    throw new CliError(
-      `unexpected error: ${redact(printable(reason.slice(0, 300)), token)}. This is a bug in hollware: please report it at https://github.com/hollware/hollware/issues.`,
-    )
+    throw withoutToken(error, token)
   }
+}
+
+/**
+ * What a command that holds the token throws: its own `CliError` without the token, not even in a
+ * message of the server, and anything else as one line that says it is a bug.
+ */
+export function withoutToken(error: unknown, token: string): CliError {
+  if (error instanceof CliError) return new CliError(redact(error.message, token))
+  const reason = (error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ')
+  return new CliError(
+    `unexpected error: ${redact(printable(reason.slice(0, 300)), token)}. This is a bug in hollware: please report it at https://github.com/hollware/hollware/issues.`,
+  )
+}
+
+/** The files to import, and what their source says besides. */
+interface Source {
+  corpus: Corpus
+  /** The paths that may be published: all, unless the source says which were (EmDash). */
+  publishable: ReadonlySet<string> | null
+  /** What the source had that the files do not carry, one line each. */
+  leftOut: readonly string[]
+}
+
+/** The files of a directory of Markdown, of a Nuxt Content site, or of an EmDash site. */
+function sourceOf(
+  from: 'markdown' | 'nuxt-content' | 'emdash',
+  root: string,
+  directory: string,
+  options: { collection: string; locale: string; localeDirs: boolean; groupField: string },
+): Source {
+  if (from === 'markdown') return { corpus: readCorpus(root), publishable: null, leftOut: [] }
+  if (from === 'nuxt-content') {
+    return { corpus: corpusFromNuxtContent(root, options), publishable: null, leftOut: [] }
+  }
+  try {
+    const site = isDirectory(root)
+      ? siteFromPackage(filesBelow(root))
+      : root.endsWith('.json')
+        ? siteFromSeed(JSON.parse(readFileSync(root, 'utf8')), options.locale)
+        : siteFromPackage(new Uint8Array(readFileSync(root)))
+    const corpus = corpusFromEmdash(site, options.groupField)
+    return {
+      corpus,
+      publishable: corpus.published,
+      leftOut: corpus.leftOut.map(
+        ({ path, what }) => `  ${printable(path)}: ${what.map(printable).join(', ')}`,
+      ),
+    }
+  } catch (error) {
+    if (error instanceof EmdashError || error instanceof TarError || error instanceof SyntaxError) {
+      throw new CliError(`${directory} cannot be read as an EmDash site: ${error.message}`)
+    }
+    throw error
+  }
+}
+
+/** The files below a directory, by their path with `/`: an unpacked EmDash package. */
+function filesBelow(root: string): Map<string, Uint8Array> {
+  const files = new Map<string, Uint8Array>()
+  const walk = (directory: string, prefix: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.')) continue
+      const path = `${prefix}${entry.name}`
+      if (entry.isDirectory()) walk(join(directory, entry.name), `${path}/`)
+      else if (entry.isFile())
+        files.set(path, new Uint8Array(readFileSync(join(directory, entry.name))))
+    }
+  }
+  walk(root, '')
+  return files
 }
 
 interface Plan {
@@ -98,7 +200,7 @@ interface Plan {
   endpoint: URL
   /** The directory as the person wrote it, for the messages. */
   directory: string
-  root: string
+  source: Source
   publish: boolean
   dryRun: boolean
 }
@@ -108,13 +210,13 @@ async function importFiles({
   token,
   endpoint,
   directory,
-  root,
+  source,
   publish: publishToo,
   dryRun,
 }: Plan): Promise<number> {
   const out = (message: string): void => io.out(redact(message, token))
 
-  const corpus = readCorpus(root)
+  const { corpus } = source
   if (corpus.files.length === 0 && corpus.problems.length === 0) {
     throw new CliError(
       `no entries in ${directory}: expected Markdown files at <collection>/<locale>/<slug>.md, such as blog/en/hello.md.`,
@@ -128,6 +230,13 @@ async function importFiles({
   if (corpus.skipped.length > 0) {
     out(
       `Skipped ${count(corpus.skipped.length, 'Markdown file')} that ${corpus.skipped.length === 1 ? 'is' : 'are'} not at <collection>/<locale>/<slug>.md: ${listSome(corpus.skipped)}.`,
+    )
+  }
+  if (source.leftOut.length > 0) {
+    out(
+      ['Left out, as they have no form in Markdown or in the frontmatter:', ...source.leftOut].join(
+        '\n',
+      ),
     )
   }
   if (corpus.problems.length > 0) {
@@ -167,7 +276,12 @@ async function importFiles({
     }
     if (!publishToo) return 0
 
-    const toPublish = drafts.entries.filter((imported) => imported.summary.hasUnpublishedChanges)
+    // Only what the source had published, when it says (EmDash): a draft there stays a draft.
+    const toPublish = drafts.entries.filter(
+      (imported) =>
+        imported.summary.hasUnpublishedChanges &&
+        (source.publishable === null || source.publishable.has(imported.file.path)),
+    )
     const published = await publishAll(session, toPublish, out)
     out(
       `Publishing: ${published.published} published, ${published.needsAcknowledgement} need acknowledgement, ${published.blocked} blocked${published.reviews === 0 ? '' : `, ${published.reviews} asked for review`}${published.other === 0 ? '' : `, ${published.other} failed`}.`,
@@ -229,7 +343,19 @@ function isDirectory(path: string): boolean {
   }
 }
 
-async function readToken(io: Io, tokenFile: string | undefined): Promise<string> {
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The personal token, from `--token-file` (relative to the working directory) or else from stdin,
+ * trimmed. Something that is not a personal token is refused, and never printed.
+ */
+export async function readToken(io: Io, tokenFile: string | undefined): Promise<string> {
   let raw: string | undefined
   let source: string
   if (tokenFile === undefined) {

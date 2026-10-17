@@ -45,7 +45,9 @@ describe('the hollware bin, run as a process', () => {
   it('sends errors to stderr and exits with the code main returns', SLOW, async () => {
     const { code, stdout, stderr } = await exec([installed.bin, 'export'])
     expect(stdout).toBe('')
-    expect(stderr).toBe('hollware export: not implemented yet (planned for v0.2)\n')
+    expect(stderr).toBe(
+      'hollware export: export takes one directory: hollware export <directory> --url <url>. Run "hollware export --help" for the options.\n',
+    )
     expect(code).toBe(1)
   })
 

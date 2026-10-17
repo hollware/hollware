@@ -24,10 +24,7 @@ const COMMANDS = [
   { name: 'token', summary: 'Create, list and revoke personal tokens' },
   { name: 'invite', summary: 'Invite a person to the admin, as an editor or an author' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
-  {
-    name: 'export',
-    summary: 'Export entries as Markdown files (planned for v0.2, not implemented yet)',
-  },
+  { name: 'export', summary: 'Export entries as Markdown files over MCP' },
 ]
 
 const NAME_WIDTH = Math.max(...COMMANDS.map((command) => command.name.length))
@@ -65,11 +62,9 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.out(`hollware ${readVersion()}`)
     return 0
   }
-  if (first === 'export') {
-    io.err('hollware export: not implemented yet (planned for v0.2)')
-    return 1
-  }
-  if (!['init', 'migrate', 'deploy', 'doctor', 'token', 'invite', 'import'].includes(first)) {
+  if (
+    !['init', 'migrate', 'deploy', 'doctor', 'token', 'invite', 'import', 'export'].includes(first)
+  ) {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
     return 1
   }
@@ -101,6 +96,8 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/token.ts')).token(args, io)
     case 'invite':
       return (await import('./commands/invite.ts')).invite(args, io)
+    case 'export':
+      return (await import('./commands/export.ts')).exportContent(args, io)
     default:
       return (await import('./commands/import.ts')).importContent(args, io)
   }

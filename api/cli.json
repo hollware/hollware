@@ -24,12 +24,57 @@
         }
       }
     ],
-    "import": [
+    "export": [
       {
+        "collection": {
+          "multiple": true,
+          "type": "string"
+        },
         "dry-run": {
           "type": "boolean"
         },
         "help": {
+          "type": "boolean"
+        },
+        "locale": {
+          "multiple": true,
+          "type": "string"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "site": {
+          "type": "string"
+        },
+        "token-file": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "import": [
+      {
+        "collection": {
+          "type": "string"
+        },
+        "dry-run": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "string"
+        },
+        "group-field": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "locale-dirs": {
           "type": "boolean"
         },
         "publish": {

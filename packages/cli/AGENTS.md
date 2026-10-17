@@ -18,8 +18,8 @@ The `hollware` command. Boundary rules for this package:
   dependency at the top).
 - A failure a person can act on is a `CliError` (a mistake in the arguments is a `UsageError`):
   `main` prints one message on stderr behind the command words and returns 1. Anything else is a
-  bug and escapes, except in `import`, which turns it into a `CliError` because the token is in
-  memory.
+  bug and escapes, except in `import` and `export`, which turn it into a `CliError`
+  (`withoutToken`) because the token is in memory.
 
 ## SQL
 
@@ -75,6 +75,19 @@ The `hollware` command. Boundary rules for this package:
   output schemas), so an outcome that is an error for the caller (`not_found`, `conflict`,
   `blocked`) is an answer, and turns transport failures (401, 403, 404, no connection) into
   messages that say what to do.
+
+## Export
+
+- `export` writes `<directory>/<collection>/<locale>/<slug>.md`, the layout `import` reads, with
+  the Markdown of `get_entry` byte for byte, so an import of an export into the same site changes
+  nothing. Bound by the round trip of `tests/export.test.ts`.
+- It reads everything first (`describe_site`, every page of `list_entries`, then `get_entry` for
+  each entry) and writes only then: a failed call writes nothing. The directory must be empty or
+  not exist, and is checked before the token is read; a file is written with `wx`, never over
+  another. A collection, a locale or a slug that cannot be a file name below the directory stops
+  it. `--published` lists `status: 'published'` and reads `published: true`; the head view leaves
+  out the trash. A token reads the one site it is of, so `--site` only checks that site's key.
+  Bound by `tests/export.test.ts`.
 
 ## Tests
 

@@ -1,8 +1,8 @@
 // Fails when:
 // - "hollware --help prints the usage …" / "does the same with no arguments": the usage of
 //   `src/index.ts` stops being printed on out with exit code 0 (or is printed on err).
-// - "lists every command with what it does": a command is dropped from COMMANDS, or `export`
-//   stops saying it is not implemented yet.
+// - "lists every command with what it does": a command is dropped from COMMANDS, or its summary
+//   changes.
 // - "--help of each command …" / "shows the usage of token when it gets no subcommand": a
 //   command stops handling `--help` before it looks at anything else (a missing option,
 //   wrangler, the network), or `token` alone stops printing its usage.
@@ -14,7 +14,6 @@
 //   err and exit code 1, or stops cleaning control characters out of what it repeats.
 // - "does not take a name of Object.prototype for a command": the commands are looked up in an
 //   object, so `constructor` or `toString` runs.
-// - "export says it is not implemented yet": `export` starts doing something else.
 // - "names the command, and the subcommand, in front of an error …": `main` stops prefixing
 //   errors with the command words, or stops pointing at `--help` after a mistake in the arguments.
 // - "names only the command when the subcommand is not one": an unknown subcommand is named as
@@ -79,6 +78,19 @@ const COMMANDS_HELP = [
     ['--role', '--owner', '--days', '--url', '--site', '--local', '--remote', '--database'],
   ],
   ['import', ['<directory>', '--url', '--token-file', '--publish', '--dry-run']],
+  [
+    'export',
+    [
+      '<directory>',
+      '--url',
+      '--token-file',
+      '--site',
+      '--collection',
+      '--locale',
+      '--published',
+      '--dry-run',
+    ],
+  ],
 ] as const
 
 describe('hollware --help', () => {
@@ -107,7 +119,7 @@ describe('hollware --help', () => {
       '  token    Create, list and revoke personal tokens',
       '  invite   Invite a person to the admin, as an editor or an author',
       '  import   Import Markdown files over MCP',
-      '  export   Export entries as Markdown files (planned for v0.2, not implemented yet)',
+      '  export   Export entries as Markdown files over MCP',
     ])
   })
 })
@@ -169,16 +181,6 @@ describe('hollware with an unknown argument', () => {
     const { code, err } = await run(['constructor'])
     expect(code).toBe(1)
     expect(err[0]).toContain('unknown command or flag "constructor"')
-  })
-})
-
-describe('hollware export', () => {
-  it('says it is not implemented yet and exits 1', async () => {
-    expect(await run(['export'])).toEqual({
-      code: 1,
-      out: [],
-      err: ['hollware export: not implemented yet (planned for v0.2)'],
-    })
   })
 })
 

@@ -3,8 +3,8 @@
 The command line of [Hollware](https://github.com/hollware/hollware), an open-source headless
 CMS for the agent era, native to Cloudflare Workers.
 
-> **Status: pre-alpha.** `init`, `migrate`, `deploy`, `doctor`, `token`, `invite` and `import`
-> work, against a Hollware that is still being built. POSIX shells only: it has not been tried on
+> **Status: pre-alpha.** `init`, `migrate`, `deploy`, `doctor`, `token`, `invite`, `import` and
+> `export` work, against a Hollware that is still being built. POSIX shells only: it has not been tried on
 > Windows.
 
 ## Commands
@@ -17,11 +17,30 @@ CMS for the agent era, native to Cloudflare Workers.
 | `doctor`  | Check the project, its bindings, its database and its owner, with what to fix    |
 | `token`   | Create, list and revoke personal tokens, and read tokens with `--read`           |
 | `invite`  | Invite a person to the admin, as an editor or an author                          |
-| `import`  | Import Markdown files over MCP, as drafts, and publish them with `--publish`     |
-| `export`  | Export entries as Markdown files (v0.2)                                          |
+| `import`  | Import Markdown over MCP, as drafts; from Nuxt Content or EmDash with `--from`   |
+| `export`  | Export entries over MCP as Markdown files, the layout `import` reads             |
 
 Every command answers `--help`. A command that fails prints one message on stderr, with what to
 do, and exits with code 1.
+
+### Moving a site to Hollware
+
+`import --from` reads a site of another CMS as the files Hollware imports, validates them all
+before it writes anything, and says what it left out:
+
+```sh
+# The content/ of a Nuxt Content site; with --locale-dirs, content/<locale>/… and translations
+npx hollware import ./content --from nuxt-content --collection docs --locale-dirs --url https://cms.example.com --token-file ./token.txt
+
+# An EmDash site: the package `emdash site export` writes, or a seed.json
+npx hollware import ./site.emdash --from emdash --publish --url https://cms.example.com --token-file ./token.txt
+```
+
+Nuxt Content pages keep their Markdown byte for byte (Comark reads MDC), with their slug as Nuxt
+Content routes them and a `title` from their first heading when they have none. EmDash entries
+become Markdown from their Portable Text, with their simple fields as frontmatter; images,
+references and blocks with no Markdown form are left out and listed, and `--publish` publishes only
+what EmDash had published.
 
 ## A first run
 
@@ -59,11 +78,25 @@ again changes nothing: every entry answers `unchanged`. With `--publish` it publ
 entries that have unpublished changes, and it acknowledges no warning: an entry with warnings is
 reported, and the command exits with code 1. The token never appears in its output.
 
+`export` is its mirror: it writes the entries of the site of the token, as
+`<collection>/<locale>/<slug>.md`, into a directory that must be empty or not exist:
+
+```sh
+hollware export ./backup --url https://cms.example.com --token-file ./token.txt
+hollware export ./live --url https://cms.example.com --token-file ./token.txt --published
+```
+
+Each file is the revision as Hollware keeps it, byte for byte, so importing an export into the
+same site changes nothing. By default it writes the latest revision of every entry, drafts
+included; `--published` writes only the published entries, as they are published. Entries in
+the trash are left out. `--collection` and `--locale` narrow it (repeat them for several),
+`--dry-run` lists the files and writes nothing, and a token with `content:read` is enough.
+
 ## How it works
 
 `init`, `migrate`, `deploy`, `doctor` and `token` run the project's own `wrangler` (the nearest
 `node_modules/.bin/wrangler`) against its D1 database, and read the binding from `wrangler.jsonc`.
-`import` speaks MCP to `<url>/mcp` with the token as a bearer token. The structure of the sites
+`import` and `export` speak MCP to `<url>/mcp` with the token as a bearer token. The structure of the sites
 lives in the database (ADR-033): `init` gives a new site its first definition from a preset, and
 its owner shapes it in the admin, or an agent over MCP.
 

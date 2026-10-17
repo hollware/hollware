@@ -1,6 +1,8 @@
 import {
   createDraft,
+  describeSite,
   getEntry,
+  listEntries,
   OPERATIONS,
   publish,
   updateDraft,
@@ -17,15 +19,17 @@ import { Buffer } from 'node:buffer'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
 /**
- * A stand-in for a running Hollware, for the tests of `import`: an MCP server built with
- * `@modelcontextprotocol/server`, served over HTTP on a random local port, whose five tools
- * (`get_entry`, `create_draft`, `update_draft`, `validate`, `publish`) keep state and use the
- * input and output schemas of the real operation specs. It stands in for the Worker of
+ * A stand-in for a running Hollware, for the tests of `import` and `export`: an MCP server built
+ * with `@modelcontextprotocol/server`, served over HTTP on a random local port, whose seven tools
+ * (`describe_site`, `list_entries`, `get_entry`, `create_draft`, `update_draft`, `validate`,
+ * `publish`) keep state and use the input and output schemas of the real operation specs. It stands in for the Worker of
  * `packages/server`, which this package does not own, and it follows what the specs and the
  * plan say: a draft is saved at version 1, an update at the version read saves a new
  * revision or answers `unchanged` for the same Markdown, a stale version is a `conflict`,
  * every change of an entry (a publish too) bumps its version, and a publish is `blocked` by
- * errors and needs the acknowledgement of warnings.
+ * errors and needs the acknowledgement of warnings. `list_entries` leaves out the trash, filters
+ * by locale and status, and pages with `nextCursor`; `get_entry` with `published` reads the
+ * published revision, and answers `not_found` for an entry that is not published.
  *
  * Like the real server, it answers 401 to a missing or wrong bearer token, and 403 with an
  * `insufficient_scope` challenge naming the scopes a tool needs when the token lacks them.
@@ -61,6 +65,8 @@ export interface StubEntry {
   revisions: string[]
   /** The index of the published revision, or `null`. */
   published: number | null
+  /** When the entry went to the trash; absent or `null` when it is not there. */
+  deletedAt?: string | null
 }
 
 export interface RecordedCall {
@@ -86,6 +92,10 @@ export interface StubOptions {
   before?: (call: RecordedCall, entries: Map<string, StubEntry>) => void
   /** Answers a request itself instead of the stub, to play a server that misbehaves. */
   respond?: (request: Request) => Response | undefined
+  /** What `describe_site` says. A site `blog` with the collection `blog` in `en` and `es` when absent. */
+  site?: { key: string; locales: string[]; collections: string[] }
+  /** The most entries a page of `list_entries` holds, whatever limit is asked; the limit when absent. */
+  pageSize?: number
 }
 
 export interface StubServer {
@@ -122,6 +132,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     'schema:admin',
   ]
   let nextId = 0
+  const site = options.site ?? { key: 'blog', locales: ['en', 'es'], collections: ['blog'] }
 
   const key = (file: Pick<StubFile, 'collection' | 'locale' | 'slug'>): string =>
     `${file.collection}/${file.locale}/${file.slug}`
@@ -176,7 +187,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       hasUnpublishedChanges: entry.published !== entry.revisions.length - 1,
       publishedAt: entry.published === null ? null : STUB_TIME,
       scheduledAt: null,
-      deletedAt: null,
+      deletedAt: entry.deletedAt ?? null,
       updatedAt: STUB_TIME,
     }
   }
@@ -230,7 +241,11 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         guarded(getEntry.name, (args) => {
           const entry = entries.get(key(args))
           if (entry === undefined) return reply(getEntry.outcomes, { outcome: 'not_found' })
-          const markdown = entry.revisions.at(-1) ?? ''
+          if (args.published && entry.published === null) {
+            return reply(getEntry.outcomes, { outcome: 'not_found' })
+          }
+          const markdown =
+            (args.published ? entry.revisions[entry.published ?? -1] : entry.revisions.at(-1)) ?? ''
           return reply(getEntry.outcomes, {
             outcome: 'ok',
             entry: {
@@ -240,6 +255,73 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               lastPublication: null,
               markdown,
             },
+          })
+        }),
+      ),
+    )
+
+    keep(
+      describeSite.name,
+      server.registerTool(
+        describeSite.name,
+        {
+          ...describe(describeSite),
+          inputSchema: describeSite.input,
+          outputSchema: describeSite.output,
+        },
+        guarded(describeSite.name, () =>
+          reply(describeSite.outcomes, {
+            outcome: 'ok',
+            site: {
+              key: site.key,
+              locales: site.locales,
+              defaultLocale: site.locales[0] ?? 'en',
+              url: null,
+              styleGuide: null,
+              collections: site.collections.map((name) => ({
+                name,
+                schema: {},
+                routes: {},
+                translationGroupField: null,
+                tagsField: null,
+                sortByField: null,
+                components: [],
+                contracts: [],
+                maxMarkdownBytes: options.maxBytes ?? 8192,
+                styleGuide: null,
+              })),
+            },
+          }),
+        ),
+      ),
+    )
+
+    keep(
+      listEntries.name,
+      server.registerTool(
+        listEntries.name,
+        {
+          ...describe(listEntries),
+          inputSchema: listEntries.input,
+          outputSchema: listEntries.output,
+        },
+        guarded(listEntries.name, (args) => {
+          // Newest first, as Hollware lists them: the last created first.
+          const matching = [...entries.values()]
+            .reverse()
+            .filter(
+              (entry) =>
+                entry.collection === args.collection &&
+                (args.locale === undefined || entry.locale === args.locale) &&
+                (args.status === undefined || summaryOf(entry).status === args.status) &&
+                (args.trashed === true) === ((entry.deletedAt ?? null) !== null),
+            )
+          const start = args.cursor === undefined ? 0 : Number(args.cursor)
+          const end = start + Math.min(args.limit, options.pageSize ?? args.limit)
+          return reply(listEntries.outcomes, {
+            outcome: 'ok',
+            entries: matching.slice(start, end).map(summaryOf),
+            nextCursor: end < matching.length ? String(end) : null,
           })
         }),
       ),
