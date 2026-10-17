@@ -1,0 +1,39 @@
+{
+  "$comment": "What the settings of hollware/hollware on GitHub are, which nothing in a workflow can set (T-91 of docs/security/threat-model.md). scripts/repo-settings.ts compares them with GitHub every week (security.yml), and fails when they drift. Change a setting on GitHub and here together.",
+  "rulesets": [
+    {
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": [],
+      "bypass": 0,
+      "rules": ["deletion", "non_fast_forward"],
+      "requiredChecks": []
+    },
+    {
+      "name": "release",
+      "target": "branch",
+      "enforcement": "active",
+      "include": ["refs/heads/release"],
+      "exclude": [],
+      "bypass": 0,
+      "rules": ["deletion", "non_fast_forward", "required_status_checks"],
+      "requiredChecks": ["Check"]
+    },
+    {
+      "name": "release tags",
+      "target": "tag",
+      "enforcement": "active",
+      "include": ["refs/tags/*@*", "refs/tags/@*/*@*"],
+      "exclude": [],
+      "bypass": 0,
+      "rules": ["deletion", "non_fast_forward", "update"],
+      "requiredChecks": []
+    }
+  ],
+  "environments": [
+    { "name": "deploy", "branches": ["main", "release"] },
+    { "name": "npm", "branches": ["release"] }
+  ]
+}

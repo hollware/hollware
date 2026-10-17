@@ -19,7 +19,8 @@ import { softAuthenticator } from '../support/authenticator.ts'
 // role, each once and before it expires; sign-in with a registered passkey opens a session that
 // knows the person, whose role is that of each site they are a member of; and a registration or a sign-in from another origin, a
 // challenge used twice, an invitation redeemed by a second registration, a signature that does
-// not verify, or a passkey of no one is refused.
+// not verify, a passkey of no one, a challenge older than five minutes (T-48), a counter that went
+// back (T-52) or an assertion without user verification (T-53) is refused.
 
 const ORIGIN = 'https://cms.example.com'
 const NOW = new Date('2026-10-14T10:00:00.000Z')
@@ -185,6 +186,68 @@ describe('sign-in', () => {
     )
   })
 
+  /** A site whose owner registered a passkey, ready to sign in. */
+  async function registered() {
+    const { owner, ceremony } = await site()
+    const link = await createInvitation(ceremony.db, {
+      site: owner.site,
+      role: 'owner',
+      userId: owner.actor.userId,
+      now: NOW,
+      days: 7,
+    })
+    const { authenticator } = await register(ceremony, link.secret)
+    return { ceremony, authenticator }
+  }
+
+  it('refuses a challenge older than five minutes, and takes one of just under (T-48)', async () => {
+    const { ceremony, authenticator } = await registered()
+    const late = await authenticationOptions(ceremony)
+    const lateResponse = await authenticator.authenticate(late.options)
+    const inTime = await authenticationOptions(ceremony)
+    const inTimeResponse = await authenticator.authenticate(inTime.options)
+    const at = (ms: number) => ({ ...ceremony, now: new Date(NOW.getTime() + ms) })
+
+    await expect(
+      verifyAuthentication(at(300_000), { challengeId: late.challengeId, response: lateResponse }),
+    ).rejects.toThrow('The sign-in expired')
+    await expect(
+      verifyAuthentication(at(299_999), {
+        challengeId: inTime.challengeId,
+        response: inTimeResponse,
+      }),
+    ).resolves.toMatchObject({ userId: expect.stringMatching(/^usr_/) })
+  })
+
+  it('refuses a counter that went back, as a cloned authenticator gives (T-52)', async () => {
+    const { ceremony, authenticator } = await registered()
+    const first = await authenticationOptions(ceremony)
+    await verifyAuthentication(ceremony, {
+      challengeId: first.challengeId,
+      response: await authenticator.authenticate(first.options, ORIGIN, { counter: 5 }),
+    })
+    const clone = await authenticationOptions(ceremony)
+
+    await expect(
+      verifyAuthentication(ceremony, {
+        challengeId: clone.challengeId,
+        response: await authenticator.authenticate(clone.options, ORIGIN, { counter: 3 }),
+      }),
+    ).rejects.toThrow('The passkey could not be verified')
+  })
+
+  it('refuses a sign-in in which the device was touched but not unlocked (T-53)', async () => {
+    const { ceremony, authenticator } = await registered()
+    const { challengeId, options } = await authenticationOptions(ceremony)
+
+    await expect(
+      verifyAuthentication(ceremony, {
+        challengeId,
+        response: await authenticator.authenticate(options, ORIGIN, { userVerified: false }),
+      }),
+    ).rejects.toThrow('The passkey could not be verified')
+  })
+
   it('refuses a passkey of no one, and an assertion for another origin', async () => {
     const { owner, ceremony } = await site()
     const link = await createInvitation(ceremony.db, {
@@ -210,6 +273,6 @@ describe('sign-in', () => {
         challengeId: second.challengeId,
         response: await authenticator.authenticate(second.options, 'https://evil.example.com'),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('The passkey could not be verified')
   })
 })

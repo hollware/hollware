@@ -63,7 +63,9 @@ describe('AC-0.3-2: an author writes through an agent, and the owner approves in
       role: 'author',
     })
     const link = new URL(String(invited.body['link']))
-    const author = await register(server, link.searchParams.get('invitation') ?? '', 'Ana')
+    // The secret is in the fragment of the link (T-55).
+    const invitation = new URLSearchParams(link.hash.slice(1)).get('invitation') ?? ''
+    const author = await register(server, invitation, 'Ana')
     const agent = agentWith(server, await accessToken(server, author, 'mcp'))
 
     const es = await agent.call('create_draft', {

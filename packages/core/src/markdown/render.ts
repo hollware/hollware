@@ -87,7 +87,25 @@ function isProps(value: unknown): value is Props {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function sanitizeProps(raw: unknown): Props {
+/** What a binding such as `:href="frontmatter.url"` reads: the frontmatter and meta of the document. */
+type DocumentData = Readonly<Record<string, unknown>>
+
+/** The value a path such as `frontmatter.url` names in the data, or `undefined`. */
+function resolvePath(data: DocumentData, path: string): unknown {
+  let value: unknown = data
+  for (const part of path.split('.')) {
+    if (typeof value !== 'object' || value === null || !Object.hasOwn(value, part)) return undefined
+    value = Reflect.get(value, part)
+  }
+  return value
+}
+
+/** The name of an attribute without the `:` or `v-bind:` of a binding. */
+function unbound(key: string): string {
+  return key.startsWith('v-bind:') ? key.slice('v-bind:'.length) : key.replace(/^:/, '')
+}
+
+function sanitizeProps(raw: unknown, data: DocumentData): Props {
   const props: Props = {}
   if (!isProps(raw)) return props
   for (const key of Object.keys(raw)) {
@@ -99,8 +117,20 @@ function sanitizeProps(raw: unknown): Props {
     if (isForbiddenAttribute(name)) continue
     const value = raw[key]
     if (URL_ATTRIBUTES.has(name)) {
+      const kind = name === 'src' ? 'image' : 'link'
       const url = urlValue(key, value)
-      if (url === undefined || !isSafeUrl(url, name === 'src' ? 'image' : 'link')) continue
+      if (url === undefined) continue
+      // A binding whose value is no JSON string, such as `:href="frontmatter.url"`, is a path.
+      if (isBinding(key) && url === value) {
+        // A path into the data of the document: read it here, under the same rules as a URL
+        // written out, and print what it holds, so no URL reaches the page on Comark's word (T-59).
+        const bound = resolvePath(data, url)
+        if (typeof bound === 'string' && isSafeUrl(bound, kind)) {
+          setOwn(props, unbound(key), bound.replaceAll('&', '&amp;'))
+        }
+        continue
+      }
+      if (!isSafeUrl(url, kind)) continue
     }
     // The renderer leaves `&#106;` in an attribute as it is, and a browser reads it as `j`: say `&` once, as `&amp;`.
     setOwn(
@@ -116,21 +146,25 @@ function marker(name: string): ElementNode {
   return [MARKER_TAG, { kind: 'raw-html', name: TAG_NAME.test(name) ? shorten(name) : '?' }]
 }
 
-function sanitizeElement(node: readonly unknown[], depth: number): ElementNode | undefined {
+function sanitizeElement(
+  node: readonly unknown[],
+  depth: number,
+  data: DocumentData,
+): ElementNode | undefined {
   const tag: unknown = node[0]
   // A comment node, or anything else that is not an element, is not printed.
   if (typeof tag !== 'string') return undefined
   if (!NATIVE_TAGS.has(tag) && tag !== MARKER_TAG) {
     if (!TAG_NAME.test(tag) || DANGEROUS_TAGS.has(tag.toLowerCase())) return marker(tag)
   }
-  const element: ElementNode = [tag, sanitizeProps(node[1])]
+  const element: ElementNode = [tag, sanitizeProps(node[1], data)]
   if (depth >= MAX_DEPTH) return element
   for (let at = 2; at < node.length; at++) {
     const child = node[at]
     if (typeof child === 'string') {
       element.push(child)
     } else if (Array.isArray(child)) {
-      const clean = sanitizeElement(child, depth + 1)
+      const clean = sanitizeElement(child, depth + 1, data)
       if (clean !== undefined) element.push(clean)
     }
   }
@@ -140,12 +174,13 @@ function sanitizeElement(node: readonly unknown[], depth: number): ElementNode |
 /** Copies a document through the rules of this file. */
 function sanitizeDocument(document: EntryDocument): MarkdownDocument {
   const nodes: MarkdownDocument['nodes'] = []
+  const data: DocumentData = { frontmatter: document.frontmatter, meta: document.meta }
   if (Array.isArray(document.nodes)) {
     for (const node of document.nodes) {
       if (typeof node === 'string') {
         nodes.push(node)
       } else if (Array.isArray(node)) {
-        const clean = sanitizeElement(node, 1)
+        const clean = sanitizeElement(node, 1, data)
         if (clean !== undefined) nodes.push(clean)
       }
     }

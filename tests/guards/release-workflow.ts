@@ -41,6 +41,8 @@ import type { WorkflowJob, WorkflowStep } from './workflow-model.ts'
  *   Packages" commit, unless the maintainer names the commit in a string input `release_sha`
  *   (empty by default), which the script uses as given. On every other run it is the head of
  *   `release`. A `RELEASE_SHA` that hands `inputs.release_sha` over needs that input.
+ * - `promotion-check` audits the production dependencies of the published packages
+ *   (`AUDIT_COMMAND`), so a known high vulnerability stops a release before anything is packed.
  * - `ci.yml` also runs on pushes to `release`, and skips its changeset check there: `release`
  *   only takes commits of `main` whose changesets are consumed. The job that runs the check
  *   checks the repository out with `fetch-depth: 0`, because the check fails on a push whose
@@ -133,6 +135,9 @@ const SCRIPT_STEPS: readonly ScriptStep[] = [
     history: 'the release commit is found in the history',
   },
 ]
+
+/** The audit of what is published: the packages, never the private apps and examples. */
+export const AUDIT_COMMAND = "pnpm --filter './packages/*' audit --prod --audit-level=high"
 
 /** A job that calls one runs after a job that was skipped. */
 const STATUS_FUNCTION = /\b(?:always|cancelled|failure)\(\)/
@@ -339,6 +344,19 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
         `job "${job.id}" sets its own "concurrency", found ${JSON.stringify(job.concurrency)}: the group of the workflow is the only one, or runs overlap or cancel each other`,
       )
     }
+  }
+
+  // No release with a known vulnerability of a published package's production dependencies (T-92).
+  const auditing = workflow.jobs.find((job) => job.id === 'promotion-check')
+  if (
+    auditing !== undefined &&
+    !auditing.steps.some((step) => normalize(step.run) === AUDIT_COMMAND)
+  ) {
+    report(
+      releaseFile,
+      'audit',
+      `job "promotion-check" must run \`${AUDIT_COMMAND}\`: a release of a package whose production dependencies have a known high vulnerability stops before anything is packed`,
+    )
   }
 
   // What the steps that run a script hand to it, and the history they check out.

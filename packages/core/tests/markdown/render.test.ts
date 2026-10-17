@@ -200,19 +200,37 @@ describe('the HTML of a document that no Markdown wrote', () => {
     )
   })
 
-  it('leaves a binding to the data of the document to Comark, which drops an unsafe URL it finds there', async () => {
-    const unsafe = documentOf([['a', { ':href': 'frontmatter.url' }, 'x']], {
-      url: 'javascript:alert(1)',
-    })
-    expect(await renderHtml(unsafe)).toBe('<a>x</a>')
-    const safe = documentOf(
-      [['a', { ':href': 'frontmatter.url', ':title': 'frontmatter.t' }, 'x']],
-      {
-        url: '/ok/',
-        t: 'Hello',
-      },
-    )
-    expect(await renderHtml(safe)).toBe('<a href="/ok/" title="Hello">x</a>')
+  it.each([
+    ['a URL that runs code', 'javascript:alert(1)', '<a>x</a>'],
+    // Comark itself prints this one (T-59): the renderer reads the binding under its own rules.
+    [
+      'an SVG as a data URL, which Comark lets through',
+      'data:image/svg+xml,<svg onload=x>',
+      '<a>x</a>',
+    ],
+    ['a value that is no text', { a: 1 }, '<a>x</a>'],
+    ['a page of the site, with its query', '/ok/?a=1&b=2', '<a href="/ok/?a=1&amp;b=2">x</a>'],
+  ])(
+    'reads a link bound to the frontmatter under the rules of a link: %s',
+    async (_name, url, html) => {
+      expect(
+        await renderHtml(documentOf([['a', { ':href': 'frontmatter.url' }, 'x']], { url })),
+      ).toBe(html)
+    },
+  )
+
+  it('drops a link bound to a path the data does not have, and leaves other bindings to Comark', async () => {
+    expect(
+      await renderHtml(
+        documentOf(
+          [
+            ['a', { ':href': 'frontmatter.missing.deep' }, 'x'],
+            ['a', { ':href': 'frontmatter.url', ':title': 'frontmatter.t' }, 'y'],
+          ],
+          { t: 'Hello', url: 'https://ok.example/' },
+        ),
+      ),
+    ).toBe('<a>x</a>\n<a href="https://ok.example/" title="Hello">y</a>')
   })
 
   it('stops at 100 levels, so a document cannot make it recurse until the stack is gone', async () => {

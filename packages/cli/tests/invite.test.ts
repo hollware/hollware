@@ -41,7 +41,7 @@ describe('hollware invite', () => {
       [
         'Invited an author to the site "blog". The link works once, until 2026-10-19T12:00:00.000Z:',
         '',
-        '  https://cms.example.com/setup?invitation=hw_inv_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',
+        '  https://cms.example.com/setup#invitation=hw_inv_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',
       ].join('\n'),
     ])
   })

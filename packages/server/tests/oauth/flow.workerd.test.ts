@@ -29,7 +29,7 @@ import {
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
 // refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
 // another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
-// consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
+// person removed from the site keeps a token that works (T-20); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
   restoreLogs()
@@ -431,6 +431,31 @@ describe('an access token', () => {
     expect(onlyCall(worker.seen).context.principal).toMatchObject({
       scopes: ['content:read', 'content:write'],
     })
+  })
+
+  it('is refused at once when the person is no longer a member of the site (T-20)', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { userId, tokens } = await tokenFor(worker, 'editor')
+    const before = await callRaw(
+      worker.endpoint(tokens.access_token),
+      'modern',
+      'list_entries',
+      INPUTS.list_entries,
+    )
+    await env.DB.prepare('DELETE FROM members WHERE user_id = ?1').bind(userId).run()
+    const logs = captureLogs()
+
+    const after = await callRaw(
+      worker.endpoint(tokens.access_token),
+      'modern',
+      'list_entries',
+      INPUTS.list_entries,
+    )
+
+    expect([before.status, after.status]).toEqual([200, 401])
+    expect(logs.entries()).toContainEqual(
+      expect.objectContaining({ kind: 'auth_refused', reason: 'no_user' }),
+    )
   })
 
   it('is refused by the deployment of another site, though it shares the KV and the URL', async () => {

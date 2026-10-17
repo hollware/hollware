@@ -66,7 +66,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByRole('heading', { name: 'Members' })).toBeVisible()
   await expectAccessible(owner)
   await owner.getByRole('button', { name: 'Invite' }).click()
-  const link = (await owner.getByText(/\/setup\?invitation=/).textContent()) ?? ''
+  const link = (await owner.getByText(/\/setup#invitation=/).textContent()) ?? ''
 
   const author = await (await browser.newContext({ baseURL: target().url })).newPage()
   await setUp(author, link.trim(), 'Ana')

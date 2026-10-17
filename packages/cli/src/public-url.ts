@@ -31,5 +31,5 @@ export function publicUrlOf(cwd: string, flag: string | undefined): string | und
 
 /** The link that lets a person set up a passkey with an invitation. */
 export function setupLink(url: string | undefined, secret: string): string {
-  return `${url ?? '<your Hollware URL>'}/setup?invitation=${secret}`
+  return `${url ?? '<your Hollware URL>'}/setup#invitation=${secret}`
 }

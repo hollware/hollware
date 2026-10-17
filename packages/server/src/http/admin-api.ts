@@ -481,7 +481,8 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           id: made.id,
           role,
           expiresAt: made.expiresAt,
-          link: `${origin}/setup?invitation=${made.secret}`,
+          // In the fragment, which a browser never sends: no log of a request holds it (T-55).
+          link: `${origin}/setup#invitation=${made.secret}`,
         },
         201,
       )

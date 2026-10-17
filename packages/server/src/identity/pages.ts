@@ -3,7 +3,8 @@
  * are rendered by the Worker, outside the admin's bundle, with one inline script under a nonce
  * and nothing framing them. The script uses the WebAuthn JSON methods of the browser
  * (`PublicKeyCredential.parseCreationOptionsFromJSON`, `credential.toJSON()`), and reads the
- * invitation from the address bar, so the page never prints it.
+ * invitation from the fragment of the address, which no request carries, so neither the page nor
+ * a log of a request ever holds it (T-55); a link of before 0.11, with it in the query, still works.
  */
 
 /**
@@ -58,6 +59,19 @@ ${script}</script>
 `
 }
 
+/**
+ * The invitation of a setup link: in its fragment (`#invitation=…`), which a browser never sends,
+ * so no log of a request holds it (T-55); or, in a link made before 0.11, in its query. The page
+ * runs its source as it is: it uses nothing but its arguments and the URL of the platform.
+ */
+export function invitationOf(hash: string, search: string): string {
+  return (
+    new URLSearchParams(hash.replace(/^#/, '')).get('invitation') ??
+    new URLSearchParams(search).get('invitation') ??
+    ''
+  )
+}
+
 export function setupPage(nonce: string): string {
   return page(
     'Set up your passkey',
@@ -68,10 +82,11 @@ export function setupPage(nonce: string): string {
 <label for="label">This device</label><input id="label" name="label" value="Passkey">
 <button type="submit">Create the passkey</button>
 </form>`,
-    `document.getElementById('form').addEventListener('submit', async (event) => {
+    `const invitationOf = ${invitationOf.toString()}
+document.getElementById('form').addEventListener('submit', async (event) => {
   event.preventDefault()
   try {
-    const invitation = new URLSearchParams(location.search).get('invitation') ?? ''
+    const invitation = invitationOf(location.hash, location.search)
     const { challengeId, options } = await post('/auth/register/options', { invitation })
     const credential = await navigator.credentials.create({ publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options) })
     await post('/auth/register/verify', { challengeId, response: credential.toJSON(), name: document.getElementById('name').value, label: document.getElementById('label').value })

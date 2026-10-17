@@ -50,6 +50,21 @@ function refused(message: string, fix: string): HollwareError {
   return new HollwareError('invalid_input', message, fix)
 }
 
+/**
+ * A verification of the library, or `{ verified: false }` when it throws: it throws for a response
+ * from another origin, without user verification, or with a counter that went back, and each of
+ * those is a passkey that could not be verified, not a failure of the server.
+ */
+async function unlessThrown<T extends { verified: boolean }>(
+  verify: () => Promise<T>,
+): Promise<T | { verified: false }> {
+  try {
+    return await verify()
+  } catch {
+    return { verified: false }
+  }
+}
+
 /** The options of `navigator.credentials.create` for the person of an invitation. */
 export async function registrationOptions(ceremony: Ceremony, invitationSecret: string) {
   const invitation = await findInvitation(ceremony.db, invitationSecret, ceremony.now)
@@ -105,12 +120,16 @@ export async function verifyRegistration(
     throw refused('The registration expired.', 'Start again from the link.')
   }
   const rp = relyingParty(ceremony)
-  const verified = await verifyRegistrationResponse({
-    response: input.response,
-    expectedChallenge: challenge.challenge,
-    expectedOrigin: rp.origin,
-    expectedRPID: rp.id,
-  })
+  const verified = await unlessThrown(() =>
+    verifyRegistrationResponse({
+      response: input.response,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: rp.origin,
+      expectedRPID: rp.id,
+      // The person unlocked the device, not only touched it (T-53); the library's default too.
+      requireUserVerification: true,
+    }),
+  )
   if (!verified.verified) throw refused('The passkey could not be verified.', 'Try again.')
   const invitation = await invitationById(ceremony.db, challenge.invitationId)
   if (invitation === null || !(await redeemInvitation(ceremony.db, invitation.id, ceremony.now))) {
@@ -179,18 +198,23 @@ export async function verifyAuthentication(
     throw refused('This passkey is not one of this Hollware.', 'Use a passkey you registered here.')
   }
   const rp = relyingParty(ceremony)
-  const verified = await verifyAuthenticationResponse({
-    response: input.response,
-    expectedChallenge: challenge.challenge,
-    expectedOrigin: rp.origin,
-    expectedRPID: rp.id,
-    credential: {
-      id: passkey.credentialId,
-      publicKey: isoBase64URL.toBuffer(passkey.publicKey),
-      counter: passkey.counter,
-      transports: JSON.parse(passkey.transports),
-    },
-  })
+  const verified = await unlessThrown(() =>
+    verifyAuthenticationResponse({
+      response: input.response,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: rp.origin,
+      expectedRPID: rp.id,
+      // The person unlocked the device, not only touched it (T-53); the library's default too.
+      requireUserVerification: true,
+      // A counter that did not grow is a cloned authenticator, and is refused (T-52).
+      credential: {
+        id: passkey.credentialId,
+        publicKey: isoBase64URL.toBuffer(passkey.publicKey),
+        counter: passkey.counter,
+        transports: JSON.parse(passkey.transports),
+      },
+    }),
+  )
   if (!verified.verified) throw refused('The passkey could not be verified.', 'Try again.')
   await touchPasskey(ceremony.db, passkey.id, verified.authenticationInfo.newCounter, ceremony.now)
   const session = await createSession(ceremony.db, {

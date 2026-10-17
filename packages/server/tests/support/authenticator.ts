@@ -148,9 +148,14 @@ export async function softAuthenticator(origin: string) {
       }
     },
     /** What `navigator.credentials.get(options).toJSON()` gives. */
-    async authenticate(options: { challenge: string }, from = origin) {
-      counter += 1
-      const data = await authData(UP | UV, null)
+    async authenticate(
+      options: { challenge: string },
+      from = origin,
+      /** A clone's counter, or an assertion of a touch without the device unlocked. */
+      how: { readonly counter?: number; readonly userVerified?: boolean } = {},
+    ) {
+      counter = how.counter ?? counter + 1
+      const data = await authData(how.userVerified === false ? UP : UP | UV, null)
       const client = clientData('webauthn.get', options.challenge, from)
       const signed = concat(data, await sha256(client))
       const raw = new Uint8Array(

@@ -167,7 +167,7 @@ describe("the admin's own routes", () => {
     expect(invited.status).toBe(201)
     expect(await invited.json()).toMatchObject({
       role: 'author',
-      link: expect.stringMatching(/^https:\/\/hollware\.test\/setup\?invitation=hw_inv_/),
+      link: expect.stringMatching(/^https:\/\/hollware\.test\/setup#invitation=hw_inv_/),
     })
     expect(asOwner.status).toBe(400)
     expect(people.invitations.map((invitation) => invitation.role)).toContain('author')

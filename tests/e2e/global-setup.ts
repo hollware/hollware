@@ -29,7 +29,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     '--url',
     url,
   )
-  const link = /http:\/\/localhost:\d+\/setup\?invitation=\S+/.exec(init.output)?.[0]
+  const link = /http:\/\/localhost:\d+\/setup#invitation=\S+/.exec(init.output)?.[0]
   if (init.code !== 0 || link === undefined) throw new Error(`init failed: ${init.output}`)
   // A key to seal the secrets Hollware makes, as hollware deploy gives a deployment (ADR-033).
   const master = crypto.randomUUID() + crypto.randomUUID()

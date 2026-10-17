@@ -114,6 +114,20 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: bash .github/scripts/promotion-check.sh
 
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          version: 1.2.0
+          node-version-file: .node-version
+          cache: false
+          run-install: false # the audit reads pnpm-lock.yaml, it needs no node_modules
+
+      # No release of a package whose production dependencies have a known high vulnerability
+      # (T-92). The private apps and examples are not published, so they are not audited here;
+      # the weekly audit of security.yml reads the whole lockfile.
+      - name: Audit what is published
+        run: pnpm --filter './packages/*' audit --prod --audit-level=high
+
   pack:
     name: Pack tarballs
     needs: promotion-check

@@ -12,6 +12,7 @@ import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
+import { previewDocument } from '../lib/preview.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
 
@@ -451,13 +452,15 @@ const tabs = computed(() => [
             </div>
           </template>
           <template #preview>
-            <section
-              :aria-label="m.entry.preview"
-              class="prose mt-3 max-w-none rounded border border-default p-4"
-            >
-              <!-- The HTML that Hollware renders from Comark, which escapes what it does not know. -->
-              <div v-html="entry.html ?? ''" />
-            </section>
+            <!-- The HTML that Hollware renders, in a frame that runs nothing and reaches nothing of
+                 the admin (T-60): its styles cannot draw over the admin. -->
+            <iframe
+              sandbox=""
+              referrerpolicy="no-referrer"
+              :title="m.entry.preview"
+              :srcdoc="previewDocument(entry.html ?? '', locale)"
+              class="mt-3 h-[70vh] w-full rounded border border-default"
+            />
           </template>
           <template #related>
             <div class="space-y-2 pt-3 text-sm">

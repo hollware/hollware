@@ -52,11 +52,32 @@ export interface WebhookCheck {
   /** Now, in seconds since the epoch; the system clock when absent. */
   readonly now?: number
   readonly toleranceSeconds?: number
+  /**
+   * Whether the receiver sees this event for the first time, given its id, and records it (T-67):
+   * a request captured and sent again within the tolerance is then refused. The id is read from
+   * the signed body, never from `hollware-event-id`, which no signature covers. A retry of a
+   * delivery carries the same id, so a receiver that records an id only once it has handled the
+   * event lets a failed delivery be retried. Keep each id for longer than the tolerance.
+   */
+  readonly isNew?: (eventId: string) => boolean | Promise<boolean>
+}
+
+/** The id of the event a body holds, or `null` when it holds none. */
+function eventIdOf(body: string): string | null {
+  try {
+    const value: unknown = JSON.parse(body)
+    const id: unknown =
+      typeof value === 'object' && value !== null ? Reflect.get(value, 'id') : null
+    return typeof id === 'string' && id !== '' ? id : null
+  } catch {
+    return null
+  }
 }
 
 /**
  * Whether a request is a webhook of Hollware: its signature matches the body and the secret, and
- * its timestamp is within the tolerance, so a captured request cannot be replayed later.
+ * its timestamp is within the tolerance, so a captured request cannot be replayed later; with
+ * `isNew`, also that its event was not received before, so it cannot be replayed sooner either.
  */
 export async function verifyWebhook(check: WebhookCheck): Promise<boolean> {
   const signature = check.headers.get(SIGNATURE_HEADER)
@@ -64,5 +85,8 @@ export async function verifyWebhook(check: WebhookCheck): Promise<boolean> {
   if (signature === null || !Number.isInteger(timestamp)) return false
   const now = check.now ?? Math.floor(Date.now() / 1000)
   if (Math.abs(now - timestamp) > (check.toleranceSeconds ?? TOLERANCE_SECONDS)) return false
-  return sameText(signature, await signWebhook(check.secret, timestamp, check.body))
+  if (!sameText(signature, await signWebhook(check.secret, timestamp, check.body))) return false
+  if (check.isNew === undefined) return true
+  const id = eventIdOf(check.body)
+  return id !== null && (await check.isNew(id))
 }

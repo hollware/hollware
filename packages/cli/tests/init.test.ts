@@ -128,7 +128,7 @@ describe('hollware init', () => {
         SECRET,
         '',
         'Set up your passkey for the admin, once, by 2026-10-19T12:00:00.000Z:',
-        '  <your Hollware URL>/setup?invitation=hw_inv_BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ',
+        '  <your Hollware URL>/setup#invitation=hw_inv_BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ',
         '',
         'Next:',
         '  Save the token in a file only you can read, then import content:',
@@ -184,7 +184,7 @@ describe('hollware init', () => {
     expect(err).toEqual([])
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.sql).toBe(ANOTHER_SITE)
-    expect(out.join('\n')).not.toContain('/setup?invitation=')
+    expect(out.join('\n')).not.toContain('/setup#invitation=')
     expect(out[0]?.split('\n')[0]).toBe(
       'Added the site "docs" on the local database "DB", owned by the owner of the database.',
     )

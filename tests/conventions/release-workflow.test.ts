@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { checkReleaseWorkflow } from '../guards/release-workflow.ts'
+import { AUDIT_COMMAND, checkReleaseWorkflow } from '../guards/release-workflow.ts'
 import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
@@ -66,6 +66,8 @@ const JOBS: Record<JobId, string[]> = {
     '          PROMOTED_SHA: ${{ github.sha }}',
     '          BEFORE_SHA: ${{ github.event.before }}',
     '        run: bash .github/scripts/promotion-check.sh',
+    '      - name: Audit what is published',
+    `        run: ${AUDIT_COMMAND}`,
   ],
   pack: ['  pack:', '    needs: promotion-check', `    if: ${RELEASE}`, '    steps:', CHECKOUT],
   publish: [
@@ -253,6 +255,17 @@ describe('release workflow', () => {
       ])
       expect(messages(release({ finalize: null }))).toEqual([
         'release-workflow/job-missing: release.yml has no "finalize" job',
+      ])
+    })
+
+    it('reports a promotion check that no longer audits what is published (T-92)', () => {
+      const unaudited = change(
+        'promotion-check',
+        `        run: ${AUDIT_COMMAND}`,
+        '        run: pnpm audit --prod',
+      )
+      expect(messages(release({ 'promotion-check': unaudited }))).toEqual([
+        `release-workflow/audit: job "promotion-check" must run \`${AUDIT_COMMAND}\`: a release of a package whose production dependencies have a known high vulnerability stops before anything is packed`,
       ])
     })
 
