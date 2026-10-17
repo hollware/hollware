@@ -29,7 +29,8 @@ import {
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
 // refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
 // another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
-// person removed from the site keeps a token that works (T-20); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
+// person removed from the site keeps a token that works (T-20); or a spent refresh token works
+// again after a minute instead of revoking its grant (T-34); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
   restoreLogs()
@@ -431,6 +432,71 @@ describe('an access token', () => {
     expect(onlyCall(worker.seen).context.principal).toMatchObject({
       scopes: ['content:read', 'content:write'],
     })
+  })
+
+  /** A refresh of the tokens of a client, at the time of the worker's clock. */
+  const refreshWith = (worker: Booted, clientId: string, refresh: string) =>
+    worker.send('/oauth/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refresh,
+        client_id: clientId,
+        resource: MCP,
+      }).toString(),
+    })
+
+  it('takes a spent refresh token again within a minute, for an answer that was lost (T-34)', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { clientId, tokens } = await tokenFor(worker, 'editor')
+    const first = await refreshWith(worker, clientId, tokens.refresh_token)
+    worker.clock.set(new Date(Date.parse(NOW) + 60_000).toISOString())
+
+    const retried = await refreshWith(worker, clientId, tokens.refresh_token)
+
+    expect([first.status, retried.status]).toEqual([200, 200])
+  })
+
+  it('revokes the grant when a spent refresh token comes back after the grace (T-34)', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { userId, clientId, tokens } = await tokenFor(worker, 'editor')
+    const rotated = await (
+      await refreshWith(worker, clientId, tokens.refresh_token)
+    ).json<{
+      access_token: string
+      refresh_token: string
+    }>()
+    worker.clock.set(new Date(Date.parse(NOW) + 61_000).toISOString())
+
+    const stolen = await refreshWith(worker, clientId, tokens.refresh_token)
+    const own = await refreshWith(worker, clientId, rotated.refresh_token)
+    const access = await callRaw(
+      worker.endpoint(rotated.access_token),
+      'modern',
+      'list_entries',
+      INPUTS.list_entries,
+    )
+
+    expect([stolen.status, (await stolen.json<{ error: string }>()).error]).toEqual([
+      400,
+      'invalid_grant',
+    ])
+    // The whole grant is gone: the token that replaced it, and its access token.
+    expect([own.status, access.status]).toEqual([400, 401])
+    const { results } = await env.DB.prepare(
+      "SELECT action, outcome, actor_kind, target_type FROM audit_log WHERE actor_user_id = ?1 AND action = 'app.refresh_reused'",
+    )
+      .bind(userId)
+      .all()
+    expect(results).toEqual([
+      {
+        action: 'app.refresh_reused',
+        outcome: 'denied',
+        actor_kind: 'system',
+        target_type: 'grant',
+      },
+    ])
   })
 
   it('is refused at once when the person is no longer a member of the site (T-20)', async () => {

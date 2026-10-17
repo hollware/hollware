@@ -37,6 +37,8 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'passkey.remove',
   'app.allow',
   'app.revoke',
+  /** A refresh token was used again after it was spent, so its grant was revoked (T-34). */
+  'app.refresh_reused',
   /** The cron published an entry whose time had come, for the person who scheduled it. */
   'schedule.publish',
 ] as const

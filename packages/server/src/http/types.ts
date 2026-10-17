@@ -62,4 +62,12 @@ export type GatewayLogEntry =
   | EnqueueFailedLog
   | OAuthErrorLog
   | RateLimitedLog
+  | RefreshReusedLog
   | AuditLogEntry
+
+/** A spent refresh token came back, past the grace of a retry, and its grant was revoked (T-34). */
+export interface RefreshReusedLog {
+  readonly kind: 'refresh_reused'
+  readonly requestId: string
+  readonly grantId: string
+}

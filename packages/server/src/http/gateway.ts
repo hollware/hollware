@@ -6,7 +6,13 @@ import { createD1Store } from '../db/index.ts'
 import { enqueue } from '../events/run.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { AuditLogFor, McpEndpoint } from '../mcp/index.ts'
-import { actorOf, createAuditLog, type AuditActor } from '../audit/log.ts'
+import { actorOf, createAuditLog, systemActor, type AuditActor } from '../audit/log.ts'
+import {
+  recordRotation,
+  refreshTokenOf,
+  reusedAnswer,
+  spentRefresh,
+} from '../oauth/refresh-reuse.ts'
 import type { RequestPrincipal } from '../auth/types.ts'
 import type { Clock, Structure } from '../ports.ts'
 import { newWebhookSecret, seal } from '../structure/seal.ts'
@@ -369,7 +375,33 @@ export function createGateway(options: GatewayOptions): Gateway {
   const authorizationServer = (c: Context<GatewayEnv>) =>
     oauth(c.env.HOLLWARE_PUBLIC_URL).authorizationServer.fetch(c.req.raw, c.env, workerContext(c))
   app.all('/.well-known/oauth-authorization-server', authorizationServer)
-  app.all('/oauth/*', authorizationServer)
+  // The token endpoint, with the reuse of a spent refresh token caught before the library sees it:
+  // that revokes the grant (T-34, src/oauth/refresh-reuse.ts).
+  app.all('/oauth/*', async (c) => {
+    const refresh = await refreshTokenOf(c.req.raw)
+    if (refresh === null) return authorizationServer(c)
+    const now = Math.floor(clock.now().getTime() / 1000)
+    const reused = await spentRefresh(c.env.OAUTH_KV, refresh, now)
+    if (reused !== null) {
+      await oauth(c.env.HOLLWARE_PUBLIC_URL)
+        .authorizationServer.getOAuthApi(c.env)
+        .revokeGrant(reused.grantId, reused.userId)
+      log({ kind: 'refresh_reused', requestId: c.get('requestId'), grantId: reused.grantId })
+      const site = reused.site === null ? undefined : await auditSite(c, reused.site)
+      if (site !== undefined) {
+        await auditAs(c, systemActor(reused.userId)).write(site, {
+          action: 'app.refresh_reused',
+          outcome: 'denied',
+          errorCode: 'invalid_grant',
+          target: { type: 'grant', id: reused.grantId },
+        })
+      }
+      return reusedAnswer()
+    }
+    const response = await authorizationServer(c)
+    if (response.ok) await recordRotation(c.env.OAUTH_KV, refresh.grantId, now)
+    return response
+  })
 
   installIdentity(app, { clock, site: auditSite, audit: auditAs })
   installAdmin(app, { oauth })
