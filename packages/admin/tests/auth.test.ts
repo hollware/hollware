@@ -9,7 +9,8 @@ import { challengeOf } from '../app/lib/pkce.ts'
 // sent and uses a pending sign-in once; it trades the code with the verifier for tokens it keeps in
 // memory only; it renews the access token with the refresh token a minute before it expires; and
 // it forgets tokens the server no longer takes; or a switch of site stops forgetting the tokens of
-// the last site and naming the new one at every sign-in.
+// the last site and naming the new one at every sign-in; or a sign-out stops revoking the refresh
+// token, ending the session of the cookie, forgetting the tokens or landing on the sign-in page.
 
 const CONFIG = {
   issuer: 'https://cms.example.com',
@@ -23,6 +24,7 @@ function world(tokenAnswers: Response[] = []) {
   const storage = new Map<string, string>()
   const posts: URLSearchParams[] = []
   const visited: string[] = []
+  const signOuts: RequestInit[] = []
   let now = 1_000_000
   const auth = createAuth({
     fetch: async (input, init) => {
@@ -32,6 +34,10 @@ function world(tokenAnswers: Response[] = []) {
       if (target === '/oauth/token') {
         posts.push(init?.body instanceof URLSearchParams ? init.body : new URLSearchParams())
         return tokenAnswers.shift() ?? new Response(null, { status: 400 })
+      }
+      if (target === '/authorize/signout') {
+        signOuts.push(init ?? {})
+        return Response.json({ ok: true })
       }
       throw new Error(`unexpected fetch of ${target}`)
     },
@@ -48,6 +54,7 @@ function world(tokenAnswers: Response[] = []) {
     storage,
     posts,
     visited,
+    signOuts,
     later: (ms: number) => {
       now += ms
     },
@@ -130,6 +137,22 @@ describe('the sign-in of the admin', () => {
     expect(await w.auth.token()).toBe('access-2')
     expect(w.posts.at(-1)?.get('refresh_token')).toBe('refresh-1')
     w.later(3600_000)
+    expect(await w.auth.token()).toBeNull()
+  })
+
+  it('signs out: revokes the refresh token, ends the session of the cookie, lands on sign-in', async () => {
+    const w = world([tokens('access-1')])
+    await signedIn(w)
+
+    await w.auth.signOut()
+
+    expect(Object.fromEntries(w.posts.at(-1) ?? [])).toEqual({
+      token: 'refresh-1',
+      token_type_hint: 'refresh_token',
+      client_id: CONFIG.clientId,
+    })
+    expect(w.signOuts).toEqual([{ method: 'POST', credentials: 'same-origin' }])
+    expect(w.visited.at(-1)).toBe('/signin?return_to=%2Fadmin%2F')
     expect(await w.auth.token()).toBeNull()
   })
 })

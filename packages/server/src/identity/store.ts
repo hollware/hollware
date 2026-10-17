@@ -228,6 +228,67 @@ export async function findSession(db: Db, secret: string, now: Date) {
   return row ?? null
 }
 
+/** A passkey as its person sees it: what they called it and when, never its key or credential. */
+export interface PasskeySummary {
+  readonly id: string
+  readonly label: string
+  readonly createdAt: string
+  readonly lastUsedAt: string | null
+}
+
+/** The passkeys of a person, the oldest first. */
+export async function passkeySummaries(db: Db, userId: string): Promise<PasskeySummary[]> {
+  return db
+    .select({
+      id: passkeys.id,
+      label: passkeys.label,
+      createdAt: passkeys.createdAt,
+      lastUsedAt: passkeys.lastUsedAt,
+    })
+    .from(passkeys)
+    .where(eq(passkeys.userId, userId))
+    .orderBy(passkeys.createdAt, passkeys.id)
+}
+
+export type PasskeyRemoval = 'removed' | 'not_found' | 'last'
+
+/**
+ * Removes a passkey of a person (T-54), never their last one: the statement that deletes it counts
+ * the person's passkeys in the same step, so two removals at once cannot leave them with none.
+ */
+export async function removePasskey(
+  db: D1Database,
+  input: { readonly userId: string; readonly id: string },
+): Promise<PasskeyRemoval> {
+  const result = await db
+    .prepare(
+      `DELETE FROM passkeys WHERE id = ?1 AND user_id = ?2
+       AND (SELECT count(*) FROM passkeys WHERE user_id = ?2) > 1`,
+    )
+    .bind(input.id, input.userId)
+    .run()
+  if (result.meta.changes === 1) return 'removed'
+  const mine = await db
+    .prepare('SELECT 1 AS found FROM passkeys WHERE id = ?1 AND user_id = ?2')
+    .bind(input.id, input.userId)
+    .first<{ found: number }>()
+  return mine === null ? 'not_found' : 'last'
+}
+
+/** Ends the session of a cookie, whoever's it is: the one browser that holds it signs out. */
+export async function endSession(db: Db, secret: string): Promise<void> {
+  await db.delete(sessions).where(eq(sessions.hash, await hashSecret(secret)))
+}
+
+/** Ends every session of a person (T-44): each browser signs in with a passkey again. */
+export async function endSessions(db: Db, userId: string): Promise<number> {
+  const ended = await db
+    .delete(sessions)
+    .where(eq(sessions.userId, userId))
+    .returning({ id: sessions.id })
+  return ended.length
+}
+
 /** The sites a person is a member of, with their role in each, in the order they joined. */
 export async function membershipsOf(
   db: Db,

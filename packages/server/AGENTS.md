@@ -77,7 +77,9 @@ serve them (ADR-017). Boundary rules for this package:
   `trashed`; it keeps its slug and translation, so `create_draft` answers `in_trash`
   (`tests/ops/trash.workerd.test.ts`).
 - `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
-  `/signin` and the four steps of their ceremonies.
+  `/signin`, the four steps of their ceremonies, and `POST /authorize/signout`, below the one path
+  the session cookie is sent to. A person manages their own passkeys, grants and sessions over
+  `/v1/admin/account`; their last passkey is refused in the statement that deletes.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
   when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
   there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one

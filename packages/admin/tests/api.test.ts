@@ -19,6 +19,9 @@ function world(answer: () => Response) {
     forget: () => {
       forgotten = true
     },
+    signOut: async () => {
+      throw new Error('the api never signs out')
+    },
   }
   const api = createApi({
     fetch: async (input, init) => {

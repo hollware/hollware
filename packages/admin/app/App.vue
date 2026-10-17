@@ -212,6 +212,7 @@ const personItems = computed<DropdownMenuItem[][]>(() => [
   [
     { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
     { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
+    { label: m.value.person.account, icon: 'i-lucide-circle-user', to: '/account' },
     {
       label: m.value.person.language,
       icon: 'i-lucide-languages',
@@ -223,6 +224,13 @@ const personItems = computed<DropdownMenuItem[][]>(() => [
           onSelect: () => setLocale(locale),
         })),
       ],
+    },
+  ],
+  [
+    {
+      label: m.value.person.signOut,
+      icon: 'i-lucide-log-out',
+      onSelect: () => void auth.signOut(),
     },
   ],
 ])

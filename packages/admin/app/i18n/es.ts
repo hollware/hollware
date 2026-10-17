@@ -48,6 +48,8 @@ export const es: Messages = {
     you: 'Tú',
     roleOf: (role: string, site: string) => `${role} de ${site}`,
     language: 'Idioma',
+    account: 'Tu cuenta',
+    signOut: 'Cerrar sesión',
   },
   search: {
     placeholder: 'Busca entradas o ve a cualquier parte…',
@@ -484,6 +486,52 @@ export const es: Messages = {
     notChanged: 'No se cambió',
     out: (name: string) => `${name} ya no está en este sitio`,
     notRemoved: 'No se quitó',
+  },
+  account: {
+    title: 'Tu cuenta',
+    failed: 'No se pudo leer tu cuenta',
+    passkeys: 'Llaves de acceso',
+    passkeysHelp:
+      'Las llaves de acceso con las que inicias sesión. Quita la que perdiste; la última se queda.',
+    noPasskeys: 'Sin llaves de acceso.',
+    never: 'nunca',
+    removePasskey: (label: string) => `Quitar ${label}`,
+    lastPasskey: 'Tu última llave de acceso: agrega otra antes de quitarla.',
+    removePasskeyTitle: (label: string) => `¿Quitar ${label}?`,
+    removePasskeyBody:
+      'Ya no te deja iniciar sesión. Un navegador que ya inició sesión con ella sigue dentro hasta que su sesión termine, o hasta que cierres sesión en todas partes.',
+    passkeyRemoved: (label: string) => `Se quitó ${label}`,
+    notRemoved: 'No se quitó',
+    apps: 'Aplicaciones conectadas',
+    appsHelp:
+      'Las aplicaciones a las que diste acceso a Hollware. Al revocar una, pierde su acceso de inmediato.',
+    filterApps: 'Filtrar por aplicación, permiso o sitio',
+    noApps: 'Sin aplicaciones conectadas.',
+    thisAdmin: 'este admin',
+    thisAdminNote: 'Cierra sesión para terminarla',
+    revoke: (name: string) => `Revocar ${name}`,
+    revokeTitle: (name: string) => `¿Revocar ${name}?`,
+    revokeBody:
+      'La aplicación pierde su acceso de inmediato, con cada token que tiene. Puede pedirlo de nuevo, y tú decides de nuevo.',
+    revoked: (name: string) => `Se revocó ${name}`,
+    notRevoked: 'No se revocó',
+    sessions: 'Sesiones',
+    sessionsHelp:
+      'Cada navegador en el que iniciaste sesión la conserva durante 12 horas. Cerrar sesión en todas partes las termina todas, y el admin en cada dispositivo.',
+    endAll: 'Cerrar sesión en todas partes',
+    endAllTitle: '¿Cerrar sesión en todas partes?',
+    endAllBody:
+      'Cada navegador, también este, vuelve a iniciar sesión con una llave de acceso. Las aplicaciones que conectaste conservan su acceso.',
+    notEnded: 'No se cerró la sesión',
+    columns: {
+      label: 'Nombre',
+      created: 'Creada',
+      lastUsed: 'Último uso',
+      app: 'Aplicación',
+      scopes: 'Permisos',
+      site: 'Sitio',
+      since: 'Desde',
+    },
   },
   tokens: {
     title: 'Tokens',

@@ -46,6 +46,9 @@ const PENDING = 'hollware:sign-in'
 /** The site the person chose in the admin, for the next sign-in; none means the server's choice. */
 const SITE = 'hollware:site'
 
+/** Where the server ends the session of this browser's cookie, which only `/authorize…` gets. */
+const SIGN_OUT = '/authorize/signout'
+
 /** An access token is renewed when it has less than this left. */
 const MARGIN_MS = 60_000
 
@@ -176,6 +179,34 @@ export function createAuth(deps: AuthDeps) {
     /** Forgets the tokens: the next call signs in again. */
     forget(): void {
       tokens = null
+    },
+
+    /**
+     * Signs this browser out: the admin's grant ends with its refresh token (RFC 7009, at the token
+     * endpoint), the session of the passkey ends with its cookie (`/authorize/signout`), the tokens
+     * are forgotten, and the person lands on the sign-in page, which brings them back to the admin.
+     * The two requests may fail: the tokens are forgotten and the person leaves all the same.
+     */
+    async signOut(): Promise<void> {
+      const refresh = tokens?.refresh ?? null
+      tokens = null
+      try {
+        if (refresh !== null) {
+          const settings = await loadConfig()
+          await deps.fetch('/oauth/token', {
+            method: 'POST',
+            headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              token: refresh,
+              token_type_hint: 'refresh_token',
+              client_id: settings.clientId,
+            }),
+          })
+        }
+        await deps.fetch(SIGN_OUT, { method: 'POST', credentials: 'same-origin' })
+      } finally {
+        deps.navigate(`/signin?return_to=${encodeURIComponent('/admin/')}`)
+      }
     },
   }
 }

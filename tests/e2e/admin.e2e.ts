@@ -351,3 +351,32 @@ test('signing in goes back to a page of this Hollware, and never to another host
   await expect(owner).toHaveURL(new RegExp(`^${target().url}/admin/$`))
   await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
 })
+
+test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T-44, T-45, T-54)', async () => {
+  // The admin is in Spanish since the tests before; the owner has the one passkey of setup. The
+  // last test: signing out ends the session the tests before signed in with.
+  await owner.goto('/admin/')
+  await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
+  await owner.getByRole('button', { name: /^Olga/ }).click()
+  await owner.getByRole('menuitem', { name: 'Tu cuenta' }).click()
+
+  await expect(owner.getByRole('heading', { name: 'Tu cuenta', level: 1 })).toBeVisible()
+  const passkeys = owner.getByRole('region', { name: 'Llaves de acceso' })
+  await expect(passkeys.getByRole('button', { name: 'Quitar Passkey' })).toBeDisabled()
+  await expect(
+    passkeys.getByText('Tu última llave de acceso: agrega otra antes de quitarla.'),
+  ).toBeVisible()
+  const apps = owner.getByRole('region', { name: 'Aplicaciones conectadas' })
+  await expect(apps.getByRole('row', { name: /Hollware admin\s*este admin/ })).toBeVisible()
+  await expect(apps.getByRole('button', { name: /^Revocar/ })).toHaveCount(0)
+  await expectAccessible(owner)
+  await shot(owner, 'account-es')
+
+  await owner.getByRole('button', { name: /^Olga/ }).click()
+  await owner.getByRole('menuitem', { name: 'Cerrar sesión' }).click()
+  await expect(owner.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible()
+  await expect(owner).toHaveURL(/\/signin\?return_to=%2Fadmin%2F$/)
+  // The session is gone: the admin sends the browser to sign in again, not back in.
+  await owner.goto('/admin/')
+  await expect(owner).toHaveURL(/\/signin\?return_to=/)
+})

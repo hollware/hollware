@@ -14,16 +14,24 @@ import { removeMember, setRole, type PeopleChange } from '../identity/people.ts'
 import type { Principal } from '../auth/types.ts'
 import { connect } from '../db/d1.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
-import { createInvitation, membershipsOf } from '../identity/store.ts'
+import {
+  createInvitation,
+  endSessions,
+  membershipsOf,
+  passkeySummaries,
+  removePasskey,
+} from '../identity/store.ts'
 import { adminClient } from '../oauth/admin.ts'
 import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
 import type { GatewayEnv } from './types.ts'
+import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
 /**
  * What only a person in the admin may do (ADR-026): see, make and revoke personal tokens, and
  * invite people, on the site of their token; and learn who they are and which sites they may switch
- * to (`/v1/admin/me`, the one route for every role). These are no operations, so no agent sees them over MCP, and a request needs an
+ * to (`/v1/admin/me`), and manage their own sign-in (`/v1/admin/account`: their passkeys, the apps
+ * they connected and their sessions), the routes for every role. These are no operations, so no agent sees them over MCP, and a request needs an
  * access token of the admin's own client with `schema:admin`: a personal token, or a token of
  * another client, never reaches them, even an owner's. A leaked token cannot mint the next one.
  */
@@ -73,6 +81,41 @@ function daysFrom(value: unknown, fallback: number): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
     ? value
     : null
+}
+
+/** At most this many grants of a person are read: pages of the library's listing, 100 each. */
+const GRANT_PAGES = 10
+
+/** Every grant of a person, across the sites of the deployment. */
+async function grantsOf(helpers: OAuthHelpers, userId: string): Promise<GrantSummary[]> {
+  const grants: GrantSummary[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < GRANT_PAGES; page++) {
+    const listed = await helpers.listUserGrants(userId, {
+      limit: 100,
+      ...(cursor === undefined ? {} : { cursor }),
+    })
+    grants.push(...listed.items)
+    cursor = listed.cursor
+    if (cursor === undefined) break
+  }
+  return grants
+}
+
+/** The name a client gave itself, or its id when it gave none or cannot be read now. */
+async function clientName(helpers: OAuthHelpers, clientId: string): Promise<string> {
+  try {
+    return (await helpers.lookupClient(clientId))?.clientName ?? clientId
+  } catch {
+    // A client of a metadata document whose document cannot be fetched now: its id is a URL.
+    return clientId
+  }
+}
+
+function siteOf(metadata: unknown): string | null {
+  if (typeof metadata !== 'object' || metadata === null) return null
+  const site: unknown = Reflect.get(metadata, 'site')
+  return typeof site === 'string' ? site : null
 }
 
 export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions): void {
@@ -362,5 +405,129 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         201,
       )
     }),
+  )
+
+  // ---- the person's own sign-in, for every role (T-44, T-45, T-54) ----------------------------
+
+  /** The OAuth helpers and the admin's own client, for the public URL of the request. */
+  const grantsApi = async (c: Context<GatewayEnv>) => {
+    const oauth = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
+    return {
+      helpers: oauth.authorizationServer.getOAuthApi(c.env),
+      admin: (await adminClient(oauth, c.env)).clientId,
+    }
+  }
+
+  // The person's passkeys, without their keys or credential ids, and the apps they connected: each
+  // grant, with the name of its client, its scopes, its site and when. The grants of the admin are
+  // marked: they end by signing out, not here.
+  app.get(
+    '/v1/admin/account',
+    admin(
+      async (c, person) => {
+        const passkeys = await passkeySummaries(connect(c.env.DB), person.userId)
+        const { helpers, admin: ours } = await grantsApi(c)
+        const grants = await grantsOf(helpers, person.userId)
+        const names = new Map<string, Promise<string>>()
+        const nameOf = (clientId: string) => {
+          const known = names.get(clientId)
+          if (known !== undefined) return known
+          const asked = clientName(helpers, clientId)
+          names.set(clientId, asked)
+          return asked
+        }
+        const apps = await Promise.all(
+          grants.map(async (grant) => ({
+            grantId: grant.id,
+            clientId: grant.clientId,
+            name: await nameOf(grant.clientId),
+            scopes: grant.scope.filter(isScope),
+            site: siteOf(grant.metadata),
+            createdAt: new Date(grant.createdAt * 1000).toISOString(),
+            admin: grant.clientId === ours,
+          })),
+        )
+        apps.sort(
+          (a, b) => b.createdAt.localeCompare(a.createdAt) || a.grantId.localeCompare(b.grantId),
+        )
+        return json({ passkeys, apps })
+      },
+      { anyone: true },
+    ),
+  )
+
+  // One of the person's passkeys out, never their last one: that one is refused, not removed.
+  app.post(
+    '/v1/admin/account/passkeys/remove',
+    admin(
+      async (c, person) => {
+        const id = (await body(c))['id']
+        if (typeof id !== 'string') {
+          return refused('Give the id of one of your passkeys.', 'Send { "id": "pky_…" }.')
+        }
+        switch (await removePasskey(c.env.DB, { userId: person.userId, id })) {
+          case 'removed':
+            return json({ outcome: 'removed', id })
+          case 'not_found':
+            return refused(
+              'You have no such passkey.',
+              'List your passkeys and pick one of them.',
+              404,
+            )
+          case 'last':
+            return refused(
+              'This is your last passkey: without it you could not sign in again.',
+              'Add another passkey first, then remove this one.',
+              409,
+            )
+        }
+      },
+      { anyone: true },
+    ),
+  )
+
+  // An app the person connected loses its grant, and with it every token it holds. Only the
+  // person's own grants, and never the admin's: the admin ends by signing out.
+  app.post(
+    '/v1/admin/account/apps/revoke',
+    admin(
+      async (c, person) => {
+        const grantId = (await body(c))['grantId']
+        if (typeof grantId !== 'string') {
+          return refused('Give the grantId of one of your apps.', 'Send { "grantId": "…" }.')
+        }
+        const { helpers, admin: ours } = await grantsApi(c)
+        const grant = (await grantsOf(helpers, person.userId)).find((g) => g.id === grantId)
+        if (grant === undefined) {
+          return refused('You connected no such app.', 'List your apps and pick one of them.', 404)
+        }
+        if (grant.clientId === ours) {
+          return refused(
+            'That is this admin: it is not revoked here.',
+            'Sign out from the person menu, or sign out everywhere.',
+            409,
+          )
+        }
+        await helpers.revokeGrant(grant.id, person.userId)
+        return json({ outcome: 'revoked', grantId: grant.id })
+      },
+      { anyone: true },
+    ),
+  )
+
+  // Every session of the person ends, and every grant of the admin with it: each browser, this one
+  // included, signs in with a passkey again. The apps they connected keep their grants.
+  app.post(
+    '/v1/admin/account/sessions/end',
+    admin(
+      async (c, person) => {
+        const ended = await endSessions(connect(c.env.DB), person.userId)
+        const { helpers, admin: ours } = await grantsApi(c)
+        const admins = (await grantsOf(helpers, person.userId)).filter((g) => g.clientId === ours)
+        for (const grant of admins) await helpers.revokeGrant(grant.id, person.userId)
+        return json({ outcome: 'ended', sessions: ended, adminGrants: admins.length })
+      },
+      { anyone: true },
+    ),
   )
 }

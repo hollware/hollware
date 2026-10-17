@@ -33,6 +33,7 @@ const router = createRouter({
     { path: '/site', component: () => import('./pages/Site.vue') },
     { path: '/tokens', component: () => import('./pages/Tokens.vue') },
     { path: '/people', component: () => import('./pages/People.vue') },
+    { path: '/account', component: () => import('./pages/Account.vue') },
     { path: '/callback', component: () => import('./pages/Callback.vue'), meta: { open: true } },
   ],
 })
