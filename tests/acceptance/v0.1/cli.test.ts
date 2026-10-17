@@ -108,6 +108,10 @@ describe('AC-0.1-10: migrations', () => {
       'revisions_immutable',
       'revisions_no_delete',
       'revisions_no_replace',
+      // migrations/0015: the history of the structure (T-83).
+      'site_changes_immutable',
+      'site_changes_no_delete',
+      'site_changes_no_replace',
     ])
   })
 })
