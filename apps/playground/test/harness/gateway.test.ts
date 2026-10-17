@@ -109,7 +109,9 @@ describe('the built Hollware Worker', () => {
       authorization: 'Bearer hw_pat_not-one-of-ours',
     })
 
-    // With the body, so that a 500 in CI says which one it is (seen twice, 2026-10-17).
+    // With the body, and workerd's own log, so that a 500 in CI says which one it is (seen in CI
+    // since 2026-10-17, never locally).
+    if (response.status !== 401) server.debug()
     expect([response.status, response.status === 401 ? '' : await response.clone().text()]).toEqual(
       [401, ''],
     )
