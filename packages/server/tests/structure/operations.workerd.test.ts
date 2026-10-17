@@ -106,6 +106,43 @@ describe('get_structure', () => {
   })
 })
 
+describe('get_structure and the URLs of webhooks (T-70)', () => {
+  it('shows an owner the whole URL, and anyone else its origin only', async () => {
+    const { key, context, seeded } = await setUp()
+    const hook = 'https://api.vercel.com/v1/integrations/deploy/prj_1/s3cr3t?buildCache=false'
+    await handlers.update_site(
+      {
+        version: 1,
+        definition: siteDefinitionData.parse({
+          ...BLOG,
+          events: { webhooks: [{ name: 'deploy', url: hook }] },
+        }),
+        confirm: false,
+      },
+      context,
+    )
+    const author: OperationContext = {
+      ...context,
+      principal: {
+        kind: 'token',
+        userId: seeded.userId,
+        tokenId: seeded.tokenId,
+        site: key,
+        scopes: ['content:read', 'content:write'],
+      },
+    }
+
+    const asOwner = await handlers.get_structure({}, context)
+    const asAuthor = await handlers.get_structure({}, author)
+
+    expect(asOwner.definition.events.webhooks.map((webhook) => webhook.url)).toEqual([hook])
+    expect(asAuthor.definition.events.webhooks).toEqual([
+      { name: 'deploy', url: 'https://api.vercel.com' },
+    ])
+    expect(asAuthor.site).toBe(key)
+  })
+})
+
 describe('update_site', () => {
   it('refuses a definition that does not compile, and one at a stale version, writing nothing', async () => {
     const { key, context } = await setUp()

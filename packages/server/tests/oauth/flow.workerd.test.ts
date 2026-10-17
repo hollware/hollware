@@ -27,7 +27,8 @@ import {
 // with `access_denied` when the person declines; the token endpoint trades the code, with PKCE,
 // for an access token that `/mcp` accepts as the person, through the client, with the scopes the
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
-// refused at `/v1`, as a token of another site's deployment is refused everywhere. src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
+// refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
+// another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
   restoreLogs()
@@ -111,7 +112,7 @@ async function signedIn(role: 'owner' | 'editor' | 'author', site = SITE_KEY) {
   return { userId, cookie: `hollware_session=${session.secret}` }
 }
 
-function authorizeUrl(clientId: string, challenge: string, scope = ALL): string {
+function authorizeUrl(clientId: string, challenge: string, scope = ALL, resource = MCP): string {
   const query = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
@@ -120,14 +121,23 @@ function authorizeUrl(clientId: string, challenge: string, scope = ALL): string 
     state: 'state-1',
     code_challenge: challenge,
     code_challenge_method: 'S256',
-    resource: MCP,
+    resource,
   })
   return `/authorize?${query.toString()}`
 }
 
 /** The consent page: the handle its form posts, the scopes it offers, and its binding cookies. */
-async function consent(worker: Booted, clientId: string, challenge: string, cookie: string) {
-  const page = await worker.send(authorizeUrl(clientId, challenge), { headers: { cookie } })
+async function consent(
+  worker: Booted,
+  clientId: string,
+  challenge: string,
+  cookie: string,
+  scope = ALL,
+  resource = MCP,
+) {
+  const page = await worker.send(authorizeUrl(clientId, challenge, scope, resource), {
+    headers: { cookie },
+  })
   expect(page.status).toBe(200)
   const html = await page.text()
   const handle = /name="handle" value="([^"]+)"/.exec(html)?.[1] ?? ''
@@ -156,7 +166,13 @@ async function allow(
   })
 }
 
-async function exchange(worker: Booted, clientId: string, code: string, verifier: string) {
+async function exchange(
+  worker: Booted,
+  clientId: string,
+  code: string,
+  verifier: string,
+  resource = MCP,
+) {
   const response = await worker.send('/oauth/token', {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -166,7 +182,7 @@ async function exchange(worker: Booted, clientId: string, code: string, verifier
       redirect_uri: REDIRECT,
       client_id: clientId,
       code_verifier: verifier,
-      resource: MCP,
+      resource,
     }).toString(),
   })
   expect(response.status).toBe(200)
@@ -432,5 +448,35 @@ describe('an access token', () => {
 
     expect(response.status).toBe(401)
     expect(response.headers.get('www-authenticate')).toContain('error="invalid_token"')
+  })
+})
+
+describe("the admin's own routes and the tokens of other clients (T-24)", () => {
+  it('refuse a token of another client, even for /v1 with schema:admin, the admin alone may use', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const person = await signedIn('owner')
+    const clientId = await register(worker)
+    const { verifier, challenge } = await pkce()
+    const scope = `${ALL} schema:admin`
+    const { handle, offered, cookies } = await consent(
+      worker,
+      clientId,
+      challenge,
+      person.cookie,
+      scope,
+      `${PUBLIC_URL}/v1`,
+    )
+    expect(offered).toContain('schema:admin')
+    const redirect = await allow(worker, handle, cookies, ['content:read', 'schema:admin'])
+    const code = new URL(redirect.headers.get('location') ?? '').searchParams.get('code') ?? ''
+    const tokens = await exchange(worker, clientId, code, verifier, `${PUBLIC_URL}/v1`)
+
+    const read = await worker.send('/v1/site', { token: tokens.access_token })
+    const admin = await worker.send('/v1/admin/tokens', { token: tokens.access_token })
+
+    // The token is good at /v1, so only the check of the client keeps it out of the admin's routes.
+    expect(read.status).toBe(200)
+    expect(admin.status).toBe(403)
+    expect(await admin.json()).toMatchObject({ message: 'Only the admin may do this.' })
   })
 })

@@ -242,7 +242,7 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     const [command = '', ...args] = step.command
     const run = spawnSync(command, args, {
       cwd: resolve(root, step.cwd),
-      env: { ...process.env, WRANGLER_SEND_METRICS: 'false', ...step.env },
+      env: envOf(step, process.env),
       stdio: 'inherit',
     })
     if (run.status !== 0) {
@@ -269,4 +269,20 @@ if (invoked !== undefined && pathToFileURL(resolve(invoked)).href === import.met
       process.exit(1)
     },
   )
+}
+
+/** The steps that act on the Cloudflare account: the migrations and the deploys. */
+export function needsAccount(step: Step): boolean {
+  return /^(migrate|deploy) /.test(step.name)
+}
+
+/**
+ * The environment of a step: the runner's, without the Cloudflare token unless the step acts on
+ * the account. A build runs the code of every dependency it compiles, which never needs the
+ * token, so none of it can read it (T-90 of docs/security/threat-model.md).
+ */
+export function envOf(step: Step, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const base: NodeJS.ProcessEnv = { ...env, WRANGLER_SEND_METRICS: 'false', ...step.env }
+  if (!needsAccount(step)) delete base['CLOUDFLARE_API_TOKEN']
+  return base
 }

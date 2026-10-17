@@ -148,13 +148,40 @@ async function change(
   return { outcome: 'updated' as const, version: version + 1 }
 }
 
+/**
+ * The URL of a webhook as a person who cannot change the structure sees it: its origin only. A
+ * webhook's path and query often are its secret (a deploy hook), and `get_structure` asks only
+ * for content:read, which authors have (T-70 of docs/security/threat-model.md).
+ */
+function originOnly(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return ''
+  }
+}
+
 export const getStructure: OperationHandler<'get_structure'> = async (_input, context) => {
   const current = await currentOf(context)
+  const scopes: readonly string[] = context.principal.scopes
+  const owner = scopes.includes('schema:admin')
+  const definition = owner
+    ? current.definition
+    : {
+        ...current.definition,
+        events: {
+          ...current.definition.events,
+          webhooks: current.definition.events.webhooks.map((webhook) => ({
+            ...webhook,
+            url: originOnly(webhook.url),
+          })),
+        },
+      }
   return {
     outcome: 'ok',
     site: context.site.key,
     version: current.version,
-    definition: current.definition,
+    definition,
     catalog: describeCatalog(),
   }
 }

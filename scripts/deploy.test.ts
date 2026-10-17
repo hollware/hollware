@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { FILES, keepLive, planOf, probe } from './deploy.ts'
+import { envOf, FILES, keepLive, planOf, probe } from './deploy.ts'
 
 // Fails when: a deployment of ours (scripts/deploy.ts, ADR-034) stops building the packages first
 // (the CMS takes the admin from their build), stops migrating a database before
@@ -12,7 +12,8 @@ import { FILES, keepLive, planOf, probe } from './deploy.ts'
 // URL that did not answer 200 thirty times in a row, or fails one that did within its budget; or a
 // deploy stops keeping the hashed files of the live version of the admin, the demo blog or
 // hollware.com in the build that replaces it (`keepLive`), keeps them for more than one deploy,
-// overwrites a file of the new build, or writes a file the live list names outside its directory.
+// overwrites a file of the new build, or writes a file the live list names outside its directory;
+// or a step that only builds gets the Cloudflare token in its environment (T-90).
 
 const names = (target: 'staging' | 'production') => planOf(target).steps.map((step) => step.name)
 
@@ -142,5 +143,28 @@ describe('keepLive', () => {
     expect(await keepLive(evil.root, keep, live.fetcher)).toBe(1)
     expect(live.asked).not.toContain('https://cms.test/admin/assets/../../escape.js')
     expect(readdirSync(join(evil.root, 'dist'))).toEqual(['admin'])
+  })
+})
+
+describe('the Cloudflare token', () => {
+  it('reaches the steps that migrate or deploy, and no step that builds', () => {
+    const env = { CLOUDFLARE_API_TOKEN: 'cf-token', CLOUDFLARE_ACCOUNT_ID: 'acct', PATH: '/bin' }
+    const holding = planOf('production').steps.filter(
+      (step) => envOf(step, env)['CLOUDFLARE_API_TOKEN'] === 'cf-token',
+    )
+
+    expect(holding.map((step) => step.name)).toEqual([
+      'migrate the database of the CMS (demo)',
+      'deploy the CMS (demo)',
+      'deploy the agents (demo)',
+      'deploy the demo blog',
+      'deploy hollware.com',
+    ])
+    const build = planOf('production').steps.find((step) => step.name === 'build the packages')
+    expect(build === undefined ? null : envOf(build, env)).toEqual({
+      CLOUDFLARE_ACCOUNT_ID: 'acct',
+      PATH: '/bin',
+      WRANGLER_SEND_METRICS: 'false',
+    })
   })
 })
