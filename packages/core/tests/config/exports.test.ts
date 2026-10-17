@@ -35,6 +35,7 @@ describe('the config module', () => {
     expect(Object.keys(config).sort()).toEqual([
       'ConfigError',
       'DEFAULT_MAX_MARKDOWN_BYTES',
+      'INDEXNOW_KEY',
       'MAX_MARKDOWN_BYTES_CEILING',
       'SITE_KEY_MAX_LENGTH',
       'SITE_KEY_PATTERN',

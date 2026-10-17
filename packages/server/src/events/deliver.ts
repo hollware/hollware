@@ -80,8 +80,8 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
       async send(payload) {
         // A change of the structure is about no page: nothing for search engines to fetch.
         if (payload.kind === 'site.changed' || payload.url === null) return
-        const key = deps.secret(indexNow.key)
-        if (key === undefined) throw new Error(`the secret ${indexNow.key} is not set`)
+        // The key is public, and the definition holds it: no secret of the Worker is ever read here.
+        const key = indexNow.key
         const request = new Request(INDEXNOW_ENDPOINT, {
           method: 'POST',
           headers: { 'content-type': 'application/json; charset=utf-8' },

@@ -4,6 +4,20 @@ import { isRecord, itemPath, keyPath, quote, wrongType } from './values.ts'
 
 /** The name of a Worker secret or variable: what `wrangler secret put` takes. */
 const BINDING_NAME = /^[A-Z][A-Z0-9_]*$/
+
+/**
+ * The Worker secrets a definition may not name: Hollware's own (its master secret, its analytics
+ * token) and Cloudflare's. A site's definition is written by its owner or an agent with
+ * schema:admin, who need not hold the account, so it names only secrets made for its webhooks.
+ */
+const RESERVED_SECRET = /^(HOLLWARE|CLOUDFLARE|CF)_/
+
+/**
+ * An IndexNow key, which is public by design (search engines fetch it at `/<key>.txt`): the
+ * definition holds the key itself, never the name of a Worker secret, so no value of the Worker
+ * can be sent to IndexNow (T-69 of docs/security/threat-model.md).
+ */
+export const INDEXNOW_KEY = /^[A-Za-z0-9-]{8,128}$/
 /** A subscriber's name: lowercase words joined by hyphens. */
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -52,6 +66,14 @@ export function readCors(
 }
 
 function readBindingName(path: string, raw: unknown, problems: Problems): string | null {
+  if (typeof raw === 'string' && BINDING_NAME.test(raw) && RESERVED_SECRET.test(raw)) {
+    problems.add(
+      path,
+      `names ${quote(raw)}, a secret of Hollware or of Cloudflare, which no webhook may use`,
+      'Leave the secret out, and Hollware makes one for the webhook (make_webhook_secret).',
+    )
+    return null
+  }
   if (typeof raw === 'string' && BINDING_NAME.test(raw)) return raw
   problems.add(
     path,
@@ -139,9 +161,21 @@ export function readEvents(
   if (indexNow !== undefined) {
     const indexPath = keyPath(path, 'indexNow')
     if (!isRecord(indexNow)) {
-      problems.add(indexPath, wrongType(indexNow, 'an object'), 'Declare { key: "INDEXNOW_KEY" }.')
+      problems.add(
+        indexPath,
+        wrongType(indexNow, 'an object'),
+        'Declare { key: "<your IndexNow key>" }.',
+      )
     } else {
-      const key = readBindingName(keyPath(indexPath, 'key'), indexNow['key'], problems)
+      const raw = indexNow['key']
+      const key = typeof raw === 'string' && INDEXNOW_KEY.test(raw) ? raw : null
+      if (key === null) {
+        problems.add(
+          keyPath(indexPath, 'key'),
+          wrongType(raw, 'an IndexNow key: 8 to 128 letters, digits or hyphens'),
+          'Put the key itself, the one your site serves at /<key>.txt, not the name of a secret.',
+        )
+      }
       if (siteUrl === null) {
         problems.add(
           indexPath,

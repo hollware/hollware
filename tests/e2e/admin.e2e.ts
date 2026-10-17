@@ -337,3 +337,14 @@ test('the bar of every page names the site it is of, with the menu to switch to 
   await expect(owner.getByRole('menuitemcheckbox', { name: /playground/ })).toBeChecked()
   await owner.keyboard.press('Escape')
 })
+
+test('signing in goes back to a page of this Hollware, and never to another host (T-43)', async () => {
+  // The owner's page holds the virtual passkey since the first test.
+  await owner.goto('/signin?return_to=%2Fadmin%2Ftokens')
+  await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
+  await expect(owner).toHaveURL(/\/admin\/tokens$/)
+
+  await owner.goto('/signin?return_to=%2F%5Cevil.example')
+  await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
+  await expect(owner).toHaveURL(new RegExp(`^${target().url}/admin/$`))
+})

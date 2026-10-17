@@ -81,19 +81,36 @@ export function setupPage(nonce: string): string {
   )
 }
 
+/**
+ * Where the sign-in page sends the person after their passkey: the `return_to` it was given, if it
+ * is a page of this origin, else the admin. The target is read as the browser will read it, as a
+ * URL against the page's own origin, so no way of writing another host (`//`, `/\`, a tab, a
+ * scheme) gets through, and only the path, query and fragment it resolves to are used (T-43).
+ * The page runs its source as it is: it uses nothing but its arguments and the URL of the platform.
+ */
+export function sameOriginTarget(target: string | null, origin: string): string {
+  if (target === null) return '/admin/'
+  try {
+    const url = new URL(target, origin)
+    return url.origin === origin ? `${url.pathname}${url.search}${url.hash}` : '/admin/'
+  } catch {
+    return '/admin/'
+  }
+}
+
 export function signInPage(nonce: string): string {
   return page(
     'Sign in',
     nonce,
     `<p>Sign in to this Hollware with your passkey.</p>
 <button id="signin" type="button">Sign in with a passkey</button>`,
-    `document.getElementById('signin').addEventListener('click', async () => {
+    `const sameOriginTarget = ${sameOriginTarget.toString()}
+document.getElementById('signin').addEventListener('click', async () => {
   try {
     const { challengeId, options } = await post('/auth/signin/options', {})
     const credential = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options) })
     await post('/auth/signin/verify', { challengeId, response: credential.toJSON() })
-    const target = new URLSearchParams(location.search).get('return_to') ?? '/admin/'
-    location.href = target.startsWith('/') && !target.startsWith('//') ? target : '/admin/'
+    location.href = sameOriginTarget(new URLSearchParams(location.search).get('return_to'), location.origin)
   } catch (error) { fail(error) }
 })`,
   )

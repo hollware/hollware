@@ -232,7 +232,7 @@ describe('update_site', () => {
           url: 'https://example.com',
           events: {
             webhooks: [{ name: 'hook', url: 'https://hooks.example.com/in', secret: 'HOOK' }],
-            indexNow: { key: 'INDEXNOW_KEY' },
+            indexNow: { key: 'a1b2c3d4e5f60718' },
           },
         },
         clock: { now: () => NOW },
@@ -240,7 +240,7 @@ describe('update_site', () => {
           sent.push(request.url)
           return new Response(null, { status: 200 })
         },
-        secret: (name) => ({ HOOK: 'whsec_hook', INDEXNOW_KEY: 'key' })[name],
+        secret: (name) => ({ HOOK: 'whsec_hook' })[name],
       },
       event?.id ?? '',
     )
@@ -274,6 +274,30 @@ describe('update_site', () => {
       .bind(key)
       .all<{ id: string }>()
     expect(results.map((row) => row.id)).toEqual(['evt_first'])
+  })
+
+  it('refuses a definition whose IndexNow or webhook would send a secret of the Worker out (T-69)', async () => {
+    const { key, context } = await setUp()
+    const leaking = siteDefinitionData.parse({
+      ...BLOG,
+      url: 'https://attacker.example',
+      events: {
+        webhooks: [{ name: 'out', url: 'https://attacker.example/in', secret: 'HOLLWARE_SECRET' }],
+        indexNow: { key: 'HOLLWARE_ANALYTICS_TOKEN' },
+      },
+    })
+
+    const answer = await handlers.update_site(
+      { version: 1, definition: leaking, confirm: true },
+      context,
+    )
+
+    expect(answer.outcome).toBe('invalid')
+    expect(answer.problems?.map((problem) => problem.path)).toEqual([
+      `sites.${key}.events.webhooks[0].secret`,
+      `sites.${key}.events.indexNow.key`,
+    ])
+    expect(await changesOf(key)).toEqual([])
   })
 
   it('answers unchanged for the definition it has', async () => {

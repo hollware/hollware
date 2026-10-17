@@ -26,7 +26,7 @@ function withEvents(site: ResolvedSite): ResolvedSite {
     url: 'https://example.com',
     events: {
       webhooks: [{ name: 'hook', url: 'https://hooks.example.com/in', secret: 'HOOK_SECRET' }],
-      indexNow: { key: 'INDEXNOW_KEY' },
+      indexNow: { key: 'a1b2c3d4e5f60718' },
     },
   }
 }
@@ -49,7 +49,7 @@ function deps(world: World, fetch: DeliveryDeps['fetch']): DeliveryDeps {
     site: withEvents(world.tenant.site),
     clock: world.time.clock,
     fetch,
-    secret: (name) => ({ HOOK_SECRET: SECRET, INDEXNOW_KEY: 'key123' })[name],
+    secret: (name) => ({ HOOK_SECRET: SECRET })[name],
   }
 }
 
@@ -157,7 +157,11 @@ describe('deliveries', () => {
     ).toBe(true)
     expect([indexNow?.url, JSON.parse(indexNow?.body ?? '{}')]).toEqual([
       INDEXNOW_ENDPOINT,
-      { host: 'example.com', key: 'key123', urlList: ['https://example.com/en/blog/pair-en/'] },
+      {
+        host: 'example.com',
+        key: 'a1b2c3d4e5f60718',
+        urlList: ['https://example.com/en/blog/pair-en/'],
+      },
     ])
   })
 

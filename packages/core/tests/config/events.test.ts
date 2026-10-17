@@ -21,7 +21,7 @@ describe('the url and the events of a site', () => {
           webhooks: [
             { name: 'newsletter', url: 'https://hooks.example.com/in', secret: 'WEBHOOK_SECRET' },
           ],
-          indexNow: { key: 'INDEXNOW_KEY' },
+          indexNow: { key: 'a1b2c3d4e5f60718' },
         },
       }),
     )
@@ -32,7 +32,7 @@ describe('the url and the events of a site', () => {
         webhooks: [
           { name: 'newsletter', url: 'https://hooks.example.com/in', secret: 'WEBHOOK_SECRET' },
         ],
-        indexNow: { key: 'INDEXNOW_KEY' },
+        indexNow: { key: 'a1b2c3d4e5f60718' },
       },
     ])
   })
@@ -70,8 +70,32 @@ describe('the url and the events of a site', () => {
     ],
     [
       'IndexNow without a url',
-      { events: { indexNow: { key: 'KEY' } } },
+      { events: { indexNow: { key: 'a1b2c3d4e5f60718' } } },
       ['sites.demo.events.indexNow'],
+    ],
+    [
+      // T-69: a name of a Worker secret is no key, so no value of the Worker reaches IndexNow.
+      'an IndexNow key that names a secret instead of being the key',
+      { url: 'https://example.com', events: { indexNow: { key: 'HOLLWARE_SECRET' } } },
+      ['sites.demo.events.indexNow.key'],
+    ],
+    [
+      'a webhook that names a secret of Hollware',
+      {
+        events: {
+          webhooks: [{ name: 'a', url: 'https://x.example', secret: 'HOLLWARE_ANALYTICS_TOKEN' }],
+        },
+      },
+      ['sites.demo.events.webhooks[0].secret'],
+    ],
+    [
+      'a webhook that names a secret of Cloudflare',
+      {
+        events: {
+          webhooks: [{ name: 'a', url: 'https://x.example', secret: 'CLOUDFLARE_API_TOKEN' }],
+        },
+      },
+      ['sites.demo.events.webhooks[0].secret'],
     ],
   ])('reports %s at its path', (_name, overrides, expected) => {
     expect(paths(configWith(overrides))).toEqual(expected)
@@ -96,6 +120,30 @@ describe('the origins of a site that may read it from a page', () => {
       'an origin with a path, and one that is no URL',
       { cors: { origins: ['https://example.com/app', 'example.com'] } },
       ['sites.demo.cors.origins[0]', 'sites.demo.cors.origins[1]'],
+    ],
+    [
+      // T-69: a name of a Worker secret is no key, so no value of the Worker reaches IndexNow.
+      'an IndexNow key that names a secret instead of being the key',
+      { url: 'https://example.com', events: { indexNow: { key: 'HOLLWARE_SECRET' } } },
+      ['sites.demo.events.indexNow.key'],
+    ],
+    [
+      'a webhook that names a secret of Hollware',
+      {
+        events: {
+          webhooks: [{ name: 'a', url: 'https://x.example', secret: 'HOLLWARE_ANALYTICS_TOKEN' }],
+        },
+      },
+      ['sites.demo.events.webhooks[0].secret'],
+    ],
+    [
+      'a webhook that names a secret of Cloudflare',
+      {
+        events: {
+          webhooks: [{ name: 'a', url: 'https://x.example', secret: 'CLOUDFLARE_API_TOKEN' }],
+        },
+      },
+      ['sites.demo.events.webhooks[0].secret'],
     ],
   ])('reports %s at its path', (_name, overrides, expected) => {
     expect(paths(configWith(overrides))).toEqual(expected)

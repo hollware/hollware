@@ -1,6 +1,7 @@
 import {
   compileSites,
   ConfigError,
+  INDEXNOW_KEY,
   newId,
   type ResolvedSite,
   type SiteDefinitionInput,
@@ -122,7 +123,7 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
     for (const row of fetched) {
       if (row.definition === null || (next.get(row.id)?.version ?? -1) >= row.version) continue
       try {
-        const definition: unknown = JSON.parse(row.definition)
+        const definition = withoutStaleIndexNow(row.id, JSON.parse(row.definition), options.log)
         const site = compileSites({ [row.id]: definition }).sites.get(row.id)
         if (site !== undefined) next.set(row.id, { version: row.version, site })
       } catch (error) {
@@ -148,4 +149,26 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
   }
 
   return { sites, keys, refresh }
+}
+
+/**
+ * A definition stored before 0.10 named the Worker secret of its IndexNow key; since then it holds
+ * the key itself (T-69 of docs/security/threat-model.md). A stored one of the old form is served
+ * with IndexNow off, and says so, instead of failing to compile and leaving its site unserved: its
+ * owner sets the key itself in the admin or with update_site, which refuses the old form.
+ */
+export function withoutStaleIndexNow(
+  site: string,
+  definition: unknown,
+  log: (entry: object) => void,
+): unknown {
+  if (typeof definition !== 'object' || definition === null) return definition
+  const events: unknown = Reflect.get(definition, 'events')
+  if (typeof events !== 'object' || events === null) return definition
+  const indexNow: unknown = Reflect.get(events, 'indexNow')
+  if (typeof indexNow !== 'object' || indexNow === null) return definition
+  const key: unknown = Reflect.get(indexNow, 'key')
+  if (typeof key === 'string' && INDEXNOW_KEY.test(key)) return definition
+  log({ kind: 'indexnow_off', site, reason: 'the definition names a secret, not the key itself' })
+  return { ...definition, events: { ...events, indexNow: null } }
 }

@@ -14,6 +14,7 @@ export type {
   SiteDefinition,
 } from './types.ts'
 export { ConfigError, type ConfigProblem } from './config-error.ts'
+export { INDEXNOW_KEY } from './events.ts'
 export { DEFAULT_MAX_MARKDOWN_BYTES, MAX_MARKDOWN_BYTES_CEILING } from './constants.ts'
 export { describeResolvedSite, type SiteDescription } from './describe.ts'
 export { resolveConfig } from './resolve.ts'

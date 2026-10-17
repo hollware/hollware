@@ -102,6 +102,7 @@
       "HollwareError": "value",
       "HollwareEvent": "type",
       "ID_PREFIXES": "value",
+      "INDEXNOW_KEY": "value",
       "IdPrefix": "type",
       "ImageRef": "type",
       "LinkRef": "type",
