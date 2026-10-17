@@ -60,10 +60,9 @@
 //   is not loopback.
 // - "redact" rows: a token, something with the shape of one, or a secret that does not look
 //   like a token is let through.
-// - "--from nuxt-content …" / "--from emdash …": a source other than a directory of Markdown is
-//   not read as its converter reads it (src/import/from-*.ts), its pages are not sent byte for
-//   byte, `--publish` publishes an entry EmDash had as a draft, what was left out is not said, or
-//   a source is taken without what it needs (`--collection`) or with a name it does not know.
+// - "--from nuxt-content …": a Nuxt Content directory is not read as its converter reads it
+//   (src/import/from-nuxt-content.ts), its pages are not sent byte for byte, or a source is taken
+//   without what it needs (`--collection`) or with a name it does not know.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1135,73 +1134,16 @@ describe('hollware import --from', () => {
     expect(stub.entries.get('docs/en/guide-install')?.revisions).toEqual([page])
   })
 
-  it('--from emdash reads a seed, says what it left out, and publishes only what EmDash had published', async () => {
+  it('asks for what a source needs, and refuses one it does not know', async () => {
     const stub = await serve()
-    const paragraph = (text: string) => ({
-      _type: 'block',
-      style: 'normal',
-      markDefs: [],
-      children: [{ _type: 'span', text, marks: [] }],
-    })
-    const seed = {
-      collections: [
-        {
-          slug: 'posts',
-          fields: [
-            { slug: 'title', type: 'string' },
-            { slug: 'cover', type: 'image' },
-            { slug: 'content', type: 'portableText' },
-          ],
-        },
-      ],
-      content: {
-        posts: [
-          {
-            slug: 'live',
-            status: 'published',
-            data: { title: 'Live', cover: '{}', content: [paragraph('On.')] },
-          },
-          {
-            slug: 'wip',
-            status: 'draft',
-            data: { title: 'Wip', content: [paragraph('Not yet.')] },
-          },
-        ],
-      },
-    }
-    const dir = temp.make({ 'seed.json': JSON.stringify(seed) })
-
-    const { code, out } = await runImport(join(dir, 'seed.json'), stub.url, [
-      '--from',
-      'emdash',
-      '--publish',
-    ])
-
-    expect(code).toBe(0)
-    expect(out).toContain(
-      'Left out, as they have no form in Markdown or in the frontmatter:\n  posts/en/live.md: the field cover (image)',
-    )
-    expect(stub.entries.get('posts/en/live')?.revisions).toEqual([
-      '---\ntitle: "Live"\n---\n\nOn.\n',
-    ])
-    expect(stub.entries.get('posts/en/live')?.published).not.toBeNull()
-    expect(stub.entries.get('posts/en/wip')?.published).toBeNull()
-  })
-
-  it('asks for what a source needs, and refuses one it does not know or cannot read', async () => {
-    const stub = await serve()
-    const dir = temp.make({ 'site.emdash': 'not a tar archive at all' })
+    const dir = temp.make({ 'index.md': '# Home\n' })
 
     const noCollection = await runImport(dir, stub.url, ['--from', 'nuxt-content'])
     const unknown = await runImport(dir, stub.url, ['--from', 'wordpress'])
-    const broken = await runImport(join(dir, 'site.emdash'), stub.url, ['--from', 'emdash'])
 
     expect(noCollection.err.join('\n')).toContain('--from nuxt-content needs --collection')
     expect(unknown.err.join('\n')).toContain(
-      '--from takes markdown, nuxt-content or emdash, not "wordpress".',
-    )
-    expect(broken.err.join('\n')).toContain(
-      'cannot be read as an EmDash site: This is no EmDash site package: it has no manifest.json.',
+      '--from takes markdown or nuxt-content, not "wordpress".',
     )
     expect(stub.calls).toEqual([])
   })

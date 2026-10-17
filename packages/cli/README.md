@@ -17,7 +17,7 @@ CMS for the agent era, native to Cloudflare Workers.
 | `doctor`  | Check the project, its bindings, its database and its owner, with what to fix    |
 | `token`   | Create, list and revoke personal tokens, and read tokens with `--read`           |
 | `invite`  | Invite a person to the admin, as an editor or an author                          |
-| `import`  | Import Markdown over MCP, as drafts; from Nuxt Content or EmDash with `--from`   |
+| `import`  | Import Markdown over MCP, as drafts; from a Nuxt Content site with `--from`      |
 | `export`  | Export entries over MCP as Markdown files, the layout `import` reads             |
 
 Every command answers `--help`. A command that fails prints one message on stderr, with what to
@@ -25,22 +25,16 @@ do, and exits with code 1.
 
 ### Moving a site to Hollware
 
-`import --from` reads a site of another CMS as the files Hollware imports, validates them all
-before it writes anything, and says what it left out:
+`import --from nuxt-content` reads the content directory of a Nuxt Content site as the files Hollware
+imports, and validates them all before it writes anything:
 
 ```sh
-# The content/ of a Nuxt Content site; with --locale-dirs, content/<locale>/… and translations
+# With --locale-dirs, content/<locale>/… and the translations of each page
 npx hollware import ./content --from nuxt-content --collection docs --locale-dirs --url https://cms.example.com --token-file ./token.txt
-
-# An EmDash site: the package `emdash site export` writes, or a seed.json
-npx hollware import ./site.emdash --from emdash --publish --url https://cms.example.com --token-file ./token.txt
 ```
 
-Nuxt Content pages keep their Markdown byte for byte (Comark reads MDC), with their slug as Nuxt
-Content routes them and a `title` from their first heading when they have none. EmDash entries
-become Markdown from their Portable Text, with their simple fields as frontmatter; images,
-references and blocks with no Markdown form are left out and listed, and `--publish` publishes only
-what EmDash had published.
+A page keeps its Markdown byte for byte (Comark reads MDC), with its slug as Nuxt Content routes
+it and a `title` from its first heading when it has none.
 
 ## A first run
 

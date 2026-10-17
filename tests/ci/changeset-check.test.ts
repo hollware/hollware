@@ -167,23 +167,29 @@ describe('changeset-check.sh', () => {
     expect(result.pnpm).toBe('')
   })
 
-  test('checks a push whose head only looks like the Version Packages merge', () => {
-    // The skip is for the merge of the branch changeset-release/<base> only.
-    const subjects = [
-      'Merge pull request #3 from someone/feature',
-      'Merge pull request #4 from someone/my-changeset-release/x',
-      'Merge branch changeset-release/main',
-    ]
-    for (const subject of subjects) {
-      const before = commit('feat: before')
-      const head = commit(subject)
-      const result = check({ EVENT_NAME: 'push', BEFORE_SHA: before, HEAD_SHA: head })
-      expect(result.status).toBe(0)
-      expect(result.stdout).toBe(`Checking changesets since ${before}\n`)
-      expect(result.pnpm).toBe(`exec changeset status --since=${before}`)
-      rmSync(calls)
-    }
-  })
+  // Six commits and three runs of the script: under the load of the whole suite that takes more
+  // than the default 5 s (it timed out twice on 2026-10-16).
+  test(
+    'checks a push whose head only looks like the Version Packages merge',
+    { timeout: 30_000 },
+    () => {
+      // The skip is for the merge of the branch changeset-release/<base> only.
+      const subjects = [
+        'Merge pull request #3 from someone/feature',
+        'Merge pull request #4 from someone/my-changeset-release/x',
+        'Merge branch changeset-release/main',
+      ]
+      for (const subject of subjects) {
+        const before = commit('feat: before')
+        const head = commit(subject)
+        const result = check({ EVENT_NAME: 'push', BEFORE_SHA: before, HEAD_SHA: head })
+        expect(result.status).toBe(0)
+        expect(result.stdout).toBe(`Checking changesets since ${before}\n`)
+        expect(result.pnpm).toBe(`exec changeset status --since=${before}`)
+        rmSync(calls)
+      }
+    },
+  )
 
   test('checks an ordinary push against the previous tip', () => {
     const before = commit('feat: first')
