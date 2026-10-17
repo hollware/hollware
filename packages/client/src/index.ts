@@ -23,7 +23,17 @@ export interface HollwareReader {
     collection: string,
     slug: string,
     locale: string,
-    options?: { readonly formats?: readonly Format[]; readonly related?: boolean },
+    options?: {
+      readonly formats?: readonly Format[]
+      readonly related?: boolean
+      /**
+       * A preview token (`hw_prv_…`, made in the admin, or the `hollware-preview` of a page's
+       * URL): the entry it names is read in its latest revision, a draft included, and the answer
+       * must never be cached. A token that does not hold is an `invalid_input` error (a
+       * `HollwareClientError` over HTTP), never the published version in its place.
+       */
+      readonly preview?: string
+    },
   ): Promise<Output<typeof getEntry>>
   listEntries(
     site: string,
@@ -121,11 +131,16 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       collection: string,
       slug: string,
       locale: string,
-      options?: { readonly formats?: readonly Format[]; readonly related?: boolean },
+      options?: {
+        readonly formats?: readonly Format[]
+        readonly related?: boolean
+        readonly preview?: string
+      },
     ) =>
       get(`${segment(collection)}/${segment(locale)}/${segment(slug)}`, {
         formats: options?.formats?.join(','),
         related: options?.related === true ? 'true' : undefined,
+        preview: options?.preview,
       }),
     listEntries: (
       _site: string,

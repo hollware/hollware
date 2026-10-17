@@ -4,6 +4,7 @@ import {
   getTranslations as getTranslationsSpec,
   HollwareError,
   listEntries as listEntriesSpec,
+  verifyPreviewToken,
   search as searchSpec,
   type ErrorCode,
   type ResolvedSite,
@@ -41,7 +42,7 @@ export interface RpcDeps {
 }
 
 /** What a call needs of the bindings of the invocation. */
-export type RpcEnv = Pick<HollwareEnv, 'DB' | 'AI' | 'VECTORIZE'>
+export type RpcEnv = Pick<HollwareEnv, 'DB' | 'AI' | 'VECTORIZE' | 'HOLLWARE_SECRET'>
 
 /**
  * Who calls over RPC: a Worker of the same account, which reads published content and nothing
@@ -62,6 +63,48 @@ function unknownSite(site: string, served: Iterable<string>): HollwareError {
     'invalid_input',
     `This Hollware serves no site "${site}": it serves ${keys}.`,
     `Pass one of ${keys}, the sites this deployment serves, as the site argument.`,
+  )
+}
+
+/** What a caller that presents a preview token that does not hold is told. */
+function previewRefused(message: string): HollwareError {
+  return new HollwareError(
+    'invalid_input',
+    message,
+    'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
+  )
+}
+
+/**
+ * The entry a preview token names, once its signature, its site and its hour hold: the caller gets
+ * an error, never the published version in its place, for a token that does not. The reason goes
+ * to the log; the caller only learns that the link is not valid.
+ */
+async function checkPreview(
+  deps: RpcDeps,
+  env: RpcEnv,
+  site: string,
+  token: unknown,
+): Promise<string> {
+  if (typeof token !== 'string') throw previewRefused('The preview link is not a string.')
+  const checked = await verifyPreviewToken({
+    secret: env.HOLLWARE_SECRET,
+    site,
+    token,
+    now: deps.clock.now(),
+  })
+  if (checked.ok) return checked.entryId
+  if (checked.reason === 'no_secret') {
+    throw new HollwareError(
+      'invalid_input',
+      'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',
+      'Set the Worker secret HOLLWARE_SECRET (`hollware deploy` makes one), then ask for a new preview link.',
+    )
+  }
+  throw previewRefused(
+    checked.reason === 'expired'
+      ? 'This preview link has expired.'
+      : 'This preview link is not valid.',
   )
 }
 
@@ -166,6 +209,8 @@ async function run<Schema extends z.ZodType, Output>(
   schema: Schema,
   build: () => unknown,
   handler: (input: z.output<Schema>, context: OperationContext) => Promise<Output>,
+  /** The view of the call: `published` unless the call proves it may read more (a preview). */
+  viewOf: (site: string) => Promise<OperationContext['view']> = () => Promise.resolve('published'),
 ): Promise<Output> {
   const requestId = crypto.randomUUID()
   try {
@@ -177,10 +222,16 @@ async function run<Schema extends z.ZodType, Output>(
   const served = deps.sites.get(site)
   if (served === undefined) throw unknownSite(site, deps.sites.keys())
   const input = parseInput(schema, build())
+  let view: OperationContext['view']
+  try {
+    view = await viewOf(site)
+  } catch (error) {
+    throw forCaller(deps, requestId, method, error)
+  }
   const context: OperationContext = {
     site: served,
     principal: BINDING_PRINCIPAL,
-    view: 'published',
+    view,
     store: createD1Store(env.DB.withSession('first-unconstrained')),
     clock: deps.clock,
     client: null,
@@ -202,16 +253,45 @@ async function run<Schema extends z.ZodType, Output>(
  */
 export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
   return {
-    getEntry: (site, collection, slug, locale, options) =>
-      run(
+    getEntry: (site, collection, slug, locale, options) => {
+      // A preview is not an input of the operation: it only widens the view of this one read. It
+      // is split off when the input is built, after the site has been checked.
+      const read: { preview: unknown; entryId: string | null } = {
+        preview: undefined,
+        entryId: null,
+      }
+      return run(
         deps,
         env,
         'getEntry',
         site,
         getEntrySpec.input,
-        () => ({ collection, locale, slug, ...readOptions(options, ['formats', 'related']) }),
-        deps.handlers.get_entry,
-      ),
+        () => {
+          const { preview, ...rest } = readOptions(options, ['formats', 'related', 'preview'])
+          read.preview = preview
+          return { collection, locale, slug, ...rest }
+        },
+        async (input, context) => {
+          const answer = await deps.handlers.get_entry(input, context)
+          // The token names one entry: what the slug found is read only if it is that one, and
+          // any other is answered as no entry at all, so a token tells nothing of the slugs of
+          // the site that its own entry does not have.
+          if (
+            read.entryId !== null &&
+            answer.entry !== undefined &&
+            answer.entry.id !== read.entryId
+          ) {
+            return { outcome: 'not_found' as const }
+          }
+          return answer
+        },
+        async (key) => {
+          if (read.preview === undefined) return 'published'
+          read.entryId = await checkPreview(deps, env, key, read.preview)
+          return 'head'
+        },
+      )
+    },
     listEntries: (site, collection, options) =>
       run(
         deps,

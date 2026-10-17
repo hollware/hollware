@@ -80,6 +80,15 @@ export async function loadInto(source: Source, context: LoadContext): Promise<vo
 export type HollwareCollectionFilter = ListOptions
 
 /**
+ * The filter of `getLiveEntry`: the slug, and the preview token of the page's URL
+ * (`?hollware-preview=`), which reads the latest revision of its entry, a draft included.
+ */
+export interface HollwareEntryFilter {
+  readonly id: string
+  readonly preview?: string | undefined
+}
+
+/**
  * A live loader for `defineLiveCollection` in `src/live.config.ts`: it reads at request time, so
  * a publish shows on the next request with no rebuild. On Workers, give it the service binding
  * through a function, because the binding exists only while a request runs:
@@ -94,24 +103,30 @@ export type HollwareCollectionFilter = ListOptions
  * })
  * ```
  *
- * `getLiveEntry('blog', slug)` has the entry with its `rendered.html`; `getLiveCollection('blog',
+ * `getLiveEntry('blog', slug)` has the entry with its `rendered.html`; `getLiveEntry('blog', { id:
+ * slug, preview })`, with the `hollware-preview` of the page's URL, has its latest revision, a
+ * draft included, and the page must answer `Cache-Control: no-store` then; `getLiveCollection('blog',
  * { tag, limit })` lists the entries without it.
  */
 export function hollwareLiveLoader(
   options: HollwareLoaderOptions,
-): LiveLoader<Record<string, unknown>, { id: string }, HollwareCollectionFilter> {
+): LiveLoader<Record<string, unknown>, HollwareEntryFilter, HollwareCollectionFilter> {
   const source = createSource(options)
   return {
     name: `${name}:${options.collection}:${options.locale}`,
     async loadEntry({ filter }) {
       try {
-        const entry = await source.get(filter.id)
+        const preview = filter.preview === '' ? undefined : filter.preview
+        const entry = await source.get(filter.id, preview === undefined ? {} : { preview })
         if (entry === undefined) return undefined
         return {
           id: entry.id,
           data: entry.data,
           rendered: { html: entry.html ?? '' },
-          cacheHint: { lastModified: new Date(entry.updatedAt) },
+          // A preview is the latest revision for one person: nothing may be told it can be kept.
+          ...(preview === undefined
+            ? { cacheHint: { lastModified: new Date(entry.updatedAt) } }
+            : {}),
         }
       } catch (error) {
         return { error: asError(error) }

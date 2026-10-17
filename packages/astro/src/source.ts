@@ -56,8 +56,12 @@ export interface ListOptions {
 
 export interface Source {
   list(options?: ListOptions): Promise<SourceEntry[]>
-  /** The entry with this slug and its HTML, or `undefined` when it is not published. */
-  get(slug: string): Promise<SourceEntry | undefined>
+  /**
+   * The entry with this slug and its HTML, or `undefined` when it is not published. With a
+   * `preview` token (made in the admin) it is the latest revision of the entry the token names,
+   * a draft included; a token that does not hold is an error, never the published version.
+   */
+  get(slug: string, options?: { readonly preview?: string }): Promise<SourceEntry | undefined>
   translations(group: string): Promise<Translation[]>
 }
 
@@ -72,7 +76,8 @@ function readerOf(options: ReaderOptions): HollwareReader {
 }
 
 /**
- * Reads one collection of a site in one locale, published content only. The reader is resolved on
+ * Reads one collection of a site in one locale, published content only (but for `get` with a
+ * preview token). The reader is resolved on
  * each call, so a live loader gets its service binding from the request that makes it.
  */
 export function createSource(options: SourceOptions & ReaderOptions): Source {
@@ -98,9 +103,10 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
       } while (cursor !== undefined)
       return found
     },
-    async get(slug) {
+    async get(slug, getOptions = {}) {
       const answer = await readerOf(options).getEntry(site, collection, slug, locale, {
         formats: ['html'],
+        ...(getOptions.preview === undefined ? {} : { preview: getOptions.preview }),
       })
       if (answer.outcome === 'not_found' || answer.entry === undefined) return undefined
       return {

@@ -10,7 +10,9 @@ The Astro content loaders of Hollware. Boundary rules for this package:
   rendered HTML that Hollware made: the loaders never render Markdown themselves.
 - It imports Astro as types only, and nothing of Cloudflare: a live loader gets its service
   binding through a function the site writes (`() => env.HOLLWARE`).
-- Drafts are left out on purpose: `@hollware/nuxt` has no preview either, and a preview needs
-  the same design on both (a preview token, and a route that no cache keeps).
+- Drafts are left out, but for one case: a live loader's `loadEntry` takes `{ id, preview }` and
+  reads the latest revision of the entry a preview token names (`@hollware/nuxt` does the same
+  from the page's URL). A previewed entry carries no `cacheHint`, and the page sets `no-store`.
+  The build-time `hollwareLoader` has no preview: it is static, and holds published content only.
 - `examples/astro-blog` is its proof: `apps/playground/test/harness/astro-site.test.ts` builds it
   and reads the playground over the service binding.

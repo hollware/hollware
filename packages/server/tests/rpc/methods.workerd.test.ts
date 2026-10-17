@@ -217,7 +217,7 @@ describe('the options of a call', () => {
     {
       method: 'getEntry',
       unknown: 'format',
-      allowed: 'formats, related',
+      allowed: 'formats, related, preview',
       call: (rpc: HollwareRpc) =>
         rpc.getEntry(SITE_KEY, 'blog', 'hello-world', 'en', JSON.parse('{"format":["html"]}')),
     },

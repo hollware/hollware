@@ -49,6 +49,15 @@ const { data } = await useHollwareEntry('blog', 'en', useRoute().params.slug as 
 Every page carries `<meta name="generator" content="Hollware">`; set `hollware.generator: false`
 to leave it out.
 
+## Previews
+
+"Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`, a
+signed link for one entry that works for one hour. `useHollwareEntry` reads the latest revision of
+that entry, a draft included, when the page's URL carries it, and the page is never kept: no cache
+tag, `Cache-Control: no-store`, and the cache of `hollware.cache` neither serves nor stores it. A
+token that is expired, forged or for another entry is an error, never the published version. It
+needs the Worker secret `HOLLWARE_SECRET` in Hollware.
+
 ## Links
 
 - Docs: <https://hollware.com>

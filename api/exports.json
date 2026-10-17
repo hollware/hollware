@@ -47,6 +47,7 @@
   "@hollware/astro": {
     ".": {
       "HollwareCollectionFilter": "type",
+      "HollwareEntryFilter": "type",
       "HollwareLoaderOptions": "type",
       "HollwareReader": "type",
       "ListOptions": "type",
@@ -151,8 +152,14 @@
       "PERSONAL_TOKEN_TTL_DAYS": "value",
       "PIPELINE_VERSION": "value",
       "PRESETS": "value",
+      "PREVIEW_QUERY_PARAM": "value",
+      "PREVIEW_SECRET_MIN_LENGTH": "value",
+      "PREVIEW_TOKEN_PREFIX": "value",
+      "PREVIEW_TTL_SECONDS": "value",
       "Phase": "type",
       "Preset": "type",
+      "PreviewCheck": "type",
+      "PreviewRefusal": "type",
       "ProcessMarkdown": "type",
       "ProcessMarkdownOptions": "type",
       "ProcessResult": "type",
@@ -187,6 +194,7 @@
       "Violation": "type",
       "WebhookCheck": "type",
       "approveReview": "value",
+      "canSignPreviews": "value",
       "canonicalJson": "value",
       "catalogRule": "value",
       "chunksOf": "value",
@@ -230,6 +238,7 @@
       "listEntries": "value",
       "listReviews": "value",
       "listTag": "value",
+      "makePreviewToken": "value",
       "name": "value",
       "newId": "value",
       "parseHollwareEvent": "value",
@@ -259,6 +268,7 @@
       "unpublish": "value",
       "updateDraft": "value",
       "validate": "value",
+      "verifyPreviewToken": "value",
       "verifyWebhook": "value",
       "webhookDefinition": "value"
     }

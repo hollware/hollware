@@ -17,7 +17,8 @@ import {
 // answers anything but `undefined` for an entry that is not published, or throws instead of
 // handing Astro an `error` (`asError`); or a build-time load keeps an entry that was unpublished
 // (`store.delete`), or stops validating the frontmatter with the schema of the collection
-// (`parseData`); or a service binding that is not one passes for a reader, or a binding given as a function is read once, at import time, instead of on
+// (`parseData`); or a live loader stops passing the preview token of its filter to the reader
+// (source.ts `get`), or lets a previewed entry carry a cacheHint (T-103); or a service binding that is not one passes for a reader, or a binding given as a function is read once, at import time, instead of on
 // each request.
 
 type Listed = Awaited<ReturnType<HollwareReader['listEntries']>>['entries'][number]
@@ -52,6 +53,7 @@ function post(slug: string, title: string): Published {
 /** A reader of published posts, two to a page: the calls it gets are in `calls`. */
 function fakeReader(published: readonly Published[]) {
   const calls: string[] = []
+  const previews: Array<string | undefined> = []
   const reader: HollwareReader = {
     async listEntries(site, collection, options) {
       calls.push(
@@ -67,6 +69,7 @@ function fakeReader(published: readonly Published[]) {
     },
     async getEntry(site, collection, slug, locale, options) {
       calls.push(`get ${site} ${collection} ${locale} ${slug} ${options?.formats?.join(',')}`)
+      previews.push(options?.preview)
       const found = published.find((entry) => entry.slug === slug)
       return found === undefined ? { outcome: 'not_found' } : { outcome: 'ok', entry: found }
     },
@@ -87,7 +90,7 @@ function fakeReader(published: readonly Published[]) {
       throw new Error('not read')
     },
   }
-  return { reader, calls }
+  return { reader, calls, previews }
 }
 
 const POSTS = [post('hello', 'Hello'), post('second', 'Second'), post('third', 'Third')]
@@ -108,6 +111,54 @@ describe('hollwareLiveLoader', () => {
       cacheHint: { lastModified: new Date(AT) },
     })
     expect(calls).toEqual(['get playground blog en hello html'])
+  })
+
+  it('reads the latest revision with the preview token of the filter, and lets nothing keep it', async () => {
+    const { reader, previews } = fakeReader(POSTS)
+    const loader = hollwareLiveLoader({ ...base, reader })
+
+    const previewed = await loader.loadEntry({
+      collection: 'blog',
+      filter: { id: 'hello', preview: 'hw_prv_a.b' },
+    })
+    await loader.loadEntry({ collection: 'blog', filter: { id: 'hello' } })
+    await loader.loadEntry({ collection: 'blog', filter: { id: 'hello', preview: '' } })
+
+    expect(previewed).toEqual({
+      id: 'hello',
+      data: { title: 'Hello' },
+      rendered: { html: '<h1>Hello</h1>' },
+    })
+    expect(previews).toEqual(['hw_prv_a.b', undefined, undefined])
+  })
+
+  it('hands Astro the refusal of a preview token that does not hold, not the published entry', async () => {
+    const { reader } = fakeReader(POSTS)
+    const loader = hollwareLiveLoader({
+      ...base,
+      reader: {
+        ...reader,
+        getEntry: async () => {
+          throw new HollwareClientError(
+            400,
+            'invalid_input',
+            'This preview link has expired.',
+            'Ask for a new preview link.',
+          )
+        },
+      },
+    })
+
+    const result = await loader.loadEntry({
+      collection: 'blog',
+      filter: { id: 'hello', preview: 'hw_prv_a.b' },
+    })
+
+    expect(result).toMatchObject({
+      error: {
+        message: 'Hollware answered 400 (invalid_input): This preview link has expired.',
+      },
+    })
   })
 
   it('answers undefined for an entry that is not published', async () => {

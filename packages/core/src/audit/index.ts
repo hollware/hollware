@@ -26,6 +26,8 @@ export const OPERATION_AUDIT_ACTIONS = [
 /** What people do outside the operations: their tokens, members, passkeys, sessions and apps. */
 export const IDENTITY_AUDIT_ACTIONS = [
   'token.create',
+  /** A person asked for a link that shows an entry's latest revision on the site (T-103). */
+  'preview.create',
   'token.revoke',
   'member.role',
   'member.remove',

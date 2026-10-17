@@ -7,7 +7,8 @@ import type { GatewayEnv } from './types.ts'
 
 /**
  * The HTTP read API (v0.2): the four read methods of the RPC binding, for a site that is not a
- * Worker of the same account. It serves published content only, to a personal token, a read token
+ * Worker of the same account. It serves published content only (but for `get_entry` with a valid
+ * preview token, whose answer is never cached), to a personal token, a read token
  * (`hw_read_`) or an OAuth access token with `content:read` (ADR-026), of one site, and answers
  * with an ETag, so that a client revalidates instead of reading the body again (304). Its
  * responses are private: they are behind a token, so no shared cache keeps them. A page of an
@@ -18,7 +19,8 @@ import type { GatewayEnv } from './types.ts'
  *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
  *   GET /v1/search?q&collection&locale&limit&mode  search
  *   GET /v1/{collection}/translations/{group}      get_translations
- *   GET /v1/{collection}/{locale}/{slug}?formats=  get_entry (formats: markdown,document,html)
+ *   GET /v1/{collection}/{locale}/{slug}?formats=&preview=  get_entry (formats: markdown,document,html;
+ *                                                  preview: a preview token, which reads the latest revision of its entry, no-store)
  */
 
 export interface ReadApiOptions {
@@ -72,6 +74,8 @@ function readRoute<Path extends string>(
       return c.json(
         { code: error.code, message: error.message, fix: error.fix },
         STATUS[error.code] ?? 500,
+        // What a preview token answers is never kept, a refusal of it included.
+        c.req.query('preview') === undefined ? {} : { 'cache-control': 'no-store' },
       )
     }
   }
@@ -95,13 +99,24 @@ function matches(header: string | undefined, etag: string): boolean {
     .some((tag) => tag === '*' || tag === etag || `W/${tag}` === etag)
 }
 
-async function answer(c: Context<GatewayEnv>, value: unknown): Promise<Response> {
+async function answer(
+  c: Context<GatewayEnv>,
+  value: unknown,
+  { preview = false }: { readonly preview?: boolean } = {},
+): Promise<Response> {
   const notFound =
     typeof value === 'object' &&
     value !== null &&
     'outcome' in value &&
     value.outcome === 'not_found'
   const body = JSON.stringify(value)
+  if (preview) {
+    // The latest revision of one entry, for one person: no cache keeps it and nothing revalidates it.
+    return new Response(body, {
+      status: notFound ? 404 : 200,
+      headers: { 'cache-control': 'no-store', 'content-type': 'application/json' },
+    })
+  }
   const etag = await etagOf(body)
   const headers = { etag, 'cache-control': 'private, no-cache', 'content-type': 'application/json' }
   if (!notFound && matches(c.req.header('if-none-match'), etag)) {
@@ -226,7 +241,11 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     '/v1/:collection/:locale/:slug',
     readRoute<'/v1/:collection/:locale/:slug'>(async (c) => {
       const formats = c.req.query('formats')
-      const related = c.req.query('related') === 'true' ? { related: true } : {}
+      const preview = c.req.query('preview')
+      const base = {
+        ...(c.req.query('related') === 'true' ? { related: true } : {}),
+        ...(preview === undefined ? {} : { preview }),
+      }
       return answer(
         c,
         await options.read(c.env).getEntry(
@@ -235,9 +254,9 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
           c.req.param('slug'),
           c.req.param('locale'),
           formats === undefined
-            ? related
+            ? base
             : {
-                ...related,
+                ...base,
                 formats: formats
                   .split(',')
                   .flatMap((format) =>
@@ -247,6 +266,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
                   ),
               },
         ),
+        { preview: preview !== undefined },
       )
     }),
   )
@@ -344,9 +364,13 @@ export function openApiDocument(): object {
             param('slug', 'path', true),
             param('formats', 'query', false),
             param('related', 'query', false),
+            param('preview', 'query', false),
           ],
           responses: {
-            '200': ok('A published entry'),
+            '200': ok(
+              'A published entry; with a valid preview token, its latest revision, uncacheable and with no ETag',
+            ),
+            '400': { description: 'The preview token is expired, forged or for another entry' },
             '404': { description: 'No such published entry' },
             ...common,
           },

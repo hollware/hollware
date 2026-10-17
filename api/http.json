@@ -293,6 +293,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "preview",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -304,7 +312,7 @@
                 }
               }
             },
-            "description": "A published entry",
+            "description": "A published entry; with a valid preview token, its latest revision, uncacheable and with no ETag",
             "headers": {
               "ETag": {
                 "schema": {
@@ -315,6 +323,9 @@
           },
           "304": {
             "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "400": {
+            "description": "The preview token is expired, forged or for another entry"
           },
           "401": {
             "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."

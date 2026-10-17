@@ -2,7 +2,8 @@
 
 Read [Hollware](https://hollware.com) from an Astro site: content loaders for Astro's content
 layer, over a service binding when the site is a Worker on the same Cloudflare account, or over
-HTTP with a read token anywhere else. Published content only.
+HTTP with a read token anywhere else. Published content only, and the latest revision of one entry
+when a page is opened with a preview token (live collections).
 
 ```sh
 npm install @hollware/astro
@@ -75,7 +76,26 @@ validate it) and its rendered HTML the one Hollware made, so `render(entry)` wor
 { tag, limit })` lists the entries without their HTML.
 
 The token stays on the server: the loaders run in the build or in a request, and nothing here
-reaches the browser. There is no draft preview yet.
+reaches the browser.
+
+## Previews
+
+"Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`: a
+signed link for one entry, valid for one hour. A live collection reads the latest revision of that
+entry, a draft included, when `getLiveEntry` gets the token in its filter, and the page must not be
+cached:
+
+```astro
+---
+const preview = Astro.url.searchParams.get('hollware-preview') ?? undefined
+if (preview) Astro.response.headers.set('cache-control', 'no-store')
+const { entry, error } = await getLiveEntry('blog', { id: Astro.params.slug!, preview })
+---
+```
+
+A token that is expired, forged or for another entry is an `error`, never the published version.
+The build-time `hollwareLoader` has no preview: a static page is built once, for everyone, so it
+only ever holds published content.
 
 ## Links
 

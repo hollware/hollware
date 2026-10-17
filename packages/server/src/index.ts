@@ -104,6 +104,12 @@ export interface HollwareRpc {
       readonly formats?: readonly ('markdown' | 'document' | 'html')[]
       /** Also the published entries closest by meaning (ADR-030). */
       readonly related?: boolean
+      /**
+       * A preview token (`hw_prv_…`, made in the admin): the entry it names is read in its latest
+       * revision, a draft included. A token that does not hold (expired, of another site or
+       * entry, forged) is an `invalid_input` error, never the published version in its place.
+       */
+      readonly preview?: string
     },
   ): Promise<Output<typeof getEntry>>
   listEntries(

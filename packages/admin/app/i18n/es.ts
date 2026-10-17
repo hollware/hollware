@@ -202,6 +202,12 @@ export const es: Messages = {
   entry: {
     title: 'Entrada',
     viewOnSite: 'Ver en el sitio',
+    previewOnSite: 'Vista previa en el sitio',
+    previewNoUrl:
+      'Define la URL del sitio en su configuración, y una ruta para este idioma en la colección, para ver la vista previa en el sitio.',
+    previewOpened: 'Vista previa abierta',
+    previewOpenedBody: 'El enlace muestra la última revisión y funciona durante una hora.',
+    notPreviewed: 'No hay vista previa',
     validate: 'Validar',
     save: 'Guardar',
     publish: 'Publicar',
@@ -574,6 +580,7 @@ export const es: Messages = {
       restore_site: 'Restauró un sitio de la papelera',
       make_webhook_secret: 'Creó un secreto de webhook',
       'token.create': 'Creó un token',
+      'preview.create': 'Creó un enlace de vista previa',
       'token.revoke': 'Revocó un token',
       'member.role': 'Cambió el rol de una persona',
       'member.remove': 'Eliminó a una persona',

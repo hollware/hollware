@@ -49,7 +49,8 @@ function tagging(event: H3Event, reader: HollwareReader): HollwareReader {
     ...reader,
     getEntry: async (...args) => {
       const answer = await reader.getEntry(...args)
-      recordTags(event, entryTags(answer.entry))
+      // The latest revision of one entry, for one person: nothing may keep it by its tags.
+      if (args[4]?.preview === undefined) recordTags(event, entryTags(answer.entry))
       return answer
     },
     listEntries: async (...args) => {

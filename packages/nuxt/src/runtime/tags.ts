@@ -1,4 +1,11 @@
-import { entryTag, EVERY_LOCALE, groupTag, listTag, SITE_TAG } from '@hollware/core'
+import {
+  entryTag,
+  EVERY_LOCALE,
+  groupTag,
+  listTag,
+  PREVIEW_QUERY_PARAM,
+  SITE_TAG,
+} from '@hollware/core'
 
 /**
  * The cache tags of a response (S8): what it showed of Hollware, in the names of the contract of
@@ -82,3 +89,20 @@ export function edgeHeaders(
     'cloudflare-cdn-cache-control': `max-age=${EDGE_SECONDS}`,
   }
 }
+
+/**
+ * The preview token of a URL's query (`?hollware-preview=`), or `undefined`: a page opened from the
+ * admin's "Preview on the site". A request that carries one reads the latest revision of its
+ * entry, so nothing may keep what it answers: no tag, no edge cache, no cache of Nitro.
+ */
+export function previewOf(query: Readonly<Record<string, unknown>>): string | undefined {
+  const value = query[PREVIEW_QUERY_PARAM]
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
+/**
+ * A request header that only the preview plugin sets, and that Nitro's cache (`cache: <seconds>`)
+ * varies on: a preview gets a fresh value each time, so it never reads or fills the entry that
+ * every other request of the same path shares.
+ */
+export const PREVIEW_HEADER = 'x-hollware-preview'

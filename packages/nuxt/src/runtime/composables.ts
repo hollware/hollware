@@ -1,6 +1,7 @@
 import type { HollwareReader } from '@hollware/client'
-import { useFetch, useRequestEvent } from 'nuxt/app'
-import { entryTags, groupTags, listTags, recordTags, siteTags } from './tags.ts'
+import { PREVIEW_QUERY_PARAM } from '@hollware/core'
+import { useFetch, useRequestEvent, useRoute } from 'nuxt/app'
+import { entryTags, groupTags, listTags, previewOf, recordTags, siteTags } from './tags.ts'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { PageEntry } from './types.ts'
 
@@ -20,7 +21,13 @@ function pageRequest() {
   return import.meta.server ? useRequestEvent() : undefined
 }
 
-/** An entry, with its Comark document; `data` is null while it loads, `error` a 404 when it is not published. */
+/**
+ * An entry, with its Comark document; `data` is null while it loads, `error` a 404 when it is not
+ * published. When the page's URL carries `?hollware-preview=<token>` (the admin's "Preview on the
+ * site"), it reads the latest revision of that entry instead: a draft too. The page then records
+ * no cache tags and answers `no-store`, so nothing keeps it; a token that does not hold (expired,
+ * of another entry) is an error, never the published version.
+ */
 export function useHollwareEntry(
   collection: MaybeRefOrGetter<string>,
   locale: MaybeRefOrGetter<string>,
@@ -30,11 +37,17 @@ export function useHollwareEntry(
     () =>
       `/_hollware/entry/${encodeURIComponent(toValue(collection))}/${encodeURIComponent(toValue(locale))}/${encodeURIComponent(toValue(slug))}`,
   )
+  const route = useRoute()
+  const preview = computed(() => previewOf(route.query))
   const event = pageRequest()
   return useFetch<{ outcome: 'ok'; entry: PageEntry }>(path, {
-    key: path.value,
+    // A preview has a payload of its own: it never takes the published entry's place.
+    key: `${path.value}${preview.value === undefined ? '' : '?preview'}`,
+    query: computed(() =>
+      preview.value === undefined ? {} : { [PREVIEW_QUERY_PARAM]: preview.value },
+    ),
     transform: (answer) => {
-      recordTags(event, entryTags(answer.entry))
+      if (preview.value === undefined) recordTags(event, entryTags(answer.entry))
       return answer
     },
   })

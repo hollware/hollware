@@ -11,6 +11,7 @@ import * as z from 'zod'
 import { createHollwareWith } from '../../src/compose.ts'
 import type { HollwareEnv, HollwareWorker } from '../../src/index.ts'
 import type { McpEndpoint } from '../../src/mcp/index.ts'
+import type { Handlers } from '../../src/ops/types.ts'
 import type { Clock } from '../../src/ports.ts'
 import { fakeHandlers, type Overrides, type Seen } from '../mcp/support.ts'
 
@@ -217,6 +218,8 @@ export interface SendOptions {
 }
 
 export interface BootOptions {
+  /** The real handlers (or any) instead of the fake ones, for a test that reads what D1 holds. */
+  readonly handlers?: Handlers
   readonly overrides?: Overrides
   readonly outcomes?: Parameters<typeof fakeHandlers>[1]
   /** Instead of the real D1 (watched). */
@@ -259,7 +262,8 @@ export async function defineSites(db: D1Database, config: HollwareConfig, now: s
 
 /** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
 export function boot(options: BootOptions = {}) {
-  const { handlers, seen } = fakeHandlers(options.overrides, options.outcomes)
+  const { handlers: fake, seen } = fakeHandlers(options.overrides, options.outcomes)
+  const handlers = options.handlers ?? fake
   const clock = testClock(options.now)
   const config = options.config ?? CONFIG
   // The options of the deployment come with the Worker; its sites, from D1.

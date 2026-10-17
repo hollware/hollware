@@ -9,6 +9,7 @@ import {
   createResolver,
   defineNuxtModule,
 } from '@nuxt/kit'
+import { PREVIEW_HEADER } from './runtime/tags.ts'
 
 /** The options of `hollware` in nuxt.config.ts. */
 export interface ModuleOptions {
@@ -106,6 +107,8 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareContent'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
+    // Always: a page opened with a preview token is never kept, whatever `cache` is.
+    addServerPlugin(resolve('./runtime/server/preview'))
     if (options.cache === 'purge') {
       addServerPlugin(resolve('./runtime/server/cache'))
       addServerHandler({
@@ -115,7 +118,10 @@ export default defineNuxtModule<ModuleOptions>({
       })
     }
     if (typeof options.cache === 'number' && options.cache > 0) {
-      const pages: NitroRouteConfig = { swr: options.cache }
+      // `swr` with a number, spelled out so that the cache can vary on the preview header.
+      const pages: NitroRouteConfig = {
+        cache: { swr: true, maxAge: options.cache, varies: [PREVIEW_HEADER] },
+      }
       const routes: NitroRouteConfig = { swr: false, cache: false }
       // The page routes of the site; a rule the site sets itself for a path still wins there.
       nuxt.options.routeRules = {

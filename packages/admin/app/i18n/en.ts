@@ -188,6 +188,12 @@ export const en = {
   entry: {
     title: 'Entry',
     viewOnSite: 'View on site',
+    previewOnSite: 'Preview on the site',
+    previewNoUrl:
+      "Set the site's URL in the site settings, and a route for this locale in the collection, to preview on the site.",
+    previewOpened: 'Preview opened',
+    previewOpenedBody: 'The link shows the latest revision and works for one hour.',
+    notPreviewed: 'No preview',
     validate: 'Validate',
     save: 'Save',
     publish: 'Publish',
@@ -548,6 +554,7 @@ export const en = {
       restore_site: 'Restored a site from the trash',
       make_webhook_secret: 'Made a webhook secret',
       'token.create': 'Made a token',
+      'preview.create': 'Made a preview link',
       'token.revoke': 'Revoked a token',
       'member.role': "Changed a person's role",
       'member.remove': 'Removed a person',

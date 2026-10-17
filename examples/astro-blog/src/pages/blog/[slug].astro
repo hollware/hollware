@@ -2,9 +2,15 @@
 import { getLiveEntry, render } from 'astro:content'
 import Page from '../../layouts/Page.astro'
 
-const { entry, error } = await getLiveEntry('blog', Astro.params.slug ?? '')
+// A page opened from the admin's "Preview on the site" carries a preview token: it reads the
+// latest revision of its entry, a draft included, and nothing may keep the answer.
+const preview = Astro.url.searchParams.get('hollware-preview') ?? undefined
+const noStore = preview === undefined ? {} : { 'cache-control': 'no-store' }
+if (preview !== undefined) Astro.response.headers.set('cache-control', 'no-store')
+
+const { entry, error } = await getLiveEntry('blog', { id: Astro.params.slug ?? '', preview })
 if (error || !entry) {
-  return new Response('Not found', { status: 404 })
+  return new Response('Not found', { status: 404, headers: noStore })
 }
 const { Content } = await render(entry)
 ---

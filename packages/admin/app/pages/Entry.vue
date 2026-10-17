@@ -12,6 +12,7 @@ import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
+import { openPreview } from '../lib/site-preview.ts'
 import { previewDocument } from '../lib/preview.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
@@ -61,6 +62,12 @@ const liveUrl = computed(() =>
   entry.value?.status === 'published' && definition.value !== undefined
     ? pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug)
     : null,
+)
+/** Whether the site has a page for this entry to preview on: its URL, and a route for the locale. */
+const canPreview = computed(
+  () =>
+    definition.value !== undefined &&
+    pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug) !== null,
 )
 /** The locales of the site with no entry in this one's translation group yet. */
 const untranslated = computed(() =>
@@ -136,6 +143,41 @@ async function check() {
     })
   } catch (error) {
     report(error, m.value.entry.notChecked)
+  } finally {
+    busy.value = false
+  }
+}
+
+/** Opens the entry's page on the site with a link that shows its latest revision, for an hour. */
+async function previewOnSite() {
+  if (entry.value === null) return
+  busy.value = true
+  // The tab is opened in the click itself, before the link is asked for: a browser (Safari) blocks
+  // a tab opened after an await. It leaves no hold on this page, and closes if there is no link.
+  const tab = window.open('', '_blank')
+  if (tab !== null) tab.opener = null
+  try {
+    const result = await openPreview(api, entry.value.id, (url) => {
+      if (tab === null) window.open(url, '_blank', 'noopener')
+      else tab.location.replace(url)
+    })
+    if (result !== 'opened') tab?.close()
+    toast.add(
+      result === 'opened'
+        ? {
+            title: m.value.entry.previewOpened,
+            description: m.value.entry.previewOpenedBody,
+            color: 'success',
+          }
+        : {
+            title: m.value.entry.notPreviewed,
+            description: m.value.entry.previewNoUrl,
+            color: 'warning',
+          },
+    )
+  } catch (error) {
+    tab?.close()
+    report(error, m.value.entry.notPreviewed)
   } finally {
     busy.value = false
   }
@@ -339,6 +381,20 @@ const tabs = computed(() => [
         icon="i-lucide-external-link"
         variant="ghost"
       />
+      <span :title="canPreview ? undefined : m.entry.previewNoUrl">
+        <UButton
+          :label="m.entry.previewOnSite"
+          icon="i-lucide-eye"
+          variant="outline"
+          :loading="busy"
+          :disabled="!canPreview"
+          :aria-describedby="canPreview ? undefined : 'preview-unavailable'"
+          @click="previewOnSite"
+        />
+      </span>
+      <span v-if="!canPreview" id="preview-unavailable" class="sr-only">{{
+        m.entry.previewNoUrl
+      }}</span>
       <UButton :label="m.entry.validate" variant="outline" :loading="busy" @click="check" />
       <UButton :label="m.entry.save" :loading="busy" :disabled="!dirty" @click="save" />
       <UButton

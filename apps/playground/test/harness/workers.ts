@@ -20,6 +20,15 @@ process.env['WRANGLER_REGISTRY_PATH'] = mkdtempSync(join(tmpdir(), 'hollware-reg
  */
 export const HOLLWARE_URL = 'http://localhost'
 
+/**
+ * The Worker secret of the harness's Hollware (`HOLLWARE_SECRET`), which signs preview tokens: a
+ * test makes a token the way the admin's route does, with `makePreviewToken` of `@hollware/core`.
+ */
+export const HARNESS_SECRET = 'h'.repeat(40)
+
+/** The variables of the built Hollware Worker in every harness. */
+const HOLLWARE_VARS = { HOLLWARE_PUBLIC_URL: HOLLWARE_URL, HOLLWARE_SECRET: HARNESS_SECRET }
+
 /** The URL the tests give the site Worker; `siteFetch` sends the request to it. */
 export const SITE_URL = 'http://site.test'
 
@@ -58,7 +67,7 @@ export function createWebHarness() {
     workers: [
       {
         configPath: new URL('wrangler.json', BUILT.hollware),
-        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+        vars: HOLLWARE_VARS,
       },
       { configPath: new URL('wrangler.json', BUILT_WEB), vars: { NUXT_HOLLWARE_WEBHOOK_SECRET } },
     ],
@@ -79,7 +88,7 @@ export function createNuxtHarness() {
     workers: [
       {
         configPath: new URL('wrangler.json', BUILT.hollware),
-        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+        vars: HOLLWARE_VARS,
       },
       { configPath: new URL('wrangler.json', BUILT.nuxt), vars: { NUXT_HOLLWARE_WEBHOOK_SECRET } },
     ],
@@ -103,7 +112,7 @@ export function createAstroHarness() {
     workers: [
       {
         configPath: new URL('wrangler.json', BUILT.hollware),
-        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+        vars: HOLLWARE_VARS,
       },
       { configPath: new URL('wrangler.json', BUILT.astro) },
     ],
@@ -129,7 +138,7 @@ export function createPlaygroundHarness() {
     workers: [
       {
         configPath: new URL('wrangler.json', BUILT.hollware),
-        vars: { HOLLWARE_PUBLIC_URL: HOLLWARE_URL },
+        vars: HOLLWARE_VARS,
       },
       { configPath: new URL('wrangler.json', BUILT.site), vars: { PAGE_SIZE } },
     ],

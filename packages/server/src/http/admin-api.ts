@@ -1,9 +1,14 @@
 import {
+  canSignPreviews,
   generatePersonalToken,
   generateReadToken,
   hashPersonalToken,
+  isId,
   isScope,
+  makePreviewToken,
   newId,
+  PREVIEW_QUERY_PARAM,
+  type ResolvedSite,
   type Scope,
 } from '@hollware/core'
 import { and, desc, eq, gt, isNull } from 'drizzle-orm'
@@ -13,9 +18,10 @@ import { isRole, ROLE_SCOPES } from '../auth/roles.ts'
 import { removeMember, setRole, type PeopleChange } from '../identity/people.ts'
 import type { Principal, RequestPrincipal } from '../auth/types.ts'
 import type { AuditAction } from '@hollware/core'
-import type { AuditLine, AuditSite } from '../audit/log.ts'
+import type { AuditLine } from '../audit/log.ts'
 import type { AuditLogFor } from '../mcp/index.ts'
 import { connect } from '../db/d1.ts'
+import { createD1Store } from '../db/index.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
 import {
   createInvitation,
@@ -55,8 +61,8 @@ const ACTIVITY_CSV_MAX = 10_000
 export interface AdminApiOptions {
   /** The sites of the deployment: the person may switch among those they are a member of. */
   readonly sites: ReadonlySet<string>
-  /** A site of the deployment as the activity log needs it, or `undefined` when it serves none. */
-  readonly site: (key: string) => AuditSite | undefined
+  /** A site of the deployment, or `undefined` when it serves none. */
+  readonly site: (key: string) => ResolvedSite | undefined
   /** The activity log of a request (ADR-037), for the person of the admin. */
   readonly audit: (c: Context<GatewayEnv>, principal: RequestPrincipal) => Promise<AuditLogFor>
   readonly clock: Clock
@@ -79,7 +85,21 @@ const REFUSAL_CODES = {
 
 /** The code of a refusal by its status, for the activity log. */
 function refusalCode(status: number): string {
+  if (status === 503) return 'unavailable'
   return status === 403 || status === 404 || status === 409 ? REFUSAL_CODES[status] : 'internal'
+}
+
+/**
+ * The page of an entry on its site, or `null` when the site has no URL or no route for the locale:
+ * the origin and the route of the collection with its slug (the admin's `pageUrl` does the same).
+ */
+function pageUrlOf(
+  site: ResolvedSite,
+  entry: { readonly collection: string; readonly locale: string; readonly slug: string },
+): string | null {
+  const route = site.collections.get(entry.collection)?.routes[entry.locale]
+  if (site.url === null || route === undefined) return null
+  return `${site.url.replace(/\/+$/, '')}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
 }
 
 /** What a route that changed something says of it, for its line of the activity log. */
@@ -251,6 +271,56 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           .filter((row) => owned.has(row.id))
           .map((row) => ({ site: row.id, deletedAt: row.deleted_at }))
         return json({ user, site: person.site, scopes: person.scopes, sites, trash })
+      },
+      { anyone: true },
+    ),
+  )
+
+  // A link that shows the latest revision of one entry on the site, for one hour (T-103). Any
+  // member of the site may ask for one: the token reads that entry and nothing else.
+  app.post(
+    '/v1/admin/preview',
+    admin(
+      'preview.create',
+      async (c, person, note) => {
+        const entryId = (await body(c))['entryId']
+        if (typeof entryId !== 'string' || !isId('ent', entryId)) {
+          return refused('Give the id of an entry.', 'Send { "entryId": "ent_…" }.')
+        }
+        note.target = { type: 'entry', id: entryId }
+        const secret = c.env.HOLLWARE_SECRET
+        if (!canSignPreviews(secret)) {
+          return json(
+            {
+              code: 'unavailable',
+              message: 'This Hollware cannot make preview links: it has no signing secret.',
+              fix: 'Set the Worker secret HOLLWARE_SECRET to at least 32 characters (`hollware deploy` makes one), then try again.',
+            },
+            503,
+          )
+        }
+        const site = options.site(person.site)
+        const found = await createD1Store(c.env.DB).findEntryById(person.site, entryId, 'head')
+        if (site === undefined || found === null) {
+          return refused(
+            'This site has no such entry.',
+            'Open the entry from its collection in the admin.',
+            404,
+          )
+        }
+        const made = await makePreviewToken({
+          secret,
+          site: person.site,
+          entryId,
+          now: options.clock.now(),
+        })
+        const page = pageUrlOf(site, found.entry)
+        note.detail = { expiresAt: made.expiresAt }
+        return json({
+          token: made.token,
+          expiresAt: made.expiresAt,
+          url: page === null ? null : `${page}?${PREVIEW_QUERY_PARAM}=${made.token}`,
+        })
       },
       { anyone: true },
     ),

@@ -1,6 +1,6 @@
-import { generatePersonalToken, hashPersonalToken, newId } from '@hollware/core'
+import { generatePersonalToken, hashPersonalToken, makePreviewToken, newId } from '@hollware/core'
 import type { TestHarness } from 'wrangler'
-import { HOLLWARE_URL, HOLLWARE_WORKER } from './workers.ts'
+import { HARNESS_SECRET, HOLLWARE_URL, HOLLWARE_WORKER } from './workers.ts'
 
 /** The site of the playground: its key in hollware.config.ts. */
 export const SITE_KEY = 'playground'
@@ -177,4 +177,22 @@ export async function publishNew(agent: Agent, draft: Draft): Promise<string> {
     )
   }
   return id
+}
+
+/**
+ * A preview token for an entry, made as the admin's route makes one, with the secret of the
+ * harness's Hollware. `secret` and `ageSeconds` make a forged and an expired one: a token that
+ * is `ageSeconds` old has lived that many seconds of its hour.
+ */
+export async function previewTokenFor(
+  entryId: string,
+  options: { readonly secret?: string; readonly ageSeconds?: number } = {},
+): Promise<string> {
+  const { token } = await makePreviewToken({
+    secret: options.secret ?? HARNESS_SECRET,
+    site: SITE_KEY,
+    entryId,
+    now: new Date(Date.now() - (options.ageSeconds ?? 0) * 1000),
+  })
+  return token
 }

@@ -2,7 +2,15 @@ import { createClient, type HollwareReader } from '@hollware/client'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { contentFixture } from '../../../../tests/fixtures/content.ts'
-import { agentWith, createDraft, migrate, publishNew, seedOwnerToken, SITE_KEY } from './support.ts'
+import {
+  agentWith,
+  createDraft,
+  migrate,
+  previewTokenFor,
+  publishNew,
+  seedOwnerToken,
+  SITE_KEY,
+} from './support.ts'
 import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER } from './workers.ts'
 
 // Fails when: @hollware/client stops reading the same published content over a service binding
@@ -15,6 +23,7 @@ import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER } from './workers.ts
 
 const server = createPlaygroundHarness()
 let token = ''
+let draftId = ''
 
 const corpus = (locale: 'en' | 'es', slug: string) => ({
   locale,
@@ -41,7 +50,7 @@ beforeAll(async () => {
   const agent = agentWith(server, token)
   await publishNew(agent, corpus('en', 'edge-caching-basics'))
   await publishNew(agent, corpus('es', 'cache-en-el-borde'))
-  await createDraft(agent, corpus('en', 'markdown-as-source-of-truth'))
+  draftId = (await createDraft(agent, corpus('en', 'markdown-as-source-of-truth'))).id
 })
 
 afterAll(async () => {
@@ -195,5 +204,43 @@ describe('the read API', () => {
       '/v1/{collection}/translations/{group}',
       '/v1/{collection}/{locale}/{slug}',
     ])
+  })
+
+  it('reads a draft with a preview token, and refuses a token that is expired or forged', async () => {
+    for (const [transport, client] of await readers()) {
+      const slug = 'markdown-as-source-of-truth'
+      const previewed = await client.getEntry(SITE_KEY, 'blog', slug, 'en', {
+        preview: await previewTokenFor(draftId),
+      })
+      const refused = async (preview: string) => {
+        try {
+          await client.getEntry(SITE_KEY, 'blog', slug, 'en', { preview })
+          return 'answered'
+        } catch (error) {
+          // A binding's error says its class; HTTP's does not: the message is the same.
+          return (error instanceof Error ? error.message : String(error)).replace(
+            /^HollwareError: /,
+            '',
+          )
+        }
+      }
+
+      expect(
+        [
+          previewed.outcome,
+          previewed.entry?.slug,
+          previewed.entry?.status,
+          await refused(await previewTokenFor(draftId, { ageSeconds: 3601 })),
+          await refused(await previewTokenFor(draftId, { secret: 'x'.repeat(40) })),
+        ],
+        transport,
+      ).toEqual([
+        'ok',
+        slug,
+        'draft',
+        'This preview link has expired.',
+        'This preview link is not valid.',
+      ])
+    }
   })
 })
