@@ -109,7 +109,10 @@ describe('the built Hollware Worker', () => {
       authorization: 'Bearer hw_pat_not-one-of-ours',
     })
 
-    expect(response.status).toBe(401)
+    // With the body, so that a 500 in CI says which one it is (seen twice, 2026-10-17).
+    expect([response.status, response.status === 401 ? '' : await response.clone().text()]).toEqual(
+      [401, ''],
+    )
     expect(response.headers.get('www-authenticate')).toBe(
       `Bearer realm="hollware", resource_metadata="${HOLLWARE_URL}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     )
