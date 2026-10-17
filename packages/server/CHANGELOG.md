@@ -1,5 +1,39 @@
 # @hollware/server
 
+## 0.11.0
+
+### Minor Changes
+
+- [`9e72522`](https://github.com/hollware/hollware/commit/9e725225be6bf8e85518f2521b21e76b9109681b) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A person manages their own sign-in over `/v1/admin/account`: they list and remove their passkeys (never the last one), list and revoke the apps they connected, and end every session at once, and `POST /authorize/signout` signs one browser out.
+
+- [`069c95f`](https://github.com/hollware/hollware/commit/069c95f1e940ea4f9ac013cac3a69d5ad5d7732d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An activity log of who did what (ADR-037). Every operation that is not a read, every change of tokens, people and invitations in the admin, sign-in and sign-out, an invitation accepted, an app allowed or revoked, and each scheduled publication write a line: who did it as Hollware verified it (a person, a token, an app, or the deployment), what the client declared apart, the action, its target and its outcome, refusals of a scope included. The log is append-only in D1 (migration `0016_audit_log`). Owners read it on the admin's Activity page and download it as CSV.
+
+  The owner decides what it keeps, in the site's `audit`: `ipAddresses` is `off` by default (`hashed` keeps an HMAC of each address keyed by the site, never the address), and `retentionDays` is `null` by default (forever), or 30 to 3650 days. `hollware init` and `npm create hollware` take `--ip-addresses` and `--audit-retention-days`.
+
+- [`1b3f3a2`](https://github.com/hollware/hollware/commit/1b3f3a27d6f42852fae1761ca34a9269e19f0609) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The routes anyone may call without a token (sign-in and passkeys, OAuth's token and registration endpoints, the beacon) are rate limited per address when the Worker has a Workers Rate Limiting binding, `HOLLWARE_RATE_LIMIT`, which new projects get (60 requests a minute): past it they answer 429 with Retry-After. And the cron trigger drops the expired sessions and the sign-in challenges nobody took, which anyone could make pile up a row a request.
+
+- [`3893d8e`](https://github.com/hollware/hollware/commit/3893d8e6b2d66ceb429cc24dbad51a5a2191dd89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A token's expiry is the person's choice: `hollware token create` and the admin's Tokens page make a token that never expires when no days are given, and one that expires in the days given (1 to 365) otherwise. Revoking it ends it at once.
+
+### Patch Changes
+
+- [`7c7497a`](https://github.com/hollware/hollware/commit/7c7497a5b387bce2897c58e59e27994c30849a9c) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The beacon (`POST /events`) refuses a body over its limit before reading it, by its declared length or as it streams, and answers a site it does not serve as it answers a page of another origin, so it never tells which site keys exist.
+
+- [`5e24d98`](https://github.com/hollware/hollware/commit/5e24d987c38466a315bcb3b94c3dfa23de90e71f) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Security fixes from the threat model:
+
+  - `verifyWebhook` takes `isNew(eventId)`. Given it, a webhook replayed within the tolerance is refused, by the id of its signed body (T-67).
+  - The renderer reads a URL bound to the frontmatter (`:href="frontmatter.url"`) under its own rules instead of leaving it to `@comark/html`, which let a `data:image/svg+xml` link through (T-59).
+  - An invitation link carries its secret in the fragment (`/setup#invitation=…`), which no request log holds. Older links still work (T-55).
+  - Sign-in requires user verification explicitly. A counter that went back, or an assertion from another origin, is a refused passkey, not a server error (T-52, T-53).
+  - The admin shows the preview of a draft in a sandboxed frame. Nothing it renders can run, reach the admin or draw over it (T-60).
+
+- [`1b9ebc6`](https://github.com/hollware/hollware/commit/1b9ebc60c67299230f3b537e470f770e3d9a9a71) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The secrets Hollware seals under `HOLLWARE_SECRET` (those of webhooks) are bound to the site and the name they are stored under: a sealed value moved to another row of D1 no longer opens there. Values sealed before (`v1.`) still open.
+
+- [`4293be3`](https://github.com/hollware/hollware/commit/4293be3154afa381c1dd58011d151ed98fa51df3) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The history of the structure of the sites (`site_changes`) is append-only, as revisions and publications are: migration `0015_site_changes_append_only` adds triggers that abort deleting, changing or replacing a line.
+
+- [`6a41fd5`](https://github.com/hollware/hollware/commit/6a41fd538212f352f9115f2a583775db56e19843) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `get_structure` shows the URL of a webhook whole only to a token with `schema:admin`; anyone else sees its origin, as a webhook's path and query are often its secret (a deploy hook).
+- Updated dependencies [[`069c95f`](https://github.com/hollware/hollware/commit/069c95f1e940ea4f9ac013cac3a69d5ad5d7732d), [`5e24d98`](https://github.com/hollware/hollware/commit/5e24d987c38466a315bcb3b94c3dfa23de90e71f)]:
+  - @hollware/core@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes
