@@ -77,6 +77,7 @@ describe('D1 schema', () => {
       .map(describeTable)
     expect(tables.map((table) => table.name).sort()).toEqual([
       '_hollware_meta',
+      'assets',
       'audit_log',
       'auth_challenges',
       'deliveries',

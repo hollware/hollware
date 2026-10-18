@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { expect, test, type Page } from '@playwright/test'
 import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './support.ts'
 
@@ -200,6 +201,32 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
     await expectAccessible(owner)
     await shot(owner, heading.toLowerCase().replaceAll(' ', '-'))
   }
+})
+
+test('the owner uploads an image, sees it in the library and copies its reference (ADR-038)', async () => {
+  // A PNG of one red pixel: the local Images binding converts it to WebP.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+    'base64',
+  )
+  await owner.goto('/admin/images')
+  await expect(owner.getByRole('heading', { name: 'Images', level: 1 })).toBeVisible()
+  await owner.locator('input[type="file"]').setInputFiles({
+    name: 'pixel.png',
+    mimeType: 'image/png',
+    buffer: pixel,
+  })
+  await owner.getByLabel('What it shows').fill('One red pixel')
+  await owner.getByRole('button', { name: 'Upload' }).click()
+
+  const card = owner.getByRole('listitem').filter({ hasText: 'One red pixel' })
+  await expect(card).toBeVisible()
+  await expect(card.getByRole('img', { name: 'One red pixel' })).toHaveAttribute(
+    'src',
+    /\/assets\/[a-z0-9-]+\/ast_[0-9a-f]{26}$/,
+  )
+  await expectAccessible(owner)
+  await shot(owner, 'images')
 })
 
 test('the owner reads the activity log: what was done, by whom, and the detail of a line', async () => {

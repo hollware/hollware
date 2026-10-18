@@ -23,6 +23,8 @@
 //   check is dropped, so a locale like `..` writes outside the directory.
 // - "asks for what it needs" rows: a missing directory or `--url` is accepted, or the token is
 //   read first.
+import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -505,6 +507,95 @@ describe('hollware export stops with a clear error and writes nothing when a cal
       'hollware export: the server listed an entry that cannot be a file below the directory: "blog/../evil.md". Nothing was written.',
     ])
     expect(filesOf(base)).toEqual(['keep.txt'])
+  })
+})
+
+describe('hollware export and its images (ADR-038)', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+
+  /** A site with a post that shows one image, uploaded the way an agent uploads it. */
+  async function siteWithAnImage(): Promise<{ stub: StubServer; id: string }> {
+    const stub = await serve()
+    const id = 'ast_' + createHash('sha256').update(PNG).digest('hex').slice(0, 26)
+    stub.assets.set(id, {
+      id,
+      format: 'image/webp',
+      originalFormat: 'image/png',
+      served: new TextEncoder().encode('RIFF webp'),
+      original: PNG,
+      alt: 'The stage',
+      filename: 'stage.png',
+    })
+    seed(stub, {
+      'blog/en/talk': {
+        revisions: [`---\ntitle: Talk\nimg: asset:${id}\n---\n\n![The stage](asset:${id})\n`],
+        published: 0,
+      },
+    })
+    return { stub, id }
+  }
+
+  it('for a site, writes each image as it is served and points the references at --assets-url', async () => {
+    const { stub, id } = await siteWithAnImage()
+    const base = temp.make()
+
+    const { code, out, err } = await runExport(base, 'content', stub.url, [
+      '--published',
+      '--assets',
+      'public/img',
+      '--assets-url',
+      '/img/',
+    ])
+
+    expect([code, err]).toEqual([0, []])
+    expect(filesOf(join(base, 'public/img'))).toEqual([`${id}.webp`])
+    expect(readFileSync(join(base, 'public/img', `${id}.webp`), 'utf8')).toBe('RIFF webp')
+    expect(readFileSync(join(base, 'content/blog/en/talk.md'), 'utf8')).toBe(
+      `---\ntitle: Talk\nimg: /img/${id}.webp\n---\n\n![The stage](/img/${id}.webp)\n`,
+    )
+    expect(out).toContain('Wrote 1 image to public/img.')
+    expect(filesOf(join(base, 'content'))).toEqual(['blog/en/talk.md'])
+  })
+
+  it('by default, keeps the originals in _assets, which an import into another site uploads under the same ids', async () => {
+    const { stub, id } = await siteWithAnImage()
+    const base = temp.make()
+
+    const exported = await runExport(base, 'backup', stub.url, ['--published'])
+
+    expect(exported.code).toBe(0)
+    const root = join(base, 'backup')
+    expect(filesOf(root)).toEqual(['_assets/assets.json', `_assets/${id}.png`, 'blog/en/talk.md'])
+    expect([...readFileSync(join(root, `_assets/${id}.png`))]).toEqual([...PNG])
+    expect(JSON.parse(readFileSync(join(root, '_assets/assets.json'), 'utf8'))).toEqual({
+      [`${id}.png`]: { alt: 'The stage', filename: 'stage.png' },
+    })
+    expect(readFileSync(join(root, 'blog/en/talk.md'), 'utf8')).toContain(`asset:${id}`)
+
+    const other = await serve()
+    const imported = await run(['import', root, '--url', other.url], {
+      readStdin: () => Promise.resolve(`${TOKEN}\n`),
+    })
+
+    expect(imported.code).toBe(0)
+    expect(imported.out).toContain('Images: 1 uploaded, 0 already there.')
+    expect(tools(other).indexOf('upload_asset')).toBeLessThan(tools(other).indexOf('create_draft'))
+    expect(calls(other, 'upload_asset')).toEqual([
+      { filename: 'stage.png', alt: 'The stage', data: Buffer.from(PNG).toString('base64') },
+    ])
+    expect([...other.assets.keys()]).toEqual([id])
+  })
+
+  it('takes --assets and --assets-url together or not at all', async () => {
+    const { code, err } = await run(
+      ['export', 'out', '--url', 'https://cms.test', '--assets', 'img'],
+      {
+        readStdin: () => Promise.resolve(TOKEN),
+      },
+    )
+
+    expect(code).toBe(1)
+    expect(err[0]).toContain('--assets and --assets-url go together')
   })
 })
 

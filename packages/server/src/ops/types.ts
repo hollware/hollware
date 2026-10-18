@@ -1,7 +1,15 @@
 import type { OperationByName, OperationName, ResolvedSite } from '@hollware/core'
 import type * as z from 'zod'
 import type { Principal } from '../auth/types.ts'
-import type { AnalyticsReader, Clock, ContentStore, Semantic, Structure, View } from '../ports.ts'
+import type {
+  AnalyticsReader,
+  Clock,
+  ContentStore,
+  Media,
+  Semantic,
+  Structure,
+  View,
+} from '../ports.ts'
 
 /**
  * The handlers of the operations (ADR-017): one per spec of `@hollware/core`, paired by type,
@@ -30,6 +38,8 @@ export interface OperationContext {
   readonly analytics?: AnalyticsReader | null
   /** The structure of the sites (ADR-033), where an operation may change it; absent over RPC. */
   readonly structure?: Structure
+  /** The images of the site (ADR-038), when the Worker has their R2 bucket; absent or `null` without. */
+  readonly media?: Media | null
 }
 
 /** The handler of one operation: its parsed input in, its output out. */

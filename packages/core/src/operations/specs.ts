@@ -21,6 +21,7 @@ import {
   version,
 } from './schemas.ts'
 import { isSiteKey } from '../config/site-key.ts'
+import { IMAGE_FORMATS, MAX_ASSET_BYTES } from '../media/index.ts'
 import { collectionDefinitionData, siteDefinitionData } from '../structure/definition.ts'
 import { defineOperation } from './types.ts'
 
@@ -704,6 +705,103 @@ export const makeWebhookSecret = defineOperation({
   },
 })
 
+/*
+ * The images of a site (ADR-038): sent once, converted by the site's `media` setting, kept in R2,
+ * and named in content as `asset:ast_…`.
+ */
+
+const assetId = z
+  .string()
+  .regex(/^ast_[0-9a-f]{26}$/)
+  .describe('The id of an asset, such as ast_3f1c… (26 hexadecimal characters).')
+
+/** An asset as the operations answer it. */
+const asset = z.object({
+  id: assetId,
+  reference: z
+    .string()
+    .describe('What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).'),
+  url: z.string().describe('Where the Worker serves it, to anyone, cached for a year.'),
+  format: z.enum(IMAGE_FORMATS).describe('What it is served as.'),
+  width: z.number().int().nullable().describe('In pixels; null for an SVG.'),
+  height: z.number().int().nullable(),
+  bytes: z.number().int().describe('The size of the file served.'),
+  originalFormat: z.enum(IMAGE_FORMATS).describe('What it was sent as.'),
+  originalBytes: z.number().int(),
+  alt: z.string().describe('What it shows, for whoever cannot see it.'),
+  filename: z.string().describe('The name it was sent with.'),
+  createdAt: z.string(),
+})
+
+/** Base64 of at most MAX_ASSET_BYTES, with its padding: four characters for every three bytes. */
+const MAX_BASE64 = Math.ceil(MAX_ASSET_BYTES / 3) * 4
+
+export const uploadAsset = defineOperation({
+  name: 'upload_asset',
+  title: 'Upload an image',
+  description:
+    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
+  input: z.strictObject({
+    filename: z.string().min(1).max(200).describe('Its name, such as continuum.png.'),
+    alt: z
+      .string()
+      .min(1)
+      .max(500)
+      .describe('What the image shows, for whoever cannot see it: required.'),
+    data: z.string().min(1).max(MAX_BASE64).describe('The file, in base64.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['created', 'exists', 'refused', 'unavailable']),
+    asset: asset.optional(),
+    problem: z
+      .object({ message: z.string(), fix: z.string() })
+      .optional()
+      .describe('With refused or unavailable: what is wrong, and what to do.'),
+  }),
+  scopes: ['content:write'],
+  effect: 'write',
+  outcomes: {
+    created: { isError: false },
+    exists: { isError: false },
+    refused: { isError: true },
+    unavailable: { isError: true },
+  },
+})
+
+export const listAssets = defineOperation({
+  name: 'list_assets',
+  title: 'List the images of the site',
+  description:
+    'Lists the images of the site, newest first, with their reference, URL, size and alt. Pass the nextCursor of an answer as cursor to get the next page.',
+  input: z.strictObject({
+    limit: z.number().int().min(1).max(100).default(20),
+    cursor: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok']),
+    assets: z.array(asset),
+    nextCursor: z.string().nullable().describe('The cursor of the next page, or null.'),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false } },
+})
+
+export const getAsset = defineOperation({
+  name: 'get_asset',
+  title: 'Get an image',
+  description:
+    'Gets an image of the site by its id: its reference, URL, size and alt. The file as it was uploaded is at GET /v1/assets/<id>/original, with a personal token.',
+  input: z.strictObject({ id: assetId }),
+  output: z.object({
+    outcome: z.enum(['ok', 'not_found']),
+    asset: asset.optional(),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false }, not_found: { isError: true } },
+})
+
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
@@ -714,9 +812,11 @@ export const OPERATIONS = [
   deleteEntry,
   deleteSite,
   describeSite,
+  getAsset,
   getEntry,
   getStructure,
   getTranslations,
+  listAssets,
   listEntries,
   listReviews,
   makeWebhookSecret,
@@ -730,6 +830,7 @@ export const OPERATIONS = [
   unpublish,
   updateDraft,
   updateSite,
+  uploadAsset,
   validate,
 ] as const
 

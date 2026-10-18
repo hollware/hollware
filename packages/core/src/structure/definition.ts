@@ -1,5 +1,6 @@
 import * as z from 'zod'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
+import { DEFAULT_MEDIA, MEDIA_FORMATS, MEDIA_MAX_WIDTH, MEDIA_MIN_WIDTH } from '../config/media.ts'
 
 /**
  * The definition of a site as data (ADR-033): what D1 stores for it and what the operations that
@@ -98,6 +99,31 @@ export const siteDefinitionData = z.strictObject({
     })
     .default({ ipAddresses: 'off', retentionDays: null })
     .describe('What the activity log of the site keeps (ADR-037). Only an owner should change it.'),
+  media: z
+    .strictObject({
+      format: z
+        .enum(MEDIA_FORMATS)
+        .default(DEFAULT_MEDIA.format)
+        .describe(
+          'What JPEG, PNG and GIF images become when they arrive: "webp", "avif", or "original" to keep them as they came. SVG is never converted.',
+        ),
+      quality: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(DEFAULT_MEDIA.quality)
+        .describe('The quality of photographs, 1 to 100. PNG images are always kept lossless.'),
+      maxWidth: z
+        .number()
+        .int()
+        .min(MEDIA_MIN_WIDTH)
+        .max(MEDIA_MAX_WIDTH)
+        .default(DEFAULT_MEDIA.maxWidth)
+        .describe('The widest an image is kept, in pixels; a wider one is scaled down, never up.'),
+    })
+    .default({ ...DEFAULT_MEDIA })
+    .describe('How the site converts the images it receives (ADR-038).'),
   collections: z.record(z.string(), collectionDefinitionData),
 })
 

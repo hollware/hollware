@@ -96,6 +96,9 @@ describe('AC-0.1-10: migrations', () => {
     )
 
     expect(rows?.map((row) => row['name'])).toEqual([
+      // migrations/0017: the images of a site (ADR-038).
+      'assets_immutable',
+      'assets_no_delete',
       // migrations/0016: the activity log (ADR-037).
       'audit_log_immutable',
       'audit_log_no_delete',

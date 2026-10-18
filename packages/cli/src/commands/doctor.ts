@@ -121,6 +121,27 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
+  // The images of the sites (ADR-038): the bucket is needed; the binding only converts.
+  const media = records(config['r2_buckets']).some((entry) => entry['binding'] === 'MEDIA')
+  findings.push(
+    media
+      ? pass('media-bucket', 'the R2 bucket "MEDIA" keeps the images of the sites')
+      : fail(
+          'media-bucket',
+          'there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
+          'Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
+        ),
+  )
+  const images = isRecord(config['images']) && config['images']['binding'] === 'IMAGES'
+  findings.push(
+    pass(
+      'images-binding',
+      images
+        ? 'the Images binding "IMAGES" converts each image once, by the media setting of its site'
+        : 'there is no Images binding "IMAGES": images are kept as they come, unconverted (add "images": { "binding": "IMAGES" } to convert them)',
+    ),
+  )
+
   const assets = isRecord(config['assets']) ? config['assets'] : undefined
   const directory = typeof assets?.['directory'] === 'string' ? assets['directory'] : undefined
   const admin = directory !== undefined && existsSync(join(cwd, directory, 'admin'))

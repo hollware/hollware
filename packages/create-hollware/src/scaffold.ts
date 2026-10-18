@@ -182,6 +182,7 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
   replaceIn(join(target, 'wrangler.jsonc'), [
     ['"name": "my-hollware"', `"name": "${choices.name}"`],
     ['"database_name": "my-hollware"', `"database_name": "${choices.name}"`],
+    ['"bucket_name": "my-hollware-media"', `"bucket_name": "${choices.name}-media"`],
     // Queue names are unique in an account: each project has its own.
     ['hollware-events', `${choices.name}-events`],
   ])

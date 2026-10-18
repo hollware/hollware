@@ -1,4 +1,7 @@
-import type { ResolvedAuth, ResolvedSite } from '@hollware/core'
+import { isSiteKey, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
+import { insufficientScope } from '../auth/index.ts'
+import { missingScopes } from '../auth/scopes.ts'
+import { originalKey, servedKey } from '../ops/assets.ts'
 import { Hono, type Context } from 'hono'
 import { checkHostAndOrigin, unauthorized } from '../auth/index.ts'
 import { connect } from '../db/d1.ts'
@@ -29,6 +32,7 @@ import { adminClient } from '../oauth/admin.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
+import { mediaOfEnv } from '../media/cloudflare.ts'
 import { analyticsReaderOf } from '../analytics/cloudflare.ts'
 import { installEvents } from './events.ts'
 
@@ -358,6 +362,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           semantic: semanticOfEnv(c.env),
           analytics: analyticsReaderOf(c.env),
           structure: structureOf(db, c.env.HOLLWARE_SECRET),
+          media: mediaOfEnv(c.env),
         },
         // A read token never gets here; the admin's client never calls MCP.
         ...(principal.kind === 'read'
@@ -468,6 +473,68 @@ export function createGateway(options: GatewayOptions): Gateway {
     })
   }
 
+  // The images of the sites (ADR-038): to anyone, and never different under the same URL, since
+  // an id is the hash of the file. A page of any origin may show one; an SVG runs nothing even
+  // when it is opened on its own, in the origin of the admin.
+  app.get('/assets/:site/:id', async (c) => {
+    const { site, id } = c.req.param()
+    const media = mediaOfEnv(c.env)
+    const file =
+      media === null || !isSiteKey(site) || !ASSET_ID.test(id)
+        ? null
+        : await media.files.get(servedKey(site, id))
+    if (file === null) {
+      return Response.json(
+        {
+          code: 'not_found',
+          message: 'There is no image at this URL.',
+          fix: 'Use the url that upload_asset or get_asset gave the image.',
+        },
+        { status: 404, headers: { 'cache-control': 'no-store' } },
+      )
+    }
+    const headers = new Headers({
+      'content-type': file.contentType,
+      'cache-control': 'public, max-age=31536000, immutable',
+      'cross-origin-resource-policy': 'cross-origin',
+    })
+    if (file.contentType === 'image/svg+xml') {
+      headers.set(
+        'content-security-policy',
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      )
+    }
+    return new Response(file.body, { headers })
+  })
+
+  // The file of an image as it was uploaded, for an export (ADR-038): a person's token of the site.
+  app.get('/v1/assets/:id/original', (c) =>
+    protectWrites(c, 'v1', async (principal) => {
+      if (missingScopes(principal, ['content:read']).length > 0) {
+        return insufficientScope(['content:read'], oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1)
+      }
+      const id = c.req.param('id')
+      const media = mediaOfEnv(c.env)
+      const row =
+        media === null || !ASSET_ID.test(id) ? null : await media.catalog.byId(principal.site, id)
+      const file =
+        media === null || row === null ? null : await media.files.get(originalKey(row.site, row.id))
+      if (file === null) {
+        return Response.json(
+          {
+            code: 'not_found',
+            message: `The site has no image ${id}.`,
+            fix: 'List the images of the site with list_assets.',
+          },
+          { status: 404, headers: { 'cache-control': 'no-store' } },
+        )
+      }
+      return new Response(file.body, {
+        headers: { 'content-type': file.contentType, 'cache-control': 'private, no-store' },
+      })
+    }),
+  )
+
   if (options.read !== undefined) {
     installReadApi(app, {
       read: options.read,
@@ -487,6 +554,9 @@ export function createGateway(options: GatewayOptions): Gateway {
     return await app.fetch(request, env, ctx)
   }
 }
+
+/** The id of an asset: `ast_` and 26 hexadecimal characters, from the hash of its file. */
+const ASSET_ID = /^ast_[0-9a-f]{26}$/
 
 /** The group of a route that is rate limited, or `null` for one that is not (T-10). */
 export function limitedRoute(method: string, pathname: string): string | null {

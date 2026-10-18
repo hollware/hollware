@@ -1,3 +1,4 @@
+import { getAsset, listAssets, uploadAsset } from './assets.ts'
 import { contentStats } from './content-stats.ts'
 import { createDraft } from './create-draft.ts'
 import { describeSite } from './describe-site.ts'
@@ -42,9 +43,11 @@ export const handlers = defineHandlers({
   delete_entry: deleteEntry,
   delete_site: deleteSite,
   describe_site: describeSite,
+  get_asset: getAsset,
   get_entry: getEntry,
   get_structure: getStructure,
   get_translations: getTranslations,
+  list_assets: listAssets,
   list_entries: listEntries,
   search,
   list_reviews: listReviews,
@@ -58,5 +61,6 @@ export const handlers = defineHandlers({
   unpublish,
   update_site: updateSite,
   update_draft: updateDraft,
+  upload_asset: uploadAsset,
   validate,
 })

@@ -1,3 +1,4 @@
+import type { Conversion } from '@hollware/core'
 import type {
   AcknowledgedWarning,
   EntryDocument,
@@ -566,4 +567,68 @@ export interface Structure {
    * `HOLLWARE_SECRET` to seal it with.
    */
   readonly secrets?: { make(site: string, name: string): Promise<string | null> }
+}
+
+/*
+ * The images of a site (ADR-038): files in R2, converted once by the Images binding when one is
+ * bound, and described by a row of `assets` in D1.
+ */
+
+/** Where the files of the assets live: R2. */
+export interface AssetFiles {
+  put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
+  get(key: string): Promise<{ readonly body: ReadableStream; readonly contentType: string } | null>
+}
+
+/** What an image is, as the binding reads it; an SVG has no size. */
+export type ImageInfo =
+  | { readonly format: 'image/svg+xml' }
+  | { readonly format: string; readonly width: number; readonly height: number }
+
+/** The Images binding, behind what Hollware asks of it. */
+export interface ImageConverter {
+  info(bytes: Uint8Array): Promise<ImageInfo>
+  convert(
+    bytes: Uint8Array,
+    conversion: Conversion,
+  ): Promise<{ readonly bytes: Uint8Array; readonly format: string }>
+}
+
+/** A row of `assets`. */
+export interface AssetRow {
+  readonly id: string
+  readonly site: string
+  readonly sha256: string
+  readonly format: string
+  readonly width: number | null
+  readonly height: number | null
+  readonly bytes: number
+  readonly originalFormat: string
+  readonly originalBytes: number
+  readonly alt: string
+  readonly filename: string
+  readonly createdBy: string
+  readonly createdAt: string
+}
+
+/** The rows of `assets`, of one site at a time. */
+export interface AssetCatalog {
+  byId(site: string, id: string): Promise<AssetRow | null>
+  /** Writes the row, or answers the one of the same bytes that is there already. */
+  insert(row: AssetRow): Promise<{ readonly row: AssetRow; readonly created: boolean }>
+  /** Newest first; the cursor is the `createdAt` and id of the last row of the page before. */
+  list(
+    site: string,
+    limit: number,
+    cursor: { readonly createdAt: string; readonly id: string } | null,
+  ): Promise<readonly AssetRow[]>
+}
+
+/** Media, when the Worker has an R2 bucket for it; `images` is `null` without the binding. */
+export interface Media {
+  readonly files: AssetFiles
+  readonly images: ImageConverter | null
+  readonly catalog: AssetCatalog
+  /** Where the Worker serves the assets: `<HOLLWARE_PUBLIC_URL>/assets/`. */
+  readonly baseUrl: string
 }

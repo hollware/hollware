@@ -124,6 +124,7 @@ export function siteOf(
     cors: { origins: [] },
     events: { webhooks: [], indexNow: null },
     audit: { ipAddresses: 'off', retentionDays: null },
+    media: { format: 'webp', quality: 85, maxWidth: 2400 },
   }
 }
 

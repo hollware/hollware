@@ -18,6 +18,8 @@ const STARTER = `{
   "assets": { "directory": "node_modules/@hollware/admin/dist/client" },
   "vars": { "HOLLWARE_PUBLIC_URL": "http://localhost:5199" },
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
+  "images": { "binding": "IMAGES" },
   "d1_databases": [
     { "binding": "DB", "database_name": "x", "migrations_dir": "node_modules/@hollware/server/migrations" },
   ],
@@ -47,6 +49,8 @@ describe('hollware doctor', () => {
         'ok    HOLLWARE_PUBLIC_URL is http://localhost:5199',
         'ok    the D1 binding "DB" has 1 migrations',
         'ok    the KV binding "OAUTH_KV" is there',
+        'ok    the R2 bucket "MEDIA" keeps the images of the sites',
+        'ok    the Images binding "IMAGES" converts each image once, by the media setting of its site',
         'ok    the admin is built, in the static assets',
         'ok    the local database has every migration',
         'ok    the local database has an owner',
@@ -74,12 +78,15 @@ describe('hollware doctor', () => {
       '      Add it to d1_databases in wrangler.jsonc, as the starter has it.',
       'FAIL  there is no KV binding "OAUTH_KV", which the OAuth server needs',
       '      Add { "binding": "OAUTH_KV" } to kv_namespaces in wrangler.jsonc.',
+      'FAIL  there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
+      '      Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
+      'ok    there is no Images binding "IMAGES": images are kept as they come, unconverted (add "images": { "binding": "IMAGES" } to convert them)',
       'FAIL  the static assets do not hold the admin',
       '      Install the dependencies; assets.directory of wrangler.jsonc must be "node_modules/@hollware/admin/dist/client".',
       'ok    the local database has every migration',
       'ok    the local database has an owner',
     ])
-    expect(err).toEqual(['hollware doctor: 5 problems to fix.'])
+    expect(err).toEqual(['hollware doctor: 6 problems to fix.'])
   })
 
   it('says what the database lacks: its migrations first, then its owner', async () => {

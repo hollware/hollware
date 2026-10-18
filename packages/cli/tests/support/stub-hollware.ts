@@ -8,6 +8,8 @@ import {
   updateDraft,
   validate,
   type Scope,
+  getAsset,
+  uploadAsset,
 } from '@hollware/core'
 import {
   createMcpHandler,
@@ -16,6 +18,7 @@ import {
   type RegisteredTool,
 } from '@modelcontextprotocol/server'
 import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
 /**
@@ -111,10 +114,23 @@ export interface StubOptions {
   pageSize?: number
 }
 
+/** An image of the stub's site: the file served, and the file as it was uploaded. */
+export interface StubAsset {
+  id: string
+  format: 'image/webp' | 'image/png' | 'image/svg+xml'
+  originalFormat: 'image/png' | 'image/jpeg' | 'image/svg+xml'
+  served: Uint8Array
+  original: Uint8Array
+  alt: string
+  filename: string
+}
+
 export interface StubServer {
   /** `http://127.0.0.1:<port>`: the address to give `--url`. */
   url: string
   entries: Map<string, StubEntry>
+  /** The images of the site, by id. */
+  assets: Map<string, StubAsset>
   /** Every tool call, in order. */
   calls: RecordedCall[]
   /** The `Authorization` header of every HTTP request, in order. */
@@ -136,6 +152,22 @@ function revisionId(entry: StubEntry): string {
 
 export function startStub(options: StubOptions): Promise<StubServer> {
   const entries = new Map<string, StubEntry>()
+  const assets = new Map<string, StubAsset>()
+  let origin = ''
+  const assetView = (asset: StubAsset) => ({
+    id: asset.id,
+    reference: `asset:${asset.id}`,
+    url: `${origin}/assets/${site.key}/${asset.id}`,
+    format: asset.format,
+    width: null,
+    height: null,
+    bytes: asset.served.length,
+    originalFormat: asset.originalFormat,
+    originalBytes: asset.original.length,
+    alt: asset.alt,
+    filename: asset.filename,
+    createdAt: '2026-10-13T10:00:00.000Z',
+  })
   const calls: RecordedCall[] = []
   const authorizations: (string | null)[] = []
   const granted = options.scopes ?? [
@@ -269,6 +301,50 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               markdown,
             },
           })
+        }),
+      ),
+    )
+
+    keep(
+      getAsset.name,
+      server.registerTool(
+        getAsset.name,
+        { ...describe(getAsset), inputSchema: getAsset.input, outputSchema: getAsset.output },
+        guarded(getAsset.name, (args) => {
+          const asset = assets.get(args.id)
+          return asset === undefined
+            ? reply(getAsset.outcomes, { outcome: 'not_found' })
+            : reply(getAsset.outcomes, { outcome: 'ok', asset: assetView(asset) })
+        }),
+      ),
+    )
+
+    keep(
+      uploadAsset.name,
+      server.registerTool(
+        uploadAsset.name,
+        {
+          ...describe(uploadAsset),
+          inputSchema: uploadAsset.input,
+          outputSchema: uploadAsset.output,
+        },
+        guarded(uploadAsset.name, (args) => {
+          const original = new Uint8Array(Buffer.from(args.data, 'base64'))
+          const id = `ast_${createHash('sha256').update(original).digest('hex').slice(0, 26)}`
+          const found = assets.get(id)
+          if (found !== undefined)
+            return reply(uploadAsset.outcomes, { outcome: 'exists', asset: assetView(found) })
+          const asset: StubAsset = {
+            id,
+            format: 'image/webp',
+            originalFormat: 'image/png',
+            served: new TextEncoder().encode(`webp of ${args.filename}`),
+            original,
+            alt: args.alt,
+            filename: args.filename,
+          }
+          assets.set(id, asset)
+          return reply(uploadAsset.outcomes, { outcome: 'created', asset: assetView(asset) })
         }),
       ),
     )
@@ -540,6 +616,15 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     authorizations.push(request.headers.get('authorization'))
     const custom = options.respond?.(request)
     if (custom !== undefined) return custom
+    // The images, as a Hollware serves them: to anyone, and the originals to the token.
+    const path = new URL(request.url).pathname
+    const served = /^\/assets\/[^/]+\/(ast_[0-9a-f]{26})$/.exec(path)
+    if (served !== null) {
+      const asset = assets.get(served[1] ?? '')
+      return asset === undefined
+        ? new Response('{}', { status: 404 })
+        : new Response(asset.served, { headers: { 'content-type': asset.format } })
+    }
     if (request.headers.get('authorization') !== `Bearer ${options.token}`) {
       return new Response(JSON.stringify({ error: 'invalid_token' }), {
         status: 401,
@@ -548,6 +633,13 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           'www-authenticate': 'Bearer realm="hollware"',
         },
       })
+    }
+    const original = /^\/v1\/assets\/(ast_[0-9a-f]{26})\/original$/.exec(path)
+    if (original !== null) {
+      const asset = assets.get(original[1] ?? '')
+      return asset === undefined
+        ? new Response('{}', { status: 404 })
+        : new Response(asset.original, { headers: { 'content-type': asset.originalFormat } })
     }
     const missing = (await scopesNeeded(request)).filter((scope) => !granted.includes(scope))
     if (missing.length > 0) {
@@ -591,9 +683,11 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     http.listen(0, '127.0.0.1', () => {
       const address = http.address()
       if (address === null || typeof address === 'string') throw new Error('the stub has no port')
+      origin = `http://127.0.0.1:${address.port}`
       resolve({
-        url: `http://127.0.0.1:${address.port}`,
+        url: origin,
         entries,
+        assets,
         calls,
         authorizations,
         close: async () => {

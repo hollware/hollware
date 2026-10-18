@@ -62,6 +62,12 @@
     ],
     "export": [
       {
+        "assets": {
+          "type": "string"
+        },
+        "assets-url": {
+          "type": "string"
+        },
         "collection": {
           "multiple": true,
           "type": "string"

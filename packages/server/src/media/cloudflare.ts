@@ -1,0 +1,190 @@
+import type { Conversion } from '@hollware/core'
+import type {
+  AssetCatalog,
+  AssetFiles,
+  AssetRow,
+  ImageConverter,
+  ImageInfo,
+  Media,
+} from '../ports.ts'
+
+const streamOf = (bytes: Uint8Array): ReadableStream<Uint8Array> => new Blob([bytes]).stream()
+
+/** R2 as the store of asset files. */
+export function r2Files(bucket: R2Bucket): AssetFiles {
+  return {
+    async put(key, bytes, contentType) {
+      await bucket.put(key, bytes, { httpMetadata: { contentType } })
+    },
+    async get(key) {
+      const object = await bucket.get(key)
+      if (object === null) return null
+      return {
+        body: object.body,
+        contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
+      }
+    },
+  }
+}
+
+/** The Images binding as the converter: `quality` and `anim` are always passed (ADR-038). */
+/** The part of the Images binding Hollware uses; Cloudflare's `ImagesBinding` has it. */
+export interface ImagesLike {
+  info(stream: ReadableStream<Uint8Array>): Promise<unknown>
+  input(stream: ReadableStream<Uint8Array>): TransformerLike
+}
+
+interface TransformerLike {
+  transform(transform: { width: number; fit: 'scale-down' }): TransformerLike
+  output(options: {
+    format: 'image/webp' | 'image/avif'
+    quality: number
+    anim: boolean
+  }): Promise<{ image(): ReadableStream<Uint8Array>; contentType(): string }>
+}
+
+export function imagesConverter(images: ImagesLike): ImageConverter {
+  return {
+    async info(bytes): Promise<ImageInfo> {
+      const info = await images.info(streamOf(bytes))
+      if (typeof info !== 'object' || info === null) throw new Error('Images answered no info')
+      const format = Reflect.get(info, 'format')
+      if (format === 'image/svg+xml') return { format }
+      const width = Reflect.get(info, 'width')
+      const height = Reflect.get(info, 'height')
+      if (typeof format !== 'string' || typeof width !== 'number' || typeof height !== 'number') {
+        throw new Error('Images answered an info without format, width and height')
+      }
+      return { format, width, height }
+    },
+    async convert(bytes, conversion: Conversion) {
+      let transformer = images.input(streamOf(bytes))
+      if (conversion.width !== undefined) {
+        transformer = transformer.transform({ width: conversion.width, fit: 'scale-down' })
+      }
+      const result = await transformer.output({
+        format: conversion.format,
+        quality: conversion.quality,
+        anim: conversion.anim,
+      })
+      const converted = new Uint8Array(await new Response(result.image()).arrayBuffer())
+      return { bytes: converted, format: result.contentType() }
+    },
+  }
+}
+
+interface Row {
+  readonly id: string
+  readonly site_id: string
+  readonly sha256: string
+  readonly format: string
+  readonly width: number | null
+  readonly height: number | null
+  readonly bytes: number
+  readonly original_format: string
+  readonly original_bytes: number
+  readonly alt: string
+  readonly filename: string
+  readonly created_by: string
+  readonly created_at: string
+}
+
+const rowOf = (row: Row): AssetRow => ({
+  id: row.id,
+  site: row.site_id,
+  sha256: row.sha256,
+  format: row.format,
+  width: row.width,
+  height: row.height,
+  bytes: row.bytes,
+  originalFormat: row.original_format,
+  originalBytes: row.original_bytes,
+  alt: row.alt,
+  filename: row.filename,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+})
+
+/** The rows of `assets` in D1, always of one site. */
+export function d1Catalog(db: D1Database): AssetCatalog {
+  const byId = async (site: string, id: string) => {
+    const row = await db
+      .prepare('SELECT * FROM assets WHERE site_id = ? AND id = ?')
+      .bind(site, id)
+      .first<Row>()
+    return row === null ? null : rowOf(row)
+  }
+  return {
+    byId,
+    async insert(asset) {
+      const written = await db
+        .prepare(
+          `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, original_format,
+             original_bytes, alt, filename, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (site_id, sha256) DO NOTHING
+           RETURNING *`,
+        )
+        .bind(
+          asset.id,
+          asset.site,
+          asset.sha256,
+          asset.format,
+          asset.width,
+          asset.height,
+          asset.bytes,
+          asset.originalFormat,
+          asset.originalBytes,
+          asset.alt,
+          asset.filename,
+          asset.createdBy,
+          asset.createdAt,
+          asset.createdAt,
+        )
+        .first<Row>()
+      if (written !== null) return { row: rowOf(written), created: true }
+      const existing = await db
+        .prepare('SELECT * FROM assets WHERE site_id = ? AND sha256 = ?')
+        .bind(asset.site, asset.sha256)
+        .first<Row>()
+      if (existing === null) throw new Error(`No asset of ${asset.sha256} after a conflict`)
+      return { row: rowOf(existing), created: false }
+    },
+    async list(site, limit, cursor) {
+      const statement =
+        cursor === null
+          ? db
+              .prepare(
+                'SELECT * FROM assets WHERE site_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
+              )
+              .bind(site, limit)
+          : db
+              .prepare(
+                `SELECT * FROM assets WHERE site_id = ? AND (created_at, id) < (?, ?)
+                 ORDER BY created_at DESC, id DESC LIMIT ?`,
+              )
+              .bind(site, cursor.createdAt, cursor.id, limit)
+      const { results } = await statement.all<Row>()
+      return results.map(rowOf)
+    },
+  }
+}
+
+/** The bindings media needs: an R2 bucket, and optionally the Images binding. */
+export interface MediaEnv {
+  readonly DB: D1Database
+  readonly HOLLWARE_PUBLIC_URL?: string
+  readonly MEDIA?: R2Bucket
+  readonly IMAGES?: ImagesBinding
+}
+
+/** Media of a Worker: `null` without its R2 bucket, and without conversion when `IMAGES` is not bound. */
+export function mediaOfEnv(env: MediaEnv): Media | null {
+  if (env.MEDIA === undefined || env.HOLLWARE_PUBLIC_URL === undefined) return null
+  return {
+    files: r2Files(env.MEDIA),
+    images: env.IMAGES === undefined ? null : imagesConverter(env.IMAGES),
+    catalog: d1Catalog(env.DB),
+    baseUrl: `${env.HOLLWARE_PUBLIC_URL.replace(/\/$/, '')}/assets/`,
+  }
+}

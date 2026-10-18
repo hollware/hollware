@@ -46,6 +46,7 @@ const links = computed<NavigationMenuItem[][]>(() => [
   [
     { label: m.value.nav.home, icon: 'i-lucide-house', to: '/', exact: true },
     { label: m.value.nav.entries, icon: 'i-lucide-file-text', to: '/entries' },
+    { label: m.value.nav.images, icon: 'i-lucide-image', to: '/images' },
     {
       label: m.value.nav.reviews,
       icon: 'i-lucide-inbox',

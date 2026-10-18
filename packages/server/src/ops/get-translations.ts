@@ -1,5 +1,6 @@
 import { HollwareError } from '@hollware/core'
 import { entrySummary } from './answers.ts'
+import { forReaders } from './assets.ts'
 import { requireCollection } from './collections.ts'
 import type { OperationHandler } from './types.ts'
 
@@ -20,5 +21,5 @@ export const getTranslations: OperationHandler<'get_translations'> = async (inpu
     context.view,
   )
   if (group.length === 0) return { outcome: 'not_found' }
-  return { outcome: 'ok', entries: group.map(entrySummary) }
+  return { outcome: 'ok', entries: group.map((entry) => forReaders(context, entrySummary(entry))) }
 }

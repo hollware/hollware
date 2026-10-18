@@ -261,7 +261,8 @@ export function urlScheme(value: string): string | undefined {
 export type UrlKind = 'link' | 'image'
 
 const LINK_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'mailto'])
-const IMAGE_SCHEMES: ReadonlySet<string> = new Set(['http', 'https'])
+// `asset:` names an image of the site (ADR-038); the read layer turns it into the asset's URL.
+const IMAGE_SCHEMES: ReadonlySet<string> = new Set(['http', 'https', 'asset'])
 
 /**
  * Whether a link or an image may point there. A relative URL (a path, `#anchor`, `?query` or

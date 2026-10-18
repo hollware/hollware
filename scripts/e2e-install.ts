@@ -23,6 +23,7 @@ import { parseArgs } from 'node:util'
 import { OPERATIONS } from '../packages/core/src/index.ts'
 import { packAll } from './e2e/pack.ts'
 import {
+  call,
   fail,
   mcp,
   PROJECT_URL,
@@ -141,6 +142,25 @@ async function main(): Promise<void> {
 
     step('A draft, published')
     await publishPost(token, 'written-in-the-install-test', 'Written in the install test')
+
+    step('An image, uploaded over MCP and served as WebP (ADR-038)')
+    const pixel =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='
+    const uploaded = await call(token, 'upload_asset', {
+      filename: 'pixel.png',
+      alt: 'One red pixel',
+      data: pixel,
+    })
+    const asset = uploaded['asset'] as { url: string; format: string } | undefined
+    if (uploaded['outcome'] !== 'created' || asset === undefined) {
+      fail(`upload_asset answered ${JSON.stringify(uploaded)}`)
+    }
+    const image = await fetch(asset.url)
+    const served = new Uint8Array(await image.arrayBuffer())
+    const isWebp = new TextDecoder().decode(served.subarray(8, 12)) === 'WEBP'
+    if (image.status !== 200 || asset.format !== 'image/webp' || !isWebp) {
+      fail(`the image was served ${image.status} as ${asset.format}, not as WebP`)
+    }
 
     step('A read token reads it over /v1, and is refused by MCP')
     const hollware = join(project, 'node_modules/.bin/hollware')

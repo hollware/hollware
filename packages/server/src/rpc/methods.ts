@@ -17,6 +17,7 @@ import { describeError } from '../mcp/errors.ts'
 import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Clock } from '../ports.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
+import { mediaOfEnv } from '../media/cloudflare.ts'
 
 /** A call over RPC that failed in a way its caller does not get to see. */
 export interface RpcLogEntry {
@@ -42,7 +43,11 @@ export interface RpcDeps {
 }
 
 /** What a call needs of the bindings of the invocation. */
-export type RpcEnv = Pick<HollwareEnv, 'DB' | 'AI' | 'VECTORIZE' | 'HOLLWARE_SECRET'>
+export type RpcEnv = Pick<
+  HollwareEnv,
+  'DB' | 'AI' | 'VECTORIZE' | 'HOLLWARE_SECRET' | 'MEDIA' | 'IMAGES'
+> &
+  Partial<Pick<HollwareEnv, 'HOLLWARE_PUBLIC_URL'>>
 
 /**
  * Who calls over RPC: a Worker of the same account, which reads published content and nothing
@@ -237,6 +242,7 @@ async function run<Schema extends z.ZodType, Output>(
     client: null,
     requestId,
     semantic: semanticOfEnv(env),
+    media: mediaOfEnv(env),
   }
   try {
     return await handler(input, context)

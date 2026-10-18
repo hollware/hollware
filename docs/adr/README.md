@@ -53,6 +53,7 @@ An architecture decision record (ADR) documents one structural decision of Hollw
 | 035 | A push to `release` publishes, with no approval of the `npm` environment                                    | Accepted              | [0035-a-push-to-release-publishes.md](0035-a-push-to-release-publishes.md)                                                                     |
 | 036 | What 1.0 promises, and how the repository keeps it                                                          | Accepted              | [0036-what-1-0-promises.md](0036-what-1-0-promises.md)                                                                                         |
 | 037 | An activity log of who did what                                                                             | Accepted              | [0037-an-activity-log-of-who-did-what.md](0037-an-activity-log-of-who-did-what.md)                                                             |
+| 038 | Images in R2, converted once when they arrive                                                               | Accepted              | [0038-images-in-r2-converted-once.md](0038-images-in-r2-converted-once.md)                                                                     |
 
 ## Template
 

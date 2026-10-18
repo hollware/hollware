@@ -45,6 +45,7 @@ export const es: Messages = {
     people: 'Personas',
     tokens: 'Tokens',
     activity: 'Actividad',
+    images: 'Imágenes',
   },
   person: {
     you: 'Tú',
@@ -557,6 +558,22 @@ export const es: Messages = {
       since: 'Desde',
     },
   },
+  images: {
+    title: 'Imágenes',
+    intro:
+      'Las imágenes del sitio, de la más nueva a la más antigua. Cada una se convierte una vez al llegar (a WebP por defecto); copia su referencia en una entrada para mostrarla.',
+    file: 'Imagen',
+    alt: 'Qué muestra',
+    altHelp: 'Para quien no puede verla: obligatorio.',
+    upload: 'Subir',
+    uploaded: 'Imagen subida',
+    exists: 'El sitio ya tiene esta imagen',
+    refused: 'La imagen no se guardó',
+    none: 'Todavía no hay imágenes.',
+    copy: 'Copiar para Markdown',
+    copied: 'Copiado: pégalo en una entrada',
+    more: 'Ver más',
+  },
   activity: {
     title: 'Actividad',
     ownerOnly: 'Solo un dueño lee el registro de actividad',
@@ -579,6 +596,7 @@ export const es: Messages = {
       delete_site: 'Movió un sitio a la papelera',
       restore_site: 'Restauró un sitio de la papelera',
       make_webhook_secret: 'Creó un secreto de webhook',
+      upload_asset: 'Subió una imagen',
       'token.create': 'Creó un token',
       'preview.create': 'Creó un enlace de vista previa',
       'token.revoke': 'Revocó un token',

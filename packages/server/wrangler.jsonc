@@ -21,6 +21,8 @@
   // tests never contact Cloudflare; a deploy needs the id of a namespace made with
   // `wrangler kv namespace create`.
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  // The images of the sites (ADR-038): a bucket of Miniflare for the tests of media.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-server-tests" }],
   "d1_databases": [
     {
       "binding": "DB",

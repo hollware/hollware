@@ -740,3 +740,46 @@ export const auditLog = sqliteTable(
     ),
   ],
 )
+
+/**
+ * The images of a site (ADR-038). The id comes from the SHA-256 of the file as it was uploaded,
+ * so the same file is one asset and an export imported again makes the same ids. The file served
+ * and the original live in R2 (`sites/<site>/<id>` and `originals/<site>/<id>`); this row says
+ * what they are. Never deleted: a revision that names an asset must find it.
+ */
+export const assets = sqliteTable(
+  'assets',
+  {
+    id: id('ast'),
+    siteId: siteId(),
+    sha256: text('sha256').notNull(),
+    /** The media type of the file served: the converted one, or the original kept as it came. */
+    format: text('format').notNull(),
+    /** In pixels; `null` for an SVG, which has no fixed size. */
+    width: integer('width'),
+    height: integer('height'),
+    bytes: integer('bytes').notNull(),
+    originalFormat: text('original_format').notNull(),
+    originalBytes: integer('original_bytes').notNull(),
+    alt: text('alt').notNull(),
+    filename: text('filename').notNull(),
+    /** The person whose token or session uploaded it. */
+    createdBy: text('created_by').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('assets_id_site').on(t.id, t.siteId),
+    unique('assets_sha256').on(t.siteId, t.sha256),
+    index('assets_site_time').on(t.siteId, t.createdAt, t.id),
+    foreignKey({ name: 'assets_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'assets_creator', columns: [t.createdBy], foreignColumns: [users.id] }),
+    check(
+      'assets_formats',
+      sql`${t.format} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml') AND ${t.originalFormat} IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml')`,
+    ),
+    check(
+      'assets_sizes',
+      sql`${t.bytes} > 0 AND ${t.originalBytes} BETWEEN 1 AND 10485760 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200 AND length(${t.sha256}) = 64`,
+    ),
+  ],
+)

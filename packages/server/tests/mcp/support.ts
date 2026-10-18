@@ -43,6 +43,7 @@ export const SITE: ResolvedSite = {
   cors: { origins: [] },
   events: { webhooks: [], indexNow: null },
   audit: { ipAddresses: 'off', retentionDays: null },
+  media: { format: 'webp', quality: 85, maxWidth: 2400 },
 }
 
 const unused = (): never => {
@@ -236,6 +237,21 @@ const STRUCTURE_CHANGES: Canned['update_site'] = {
 }
 
 /** A valid output for every outcome of every operation. */
+const ASSET = {
+  id: 'ast_0123456789abcdef0123456789',
+  reference: 'asset:ast_0123456789abcdef0123456789',
+  url: 'https://cms.example.com/assets/ast_0123456789abcdef0123456789',
+  format: 'image/webp',
+  width: 1200,
+  height: 630,
+  bytes: 48211,
+  originalFormat: 'image/png',
+  originalBytes: 312009,
+  alt: 'A diagram of the pipeline',
+  filename: 'pipeline.png',
+  createdAt: '2026-10-18T00:00:00.000Z',
+} as const
+
 export const CANNED: Canned = {
   approve_review: {
     published: {
@@ -419,6 +435,14 @@ export const CANNED: Canned = {
     needs_confirmation: { outcome: 'needs_confirmation', entries: 3 },
     not_found: { outcome: 'not_found' },
   },
+  upload_asset: {
+    created: { outcome: 'created', asset: ASSET },
+    exists: { outcome: 'exists', asset: ASSET },
+    refused: { outcome: 'refused', problem: { message: 'Not an image.', fix: 'Send one.' } },
+    unavailable: { outcome: 'unavailable', problem: { message: 'No bucket.', fix: 'Bind one.' } },
+  },
+  list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
+  get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
   make_webhook_secret: {
     made: { outcome: 'made', secret: `whsec_${'a'.repeat(64)}` },
     not_found: { outcome: 'not_found' },
@@ -467,6 +491,13 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     restore_entry: { id: ENTRY_ID },
     get_structure: {},
     make_webhook_secret: { webhook: 'newsletter' },
+    upload_asset: {
+      filename: 'pipeline.png',
+      alt: 'A diagram of the pipeline',
+      data: 'iVBORw0KGgo=',
+    },
+    list_assets: {},
+    get_asset: { id: 'ast_0123456789abcdef0123456789' },
     restore_site: { key: 'notes' },
     set_collection: { version: 2, name: 'blog', collection: null },
     update_site: { version: 2, definition: STRUCTURE },
@@ -605,6 +636,19 @@ export function fakeHandlers(
       'delete_site',
       overrides.delete_site ??
         (async () => pick(CANNED.delete_site, outcomes.delete_site ?? 'trashed')),
+    ),
+    upload_asset: record(
+      'upload_asset',
+      overrides.upload_asset ??
+        (async () => pick(CANNED.upload_asset, outcomes.upload_asset ?? 'created')),
+    ),
+    list_assets: record(
+      'list_assets',
+      overrides.list_assets ?? (async () => pick(CANNED.list_assets, outcomes.list_assets ?? 'ok')),
+    ),
+    get_asset: record(
+      'get_asset',
+      overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
     ),
     make_webhook_secret: record(
       'make_webhook_secret',

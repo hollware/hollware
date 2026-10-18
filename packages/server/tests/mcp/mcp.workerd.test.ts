@@ -55,9 +55,11 @@ describe('the MCP endpoint in workerd', () => {
         'delete_entry',
         'delete_site',
         'describe_site',
+        'get_asset',
         'get_entry',
         'get_structure',
         'get_translations',
+        'list_assets',
         'list_entries',
         'list_reviews',
         'make_webhook_secret',
@@ -71,6 +73,7 @@ describe('the MCP endpoint in workerd', () => {
         'unpublish',
         'update_draft',
         'update_site',
+        'upload_asset',
         'validate',
       ])
       expect(found.isError).toBe(false)

@@ -1,4 +1,12 @@
-import { describeSite, getEntry, listEntries, schemas } from '@hollware/core'
+import {
+  describeSite,
+  EXTENSIONS,
+  getAsset,
+  getEntry,
+  listEntries,
+  schemas,
+  type ImageFormat,
+} from '@hollware/core'
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
@@ -12,7 +20,7 @@ import { mcpEndpoint, readToken, redact, withoutToken } from './import.ts'
 export const EXPORT_USAGE = [
   'Usage: hollware export <directory> --url <hollware url> (--token-file <file> | token on stdin)',
   '                       [--site <key>] [--collection <name>]... [--locale <code>]...',
-  '                       [--published] [--dry-run]',
+  '                       [--published] [--assets <dir> --assets-url <path>] [--dry-run]',
   '',
   'Writes the entries of a running Hollware, read over MCP, as Markdown files at',
   '<directory>/<collection>/<locale>/<slug>.md: the layout "hollware import" reads. Each file is',
@@ -28,6 +36,11 @@ export const EXPORT_USAGE = [
   '  --locale <code>      Export only this locale; repeat it for several',
   '  --published          Export only the published entries, as they are published; by default the',
   '                       latest revision of every entry, drafts included',
+  '  --assets <dir>       Write the images the entries show to <dir>, as the site serves them,',
+  '                       and point each asset: reference at --assets-url: for a site that',
+  '                       serves its images itself. Without it, the images go to <directory>/_assets',
+  '                       as they were uploaded, with assets.json, which "hollware import" uploads again',
+  '  --assets-url <path>  With --assets: the path the site serves <dir> at, such as /images/cms/',
   '  --dry-run            List the files it would write, and write nothing',
   '  --help               Show this help',
   '',
@@ -54,6 +67,8 @@ export async function exportContent(argv: readonly string[], io: Io): Promise<nu
       collection: { type: 'string', multiple: true },
       locale: { type: 'string', multiple: true },
       published: { type: 'boolean' },
+      assets: { type: 'string' },
+      'assets-url': { type: 'string' },
       'dry-run': { type: 'boolean' },
       help: { type: 'boolean' },
     },
@@ -71,9 +86,23 @@ export async function exportContent(argv: readonly string[], io: Io): Promise<nu
       '--url is required: the address of your Hollware, such as https://cms.example.com.',
     )
   }
+  if ((values.assets === undefined) !== (values['assets-url'] === undefined)) {
+    throw new UsageError(
+      '--assets and --assets-url go together: where to write the images, and the path the site serves them at.',
+    )
+  }
   const endpoint = mcpEndpoint(values.url)
   const root = resolve(io.cwd, directory)
   checkTarget(root, directory)
+  const assets =
+    values.assets === undefined || values['assets-url'] === undefined
+      ? undefined
+      : {
+          root: resolve(io.cwd, values.assets),
+          directory: values.assets,
+          url: values['assets-url'],
+        }
+  if (assets !== undefined) checkTarget(assets.root, assets.directory)
   const token = await readToken(io, values['token-file'])
   try {
     return await exportEntries({
@@ -86,6 +115,7 @@ export async function exportContent(argv: readonly string[], io: Io): Promise<nu
       collections: values.collection,
       locales: values.locale,
       published: values.published === true,
+      assets,
       dryRun: values['dry-run'] === true,
     })
   } catch (error) {
@@ -124,8 +154,19 @@ interface Plan {
   collections: readonly string[] | undefined
   locales: readonly string[] | undefined
   published: boolean
+  /** With --assets: where the images go, and the path the site serves them at. */
+  assets: { root: string; directory: string; url: string } | undefined
   dryRun: boolean
 }
+
+/** An image to write: where, relative to its directory, and its bytes. */
+interface ExportImage {
+  path: string
+  bytes: Uint8Array
+}
+
+/** Every `asset:` reference in Markdown, by id (ADR-038). */
+const ASSET_REFERENCE = /asset:(ast_[0-9a-f]{26})/g
 
 /** An entry to write: where, and its Markdown. */
 interface ExportFile {
@@ -146,6 +187,7 @@ async function exportEntries(plan: Plan): Promise<number> {
   const out = (message: string): void => io.out(redact(message, token))
   const session = await openSession(plan.endpoint, token, readVersion())
   let files: ExportFile[]
+  let images: ExportImage[]
   let siteKey: string
   try {
     const { site } = await session.call(describeSite, {})
@@ -164,6 +206,7 @@ async function exportEntries(plan: Plan): Promise<number> {
       plan.locales === undefined ? [undefined] : chosen('locale', site.locales, plan.locales)
     const listed = await listAll(session, collections, locales, published)
     files = await readAll(session, listed, published)
+    images = await readImages(session, plan, files)
   } finally {
     await session.close()
   }
@@ -173,8 +216,15 @@ async function exportEntries(plan: Plan): Promise<number> {
     out(`No entries to export from the site ${printable(siteKey)} (${view}). Nothing was written.`)
     return 0
   }
+  const imagesRoot = plan.assets?.root ?? join(root, '_assets')
+  const imagesShown = plan.assets?.directory ?? join(directory, '_assets')
   if (dryRun) {
-    out(files.map((file) => `would write  ${printable(file.path)}`).join('\n'))
+    out(
+      [
+        ...files.map((file) => `would write  ${printable(file.path)}`),
+        ...images.map((image) => `would write  ${printable(join(imagesShown, image.path))}`),
+      ].join('\n'),
+    )
     out(
       `Dry run: ${count(files.length, 'entry', 'entries')} of the site ${printable(siteKey)} would be written to ${printable(directory)} (${view}):\n${groupSummary(files)}\nNothing was written.`,
     )
@@ -193,6 +243,22 @@ async function exportEntries(plan: Plan): Promise<number> {
       )
     }
     written += 1
+  }
+  for (const image of images) {
+    const target = join(imagesRoot, image.path)
+    try {
+      mkdirSync(dirname(target), { recursive: true })
+      writeFileSync(target, image.bytes, { flag: 'wx' })
+    } catch (error) {
+      throw new CliError(
+        `could not write ${printable(join(imagesShown, image.path))}: ${error instanceof Error ? error.message : String(error)}. Remove ${printable(directory)} and run the export again.`,
+      )
+    }
+  }
+  if (images.length > 0) {
+    out(
+      `Wrote ${count(images.filter((image) => image.path !== 'assets.json').length, 'image')} to ${printable(imagesShown)}.`,
+    )
   }
   out(
     `Exported ${count(files.length, 'entry', 'entries')} of the site ${printable(siteKey)} to ${printable(directory)} (${view}):\n${groupSummary(files)}`,
@@ -314,6 +380,77 @@ async function readAll(
     files.push({ ...item, markdown })
   }
   return files
+}
+
+/**
+ * The images the entries show (ADR-038). With --assets: each as the site serves it, at
+ * `<id>.<ext>`, and every `asset:` reference of the files pointed at `<assets-url><id>.<ext>`.
+ * Without it: each as it was uploaded, at `_assets/<id>.<ext>`, and `assets.json` with what
+ * `hollware import` needs to upload it again under the same id. Reads everything before it
+ * writes, as the entries are read.
+ */
+async function readImages(
+  session: Session,
+  plan: Plan,
+  files: ExportFile[],
+): Promise<ExportImage[]> {
+  const ids = [
+    ...new Set(
+      files.flatMap((file) =>
+        [...file.markdown.matchAll(ASSET_REFERENCE)].map((match) => match[1] ?? ''),
+      ),
+    ),
+  ].sort()
+  if (ids.length === 0) return []
+  const images: ExportImage[] = []
+  const manifest: Record<string, { alt: string; filename: string }> = {}
+  const urls = new Map<string, string>()
+  for (const id of ids) {
+    const answer = await session.call(getAsset, { id })
+    const asset = answer.asset
+    if (answer.outcome !== 'ok' || asset === undefined) {
+      throw new CliError(
+        `an entry shows the image ${id}, which the site does not have. Nothing was written.`,
+      )
+    }
+    if (plan.assets !== undefined) {
+      const name = `${id}.${EXTENSIONS[asset.format]}`
+      images.push({ path: name, bytes: await download(new URL(asset.url), null, id) })
+      urls.set(id, `${plan.assets.url}${name}`)
+    } else {
+      const original = new URL(`/v1/assets/${id}/original`, plan.endpoint)
+      const name = `${id}.${EXTENSIONS[asset.originalFormat satisfies ImageFormat]}`
+      images.push({ path: name, bytes: await download(original, plan.token, id) })
+      manifest[name] = { alt: asset.alt, filename: asset.filename }
+    }
+  }
+  if (plan.assets !== undefined) {
+    for (const file of files) {
+      file.markdown = file.markdown.replace(
+        ASSET_REFERENCE,
+        (reference, id: string) => urls.get(id) ?? reference,
+      )
+    }
+  } else {
+    images.push({
+      path: 'assets.json',
+      bytes: new TextEncoder().encode(`${JSON.stringify(manifest, null, 2)}\n`),
+    })
+  }
+  return images
+}
+
+async function download(url: URL, token: string | null, id: string): Promise<Uint8Array> {
+  const response = await fetch(
+    url,
+    token === null ? {} : { headers: { authorization: `Bearer ${token}` } },
+  )
+  if (!response.ok) {
+    throw new CliError(
+      `could not download the image ${id} (${response.status} from ${url.pathname}). Nothing was written.`,
+    )
+  }
+  return new Uint8Array(await response.arrayBuffer())
 }
 
 function sentence(message: string): string {

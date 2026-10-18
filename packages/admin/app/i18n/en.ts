@@ -42,6 +42,7 @@ export const en = {
     people: 'People',
     tokens: 'Tokens',
     activity: 'Activity',
+    images: 'Images',
   },
   person: {
     you: 'You',
@@ -532,6 +533,22 @@ export const en = {
       since: 'Since',
     },
   },
+  images: {
+    title: 'Images',
+    intro:
+      'The images of the site, newest first. Each is converted once when it arrives (WebP by default); copy its reference into an entry to show it.',
+    file: 'Image',
+    alt: 'What it shows',
+    altHelp: 'For whoever cannot see it: required.',
+    upload: 'Upload',
+    uploaded: 'Image uploaded',
+    exists: 'The site has this image already',
+    refused: 'The image was not kept',
+    none: 'No images yet.',
+    copy: 'Copy for Markdown',
+    copied: 'Copied: paste it in an entry',
+    more: 'Show more',
+  },
   activity: {
     title: 'Activity',
     ownerOnly: 'Only an owner reads the activity log',
@@ -553,6 +570,7 @@ export const en = {
       delete_site: 'Moved a site to the trash',
       restore_site: 'Restored a site from the trash',
       make_webhook_secret: 'Made a webhook secret',
+      upload_asset: 'Uploaded an image',
       'token.create': 'Made a token',
       'preview.create': 'Made a preview link',
       'token.revoke': 'Revoked a token',

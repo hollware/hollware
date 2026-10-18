@@ -35,6 +35,7 @@ export {
   READ_TOKEN_PREFIX,
 } from './tokens.ts'
 export * from './webhooks.ts'
+export * from './media/index.ts'
 export {
   canSignPreviews,
   makePreviewToken,

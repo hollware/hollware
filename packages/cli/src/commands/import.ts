@@ -6,10 +6,11 @@ import {
   publish,
   schemas,
   updateDraft,
+  uploadAsset,
   validate,
 } from '@hollware/core'
-import { readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import type * as z from 'zod'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
@@ -104,6 +105,7 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       token,
       endpoint,
       directory,
+      root,
       corpus,
       publish: values.publish === true,
       dryRun: values['dry-run'] === true,
@@ -140,6 +142,8 @@ interface Plan {
   endpoint: URL
   /** The directory as the person wrote it, for the messages. */
   directory: string
+  /** The directory, resolved: where `_assets/` of an export is. */
+  root: string
   corpus: Corpus
   publish: boolean
   dryRun: boolean
@@ -150,6 +154,7 @@ async function importFiles({
   token,
   endpoint,
   directory,
+  root,
   corpus,
   publish: publishToo,
   dryRun,
@@ -183,6 +188,7 @@ async function importFiles({
 
   const session = await openSession(endpoint, token, readVersion())
   try {
+    await uploadImages(session, root, directory, dryRun, out)
     const checks = await validateAll(session, corpus.files)
     if (dryRun) out(dryRunReport(checks))
     const refused = checks.filter(
@@ -615,4 +621,63 @@ function listSome(paths: readonly string[]): string {
   return paths.length > shown.length
     ? `${shown.join(', ')} and ${paths.length - shown.length} more`
     : shown.join(', ')
+}
+
+/**
+ * The images an export kept in `_assets/` (ADR-038), uploaded before the entries that show them:
+ * each is the file as it was uploaded, so it gets its id again and every `asset:` reference of the
+ * entries still names it. An image the site has already is `exists`, and nothing changes.
+ */
+async function uploadImages(
+  session: Session,
+  root: string,
+  directory: string,
+  dryRun: boolean,
+  out: (message: string) => void,
+): Promise<void> {
+  const manifestFile = join(root, '_assets', 'assets.json')
+  if (!existsSync(manifestFile)) return
+  let manifest: Record<string, { alt?: unknown; filename?: unknown }>
+  try {
+    manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
+  } catch {
+    throw new CliError(`${directory}/_assets/assets.json is not JSON. Nothing was sent.`)
+  }
+  const names = Object.keys(manifest).sort()
+  if (dryRun) {
+    out(`Would upload ${count(names.length, 'image')} of ${directory}/_assets.`)
+    return
+  }
+  let created = 0
+  let existing = 0
+  for (const name of names) {
+    const { alt, filename } = manifest[name] ?? {}
+    if (!/^ast_[0-9a-f]{26}\.[a-z]+$/.test(name) || typeof alt !== 'string') {
+      throw new CliError(
+        `${directory}/_assets/assets.json names ${printable(name)} without its alt, or not as an export writes it. Nothing more was sent.`,
+      )
+    }
+    const data = readFileSync(join(root, '_assets', name)).toString('base64')
+    const answer = await session.call(uploadAsset, {
+      filename: typeof filename === 'string' && filename !== '' ? filename : name,
+      alt,
+      data,
+    })
+    if (answer.outcome === 'created') created += 1
+    else if (answer.outcome === 'exists') existing += 1
+    else {
+      throw new CliError(
+        `could not upload ${printable(name)}: ${answer.problem?.message ?? answer.outcome} ${answer.problem?.fix ?? ''}`.trim(),
+      )
+    }
+    if (
+      answer.asset !== undefined &&
+      `${answer.asset.id}.` !== name.slice(0, answer.asset.id.length + 1)
+    ) {
+      throw new CliError(
+        `${printable(name)} came back as ${answer.asset.id}: the file is not the one the export wrote.`,
+      )
+    }
+  }
+  out(`Images: ${created} uploaded, ${existing} already there.`)
 }

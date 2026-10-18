@@ -120,6 +120,13 @@
       "when": 1792246270578,
       "tag": "0016_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792293992415,
+      "tag": "0017_assets",
+      "breakpoints": true
     }
   ]
 }

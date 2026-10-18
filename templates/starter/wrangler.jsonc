@@ -59,4 +59,9 @@
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
+  // The images of the sites (ADR-038): the bucket that keeps them, which the first deploy creates,
+  // and the Images binding that converts each once when it arrives (to WebP by default). Without
+  // the binding, images are kept as they come; without the bucket, upload_asset is unavailable.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
+  "images": { "binding": "IMAGES" },
 }

@@ -56,9 +56,11 @@ describe('MCP hints', () => {
       delete_entry: 'destructive',
       delete_site: 'destructive',
       describe_site: 'read-only',
+      get_asset: 'read-only',
       get_entry: 'read-only',
       get_structure: 'read-only',
       get_translations: 'read-only',
+      list_assets: 'read-only',
       list_entries: 'read-only',
       list_reviews: 'read-only',
       make_webhook_secret: 'changes',
@@ -72,6 +74,7 @@ describe('MCP hints', () => {
       unpublish: 'destructive',
       update_draft: 'changes',
       update_site: 'destructive',
+      upload_asset: 'changes',
       validate: 'read-only',
     })
   })

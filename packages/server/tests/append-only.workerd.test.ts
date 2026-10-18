@@ -133,11 +133,14 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, and the three of site_changes and of audit_log', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, and the two of assets', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
     expect(results).toEqual([
+      // migrations/0017_assets.sql (ADR-038).
+      { name: 'assets_immutable', tbl_name: 'assets' },
+      { name: 'assets_no_delete', tbl_name: 'assets' },
       // migrations/0016_audit_log.sql (ADR-037).
       { name: 'audit_log_immutable', tbl_name: 'audit_log' },
       { name: 'audit_log_no_delete', tbl_name: 'audit_log' },

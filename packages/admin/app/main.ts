@@ -24,6 +24,7 @@ const router = createRouter({
       props: true,
     },
     { path: '/reviews', component: () => import('./pages/Reviews.vue') },
+    { path: '/images', component: () => import('./pages/Images.vue') },
     { path: '/collections', component: () => import('./pages/Collections.vue') },
     {
       path: '/collections/:name',

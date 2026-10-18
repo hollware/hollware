@@ -21,6 +21,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'delete_site',
   'restore_site',
   'make_webhook_secret',
+  'upload_asset',
 ] as const
 
 /** What people do outside the operations: their tokens, members, passkeys, sessions and apps. */

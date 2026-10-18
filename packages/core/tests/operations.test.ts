@@ -20,7 +20,7 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the twenty-five operations, sorted by name, as tools/list shows them', () => {
+  it('are the twenty-eight operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
@@ -31,9 +31,11 @@ describe('operation specs', () => {
       'delete_entry',
       'delete_site',
       'describe_site',
+      'get_asset',
       'get_entry',
       'get_structure',
       'get_translations',
+      'list_assets',
       'list_entries',
       'list_reviews',
       'make_webhook_secret',
@@ -47,6 +49,7 @@ describe('operation specs', () => {
       'unpublish',
       'update_draft',
       'update_site',
+      'upload_asset',
       'validate',
     ])
     expect(names).toEqual([...names].sort())
@@ -128,6 +131,19 @@ describe('operation specs', () => {
       list_entries: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       list_reviews: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       // Without content:publish, publish asks for a review (v0.3).
+      upload_asset: {
+        effect: 'write',
+        scopes: ['content:write'],
+        outcomes: ['created', 'exists', 'refused', 'unavailable'],
+        errors: ['refused', 'unavailable'],
+      },
+      list_assets: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
+      get_asset: {
+        effect: 'read',
+        scopes: ['content:read'],
+        outcomes: ['ok', 'not_found'],
+        errors: ['not_found'],
+      },
       make_webhook_secret: {
         effect: 'write',
         scopes: ['schema:admin'],

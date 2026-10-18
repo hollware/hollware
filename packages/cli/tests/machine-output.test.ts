@@ -253,6 +253,19 @@ describe('--json', () => {
         fix: 'Add { "binding": "OAUTH_KV" } to kv_namespaces in wrangler.jsonc.',
       },
       {
+        name: 'media-bucket',
+        ok: false,
+        message: 'there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
+        fix: 'Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
+      },
+      {
+        name: 'images-binding',
+        ok: true,
+        message:
+          'there is no Images binding "IMAGES": images are kept as they come, unconverted (add "images": { "binding": "IMAGES" } to convert them)',
+        fix: '',
+      },
+      {
         name: 'admin-assets',
         ok: false,
         message: 'the static assets do not hold the admin',
@@ -275,6 +288,7 @@ describe('--json', () => {
   "assets": { "directory": "node_modules/@hollware/admin/dist/client" },
   "vars": { "HOLLWARE_PUBLIC_URL": "http://localhost:5199" },
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "x-media" }],
   "d1_databases": [{ "binding": "DB", "database_name": "x", "migrations_dir": "m" }],
 }`,
       'm/0000_init.sql': 'CREATE TABLE t (id TEXT);',

@@ -49,9 +49,11 @@ const TOOLS = [
   { name: 'delete_entry', title: 'Move an entry to the trash', annotations: DESTROY },
   { name: 'delete_site', title: 'Put a site in the trash', annotations: DESTROY },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
+  { name: 'get_asset', title: 'Get an image', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
   { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
+  { name: 'list_assets', title: 'List the images of the site', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
@@ -65,6 +67,7 @@ const TOOLS = [
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
   { name: 'update_site', title: 'Change the structure of the site', annotations: DESTROY },
+  { name: 'upload_asset', title: 'Upload an image', annotations: CHANGE },
   { name: 'validate', title: 'Validate a Markdown file', annotations: READ },
 ]
 
@@ -83,6 +86,9 @@ const OUTCOMES: Record<string, string[]> = {
   list_entries: ['ok'],
   list_reviews: ['ok'],
   make_webhook_secret: ['made', 'not_found', 'unavailable'],
+  upload_asset: ['created', 'exists', 'refused', 'unavailable'],
+  list_assets: ['ok'],
+  get_asset: ['ok', 'not_found'],
   publish: [
     'published',
     'scheduled',
@@ -235,9 +241,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(50)
+    expect(converters).toHaveLength(56)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 50 }, () => 1),
+      Array.from({ length: 56 }, () => 1),
     )
   })
 })
@@ -255,9 +261,11 @@ describe('the tool table', () => {
       'delete_entry',
       'delete_site',
       'describe_site',
+      'get_asset',
       'get_entry',
       'get_structure',
       'get_translations',
+      'list_assets',
       'list_entries',
       'list_reviews',
       'make_webhook_secret',
@@ -271,6 +279,7 @@ describe('the tool table', () => {
       'unpublish',
       'update_draft',
       'update_site',
+      'upload_asset',
       'validate',
     ])
   })

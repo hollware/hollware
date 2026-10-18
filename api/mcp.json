@@ -971,6 +971,38 @@
                 "minItems": 1,
                 "type": "array"
               },
+              "media": {
+                "additionalProperties": false,
+                "default": {
+                  "format": "webp",
+                  "maxWidth": 2400,
+                  "quality": 85
+                },
+                "description": "How the site converts the images it receives (ADR-038).",
+                "properties": {
+                  "format": {
+                    "default": "webp",
+                    "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
+                    "enum": ["webp", "avif", "original"],
+                    "type": "string"
+                  },
+                  "maxWidth": {
+                    "default": 2400,
+                    "description": "The widest an image is kept, in pixels; a wider one is scaled down, never up.",
+                    "maximum": 8192,
+                    "minimum": 320,
+                    "type": "integer"
+                  },
+                  "quality": {
+                    "default": 85,
+                    "description": "The quality of photographs, 1 to 100. PNG images are always kept lossless.",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "styleGuide": {
                 "default": null,
                 "type": ["string", "null"]
@@ -1381,6 +1413,141 @@
       },
       "scopes": ["content:read"],
       "title": "Describe the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+            "pattern": "^ast_[0-9a-f]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "get_asset",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "additionalProperties": false,
+            "properties": {
+              "alt": {
+                "description": "What it shows, for whoever cannot see it.",
+                "type": "string"
+              },
+              "bytes": {
+                "description": "The size of the file served.",
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "filename": {
+                "description": "The name it was sent with.",
+                "type": "string"
+              },
+              "format": {
+                "description": "What it is served as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "height": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "id": {
+                "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+                "pattern": "^ast_[0-9a-f]{26}$",
+                "type": "string"
+              },
+              "originalBytes": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "originalFormat": {
+                "description": "What it was sent as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "reference": {
+                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "type": "string"
+              },
+              "url": {
+                "description": "Where the Worker serves it, to anyone, cached for a year.",
+                "type": "string"
+              },
+              "width": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In pixels; null for an SVG."
+              }
+            },
+            "required": [
+              "id",
+              "reference",
+              "url",
+              "format",
+              "width",
+              "height",
+              "bytes",
+              "originalFormat",
+              "originalBytes",
+              "alt",
+              "filename",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Get an image"
     },
     {
       "effect": "read",
@@ -2177,6 +2344,39 @@
                 "minItems": 1,
                 "type": "array"
               },
+              "media": {
+                "additionalProperties": false,
+                "default": {
+                  "format": "webp",
+                  "maxWidth": 2400,
+                  "quality": 85
+                },
+                "description": "How the site converts the images it receives (ADR-038).",
+                "properties": {
+                  "format": {
+                    "default": "webp",
+                    "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
+                    "enum": ["webp", "avif", "original"],
+                    "type": "string"
+                  },
+                  "maxWidth": {
+                    "default": 2400,
+                    "description": "The widest an image is kept, in pixels; a wider one is scaled down, never up.",
+                    "maximum": 8192,
+                    "minimum": 320,
+                    "type": "integer"
+                  },
+                  "quality": {
+                    "default": 85,
+                    "description": "The quality of photographs, 1 to 100. PNG images are always kept lossless.",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": ["format", "quality", "maxWidth"],
+                "type": "object"
+              },
               "styleGuide": {
                 "default": null,
                 "type": ["string", "null"]
@@ -2202,6 +2402,7 @@
               "cors",
               "events",
               "audit",
+              "media",
               "collections"
             ],
             "type": "object"
@@ -2342,6 +2543,152 @@
       },
       "scopes": ["content:read"],
       "title": "Get the translations of an entry"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_assets",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "alt": {
+                  "description": "What it shows, for whoever cannot see it.",
+                  "type": "string"
+                },
+                "bytes": {
+                  "description": "The size of the file served.",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "filename": {
+                  "description": "The name it was sent with.",
+                  "type": "string"
+                },
+                "format": {
+                  "description": "What it is served as.",
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/avif",
+                    "image/gif",
+                    "image/svg+xml"
+                  ],
+                  "type": "string"
+                },
+                "height": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+                  "pattern": "^ast_[0-9a-f]{26}$",
+                  "type": "string"
+                },
+                "originalBytes": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "originalFormat": {
+                  "description": "What it was sent as.",
+                  "enum": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/avif",
+                    "image/gif",
+                    "image/svg+xml"
+                  ],
+                  "type": "string"
+                },
+                "reference": {
+                  "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Where the Worker serves it, to anyone, cached for a year.",
+                  "type": "string"
+                },
+                "width": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In pixels; null for an SVG."
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "url",
+                "format",
+                "width",
+                "height",
+                "bytes",
+                "originalFormat",
+                "originalBytes",
+                "alt",
+                "filename",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "description": "The cursor of the next page, or null.",
+            "type": ["string", "null"]
+          },
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome", "assets", "nextCursor"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "List the images of the site"
     },
     {
       "effect": "read",
@@ -4687,6 +5034,38 @@
                 "minItems": 1,
                 "type": "array"
               },
+              "media": {
+                "additionalProperties": false,
+                "default": {
+                  "format": "webp",
+                  "maxWidth": 2400,
+                  "quality": 85
+                },
+                "description": "How the site converts the images it receives (ADR-038).",
+                "properties": {
+                  "format": {
+                    "default": "webp",
+                    "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
+                    "enum": ["webp", "avif", "original"],
+                    "type": "string"
+                  },
+                  "maxWidth": {
+                    "default": 2400,
+                    "description": "The widest an image is kept, in pixels; a wider one is scaled down, never up.",
+                    "maximum": 8192,
+                    "minimum": 320,
+                    "type": "integer"
+                  },
+                  "quality": {
+                    "default": 85,
+                    "description": "The quality of photographs, 1 to 100. PNG images are always kept lossless.",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "styleGuide": {
                 "default": null,
                 "type": ["string", "null"]
@@ -4847,6 +5226,168 @@
       },
       "scopes": ["schema:admin"],
       "title": "Change the structure of the site"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "alt": {
+            "description": "What the image shows, for whoever cannot see it: required.",
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "data": {
+            "description": "The file, in base64.",
+            "maxLength": 13981016,
+            "minLength": 1,
+            "type": "string"
+          },
+          "filename": {
+            "description": "Its name, such as continuum.png.",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["filename", "alt", "data"],
+        "type": "object"
+      },
+      "name": "upload_asset",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "additionalProperties": false,
+            "properties": {
+              "alt": {
+                "description": "What it shows, for whoever cannot see it.",
+                "type": "string"
+              },
+              "bytes": {
+                "description": "The size of the file served.",
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "filename": {
+                "description": "The name it was sent with.",
+                "type": "string"
+              },
+              "format": {
+                "description": "What it is served as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "height": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "id": {
+                "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+                "pattern": "^ast_[0-9a-f]{26}$",
+                "type": "string"
+              },
+              "originalBytes": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "originalFormat": {
+                "description": "What it was sent as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "reference": {
+                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "type": "string"
+              },
+              "url": {
+                "description": "Where the Worker serves it, to anyone, cached for a year.",
+                "type": "string"
+              },
+              "width": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In pixels; null for an SVG."
+              }
+            },
+            "required": [
+              "id",
+              "reference",
+              "url",
+              "format",
+              "width",
+              "height",
+              "bytes",
+              "originalFormat",
+              "originalBytes",
+              "alt",
+              "filename",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["created", "exists", "refused", "unavailable"],
+            "type": "string"
+          },
+          "problem": {
+            "additionalProperties": false,
+            "description": "With refused or unavailable: what is wrong, and what to do.",
+            "properties": {
+              "fix": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": ["message", "fix"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Upload an image"
     },
     {
       "effect": "read",

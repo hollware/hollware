@@ -1,4 +1,5 @@
 import { entrySummary } from './answers.ts'
+import { forReaders } from './assets.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import type { OperationHandler } from './types.ts'
 import { fuse, semanticSearch, SEMANTIC_TOP_K } from './semantic-search.ts'
@@ -39,7 +40,7 @@ export const search: OperationHandler<'search'> = async (input, context) => {
     outcome: 'ok',
     mode,
     results: hits.map((hit) => ({
-      entry: entrySummary(hit.entry),
+      entry: forReaders(context, entrySummary(hit.entry)),
       snippet: hit.snippet,
       score: hit.score,
     })),

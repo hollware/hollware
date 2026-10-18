@@ -15,7 +15,17 @@ import type { AuditLine } from './log.ts'
  */
 
 /** The fields of an input that name what an operation acts on. */
-const NAMING_FIELDS = ['site', 'collection', 'locale', 'slug', 'id', 'entryId', 'reviewId', 'name']
+const NAMING_FIELDS = [
+  'site',
+  'collection',
+  'locale',
+  'slug',
+  'id',
+  'entryId',
+  'reviewId',
+  'name',
+  'filename',
+]
 const FIELD_MAX = 200
 
 function isAudited(name: string): name is AuditAction {
@@ -33,7 +43,7 @@ function idOf(value: unknown): string | null {
   return typeof id === 'string' ? id : null
 }
 
-/** What the call acted on: the entry, review or comment of its answer, else its site. */
+/** What the call acted on: the entry, review, comment or asset of its answer, else its site. */
 function targetOf(
   output: Readonly<Record<string, unknown>>,
   site: string,
@@ -44,6 +54,8 @@ function targetOf(
   if (review !== null) return { type: 'review', id: review }
   const comment = idOf(output['comment'])
   if (comment !== null) return { type: 'comment', id: comment }
+  const asset = idOf(output['asset'])
+  if (asset !== null) return { type: 'asset', id: asset }
   return { type: 'site', id: site }
 }
 

@@ -79,6 +79,13 @@ export interface HollwareEnv {
   readonly HOLLWARE_ANALYTICS_TOKEN?: string
   readonly HOLLWARE_ANALYTICS_DATASET?: string
   /**
+   * The images of the sites (ADR-038): the R2 bucket that keeps them and, optionally, the Images
+   * binding that converts each once when it arrives. Without the bucket, upload_asset answers
+   * unavailable; without the binding, every file is kept as it came.
+   */
+  readonly MEDIA?: R2Bucket
+  readonly IMAGES?: ImagesBinding
+  /**
    * The agents of @hollware/agents (v0.6), over a service binding to their named entrypoint: the
    * cron trigger of Hollware wakes them every ten minutes, so they need no cron trigger of their
    * own (the free plan has five for the account). `wrangler types` writes it as a plain

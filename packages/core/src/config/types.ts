@@ -97,6 +97,12 @@ export interface SiteDefinition {
     /** How many days a line is kept, 30 to 3650; `null` keeps the log as long as the site. */
     readonly retentionDays?: number | null
   }
+  /** How the site converts the images it receives (ADR-038): WebP at 85, 2400 pixels wide. */
+  readonly media?: {
+    readonly format?: 'webp' | 'avif' | 'original'
+    readonly quality?: number
+    readonly maxWidth?: number
+  }
 }
 
 /** What `hollware.config.ts` exports. */
@@ -149,6 +155,17 @@ export interface ResolvedSite {
   readonly cors: { readonly origins: readonly string[] }
   readonly events: ResolvedEvents
   readonly audit: ResolvedAudit
+  readonly media: ResolvedMedia
+}
+
+/** How a site converts the images it receives (ADR-038). */
+export interface ResolvedMedia {
+  /** `original` keeps every file as it came; the others convert JPEG, PNG and GIF. */
+  readonly format: 'webp' | 'avif' | 'original'
+  /** The quality of photographs, 1 to 100; PNG is converted lossless whatever it says. */
+  readonly quality: number
+  /** The widest an image is kept, in pixels; a wider one is scaled down, never up. */
+  readonly maxWidth: number
 }
 
 /** What the activity log of a site keeps (ADR-037). */

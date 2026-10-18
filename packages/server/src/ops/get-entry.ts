@@ -1,4 +1,5 @@
-import { renderHtml } from '@hollware/core'
+import { renderHtml, resolveAssetReferences } from '@hollware/core'
+import { assetUrlOf, forReaders } from './assets.ts'
 import { entrySummary, publicationView, verdictView } from './answers.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
@@ -23,14 +24,21 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   return {
     outcome: 'ok',
     entry: {
-      ...entrySummary(found),
+      ...forReaders(context, entrySummary(found)),
       revision: revision.id,
       verdict: verdictView(revision.verdict),
       lastPublication: publicationView(publication),
       // Only what was asked for: a document or its HTML can weigh megabytes.
       ...(input.formats.includes('markdown') ? { markdown: revision.markdown } : {}),
-      ...(input.formats.includes('document') ? { document: revision.document } : {}),
-      ...(input.formats.includes('html') ? { html: await renderHtml(revision.document) } : {}),
+      ...(input.formats.includes('document')
+        ? { document: forReaders(context, revision.document) }
+        : {}),
+      // HTML is for showing: its images are always the URLs where the Worker serves them.
+      ...(input.formats.includes('html')
+        ? {
+            html: await renderHtml(resolveAssetReferences(revision.document, assetUrlOf(context))),
+          }
+        : {}),
     },
     ...(related === undefined ? {} : { related }),
   }

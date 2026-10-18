@@ -1,4 +1,5 @@
 import { entrySummary } from './answers.ts'
+import { forReaders } from './assets.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import type { OperationHandler } from './types.ts'
 
@@ -17,5 +18,9 @@ export const listEntries: OperationHandler<'list_entries'> = async (input, conte
     limit: input.limit,
     cursor: input.cursor,
   })
-  return { outcome: 'ok', entries: page.entries.map(entrySummary), nextCursor: page.nextCursor }
+  return {
+    outcome: 'ok',
+    entries: page.entries.map((entry) => forReaders(context, entrySummary(entry))),
+    nextCursor: page.nextCursor,
+  }
 }

@@ -56,6 +56,10 @@ const OUTPUT_TOO_LARGE_FIX = {
   list_entries:
     'Ask for less: pass a smaller limit, or narrow the list with locale, tag or status.',
   list_reviews: 'Ask for less: pass a smaller limit.',
+  list_assets: 'Ask for less: pass a smaller limit.',
+  get_asset: 'Nothing to ask for less of: the answer is one asset. Try again.',
+  upload_asset:
+    'The operation ran and the image may have been kept: list the images with list_assets before you upload it again.',
   publish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   request_changes:
