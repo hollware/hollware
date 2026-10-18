@@ -8,6 +8,7 @@ import {
 } from '@tanstack/vue-table'
 import { computed, h, ref, useTemplateRef, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
+import { pageRange } from '../lib/table.ts'
 
 /**
  * Every table of the admin: Nuxt UI's table with a filter over every column, columns that sort,
@@ -53,8 +54,24 @@ const sorting = ref<SortingState>([])
 const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
 
 const api = computed(() => table.value?.tableApi)
-const filtered = computed(() => api.value?.getFilteredRowModel().rows.length ?? props.data.length)
 const rows = computed(() => [...props.data])
+/**
+ * How many rows the filter leaves. The table's row model is not reactive to Vue, so this reads the
+ * state it is made of first (the rows, the filter): a count that read the table alone kept what it
+ * found when the table mounted, before its rows arrived, and said "0 of 120".
+ */
+const filtered = computed(() => {
+  const all = rows.value.length
+  const text = filter.value
+  return api.value === undefined || text === '' ? all : api.value.getFilteredRowModel().rows.length
+})
+const range = computed(() =>
+  pageRange(pagination.value.pageIndex, pagination.value.pageSize, filtered.value),
+)
+// A new filter starts from the first page: the one it was on may hold none of its rows.
+watch(filter, () => {
+  pagination.value = { ...pagination.value, pageIndex: 0 }
+})
 
 const selection = ref<RowSelectionState>({})
 /** The chosen rows, in the order of the data. */
@@ -155,7 +172,9 @@ const allColumns = computed<TableColumn<Row>[]>(() =>
       </template>
     </UTable>
     <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
-      <span class="tabular-nums">{{ m.table.count(filtered, data.length) }}</span>
+      <span class="tabular-nums">{{
+        m.table.count(range.from, range.to, filtered, data.length)
+      }}</span>
       <UPagination
         v-if="filtered > pagination.pageSize"
         :page="pagination.pageIndex + 1"

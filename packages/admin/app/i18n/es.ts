@@ -73,7 +73,10 @@ export const es: Messages = {
   table: {
     filter: 'Filtrar',
     empty: 'Todavía no hay nada aquí.',
-    count: (shown: number, total: number) => `${shown} de ${total}`,
+    count: (from: number, to: number, shown: number, total: number) =>
+      shown === total
+        ? `${from}–${to} de ${total}`
+        : `${from}–${to} de ${shown}, filtradas de ${total}`,
     selectPage: 'Seleccionar las filas de esta página',
     selectRow: (name: string) => `Seleccionar ${name}`,
     bulk: 'Acciones sobre las filas seleccionadas',

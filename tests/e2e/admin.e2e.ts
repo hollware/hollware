@@ -170,9 +170,12 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
 test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.goto('/admin/entries')
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toBeVisible()
+  // The count names the rows of the page once they arrive: it once kept the 0 it read at mount.
+  await expect(owner.getByText(/^1–\d+ of \d+$/)).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('hello')
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
   await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toBeVisible()
+  await expect(owner.getByText(/^1–1 of 1, filtered from \d+$/)).toBeVisible()
 
   // ⌘K waits while a field has the focus, as it should: the button of the sidebar opens it here.
   await owner.getByRole('button', { name: /^Search/ }).click()

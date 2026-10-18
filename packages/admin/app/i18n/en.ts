@@ -70,7 +70,10 @@ export const en = {
   table: {
     filter: 'Filter',
     empty: 'Nothing here yet.',
-    count: (shown: number, total: number) => `${shown} of ${total}`,
+    count: (from: number, to: number, shown: number, total: number) =>
+      shown === total
+        ? `${from}–${to} of ${total}`
+        : `${from}–${to} of ${shown}, filtered from ${total}`,
     selectPage: 'Select the rows of this page',
     selectRow: (name: string) => `Select ${name}`,
     bulk: 'Actions on the selected rows',
