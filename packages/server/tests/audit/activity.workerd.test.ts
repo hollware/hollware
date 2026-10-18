@@ -1,6 +1,6 @@
 import { defineCollection, defineConfig } from '@hollware/core'
 import { env } from 'cloudflare:workers'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as z from 'zod'
 
 import { dropExpiredLines } from '../../src/audit/log.ts'
@@ -20,6 +20,9 @@ import { softAuthenticator } from '../support/authenticator.ts'
 // anything but the keyed hash of it when the site keeps them; stops deleting, in the cron, only the
 // lines past the retention of their site; or when the admin's activity route stops answering
 // owners alone, newest first, filtered, a page at a time, and as CSV.
+
+// A passkey ceremony signs and verifies in workerd: past 5 s when the machine is busy, never wrong.
+vi.setConfig({ testTimeout: 60_000 })
 
 const MASTER = '0123456789abcdef0123456789abcdef'
 const ADDRESS = '203.0.113.7'

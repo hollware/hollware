@@ -67,8 +67,7 @@
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
-  // The images of the sites (ADR-038), in local development and tests only: the demo and staging
-  // have no bucket yet, so upload_asset answers unavailable there.
+  // The images of the sites (ADR-038). Locally, wrangler keeps the bucket on disk.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-playground-media" }],
   "images": { "binding": "IMAGES" },
   "services": [
@@ -95,6 +94,9 @@
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-demo-bge-m3" }],
       "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "hollware_page_views" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
+      // The images of the demo's sites (ADR-038), in the bucket hollware-demo-media (ENAM).
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-demo-media" }],
+      "images": { "binding": "IMAGES" },
       "triggers": { "crons": ["* * * * *"] },
       // No test probe in the demo; its agents (examples/agents-worker), woken every ten minutes.
       "services": [
@@ -155,6 +157,9 @@
       ],
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-staging-bge-m3" }],
+      // The images (ADR-038), in the bucket hollware-staging-media (ENAM).
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-staging-media" }],
+      "images": { "binding": "IMAGES" },
       "analytics_engine_datasets": [
         { "binding": "ANALYTICS", "dataset": "hollware_staging_page_views" },
       ],

@@ -18,7 +18,7 @@ export const es: Messages = {
     'Hollware es de código abierto, con licencia MIT. Hecho para agentes, cuidado por personas.',
   copy: { copy: 'Copiar el comando', copied: 'Copiado' },
   home: {
-    badge: 'v0.8 · código abierto · Cloudflare Workers',
+    badge: (version: string) => `v${version} · código abierto · Cloudflare Workers`,
     title: 'El CMS en el que escriben tus agentes',
     description:
       'Hollware es un CMS headless nativo de Cloudflare Workers. Los agentes escriben Markdown por MCP, los contratos revisan cada escritura, D1 guarda el contenido y tus sitios lo leen por Workers RPC.',
@@ -58,7 +58,7 @@ export const es: Messages = {
       yours: {
         title: 'Lo administras tú',
         description:
-          'Se despliega en tu propia cuenta de Cloudflare con un solo comando, pensado para los límites del plan gratuito. Licencia MIT, sin ningún servicio de por medio.',
+          'Se despliega en tu propia cuenta de Cloudflare con un solo comando: D1 para tu contenido y R2 para sus imágenes, pensado para los límites del plan gratuito. Licencia MIT, sin ningún servicio de por medio.',
       },
     },
     steps: {
@@ -76,7 +76,7 @@ export const es: Messages = {
       deploy: {
         title: 'Despliégalo',
         description:
-          'Hollware crea su base de datos, su namespace y sus colas en tu cuenta, y aplica las migraciones.',
+          'Hollware crea su base de datos, su namespace, sus colas y su bucket de imágenes en tu cuenta, y aplica las migraciones.',
       },
     },
     shaping: {

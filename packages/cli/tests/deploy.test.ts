@@ -5,6 +5,10 @@
 //   next step for a database without an owner is not said.
 // - "keeps a public URL that is not localhost, and deploys once": a configured public URL is
 //   replaced by the workers.dev one, or the Worker is deployed twice for nothing.
+// - "migrates a database it deployed before, before the new Worker": an upgrade deploys the new
+//   Worker first, on a database without its tables, or migrates twice.
+// - "migrates after the deploy when wrangler finds no database yet": a project with a public URL
+//   and no remote database stops instead of deploying, or is never migrated.
 // - "serves a domain of its own …": `--url` is ignored or written as given and not as its origin,
 //   the custom domain gets no route (or another host, or a line more than its route), or the Worker
 //   is deployed twice.
@@ -148,9 +152,10 @@ describe('hollware deploy', () => {
 
   it('keeps a public URL that is not localhost, and deploys once', async () => {
     const wrangler = fakeWrangler(
+      ok('✅ No migrations to apply!'),
+      ok('✅ No migrations to apply!'),
       ok(DEPLOYED),
       ok(HAS_MASTER),
-      ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1', site: 'blog' }]),
     )
     const project = setup(wrangler, 'https://my-hollware.ada.workers.dev')
@@ -158,7 +163,13 @@ describe('hollware deploy', () => {
     const { code, out } = await project.run(['deploy'])
 
     expect(code).toBe(0)
-    expect(wrangler.calls.map((call) => call.args[0])).toEqual(['deploy', 'secret', 'd1', 'd1'])
+    expect(wrangler.calls.map((call) => call.args[0])).toEqual([
+      'd1',
+      'd1',
+      'deploy',
+      'secret',
+      'd1',
+    ])
     expect(project.config()).toBe(wranglerJsonc('https://my-hollware.ada.workers.dev'))
     expect(out.at(-1)).toBe(
       [
@@ -170,6 +181,62 @@ describe('hollware deploy', () => {
         'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
       ].join('\n'),
     )
+  })
+
+  it('migrates a database it deployed before, before the new Worker', async () => {
+    const wrangler = fakeWrangler(
+      ok(LIST_ALL_PENDING),
+      ok(LIST_ALL_PENDING),
+      ok(APPLIED),
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      d1([{ id: 'usr_1' }]),
+    )
+    const project = setup(wrangler, 'https://cms.example.com')
+    writeFileSync(
+      join(project.cwd, 'wrangler.jsonc'),
+      routedJsonc('https://cms.example.com', 'cms.example.com'),
+    )
+
+    const { code, out } = await project.run(['deploy'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args.slice(0, 3))).toEqual([
+      ['d1', 'migrations', 'list'],
+      ['d1', 'migrations', 'list'],
+      ['d1', 'migrations', 'apply'],
+      ['deploy'],
+      ['secret', 'list'],
+      ['d1', 'execute', 'DB'],
+    ])
+    expect(out.slice(0, 2)).toEqual([
+      'Applied 1 migration to the remote database "DB":\n  0000_init.sql',
+      'Deploying with wrangler ...',
+    ])
+  })
+
+  it('migrates after the deploy when wrangler finds no database yet', async () => {
+    const wrangler = fakeWrangler(
+      failed("✘ [ERROR] Couldn't find a D1 DB with the name or binding 'DB'.\n"),
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      ok(LIST_ALL_PENDING),
+      ok(APPLIED),
+      d1([]),
+    )
+    const project = setup(wrangler, 'https://my-hollware.ada.workers.dev')
+
+    const { code } = await project.run(['deploy'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args.slice(0, 3))).toEqual([
+      ['d1', 'migrations', 'list'],
+      ['deploy'],
+      ['secret', 'list'],
+      ['d1', 'migrations', 'list'],
+      ['d1', 'migrations', 'apply'],
+      ['d1', 'execute', 'DB'],
+    ])
   })
 
   it('serves a domain of its own from --url, as its origin, with one deploy', async () => {
@@ -217,9 +284,10 @@ describe('hollware deploy', () => {
 
   it('leaves routes of its own as they are, and says which route is missing', async () => {
     const wrangler = fakeWrangler(
+      ok('✅ No migrations to apply!'),
+      ok('✅ No migrations to apply!'),
       ok(DEPLOYED),
       ok(HAS_MASTER),
-      ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1' }]),
     )
     const project = setup(wrangler, 'https://cms.example.com')

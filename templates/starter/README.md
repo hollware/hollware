@@ -9,7 +9,7 @@ in the admin, or let an agent do it, and every write is checked against them. No
 | Path                        | What it is                                                                         |
 | --------------------------- | ---------------------------------------------------------------------------------- |
 | `src/worker.ts`             | The Worker: `createHollware()` builds it                                           |
-| `wrangler.jsonc`            | The Worker, its D1 database, its KV namespace, its queues and its public URL       |
+| `wrangler.jsonc`            | The Worker, its D1 database, KV namespace, queues, image bucket and public URL     |
 | `vite.config.ts`            | Vite with the Cloudflare plugin, and the admin at `/admin/`                        |
 | `vitest.config.ts`, `test/` | Tests that run inside workerd                                                      |
 | `worker-configuration.d.ts` | The types of the bindings, from `wrangler types`. Refresh it when wrangler changes |
@@ -40,12 +40,11 @@ claude mcp add --transport http hollware http://localhost:5199/mcp --header "Aut
 
 ```sh
 pnpm exec wrangler login
-pnpm run deploy                              # creates the database, KV and queues, and migrates
+pnpm run deploy                              # creates the database, KV, queues and bucket, and migrates
 pnpm exec hollware init --site my-site --remote
 ```
 
-The first deploy writes the ids of what it created, and the public URL of the Worker, into
-`wrangler.jsonc`: commit it. `pnpm run doctor` checks the project and says what to fix.
+The first deploy writes the public URL of the Worker into `wrangler.jsonc`: commit it. `pnpm run doctor` checks the project and says what to fix.
 
 ## Read it from a site
 
@@ -63,3 +62,9 @@ no token. Any other site reads it over HTTP with a read token: `hollware token c
 | `pnpm run doctor`  | Check the project, its database and its owner        |
 | `pnpm types`       | Regenerate `worker-configuration.d.ts`               |
 | `pnpm types:check` | Fail when `worker-configuration.d.ts` is out of date |
+
+## Upgrade Hollware
+
+Move `hollware`, `@hollware/core`, `@hollware/server` and `@hollware/admin` to one new version
+together, compare the project with one made by `create-hollware` of that version, test, and deploy:
+https://hollware.com/docs/upgrade/

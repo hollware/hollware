@@ -19,7 +19,7 @@ export const en = {
   footer: 'Hollware is open source, MIT. Made for agents, kept by people.',
   copy: { copy: 'Copy the command', copied: 'Copied' },
   home: {
-    badge: 'v0.8 · open source · Cloudflare Workers',
+    badge: (version: string) => `v${version} · open source · Cloudflare Workers`,
     title: 'The CMS your agents write to',
     description:
       'Hollware is a headless CMS native to Cloudflare Workers. Agents write Markdown over MCP, contracts check every write, D1 keeps the content, and your sites read it over Workers RPC.',
@@ -59,7 +59,7 @@ export const en = {
       yours: {
         title: 'Yours to run',
         description:
-          'It deploys to your own Cloudflare account in one command, built for the limits of the free plan. MIT licensed, no service in between.',
+          'It deploys to your own Cloudflare account in one command: D1 for your content, R2 for its images, built for the limits of the free plan. MIT licensed, no service in between.',
       },
     },
     steps: {
@@ -78,7 +78,7 @@ export const en = {
       deploy: {
         title: 'Deploy it',
         description:
-          'Hollware creates its database, namespace and queues on your account, and migrates.',
+          'Hollware creates its database, namespace, queues and image bucket on your account, and migrates.',
       },
     },
     shaping: {

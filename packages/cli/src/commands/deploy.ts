@@ -13,8 +13,9 @@ export const DEPLOY_USAGE = [
   'Usage: hollware deploy [--url <url>]',
   '',
   'Deploys the project to Cloudflare with its wrangler, and applies the migrations to the remote',
-  'database. The first deploy creates the D1 database, the KV namespace and the queues that',
-  'wrangler.jsonc names without an id, and writes their ids into it: commit them.',
+  'database. The first deploy creates the D1 database, the KV namespace, the queues and the bucket',
+  'that wrangler.jsonc names, then migrates. A project deployed before is migrated first, while its',
+  'Worker still serves, so the new Worker never serves a database without its tables.',
   '',
   'HOLLWARE_PUBLIC_URL must be the public URL of the Worker. While it is a localhost URL, the',
   'workers.dev URL that wrangler prints is written into wrangler.jsonc, and the Worker is deployed',
@@ -111,6 +112,14 @@ export function withPublicUrl(text: string, url: string): string {
   return text.replace(PUBLIC_URL_VALUE, (_match, key: string) => `${key}${JSON.stringify(url)}`)
 }
 
+/** Migrates the remote database when it is there already; `false` when wrangler finds none. */
+async function migrateIfThere(io: Io, database: string): Promise<boolean> {
+  const listed = await io.wrangler(['d1', 'migrations', 'list', database, '--remote'])
+  if (listed.code !== 0) return false
+  await migrate(['--remote', '--database', database], io)
+  return true
+}
+
 async function wranglerDeploy(io: Io): Promise<string> {
   const deployed = await io.wrangler(['deploy'])
   if (deployed.code !== 0) {
@@ -162,6 +171,12 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
     written = known
   }
 
+  // An upgrade migrates before it deploys: the Worker that serves keeps working on migrations,
+  // which only add, and the new one never serves a database that lacks its tables. A first deploy
+  // has no remote database until wrangler creates it, so it migrates after.
+  const deployedBefore = configured !== undefined && !isLoopback(configured)
+  const migratedFirst = deployedBefore && (await migrateIfThere(io, database))
+
   io.out('Deploying with wrangler ...')
   const printed = await wranglerDeploy(io)
   const url = known ?? workersDevUrlOf(printed)
@@ -178,7 +193,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   }
 
   await ensureMasterSecret(io)
-  await migrate(['--remote', '--database', database], io)
+  if (!migratedFirst) await migrate(['--remote', '--database', database], io)
 
   const [owners = []] = await query(io.wrangler, database, 'remote', ownerQuery())
   io.out(

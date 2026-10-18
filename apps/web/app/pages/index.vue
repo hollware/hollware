@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { OPERATIONS } from '@hollware/core'
+import hollwarePackage from '@hollware/core/package.json'
 
 const { m, to } = useLocale()
 
@@ -74,7 +75,12 @@ const shaping = computed(() =>
       }"
     >
       <template #headline>
-        <UBadge :label="m.home.badge" color="neutral" variant="outline" class="font-mono" />
+        <UBadge
+          :label="m.home.badge(hollwarePackage.version)"
+          color="neutral"
+          variant="outline"
+          class="font-mono"
+        />
       </template>
       <template #title>{{ m.home.title }}</template>
       <template #description>{{ m.home.description }}</template>

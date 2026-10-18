@@ -14,7 +14,10 @@ of the sites live in D1; this repository holds only the Worker.
 - To update Hollware, move `hollware`, `@hollware/core`, `@hollware/server` and `@hollware/admin`
   to one new version together, as exact versions
   (`pnpm add -E hollware@X @hollware/core@X @hollware/server@X @hollware/admin@X`), read its
-  release notes, run `pnpm test`, then `pnpm exec hollware deploy`: it deploys the Worker and applies
-  the new migrations to the remote database. Migrations only move forward; content stays as it is.
+  release notes, and compare this project with one that `create-hollware` of that version makes
+  (`--no-install --no-git`): take its tool versions and the changes to files of the project. Run
+  `pnpm exec hollware migrate --local` and `pnpm test`, then `pnpm exec hollware deploy`: it applies
+  the new migrations to the remote database, then deploys the Worker. Migrations only move forward;
+  content stays as it is. Guide: https://hollware.com/docs/upgrade/
 - Never commit a token. `hollware init` and `hollware token create` print one once.
 - Docs: https://hollware.com
