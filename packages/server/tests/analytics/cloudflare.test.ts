@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import {
   analyticsReaderOf,
@@ -113,19 +113,54 @@ describe('the SQL API reader', () => {
 })
 
 describe('the analytics of the Worker', () => {
-  it('reads with an account and a token, and writes with a binding', () => {
-    const binding = { writeDataPoint: () => undefined }
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('reads with an account and a token, from the default dataset unless one is named', async () => {
+    const sent: { url: string; auth: string | null; body: string }[] = []
+    // fetch is the platform's: the one thing stood in for, to see what the reader asks.
+    vi.stubGlobal('fetch', async (request: Request) => {
+      sent.push({
+        url: request.url,
+        auth: request.headers.get('authorization'),
+        body: await request.text(),
+      })
+      return Response.json({ data: [] })
+    })
 
     expect(analyticsReaderOf({})).toBeNull()
     expect(analyticsReaderOf({ HOLLWARE_ANALYTICS_ACCOUNT_ID: 'acc' })).toBeNull()
     expect(analyticsReaderOf({ HOLLWARE_ANALYTICS_TOKEN: 'token' })).toBeNull()
-    expect(
-      analyticsReaderOf({
-        HOLLWARE_ANALYTICS_ACCOUNT_ID: 'acc',
-        HOLLWARE_ANALYTICS_TOKEN: 'token',
-      }),
-    ).not.toBeNull()
+    await analyticsReaderOf({
+      HOLLWARE_ANALYTICS_ACCOUNT_ID: 'acc',
+      HOLLWARE_ANALYTICS_TOKEN: 'token',
+    })?.topPages('blog', { days: 7, limit: 1 })
+    await analyticsReaderOf({
+      HOLLWARE_ANALYTICS_ACCOUNT_ID: 'acc',
+      HOLLWARE_ANALYTICS_TOKEN: 'token',
+      HOLLWARE_ANALYTICS_DATASET: 'other_views',
+    })?.topPages('blog', { days: 7, limit: 1 })
+
+    expect(sent.map(({ url, auth }) => [url, auth])).toEqual([
+      ['https://api.cloudflare.com/client/v4/accounts/acc/analytics_engine/sql', 'Bearer token'],
+      ['https://api.cloudflare.com/client/v4/accounts/acc/analytics_engine/sql', 'Bearer token'],
+    ])
+    expect(sent.map(({ body }) => body)).toEqual([
+      topPagesSql('hollware_page_views', 'blog', { days: 7, limit: 1 }),
+      topPagesSql('other_views', 'blog', { days: 7, limit: 1 }),
+    ])
+  })
+
+  it('writes to the binding, and has no writer without one', () => {
+    const points: unknown[] = []
+    const writer = analyticsWriterOf({
+      ANALYTICS: { writeDataPoint: (point: unknown) => points.push(point) },
+    })
+
+    writer?.record({ site: 'blog', path: '/en/', country: 'CL' })
+
     expect(analyticsWriterOf({})).toBeNull()
-    expect(analyticsWriterOf({ ANALYTICS: binding })).not.toBeNull()
+    expect(points).toEqual([{ indexes: ['blog'], blobs: ['/en/', 'CL'], doubles: [1] }])
   })
 })
