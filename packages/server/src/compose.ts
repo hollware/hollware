@@ -22,7 +22,7 @@ import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
 import { healVectors, refreshRelated } from './semantic/index-entry.ts'
 import { createSiteRegistry } from './structure/registry.ts'
-import { unseal } from './structure/seal.ts'
+import { openSealed } from './structure/seal.ts'
 import { createSecretStore } from './structure/store.ts'
 
 export interface ComposeOptions {
@@ -107,10 +107,13 @@ export function createHollwareWith(
       const master = env.HOLLWARE_SECRET
       if (master === undefined) return undefined
       const name = `webhook:${webhook}`
-      const sealed = await createSecretStore(env.DB, () => clock.now()).read(site.key, name)
-      return sealed === null
-        ? undefined
-        : ((await unseal(master, sealed, { site: site.key, name })) ?? undefined)
+      const secrets = createSecretStore(env.DB, () => clock.now())
+      const sealed = await secrets.read(site.key, name)
+      if (sealed === null) return undefined
+      const value = await openSealed(master, sealed, { site: site.key, name }, (resealed) =>
+        secrets.write(site.key, name, resealed),
+      )
+      return value ?? undefined
     },
   })
   return {

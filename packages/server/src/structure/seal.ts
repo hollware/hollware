@@ -77,6 +77,24 @@ export async function unseal(master: string, sealed: string, place: Place): Prom
   }
 }
 
+/**
+ * Opens a sealed secret, as `unseal` does, and hands a `v1.` value that opened to `rewrite` sealed
+ * again as `v2.`, bound to its place: the values of 0.8 to 0.10 leave the database as they are
+ * read, so moving one between rows stops working for them too (T-71).
+ */
+export async function openSealed(
+  master: string,
+  sealed: string,
+  place: Place,
+  rewrite: (resealed: string) => Promise<void>,
+): Promise<string | null> {
+  const value = await unseal(master, sealed, place)
+  if (value !== null && sealed.startsWith(BEFORE_PLACES)) {
+    await rewrite(await seal(master, value, place))
+  }
+  return value
+}
+
 /** A new secret for a webhook: 32 random bytes, hex, behind `whsec_`. */
 export function newWebhookSecret(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32))

@@ -25,7 +25,8 @@ import {
 // era that declared it can show a form; the question stops listing every warning with its fix;
 // an acceptance stops publishing with exactly the warnings that were shown, or a refusal
 // (decline, cancel, a box left empty) stops answering what was shown without running the handler
-// again, or the question is asked twice; or a client that cannot be asked (a 2025 client, a 2026
+// again, or the question is asked twice, or a retry whose state names another entry counts as a
+// reply; or a client that cannot be asked (a 2025 client, a 2026
 // client without the form capability) stops getting `needs_acknowledgement` and acknowledging
 // itself with `acknowledgeWarnings`.
 
@@ -124,6 +125,29 @@ describe('a 2026 client that can show a form', () => {
       requestState: JSON.stringify(CANNED.publish.needs_acknowledgement),
       _meta: { 'io.modelcontextprotocol/serverInfo': { name: 'hollware', version: '0.0.0' } },
     })
+  })
+
+  it('takes a retry whose state names another entry as a first call, and runs the handler', async () => {
+    const { endpoint, seen } = endpointWith(strict)
+    const forged = {
+      ...CANNED.publish.needs_acknowledgement,
+      entry: {
+        ...CANNED.publish.needs_acknowledgement.entry,
+        id: 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0ZZ',
+      },
+    }
+
+    const answered = await callRaw(endpoint, 'modern', 'publish', INPUTS.publish, {
+      capabilities: FORM,
+      inputResponses: { acknowledge_warnings: { action: 'decline' } },
+      requestState: JSON.stringify(forged),
+    })
+
+    // Asked again about its own entry, by the handler, never answered with the forged one.
+    expect(seen).toHaveLength(1)
+    expect(answered.result?.['requestState']).toBe(
+      JSON.stringify(CANNED.publish.needs_acknowledgement),
+    )
   })
 
   const REFUSALS: readonly (readonly [string, Reply])[] = [

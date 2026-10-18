@@ -48,6 +48,14 @@ export default defineEventHandler(async (event) => {
     })
   }
   const payload: unknown = JSON.parse(body)
+  // An event of another site, even one signed with this secret, purges nothing here: a webhook of
+  // a site in the same deployment could have been pointed at this receiver with its secret.
+  const site = String(Reflect.get(Reflect.get(config, 'hollware') ?? {}, 'site') ?? '')
+  const eventSite: unknown =
+    typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'site') : undefined
+  if (eventSite !== site) {
+    throw createError({ statusCode: 401, statusMessage: 'The event is of another site' })
+  }
   const found: unknown =
     typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'cacheTags') : undefined
   const tags = Array.isArray(found)

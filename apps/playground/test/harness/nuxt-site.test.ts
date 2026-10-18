@@ -26,7 +26,7 @@ import { EVENT_ID_HEADER, SIGNATURE_HEADER, signWebhook, TIMESTAMP_HEADER } from
 // browser the verdict and the last publication of an entry (`forPage`); or the page stops getting
 // the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's; or a page
 // stops carrying the cache tags of what it showed for the edge to keep, or an error starts to;
-// or the webhook purges for an event whose signature does not hold (S8). The site is
+// or the webhook purges for an event whose signature does not hold, or of another site (S8). The site is
 // examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
 // compatibility; content is published through MCP, as an agent does.
 
@@ -111,9 +111,9 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     expect(missing.headers.get('cache-tag')).toBeNull()
   })
 
-  it('takes a signed event of Hollware to purge, and refuses one whose signature does not hold', async () => {
-    const body = JSON.stringify({ id: 'evt_1', cacheTags: ['list:blog:en'] })
-    const send = async (secret: string) => {
+  it('takes a signed event of its site to purge, and refuses a bad signature or another site', async () => {
+    const body = JSON.stringify({ id: 'evt_1', site: 'playground', cacheTags: ['list:blog:en'] })
+    const send = async (secret: string, payload = body) => {
       const timestamp = Math.floor(Date.now() / 1000)
       return server.getWorker(NUXT_WORKER).fetch(`${SITE_URL}/_hollware/webhook`, {
         method: 'POST',
@@ -121,16 +121,21 @@ describe('a Nuxt site with @hollware/nuxt', () => {
           'content-type': 'application/json',
           [EVENT_ID_HEADER]: 'evt_1',
           [TIMESTAMP_HEADER]: String(timestamp),
-          [SIGNATURE_HEADER]: await signWebhook(secret, timestamp, body),
+          [SIGNATURE_HEADER]: await signWebhook(secret, timestamp, payload),
         },
-        body,
+        body: payload,
       })
     }
 
     const forged = await send(`whsec_${'6'.repeat(64)}`)
+    const elsewhere = await send(
+      NUXT_HOLLWARE_WEBHOOK_SECRET,
+      JSON.stringify({ id: 'evt_2', site: 'docs', cacheTags: ['list:blog:en'] }),
+    )
     const signed = await send(NUXT_HOLLWARE_WEBHOOK_SECRET)
 
-    expect(forged.status).toBe(401)
+    // A forged signature, and an event of another site signed with this site's secret.
+    expect([forged.status, elsewhere.status]).toEqual([401, 401])
     // The harness has no Workers Cache to purge; the signature held, and the route says what it lacks.
     expect([200, 501]).toContain(signed.status)
   })

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { newWebhookSecret, seal, unseal } from '../../src/structure/seal.ts'
+import { newWebhookSecret, openSealed, seal, unseal } from '../../src/structure/seal.ts'
 
 // Fails when: a secret sealed under HOLLWARE_SECRET (src/structure/seal.ts) stops opening under the
 // same one at the same site and name, opens under another, once tampered with, or moved to
 // another site or name (T-71), holds the value in clear, seals the same value twice to the same
 // text, or takes a HOLLWARE_SECRET under 32 characters; or stops opening a `v1.` value, sealed
-// before the place was bound; or a webhook secret stops being 32 random bytes in hex.
+// before the place was bound, or stops sealing one again as `v2.` when openSealed reads it; or a webhook secret stops being 32 random bytes in hex.
 
 const MASTER = 'm'.repeat(48)
 const HERE = { site: 'blog', name: 'webhook:site' }
@@ -55,6 +55,25 @@ describe('seal', () => {
       .replace(/=+$/, '')}`
 
     expect(await unseal(MASTER, v1, HERE)).toBe('whsec_old')
+
+    // Read through openSealed, it is written back bound to its place, and opens nowhere else.
+    const written: string[] = []
+    const opened = await openSealed(MASTER, v1, HERE, async (resealed) => {
+      written.push(resealed)
+    })
+    const [resealed = ''] = written
+    expect([opened, resealed.slice(0, 3), await unseal(MASTER, resealed, HERE)]).toEqual([
+      'whsec_old',
+      'v2.',
+      'whsec_old',
+    ])
+    expect(await unseal(MASTER, resealed, { site: 'docs', name: 'webhook:site' })).toBeNull()
+    // A v2 value is left as it is.
+    const kept: string[] = []
+    await openSealed(MASTER, resealed, HERE, async (again) => {
+      kept.push(again)
+    })
+    expect(kept).toEqual([])
   })
 
   it('refuses a HOLLWARE_SECRET that is too short to be one', async () => {

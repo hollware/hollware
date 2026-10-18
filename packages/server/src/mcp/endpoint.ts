@@ -131,7 +131,10 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
      */
     const performPublish = async (): Promise<CallToolResult | InputRequiredResult> => {
       const publishInput = publish.input.parse(input)
-      const reply = replyTo(mcp)
+      // The state comes back from the client unsigned: a reply counts only for the entry this call
+      // publishes, so a client cannot answer, or log, another entry's question.
+      const replied = replyTo(mcp)
+      const reply = replied?.asked.entry?.id === publishInput.id ? replied : null
       if (reply !== null && !reply.given) {
         return answerResult(spec, record(readAnswer(spec, reply.asked)))
       }
