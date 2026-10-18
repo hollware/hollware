@@ -4,7 +4,9 @@ import { signWebhook, verifyWebhook } from '../src/webhooks.ts'
 
 // Fails when: src/webhooks.ts stops signing `<timestamp>.<body>` with HMAC-SHA256 of the secret as
 // `v1=<hex>`, or verifyWebhook accepts a body, a secret or a timestamp that do not match, or a
-// timestamp outside the tolerance, or refuses a webhook that is in order; or, given `isNew`, stops
+// timestamp outside the tolerance, before or after now, or a request without its signature or its
+// timestamp, or any request with an empty secret (a site that never set one), or refuses a webhook
+// that is in order; or, given `isNew`, stops
 // refusing an event it was given before, by the id of its signed body and never of the header (T-67).
 
 const SECRET = 'whsec_test'
@@ -33,6 +35,9 @@ describe('webhook signatures', () => {
     ['another body', { body: `${BODY} ` }],
     ['another secret', { secret: 'whsec_other' }],
     ['a timestamp six minutes old', { now: AT + 360 }],
+    ['a timestamp six minutes ahead', { now: AT - 360 }],
+    ['no signature', { headers: new Headers({ 'hollware-timestamp': String(AT) }) }],
+    ['no timestamp', { headers: new Headers({ 'hollware-signature': EXPECTED }) }],
   ])('refuse %s', async (_name, change) => {
     expect(
       await verifyWebhook({
@@ -42,6 +47,13 @@ describe('webhook signatures', () => {
         now: AT,
         ...change,
       }),
+    ).toBe(false)
+  })
+
+  it('refuse every webhook when the secret is empty, instead of failing on the empty key', async () => {
+    // A receiver whose secret was never set: WebCrypto takes no empty HMAC key, and throws.
+    expect(
+      await verifyWebhook({ secret: '', body: BODY, headers: headers(EXPECTED), now: AT }),
     ).toBe(false)
   })
 

@@ -53,7 +53,10 @@ export function exchangePreviewLink(
   url: URL | string,
   makeNonce: () => string = nonce,
 ): PreviewExchange | undefined {
-  const { pathname, search } = typeof url === 'string' ? new URL(url) : url
+  const { pathname: asked, search } = typeof url === 'string' ? new URL(url) : url
+  // A path that starts with `//` or `/\` is read by a browser as another host (`//evil.example`):
+  // the redirect stays on this site, with one leading slash.
+  const pathname = `/${asked.replace(/^[/\\]+/, '')}`
   const kept: string[] = []
   let found: string | undefined
   let seen = false

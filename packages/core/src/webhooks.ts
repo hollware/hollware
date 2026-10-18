@@ -80,6 +80,8 @@ function eventIdOf(body: string): string | null {
  * `isNew`, also that its event was not received before, so it cannot be replayed sooner either.
  */
 export async function verifyWebhook(check: WebhookCheck): Promise<boolean> {
+  // A receiver whose secret was never set signs nothing: anyone could sign with an empty key.
+  if (check.secret === '') return false
   const signature = check.headers.get(SIGNATURE_HEADER)
   const timestamp = Number(check.headers.get(TIMESTAMP_HEADER))
   if (signature === null || !Number.isInteger(timestamp)) return false

@@ -12,7 +12,8 @@ import {
 } from '../src/preview.ts'
 import { HollwareClientError } from '../src/index.ts'
 
-// Fails when: the exchange of a preview link (src/preview.ts) stops dropping `hollware-preview`
+// Fails when: the exchange of a preview link (src/preview.ts) redirects to another host through a
+// path that starts with // or /\, or stops dropping `hollware-preview`
 // and keeping every other parameter in order, keeps a value that is not shaped like a token,
 // gives the cookie other flags than HttpOnly, Secure (off on http://localhost and 127.0.0.1),
 // SameSite=Lax, Path=/ and an hour, reads a cookie that is not its own, or clears the cookie for
@@ -43,6 +44,17 @@ describe('the exchange of a preview link', () => {
       location: '/blog/x?hollware-view=N0nce',
       token: TOKEN,
     })
+  })
+
+  it('redirects to a path of this site, never to the host a path with // or /\\ names (T-103)', () => {
+    const where = (path: string) =>
+      exchangePreviewLink(`https://site.test${path}?hollware-preview=x`)?.location
+
+    expect([where('//evil.example/x'), where('/\\evil.example/x'), where('/blog/x')]).toEqual([
+      '/evil.example/x',
+      '/evil.example/x',
+      '/blog/x',
+    ])
   })
 
   it('has no exchange for a URL without the parameter', () => {
