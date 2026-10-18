@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { breakingChanges } from './api-compat.ts'
+import { breakingChanges, onlyAddsOptional } from './api-compat.ts'
 
 // Fails when: the check of what 1.0 promises (scripts/api-compat.ts, ADR-036) stops reporting a
 // break of the public API, or reports as a break what fits a minor version: a new optional input,
@@ -21,6 +21,37 @@ const outcomes = (...values: string[]) => ({
       'id',
     ]),
   ),
+})
+
+describe('an RPC signature that gains options', () => {
+  const was =
+    'search( site: string, options?: { readonly limit?: number readonly mode?: Mode }): Promise<X>'
+
+  it('fits a minor version when it only gains optional members', () => {
+    expect(
+      onlyAddsOptional(
+        was,
+        'search( site: string, options?: { readonly limit?: number readonly mode?: Mode readonly passages?: boolean readonly minScore?: number }): Promise<X>',
+      ),
+    ).toBe(true)
+  })
+
+  it('breaks when a member becomes required, changes its type, or goes', () => {
+    expect([
+      onlyAddsOptional(
+        was,
+        'search( site: string, options?: { readonly limit?: number readonly mode?: Mode readonly passages: boolean }): Promise<X>',
+      ),
+      onlyAddsOptional(
+        was,
+        'search( site: string, options?: { readonly limit?: string readonly mode?: Mode }): Promise<X>',
+      ),
+      onlyAddsOptional(
+        was,
+        'search( site: string, options?: { readonly mode?: Mode }): Promise<X>',
+      ),
+    ]).toEqual([false, false, false])
+  })
 })
 
 describe('breakingChanges', () => {

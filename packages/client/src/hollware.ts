@@ -109,6 +109,10 @@ export interface SearchOptions {
   readonly limit?: number
   /** `hybrid` when not set; without semantic search in the deployment, the search is full text. */
   readonly mode?: 'fulltext' | 'semantic' | 'hybrid'
+  /** Also the section each result matched: what a model reads to answer and cite (RAG). */
+  readonly passages?: boolean
+  /** The least score a match by meaning must reach, 0 to 1: a question nothing answers finds nothing. */
+  readonly minScore?: number
 }
 
 /** What a search finds, best first, and how it searched. */
@@ -119,6 +123,12 @@ export interface SearchPage {
     /** The words around the match, the words found between [ and ]. */
     readonly snippet: string
     readonly score: number
+    /** With `passages`: the section that matched, its heading, and the URL of the entry. */
+    readonly passage?: {
+      readonly heading: string | null
+      readonly text: string
+      readonly url: string | null
+    }
   }[]
 }
 
@@ -233,6 +243,7 @@ export function createHollware(options: HollwareOptions): Hollware {
           entry: summaryOf(result.entry),
           snippet: result.snippet,
           score: result.score,
+          ...(result.passage === undefined ? {} : { passage: result.passage }),
         })),
       }
     },

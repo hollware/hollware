@@ -214,6 +214,21 @@ function compareHttp(before: Json, after: Json, breaks: string[]): void {
   }
 }
 
+/**
+ * Whether a signature of the RPC only gained optional members (`readonly name?: Type`) over
+ * another: a caller written against the old one still type-checks, so it fits a minor version.
+ */
+export function onlyAddsOptional(was: string, now: string): boolean {
+  const flat = (text: string) => text.replace(/\s+/g, ' ').trim()
+  const before = flat(was)
+  // Each optional member of the new signature that the old one does not have, taken out.
+  const members = /readonly (\w+)\?: ((?:[^{}]|\{[^{}]*\})+?)(?= readonly |\s*\})/g
+  const trimmed = flat(now).replace(members, (member, name: string) =>
+    before.includes(`readonly ${name}?:`) ? member : '',
+  )
+  return flat(trimmed) === before
+}
+
 function compareNamed(
   what: string,
   before: Json,
@@ -247,7 +262,7 @@ export function breakingChanges(
     part('rpc.json', after),
     breaks,
     (name, was, now) =>
-      was === now
+      was === now || onlyAddsOptional(String(was), String(now))
         ? null
         : `rpc ${name}: its signature changed, from ${String(was)} to ${String(now)}`,
   )

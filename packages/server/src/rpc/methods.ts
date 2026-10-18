@@ -338,7 +338,17 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         'search',
         site,
         searchSpec.input,
-        () => ({ query, ...readOptions(options, ['collection', 'locale', 'limit', 'mode']) }),
+        () => ({
+          query,
+          ...readOptions(options, [
+            'collection',
+            'locale',
+            'limit',
+            'mode',
+            'passages',
+            'minScore',
+          ]),
+        }),
         deps.handlers.search,
       ),
   }

@@ -144,6 +144,10 @@ export interface HollwareRpc {
       readonly locale?: string
       readonly limit?: number
       readonly mode?: 'fulltext' | 'semantic' | 'hybrid'
+      /** Also the section each result matched, with its heading and the URL of the entry. */
+      readonly passages?: boolean
+      /** The least score a match by meaning must reach, 0 to 1. */
+      readonly minScore?: number
     },
   ): Promise<Output<typeof search>>
 }

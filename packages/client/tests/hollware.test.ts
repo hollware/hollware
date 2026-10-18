@@ -77,7 +77,14 @@ function fakeReader(missing: readonly string[] = []) {
       return {
         outcome: 'ok',
         mode: 'fulltext',
-        results: [{ entry: entry('one'), snippet: 'the [edge]', score: 2.5 }],
+        results: [
+          {
+            entry: entry('one'),
+            snippet: 'the [edge]',
+            score: 2.5,
+            passage: { heading: 'Edge', text: 'The edge.', url: 'https://example.com/one/' },
+          },
+        ],
       }
     },
   }
@@ -97,8 +104,8 @@ describe('createHollware', () => {
       ['describe', 's'],
     ])
     expect(found.mode).toBe('fulltext')
-    expect(found.results.map((result) => [result.snippet, result.score])).toEqual([
-      ['the [edge]', 2.5],
+    expect(found.results.map((result) => [result.snippet, result.score, result.passage])).toEqual([
+      ['the [edge]', 2.5, { heading: 'Edge', text: 'The edge.', url: 'https://example.com/one/' }],
     ])
     expect(Object.keys(found.results[0]?.entry ?? {})).not.toContain('verdict')
     expect(described).toBe(SITE)

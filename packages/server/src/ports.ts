@@ -147,6 +147,8 @@ export interface SearchQuery {
   readonly collection?: string
   readonly locale?: string
   readonly limit: number
+  /** The least score a match by meaning must reach (0 to 1); full text ignores it. */
+  readonly minScore?: number
 }
 
 /** An entry that a search found, best first. */
@@ -156,6 +158,8 @@ export interface SearchHit {
   readonly snippet: string
   /** How well it matches: higher is better. */
   readonly score: number
+  /** The piece of the entry a match by meaning found (`VectorMetadata.piece`); none for full text. */
+  readonly piece?: number
 }
 
 /** An entry close to another by meaning, and how close: higher is closer. */

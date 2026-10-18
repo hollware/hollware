@@ -94,6 +94,20 @@ export const search = defineOperation({
       .describe(
         'fulltext, semantic or hybrid; hybrid when not given. Semantic and hybrid need the semantic search of the deployment: without it the search is full text, and mode in the answer says so.',
       ),
+    passages: z
+      .boolean()
+      .default(false)
+      .describe(
+        'Also answer, for each result, the passage that matched: the whole section of the entry, with its heading, and the URL of the entry. What a model reads to answer with the content and cite it (retrieval-augmented generation).',
+      ),
+    minScore: z
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe(
+        'Leave out what matches by meaning less than this (0 to 1), so a question nothing answers finds nothing. Full text matches are kept.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['ok']),
@@ -107,6 +121,22 @@ export const search = defineOperation({
             'The words around the match, the words found between [ and ]; for a match by meaning, the start of the closest part.',
           ),
         score: z.number().describe('How well it matches: higher is better.'),
+        passage: z
+          .object({
+            heading: z
+              .string()
+              .nullable()
+              .describe('The heading of the section, or null for the opening of the entry.'),
+            text: z.string().describe('The text of the section, as a reader reads it.'),
+            url: z
+              .string()
+              .nullable()
+              .describe(
+                'The URL of the entry on the site, when the site has a url; null otherwise.',
+              ),
+          })
+          .optional()
+          .describe('With passages: the section of the entry that matched.'),
       }),
     ),
   }),

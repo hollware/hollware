@@ -4588,10 +4588,21 @@
             "minLength": 1,
             "type": "string"
           },
+          "minScore": {
+            "description": "Leave out what matches by meaning less than this (0 to 1), so a question nothing answers finds nothing. Full text matches are kept.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
           "mode": {
             "description": "fulltext, semantic or hybrid; hybrid when not given. Semantic and hybrid need the semantic search of the deployment: without it the search is full text, and mode in the answer says so.",
             "enum": ["fulltext", "semantic", "hybrid"],
             "type": "string"
+          },
+          "passages": {
+            "default": false,
+            "description": "Also answer, for each result, the passage that matched: the whole section of the entry, with its heading, and the URL of the entry. What a model reads to answer with the content and cite it (retrieval-augmented generation).",
+            "type": "boolean"
           },
           "query": {
             "description": "The words to find, or a question; punctuation is ignored by full text.",
@@ -4699,6 +4710,26 @@
                     "deletedAt",
                     "updatedAt"
                   ],
+                  "type": "object"
+                },
+                "passage": {
+                  "additionalProperties": false,
+                  "description": "With passages: the section of the entry that matched.",
+                  "properties": {
+                    "heading": {
+                      "description": "The heading of the section, or null for the opening of the entry.",
+                      "type": ["string", "null"]
+                    },
+                    "text": {
+                      "description": "The text of the section, as a reader reads it.",
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL of the entry on the site, when the site has a url; null otherwise.",
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["heading", "text", "url"],
                   "type": "object"
                 },
                 "score": {

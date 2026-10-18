@@ -28,7 +28,10 @@ export async function semanticSearch(
     const kept = best.get(match.metadata.entry)
     if (kept === undefined || match.score > kept.score) best.set(match.metadata.entry, match)
   }
-  const ranked = [...best.values()].sort((a, b) => b.score - a.score).slice(0, query.limit)
+  const ranked = [...best.values()]
+    .filter((match) => query.minScore === undefined || match.score >= query.minScore)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, query.limit)
   // An entry unpublished since its vectors were made is not in the published view.
   const summaries = await store.findSummaries(
     site,
@@ -40,7 +43,14 @@ export async function semanticSearch(
     const entry = byId.get(match.metadata.entry)
     return entry === undefined
       ? []
-      : [{ entry, snippet: match.metadata.excerpt, score: match.score }]
+      : [
+          {
+            entry,
+            snippet: match.metadata.excerpt,
+            score: match.score,
+            piece: match.metadata.piece,
+          },
+        ]
   })
 }
 
@@ -57,7 +67,14 @@ export function fuse(lists: readonly (readonly SearchHit[])[], limit: number): S
       const kept = merged.get(hit.entry.entry.id)
       merged.set(
         hit.entry.entry.id,
-        kept === undefined ? { ...hit, score: gain } : { ...kept, score: kept.score + gain },
+        kept === undefined
+          ? { ...hit, score: gain }
+          : {
+              ...kept,
+              score: kept.score + gain,
+              // The piece a match by meaning found, for the passage, when full text found none.
+              ...(kept.piece === undefined && hit.piece !== undefined ? { piece: hit.piece } : {}),
+            },
       )
     })
   }

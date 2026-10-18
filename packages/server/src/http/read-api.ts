@@ -219,6 +219,8 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
           ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
           ...(limit === undefined ? {} : { limit }),
           ...(query['mode'] === undefined ? {} : { mode: searchModeOf(query['mode']) }),
+          ...(query['passages'] === 'true' ? { passages: true } : {}),
+          ...(query['minScore'] === undefined ? {} : { minScore: Number(query['minScore']) }),
         }),
       )
     }),
@@ -340,6 +342,8 @@ export function openApiDocument(): object {
             param('locale', 'query', false),
             param('limit', 'query', false),
             param('mode', 'query', false),
+            param('passages', 'query', false),
+            param('minScore', 'query', false),
           ],
           responses: { '200': ok('The published entries that match q, best first'), ...common },
         },

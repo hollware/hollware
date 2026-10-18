@@ -97,6 +97,10 @@ export interface HollwareReader {
       readonly locale?: string
       readonly limit?: number
       readonly mode?: SearchMode
+      /** Also the section each result matched, with its heading and the URL of the entry. */
+      readonly passages?: boolean
+      /** The least score a match by meaning must reach, 0 to 1. */
+      readonly minScore?: number
     },
   ): Promise<Output<typeof search>>
 }
@@ -196,7 +200,14 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     search: (
       _site: string,
       query: string,
-      options: { collection?: string; locale?: string; limit?: number; mode?: SearchMode } = {},
+      options: {
+        collection?: string
+        locale?: string
+        limit?: number
+        mode?: SearchMode
+        passages?: boolean
+        minScore?: number
+      } = {},
     ) =>
       get('search', {
         q: query,
@@ -204,6 +215,8 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
         locale: options.locale,
         limit: options.limit === undefined ? undefined : String(options.limit),
         mode: options.mode,
+        passages: options.passages === true ? 'true' : undefined,
+        minScore: options.minScore === undefined ? undefined : String(options.minScore),
       }),
   }
   return reader

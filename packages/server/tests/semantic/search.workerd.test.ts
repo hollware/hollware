@@ -16,7 +16,9 @@ import { fakeSemantic } from './fakes.ts'
 // (src/ops/get-entry.ts) stops answering, only when asked, the published entries the vectors found
 // closest when the entry was indexed (src/semantic/index-entry.ts), closest first and never itself;
 // or the cron's refreshRelated stops finding them again for an entry whose list is empty after ten
-// minutes, or a day old, or touches one whose list is fresh.
+// minutes, or a day old, or touches one whose list is fresh; or search with passages stops answering
+// the section a match found (by meaning, its piece; by words, the one that holds them) with its
+// heading, or minScore stops leaving out what matches by meaning less.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -182,5 +184,40 @@ describe('the refresh of related entries', () => {
       0,
       3,
     ])
+  })
+})
+
+describe('passages', () => {
+  it('answer the section that matched, by meaning and by words, with its heading', async () => {
+    const { reader, semantic } = await indexed('passages', ['moon', 'notes'])
+    const site = reader(semantic)
+
+    // No word of this query is in the text: only the piece the vectors found can name the section.
+    const meaning = await site.search({ query: 'zazz quiz', mode: 'semantic', passages: true })
+    const words = await site.search({ query: 'quizzes', mode: 'fulltext', passages: true })
+    const plain = await site.search({ query: 'quizzes', mode: 'fulltext' })
+
+    const notes = meaning.results.find((result) => result.entry.slug === 'notes')
+    expect(notes?.passage).toEqual({
+      heading: 'Jazz',
+      text: 'Jazz quizzes, a jazzy prize.',
+      url: null,
+    })
+    expect(words.results.map((result) => result.passage?.heading)).toEqual(['Jazz'])
+    expect(plain.results.map((result) => result.passage)).toEqual([undefined])
+  })
+
+  it('leave out what matches by meaning less than minScore', async () => {
+    const { reader, semantic } = await indexed('passages-min', ['moon', 'jazz'])
+    const site = reader(semantic)
+
+    const all = await site.search({ query: 'jazz', mode: 'semantic' })
+    const best = all.results[0]?.score ?? 0
+    const strict = await site.search({ query: 'jazz', mode: 'semantic', minScore: best })
+    const none = await site.search({ query: 'jazz', mode: 'semantic', minScore: 1 })
+
+    expect(slugsOf(all)).toEqual(['jazz', 'moon'])
+    expect(slugsOf(strict)).toEqual(['jazz'])
+    expect(none.results).toEqual([])
   })
 })
