@@ -31,7 +31,7 @@ describe('the version of Comark', () => {
   it('is stored with every result, next to the version of the pipeline', async () => {
     const { comarkVersion, pipelineVersion } = await accepted('Hello.')
     expect(comarkVersion).toBe('0.7.0')
-    expect(pipelineVersion).toBe('1')
+    expect(pipelineVersion).toBe('2')
   })
 })
 
@@ -43,31 +43,31 @@ describe('the version of the pipeline', () => {
    * bump PIPELINE_VERSION (or COMARK_VERSION, with the package) and pin the new output here.
    */
   const PINNED: Record<string, Record<string, string>> = {
-    '0.7.0/1': {
-      'bench/long-post.md': '218bea62efe21762',
-      'blog/en/agents-write-with-contracts.md': 'aae7ebaf1784b038',
-      'blog/en/edge-caching-basics.md': '79f78d4a8b8a0cf1',
-      'blog/en/from-draft-to-published.md': '385062b4590a52fc',
-      'blog/en/markdown-as-source-of-truth.md': '9e81164ce1aed86a',
-      'blog/en/one-deployment-many-sites.md': '1b8f396082837113',
-      'blog/es/agentes-que-escriben-con-contratos.md': '9a6c51734101f916',
-      'blog/es/cache-en-el-borde.md': '6c569ab3c5898f56',
-      'blog/es/del-borrador-a-publicado.md': '3369c031dfdc9b6f',
-      'blog/es/markdown-como-fuente-de-verdad.md': '176b28f9e7521eed',
-      'blog/es/un-despliegue-muchos-sitios.md': '7f08929633b35f06',
-      'hostile/block-html.md': '26fa49e8e5e438be',
-      'hostile/bom.md': '8047cd62193e6e9f',
+    '0.7.0/2': {
+      'bench/long-post.md': '5ad53a69c722cbd8',
+      'blog/en/agents-write-with-contracts.md': '6822a8ab60d251f9',
+      'blog/en/edge-caching-basics.md': 'd5f17b325b87400b',
+      'blog/en/from-draft-to-published.md': '9578ddd682c7453c',
+      'blog/en/markdown-as-source-of-truth.md': '114fce309a1efeca',
+      'blog/en/one-deployment-many-sites.md': 'a1684b8ded496b66',
+      'blog/es/agentes-que-escriben-con-contratos.md': 'a9b6c5b022ea4225',
+      'blog/es/cache-en-el-borde.md': '6d169376cf371a10',
+      'blog/es/del-borrador-a-publicado.md': '2bb5bbc896056bfd',
+      'blog/es/markdown-como-fuente-de-verdad.md': '4038d083236d4aa1',
+      'blog/es/un-despliegue-muchos-sitios.md': '3c81e614e27d9837',
+      'hostile/block-html.md': 'b0e84735b264d70c',
+      'hostile/bom.md': '5eebe6dcd9abd152',
       'hostile/broken-frontmatter.md': '1ccd7e3dd1b09ff8',
-      'hostile/disallowed-attribute.md': '80e0f5c2e3c6b106',
-      'hostile/nested-emphasis.md': 'd568771d67de287f',
-      'hostile/raw-html.md': '05ab755000e2face',
-      'hostile/unknown-component.md': 'ffce425055e68cd2',
-      'hostile/unsafe-url.md': '66605dca19d85c0f',
-      'invalid/broken-internal-link.md': 'c2156a774f670d96',
-      'invalid/description-too-long.md': 'c04bd29e73059753',
-      'invalid/image-without-alt.md': 'efbcc6cf9ed3cf3c',
-      'invalid/missing-translation.md': 'dfe840f1f7c73b3c',
-      'invalid/seo-title-too-long.md': 'af96d5eebcc3cc22',
+      'hostile/disallowed-attribute.md': '741d04141f0f15c2',
+      'hostile/nested-emphasis.md': '3719a2b878d60eff',
+      'hostile/raw-html.md': '657ac7b64ad70752',
+      'hostile/unknown-component.md': '0fe767d0955ad91a',
+      'hostile/unsafe-url.md': 'd5755e668aebf5e3',
+      'invalid/broken-internal-link.md': 'ed22aa3a8dffd2bf',
+      'invalid/description-too-long.md': '90bebcb2c87be062',
+      'invalid/image-without-alt.md': '02cca21b9a03aaab',
+      'invalid/missing-translation.md': '7163b84db8c63ac9',
+      'invalid/seo-title-too-long.md': '423febc4e64546a5',
     },
   }
 

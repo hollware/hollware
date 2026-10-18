@@ -335,6 +335,32 @@ describe('what the analysis takes off and gives back', () => {
     ])
   })
 
+  it('takes the props a site binds to links and images by their name as URLs', () => {
+    const document = documentOf([
+      'callout',
+      {
+        to: 'javascript:alert(1)',
+        url: 'vbscript:x',
+        ctaUrl: 'javascript:alert(2)',
+        imageSrc: 'data:text/html,x',
+        link: '/docs/',
+        title: 'javascript: is only text here',
+      },
+      'x',
+    ])
+    const { extracted } = analyzeDocument(document, OPTIONS)
+    expect(extracted.components[0]?.props).toStrictEqual({
+      link: '/docs/',
+      title: 'javascript: is only text here',
+    })
+    expect(extracted.disallowed.map((item) => [item.kind, item.name])).toStrictEqual([
+      ['unsafe-url', 'javascript:alert(1)'],
+      ['unsafe-url', 'vbscript:x'],
+      ['unsafe-url', 'javascript:alert(2)'],
+      ['unsafe-url', 'data:text/html,x'],
+    ])
+  })
+
   it('refuses a URL prop that is not text, as the attribute it is', () => {
     const document = documentOf(['callout', { href: { a: 1 }, src: 5 }, 'x'])
     const { extracted } = analyzeDocument(document, OPTIONS)

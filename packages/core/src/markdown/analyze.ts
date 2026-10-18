@@ -244,8 +244,11 @@ function urlKind(tag: string, key: string, native: boolean): UrlKind | undefined
     return tag === 'img' && key === 'src' ? 'image' : undefined
   }
   const name = attributeName(key)
-  if (name === 'href' || name === 'xlinkhref') return 'link'
-  return name === 'src' ? 'image' : undefined
+  // A component's prop that a site binds to a link or an image by its name: `href`, `to` (a
+  // router link), `url`, `link`, and any name that ends in href, url or src (`ctaUrl`,
+  // `imageSrc`). Its schema may take any string; `javascript:` is never one a site should get.
+  if (name === 'to' || name === 'link' || /(?:href|url)$/.test(name)) return 'link'
+  return name.endsWith('src') ? 'image' : undefined
 }
 
 /**

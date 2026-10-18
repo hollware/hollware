@@ -12,4 +12,4 @@ export const COMARK_VERSION = '0.7.0'
  * `tests/markdown/versions.test.ts` pins the output for the shared fixtures, so a change that
  * forgets the bump fails there.
  */
-export const PIPELINE_VERSION = '1'
+export const PIPELINE_VERSION = '2'
