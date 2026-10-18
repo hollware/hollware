@@ -288,6 +288,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
     const next = [
       `cd ${choices.dir}`,
       `${choices.pm} install`,
+      `${choices.pm} exec vp fmt`,
       `${choices.pm} exec hollware migrate --local`,
       `${choices.pm} exec hollware ${initArgs.join(' ')} --local`,
     ]
@@ -301,6 +302,9 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
 
   say(`Installing with ${choices.pm} ...`)
   await step(io, 'The install', choices.pm, ['install'], target)
+  // The project's names replace the starter's, and a longer one can push a line past the width
+  // the formatter keeps: the project leaves here as its own `vp check` wants it.
+  await step(io, 'The formatting', join(target, 'node_modules', '.bin', 'vp'), ['fmt'], target)
   const hollware = join(target, 'node_modules', '.bin', 'hollware')
   await step(io, 'The migrations', hollware, ['migrate', '--local'], target)
   const init = await step(

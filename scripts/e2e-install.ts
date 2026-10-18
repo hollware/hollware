@@ -110,6 +110,11 @@ async function main(): Promise<void> {
       fail(`the project installed @hollware/server ${installed.version}`)
     }
 
+    step('The project passes its own checks, as it was made')
+    for (const script of ['check', 'test', 'types:check']) {
+      process.stdout.write(await run(pm, ['run', script], project, env))
+    }
+
     step('The dev server')
     stopDev = (await startDev(project, env)).stop
 

@@ -11,5 +11,10 @@ of the sites live in D1; this repository holds only the Worker.
 - Content is never edited in files here. Write it through the MCP tools (`create_draft`,
   `update_draft`, `validate`, `publish`) of the Hollware at `HOLLWARE_PUBLIC_URL` + `/mcp`.
 - Run `pnpm test` and `pnpm exec wrangler types --check` after a change of `wrangler.jsonc`, and `pnpm exec hollware doctor` when something does not work.
+- To update Hollware, move `hollware`, `@hollware/core`, `@hollware/server` and `@hollware/admin`
+  to one new version together, as exact versions
+  (`pnpm add -E hollware@X @hollware/core@X @hollware/server@X @hollware/admin@X`), read its
+  release notes, run `pnpm test`, then `pnpm exec hollware deploy`: it deploys the Worker and applies
+  the new migrations to the remote database. Migrations only move forward; content stays as it is.
 - Never commit a token. `hollware init` and `hollware token create` print one once.
 - Docs: https://hollware.com

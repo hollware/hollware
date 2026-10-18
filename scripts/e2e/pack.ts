@@ -70,7 +70,12 @@ export function packAll(root: string, version: string, out: string): LocalPackag
       writeFileSync(manifestPath, `${JSON.stringify(versioned, null, 2)}\n`)
       const name = String(versioned['name'])
       const file = join(out, `${name.replace('@', '').replace('/', '-')}-${version}.tgz`)
-      execFileSync('tar', ['czf', file, 'package'], { cwd: work })
+      // macOS's tar adds an AppleDouble file (._name) for each file with extended attributes, which
+      // npm's own pack never ships; COPYFILE_DISABLE keeps them out of the tarball.
+      execFileSync('tar', ['czf', file, 'package'], {
+        cwd: work,
+        env: { ...process.env, COPYFILE_DISABLE: '1' },
+      })
       return { name, version, manifest: versioned, file }
     } finally {
       rmSync(work, { recursive: true, force: true })

@@ -112,6 +112,7 @@ describe('create-hollware <dir>', () => {
     expect(calls).toEqual([
       { command: 'git', args: ['init', '--quiet'], cwd: project },
       { command: 'pnpm', args: ['install'], cwd: project },
+      { command: join(project, 'node_modules', '.bin', 'vp'), args: ['fmt'], cwd: project },
       { command: hollware, args: ['migrate', '--local'], cwd: project },
       { command: hollware, args: ['init', '--site', 'blog', '--local'], cwd: project },
     ])
@@ -292,6 +293,7 @@ describe('create-hollware, for an agent', () => {
         next: [
           'cd blog-cms',
           'npm install',
+          'npm exec vp fmt',
           'npm exec hollware migrate --local',
           'npm exec hollware init --site my-site --local',
         ],

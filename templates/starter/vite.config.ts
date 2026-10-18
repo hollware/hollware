@@ -15,4 +15,14 @@ export default defineConfig({
     // What you deploy is what the size budget of Hollware measures: minified.
     minify: true,
   },
+  // `vp check` formats and lints the project as Hollware writes it. wrangler writes
+  // worker-configuration.d.ts, so neither touches it.
+  fmt: {
+    semi: false,
+    singleQuote: true,
+    ignorePatterns: ['dist/**', '.wrangler/**', 'worker-configuration.d.ts'],
+  },
+  lint: {
+    ignorePatterns: ['dist/**', '.wrangler/**', 'worker-configuration.d.ts'],
+  },
 })
