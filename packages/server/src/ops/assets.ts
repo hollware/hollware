@@ -173,10 +173,12 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
 }
 
 /** The cursor of a page: the `createdAt` and id of its last row, in base64url. */
-const cursorOf = (row: AssetRow) =>
+/** The cursor after a row of a listing newest first: its `createdAt` and id, in base64url. */
+export const cursorOf = (row: { readonly createdAt: string; readonly id: string }) =>
   btoa(`${row.createdAt}|${row.id}`).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
-function parseCursor(cursor: string | undefined) {
+/** The position a cursor of `cursorOf` names, or `null` for none, or one that is not one. */
+export function parseCursor(cursor: string | undefined) {
   if (cursor === undefined) return null
   try {
     const padded = cursor.replace(/-/g, '+').replace(/_/g, '/')

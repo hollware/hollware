@@ -203,6 +203,31 @@ export const es: Messages = {
     inTrash:
       'Una entrada en la papelera tiene este slug o esta traducción: restáurala desde la papelera de las entradas.',
   },
+  history: {
+    title: 'Historial de la entrada',
+    empty: 'Todavía no hay revisiones.',
+    latest: 'La más reciente',
+    live: 'En el sitio',
+    publishedBefore: 'Publicada antes',
+    untitled: 'Sin título',
+    words: (count: string) => `${count} palabras`,
+    checks: (errors: number, warnings: number) =>
+      errors === 0 && warnings === 0
+        ? 'sin problemas'
+        : `${errors} ${errors === 1 ? 'error' : 'errores'}, ${warnings} ${warnings === 1 ? 'advertencia' : 'advertencias'}`,
+    older: 'Ver revisiones anteriores',
+    dialogTitle: (date: string) => `La revisión del ${date}`,
+    compared: 'Esta revisión, a la izquierda, junto a la más reciente, a la derecha.',
+    thisRevision: 'Esta revisión',
+    latestRevision: 'La revisión más reciente',
+    restore: 'Restaurar esta versión',
+    restoreHelp:
+      'Su texto se guarda como una revisión nueva: no se borra nada, y queda como borrador hasta que se publique.',
+    saveFirst: 'Primero guarda o deshaz tus cambios en el editor.',
+    isLatest: 'Esta es la revisión más reciente.',
+    restored: 'Restaurada como una revisión nueva',
+    notRestored: 'No se restauró',
+  },
   entry: {
     title: 'Entrada',
     viewOnSite: 'Ver en el sitio',
@@ -230,6 +255,7 @@ export const es: Messages = {
       checks: 'Verificaciones',
       preview: 'Vista previa',
       related: 'Relacionadas',
+      history: 'Historial',
     },
     preview: 'Vista previa de la revisión guardada',
     noRelated:
@@ -589,6 +615,7 @@ export const es: Messages = {
       unpublish: 'Despublicó una entrada',
       delete_entry: 'Movió una entrada a la papelera',
       restore_entry: 'Restauró una entrada de la papelera',
+      restore_revision: 'Volvió a una revisión anterior de una entrada',
       approve_review: 'Aprobó una revisión',
       request_review: 'Pidió una revisión',
       comment_review: 'Comentó una revisión',

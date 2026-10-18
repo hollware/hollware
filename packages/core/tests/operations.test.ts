@@ -20,7 +20,7 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the twenty-eight operations, sorted by name, as tools/list shows them', () => {
+  it('are the thirty-one operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
@@ -33,16 +33,19 @@ describe('operation specs', () => {
       'describe_site',
       'get_asset',
       'get_entry',
+      'get_revision',
       'get_structure',
       'get_translations',
       'list_assets',
       'list_entries',
       'list_reviews',
+      'list_revisions',
       'make_webhook_secret',
       'publish',
       'request_changes',
       'request_review',
       'restore_entry',
+      'restore_revision',
       'restore_site',
       'search',
       'set_collection',
@@ -143,6 +146,24 @@ describe('operation specs', () => {
         scopes: ['content:read'],
         outcomes: ['ok', 'not_found'],
         errors: ['not_found'],
+      },
+      list_revisions: {
+        effect: 'read',
+        scopes: ['content:read'],
+        outcomes: ['ok', 'not_found'],
+        errors: ['not_found'],
+      },
+      get_revision: {
+        effect: 'read',
+        scopes: ['content:read'],
+        outcomes: ['ok', 'not_found'],
+        errors: ['not_found'],
+      },
+      restore_revision: {
+        effect: 'edit',
+        scopes: ['content:write'],
+        outcomes: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
+        errors: ['conflict', 'not_found', 'refused'],
       },
       make_webhook_secret: {
         effect: 'write',

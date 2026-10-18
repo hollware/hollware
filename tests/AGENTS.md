@@ -10,7 +10,7 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker` (`vp run test:conformance`, ADR-022): runner, token proxy, probes, baselines and must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
-Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`, and read which test failed: a failure for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
+Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`; a failure for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
 
 ## Guards
 
@@ -40,9 +40,10 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`. Each job is gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes, finalizes) and chained by `needs`, and `publish` is isolated. One run at a time per ref, no cancel, no job-level group. The steps that run `promotion-check.sh` and `finalize-release.sh` pass exactly the env their script reads and check out the full history. Boolean `finalize_only` skips the promotion check, pack and publish, and runs finalize for `RELEASE_SHA` or a `release_sha` input. `ci.yml` runs on `release` without the changeset gate and with `fetch-depth: 0`.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`. Each job is gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes, finalizes) and chained by `needs`, and `publish` is isolated. One run at a time per ref, no cancel, no job-level group. The steps of `promotion-check.sh` and `finalize-release.sh` get exactly the env they read and the full history. `finalize_only` skips promotion, pack and publish, and finalizes `RELEASE_SHA` or `release_sha`. `ci.yml` runs on `release` without the changeset gate and with `fetch-depth: 0`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
+- `tests/conventions/admin-parity.test.ts`: the admin calls every MCP operation, or says why not.
 - `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.

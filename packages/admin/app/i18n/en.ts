@@ -189,6 +189,31 @@ export const en = {
     inTrash:
       'An entry in the trash holds this slug or this translation. Restore it from the trash of the entries.',
   },
+  history: {
+    title: 'History of the entry',
+    empty: 'No revisions yet.',
+    latest: 'Latest',
+    live: 'On the site',
+    publishedBefore: 'Published before',
+    untitled: 'No title',
+    words: (count: string) => `${count} words`,
+    checks: (errors: number, warnings: number) =>
+      errors === 0 && warnings === 0
+        ? 'no problems'
+        : `${errors} ${errors === 1 ? 'error' : 'errors'}, ${warnings} ${warnings === 1 ? 'warning' : 'warnings'}`,
+    older: 'Show older revisions',
+    dialogTitle: (date: string) => `The revision of ${date}`,
+    compared: 'This revision, on the left, beside the latest one, on the right.',
+    thisRevision: 'This revision',
+    latestRevision: 'The latest revision',
+    restore: 'Restore this version',
+    restoreHelp:
+      'Its text is saved as a new revision: nothing is deleted, and it stays a draft until it is published.',
+    saveFirst: 'Save or undo your changes in the editor first.',
+    isLatest: 'This is the latest revision.',
+    restored: 'Restored as a new revision',
+    notRestored: 'Not restored',
+  },
   entry: {
     title: 'Entry',
     viewOnSite: 'View on site',
@@ -211,7 +236,13 @@ export const en = {
     unsaved: 'unsaved',
     translations: 'Translations',
     translateTo: (locale: string) => `Translate to ${locale}`,
-    tabs: { fields: 'Fields', checks: 'Checks', preview: 'Preview', related: 'Related' },
+    tabs: {
+      fields: 'Fields',
+      checks: 'Checks',
+      preview: 'Preview',
+      related: 'Related',
+      history: 'History',
+    },
     preview: 'Preview of the saved revision',
     noRelated:
       'Nothing related yet. Related entries come from the semantic search of the deployment, for published entries.',
@@ -563,6 +594,7 @@ export const en = {
       unpublish: 'Unpublished an entry',
       delete_entry: 'Moved an entry to the trash',
       restore_entry: 'Restored an entry from the trash',
+      restore_revision: 'Went back to an earlier revision of an entry',
       approve_review: 'Approved a review',
       request_review: 'Asked for a review',
       comment_review: 'Commented on a review',

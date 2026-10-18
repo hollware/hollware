@@ -155,6 +155,32 @@ export const review = z.object({
   note: z.string().nullable().describe('What the reviewer asked to change, or null.'),
 })
 
+/**
+ * A revision of an entry in its history: who wrote it, when, what the contracts said, and whether
+ * it was published. Its Markdown is read with get_revision.
+ */
+export const revisionSummary = z.object({
+  id: revisionId,
+  entryId,
+  createdAt: z.string(),
+  author: z.string().describe('The user who wrote it, or whose token or app their agent used.'),
+  authorName: z.string().nullable(),
+  via: z
+    .enum(['user', 'token', 'oauth_client'])
+    .describe('How it was written: by a person in the admin, a personal token, or an app.'),
+  client: z
+    .string()
+    .nullable()
+    .describe('The MCP client that wrote it, as it named itself, and its model when it said.'),
+  title: z.string().nullable().describe('The title of its frontmatter, when it has one.'),
+  wordCount: z.number().int(),
+  errors: z.number().int().describe('How many errors the contracts reported when it was saved.'),
+  warnings: z.number().int(),
+  head: z.boolean().describe('Whether it is the latest revision of the entry.'),
+  live: z.boolean().describe('Whether it is the revision the site shows now.'),
+  published: z.boolean().describe('Whether it was ever published.'),
+})
+
 /** A comment on a review (v0.6), by a person or by the agent of one. */
 export const reviewComment = z.object({
   id: z.string(),

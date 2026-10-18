@@ -7,8 +7,16 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
-/** The Markdown that is live beside the revision asked for, read-only, with what changed marked. */
-const props = defineProps<{ original: string; modified: string }>()
+/**
+ * Two Markdown files side by side, read-only, with what changed marked: by default what is live
+ * beside the revision asked for; the history names its own sides.
+ */
+const props = defineProps<{
+  original: string
+  modified: string
+  originalLabel?: string
+  modifiedLabel?: string
+}>()
 
 const host = ref<HTMLElement | null>(null)
 const m = useMessages()
@@ -30,14 +38,18 @@ function mount() {
       doc: props.original,
       extensions: [
         readOnly,
-        EditorView.contentAttributes.of({ 'aria-label': m.value.editor.live }),
+        EditorView.contentAttributes.of({
+          'aria-label': props.originalLabel ?? m.value.editor.live,
+        }),
       ],
     },
     b: {
       doc: props.modified,
       extensions: [
         readOnly,
-        EditorView.contentAttributes.of({ 'aria-label': m.value.editor.asked }),
+        EditorView.contentAttributes.of({
+          'aria-label': props.modifiedLabel ?? m.value.editor.asked,
+        }),
       ],
     },
     parent: host.value,

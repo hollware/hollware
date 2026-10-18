@@ -64,6 +64,22 @@ export interface StoredRevision {
   readonly createdAt: string
 }
 
+/** A revision in the history of an entry: who, when, what the contracts said; no Markdown. */
+export interface HistoryRevision {
+  readonly id: string
+  readonly entryId: string
+  readonly createdAt: string
+  readonly actorKind: 'user' | 'token' | 'oauth_client'
+  readonly actorUserId: string
+  readonly actorMeta: Readonly<Record<string, unknown>> | null
+  readonly authorName: string | null
+  readonly frontmatter: Readonly<Record<string, unknown>>
+  readonly wordCount: number
+  readonly verdict: Verdict
+  /** Whether a publication ever published it. */
+  readonly published: boolean
+}
+
 /** An entry with the revision of the view that was asked for. */
 export interface EntryView {
   readonly entry: StoredEntry
@@ -265,6 +281,18 @@ export interface ContentStore {
   lookup(site: string): EntryLookup
   /** The latest publish or unpublish of an entry, or `null`. */
   lastPublication(site: string, entryId: string): Promise<StoredPublication | null>
+  /** The revisions of an entry, newest first, a page after `cursor` (ADR-021). */
+  listRevisions(
+    site: string,
+    entryId: string,
+    limit: number,
+    cursor: { readonly createdAt: string; readonly id: string } | null,
+  ): Promise<readonly HistoryRevision[]>
+  /** One revision of the site by its id, with its Markdown, or `null`. */
+  findRevision(
+    site: string,
+    id: string,
+  ): Promise<(HistoryRevision & { readonly markdown: string }) | null>
   /**
    * Creates an entry at version 1 with its first revision, as a draft. A slug or a translation
    * that an entry in the trash holds is `in_trash`, by that entry.

@@ -10,14 +10,17 @@ import {
   defineConfig,
   describeSite as describeSiteSpec,
   getEntry as getEntrySpec,
+  getRevision as getRevisionSpec,
   getTranslations as getTranslationsSpec,
   listEntries as listEntriesSpec,
   listReviews as listReviewsSpec,
+  listRevisions as listRevisionsSpec,
   processMarkdown,
   publish as publishSpec,
   requestChanges as requestChangesSpec,
   requestReview as requestReviewSpec,
   restoreEntry as restoreEntrySpec,
+  restoreRevision as restoreRevisionSpec,
   search as searchSpec,
   renderHtml,
   resolveConfig,
@@ -275,6 +278,12 @@ export function agent(context: OperationContext) {
       call(deleteEntrySpec, handlers.delete_entry, input, context),
     restoreEntry: (input: z.input<typeof restoreEntrySpec.input>) =>
       call(restoreEntrySpec, handlers.restore_entry, input, context),
+    listRevisions: (input: z.input<typeof listRevisionsSpec.input>) =>
+      call(listRevisionsSpec, handlers.list_revisions, input, context),
+    getRevision: (input: z.input<typeof getRevisionSpec.input>) =>
+      call(getRevisionSpec, handlers.get_revision, input, context),
+    restoreRevision: (input: z.input<typeof restoreRevisionSpec.input>) =>
+      call(restoreRevisionSpec, handlers.restore_revision, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),
     getEntry: (input: z.input<typeof getEntrySpec.input>) =>
       call(getEntrySpec, handlers.get_entry, input, context),
@@ -346,6 +355,8 @@ export const UNTOUCHED: ContentStore = {
   listTranslations: () => touched('listTranslations'),
   lookup: () => touched('lookup'),
   lastPublication: () => touched('lastPublication'),
+  listRevisions: () => touched('listRevisions'),
+  findRevision: () => touched('findRevision'),
   createEntry: () => touched('createEntry'),
   appendRevision: () => touched('appendRevision'),
   publish: () => touched('publish'),

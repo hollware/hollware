@@ -12,6 +12,8 @@ import {
   markdown,
   review,
   reviewId,
+  revisionId,
+  revisionSummary,
   reviewComment,
   reviewStatus,
   searchMode,
@@ -192,6 +194,68 @@ export const updateDraft = defineOperation({
   description:
     'Saves a new revision of an entry from the whole Markdown file, if the entry is still at the version you read; otherwise it answers conflict with the current version, and nothing is saved. A file identical to the latest revision answers unchanged. Contract errors do not stop the save; the verdict says what to fix.',
   input: z.strictObject({ id: entryId, version, markdown }),
+  output: z.object({
+    outcome: z.enum(['saved', 'unchanged', 'conflict', 'not_found', 'refused']),
+    entry: entrySummary.optional(),
+    verdict: verdict.optional(),
+    conflict: conflict.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'edit',
+  outcomes: {
+    saved: { isError: false },
+    unchanged: { isError: false },
+    conflict: { isError: true },
+    not_found: { isError: true },
+    refused: { isError: true },
+  },
+})
+
+export const listRevisions = defineOperation({
+  name: 'list_revisions',
+  title: 'List the revisions of an entry',
+  description:
+    'Lists every revision of an entry, newest first: who wrote it and how, when, its title, what the contracts said, and whether it is the latest, the one the site shows, or was ever published. Read one with get_revision; go back to one with restore_revision. Pass the nextCursor of an answer as cursor to get the next page.',
+  input: z.strictObject({
+    id: entryId,
+    limit: z.number().int().min(1).max(100).default(20),
+    cursor: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok', 'not_found']),
+    revisions: z.array(revisionSummary).optional(),
+    nextCursor: z.string().nullable().optional().describe('The cursor of the next page, or null.'),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false }, not_found: { isError: true } },
+})
+
+export const getRevision = defineOperation({
+  name: 'get_revision',
+  title: 'Get a revision of an entry',
+  description:
+    'Gets one revision of an entry by its id, as list_revisions names it: the whole Markdown file it held, and who wrote it and when. Compare it with the latest revision of get_entry to see what changed.',
+  input: z.strictObject({ id: revisionId }),
+  output: z.object({
+    outcome: z.enum(['ok', 'not_found']),
+    revision: revisionSummary.extend({ markdown }).optional(),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false }, not_found: { isError: true } },
+})
+
+export const restoreRevision = defineOperation({
+  name: 'restore_revision',
+  title: 'Go back to a revision',
+  description:
+    "Saves an earlier revision's Markdown as a new revision of the entry, if the entry is still at the version you read: nothing is deleted, and the history keeps every revision, the restored one included. It is a draft until it is published, as any change. Answers as update_draft does; unchanged when the latest revision already holds that Markdown.",
+  input: z.strictObject({
+    id: entryId,
+    version,
+    revision: revisionId.describe('The revision to go back to, of this entry.'),
+  }),
   output: z.object({
     outcome: z.enum(['saved', 'unchanged', 'conflict', 'not_found', 'refused']),
     entry: entrySummary.optional(),
@@ -814,16 +878,19 @@ export const OPERATIONS = [
   describeSite,
   getAsset,
   getEntry,
+  getRevision,
   getStructure,
   getTranslations,
   listAssets,
   listEntries,
   listReviews,
+  listRevisions,
   makeWebhookSecret,
   publish,
   requestChanges,
   requestReview,
   restoreEntry,
+  restoreRevision,
   restoreSite,
   search,
   setCollection,

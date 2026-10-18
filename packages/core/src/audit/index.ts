@@ -11,6 +11,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'unpublish',
   'delete_entry',
   'restore_entry',
+  'restore_revision',
   'approve_review',
   'request_review',
   'comment_review',

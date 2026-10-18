@@ -229,6 +229,26 @@ export const WEB_TEXT_LITERALS: ExceptionList = {
   ],
 }
 
+/**
+ * Operations of MCP that the admin does not call by name, because a person does the same thing
+ * there another way (guard `admin-parity`). The value is the name of the operation.
+ */
+export const OPERATIONS_WITHOUT_ADMIN: ExceptionList = {
+  max: 2,
+  entries: [
+    {
+      value: 'get_asset',
+      reason:
+        'The Images page lists each image whole with list_assets; one more read adds nothing.',
+    },
+    {
+      value: 'request_review',
+      reason:
+        'In the admin, Publish without content:publish asks for the review, as publish does over MCP.',
+    },
+  ],
+}
+
 /** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
 function byValue(list: TestRunnerList): ExceptionList {
   return {
@@ -248,6 +268,7 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   INVISIBLE_CHARACTER_FILES,
   ADMIN_TEXT_LITERALS,
   WEB_TEXT_LITERALS,
+  OPERATIONS_WITHOUT_ADMIN,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

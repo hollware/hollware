@@ -61,6 +61,8 @@ export const STORE: ContentStore = {
   listTranslations: unused,
   lookup: unused,
   lastPublication: unused,
+  listRevisions: unused,
+  findRevision: unused,
   createEntry: unused,
   appendRevision: unused,
   publish: unused,
@@ -183,6 +185,24 @@ export const ENTRY: Entry = {
 }
 
 const CONFLICT = { currentVersion: 2, headRevision: REVISION_ID }
+
+/** A revision in the history of the entry, as list_revisions answers it. */
+const HISTORY_REVISION = {
+  id: REVISION_ID,
+  entryId: ENTRY_ID,
+  createdAt: '2026-10-18T00:00:00.000Z',
+  author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
+  authorName: 'Ada',
+  via: 'token',
+  client: 'claude-code 2.1.0',
+  title: 'Edge caching',
+  wordCount: 120,
+  errors: 0,
+  warnings: 1,
+  head: true,
+  live: false,
+  published: false,
+} as const
 
 export const REVIEW_ID = 'rvw_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
 
@@ -443,6 +463,24 @@ export const CANNED: Canned = {
   },
   list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
   get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
+  list_revisions: {
+    ok: { outcome: 'ok', revisions: [HISTORY_REVISION], nextCursor: null },
+    not_found: { outcome: 'not_found' },
+  },
+  get_revision: {
+    ok: {
+      outcome: 'ok',
+      revision: { ...HISTORY_REVISION, markdown: '---\ntitle: Hello world\n---\nHello.' },
+    },
+    not_found: { outcome: 'not_found' },
+  },
+  restore_revision: {
+    saved: { outcome: 'saved', entry: { ...SUMMARY, version: 2 }, verdict: VERDICT_OK },
+    unchanged: { outcome: 'unchanged', entry: SUMMARY },
+    conflict: { outcome: 'conflict', conflict: CONFLICT },
+    not_found: { outcome: 'not_found' },
+    refused: { outcome: 'refused', verdict: VERDICT_FAILED },
+  },
   make_webhook_secret: {
     made: { outcome: 'made', secret: `whsec_${'a'.repeat(64)}` },
     not_found: { outcome: 'not_found' },
@@ -498,6 +536,9 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     },
     list_assets: {},
     get_asset: { id: 'ast_0123456789abcdef0123456789' },
+    list_revisions: { id: ENTRY_ID },
+    get_revision: { id: REVISION_ID },
+    restore_revision: { id: ENTRY_ID, version: 1, revision: REVISION_ID },
     restore_site: { key: 'notes' },
     set_collection: { version: 2, name: 'blog', collection: null },
     update_site: { version: 2, definition: STRUCTURE },
@@ -649,6 +690,21 @@ export function fakeHandlers(
     get_asset: record(
       'get_asset',
       overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
+    ),
+    list_revisions: record(
+      'list_revisions',
+      overrides.list_revisions ??
+        (async () => pick(CANNED.list_revisions, outcomes.list_revisions ?? 'ok')),
+    ),
+    get_revision: record(
+      'get_revision',
+      overrides.get_revision ??
+        (async () => pick(CANNED.get_revision, outcomes.get_revision ?? 'ok')),
+    ),
+    restore_revision: record(
+      'restore_revision',
+      overrides.restore_revision ??
+        (async () => pick(CANNED.restore_revision, outcomes.restore_revision ?? 'saved')),
     ),
     make_webhook_secret: record(
       'make_webhook_secret',

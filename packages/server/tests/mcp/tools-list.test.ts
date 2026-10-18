@@ -51,16 +51,19 @@ const TOOLS = [
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
   { name: 'get_asset', title: 'Get an image', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
+  { name: 'get_revision', title: 'Get a revision of an entry', annotations: READ },
   { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_assets', title: 'List the images of the site', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
+  { name: 'list_revisions', title: 'List the revisions of an entry', annotations: READ },
   { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
   { name: 'restore_entry', title: 'Bring an entry back from the trash', annotations: CHANGE },
+  { name: 'restore_revision', title: 'Go back to a revision', annotations: CHANGE },
   { name: 'restore_site', title: 'Bring a site back from the trash', annotations: CHANGE },
   { name: 'search', title: 'Search entries', annotations: READ },
   { name: 'set_collection', title: 'Add, change or remove a collection', annotations: DESTROY },
@@ -89,6 +92,9 @@ const OUTCOMES: Record<string, string[]> = {
   upload_asset: ['created', 'exists', 'refused', 'unavailable'],
   list_assets: ['ok'],
   get_asset: ['ok', 'not_found'],
+  list_revisions: ['ok', 'not_found'],
+  get_revision: ['ok', 'not_found'],
+  restore_revision: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   publish: [
     'published',
     'scheduled',
@@ -241,9 +247,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(56)
+    expect(converters).toHaveLength(62)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 56 }, () => 1),
+      Array.from({ length: 62 }, () => 1),
     )
   })
 })
@@ -263,16 +269,19 @@ describe('the tool table', () => {
       'describe_site',
       'get_asset',
       'get_entry',
+      'get_revision',
       'get_structure',
       'get_translations',
       'list_assets',
       'list_entries',
       'list_reviews',
+      'list_revisions',
       'make_webhook_secret',
       'publish',
       'request_changes',
       'request_review',
       'restore_entry',
+      'restore_revision',
       'restore_site',
       'search',
       'set_collection',

@@ -9,6 +9,7 @@ import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './su
 // which asks for a review; the owner reads the review, comments on it and approves it, which
 // publishes it. Before v1.0: the owner unpublishes an entry and schedules it again, from the
 // editor, and sees what waits for review on the home page.
+// The owner reads the history of an entry and restores an earlier version as a new revision.
 // The owner moves a draft to the trash from the editor, finds it under the trash filter of the
 // entries and restores it.
 // AC-0.8-2: the owner makes a collection with a rule in the admin, an entry the rule refuses is
@@ -58,6 +59,33 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toContainText('published')
   await expectAccessible(owner)
   await shot(owner, 'entries')
+})
+
+test('the owner reads the history of an entry and goes back to an earlier version', async () => {
+  await owner.goto('/admin/entries/blog/en/hello-world')
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  await writeMarkdown(owner, post('Hello again', 'hello-world'))
+  await owner.getByRole('button', { name: 'Save' }).click()
+  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+
+  await owner.getByRole('tab', { name: 'History' }).click()
+  const history = owner.getByRole('list', { name: 'History of the entry' })
+  await expect(history.getByRole('button').first()).toContainText('Latest')
+  await expect(history.getByRole('button').first()).toContainText('Hello again')
+  await history
+    .getByRole('button', { name: /Hello world/ })
+    .first()
+    .click()
+  await expect(owner.getByRole('dialog')).toContainText('This revision, on the left')
+  await expectAccessible(owner)
+  await shot(owner, 'history')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Restore this version' }).click()
+
+  await expect(owner.getByText('Restored as a new revision', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  // The restored version is the latest, and the one it replaced is still in the history.
+  await expect(history.getByRole('button').first()).toContainText('Hello world')
+  await expect(history.getByRole('button', { name: /Hello again/ })).toHaveCount(1)
 })
 
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({

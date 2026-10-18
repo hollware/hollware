@@ -25,6 +25,7 @@ const NAMING_FIELDS = [
   'reviewId',
   'name',
   'filename',
+  'revision',
 ]
 const FIELD_MAX = 200
 

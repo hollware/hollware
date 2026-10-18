@@ -1,5 +1,6 @@
 import type { Clock, ContentStore } from '../ports.ts'
 import { connect, type D1Like } from './d1.ts'
+import * as history from './history.ts'
 import * as reads from './reads.ts'
 import * as reviews from './reviews.ts'
 import * as schedules from './schedules.ts'
@@ -31,6 +32,9 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
       reads.listTranslations(database, site, collection, translationGroup, view),
     lookup: (site) => reads.lookup(database, site),
     lastPublication: (site, entryId) => reads.lastPublication(database, site, entryId),
+    listRevisions: (site, entryId, limit, cursor) =>
+      history.listRevisions(database, site, entryId, limit, cursor),
+    findRevision: (site, id) => history.findRevision(database, site, id),
     createEntry: (site, entry) => writes.createEntry(database, clock, site, entry),
     appendRevision: (site, write) => writes.appendRevision(database, clock, site, write),
     publish: (site, write) => writes.publish(database, clock, site, write),

@@ -4,6 +4,7 @@ import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
+import RevisionHistory from '../components/RevisionHistory.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
@@ -367,6 +368,7 @@ const tabs = computed(() => [
   { label: m.value.entry.tabs.checks, slot: 'checks' as const, value: 'checks' },
   { label: m.value.entry.tabs.preview, slot: 'preview' as const, value: 'preview' },
   { label: m.value.entry.tabs.related, slot: 'related' as const, value: 'related' },
+  { label: m.value.entry.tabs.history, slot: 'history' as const, value: 'history' },
 ])
 </script>
 
@@ -533,6 +535,16 @@ const tabs = computed(() => [
                 <span class="block font-mono text-xs text-muted">{{ other.slug }}</span>
               </RouterLink>
             </div>
+          </template>
+          <template #history>
+            <RevisionHistory
+              :entry-id="entry.id"
+              :version="entry.version"
+              :latest="saved"
+              :dirty="dirty"
+              @restored="load"
+              @conflict="conflictOpen = true"
+            />
           </template>
         </UTabs>
       </div>

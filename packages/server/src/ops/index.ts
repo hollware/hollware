@@ -4,6 +4,7 @@ import { createDraft } from './create-draft.ts'
 import { describeSite } from './describe-site.ts'
 import { getEntry } from './get-entry.ts'
 import { getTranslations } from './get-translations.ts'
+import { getRevision, listRevisions, restoreRevision } from './history.ts'
 import { listEntries } from './list-entries.ts'
 import { search } from './search.ts'
 import {
@@ -45,17 +46,20 @@ export const handlers = defineHandlers({
   describe_site: describeSite,
   get_asset: getAsset,
   get_entry: getEntry,
+  get_revision: getRevision,
   get_structure: getStructure,
   get_translations: getTranslations,
   list_assets: listAssets,
   list_entries: listEntries,
   search,
   list_reviews: listReviews,
+  list_revisions: listRevisions,
   make_webhook_secret: makeWebhookSecret,
   publish,
   request_changes: requestChanges,
   request_review: requestReview,
   restore_entry: restoreEntry,
+  restore_revision: restoreRevision,
   restore_site: restoreSite,
   set_collection: setCollection,
   unpublish,

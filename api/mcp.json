@@ -2034,6 +2034,125 @@
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of a revision (rev_…).",
+            "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "get_revision",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          },
+          "revision": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "description": "The user who wrote it, or whose token or app their agent used.",
+                "type": "string"
+              },
+              "authorName": {
+                "type": ["string", "null"]
+              },
+              "client": {
+                "description": "The MCP client that wrote it, as it named itself, and its model when it said.",
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "errors": {
+                "description": "How many errors the contracts reported when it was saved.",
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "head": {
+                "description": "Whether it is the latest revision of the entry.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "live": {
+                "description": "Whether it is the revision the site shows now.",
+                "type": "boolean"
+              },
+              "markdown": {
+                "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+                "type": "string"
+              },
+              "published": {
+                "description": "Whether it was ever published.",
+                "type": "boolean"
+              },
+              "title": {
+                "description": "The title of its frontmatter, when it has one.",
+                "type": ["string", "null"]
+              },
+              "via": {
+                "description": "How it was written: by a person in the admin, a personal token, or an app.",
+                "enum": ["user", "token", "oauth_client"],
+                "type": "string"
+              },
+              "warnings": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "wordCount": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "createdAt",
+              "author",
+              "authorName",
+              "via",
+              "client",
+              "title",
+              "wordCount",
+              "errors",
+              "warnings",
+              "head",
+              "live",
+              "published",
+              "markdown"
+            ],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Get a revision of an entry"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
         "properties": {},
         "type": "object"
       },
@@ -3047,6 +3166,137 @@
       "title": "List the reviews"
     },
     {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "list_revisions",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "nextCursor": {
+            "description": "The cursor of the next page, or null.",
+            "type": ["string", "null"]
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          },
+          "revisions": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "description": "The user who wrote it, or whose token or app their agent used.",
+                  "type": "string"
+                },
+                "authorName": {
+                  "type": ["string", "null"]
+                },
+                "client": {
+                  "description": "The MCP client that wrote it, as it named itself, and its model when it said.",
+                  "type": ["string", "null"]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "entryId": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "errors": {
+                  "description": "How many errors the contracts reported when it was saved.",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "head": {
+                  "description": "Whether it is the latest revision of the entry.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of a revision (rev_…).",
+                  "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "live": {
+                  "description": "Whether it is the revision the site shows now.",
+                  "type": "boolean"
+                },
+                "published": {
+                  "description": "Whether it was ever published.",
+                  "type": "boolean"
+                },
+                "title": {
+                  "description": "The title of its frontmatter, when it has one.",
+                  "type": ["string", "null"]
+                },
+                "via": {
+                  "description": "How it was written: by a person in the admin, a personal token, or an app.",
+                  "enum": ["user", "token", "oauth_client"],
+                  "type": "string"
+                },
+                "warnings": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "wordCount": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "entryId",
+                "createdAt",
+                "author",
+                "authorName",
+                "via",
+                "client",
+                "title",
+                "wordCount",
+                "errors",
+                "warnings",
+                "head",
+                "live",
+                "published"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "List the revisions of an entry"
+    },
+    {
       "effect": "write",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3926,6 +4176,232 @@
       },
       "scopes": ["content:write"],
       "title": "Bring an entry back from the trash"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision to go back to, of this entry.",
+            "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version", "revision"],
+        "type": "object"
+      },
+      "name": "restore_revision",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["saved", "unchanged", "conflict", "not_found", "refused"],
+            "type": "string"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "contractsHash": {
+                "description": "A hash of the rules the content was checked against.",
+                "type": "string"
+              },
+              "errors": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "ok": {
+                "description": "Whether there are no errors. Warnings do not count, but publish asks about them.",
+                "type": "boolean"
+              },
+              "phase": {
+                "enum": ["write", "publish"],
+                "type": "string"
+              },
+              "warnings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "contract": {
+                      "description": "The id of the contract.",
+                      "type": "string"
+                    },
+                    "fix": {
+                      "description": "What to change so that the problem goes away.",
+                      "type": "string"
+                    },
+                    "line": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
+                      "type": "string"
+                    },
+                    "severity": {
+                      "enum": ["error", "warning"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["contract", "severity", "path", "message", "fix"],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": ["ok", "phase", "errors", "warnings", "contractsHash"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Go back to a revision"
     },
     {
       "effect": "write",
