@@ -1,5 +1,16 @@
 {
-  "commands": ["deploy", "doctor", "export", "import", "init", "invite", "migrate", "token"],
+  "commands": [
+    "deploy",
+    "dev",
+    "doctor",
+    "export",
+    "import",
+    "init",
+    "invite",
+    "mcp-config",
+    "migrate",
+    "token"
+  ],
   "flags": {
     "deploy": [
       {
@@ -11,9 +22,34 @@
         }
       }
     ],
+    "dev": [
+      {
+        "detach": {
+          "type": "boolean"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "json": {
+          "type": "boolean"
+        },
+        "stop": {
+          "type": "boolean"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
     "doctor": [
       {
         "help": {
+          "type": "boolean"
+        },
+        "json": {
           "type": "boolean"
         },
         "local": {
@@ -96,11 +132,17 @@
         "database": {
           "type": "string"
         },
+        "force": {
+          "type": "boolean"
+        },
         "help": {
           "type": "boolean"
         },
         "ip-addresses": {
           "type": "string"
+        },
+        "json": {
+          "type": "boolean"
         },
         "local": {
           "type": "boolean"
@@ -120,6 +162,9 @@
         "site": {
           "type": "string"
         },
+        "token-file": {
+          "type": "string"
+        },
         "url": {
           "type": "string"
         }
@@ -130,10 +175,29 @@
         "days": {
           "type": "string"
         },
+        "json": {
+          "type": "boolean"
+        },
         "owner": {
           "type": "boolean"
         },
         "role": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
+    "mcp-config": [
+      {
+        "client": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "token-file": {
           "type": "string"
         },
         "url": {
@@ -165,6 +229,12 @@
         "expires-in-days": {
           "type": "string"
         },
+        "force": {
+          "type": "boolean"
+        },
+        "json": {
+          "type": "boolean"
+        },
         "label": {
           "type": "string"
         },
@@ -172,6 +242,9 @@
           "type": "boolean"
         },
         "scopes": {
+          "type": "string"
+        },
+        "token-file": {
           "type": "string"
         }
       },

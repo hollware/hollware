@@ -67,6 +67,19 @@ export interface StubEntry {
   published: number | null
   /** When the entry went to the trash; absent or `null` when it is not there. */
   deletedAt?: string | null
+  /** The verdict of the latest revision as it was written, which Hollware keeps with it. */
+  written?: ReturnType<typeof writtenVerdict>
+}
+
+/** The shape of a verdict the stub keeps with a revision. */
+function writtenVerdict(verdict: {
+  ok: boolean
+  phase: 'write' | 'publish'
+  errors: StubViolation[]
+  warnings: StubViolation[]
+  contractsHash: string
+}) {
+  return verdict
 }
 
 export interface RecordedCall {
@@ -362,6 +375,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             version: 1,
             revisions: [args.markdown],
             published: null,
+            written: verdict,
           }
           entries.set(key(args), entry)
           return reply(createDraft.outcomes, { outcome: 'saved', entry: summaryOf(entry), verdict })
@@ -392,14 +406,16 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             return reply(updateDraft.outcomes, { outcome: 'refused', verdict })
           }
           if (entry.revisions.at(-1) === args.markdown) {
+            // As Hollware does: the verdict kept with the revision, from when it was written.
             return reply(updateDraft.outcomes, {
               outcome: 'unchanged',
               entry: summaryOf(entry),
-              verdict,
+              verdict: entry.written ?? verdict,
             })
           }
           entry.revisions.push(args.markdown)
           entry.version += 1
+          entry.written = verdict
           return reply(updateDraft.outcomes, { outcome: 'saved', entry: summaryOf(entry), verdict })
         }),
       ),

@@ -3955,6 +3955,10 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "fix": {
+            "description": "With conflict: what to do next.",
+            "type": "string"
+          },
           "impact": {
             "additionalProperties": false,
             "description": "With needs_confirmation: what the change would do.",
@@ -4027,6 +4031,10 @@
             },
             "required": ["removedCollections", "removedLocales", "refused"],
             "type": "object"
+          },
+          "message": {
+            "description": "With conflict: what happened.",
+            "type": "string"
           },
           "outcome": {
             "enum": ["updated", "unchanged", "invalid", "needs_confirmation", "conflict"],
@@ -4721,6 +4729,10 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "fix": {
+            "description": "With conflict: what to do next.",
+            "type": "string"
+          },
           "impact": {
             "additionalProperties": false,
             "description": "With needs_confirmation: what the change would do.",
@@ -4793,6 +4805,10 @@
             },
             "required": ["removedCollections", "removedLocales", "refused"],
             "type": "object"
+          },
+          "message": {
+            "description": "With conflict: what happened.",
+            "type": "string"
           },
           "outcome": {
             "enum": ["updated", "unchanged", "invalid", "needs_confirmation", "conflict"],

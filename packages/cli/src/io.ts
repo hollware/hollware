@@ -1,3 +1,4 @@
+import type { DevHost } from './dev-host.ts'
 import type { RunWrangler } from './wrangler.ts'
 
 /**
@@ -22,4 +23,6 @@ export interface Io {
   wrangler: RunWrangler
   /** A new empty directory for temporary files. Whoever asks for it removes it. */
   tempDir: () => string
+  /** What `hollware dev` needs of the machine: processes, signals and the health check. */
+  dev?: DevHost
 }

@@ -171,8 +171,57 @@ describe('update_site', () => {
 
     expect(invalid.outcome).toBe('invalid')
     expect(invalid.problems?.map((problem) => problem.path)).toEqual([`sites.${key}.defaultLocale`])
-    expect(stale).toEqual({ outcome: 'conflict', currentVersion: 1 })
+    expect(stale).toEqual({
+      outcome: 'conflict',
+      currentVersion: 1,
+      message:
+        'The structure is at version 1, not 0: it changed since you read it, so nothing was applied.',
+      fix: 'Call get_structure again, apply your change to the definition it returns (version 1), and send it with version 1. An earlier update_site or set_collection of yours also moves the version.',
+    })
     expect(await changesOf(key)).toEqual([])
+  })
+
+  it('answers set_collection at the version before an update_site with a conflict that says to read again', async () => {
+    const { context } = await setUp()
+    const updated = await handlers.update_site(
+      {
+        version: 1,
+        definition: siteDefinitionData.parse({
+          ...BLOG,
+          locales: ['en', 'es', 'fr'],
+          collections: {
+            blog: {
+              ...BLOG.collections?.['blog'],
+              routes: { en: '/blog/:slug/', es: '/es/blog/:slug/', fr: '/fr/blog/:slug/' },
+            },
+          },
+        }),
+        confirm: false,
+      },
+      context,
+    )
+
+    const stale = await handlers.set_collection(
+      {
+        version: 1,
+        name: 'notes',
+        collection: collectionDefinitionData.parse({
+          schema: { type: 'object' },
+          routes: { en: '/notes/:slug/', es: '/es/notes/:slug/', fr: '/fr/notes/:slug/' },
+        }),
+        confirm: false,
+      },
+      context,
+    )
+
+    expect(updated).toEqual({ outcome: 'updated', version: 2 })
+    expect(stale).toEqual({
+      outcome: 'conflict',
+      currentVersion: 2,
+      message:
+        'The structure is at version 2, not 1: it changed since you read it, so nothing was applied.',
+      fix: 'Call get_structure again, apply your change to the definition it returns (version 2), and send it with version 2. An earlier update_site or set_collection of yours also moves the version.',
+    })
   })
 
   it('asks to confirm a removed collection and locale that hold entries, then writes it', async () => {

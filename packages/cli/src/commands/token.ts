@@ -5,6 +5,7 @@ import { inDays, newId, newPersonalToken, newReadToken } from '../entropy.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable, table } from '../format.ts'
 import type { Io } from '../io.ts'
+import { publicUrlOf } from '../public-url.ts'
 import {
   insertToken,
   listTokens,
@@ -17,6 +18,7 @@ import {
   sitesAndOwnerQuery,
   sitesQuery,
 } from '../sql.ts'
+import { deliverToken, tokenFileOf } from '../token-output.ts'
 
 const WHERE_FLAGS = [
   '  --site <key>       The site (default: the only site of the database)',
@@ -39,6 +41,7 @@ export const TOKEN_USAGE = [
 
 export const TOKEN_CREATE_USAGE = [
   'Usage: hollware token create --label <text> [--scopes <list> | --read] [--expires-in-days <n>]',
+  '                             [--token-file <path> [--force]] [--json]',
   '                             [--site <key>] [--local | --remote] [--database <name>]',
   '',
   "Creates a personal token for the site's owner and prints it once; Hollware keeps only its hash.",
@@ -51,6 +54,12 @@ export const TOKEN_CREATE_USAGE = [
   '  --scopes <list>         Comma-separated: content:read, content:write, content:publish, schema:admin',
   '                          (default: content:read,content:write)',
   '  --expires-in-days <n>   Days until it expires, 1 to 365; without it, the token never expires',
+  '  --token-file <path>     Write the token to this file (mode 0600) and print its path instead of the',
+  '                          token; it refuses a file that exists, unless --force',
+  '  --force                 Replace the file of --token-file',
+  '  --json                  One JSON object on stdout and nothing else: site, tokenId, kind, label,',
+  '                          scopes, token or tokenFile, expiresAt (null: never), mcpUrl, readApiUrl',
+  '                          (a URL that is not known is null)',
   ...WHERE_FLAGS,
 ].join('\n')
 
@@ -113,6 +122,9 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       scopes: { type: 'string' },
       read: { type: 'boolean' },
       'expires-in-days': { type: 'string' },
+      'token-file': { type: 'string' },
+      force: { type: 'boolean' },
+      json: { type: 'boolean' },
     },
   })
   if (values.help === true) {
@@ -138,6 +150,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   // Without --expires-in-days the token never expires: the person chooses (T-26, accepted).
   const days =
     values['expires-in-days'] === undefined ? null : parseExpiresInDays(values['expires-in-days'])
+  const tokenFile = tokenFileOf(io, values['token-file'], values.force)
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
 
@@ -173,6 +186,24 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       now: now.toISOString(),
     }),
   )
+  const delivered = deliverToken(tokenFile, secret)
+  if (values.json === true) {
+    const url = publicUrlOf(io.cwd, undefined)
+    io.out(
+      JSON.stringify({
+        site,
+        tokenId: id,
+        kind: read ? 'read' : 'personal',
+        label,
+        scopes,
+        ...delivered,
+        expiresAt,
+        mcpUrl: url === undefined ? null : `${url}/mcp`,
+        readApiUrl: url === undefined ? null : `${url}/v1`,
+      }),
+    )
+    return 0
+  }
   io.out(
     [
       `Created ${read ? 'read token' : 'token'} ${id} for the site "${site}".`,
@@ -183,9 +214,11 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
         ? 'Expires  never (revoke it with hollware token revoke)'
         : `Expires  ${expiresAt} (in ${days} ${days === 1 ? 'day' : 'days'})`,
       '',
-      'The token. It is shown only once: Hollware keeps just its hash.',
-      '',
-      secret,
+      ...('tokenFile' in delivered
+        ? [
+            `The token is in ${delivered.tokenFile}, readable by you only. It is shown only once: Hollware keeps just its hash.`,
+          ]
+        : ['The token. It is shown only once: Hollware keeps just its hash.', '', secret]),
     ].join('\n'),
   )
   return 0

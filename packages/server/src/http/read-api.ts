@@ -15,6 +15,7 @@ import type { GatewayEnv } from './types.ts'
  * origin that the site's config lists (`cors.origins`) may call it from the browser; any other
  * origin is refused. The OpenAPI document is at `/v1/openapi.json`.
  *
+ *   GET /v1                                        the index: the URLs of the OpenAPI document and of /v1/site (no token)
  *   GET /v1/site                                   describe_site
  *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
  *   GET /v1/search?q&collection&locale&limit&mode  search
@@ -35,6 +36,9 @@ export interface ReadApiOptions {
   /** Whether any site lists the origin: a preflight carries no token to tell the site by. */
   readonly anyCorsOrigin: (origin: string) => boolean
 }
+
+/** The paths of the index of the read API, which answers with no token. */
+const INDEX_PATHS: ReadonlySet<string> = new Set(['/v1', '/v1/'])
 
 /** How long a browser keeps the answer of a preflight, in seconds. */
 const PREFLIGHT_MAX_AGE = 600
@@ -151,7 +155,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
         },
       )
     }
-    if (c.req.path === '/v1/openapi.json') return next()
+    if (c.req.path === '/v1/openapi.json' || INDEX_PATHS.has(c.req.path)) return next()
     const response = await options.protect(c, async (principal) => {
       if (!principal.scopes.includes('content:read')) {
         return insufficientScope(['content:read'], options.metadataUrl(c))
@@ -190,6 +194,14 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
   })
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))
+  // The index: where a client that was only told "/v1" finds the document and the first route.
+  // It names two URLs of this origin and reveals nothing, so it needs no token.
+  for (const path of INDEX_PATHS) {
+    app.get(path, (c) => {
+      const origin = new URL(c.env.HOLLWARE_PUBLIC_URL).origin
+      return c.json({ openapi: `${origin}/v1/openapi.json`, site: `${origin}/v1/site` })
+    })
+  }
   app.get(
     '/v1/site',
     readRoute(async (c) => answer(c, await options.read(c.env).describeSite(c.get('site')))),

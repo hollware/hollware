@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import { spawn } from 'node:child_process'
 import { mkdtempSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import type { DevExit, DevHost } from './dev-host.ts'
 import { CliError, UsageError } from './errors.ts'
 import { printable } from './format.ts'
 import type { Io } from './io.ts'
@@ -18,6 +20,8 @@ const COMMANDS = [
     name: 'init',
     summary: "Set up a site, its owner and a first token in the project's D1 database",
   },
+  { name: 'dev', summary: "Start the project's local server and wait until it is ready" },
+  { name: 'mcp-config', summary: 'Print the configuration that connects an MCP client' },
   { name: 'migrate', summary: 'Apply D1 migrations' },
   { name: 'deploy', summary: 'Deploy to Cloudflare and migrate the remote database' },
   { name: 'doctor', summary: 'Check the project, its bindings, its database and its owner' },
@@ -40,7 +44,7 @@ const USAGE = [
   '  --version  Print the version',
   '',
   'Run "hollware <command> --help" for the options of a command.',
-  'init, migrate, deploy, doctor, token and invite work on the project in the current directory,',
+  'init, dev, migrate, deploy, doctor, token and invite work on the project in the current directory,',
   'through its wrangler.',
 ].join('\n')
 
@@ -63,7 +67,18 @@ export async function main(argv: string[], io: Io): Promise<number> {
     return 0
   }
   if (
-    !['init', 'migrate', 'deploy', 'doctor', 'token', 'invite', 'import', 'export'].includes(first)
+    ![
+      'init',
+      'dev',
+      'mcp-config',
+      'migrate',
+      'deploy',
+      'doctor',
+      'token',
+      'invite',
+      'import',
+      'export',
+    ].includes(first)
   ) {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
     return 1
@@ -86,6 +101,10 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
   switch (command) {
     case 'init':
       return (await import('./commands/init.ts')).init(args, io)
+    case 'dev':
+      return (await import('./commands/dev.ts')).dev(args, io)
+    case 'mcp-config':
+      return (await import('./commands/mcp-config.ts')).mcpConfig(args, io)
     case 'migrate':
       return (await import('./commands/migrate.ts')).migrate(args, io)
     case 'deploy':
@@ -138,6 +157,85 @@ function processIo(): Io {
     readStdin,
     wrangler: createWranglerRunner(cwd),
     tempDir: () => mkdtempSync(join(tmpdir(), 'hollware-')),
+    dev: processDevHost(),
+  }
+}
+
+/** The local server as real processes: each in a group of its own, which a signal reaches whole. */
+function processDevHost(): DevHost {
+  const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const
+  return {
+    spawn: (bin, args, cwd, { detached }) => {
+      const child = spawn(bin, [...args], {
+        cwd,
+        detached: true,
+        stdio: detached ? 'ignore' : ['ignore', 'pipe', 'pipe'],
+      })
+      let output = ''
+      const keep = (chunk: Buffer) => {
+        output = `${output}${chunk.toString('utf8')}`.slice(-4000)
+      }
+      child.stdout?.on('data', keep)
+      child.stderr?.on('data', keep)
+      const exited = new Promise<DevExit>((resolve) => {
+        child.on('error', (error) => {
+          output += `\n${error.message}`
+          resolve({ code: 1, signal: null })
+        })
+        child.on('close', (code, signal) => resolve({ code, signal }))
+      })
+      if (child.pid === undefined) {
+        // It could not start (no such file, no permission): the error event says why.
+        throw new CliError(`could not run ${bin}: is it executable?`)
+      }
+      if (detached) child.unref()
+      return {
+        pid: child.pid,
+        exited,
+        tail: () => output.split('\n').slice(-30).join('\n'),
+      }
+    },
+    killGroup: (pid, signal) => {
+      // A group of 0 or 1 is this process's own, or everybody's: never.
+      if (!Number.isInteger(pid) || pid <= 1) return
+      try {
+        process.kill(-pid, signal)
+      } catch {
+        // The group is gone.
+      }
+    },
+    isAlive: (pid) => {
+      try {
+        process.kill(pid, 0)
+        return true
+      } catch (error) {
+        return error instanceof Error && 'code' in error && error.code === 'EPERM'
+      }
+    },
+    onSignal: (callback) => {
+      const handler = () => callback()
+      for (const signal of SIGNALS) process.on(signal, handler)
+      return () => {
+        for (const signal of SIGNALS) process.off(signal, handler)
+      }
+    },
+    healthy: async (url) => {
+      try {
+        const response = await fetch(`${url}/health`, { signal: AbortSignal.timeout(2000) })
+        await response.body?.cancel()
+        return response.status === 200
+      } catch {
+        return false
+      }
+    },
+    sleep: (ms, cancel) =>
+      new Promise((resolve) => {
+        const timer = setTimeout(resolve, ms)
+        cancel?.addEventListener('abort', () => {
+          clearTimeout(timer)
+          resolve()
+        })
+      }),
   }
 }
 

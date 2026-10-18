@@ -197,7 +197,7 @@ async function importFiles({
     }
     out(`Validated ${count(checks.length, 'file')}: none would be refused.`)
 
-    const drafts = await writeDrafts(session, corpus.files, out)
+    const drafts = await writeDrafts(session, corpus.files, out, checks)
     out(
       `Drafts: ${drafts.created} created, ${drafts.updated} updated, ${drafts.unchanged} unchanged${drafts.failed === 0 ? '' : `, ${drafts.failed} failed`}.`,
     )
@@ -401,8 +401,12 @@ async function writeDrafts(
   session: Session,
   files: readonly ContentFile[],
   out: (message: string) => void,
+  checks: readonly Check[] = [],
 ): Promise<Drafts> {
   const drafts: Drafts = { created: 0, updated: 0, unchanged: 0, failed: 0, entries: [] }
+  // An unchanged entry keeps the verdict of when it was written, which a change of the site's
+  // definition since can have made stale: the validation of this run is the current one.
+  const fresh = new Map(checks.map((check) => [check.file, check.verdict]))
   for (const file of files) {
     const label = printable(file.path.replace(/\.md$/, ''))
     try {
@@ -446,7 +450,9 @@ async function writeDrafts(
         const kind = updated.outcome === 'saved' ? 'updated' : 'unchanged'
         drafts[kind] += 1
         drafts.entries.push({ file, summary: entry })
-        out(draftLine(kind, label, entry, updated.verdict))
+        const verdict =
+          kind === 'unchanged' ? (fresh.get(file) ?? updated.verdict) : updated.verdict
+        out(draftLine(kind, label, entry, verdict))
         continue
       }
       throw new ToolFailure(`update_draft ${updated.outcome}${refusalReasons(updated.verdict)}`)

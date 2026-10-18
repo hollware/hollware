@@ -365,6 +365,34 @@ describe('hollware import writes the drafts in phase one, then publishes in phas
     expect(stub.entries.get('blog/es/b')?.version).toBe(1)
   })
 
+  it('shows an unchanged entry with the verdict of this run, not the one kept since it was written', async () => {
+    // The definition of the site changed since: what was an error when written is none now.
+    let required = true
+    const stub = await serve({
+      findings: () =>
+        required
+          ? {
+              errors: [
+                {
+                  contract: 'schema',
+                  severity: 'error',
+                  path: '/frontmatter/kind',
+                  message: 'Missing.',
+                  fix: 'Set it.',
+                },
+              ],
+            }
+          : {},
+    })
+    const dir = temp.make({ 'talks/en/a.md': post('A') })
+    await runImport(dir, stub.url)
+    required = false
+
+    const { out } = await runImport(dir, stub.url)
+
+    expect(out).toContain(`unchanged  talks/en/a  ${id(1)}  v1`)
+  })
+
   it('keeps the bytes of a file: the byte order mark, the line ends, the white space', async () => {
     const stub = await serve()
     const dir = temp.make()

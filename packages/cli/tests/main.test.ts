@@ -110,16 +110,18 @@ describe('hollware --help', () => {
 
   it('lists every command with what it does', async () => {
     const [usage] = (await run(['--help'])).out
-    expect(usage?.split('\n').slice(2, 11)).toEqual([
+    expect(usage?.split('\n').slice(2, 13)).toEqual([
       'Commands:',
-      "  init     Set up a site, its owner and a first token in the project's D1 database",
-      '  migrate  Apply D1 migrations',
-      '  deploy   Deploy to Cloudflare and migrate the remote database',
-      '  doctor   Check the project, its bindings, its database and its owner',
-      '  token    Create, list and revoke personal tokens',
-      '  invite   Invite a person to the admin, as an editor or an author',
-      '  import   Import Markdown files over MCP',
-      '  export   Export entries as Markdown files over MCP',
+      "  init        Set up a site, its owner and a first token in the project's D1 database",
+      "  dev         Start the project's local server and wait until it is ready",
+      '  mcp-config  Print the configuration that connects an MCP client',
+      '  migrate     Apply D1 migrations',
+      '  deploy      Deploy to Cloudflare and migrate the remote database',
+      '  doctor      Check the project, its bindings, its database and its owner',
+      '  token       Create, list and revoke personal tokens',
+      '  invite      Invite a person to the admin, as an editor or an author',
+      '  import      Import Markdown files over MCP',
+      '  export      Export entries as Markdown files over MCP',
     ])
   })
 })

@@ -11,6 +11,7 @@ import { create, type Io, type RunResult } from '../src/scaffold.ts'
 // dependency, a .gitignore), writes into a directory that is not empty, stops running git init,
 // pnpm's allowed build scripts when pnpm installs, the install, the migrations and init in that order and in the project, stops printing init's
 // answer and the `claude mcp add` line, stops handing --preset, --locales, --ip-addresses and --audit-retention-days to init, with the token, or goes on after a step failed. The
+// the `claude mcp add` line stops having the JSON block (.mcp.json, naming HOLLWARE_TOKEN) beside it, or the passkey stops reading as optional for an agent, or --token-file is not handed to init as an absolute path, or an existing token file is not refused before anything is made, or one inside the project is not ignored by git, or --json prints anything but one object. The
 // programs it runs are not ours, so they are the one thing faked; the template is the real one,
 // made from templates/starter.
 
@@ -115,9 +116,22 @@ describe('create-hollware <dir>', () => {
       { command: hollware, args: ['init', '--site', 'blog', '--local'], cwd: project },
     ])
     expect(out).toContain(INIT_ANSWER.trim())
-    expect(out.at(-1)).toContain(
-      `claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer ${TOKEN}"`,
+    // How to start and deploy it; how to connect an agent is init's to say, once.
+    expect(out.at(-1)).toBe(
+      [
+        '',
+        'Start it:',
+        '  cd blog-cms',
+        '  pnpm exec hollware dev',
+        '',
+        'The admin is at http://localhost:5199/admin/. To deploy, log in to Cloudflare and run:',
+        '  pnpm exec wrangler login',
+        '  pnpm run deploy',
+        'The README says the rest.',
+      ].join('\n'),
     )
+    // The token is init's to print, once: nothing here repeats it.
+    expect(out.join('\n').split(TOKEN)).toHaveLength(2)
   })
 
   it('hands --preset, --locales and what the activity log keeps to init, as given', async () => {
@@ -185,5 +199,103 @@ describe('create-hollware <dir>', () => {
       'The install failed (npm install):\nnpm ERR! 404 Not Found: @hollware/server@0.4.0',
     )
     expect(calls.map((call) => call.command)).toEqual(['npm'])
+  })
+})
+
+describe('create-hollware, for an agent', () => {
+  it('hands --token-file to init as an absolute path, and ignores it in git when it is in the project', async () => {
+    const { io, calls, cwd, read, out } = world({
+      'hollware init': { code: 0, stdout: 'Hollware is ready.\n', stderr: '' },
+    })
+
+    await create(['blog-cms', '--token-file', 'blog-cms/owner.token', '--no-git'], io)
+
+    const file = join(cwd, 'blog-cms', 'owner.token')
+    expect(calls.at(-1)?.args).toEqual([
+      'init',
+      '--site',
+      'my-site',
+      '--token-file',
+      file,
+      '--local',
+    ])
+    expect(read('.gitignore')).toMatch(
+      /\n# The token of "hollware init": never commit it\.\n\/owner\.token\n$/,
+    )
+    expect(out.join('\n')).not.toMatch(/hw_pat_/)
+  })
+
+  it('refuses a token file that exists before it makes anything', async () => {
+    const { io, calls, cwd } = world()
+    writeFileSync(join(cwd, 'owner.token'), 'keep\n')
+
+    await expect(create(['blog-cms', '--token-file', 'owner.token'], io)).rejects.toThrow(
+      `${join(cwd, 'owner.token')} exists already, and a token is never written over a file: choose another --token-file.`,
+    )
+
+    expect(calls).toEqual([])
+    expect(existsSync(join(cwd, 'blog-cms'))).toBe(false)
+  })
+
+  it('prints one JSON object with --json: init, the commands and the MCP configuration', async () => {
+    const init = {
+      site: 'my-site',
+      ownerId: 'usr_1',
+      tokenId: 'tok_1',
+      tokenFile: '/x/owner.token',
+      expiresAt: '2027-01-10T12:00:00.000Z',
+      setupUrl: 'http://localhost:5199/setup#invitation=hw_inv_x',
+      mcpUrl: 'http://localhost:5199/mcp',
+      readApiUrl: 'http://localhost:5199/v1',
+    }
+    const { io, calls, out, cwd } = world({
+      'hollware init': { code: 0, stdout: `${JSON.stringify(init)}\n`, stderr: '' },
+    })
+
+    const code = await create(['blog-cms', '--json', '--pm', 'pnpm'], io)
+
+    expect(code).toBe(0)
+    expect(calls.at(-1)?.args).toEqual(['init', '--site', 'my-site', '--local', '--json'])
+    expect(out).toHaveLength(1)
+    expect(JSON.parse(out[0] ?? '')).toEqual({
+      dir: join(cwd, 'blog-cms'),
+      installed: true,
+      ...init,
+      devCommand: 'pnpm exec hollware dev',
+      adminUrl: 'http://localhost:5199/admin/',
+      mcpConfig: {
+        variable: 'HOLLWARE_TOKEN',
+        claudeCode:
+          "claude mcp add --transport http hollware http://localhost:5199/mcp --header 'Authorization: Bearer ${HOLLWARE_TOKEN}'",
+        json: {
+          mcpServers: {
+            hollware: {
+              type: 'http',
+              url: 'http://localhost:5199/mcp',
+              headers: { Authorization: 'Bearer ${HOLLWARE_TOKEN}' },
+            },
+          },
+        },
+      },
+    })
+  })
+
+  it('prints one JSON object with --json and --no-install too', async () => {
+    const { io, out, cwd } = world()
+
+    await create(['blog-cms', '--json', '--no-install', '--no-git'], io)
+
+    expect(out.map((line) => JSON.parse(line))).toEqual([
+      {
+        dir: join(cwd, 'blog-cms'),
+        installed: false,
+        next: [
+          'cd blog-cms',
+          'npm install',
+          'npm exec hollware migrate --local',
+          'npm exec hollware init --site my-site --local',
+        ],
+      },
+    ])
   })
 })

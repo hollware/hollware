@@ -16,7 +16,7 @@ import { chooseSite, WHERE_OPTIONS } from './token.ts'
 
 export const INVITE_USAGE = [
   'Usage: hollware invite (--role <editor | author> | --owner) [--days <n>] [--url <url>]',
-  '                       [--site <key>] [--local | --remote] [--database <name>]',
+  '                       [--site <key>] [--local | --remote] [--database <name>] [--json]',
   '',
   'Invites a person to the admin (ADR-026): prints a link, valid once and for 7 days by default,',
   'where they set up a passkey. An editor reads, writes and publishes; an author reads and writes,',
@@ -33,6 +33,8 @@ export const INVITE_USAGE = [
   '  --local            Use the local database (the default)',
   '  --remote           Use the database in Cloudflare',
   '  --database <name>  The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
+  '  --json             One JSON object on stdout and nothing else: site, role, userId, expiresAt, setupUrl',
+  '                     (null when no URL is known)',
   '  --help             Show this help',
 ].join('\n')
 
@@ -52,6 +54,7 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
       owner: { type: 'boolean' },
       days: { type: 'string' },
       url: { type: 'string' },
+      json: { type: 'boolean' },
     },
   })
   if (values.help === true) {
@@ -97,6 +100,18 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
       now: now.toISOString(),
     }),
   )
+  if (values.json === true) {
+    io.out(
+      JSON.stringify({
+        site,
+        role,
+        userId,
+        expiresAt,
+        setupUrl: url === undefined ? null : setupLink(url, secret),
+      }),
+    )
+    return 0
+  }
   io.out(
     [
       userId === null

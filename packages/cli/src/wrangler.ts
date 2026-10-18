@@ -20,9 +20,14 @@ export type RunWrangler = (args: readonly string[]) => Promise<WranglerResult>
  * `npx`: the CLI runs the version the project pinned.
  */
 export function findWrangler(cwd: string): string | undefined {
+  return findBin(cwd, 'wrangler')
+}
+
+/** The nearest `node_modules/.bin/<name>` from `cwd` upwards, or `undefined`. */
+export function findBin(cwd: string, name: string): string | undefined {
   let directory = cwd
   for (;;) {
-    const candidate = join(directory, 'node_modules', '.bin', 'wrangler')
+    const candidate = join(directory, 'node_modules', '.bin', name)
     if (existsSync(candidate)) return candidate
     const parent = dirname(directory)
     if (parent === directory) return undefined

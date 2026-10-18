@@ -28,6 +28,7 @@ import {
 } from '../entropy.ts'
 import { CliError, UsageError } from '../errors.ts'
 import type { Io } from '../io.ts'
+import { claudeAddLine, mcpJson, setVariableLine } from '../mcp-config.ts'
 import { publicUrlOf, setupLink } from '../public-url.ts'
 import {
   anotherSiteScript,
@@ -37,11 +38,13 @@ import {
   parseOwnerName,
   parseSiteKey,
 } from '../sql.ts'
+import { deliverToken, tokenFileOf, type TokenFile } from '../token-output.ts'
 
 export const INIT_USAGE = [
   'Usage: hollware init --site <key> [--preset <blog | docs | empty>] [--locales <list>]',
   '                     [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
   '                     [--ip-addresses <off | hashed>] [--audit-retention-days <n>]',
+  '                     [--token-file <path> [--force]] [--json]',
   '',
   "Creates a site, its owner and the owner's first personal token in the project's D1 database,",
   'in one step, and prints the token once, with a link to set up the passkey of the admin (valid',
@@ -67,6 +70,12 @@ export const INIT_USAGE = [
   '                       (default: off, nothing of it): an address is personal data',
   '  --audit-retention-days <n>',
   '                       The days each line of the activity log is kept, 30 to 3650 (default: forever)',
+  '  --token-file <path>  Write the token to this file (mode 0600) and print its path instead of the token;',
+  '                       it refuses a file that exists, unless --force',
+  '  --force              Replace the file of --token-file',
+  '  --json               One JSON object on stdout and nothing else: site, ownerId, tokenId, scopes,',
+  '                       token or tokenFile, expiresAt, setupUrl, mcpUrl, readApiUrl (a URL that is',
+  '                       not known is null)',
   '  --help               Show this help',
 ].join('\n')
 
@@ -88,6 +97,9 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       url: { type: 'string' },
       'ip-addresses': { type: 'string' },
       'audit-retention-days': { type: 'string' },
+      'token-file': { type: 'string' },
+      force: { type: 'boolean' },
+      json: { type: 'boolean' },
       help: { type: 'boolean' },
     },
   })
@@ -106,6 +118,8 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
   const url = publicUrlOf(io.cwd, values.url)
+  const tokenFile = tokenFileOf(io, values['token-file'], values.force)
+  const json = values.json === true
 
   const [owners = []] = await query(io.wrangler, database, target, ownerQuery())
   const ofSite = owners.find((owner) => owner['site'] === site)
@@ -124,6 +138,9 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       target,
       definition,
       audit,
+      url,
+      tokenFile,
+      json,
     })
   }
 
@@ -176,6 +193,23 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     rmSync(directory, { recursive: true, force: true })
   }
 
+  const delivered = deliverToken(tokenFile, secret)
+  if (json) {
+    io.out(
+      JSON.stringify({
+        site,
+        ownerId,
+        tokenId,
+        scopes: SCOPES,
+        ...delivered,
+        expiresAt,
+        setupUrl: url === undefined ? null : setupLink(url, setupSecret),
+        mcpUrl: url === undefined ? null : `${url}/mcp`,
+        readApiUrl: url === undefined ? null : `${url}/v1`,
+      }),
+    )
+    return 0
+  }
   io.out(
     [
       `Hollware is ready on ${describeDatabase(target, database)}.`,
@@ -186,18 +220,27 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       `Scopes   ${SCOPES.join(' ')}`,
       `Expires  ${expiresAt} (in ${PERSONAL_TOKEN_TTL_DAYS} days)`,
       '',
-      'Your personal token. It is shown only once: Hollware keeps just its hash.',
-      '',
-      secret,
+      ...tokenLines('Your personal token', delivered),
       '',
       `Set up your passkey for the admin, once, by ${setupExpiresAt}:`,
       `  ${setupLink(url, setupSecret)}`,
       '',
+      PASSKEY_NOTE,
+      '',
       'Next:',
-      '  Save the token in a file only you can read, then import content:',
-      '    hollware import <directory> --url <your Hollware URL> --token-file <file>',
+      ...(tokenFile === undefined
+        ? [
+            '  Save the token in a file only you can read, then import content:',
+            '    hollware import <directory> --url <your Hollware URL> --token-file <file>',
+          ]
+        : [
+            '  Import content:',
+            `    hollware import <directory> --url <your Hollware URL> --token-file ${tokenFile.path}`,
+          ]),
       '  An MCP client sends it as the header "Authorization: Bearer <token>" to <your Hollware URL>/mcp.',
       '  More tokens: hollware token create --label <text>',
+      '',
+      ...connectLines(url, tokenFile),
       ...(definition === null ? [] : ['', activityNote(audit)]),
     ].join('\n'),
   )
@@ -214,6 +257,9 @@ async function addSite(
     target: Target
     definition: unknown
     audit: AuditChoice
+    url: string | undefined
+    tokenFile: TokenFile | undefined
+    json: boolean
   },
 ): Promise<number> {
   const { site, ownerId, database, target, definition } = where
@@ -249,6 +295,24 @@ async function addSite(
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
+  const delivered = deliverToken(where.tokenFile, secret)
+  if (where.json) {
+    const url = where.url
+    io.out(
+      JSON.stringify({
+        site,
+        ownerId,
+        tokenId,
+        scopes: SCOPES,
+        ...delivered,
+        expiresAt,
+        setupUrl: null,
+        mcpUrl: url === undefined ? null : `${url}/mcp`,
+        readApiUrl: url === undefined ? null : `${url}/v1`,
+      }),
+    )
+    return 0
+  }
   io.out(
     [
       `Added the site "${site}" on ${describeDatabase(target, database)}, owned by the owner of the database.`,
@@ -259,15 +323,43 @@ async function addSite(
       `Scopes   ${SCOPES.join(' ')}`,
       `Expires  ${expiresAt} (in ${PERSONAL_TOKEN_TTL_DAYS} days)`,
       '',
-      'A personal token of the new site. It is shown only once: Hollware keeps just its hash.',
-      '',
-      secret,
+      ...tokenLines('A personal token of the new site', delivered),
       '',
       'The owner signs in to the admin as before, with the same passkey, and switches to the site.',
+      '',
+      ...connectLines(where.url, where.tokenFile),
       ...(definition === null ? [] : ['', activityNote(where.audit)]),
     ].join('\n'),
   )
   return 0
+}
+
+/** What a person is told of the passkey: it is for the admin in a browser, and no step of an agent. */
+export const PASSKEY_NOTE =
+  'The link above is for you, in a browser: it sets up the passkey that signs you in to the admin. Your agent can start now with the token alone; set up the passkey whenever you want.'
+
+/** The lines that hand the token over: in the answer, once, or as the path of its file. */
+function tokenLines(what: string, delivered: { token: string } | { tokenFile: string }): string[] {
+  if ('tokenFile' in delivered) {
+    return [
+      `${what} is in ${delivered.tokenFile}, readable by you only. It is shown only once: Hollware keeps just its hash.`,
+    ]
+  }
+  return [`${what}. It is shown only once: Hollware keeps just its hash.`, '', delivered.token]
+}
+
+/** How to connect an agent: the line for Claude Code and the JSON block for the other clients. */
+function connectLines(url: string | undefined, tokenFile: TokenFile | undefined): string[] {
+  return [
+    'Connect an agent. The token goes in the environment variable HOLLWARE_TOKEN, never in the configuration:',
+    `  ${setVariableLine(tokenFile?.path)}`,
+    '  Claude Code:',
+    `    ${claudeAddLine(url)}`,
+    '  Any client that reads .mcp.json (Cursor and VS Code: "hollware mcp-config --client cursor|vscode"):',
+    ...mcpJson('json', url)
+      .split('\n')
+      .map((line) => `    ${line}`),
+  ]
 }
 
 /** A locale tag, as a site's definition takes it: `en`, `es-CL`. */

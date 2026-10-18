@@ -556,6 +556,8 @@ const structureChange = z.object({
   problems: z.array(problem).optional().describe('With invalid: every problem, each with its fix.'),
   impact: impact.optional().describe('With needs_confirmation: what the change would do.'),
   currentVersion: z.number().int().optional().describe('With conflict: the version to read again.'),
+  message: z.string().optional().describe('With conflict: what happened.'),
+  fix: z.string().optional().describe('With conflict: what to do next.'),
 })
 
 const STRUCTURE_OUTCOMES = {

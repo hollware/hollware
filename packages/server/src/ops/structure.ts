@@ -100,6 +100,20 @@ async function currentOf(context: OperationContext) {
   return { version: stored.version, definition: siteDefinitionData.parse(stored.definition) }
 }
 
+/**
+ * A change sent at a version that is not the current one. It says which version is, and that the
+ * change was not applied: whoever changed the structure since (often the caller's own earlier
+ * update_site) made the definition that was read stale.
+ */
+function conflict(sent: number, current: number) {
+  return {
+    outcome: 'conflict' as const,
+    currentVersion: current,
+    message: `The structure is at version ${current}, not ${sent}: it changed since you read it, so nothing was applied.`,
+    fix: `Call get_structure again, apply your change to the definition it returns (version ${current}), and send it with version ${current}. An earlier update_site or set_collection of yours also moves the version.`,
+  }
+}
+
 /** Replaces the definition of the site of the call with `next`, as update_site answers. */
 async function change(
   context: OperationContext,
@@ -111,8 +125,7 @@ async function change(
   const problems = problemsOf(context.site.key, next)
   if (problems.length > 0) return { outcome: 'invalid' as const, problems }
   const current = await currentOf(context)
-  if (current.version !== version)
-    return { outcome: 'conflict' as const, currentVersion: current.version }
+  if (current.version !== version) return conflict(version, current.version)
   if (canonicalJson(current.definition) === canonicalJson(next)) {
     return { outcome: 'unchanged' as const, version }
   }
@@ -141,7 +154,7 @@ async function change(
     event,
   })
   if (written === 'conflict') {
-    return { outcome: 'conflict' as const, currentVersion: (await currentOf(context)).version }
+    return conflict(version, (await currentOf(context)).version)
   }
   context.notify?.([event.id])
   await structure.changed()
