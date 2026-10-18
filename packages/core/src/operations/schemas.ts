@@ -101,6 +101,12 @@ export const entrySummary = z.object({
     .nullable()
     .describe('When the entry went to the trash, or null for one that is not in the trash.'),
   updatedAt: z.string(),
+  translationOutdated: z
+    .boolean()
+    .optional()
+    .describe(
+      "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+    ),
 })
 
 export const publication = z.object({

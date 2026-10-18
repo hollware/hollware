@@ -1,5 +1,6 @@
 import { renderHtml, resolveAssetReferences } from '@hollware/core'
 import { assetUrlOf, forReaders } from './assets.ts'
+import { translationOutdated } from './translations.ts'
 import { entrySummary, publicationView, verdictView } from './answers.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
@@ -19,15 +20,20 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   )
   if (found === null) return { outcome: 'not_found' }
   const { entry, revision } = found
-  const [publication, unpublishAt] = await Promise.all([
+  const [publication, unpublishAt, outdated] = await Promise.all([
     context.store.lastPublication(context.site.key, entry.id),
     context.store.unpublishOf(context.site.key, entry.id),
+    translationOutdated(context, [found]),
   ])
+  const stale = outdated.get(entry.id)
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
   return {
     outcome: 'ok',
     entry: {
-      ...forReaders(context, entrySummary(found)),
+      ...forReaders(context, {
+        ...entrySummary(found),
+        ...(stale === undefined ? {} : { translationOutdated: stale }),
+      }),
       revision: revision.id,
       unpublishAt,
       verdict: verdictView(revision.verdict),

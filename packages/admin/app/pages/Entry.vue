@@ -483,6 +483,13 @@ const tabs = computed(() => [
                 color="warning"
                 variant="outline"
               />
+              <UBadge
+                v-if="entry.translationOutdated === true"
+                :label="m.entry.translationBehind"
+                color="warning"
+                variant="outline"
+                icon="i-lucide-languages"
+              />
               <span v-if="entry.scheduledAt !== null">{{
                 m.entry.publishes(formatDateTime(entry.scheduledAt))
               }}</span>

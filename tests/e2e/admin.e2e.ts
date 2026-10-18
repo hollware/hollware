@@ -215,6 +215,16 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
   await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toBeVisible()
   await expect(owner.getByText(/^1–1 of 1, filtered from \d+$/)).toBeVisible()
+  // The author changed Hola mundo, the source in es, after Hello world was saved.
+  await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('')
+  await owner.getByRole('combobox', { name: 'Status' }).click()
+  await owner.getByRole('option', { name: 'Translations behind their source' }).click()
+  await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toContainText(
+    'behind its source',
+  )
+  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
+  await owner.getByRole('combobox', { name: 'Status' }).click()
+  await owner.getByRole('option', { name: 'Any status' }).click()
 
   // ⌘K waits while a field has the focus, as it should: the button of the sidebar opens it here.
   await owner.getByRole('button', { name: /^Search/ }).click()

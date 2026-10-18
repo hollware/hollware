@@ -90,6 +90,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -428,6 +432,10 @@
                         "translationGroup": {
                           "type": ["string", "null"]
                         },
+                        "translationOutdated": {
+                          "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                          "type": "boolean"
+                        },
                         "updatedAt": {
                           "type": "string"
                         },
@@ -573,6 +581,10 @@
               },
               "translationGroup": {
                 "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
               },
               "updatedAt": {
                 "type": "string"
@@ -1168,6 +1180,10 @@
               },
               "translationGroup": {
                 "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
               },
               "updatedAt": {
                 "type": "string"
@@ -1816,6 +1832,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "unpublishAt": {
                 "description": "When a published entry is to be taken off the site, or null (schedule_unpublish).",
                 "type": ["string", "null"]
@@ -1997,6 +2017,10 @@
                 },
                 "translationGroup": {
                   "type": ["string", "null"]
+                },
+                "translationOutdated": {
+                  "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                  "type": "boolean"
                 },
                 "updatedAt": {
                   "type": "string"
@@ -2628,6 +2652,10 @@
                 "translationGroup": {
                   "type": ["string", "null"]
                 },
+                "translationOutdated": {
+                  "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                  "type": "boolean"
+                },
                 "updatedAt": {
                   "type": "string"
                 },
@@ -2915,6 +2943,10 @@
                 "translationGroup": {
                   "type": ["string", "null"]
                 },
+                "translationOutdated": {
+                  "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                  "type": "boolean"
+                },
                 "updatedAt": {
                   "type": "string"
                 },
@@ -3081,6 +3113,10 @@
                     },
                     "translationGroup": {
                       "type": ["string", "null"]
+                    },
+                    "translationOutdated": {
+                      "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                      "type": "boolean"
                     },
                     "updatedAt": {
                       "type": "string"
@@ -3478,6 +3514,10 @@
               },
               "translationGroup": {
                 "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
               },
               "updatedAt": {
                 "type": "string"
@@ -3886,6 +3926,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -4144,6 +4188,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -4282,6 +4330,10 @@
               },
               "translationGroup": {
                 "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
               },
               "updatedAt": {
                 "type": "string"
@@ -4524,6 +4576,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -4684,6 +4740,10 @@
                     },
                     "translationGroup": {
                       "type": ["string", "null"]
+                    },
+                    "translationOutdated": {
+                      "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                      "type": "boolean"
                     },
                     "updatedAt": {
                       "type": "string"
@@ -5134,6 +5194,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -5271,6 +5335,10 @@
               },
               "translationGroup": {
                 "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
               },
               "updatedAt": {
                 "type": "string"

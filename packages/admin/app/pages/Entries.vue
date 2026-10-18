@@ -23,6 +23,8 @@ type Warning = Output<'validate'>['verdict']['warnings'][number]
 const ALL = 'all'
 /** The status filter that lists the trash instead of a status. */
 const TRASH = 'trash'
+/** The status filter that lists the translations whose source changed after them. */
+const OUTDATED = 'outdated'
 /** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
 const MOST = 2000
 
@@ -68,7 +70,7 @@ async function load() {
         collection: collection.value,
         limit: 100,
         ...(locale.value === ALL ? {} : { locale: locale.value }),
-        ...(status.value === ALL
+        ...(status.value === ALL || status.value === OUTDATED
           ? {}
           : status.value === TRASH
             ? { trashed: true }
@@ -99,7 +101,9 @@ watch([collection, locale, status], async () => {
 })
 
 const rows = computed<Row[]>(() =>
-  entries.value.map((entry) => ({ ...entry, title: titleOf(entry) })),
+  entries.value
+    .filter((entry) => status.value !== OUTDATED || entry.translationOutdated === true)
+    .map((entry) => ({ ...entry, title: titleOf(entry) })),
 )
 
 /** The other locales of each translation group among the loaded entries. */
@@ -264,6 +268,7 @@ const statuses = computed(() => [
   { label: m.value.entries.draft, value: 'draft' },
   { label: m.value.entries.scheduled, value: 'scheduled' },
   { label: m.value.entries.published, value: 'published' },
+  { label: m.value.entries.outdated, value: OUTDATED },
   { label: m.value.entries.trash, value: TRASH },
 ])
 const locales = computed(() => [
@@ -385,6 +390,14 @@ const locales = computed(() => [
           :label="m.entries.changes"
           color="warning"
           variant="outline"
+          class="ml-1"
+        />
+        <UBadge
+          v-if="row.original.translationOutdated === true"
+          :label="m.entries.behind"
+          color="warning"
+          variant="outline"
+          icon="i-lucide-languages"
           class="ml-1"
         />
         <span v-if="row.original.scheduledAt !== null" class="block text-xs text-muted">{{

@@ -205,6 +205,8 @@ describe('a publication that the schema forbids', () => {
       findEntry: async () => VIEW,
       lastPublication: async () => corrupt,
       unpublishOf: async () => null,
+      sourceHeadTimes: async () => new Map(),
+      revisionTimes: async () => new Map(),
     })
 
     await expect(

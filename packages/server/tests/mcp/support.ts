@@ -63,6 +63,8 @@ export const STORE: ContentStore = {
   lastPublication: unused,
   listRevisions: unused,
   findRevision: unused,
+  sourceHeadTimes: unused,
+  revisionTimes: unused,
   scheduleUnpublish: unused,
   cancelUnpublish: unused,
   unpublishOf: unused,

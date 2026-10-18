@@ -16,6 +16,15 @@ import { createPost, newWorld, publicationsOf, publishPost } from './world.ts'
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
+/**
+ * A summary as a listing answers it: a translation (not in es, the default locale of the test site)
+ * says whether its source moved past it, and none of these did.
+ */
+const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
+  summary.locale === 'es' || summary.translationGroup === null
+    ? summary
+    : { ...summary, translationOutdated: false }
+
 describe('describe_site', () => {
   it('describes the site, its collections and the contracts that every collection is checked against', async () => {
     const { agent, tenant } = await newWorld(env.DB, 'describe')
@@ -120,7 +129,11 @@ describe('list_entries', () => {
 
     const page = await world.agent.listEntries({ collection: 'blog' })
 
-    expect(page).toEqual({ outcome: 'ok', entries: [agents, borde, edge], nextCursor: null })
+    expect(page).toEqual({
+      outcome: 'ok',
+      entries: [agents, borde, edge].map(listed),
+      nextCursor: null,
+    })
     expect(page.entries[0]).toEqual({
       id: agents.id,
       collection: 'blog',
@@ -142,6 +155,7 @@ describe('list_entries', () => {
       scheduledAt: null,
       deletedAt: null,
       updatedAt: '2026-10-13T10:20:00.000Z',
+      translationOutdated: false,
     })
   })
 
@@ -155,9 +169,9 @@ describe('list_entries', () => {
       cursor: first.nextCursor ?? '',
     })
 
-    expect(first.entries).toEqual([agents, borde])
+    expect(first.entries).toEqual([agents, borde].map(listed))
     expect(first.nextCursor).toEqual(expect.any(String))
-    expect(second).toEqual({ outcome: 'ok', entries: [edge], nextCursor: null })
+    expect(second).toEqual({ outcome: 'ok', entries: [edge].map(listed), nextCursor: null })
   })
 
   it('filters by locale, by tag and by status', async () => {
@@ -221,6 +235,7 @@ describe('get_entry', () => {
     expect(read.outcome).toBe('ok')
     expect(read.entry).toEqual({
       ...created.entry,
+      translationOutdated: false,
       revision: expect.stringMatching(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/),
       unpublishAt: null,
       verdict: created.verdict,
@@ -377,7 +392,7 @@ describe('get_translations', () => {
       translationGroup: 'edge-caching',
     })
 
-    expect(group).toEqual({ outcome: 'ok', entries: [english, spanish] })
+    expect(group).toEqual({ outcome: 'ok', entries: [english, spanish].map(listed) })
   })
 
   it('answers not_found for a group that has no entries', async () => {

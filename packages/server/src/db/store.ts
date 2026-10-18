@@ -35,6 +35,9 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     listRevisions: (site, entryId, limit, cursor) =>
       history.listRevisions(database, site, entryId, limit, cursor),
     findRevision: (site, id) => history.findRevision(database, site, id),
+    sourceHeadTimes: (site, sourceLocale, pairs) =>
+      history.sourceHeadTimes(database, site, sourceLocale, pairs),
+    revisionTimes: (site, ids) => history.revisionTimes(database, site, ids),
     createEntry: (site, entry) => writes.createEntry(database, clock, site, entry),
     appendRevision: (site, write) => writes.appendRevision(database, clock, site, write),
     publish: (site, write) => writes.publish(database, clock, site, write),

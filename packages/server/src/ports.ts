@@ -299,6 +299,17 @@ export interface ContentStore {
     limit: number,
     cursor: { readonly createdAt: string; readonly id: string } | null,
   ): Promise<readonly HistoryRevision[]>
+  /**
+   * When the head revision of the source of each translation group was written: its entry in
+   * `sourceLocale`. Keyed by collection and group joined with a NUL.
+   */
+  sourceHeadTimes(
+    site: string,
+    sourceLocale: string,
+    pairs: readonly { readonly collection: string; readonly group: string }[],
+  ): Promise<ReadonlyMap<string, { readonly first: string; readonly head: string }>>
+  /** When each revision among `ids` was written. */
+  revisionTimes(site: string, ids: readonly string[]): Promise<ReadonlyMap<string, string>>
   /** One revision of the site by its id, with its Markdown, or `null`. */
   findRevision(
     site: string,

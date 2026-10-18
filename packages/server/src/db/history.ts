@@ -1,9 +1,9 @@
 import type { Verdict } from '@hollware/core'
-import { and, desc, eq, or, lt, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, or, lt, sql } from 'drizzle-orm'
 
 import type { HistoryRevision } from '../ports.ts'
 import type { Db } from './d1.ts'
-import { publications, revisions, users } from './schema.ts'
+import { entries, publications, revisions, users } from './schema.ts'
 
 /**
  * The history of an entry (`list_revisions`, `get_revision`): its revisions, newest first, with
@@ -107,4 +107,58 @@ export async function findRevision(
     .where(and(eq(revisions.siteId, site), eq(revisions.id, id)))
     .limit(1)
   return row === undefined ? null : { ...toHistory(row), markdown: row.markdown }
+}
+
+/**
+ * When the source of each translation group (its entry in `sourceLocale`, out of the trash) was
+ * first written and when its head revision was. Keyed by `collection` and `group` joined with a NUL.
+ */
+export async function sourceHeadTimes(
+  db: Db,
+  site: string,
+  sourceLocale: string,
+  pairs: readonly { readonly collection: string; readonly group: string }[],
+): Promise<ReadonlyMap<string, { readonly first: string; readonly head: string }>> {
+  const times = new Map<string, { readonly first: string; readonly head: string }>()
+  if (pairs.length === 0) return times
+  const wanted = new Set(pairs.map((pair) => `${pair.collection}\0${pair.group}`))
+  const rows = await db
+    .select({
+      collection: entries.collection,
+      group: entries.translationGroup,
+      createdAt: revisions.createdAt,
+      firstAt: sql<string>`(select min(r.created_at) from ${revisions} as r where r.entry_id = ${entries.id} and r.site_id = ${entries.siteId})`,
+    })
+    .from(entries)
+    .innerJoin(
+      revisions,
+      and(eq(revisions.id, entries.headRev), eq(revisions.siteId, entries.siteId)),
+    )
+    .where(
+      and(
+        eq(entries.siteId, site),
+        eq(entries.locale, sourceLocale),
+        isNull(entries.deletedAt),
+        inArray(entries.translationGroup, [...new Set(pairs.map((pair) => pair.group))]),
+      ),
+    )
+  for (const row of rows) {
+    const key = `${row.collection}\0${row.group ?? ''}`
+    if (wanted.has(key)) times.set(key, { first: row.firstAt, head: row.createdAt })
+  }
+  return times
+}
+
+/** When each revision of the site among `ids` was written. */
+export async function revisionTimes(
+  db: Db,
+  site: string,
+  ids: readonly string[],
+): Promise<ReadonlyMap<string, string>> {
+  if (ids.length === 0) return new Map()
+  const rows = await db
+    .select({ id: revisions.id, createdAt: revisions.createdAt })
+    .from(revisions)
+    .where(and(eq(revisions.siteId, site), inArray(revisions.id, [...new Set(ids)])))
+  return new Map(rows.map((row) => [row.id, row.createdAt]))
 }

@@ -60,6 +60,15 @@ async function site(label: string) {
   return { world, live, drafts: { betaEs, gamma } }
 }
 
+/**
+ * A summary as a listing answers it: a translation (not in es, the default locale of the test site)
+ * says whether its source moved past it, and none of these did.
+ */
+const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
+  summary.locale === 'es' || summary.translationGroup === null
+    ? summary
+    : { ...summary, translationOutdated: false }
+
 describe('get_entry in the published view', () => {
   it('finds a published entry, and answers not_found for a draft that the head view finds', async () => {
     const { world } = await site('view-get')
@@ -120,7 +129,7 @@ describe('list_entries in the published view', () => {
 
     // The sorting field of the blog is its date, so the order is not the order of publication.
     expect(page.entries.map((entry) => entry.slug)).toEqual(['beta', 'alfa', 'alpha'])
-    expect(page.entries).toEqual([live.betaEn, live.alphaEs, live.alphaEn])
+    expect(page.entries).toEqual([live.betaEn, live.alphaEs, live.alphaEn].map(listed))
     expect(page.nextCursor).toBeNull()
     expect(asAgent.entries).toHaveLength(5)
   })
@@ -147,9 +156,9 @@ describe('list_entries in the published view', () => {
     })
     const spanish = await world.reader.listEntries({ collection: 'blog', locale: 'es' })
 
-    expect(first.entries).toEqual([live.betaEn, live.alphaEs])
+    expect(first.entries).toEqual([live.betaEn, live.alphaEs].map(listed))
     expect(first.nextCursor).toEqual(expect.any(String))
-    expect(second).toEqual({ outcome: 'ok', entries: [live.alphaEn], nextCursor: null })
+    expect(second).toEqual({ outcome: 'ok', entries: [live.alphaEn].map(listed), nextCursor: null })
     expect(spanish.entries).toEqual([live.alphaEs])
   })
 
@@ -184,8 +193,8 @@ describe('get_translations in the published view', () => {
       translationGroup: 'beta',
     })
 
-    expect(pair).toEqual({ outcome: 'ok', entries: [live.alphaEn, live.alphaEs] })
-    expect(half).toEqual({ outcome: 'ok', entries: [live.betaEn] })
+    expect(pair).toEqual({ outcome: 'ok', entries: [live.alphaEn, live.alphaEs].map(listed) })
+    expect(half).toEqual({ outcome: 'ok', entries: [live.betaEn].map(listed) })
     expect(draft).toEqual({ outcome: 'not_found' })
     expect(asAgent.entries?.map((entry) => entry.locale)).toEqual(['en', 'es'])
   })

@@ -1,6 +1,7 @@
 import { entrySummary } from './answers.ts'
 import { forReaders } from './assets.ts'
 import { requireCollection, requireLocale } from './collections.ts'
+import { translationOutdated } from './translations.ts'
 import type { OperationHandler } from './types.ts'
 
 /** Lists a page of the entries of a collection, in the view of the call. */
@@ -18,9 +19,16 @@ export const listEntries: OperationHandler<'list_entries'> = async (input, conte
     limit: input.limit,
     cursor: input.cursor,
   })
+  const outdated = await translationOutdated(context, page.entries)
   return {
     outcome: 'ok',
-    entries: page.entries.map((entry) => forReaders(context, entrySummary(entry))),
+    entries: page.entries.map((entry) => {
+      const stale = outdated.get(entry.entry.id)
+      return forReaders(context, {
+        ...entrySummary(entry),
+        ...(stale === undefined ? {} : { translationOutdated: stale }),
+      })
+    }),
     nextCursor: page.nextCursor,
   }
 }
