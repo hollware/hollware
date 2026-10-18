@@ -275,6 +275,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       const preview = c.req.query('preview')
       const base = {
         ...(c.req.query('related') === 'true' ? { related: true } : {}),
+        ...(c.req.query('references') === 'true' ? { references: true } : {}),
         ...(preview === undefined ? {} : { preview }),
       }
       return answer(
@@ -412,6 +413,7 @@ export function openApiDocument(): object {
             param('slug', 'path', true),
             param('formats', 'query', false),
             param('related', 'query', false),
+            param('references', 'query', false),
             param('preview', 'query', false),
           ],
           responses: {

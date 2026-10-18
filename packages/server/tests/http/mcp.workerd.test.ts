@@ -113,6 +113,7 @@ describe('what the handler gets from the gateway', () => {
       formats: ['markdown'],
       published: false,
       related: false,
+      references: false,
     })
     expect(context.principal).toEqual({
       kind: 'token',

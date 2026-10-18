@@ -1,6 +1,6 @@
 import * as z from 'zod'
 import { contracts } from './opt-in.ts'
-import { bannedWords, fieldLength, fieldPattern, requiredToPublish } from './rules.ts'
+import { bannedWords, fieldLength, fieldPattern, reference, requiredToPublish } from './rules.ts'
 import type { Contract, Severity } from './types.ts'
 
 /**
@@ -110,6 +110,24 @@ export const CATALOG: readonly CatalogRule[] = [
     'Every link to another entry of the site points to one that exists, and is published when this one is.',
     NO_PARAMS,
     (_params, options) => contracts.internalLinksResolve(options),
+  ),
+  rule(
+    'reference',
+    'A field names entries of another collection by their slug, one or a list: they must exist, and be published to publish this one. get_entry with references reads them.',
+    z.strictObject({
+      field: fieldName,
+      collection: z
+        .string()
+        .regex(/^[a-z][a-z0-9-]{0,62}$/)
+        .describe('The collection of the entries it names.'),
+      locale: z
+        .string()
+        .min(2)
+        .max(35)
+        .optional()
+        .describe('Their locale, when all of them are in one; the locale of this entry otherwise.'),
+    }),
+    (params, options) => reference(params, options),
   ),
   rule(
     'required-to-publish',

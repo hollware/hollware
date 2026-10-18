@@ -379,6 +379,14 @@
           },
           {
             "in": "query",
+            "name": "references",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "preview",
             "required": false,
             "schema": {

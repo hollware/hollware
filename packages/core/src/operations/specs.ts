@@ -171,11 +171,23 @@ export const getEntry = defineOperation({
       .describe(
         'Also return the published entries closest to this one by meaning, in its collection and locale, closest first. Needs the semantic search of the deployment; empty without it.',
       ),
+    references: z
+      .boolean()
+      .default(false)
+      .describe(
+        'Also return the published entries that the fields of a reference rule name (an author, a series, an event), by field, in the order the field names them.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['ok', 'not_found']),
     entry: entry.optional(),
     related: z.array(entrySummary).optional().describe('When related was asked for.'),
+    references: z
+      .record(z.string(), z.array(entrySummary))
+      .optional()
+      .describe(
+        'When references was asked for: for each field of a reference rule, the published entries it names; one that is not published is left out.',
+      ),
   }),
   scopes: ['content:read'],
   effect: 'read',

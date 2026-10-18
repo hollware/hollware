@@ -277,7 +277,12 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         site,
         getEntrySpec.input,
         () => {
-          const { preview, ...rest } = readOptions(options, ['formats', 'related', 'preview'])
+          const { preview, ...rest } = readOptions(options, [
+            'formats',
+            'related',
+            'preview',
+            'references',
+          ])
           read.preview = preview
           return { collection, locale, slug, ...rest }
         },

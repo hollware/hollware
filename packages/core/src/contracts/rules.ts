@@ -212,3 +212,65 @@ export function bannedWords(
     { readsFrontmatter: false },
   )
 }
+
+export interface ReferenceParams {
+  /** The field that holds the slug of the entry it refers to, or a list of slugs. */
+  readonly field: string
+  /** The collection of the entries it refers to. */
+  readonly collection: string
+  /** Their locale, when every entry refers to one locale (authors written once); its own otherwise. */
+  readonly locale?: string
+}
+
+/** The slugs a field holds: one text, or a list of texts; anything else is the schema's to report. */
+export function referencedSlugs(value: unknown): string[] {
+  if (typeof value === 'string') return value === '' ? [] : [value]
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item !== '')
+    : []
+}
+
+/**
+ * A field refers to entries of another collection by their slug: `author: ada` names the entry
+ * `ada` of `authors`. When writing, each must exist; to publish, each must be published, so a page
+ * never shows a reference to nothing. `get_entry` with `references` reads them.
+ */
+export function reference(params: ReferenceParams, options: RuleOptions = {}): Contract<unknown> {
+  const where = params.locale === undefined ? '' : ` in ${params.locale}`
+  return registerBuiltIn(
+    {
+      id: options.id ?? 'reference',
+      severity: options.severity ?? 'error',
+      description: `${quote(params.field)} names entries of ${quote(params.collection)}${where} by their slug; to publish, they must be published.`,
+      rule: { name: 'reference', params: { ...params } },
+      async check(context) {
+        const slugs = referencedSlugs(present(context.frontmatter, params.field))
+        if (slugs.length === 0) return []
+        const locale = params.locale ?? context.locale
+        const found = await context.entries.lookupMany(
+          slugs.map((slug) => ({ collection: params.collection, locale, slug })),
+        )
+        const findings: ContractFinding[] = []
+        slugs.forEach((slug, index) => {
+          const entry = found[index] ?? null
+          const path = `/frontmatter/${params.field}${typeof present(context.frontmatter, params.field) === 'string' ? '' : `/${index}`}`
+          if (entry === null) {
+            findings.push({
+              path,
+              message: `${quote(params.field)} names ${quote(slug)}, and ${quote(params.collection)} has no entry ${quote(slug)}${where === '' ? ` in ${locale}` : where}.`,
+              fix: `Use the slug of an entry of ${quote(params.collection)} (list_entries lists them), or create ${quote(slug)} first.`,
+            })
+          } else if (context.phase === 'publish' && entry.status !== 'published') {
+            findings.push({
+              path,
+              message: `${quote(params.field)} names ${quote(slug)} of ${quote(params.collection)}, which is not published.`,
+              fix: `Publish ${quote(slug)} of ${quote(params.collection)} first, or publish both in one group.`,
+            })
+          }
+        })
+        return findings
+      },
+    },
+    { readsFrontmatter: true },
+  )
+}

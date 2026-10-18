@@ -1,8 +1,14 @@
-import { renderHtml, resolveAssetReferences } from '@hollware/core'
+import { referencedSlugs, renderHtml, resolveAssetReferences } from '@hollware/core'
+import type { EntryView } from '../ports.ts'
 import { assetUrlOf, forReaders } from './assets.ts'
 import { translationOutdated } from './translations.ts'
-import { entrySummary, publicationView, verdictView } from './answers.ts'
-import { requireCollection, requireLocale } from './collections.ts'
+import {
+  entrySummary,
+  publicationView,
+  verdictView,
+  type EntrySummary as EntrySummaryOutput,
+} from './answers.ts'
+import { collectionOfEntry, requireCollection, requireLocale } from './collections.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
 /**
@@ -27,6 +33,7 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   ])
   const stale = outdated.get(entry.id)
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
+  const references = input.references ? await referencedEntries(context, found) : undefined
   return {
     outcome: 'ok',
     entry: {
@@ -51,7 +58,40 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
         : {}),
     },
     ...(related === undefined ? {} : { related }),
+    ...(references === undefined ? {} : { references }),
   }
+}
+
+/**
+ * The published entries that the reference rules of the entry's collection name, by field, in the
+ * order each field names them: what a page shows of an author or a series. One that is missing
+ * or not published is left out; the rule says so when publishing.
+ */
+async function referencedEntries(context: OperationContext, found: EntryView) {
+  const collection = collectionOfEntry(context.site, found.entry)
+  const answer: Record<string, EntrySummaryOutput[]> = {}
+  for (const contract of collection.contracts) {
+    if (contract.rule?.name !== 'reference') continue
+    const params = contract.rule.params
+    const field = params['field']
+    const target = params['collection']
+    if (typeof field !== 'string' || typeof target !== 'string') continue
+    const locale = typeof params['locale'] === 'string' ? params['locale'] : found.entry.locale
+    const named = referencedSlugs(found.revision.frontmatter[field]).slice(0, 50)
+    const views = await Promise.all(
+      named.map((slug) =>
+        context.store.findEntry(
+          context.site.key,
+          { collection: target, locale, slug },
+          'published',
+        ),
+      ),
+    )
+    answer[field] = views.flatMap((view) =>
+      view === null ? [] : [forReaders(context, entrySummary(view))],
+    )
+  }
+  return answer
 }
 
 /**

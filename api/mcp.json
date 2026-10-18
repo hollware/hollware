@@ -1596,6 +1596,11 @@
             "description": "Read the revision that is live instead of the latest one: not_found when the entry is not published.",
             "type": "boolean"
           },
+          "references": {
+            "default": false,
+            "description": "Also return the published entries that the fields of a reference rule name (an author, a series, an event), by field, in the order the field names them.",
+            "type": "boolean"
+          },
           "related": {
             "default": false,
             "description": "Also return the published entries closest to this one by meaning, in its collection and locale, closest first. Needs the semantic search of the deployment; empty without it.",
@@ -1962,6 +1967,100 @@
           "outcome": {
             "enum": ["ok", "not_found"],
             "type": "string"
+          },
+          "references": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "collection": {
+                    "type": "string"
+                  },
+                  "deletedAt": {
+                    "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                    "type": ["string", "null"]
+                  },
+                  "frontmatter": {
+                    "additionalProperties": {},
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "hasUnpublishedChanges": {
+                    "description": "Whether the latest revision differs from the published one.",
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "description": "The id of an entry (ent_…), as the other operations return it.",
+                    "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string"
+                  },
+                  "locale": {
+                    "type": "string"
+                  },
+                  "publishedAt": {
+                    "description": "When the entry was first published, or null.",
+                    "type": ["string", "null"]
+                  },
+                  "scheduledAt": {
+                    "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                    "type": ["string", "null"]
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": ["draft", "scheduled", "published"],
+                    "type": "string"
+                  },
+                  "tags": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "translationGroup": {
+                    "type": ["string", "null"]
+                  },
+                  "translationOutdated": {
+                    "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                    "type": "boolean"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "maximum": 9007199254740991,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "collection",
+                  "locale",
+                  "slug",
+                  "translationGroup",
+                  "status",
+                  "version",
+                  "frontmatter",
+                  "tags",
+                  "hasUnpublishedChanges",
+                  "publishedAt",
+                  "scheduledAt",
+                  "deletedAt",
+                  "updatedAt"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "description": "When references was asked for: for each field of a reference rule, the published entries it names; one that is not published is left out.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           },
           "related": {
             "description": "When related was asked for.",

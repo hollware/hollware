@@ -235,6 +235,7 @@ describe('what a handler gets', () => {
         formats: ['markdown'],
         published: false,
         related: false,
+        references: false,
       },
       { id: ENTRY_ID, version: 1, acknowledgeWarnings: [], group: [] },
     ])

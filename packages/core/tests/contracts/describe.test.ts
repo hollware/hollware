@@ -279,6 +279,7 @@ describe('the module', () => {
       'describeCatalog',
       'describeContract',
       'isBuiltInContract',
+      'referencedSlugs',
       'runContracts',
       'sizeLimitViolation',
       'uniqueSlugViolation',

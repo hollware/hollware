@@ -302,6 +302,7 @@ describe('operation specs', () => {
         formats: ['markdown'],
         published: false,
         related: false,
+        references: false,
       },
     )
     const misspelled = updateDraft.input.safeParse({

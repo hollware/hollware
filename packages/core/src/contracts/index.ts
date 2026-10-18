@@ -19,6 +19,7 @@ export {
   type CustomContractOptions,
 } from './opt-in.ts'
 export { isBuiltInContract } from './registry.ts'
+export { referencedSlugs, type ReferenceParams } from './rules.ts'
 export { runContracts, type RunContractsInput } from './run.ts'
 export { sizeLimitViolation } from './size.ts'
 export type {

@@ -15,6 +15,7 @@ export const CALLS = [
       formats: ['markdown'],
       published: false,
       related: false,
+      references: false,
     },
     output: CANNED.get_entry.ok,
   },

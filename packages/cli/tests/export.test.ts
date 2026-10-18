@@ -184,6 +184,7 @@ describe('hollware export', () => {
         formats: ['markdown'],
         published: false,
         related: false,
+        references: false,
       },
       {
         collection: 'blog',
@@ -192,6 +193,7 @@ describe('hollware export', () => {
         formats: ['markdown'],
         published: false,
         related: false,
+        references: false,
       },
       {
         collection: 'docs',
@@ -200,6 +202,7 @@ describe('hollware export', () => {
         formats: ['markdown'],
         published: false,
         related: false,
+        references: false,
       },
     ])
   })

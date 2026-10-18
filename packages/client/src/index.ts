@@ -70,6 +70,8 @@ export interface HollwareReader {
     options?: {
       readonly formats?: readonly Format[]
       readonly related?: boolean
+      /** Also the published entries the reference rules of the collection name, by field. */
+      readonly references?: boolean
       /**
        * A preview token (`hw_prv_…`, made in the admin, or the `hollware-preview` of a page's
        * URL): the entry it names is read in its latest revision, a draft included, and the answer
@@ -192,12 +194,14 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       options?: {
         readonly formats?: readonly Format[]
         readonly related?: boolean
+        readonly references?: boolean
         readonly preview?: string
       },
     ) =>
       get(`${segment(collection)}/${segment(locale)}/${segment(slug)}`, {
         formats: options?.formats?.join(','),
         related: options?.related === true ? 'true' : undefined,
+        references: options?.references === true ? 'true' : undefined,
         preview: options?.preview,
       }),
     listEntries: (

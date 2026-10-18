@@ -63,6 +63,8 @@ export interface EntryAnswer {
    * the page: answer it `Cache-Control: no-store` (`previewHeaders` does).
    */
   readonly preview: boolean
+  /** With `references`: the published entries each reference field names, in its order. */
+  readonly references?: Readonly<Record<string, PageSummary[]>>
 }
 
 /** The options of `getEntry`. */
@@ -77,6 +79,8 @@ export interface GetEntryOptions {
    * (`cookies()` of Next.js): it wins over `request`, and a value that is no token is ignored.
    */
   readonly preview?: string
+  /** Also the entries its reference fields name (an author, a series): `answer.references`. */
+  readonly references?: boolean
 }
 
 /** What a listing narrows to. */
@@ -225,6 +229,7 @@ export function createHollware(options: HollwareOptions): Hollware {
       const answer = await readerOf(options).getEntry(site, collection, slug, locale, {
         formats: ['document'],
         ...(preview === undefined ? {} : { preview }),
+        ...(getOptions.references === true ? { references: true } : {}),
       })
       if (answer.outcome === 'not_found' || answer.entry === undefined) return undefined
       const { document } = answer.entry
@@ -234,6 +239,16 @@ export function createHollware(options: HollwareOptions): Hollware {
           ...(document === undefined ? {} : { document }),
         },
         preview: preview !== undefined,
+        ...(answer.references === undefined
+          ? {}
+          : {
+              references: Object.fromEntries(
+                Object.entries(answer.references).map(([field, named]) => [
+                  field,
+                  named.map(summaryOf),
+                ]),
+              ),
+            }),
       }
     },
     async listEntries(collection, listOptions = {}) {
