@@ -1,18 +1,15 @@
 # @hollware/admin
 
-The admin of [Hollware](https://github.com/hollware/hollware), an open-source headless CMS
-for the agent era, native to Cloudflare Workers.
+The admin of [Hollware](https://hollware.com), an open-source headless CMS for the agent era: entries
+with their revisions and verdicts, the review queue, images, people and tokens, the structure of
+each site and its activity log. People sign in with passkeys.
 
-> **Status: pre-alpha, not usable yet.** This release only reserves the package name and
-> exports its own name. There is no UI to use yet, and everything will change.
-
-## What it will be
-
-The review and approval UI, shipped prebuilt as a single-page app so that nobody has to
-compile it. It is served as static assets and never becomes part of the Worker bundle.
+It ships prebuilt, as static files that the Worker serves at `/admin/`, and never becomes part of
+the Worker's bundle. A project made with `npm create hollware` already has it: `adminAssets()` in
+`vite.config.ts` points Vite at the built files.
 
 ## Links
 
+- Docs: <https://hollware.com>
 - Repository: <https://github.com/hollware/hollware>
-- Issues: <https://github.com/hollware/hollware/issues>
 - License: MIT

@@ -1,19 +1,28 @@
 # @hollware/server
 
-The Worker of [Hollware](https://github.com/hollware/hollware), an open-source headless CMS
-for the agent era, native to Cloudflare Workers.
+The Worker of [Hollware](https://hollware.com), an open-source headless CMS for the agent era,
+native to Cloudflare Workers: MCP for agents, the read API and Workers RPC for sites, OAuth and
+passkeys for people, and the D1 migrations, in `migrations/`.
 
-> **Status: pre-alpha, not usable yet.** This release only reserves the package name and
-> exports its own name. There is no API to depend on, and everything will change.
+A project made with `npm create hollware` is one file that builds it:
 
-## What it will be
+```ts
+import { createHollware } from '@hollware/server'
 
-The Hollware Worker: the handlers of the operations that `@hollware/core` specifies, served
-over MCP, Workers RPC and HTTP, authentication, and the D1 migrations that shape the
-database. The migrations ship inside the package, in `migrations/`.
+const hollware = createHollware()
+
+export default { fetch: hollware.fetch, scheduled: hollware.scheduled, queue: hollware.queue }
+export class Hollware extends hollware.Hollware {}
+```
+
+A site on the same account reads it over a service binding to the `Hollware` entrypoint; type the
+binding with `HollwareRpc`.
+
+Start with the [Quickstart](https://hollware.com/docs/quickstart/), and see
+[Install](https://hollware.com/docs/install/) and [Upgrade](https://hollware.com/docs/upgrade/).
 
 ## Links
 
+- Docs: <https://hollware.com>
 - Repository: <https://github.com/hollware/hollware>
-- Issues: <https://github.com/hollware/hollware/issues>
 - License: MIT

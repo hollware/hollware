@@ -1,22 +1,25 @@
 # @hollware/core
 
 The contracts, operation specs, schemas and Markdown pipeline of
-[Hollware](https://github.com/hollware/hollware), an open-source headless CMS for the agent era,
-native to Cloudflare Workers.
+[Hollware](https://hollware.com), an open-source headless CMS for the agent era, native to
+Cloudflare Workers.
 
-> **Status: pre-alpha, not usable yet.** This release only reserves the package name and
-> exports its own name. There is no API to depend on, and everything will change.
+It has no Cloudflare dependencies, so it runs anywhere: in the Worker, in a site, in a test.
 
-## What it will be
+- **Operations:** the spec of every MCP tool and operation (`OPERATIONS`): its name, its input and
+  output schemas, its scopes and its effect.
+- **Contracts:** the rules every write is checked against, and the verdict they return.
+- **Markdown:** `processMarkdown` and `renderHtml`, the pipeline Hollware stores and renders with.
+- **Events and caching:** `parseHollwareEvent`, `verifyWebhook` and the cache tags of each event
+  (`entryTag`, `listTag`, `tagsOfChange`). `@hollware/core/webhooks` has the signature alone, with
+  no zod.
 
-The runtime-agnostic heart of Hollware: the definitions of config, collections and
-components, the contracts that validate every write, the specs of every operation (name,
-input and output schemas, scopes and effect) and the Markdown pipeline. It has no Cloudflare
-dependencies, so it runs anywhere, and a client can import the operation types without the
-Worker.
+Most projects never import it directly: `@hollware/server` runs it, and the integrations
+(`@hollware/nuxt`, `@hollware/astro`, `@hollware/react`, `@hollware/vue`) read through
+`@hollware/client`.
 
 ## Links
 
+- Docs: <https://hollware.com>
 - Repository: <https://github.com/hollware/hollware>
-- Issues: <https://github.com/hollware/hollware/issues>
 - License: MIT

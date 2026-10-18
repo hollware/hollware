@@ -3,7 +3,7 @@
 A headless CMS for the agent era, native to Cloudflare.
 
 > [!WARNING]
-> **Pre-alpha.** Hollware is being built in the open, one stage at a time, and its API can still change between releases. Since v0.4 anyone can install it: agents write and publish over MCP with contracts on every write, people review in an admin with passkeys, sites read over a service binding or HTTP, and one deployment serves several sites. The docs are at [hollware.com](https://hollware.com); what is done and what comes next is tracked in [`PLAN.md`](PLAN.md).
+> **1.0 release candidate.** `npm create hollware@rc` installs it. Agents write and publish over MCP with contracts on every write, people review in an admin with passkeys, sites read over a service binding or HTTP, images live in R2, and one deployment serves several sites. From 1.0 the API follows semver ([Versions and stability](https://hollware.com/docs/versions/)). The docs are at [hollware.com](https://hollware.com); what is left before 1.0 is tracked in [`PLAN.md`](PLAN.md).
 
 ## Get started
 
@@ -60,19 +60,19 @@ Each stage ends with an exit criterion that can be verified. The stage-by-stage 
 
 Eleven packages, released together at one version, in the order they arrived.
 
-| Package                                       | What it will be                                                                             | Arrives in |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------- |
-| [`@hollware/core`](packages/core)             | Contracts, operation specs, schemas and the Markdown pipeline. No Cloudflare dependencies.  | v0.1       |
-| [`@hollware/server`](packages/server)         | The Worker: operation handlers, MCP, RPC, HTTP, auth and the D1 migrations.                 | v0.1       |
-| [`hollware`](packages/cli)                    | The CLI: init, migrate, token and import. Export arrives in v0.2.                           | v0.1       |
-| [`@hollware/client`](packages/client)         | The same typed interface over a service binding or over HTTP.                               | v0.2       |
-| [`@hollware/admin`](packages/admin)           | The review and approval UI, prebuilt and served by the Worker.                              | v0.3       |
-| [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                                             | v0.4       |
-| [`@hollware/nuxt`](packages/nuxt)             | Reads Hollware from a Nuxt site, over a service binding or HTTP.                            | v0.4       |
-| [`@hollware/astro`](packages/astro)           | Reads Hollware from an Astro site, as content loaders, over a service binding or HTTP.      | v0.10      |
-| [`@hollware/react`](packages/react)           | Reads Hollware from any React app: server helpers, previews, a component for an entry.      | v0.10      |
-| [`@hollware/vue`](packages/vue)               | Reads Hollware from a Vue 3 app that is not Nuxt: a component, server helpers, composables. | v0.10      |
-| [`@hollware/agents`](packages/agents)         | A reviewer, a translator and a weekly auditor on a Worker; none publishes.                  | v0.6       |
+| Package                                       | What it is                                                                                  | Since |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- | ----- |
+| [`@hollware/core`](packages/core)             | Contracts, operation specs, schemas and the Markdown pipeline. No Cloudflare dependencies.  | v0.1  |
+| [`@hollware/server`](packages/server)         | The Worker: operation handlers, MCP, RPC, HTTP, auth and the D1 migrations.                 | v0.1  |
+| [`hollware`](packages/cli)                    | The CLI: init, dev, deploy, doctor, migrate, tokens, import and export.                     | v0.1  |
+| [`@hollware/client`](packages/client)         | The same typed interface over a service binding or over HTTP.                               | v0.2  |
+| [`@hollware/admin`](packages/admin)           | The review and approval UI, prebuilt and served by the Worker.                              | v0.3  |
+| [`create-hollware`](packages/create-hollware) | `npm create hollware`: scaffolds a new project.                                             | v0.4  |
+| [`@hollware/nuxt`](packages/nuxt)             | Reads Hollware from a Nuxt site, over a service binding or HTTP.                            | v0.4  |
+| [`@hollware/astro`](packages/astro)           | Reads Hollware from an Astro site, as content loaders, over a service binding or HTTP.      | v0.10 |
+| [`@hollware/react`](packages/react)           | Reads Hollware from any React app: server helpers, previews, a component for an entry.      | v0.10 |
+| [`@hollware/vue`](packages/vue)               | Reads Hollware from a Vue 3 app that is not Nuxt: a component, server helpers, composables. | v0.10 |
+| [`@hollware/agents`](packages/agents)         | A reviewer, a translator and a weekly auditor on a Worker; none publishes.                  | v0.6  |
 
 ## Documentation
 

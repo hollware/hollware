@@ -101,7 +101,7 @@ export interface HollwareReader {
 export type ClientOptions =
   /** A service binding to the `Hollware` entrypoint of a Hollware Worker. */
   | { readonly binding: HollwareReader }
-  /** The public URL of a Hollware, and a personal token with `content:read`. */
+  /** The public URL of a Hollware, and a read token (`hw_read_`) or a personal token with `content:read`. */
   | {
       readonly url: string
       readonly token: string
@@ -208,8 +208,8 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
 
 /**
  * A reader of a Hollware: over a service binding, which needs no network and no token, or over
- * HTTP, through the read API at `<url>/v1`. A deployment serves one site, so the `site` argument
- * of the HTTP reader only has to be that site's key.
+ * HTTP, through the read API at `<url>/v1`. A token is of one site: the `site` argument of the
+ * HTTP reader is that site's key.
  */
 export function createClient(options: ClientOptions): HollwareReader {
   if ('binding' in options) return options.binding

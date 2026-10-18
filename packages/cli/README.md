@@ -3,22 +3,23 @@
 The command line of [Hollware](https://github.com/hollware/hollware), an open-source headless
 CMS for the agent era, native to Cloudflare Workers.
 
-> **Status: pre-alpha.** `init`, `migrate`, `deploy`, `doctor`, `token`, `invite`, `import` and
-> `export` work, against a Hollware that is still being built. POSIX shells only: it has not been tried on
-> Windows.
+It comes with every project that `npm create hollware` makes, and works on the project of the
+current directory through its wrangler. POSIX shells only: it has not been tried on Windows.
 
 ## Commands
 
-| Command   | Purpose                                                                          |
-| --------- | -------------------------------------------------------------------------------- |
-| `init`    | Create a site, its owner and a first personal token in the project's D1 database |
-| `migrate` | Apply D1 migrations; `--check` lists the pending ones, `--remote` backs up first |
-| `deploy`  | Deploy to Cloudflare, creating what the project needs, and migrate the database  |
-| `doctor`  | Check the project, its bindings, its database and its owner, with what to fix    |
-| `token`   | Create, list and revoke personal tokens, and read tokens with `--read`           |
-| `invite`  | Invite a person to the admin, as an editor or an author                          |
-| `import`  | Import Markdown over MCP, as drafts; from a Nuxt Content site with `--from`      |
-| `export`  | Export entries over MCP as Markdown files, the layout `import` reads             |
+| Command      | Purpose                                                                          |
+| ------------ | -------------------------------------------------------------------------------- |
+| `init`       | Create a site, its owner and a first personal token in the project's D1 database |
+| `dev`        | Start the local server, in the foreground or with `--detach`, and stop it        |
+| `mcp-config` | Print what connects an MCP client: the `claude mcp add` line, or `.mcp.json`     |
+| `migrate`    | Apply D1 migrations; `--check` lists the pending ones, `--remote` backs up first |
+| `deploy`     | Deploy to Cloudflare, creating what the project needs, and migrate the database  |
+| `doctor`     | Check the project, its bindings, its database and its owner, with what to fix    |
+| `token`      | Create, list and revoke personal tokens, and read tokens with `--read`           |
+| `invite`     | Invite a person to the admin, as an editor or an author                          |
+| `import`     | Import Markdown over MCP, as drafts; from a Nuxt Content site with `--from`      |
+| `export`     | Export entries and their images over MCP, the layout `import` reads              |
 
 Every command answers `--help`. A command that fails prints one message on stderr, with what to
 do, and exits with code 1.
