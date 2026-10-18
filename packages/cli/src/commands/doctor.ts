@@ -142,6 +142,54 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
     ),
   )
 
+  // The cron publishes what was scheduled and sends the events the queue missed (ADR-025).
+  const triggers = isRecord(config['triggers']) ? config['triggers'] : {}
+  const crons = Array.isArray(triggers['crons']) ? triggers['crons'] : []
+  findings.push(
+    crons.length > 0
+      ? pass('cron', `the cron runs ${crons.join(', ')}`)
+      : fail(
+          'cron',
+          'there is no cron trigger, so scheduled entries are never published',
+          'Add "triggers": { "crons": ["* * * * *"] } to wrangler.jsonc, as the starter has it.',
+        ),
+  )
+
+  // The events of a publication: the Worker sends them to its queue and consumes them.
+  const queues = isRecord(config['queues']) ? config['queues'] : {}
+  const producer = records(queues['producers']).find((entry) => entry['binding'] === 'EVENTS')
+  const consumed = records(queues['consumers']).some(
+    (entry) => producer !== undefined && entry['queue'] === producer['queue'],
+  )
+  findings.push(
+    producer !== undefined && consumed
+      ? pass(
+          'events-queue',
+          `the queue "${String(producer['queue'])}" carries the events of publications`,
+        )
+      : fail(
+          'events-queue',
+          producer === undefined
+            ? 'there is no queue producer "EVENTS", so webhooks and IndexNow wait for the cron'
+            : `the queue "${String(producer['queue'])}" has no consumer here, so its events are never delivered`,
+          'Add the producer { "binding": "EVENTS", "queue": "<name>-events" } and its consumer to queues in wrangler.jsonc, as the starter has them.',
+        ),
+  )
+
+  // Sign-in, OAuth's token endpoint and the beacon are limited per address.
+  const limited = records(config['ratelimits']).some(
+    (entry) => entry['name'] === 'HOLLWARE_RATE_LIMIT',
+  )
+  findings.push(
+    limited
+      ? pass('rate-limit', 'the rate limit "HOLLWARE_RATE_LIMIT" guards sign-in and tokens')
+      : fail(
+          'rate-limit',
+          'there is no rate limit "HOLLWARE_RATE_LIMIT", so sign-in and the token endpoint take any number of tries',
+          'Add { "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } } to ratelimits in wrangler.jsonc.',
+        ),
+  )
+
   const assets = isRecord(config['assets']) ? config['assets'] : undefined
   const directory = typeof assets?.['directory'] === 'string' ? assets['directory'] : undefined
   const admin = directory !== undefined && existsSync(join(cwd, directory, 'admin'))

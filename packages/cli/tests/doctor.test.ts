@@ -2,7 +2,8 @@
 // - "passes a project like the starter, migrated and with an owner": a check fails on what the
 //   starter has, or the answer stops saying that everything is in place.
 // - "says each problem of the config with its fix": a missing flag, a public URL that is no URL,
-//   a missing D1 binding, KV binding or admin goes unreported, or comes without its fix.
+//   a missing D1 binding, KV binding, cron, events queue, rate limit or admin goes unreported, or
+//   comes without its fix.
 // - "says what the database lacks": pending migrations or a missing owner go unreported, or the
 //   owner is looked up before the migrations are known to be there.
 import { describe, expect, it } from 'vite-plus/test'
@@ -20,6 +21,12 @@ const STARTER = `{
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
   "images": { "binding": "IMAGES" },
+  "triggers": { "crons": ["* * * * *"] },
+  "queues": {
+    "producers": [{ "binding": "EVENTS", "queue": "hollware-events" }],
+    "consumers": [{ "queue": "hollware-events", "max_retries": 5 }],
+  },
+  "ratelimits": [{ "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
     { "binding": "DB", "database_name": "x", "migrations_dir": "node_modules/@hollware/server/migrations" },
   ],
@@ -51,6 +58,9 @@ describe('hollware doctor', () => {
         'ok    the KV binding "OAUTH_KV" is there',
         'ok    the R2 bucket "MEDIA" keeps the images of the sites',
         'ok    the Images binding "IMAGES" converts each image once, by the media setting of its site',
+        'ok    the cron runs * * * * *',
+        'ok    the queue "hollware-events" carries the events of publications',
+        'ok    the rate limit "HOLLWARE_RATE_LIMIT" guards sign-in and tokens',
         'ok    the admin is built, in the static assets',
         'ok    the local database has every migration',
         'ok    the local database has an owner',
@@ -81,12 +91,36 @@ describe('hollware doctor', () => {
       'FAIL  there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
       '      Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
       'ok    there is no Images binding "IMAGES": images are kept as they come, unconverted (add "images": { "binding": "IMAGES" } to convert them)',
+      'FAIL  there is no cron trigger, so scheduled entries are never published',
+      '      Add "triggers": { "crons": ["* * * * *"] } to wrangler.jsonc, as the starter has it.',
+      'FAIL  there is no queue producer "EVENTS", so webhooks and IndexNow wait for the cron',
+      '      Add the producer { "binding": "EVENTS", "queue": "<name>-events" } and its consumer to queues in wrangler.jsonc, as the starter has them.',
+      'FAIL  there is no rate limit "HOLLWARE_RATE_LIMIT", so sign-in and the token endpoint take any number of tries',
+      '      Add { "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } } to ratelimits in wrangler.jsonc.',
       'FAIL  the static assets do not hold the admin',
       '      Install the dependencies; assets.directory of wrangler.jsonc must be "node_modules/@hollware/admin/dist/client".',
       'ok    the local database has every migration',
       'ok    the local database has an owner',
     ])
-    expect(err).toEqual(['hollware doctor: 6 problems to fix.'])
+    expect(err).toEqual(['hollware doctor: 9 problems to fix.'])
+  })
+
+  it('says when the events queue has a producer but nothing here consumes it', async () => {
+    const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]))
+    const cwd = temp.make({
+      'wrangler.jsonc': STARTER.replace(
+        '"consumers": [{ "queue": "hollware-events", "max_retries": 5 }]',
+        '"consumers": [{ "queue": "another-queue" }]',
+      ),
+      ...INSTALLED,
+    })
+
+    const { code, out } = await run(['doctor'], { cwd, wrangler: wrangler.run })
+
+    expect(code).toBe(1)
+    expect(out[0]?.split('\n')).toContain(
+      'FAIL  the queue "hollware-events" has no consumer here, so its events are never delivered',
+    )
   })
 
   it('says what the database lacks: its migrations first, then its owner', async () => {

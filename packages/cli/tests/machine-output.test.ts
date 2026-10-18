@@ -266,6 +266,25 @@ describe('--json', () => {
         fix: '',
       },
       {
+        name: 'cron',
+        ok: false,
+        message: 'there is no cron trigger, so scheduled entries are never published',
+        fix: 'Add "triggers": { "crons": ["* * * * *"] } to wrangler.jsonc, as the starter has it.',
+      },
+      {
+        name: 'events-queue',
+        ok: false,
+        message: 'there is no queue producer "EVENTS", so webhooks and IndexNow wait for the cron',
+        fix: 'Add the producer { "binding": "EVENTS", "queue": "<name>-events" } and its consumer to queues in wrangler.jsonc, as the starter has them.',
+      },
+      {
+        name: 'rate-limit',
+        ok: false,
+        message:
+          'there is no rate limit "HOLLWARE_RATE_LIMIT", so sign-in and the token endpoint take any number of tries',
+        fix: 'Add { "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } } to ratelimits in wrangler.jsonc.',
+      },
+      {
         name: 'admin-assets',
         ok: false,
         message: 'the static assets do not hold the admin',
@@ -289,6 +308,9 @@ describe('--json', () => {
   "vars": { "HOLLWARE_PUBLIC_URL": "http://localhost:5199" },
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "x-media" }],
+  "triggers": { "crons": ["* * * * *"] },
+  "queues": { "producers": [{ "binding": "EVENTS", "queue": "e" }], "consumers": [{ "queue": "e" }] },
+  "ratelimits": [{ "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [{ "binding": "DB", "database_name": "x", "migrations_dir": "m" }],
 }`,
       'm/0000_init.sql': 'CREATE TABLE t (id TEXT);',
