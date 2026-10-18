@@ -8,7 +8,9 @@ import { createHollware, hollwareBinding, type HollwareReader } from '../src/ind
 // of an entry reach the page, or answers an entry that is not found as anything but `undefined`;
 // or listEntries stops passing the site, the collection and its filters through, or lets a field
 // beyond a summary reach the page; or getTranslations stops answering `{ locale, slug }` pairs;
-// or a reader given as a function is called once, at import time, instead of on each read; or
+// or search stops passing the site, the query and its options, or lets more than a summary of an
+// entry reach the page, or describeSite stops reading the site of the reader; or a reader given
+// as a function is called once, at import time, instead of on each read; or
 // something that is no service binding passes for one.
 
 type Found = NonNullable<Awaited<ReturnType<HollwareReader['getEntry']>>['entry']>
@@ -38,6 +40,17 @@ function entry(slug: string): Found {
   }
 }
 
+type Described = Awaited<ReturnType<HollwareReader['describeSite']>>['site']
+// A site as describe_site answers it, with no collection.
+const SITE: Described = {
+  key: 's',
+  locales: ['en'],
+  defaultLocale: 'en',
+  url: null,
+  styleGuide: null,
+  collections: [],
+}
+
 function fakeReader(missing: readonly string[] = []) {
   const calls: unknown[][] = []
   const reader: HollwareReader = {
@@ -54,17 +67,42 @@ function fakeReader(missing: readonly string[] = []) {
       calls.push(['translations', ...args])
       return { outcome: 'ok', entries: [entry('uno'), { ...entry('one'), locale: 'es' }] }
     },
-    async describeSite() {
-      throw new Error('not read')
+    async describeSite(...args) {
+      calls.push(['describe', ...args])
+      return { outcome: 'ok', site: SITE }
     },
-    async search() {
-      throw new Error('not read')
+    async search(...args) {
+      calls.push(['search', ...args])
+      return {
+        outcome: 'ok',
+        mode: 'fulltext',
+        results: [{ entry: entry('one'), snippet: 'the [edge]', score: 2.5 }],
+      }
     },
   }
   return { reader, calls }
 }
 
 describe('createHollware', () => {
+  it('searches the site, and sends the page no more of each entry than a summary', async () => {
+    const { reader, calls } = fakeReader()
+    const hollware = createHollware({ site: 's', reader })
+
+    const found = await hollware.search('edge', { locale: 'en', limit: 5 })
+    const described = await hollware.describeSite()
+
+    expect(calls).toEqual([
+      ['search', 's', 'edge', { locale: 'en', limit: 5 }],
+      ['describe', 's'],
+    ])
+    expect(found.mode).toBe('fulltext')
+    expect(found.results.map((result) => [result.snippet, result.score])).toEqual([
+      ['the [edge]', 2.5],
+    ])
+    expect(Object.keys(found.results[0]?.entry ?? {})).not.toContain('verdict')
+    expect(described).toBe(SITE)
+  })
+
   it('reads the document of an entry in its locale, and sends the page no more than it shows', async () => {
     const { reader, calls } = fakeReader()
 

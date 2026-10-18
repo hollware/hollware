@@ -101,6 +101,30 @@ export interface Translation {
   readonly slug: string
 }
 
+/** What a search narrows to. */
+export interface SearchOptions {
+  readonly collection?: string
+  readonly locale?: string
+  /** The most results, 50 at the most; Hollware's default when not set. */
+  readonly limit?: number
+  /** `hybrid` when not set; without semantic search in the deployment, the search is full text. */
+  readonly mode?: 'fulltext' | 'semantic' | 'hybrid'
+}
+
+/** What a search finds, best first, and how it searched. */
+export interface SearchPage {
+  readonly mode: 'fulltext' | 'semantic' | 'hybrid'
+  readonly results: {
+    readonly entry: PageSummary
+    /** The words around the match, the words found between [ and ]. */
+    readonly snippet: string
+    readonly score: number
+  }[]
+}
+
+/** What `describeSite` answers: the site's locales, collections and their rules. */
+export type SiteDescription = Awaited<ReturnType<HollwareReader['describeSite']>>['site']
+
 /** The read side of one Hollware site, for any code that turns a `Request` into data. */
 export interface Hollware {
   /**
@@ -120,6 +144,10 @@ export interface Hollware {
   listEntries(collection: string, options?: ListEntriesOptions): Promise<EntryPage>
   /** The published entries of a translation group of a collection, one per locale. */
   getTranslations(collection: string, group: string): Promise<Translation[]>
+  /** The published entries that match a query, best first: full text, by meaning, or both. */
+  search(query: string, options?: SearchOptions): Promise<SearchPage>
+  /** The site: its locales, its collections, their routes and their schemas. */
+  describeSite(): Promise<SiteDescription>
 }
 
 function readerOf(options: ReaderOptions): HollwareReader {
@@ -196,6 +224,20 @@ export function createHollware(options: HollwareOptions): Hollware {
     async getTranslations(collection, group) {
       const answer = await readerOf(options).getTranslations(site, collection, group)
       return (answer.entries ?? []).map((entry) => ({ locale: entry.locale, slug: entry.slug }))
+    },
+    async search(query, searchOptions = {}) {
+      const answer = await readerOf(options).search(site, query, searchOptions)
+      return {
+        mode: answer.mode,
+        results: answer.results.map((result) => ({
+          entry: summaryOf(result.entry),
+          snippet: result.snippet,
+          score: result.score,
+        })),
+      }
+    },
+    async describeSite() {
+      return (await readerOf(options).describeSite(site)).site
     },
   }
 }

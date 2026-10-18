@@ -28,6 +28,9 @@ export {
   type PageEntry,
   type PageSummary,
   type ReaderOptions,
+  type SearchOptions,
+  type SearchPage,
+  type SiteDescription,
   type Translation,
 } from './hollware.ts'
 export {
