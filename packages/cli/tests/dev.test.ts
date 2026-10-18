@@ -16,16 +16,14 @@
 //   starts another server, or a project without vp reaches a global one.
 // - "--json": the ready object stops holding url, pid and detached, or is joined by other output.
 // - "stays on localhost once deployed": with a public URL in wrangler.jsonc, hollware dev waits on
-//   that URL instead of localhost, or leaves the Worker on the public URL (no .dev.vars line).
-// - "withDevPublicUrl": the other lines of .dev.vars are lost, a stale HOLLWARE_PUBLIC_URL stays,
-//   or a project already on localhost gets a file it does not need.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+//   that URL (production) instead of localhost, or writes a file of the project (.dev.vars, which
+//   `wrangler types` would read into the types of the Worker).
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
 import type { DevChild, DevExit, DevHost } from '../src/dev-host.ts'
 import { createIo } from './support/io.ts'
-import { withDevPublicUrl } from '../src/commands/dev.ts'
 import { main } from '../src/index.ts'
 import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 
@@ -138,9 +136,8 @@ function project(withVp = true, publicUrl = 'http://localhost:5199') {
 }
 
 describe('hollware dev', () => {
-  it('stays on localhost once deployed, through .dev.vars', async () => {
+  it('stays on localhost once deployed, and writes nothing', async () => {
     const cwd = project(true, 'https://cms.example.com')
-    writeFileSync(join(cwd, '.dev.vars'), 'MY_SECRET=x\n')
     const machine = fakeHost()
     const { io, out } = createIo({ cwd, dev: machine.host })
 
@@ -151,13 +148,8 @@ describe('hollware dev', () => {
     await running
 
     expect(machine.polled[0]).toMatch(/^http:\/\/localhost:5199/)
-    expect(readFileSync(join(cwd, '.dev.vars'), 'utf8')).toBe(
-      'MY_SECRET=x\nHOLLWARE_PUBLIC_URL=http://localhost:5199\n',
-    )
-    expect(out).toEqual([
-      'Set HOLLWARE_PUBLIC_URL to http://localhost:5199 in .dev.vars, for the local server.',
-      'Hollware is ready at http://localhost:5199',
-    ])
+    expect(existsSync(join(cwd, '.dev.vars'))).toBe(false)
+    expect(out).toEqual(['Hollware is ready at http://localhost:5199'])
   })
 
   it('prints the ready line once /health answers, from the vp of the project', async () => {
@@ -338,20 +330,5 @@ describe('hollware dev --detach and --stop', () => {
       { stopped: false, pid: 4242, url: 'http://localhost:5199' },
     ])
     expect(existsSync(join(cwd, '.wrangler/hollware-dev.json'))).toBe(false)
-  })
-})
-
-describe('withDevPublicUrl', () => {
-  it('sets the one line, keeps the others, and writes nothing a project does not need', () => {
-    const local = 'http://localhost:5199'
-    const deployed = 'https://cms.example.com'
-    expect(withDevPublicUrl(undefined, local, deployed)).toBe(`HOLLWARE_PUBLIC_URL=${local}\n`)
-    expect(withDevPublicUrl('A=1', local, deployed)).toBe(`A=1\nHOLLWARE_PUBLIC_URL=${local}\n`)
-    expect(
-      withDevPublicUrl('A=1\nHOLLWARE_PUBLIC_URL=http://localhost:8787\nB=2\n', local, local),
-    ).toBe(`A=1\nHOLLWARE_PUBLIC_URL=${local}\nB=2\n`)
-    expect(withDevPublicUrl(undefined, local, local)).toBe(undefined)
-    expect(withDevPublicUrl(undefined, local, undefined)).toBe(undefined)
-    expect(withDevPublicUrl('A=1\n', local, local)).toBe('A=1\n')
   })
 })

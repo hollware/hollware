@@ -115,7 +115,8 @@ async function main(): Promise<void> {
       process.stdout.write(await run(pm, ['run', script], project, env))
     }
 
-    // `hollware deploy` writes the public URL into wrangler.jsonc: the project's tests still pass.
+    // `hollware deploy` writes the public URL into wrangler.jsonc: the project's tests still pass,
+    // and its dev server still answers at localhost (vite.config.ts), up to the read token below.
     step('Its tests pass once wrangler.jsonc names a public URL, as after a deploy')
     const config = join(project, 'wrangler.jsonc')
     const local = readFileSync(config, 'utf8')
@@ -128,7 +129,6 @@ async function main(): Promise<void> {
     )
     if (readFileSync(config, 'utf8') === local) fail('wrangler.jsonc has no localhost public URL')
     process.stdout.write(await run(pm, ['run', 'test'], project, env))
-    writeFileSync(config, local)
 
     step('The dev server')
     stopDev = (await startDev(project, env)).stop
@@ -161,6 +161,8 @@ async function main(): Promise<void> {
       body: '{}',
     })
     if (refused.status !== 403) fail(`MCP answered a read token with ${refused.status}`)
+
+    writeFileSync(config, local)
 
     step('hollware doctor')
     process.stdout.write(await run(hollware, ['doctor'], project, env))

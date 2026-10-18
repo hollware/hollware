@@ -1,5 +1,6 @@
 ---
 'hollware': patch
+'create-hollware': patch
 ---
 
-`hollware dev` keeps working after `hollware deploy`: when `wrangler.jsonc` names the public URL, the local server is still `http://localhost:5199`, and `hollware dev` sets `HOLLWARE_PUBLIC_URL` to it in `.dev.vars` (which wrangler reads in development instead of the vars of `wrangler.jsonc`), keeping the rest of that file. It used to wait on the public URL, and the local Worker refused localhost.
+A project keeps working at localhost after `hollware deploy`: the starter's `vite.config.ts` sets `HOLLWARE_PUBLIC_URL` to `http://localhost:5199` in development (`vp dev`), whatever public URL the deploy wrote into `wrangler.jsonc`, and `hollware dev` waits for the server there. `hollware deploy` writes `worker-configuration.d.ts` again whenever it rewrites `wrangler.jsonc`, so `wrangler types --check` keeps passing.

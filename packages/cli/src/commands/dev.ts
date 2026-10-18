@@ -19,8 +19,8 @@ export const DEV_USAGE = [
   `.wrangler/hollware-dev.json, prints the ready line and exits 0. "hollware dev --stop" stops what`,
   'that file names.',
   'Once "hollware deploy" has written the public URL into wrangler.jsonc, the local server still',
-  'answers at localhost: hollware dev sets HOLLWARE_PUBLIC_URL in .dev.vars, which wrangler reads',
-  'in development instead of the vars of wrangler.jsonc, and leaves the rest of that file alone.',
+  'answers at localhost: the vite.config.ts of the project sets HOLLWARE_PUBLIC_URL to it in',
+  'development, and hollware dev waits for it there.',
   '',
   'Options:',
   '  --url <url>          Where the server listens (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc',
@@ -79,14 +79,6 @@ export async function dev(argv: readonly string[], io: Io): Promise<number> {
       : configured !== undefined && isLoopback(configured)
         ? configured
         : DEFAULT_URL
-  // The Worker answers only the Host of HOLLWARE_PUBLIC_URL: locally, that is this URL.
-  const devVars = join(io.cwd, '.dev.vars')
-  const before = existsSync(devVars) ? readFileSync(devVars, 'utf8') : undefined
-  const after = withDevPublicUrl(before, url, configured)
-  if (after !== before && after !== undefined) {
-    writeFileSync(devVars, after)
-    if (!json) io.out(`Set HOLLWARE_PUBLIC_URL to ${url} in .dev.vars, for the local server.`)
-  }
   const bin = findBin(io.cwd, 'vp')
   if (bin === undefined) {
     throw new CliError(
@@ -146,25 +138,6 @@ export async function dev(argv: readonly string[], io: Io): Promise<number> {
 function isLoopback(url: string): boolean {
   const { hostname } = new URL(url)
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
-}
-
-const DEV_PUBLIC_URL = /^HOLLWARE_PUBLIC_URL=.*$/m
-
-/**
- * `.dev.vars` (or `undefined`, for none) with HOLLWARE_PUBLIC_URL set to `url` whenever
- * wrangler.jsonc names another one (`configured`) or the file names one already, and every other
- * line as it was. A project whose wrangler.jsonc says `url`, or names none, keeps no file.
- */
-export function withDevPublicUrl(
-  text: string | undefined,
-  url: string,
-  configured: string | undefined,
-): string | undefined {
-  const line = `HOLLWARE_PUBLIC_URL=${url}`
-  if (text !== undefined && DEV_PUBLIC_URL.test(text)) return text.replace(DEV_PUBLIC_URL, line)
-  if (configured === undefined || url === configured) return text
-  if (text === undefined || text === '') return `${line}\n`
-  return `${text}${text.endsWith('\n') ? '' : '\n'}${line}\n`
 }
 
 async function stop(io: Io, host: DevHost, json: boolean): Promise<number> {

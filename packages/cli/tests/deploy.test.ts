@@ -8,6 +8,9 @@
 // - "serves a domain of its own …": `--url` is ignored or written as given and not as its origin,
 //   the custom domain gets no route (or another host, or a line more than its route), or the Worker
 //   is deployed twice.
+// - "writes the types again …": deploy rewrites wrangler.jsonc and leaves worker-configuration.d.ts
+//   with the old HOLLWARE_PUBLIC_URL (`types:check` fails), or runs `wrangler types` after the
+//   deploy instead of before it, or with no such file.
 // - "leaves routes of its own …": a config with routes gets a second "routes", or no word on the
 //   missing route.
 // - "tells a domain of its own …": `customDomainOf` routes localhost or workers.dev, or misses a
@@ -186,6 +189,30 @@ describe('hollware deploy', () => {
     expect(out[0]).toBe(
       'Serving the Worker at cms.example.com: set HOLLWARE_PUBLIC_URL and its route in wrangler.jsonc.',
     )
+  })
+
+  it('writes the types again when it rewrites wrangler.jsonc, before it deploys', async () => {
+    const wrangler = fakeWrangler(
+      ok('✨ Types written to worker-configuration.d.ts'),
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      ok('✅ No migrations to apply!'),
+      d1([{ id: 'usr_1' }]),
+    )
+    const project = setup(wrangler, 'http://localhost:5199')
+    writeFileSync(join(project.cwd, 'worker-configuration.d.ts'), '// old types\n')
+
+    const { code, out } = await project.run(['deploy', '--url', 'https://cms.example.com'])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls.map((call) => call.args[0])).toEqual([
+      'types',
+      'deploy',
+      'secret',
+      'd1',
+      'd1',
+    ])
+    expect(out[1]).toBe('Wrote worker-configuration.d.ts again, for the new wrangler.jsonc.')
   })
 
   it('leaves routes of its own as they are, and says which route is missing', async () => {

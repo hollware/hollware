@@ -2,8 +2,20 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import { adminAssets } from '@hollware/admin'
 import { defineConfig } from 'vite-plus'
 
-export default defineConfig({
-  plugins: [cloudflare()],
+/** Where `vp dev` serves Hollware: the URL of HOLLWARE_PUBLIC_URL before the first deploy. */
+const LOCAL_URL = 'http://localhost:5199'
+
+export default defineConfig(({ command }) => ({
+  plugins: [
+    cloudflare({
+      // `hollware deploy` writes the public URL into wrangler.jsonc, and the Worker answers only
+      // the Host of HOLLWARE_PUBLIC_URL: in development it is this machine's, whatever is deployed.
+      config:
+        command === 'serve'
+          ? (config) => ({ vars: { ...config.vars, HOLLWARE_PUBLIC_URL: LOCAL_URL } })
+          : undefined,
+    }),
+  ],
   // The admin's built files: served at /admin/ in development, and copied into the build, where
   // the Worker's static assets hold them.
   publicDir: adminAssets(),
@@ -25,4 +37,4 @@ export default defineConfig({
   lint: {
     ignorePatterns: ['dist/**', '.wrangler/**', 'worker-configuration.d.ts'],
   },
-})
+}))

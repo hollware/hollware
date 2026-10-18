@@ -37,6 +37,20 @@ function loginHint(result: { stdout: string; stderr: string }): string {
     : ''
 }
 
+/**
+ * `wrangler types` after deploy rewrote wrangler.jsonc: the types of the Worker hold the value of
+ * HOLLWARE_PUBLIC_URL, and `wrangler types --check` fails on the old one. A project without the
+ * generated file has nothing to keep current.
+ */
+async function regenerateTypes(io: Io): Promise<void> {
+  if (!existsSync(join(io.cwd, 'worker-configuration.d.ts'))) return
+  const typed = await io.wrangler(['types'])
+  if (typed.code !== 0) {
+    throw new CliError(`wrangler could not write the types of the Worker: ${failureReason(typed)}`)
+  }
+  io.out('Wrote worker-configuration.d.ts again, for the new wrangler.jsonc.')
+}
+
 /** The workers.dev URL that `wrangler deploy` prints, or `undefined`. */
 export function workersDevUrlOf(stdout: string): string | undefined {
   // The host ends at workers.dev: `….workers.dev.evil.example` is another host.
@@ -143,6 +157,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
       io.out(
         `Serving the Worker at ${domain}: set HOLLWARE_PUBLIC_URL and its route in wrangler.jsonc.`,
       )
+      await regenerateTypes(io)
     }
     written = known
   }
@@ -158,6 +173,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   if (url !== written) {
     writeFileSync(file, withPublicUrl(readFileSync(file, 'utf8'), url))
     io.out(`Set HOLLWARE_PUBLIC_URL to ${url} in wrangler.jsonc. Deploying again with it ...`)
+    await regenerateTypes(io)
     await wranglerDeploy(io)
   }
 
