@@ -1,3 +1,4 @@
+import { backupKey, backupsIn } from '../backup/run.ts'
 import { isSiteKey, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
@@ -363,6 +364,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           analytics: analyticsReaderOf(c.env),
           structure: structureOf(db, c.env.HOLLWARE_SECRET),
           media: mediaOfEnv(c.env),
+          backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
         },
         // A read token never gets here; the admin's client never calls MCP.
         ...(principal.kind === 'read'
@@ -506,6 +508,37 @@ export function createGateway(options: GatewayOptions): Gateway {
     }
     return new Response(file.body, { headers })
   })
+
+  // A daily backup of the site (backup/run.ts), for an owner: the whole content, so schema:admin.
+  app.get('/v1/backups/:date', (c) =>
+    protectWrites(c, 'v1', async (principal) => {
+      if (missingScopes(principal, ['schema:admin']).length > 0) {
+        return insufficientScope(['schema:admin'], oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1)
+      }
+      const date = c.req.param('date')
+      const object =
+        c.env.MEDIA === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+          ? null
+          : await c.env.MEDIA.get(backupKey(principal.site, date))
+      if (object === null) {
+        return Response.json(
+          {
+            code: 'not_found',
+            message: `The site has no backup of ${date}.`,
+            fix: 'List the backups of the site with list_backups.',
+          },
+          { status: 404, headers: { 'cache-control': 'no-store' } },
+        )
+      }
+      return new Response(object.body, {
+        headers: {
+          'content-type': 'application/json',
+          'content-disposition': `attachment; filename="${principal.site}-${date}.json"`,
+          'cache-control': 'private, no-store',
+        },
+      })
+    }),
+  )
 
   // The file of an image as it was uploaded, for an export (ADR-038): a person's token of the site.
   app.get('/v1/assets/:id/original', (c) =>

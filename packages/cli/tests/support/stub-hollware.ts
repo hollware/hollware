@@ -9,6 +9,7 @@ import {
   validate,
   type Scope,
   getAsset,
+  listBackups,
   listRedirects,
   uploadAsset,
 } from '@hollware/core'
@@ -118,6 +119,8 @@ export interface StubOptions {
    * tool, as a Hollware before 1.0 had not.
    */
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
+  /** The backups list_backups answers; without it the stub has no such tool. */
+  backups?: { date: string; bytes: number }[]
   /** Answers every `upload_asset` with `refused` and this problem, as Hollware refuses a file. */
   refuseUploads?: { message: string; fix: string }
 }
@@ -313,6 +316,19 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         }),
       ),
     )
+
+    const backups = options.backups
+    if (backups !== undefined) {
+      server.registerTool(
+        listBackups.name,
+        {
+          ...describe(listBackups),
+          inputSchema: listBackups.input,
+          outputSchema: listBackups.output,
+        },
+        guarded(listBackups.name, () => reply(listBackups.outcomes, { outcome: 'ok', backups })),
+      )
+    }
 
     const redirects = options.redirects
     if (redirects !== undefined) {

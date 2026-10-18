@@ -1,4 +1,5 @@
 import { getAsset, listAssets, uploadAsset } from './assets.ts'
+import { listBackups } from './backups.ts'
 import { contentStats } from './content-stats.ts'
 import { createDraft } from './create-draft.ts'
 import { describeSite } from './describe-site.ts'
@@ -52,6 +53,7 @@ export const handlers = defineHandlers({
   get_structure: getStructure,
   get_translations: getTranslations,
   list_assets: listAssets,
+  list_backups: listBackups,
   list_entries: listEntries,
   list_redirects: listRedirects,
   schedule_unpublish: scheduleUnpublish,

@@ -485,6 +485,15 @@ test('the owner changes the URL of a published entry, and the site keeps the old
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
 })
 
+test('the owner finds the daily backups of the site in Site, none before the first cron', async () => {
+  await owner.goto('/admin/site')
+  await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()
+  // The playground has its bucket, so list_backups answers ok, with no backup yet.
+  await expect(
+    owner.getByText(/^(No backup yet: the first comes after 03:00 UTC\.|Todavía no hay respaldos)/),
+  ).toBeVisible()
+})
+
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T-44, T-45, T-54)', async () => {
   // The admin is in Spanish since the tests before; the owner has the one passkey of setup. The
   // last test: signing out ends the session the tests before signed in with.

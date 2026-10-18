@@ -29,6 +29,7 @@ const COMMANDS = [
   { name: 'invite', summary: 'Invite a person to the admin, as an editor or an author' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
   { name: 'export', summary: 'Export entries as Markdown files over MCP' },
+  { name: 'backup', summary: 'List the daily backups of a site, and write one as files' },
 ]
 
 const NAME_WIDTH = Math.max(...COMMANDS.map((command) => command.name.length))
@@ -78,6 +79,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       'invite',
       'import',
       'export',
+      'backup',
     ].includes(first)
   ) {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
@@ -117,6 +119,8 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/invite.ts')).invite(args, io)
     case 'export':
       return (await import('./commands/export.ts')).exportContent(args, io)
+    case 'backup':
+      return (await import('./commands/backup.ts')).backup(args, io)
     default:
       return (await import('./commands/import.ts')).importContent(args, io)
   }

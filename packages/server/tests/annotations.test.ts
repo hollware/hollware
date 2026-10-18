@@ -62,6 +62,7 @@ describe('MCP hints', () => {
       get_structure: 'read-only',
       get_translations: 'read-only',
       list_assets: 'read-only',
+      list_backups: 'read-only',
       list_entries: 'read-only',
       list_redirects: 'read-only',
       list_reviews: 'read-only',

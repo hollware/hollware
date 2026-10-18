@@ -61,6 +61,7 @@ describe('the MCP endpoint in workerd', () => {
         'get_structure',
         'get_translations',
         'list_assets',
+        'list_backups',
         'list_entries',
         'list_redirects',
         'list_reviews',

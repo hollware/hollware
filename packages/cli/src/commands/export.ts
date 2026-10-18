@@ -126,7 +126,7 @@ export async function exportContent(argv: readonly string[], io: Io): Promise<nu
 }
 
 /** The directory must be empty or not exist, so that the export overwrites nothing. */
-function checkTarget(root: string, directory: string): void {
+export function checkTarget(root: string, directory: string): void {
   let names: string[]
   try {
     names = readdirSync(root)

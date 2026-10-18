@@ -24,6 +24,7 @@ export const NAME = /^[a-z][a-z0-9-]{0,62}$/
 export const RESERVED_COLLECTION_NAMES: readonly string[] = [
   'admin',
   'assets',
+  'backups',
   'ops',
   'redirects',
   'search',

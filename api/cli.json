@@ -1,5 +1,6 @@
 {
   "commands": [
+    "backup",
     "deploy",
     "dev",
     "doctor",
@@ -12,6 +13,22 @@
     "token"
   ],
   "flags": {
+    "backup": [
+      {
+        "help": {
+          "type": "boolean"
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "token-file": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    ],
     "deploy": [
       {
         "help": {

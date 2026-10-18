@@ -83,6 +83,13 @@ export function createApi(deps: ApiDeps) {
       return sendFor(`/v1/admin/${path}`, { method: 'GET' }, (response) => response.blob())
     },
 
+    /** A daily backup of the site (`GET /v1/backups/<date>`), with the token: an owner's. */
+    async backup(date: string): Promise<Blob> {
+      return sendFor(`/v1/backups/${encodeURIComponent(date)}`, { method: 'GET' }, (response) =>
+        response.blob(),
+      )
+    },
+
     /** One of the admin's own routes, `/v1/admin/…`: tokens and invitations. */
     async admin<Answer>(path: string, body?: unknown): Promise<Answer> {
       return (await send(

@@ -55,6 +55,7 @@ const TOOLS = [
   { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_assets', title: 'List the images of the site', annotations: READ },
+  { name: 'list_backups', title: 'List the backups of the site', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
   { name: 'list_redirects', title: 'List the redirects of the site', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
@@ -94,6 +95,7 @@ const OUTCOMES: Record<string, string[]> = {
   make_webhook_secret: ['made', 'not_found', 'unavailable'],
   upload_asset: ['created', 'exists', 'refused', 'unavailable'],
   list_assets: ['ok'],
+  list_backups: ['ok', 'unavailable'],
   get_asset: ['ok', 'not_found'],
   list_revisions: ['ok', 'not_found'],
   move_entry: ['moved', 'unchanged', 'taken', 'conflict', 'not_found'],
@@ -253,9 +255,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(68)
+    expect(converters).toHaveLength(70)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 68 }, () => 1),
+      Array.from({ length: 70 }, () => 1),
     )
   })
 })
@@ -279,6 +281,7 @@ describe('the tool table', () => {
       'get_structure',
       'get_translations',
       'list_assets',
+      'list_backups',
       'list_entries',
       'list_redirects',
       'list_reviews',

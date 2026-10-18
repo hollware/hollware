@@ -2946,6 +2946,49 @@
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "list_backups",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "backups": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bytes": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "date": {
+                  "description": "YYYY-MM-DD, in UTC.",
+                  "type": "string"
+                }
+              },
+              "required": ["date", "bytes"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outcome": {
+            "enum": ["ok", "unavailable"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "List the backups of the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
         "properties": {
           "collection": {
             "description": "A collection of the site, as describe_site lists it.",

@@ -472,6 +472,10 @@ export const CANNED: Canned = {
   },
   list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
   get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
+  list_backups: {
+    ok: { outcome: 'ok', backups: [{ date: '2026-10-18', bytes: 2048 }] },
+    unavailable: { outcome: 'unavailable' },
+  },
   move_entry: {
     moved: { outcome: 'moved', entry: { ...SUMMARY, slug: 'hello-again', version: 2 } },
     unchanged: { outcome: 'unchanged', entry: SUMMARY },
@@ -579,6 +583,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     list_revisions: { id: ENTRY_ID },
     schedule_unpublish: { id: ENTRY_ID, unpublishAt: '2026-11-01T00:00:00.000Z' },
     move_entry: { id: ENTRY_ID, version: 1, slug: 'hello-again' },
+    list_backups: {},
     list_redirects: {},
     get_revision: { id: REVISION_ID },
     restore_revision: { id: ENTRY_ID, version: 1, revision: REVISION_ID },
@@ -733,6 +738,11 @@ export function fakeHandlers(
     get_asset: record(
       'get_asset',
       overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
+    ),
+    list_backups: record(
+      'list_backups',
+      overrides.list_backups ??
+        (async () => pick(CANNED.list_backups, outcomes.list_backups ?? 'ok')),
     ),
     move_entry: record(
       'move_entry',

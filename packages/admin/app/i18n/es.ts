@@ -492,6 +492,15 @@ export const es: Messages = {
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
     webhooks: 'Webhooks',
+    backupsTitle: 'Respaldos',
+    backupsHelp:
+      'Una copia del contenido de este sitio cada día, después de las 03:00 UTC, guardada 30 días en tu bucket de R2: la definición del sitio y el Markdown de cada entrada. "hollware backup get" escribe uno como archivos que "hollware import" vuelve a cargar.',
+    noBackups: 'Todavía no hay respaldos: el primero llega después de las 03:00 UTC.',
+    backupsUnavailable: 'Los respaldos necesitan el bucket de R2 MEDIA del despliegue.',
+    download: 'Descargar',
+    downloadOne: (date: string) => `Descargar el respaldo del ${date}`,
+    kilobytes: (size: string) => `${size} KB`,
+    notDownloaded: 'No se descargó',
     redirectsTitle: 'Redirecciones',
     redirectsHelp:
       'Las rutas anteriores de las entradas cuyo slug cambió, y adónde va cada una ahora. Tu sitio responde la ruta anterior con un 301 (list_redirects, o redirects.json de una exportación).',

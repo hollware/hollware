@@ -3,6 +3,7 @@ import type * as z from 'zod'
 import type { Principal } from '../auth/types.ts'
 import type {
   AnalyticsReader,
+  Backups,
   Clock,
   ContentStore,
   Media,
@@ -46,6 +47,8 @@ export interface OperationContext {
    * wrote.
    */
   readonly reader?: boolean
+  /** Where the daily backups of the site are; absent or `null` when there is no bucket for them. */
+  readonly backups?: Backups | null
 }
 
 /** The handler of one operation: its parsed input in, its output out. */

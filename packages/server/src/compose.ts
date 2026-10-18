@@ -17,6 +17,7 @@ import { createAuditLog, dropExpiredLines, type AuditActor } from './audit/log.t
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
+import { backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
 import { runDueSchedules, runDueUnpublishes } from './schedule/run.ts'
@@ -156,6 +157,11 @@ export function createHollwareWith(
         await runDueUnpublishes(due)
         // The lines of the activity log past the retention the owner chose (ADR-037).
         await dropExpiredLines(env.DB, site, clock.now())
+        // The backup of the day, once its hour has come (backup/run.ts), in the bucket of images.
+        if (env.MEDIA !== undefined) {
+          const backup = await backUpSite(env.DB, env.MEDIA, site.key, clock.now())
+          if (backup === 'made') writeLog({ kind: 'backup', site: site.key, outcome: backup })
+        }
         // The revisions an older Comark or pipeline parsed, a batch each minute (ADR-021).
         await reparseRevisions(env.DB, site, clock.now().toISOString(), writeLog)
         // Then the outbox, which holds the events of what was just published, too.

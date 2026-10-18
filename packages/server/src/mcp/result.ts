@@ -60,6 +60,7 @@ const OUTPUT_TOO_LARGE_FIX = {
   get_asset: 'Nothing to ask for less of: the answer is one asset. Try again.',
   schedule_unpublish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
+  list_backups: 'Nothing to ask for less of: the answer is a list of dates. Try again.',
   move_entry:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   list_redirects: 'Ask for less: pass a smaller limit, and the nextCursor of a page for the next.',

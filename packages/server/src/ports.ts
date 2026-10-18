@@ -237,6 +237,12 @@ export interface StoredUnpublish {
   readonly actor: Actor
 }
 
+/** The daily backups of the sites, where they are kept (R2: `backup/run.ts`). */
+export interface Backups {
+  /** The backups of a site, newest first: the date of each (YYYY-MM-DD) and its size. */
+  list(site: string): Promise<readonly { readonly date: string; readonly bytes: number }[]>
+}
+
 /** One entry of a publication: what `publish` and `publishGroup` write for it. */
 export interface PublishWrite {
   readonly entryId: string

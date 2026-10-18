@@ -28,6 +28,7 @@ const handlers: Handlers = {
   get_asset: notYet,
   list_revisions: notYet,
   move_entry: notYet,
+  list_backups: notYet,
   list_redirects: notYet,
   schedule_unpublish: notYet,
   get_revision: notYet,

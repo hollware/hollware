@@ -11,6 +11,7 @@ export {
   getRevision,
   getTranslations,
   listAssets,
+  listBackups,
   listEntries,
   listRedirects,
   listReviews,

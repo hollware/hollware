@@ -4,7 +4,7 @@ import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
 import { ApiError, type Output } from '../lib/api.ts'
-import { formatDateTime, useMessages } from '../i18n/index.ts'
+import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { sitePreset, type Preset } from '@hollware/core'
 import { api, auth } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
@@ -98,14 +98,35 @@ function describe(error: unknown): string {
 
 type Redirect = Output<'list_redirects'>['redirects'][number]
 const redirectList = ref<Redirect[]>([])
+type BackupList = Output<'list_backups'>
+const backupList = ref<BackupList | null>(null)
+
+/** A backup, fetched with the token and saved as a file. */
+async function downloadBackup(date: string) {
+  try {
+    const blob = await api.backup(date)
+    const href = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = href
+    link.download = `${structure.value?.site ?? 'site'}-${date}.json`
+    document.body.append(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(href)
+  } catch (error) {
+    toast.add({ title: m.value.site.notDownloaded, description: describe(error), color: 'error' })
+  }
+}
 
 async function load() {
-  const [read, who, moved] = await Promise.all([
+  const [read, who, moved, backups] = await Promise.all([
     api.call('get_structure', {}),
     api.admin<Me>('me'),
     api.call('list_redirects', { limit: 500 }),
+    api.call('list_backups', {}),
   ])
   redirectList.value = moved.redirects
+  backupList.value = backups
   structure.value = read
   me.value = who
   locales.value = [...read.definition.locales]
@@ -388,6 +409,37 @@ const PRESETS = computed(() => [
             :loading="change.busy.value"
           />
         </form>
+      </section>
+
+      <section aria-labelledby="backups" class="max-w-2xl space-y-4">
+        <h2 id="backups" class="font-semibold">{{ m.site.backupsTitle }}</h2>
+        <p class="text-sm text-muted">{{ m.site.backupsHelp }}</p>
+        <p v-if="backupList?.outcome === 'unavailable'" class="text-sm text-muted">
+          {{ m.site.backupsUnavailable }}
+        </p>
+        <p v-else-if="(backupList?.backups ?? []).length === 0" class="text-sm text-muted">
+          {{ m.site.noBackups }}
+        </p>
+        <ul v-else class="divide-y divide-default rounded-lg border border-default text-sm">
+          <li
+            v-for="backup in backupList?.backups ?? []"
+            :key="backup.date"
+            class="flex items-center justify-between gap-2 px-3 py-2"
+          >
+            <span class="font-mono tabular-nums">{{ backup.date }}</span>
+            <span class="text-muted tabular-nums">{{
+              m.site.kilobytes(formatNumber(Math.ceil(backup.bytes / 1024)))
+            }}</span>
+            <UButton
+              :label="m.site.download"
+              :aria-label="m.site.downloadOne(backup.date)"
+              icon="i-lucide-download"
+              size="xs"
+              variant="ghost"
+              @click="downloadBackup(backup.date)"
+            />
+          </li>
+        </ul>
       </section>
 
       <section aria-labelledby="redirects" class="max-w-2xl space-y-4">

@@ -474,6 +474,15 @@ export const en = {
       `Enter a whole number of days from ${min} to ${max}, or keep the log forever.`,
     saveActivity: 'Save the activity log settings',
     webhooks: 'Webhooks',
+    backupsTitle: 'Backups',
+    backupsHelp:
+      'A copy of the content of this site each day, after 03:00 UTC, kept 30 days in your R2 bucket: the definition of the site and the Markdown of every entry. "hollware backup get" writes one as files that "hollware import" takes back.',
+    noBackups: 'No backup yet: the first comes after 03:00 UTC.',
+    backupsUnavailable: 'Backups need the R2 bucket MEDIA of the deployment.',
+    download: 'Download',
+    downloadOne: (date: string) => `Download the backup of ${date}`,
+    kilobytes: (size: string) => `${size} KB`,
+    notDownloaded: 'Not downloaded',
     redirectsTitle: 'Redirects',
     redirectsHelp:
       'The old paths of entries whose slug changed, and where each goes now. Your site answers the old path with a 301 (list_redirects, or redirects.json of an export).',
