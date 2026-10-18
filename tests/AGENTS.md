@@ -1,16 +1,16 @@
 # Tests
 
-What lives in `tests/`: the guards of what this repository claims about itself, the tests of its CI scripts, and the fixtures that the tests of every package share. The tests of a package or an app sit next to their code.
+What lives in `tests/`: the guards of what this repository claims about itself, the tests of its CI scripts, and the fixtures every package's tests share. A package's tests sit next to its code.
 
 - `tests/guards/` holds the guards. A guard is a pure function, `check...(input): Violation[]`, that gets the facts of the repository as arguments and holds no exception list of its own.
-- `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each test runs its guard on this repository, where it finds no violation, and in a `describe('self-test: ...')` block on bad fixtures, where it asserts the exact violation.
-- `tests/support/` holds what the guards stand on: the file list of the repository, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
+- `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each runs its guard on this repository, which has no violation, and in a `describe('self-test: ...')` block on bad fixtures, asserting the exact violation.
+- `tests/support/` holds what guards stand on: the repository's file list, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders. `tests/meta/scanners.test.ts` tests the readers.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
-- `tests/acceptance/` holds the acceptance suite of each stage (`vp run test:acceptance`), named after the criteria of `PLAN.md` it checks. It runs the built playground and example site in process (`tests/acceptance/v0.1/support/harness.ts`), and a user's project under `wrangler dev` with the real CLI (`tests/acceptance/v0.1/support/project.ts`).
-- `tests/conformance/` runs the MCP conformance suite against the Worker of `tests/conformance/worker` (`vp run test:conformance`, ADR-022): its runner, its token proxy, its probes, its baselines and its must-pass profile.
+- `tests/acceptance/` holds each stage's acceptance suite (`vp run test:acceptance`), named after the criteria of `PLAN.md`. It runs the built playground and example site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` with the CLI (`tests/acceptance/v0.1/support/project.ts`).
+- `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker` (`vp run test:conformance`, ADR-022): runner, token proxy, probes, baselines and must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
-Run the guards with `pnpm exec vp test --project repo`. Prove that a guard can fail with `node scripts/break-line.ts`, and read which test failed: one that fails for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
+Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`, and read which test failed: a failure for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
 
 ## Guards
 
@@ -42,6 +42,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
 - `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` and `release`. Each job is gated to this repository and its branch (`main` versions; `release` promotes, packs, publishes, finalizes) and chained by `needs`, and `publish` is isolated. One run at a time per ref, no cancel, no job-level group. The steps that run `promotion-check.sh` and `finalize-release.sh` pass exactly the env their script reads and check out the full history. Boolean `finalize_only` skips the promotion check, pack and publish, and runs finalize for `RELEASE_SHA` or a `release_sha` input. `ci.yml` runs on `release` without the changeset gate and with `fetch-depth: 0`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
+- `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
 - `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.

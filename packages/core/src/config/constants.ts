@@ -16,6 +16,19 @@ export const MAX_MARKDOWN_BYTES_CEILING = 786_432
  */
 export const NAME = /^[a-z][a-z0-9-]{0,62}$/
 
+/**
+ * The names no collection may take: the read API serves `/v1/<collection>`, and these segments
+ * of `/v1/` are its other routes, which a collection of that name could never be read past
+ * (`tests/conventions/reserved-collections.test.ts` keeps the list and the routes together).
+ */
+export const RESERVED_COLLECTION_NAMES: readonly string[] = [
+  'admin',
+  'assets',
+  'ops',
+  'search',
+  'site',
+]
+
 /** A language tag: a language, then an optional script and region: `es`, `pt-BR`, `zh-Hant-TW`. */
 export const LOCALE_TAG = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$/
 

@@ -7,6 +7,7 @@ import {
   MAX_MARKDOWN_BYTES_CEILING,
   NAME,
   nameFix,
+  RESERVED_COLLECTION_NAMES,
 } from './constants.ts'
 import {
   describeShape,
@@ -536,6 +537,12 @@ export function readCollection(
 ): ResolvedCollection | null {
   if (!NAME.test(name)) {
     problems.add(path, `${quote(name)} is not a valid collection name`, nameFix('blog'))
+  } else if (RESERVED_COLLECTION_NAMES.includes(name)) {
+    problems.add(
+      path,
+      `${quote(name)} is a route of the read API (/v1/${name}), so no collection may take it`,
+      `Name the collection otherwise, such as "${name}-pages".`,
+    )
   }
   if (!isRecord(raw)) {
     problems.add(

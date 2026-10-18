@@ -365,6 +365,17 @@ const cases: readonly Case[] = [
     ],
   },
   {
+    name: 'a collection named as a route of the read API',
+    config: configWith({ collections: { search: collectionWith() } }),
+    problems: [
+      {
+        path: 'sites.demo.collections.search',
+        message: '"search" is a route of the read API (/v1/search), so no collection may take it',
+        fix: 'Name the collection otherwise, such as "search-pages".',
+      },
+    ],
+  },
+  {
     name: 'a collection name with a space',
     config: configWith({ collections: { 'my blog': collectionWith() } }),
     problems: [
