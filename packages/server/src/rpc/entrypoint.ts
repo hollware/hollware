@@ -5,9 +5,9 @@ import { createRpc, type RpcDeps } from './methods.ts'
 /**
  * The class a site reaches over a service binding: the user's Worker exports it as
  * `export class Hollware extends hollware.Hollware {}`. It is made here, closed over what the
- * four methods stand on, because that is known only once the config is resolved.
+ * five methods stand on, because that is known only once the config is resolved.
  *
- * It has the four methods of `HollwareRpc` and nothing else, and none of them writes. That is the
+ * It has the five methods of `HollwareRpc` and nothing else, and none of them writes. That is the
  * security surface of the binding: a Worker with a binding can call whatever is on this
  * prototype, so a helper method added here would be public. Anything else lives in `methods.ts`,
  * where `createRpc` does the work and runs in a test without a `WorkerEntrypoint`.

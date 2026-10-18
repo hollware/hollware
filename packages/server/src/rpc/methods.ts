@@ -31,7 +31,7 @@ export interface RpcLogEntry {
   readonly detail: string
 }
 
-/** What the four methods stand on, built once for the isolate. */
+/** What the five methods stand on, built once for the isolate. */
 export interface RpcDeps {
   /** The sites this deployment serves, by key; a call names one of them. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
@@ -100,8 +100,10 @@ async function checkPreview(
   })
   if (checked.ok) return checked.entryId
   if (checked.reason === 'no_secret') {
+    // invalid_preview, as every refused preview: a site drops its preview cookie on it and shows
+    // the published page, where any other code would be an error of the page.
     throw new HollwareError(
-      'invalid_input',
+      'invalid_preview',
       'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',
       'Set the Worker secret HOLLWARE_SECRET (`hollware deploy` makes one), then ask for a new preview link.',
     )
@@ -255,7 +257,7 @@ async function run<Schema extends z.ZodType, Output>(
 /**
  * The read-only RPC surface (`HollwareRpc`) over the bindings of one invocation. It is a function
  * and not the entrypoint so that it runs in any test; `entrypoint.ts` is the class that calls it.
- * It has the four methods and nothing that writes, and none of them reaches a handler other than
+ * It has the five methods and nothing that writes, and none of them reaches a handler other than
  * the one that reads.
  */
 export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {

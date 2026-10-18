@@ -47,7 +47,7 @@ export type Format = 'markdown' | 'document' | 'html'
 export type SearchMode = 'fulltext' | 'semantic' | 'hybrid'
 
 /**
- * What a site reads from Hollware: the published content, through the four read methods. A
+ * What a site reads from Hollware: the published content, through the five read methods. A
  * service binding to a Hollware Worker already has this shape; `createClient` gives the same over
  * HTTP, so a site can move from one transport to the other without changing a call.
  */
@@ -63,7 +63,7 @@ export interface HollwareReader {
       /**
        * A preview token (`hw_prv_…`, made in the admin, or the `hollware-preview` of a page's
        * URL): the entry it names is read in its latest revision, a draft included, and the answer
-       * must never be cached. A token that does not hold is an `invalid_input` error (a
+       * must never be cached. A token that does not hold is an `invalid_preview` error (a
        * `HollwareClientError` over HTTP), never the published version in its place.
        */
       readonly preview?: string

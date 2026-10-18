@@ -6,7 +6,7 @@ import { CANNED } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
 
 // Fails when: the class a site reaches over a service binding (`Hollware`, `src/rpc/entrypoint.ts`)
-// stops being exactly the four methods of `HollwareRpc`: a fifth public member on it or on what it
+// stops being exactly the five methods of `HollwareRpc`: a sixth public member on it or on what it
 // inherits (anything on the prototype is callable by a Worker with the binding, and a writing
 // method must never be), or one of the four missing; stops handing each call to the operation of
 // its name with its arguments in the right order, over the environment the class was built with;

@@ -91,7 +91,7 @@ serve them (ADR-017). Boundary rules for this package:
   fix; a D1 failure is never a 401. Hono 5's `onError` and `notFound` are middleware `(c, next)`;
   the Hono 4 form answers a plain-text 500, so everything version-specific stays in
   `src/http/errors.ts`.
-- `src/rpc` is what sites call over a service binding: the class has the four methods of
+- `src/rpc` is what sites call over a service binding: the class has the five methods of
   `HollwareRpc` and nothing else, because everything on its prototype is callable. Each call checks
   its site, parses its input with the spec, and runs on the published view with a binding
   principal and a replica session. An error crosses a binding with its `cause`, so a failure

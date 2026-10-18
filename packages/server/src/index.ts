@@ -114,7 +114,7 @@ export interface HollwareRpc {
       /**
        * A preview token (`hw_prv_…`, made in the admin): the entry it names is read in its latest
        * revision, a draft included. A token that does not hold (expired, of another site or
-       * entry, forged) is an `invalid_input` error, never the published version in its place.
+       * entry, forged) is an `invalid_preview` error, never the published version in its place.
        */
       readonly preview?: string
     },

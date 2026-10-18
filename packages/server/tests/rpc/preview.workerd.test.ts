@@ -140,9 +140,11 @@ describe('getEntry with a preview token', () => {
       rpc.getEntry(SITE_KEY, 'blog', DRAFT, 'en', { preview: await tokenFor(idOf(DRAFT)) }),
     )
 
-    expect(error.message).toBe(
+    // invalid_preview, which a site takes for a refused link and shows the published page.
+    expect([error.code, error.message]).toEqual([
+      'invalid_preview',
       'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',
-    )
+    ])
     expect(error.fix).toContain('HOLLWARE_SECRET')
   })
 })

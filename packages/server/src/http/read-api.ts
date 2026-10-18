@@ -6,7 +6,7 @@ import type { Proceed } from '../oauth/server.ts'
 import type { GatewayEnv } from './types.ts'
 
 /**
- * The HTTP read API (v0.2): the four read methods of the RPC binding, for a site that is not a
+ * The HTTP read API (v0.2): the five read methods of the RPC binding, for a site that is not a
  * Worker of the same account. It serves published content only (but for `get_entry` with a valid
  * preview token, whose answer is never cached), to a personal token, a read token
  * (`hw_read_`) or an OAuth access token with `content:read` (ADR-026), of one site, and answers
