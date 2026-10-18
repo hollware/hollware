@@ -3,6 +3,8 @@
 //   localhost keeps it (no rewrite of wrangler.jsonc, no second deploy), the rewrite touches more
 //   than the one value (comments, other keys), the remote migrations are not applied, or the
 //   next step for a database without an owner is not said.
+// - "hands wrangler the master secret …": HOLLWARE_SECRET is not 32 random bytes, its file can be
+//   read by others, or stays on disk after wrangler took it.
 // - "keeps a public URL that is not localhost, and deploys once": a configured public URL is
 //   replaced by the workers.dev one, or the Worker is deployed twice for nothing.
 // - "migrates a database it deployed before, before the new Worker": an upgrade deploys the new
@@ -24,7 +26,7 @@
 //   localhost URL, goes on without one.
 // - "reads the workers.dev URL …": `workersDevUrlOf` misses the URL among wrangler's colors, or
 //   takes another host for it.
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -148,6 +150,34 @@ describe('hollware deploy', () => {
         '  hollware init --site <key> --remote',
       ].join('\n'),
     ])
+  })
+
+  it('hands wrangler the master secret in a file only its owner reads, then deletes it', async () => {
+    let handed: { content: string; mode: number } | undefined
+    const wrangler = fakeWrangler(
+      ok(DEPLOYED),
+      ok(DEPLOYED),
+      ok(NO_SECRETS),
+      (call) => {
+        const file = call.args[2] ?? ''
+        handed = { content: readFileSync(file, 'utf8'), mode: statSync(file).mode & 0o777 }
+        return ok('✨ Success! Uploaded 1 secret.')
+      },
+      ok(LIST_ALL_PENDING),
+      ok(APPLIED),
+      d1([]),
+    )
+    const project = setup(wrangler, 'http://localhost:5199')
+
+    const { code } = await project.run(['deploy'])
+
+    expect(code).toBe(0)
+    // The first 32 random bytes of the test's source are all 1: 64 hex digits of 01.
+    expect(handed).toEqual({
+      content: JSON.stringify({ HOLLWARE_SECRET: '01'.repeat(32) }),
+      mode: 0o600,
+    })
+    expect(existsSync(join(project.scratch, 'secrets.json'))).toBe(false)
   })
 
   it('keeps a public URL that is not localhost, and deploys once', async () => {

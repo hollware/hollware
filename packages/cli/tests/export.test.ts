@@ -12,6 +12,9 @@
 // - "--site stops when the token is of another site": the key of `describe_site` is not compared.
 // - "… an import into another site uploads, with the ids of that site": import keeps the ids the
 //   export wrote when the other site gives its images other ids (withAssetIds of import.ts).
+// - "refuses a manifest …", "stops before any entry …", "counts the images of a dry run": import
+//   reads a file the manifest names outside _assets, goes on to the entries after an image was
+//   not taken, or uploads in a dry run.
 // - "pages through list_entries": `nextCursor` is not followed, or is sent wrong.
 // - "--dry-run lists what it would write …": `--dry-run` writes a file or a directory.
 // - "refuses a directory that is not empty …" / "refuses a file": `checkTarget` lets a directory
@@ -594,6 +597,96 @@ describe('hollware export and its images (ADR-038)', () => {
     expect(calls(other, 'create_draft').map((call) => call['markdown'])).toEqual([
       `---\ntitle: Talk\nimg: asset:${moved}\n---\n\n![The stage](asset:${moved})\n`,
     ])
+  })
+
+  it('writes nothing when an image cannot be downloaded, or is not in the site', async () => {
+    const failing = await siteWithAnImage()
+    const missing = await siteWithAnImage()
+    missing.stub.assets.clear()
+    const base = temp.make()
+    // The original answers 404, as when its row is there and R2 lost the file.
+    const original = await serve({
+      respond: (request) =>
+        new URL(request.url).pathname.startsWith('/v1/assets/')
+          ? new Response('{"code":"not_found"}', { status: 404 })
+          : undefined,
+    })
+    for (const [key, entry] of failing.stub.entries) original.entries.set(key, entry)
+    for (const [key, asset] of failing.stub.assets) original.assets.set(key, asset)
+
+    const lost = await runExport(base, 'lost', original.url, ['--published'])
+    const gone = await runExport(base, 'gone', missing.stub.url, ['--published'])
+
+    expect([lost.code, gone.code]).toEqual([1, 1])
+    expect(lost.err[0]).toBe(
+      `hollware export: could not download the image ${failing.id} (404 from /v1/assets/${failing.id}/original). Nothing was written.`,
+    )
+    expect(gone.err[0]).toBe(
+      `hollware export: an entry shows the image ${missing.id}, which the site does not have. Nothing was written.`,
+    )
+    expect([existsSync(join(base, 'lost')), existsSync(join(base, 'gone'))]).toEqual([false, false])
+  })
+
+  /** The export of the site with an image, by default: _assets with the original and its manifest. */
+  async function exportedBackup() {
+    const { stub, id } = await siteWithAnImage()
+    const base = temp.make()
+    expect((await runExport(base, 'backup', stub.url, ['--published'])).code).toBe(0)
+    return { root: join(base, 'backup'), id }
+  }
+
+  const importInto = (root: string, url: string, extra: string[] = []) =>
+    run(['import', root, '--url', url, ...extra], {
+      readStdin: () => Promise.resolve(`${TOKEN}\n`),
+    })
+
+  it('refuses a manifest that names a file outside _assets, and uploads nothing', async () => {
+    const { root } = await exportedBackup()
+    writeFileSync(
+      join(root, '_assets/assets.json'),
+      JSON.stringify({ '../blog/en/talk.md': { alt: 'Not an image', filename: 'x.png' } }),
+    )
+    const other = await serve()
+
+    const imported = await importInto(root, other.url)
+
+    expect(imported.code).toBe(1)
+    expect(imported.err[0]).toContain(
+      'names ../blog/en/talk.md without its alt, or not as an export writes it. Nothing more was sent.',
+    )
+    expect(calls(other, 'upload_asset')).toEqual([])
+    expect(calls(other, 'create_draft')).toEqual([])
+  })
+
+  it('stops before any entry when an image is not taken, and says why', async () => {
+    const { root } = await exportedBackup()
+    const other = await serve({
+      refuseUploads: {
+        message: 'This file is not an image Hollware takes.',
+        fix: 'Export it as PNG.',
+      },
+    })
+
+    const imported = await importInto(root, other.url)
+
+    expect(imported.code).toBe(1)
+    expect(imported.err[0]).toMatch(
+      /could not upload ast_[0-9a-f]{26}\.png: This file is not an image Hollware takes\. Export it as PNG\.$/,
+    )
+    expect(calls(other, 'create_draft')).toEqual([])
+  })
+
+  it('counts the images of a dry run, and uploads none', async () => {
+    const { root } = await exportedBackup()
+    const other = await serve()
+
+    const imported = await importInto(root, other.url, ['--dry-run'])
+
+    expect(imported.code).toBe(0)
+    expect(imported.out).toContainEqual(
+      expect.stringMatching(/^Would upload 1 image of .*backup\/_assets\.$/),
+    )
+    expect(calls(other, 'upload_asset')).toEqual([])
   })
 
   it('takes --assets and --assets-url together or not at all', async () => {

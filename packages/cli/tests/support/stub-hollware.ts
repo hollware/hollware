@@ -112,6 +112,8 @@ export interface StubOptions {
   site?: { key: string; locales: string[]; collections: string[] }
   /** The most entries a page of `list_entries` holds, whatever limit is asked; the limit when absent. */
   pageSize?: number
+  /** Answers every `upload_asset` with `refused` and this problem, as Hollware refuses a file. */
+  refuseUploads?: { message: string; fix: string }
 }
 
 /** An image of the stub's site: the file served, and the file as it was uploaded. */
@@ -329,6 +331,12 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           outputSchema: uploadAsset.output,
         },
         guarded(uploadAsset.name, (args) => {
+          if (options.refuseUploads !== undefined) {
+            return reply(uploadAsset.outcomes, {
+              outcome: 'refused',
+              problem: options.refuseUploads,
+            })
+          }
           const original = new Uint8Array(Buffer.from(args.data, 'base64'))
           // As Hollware names an asset: by its site and its bytes (assetIdOf of @hollware/core).
           const bytes = createHash('sha256').update(original).digest('hex')
