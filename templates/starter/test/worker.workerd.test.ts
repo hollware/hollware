@@ -10,7 +10,8 @@ import worker from '../src/worker.ts'
 // answering 200, or another Host stops being a 403; when it stops exporting the class `Hollware`
 // that sites read over a service binding, or stops serving the sites of the database (ADR-033:
 // describeSite must answer the site that `hollware init` makes); or when the D1 binding of wrangler.jsonc stops
-// pointing `migrations_dir` at the migrations of @hollware/server, so that its tables are missing.
+// pointing `migrations_dir` at the migrations of @hollware/server, so that one of them is not
+// applied or its tables are missing.
 
 // A request made inside workerd has no Host header of its own: a browser or curl would send one.
 const PUBLIC_HOST = 'localhost:5199'
@@ -69,45 +70,22 @@ describe('the Hollware class', () => {
 })
 
 describe('the database', () => {
-  it('has the tables of the @hollware/server migrations, and no others', async () => {
-    const { results } = await env.DB.prepare(
-      `SELECT name FROM sqlite_master
-        WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'
-          AND name NOT IN ('d1_migrations', 'sqlite_sequence')
-        ORDER BY name`,
+  // Whatever release of Hollware the project is on: every migration it ships is applied, and the
+  // tables content lives in are there. A list of every table would break at each new migration.
+  it('has every migration of @hollware/server applied, and its tables', async () => {
+    const { results: applied } = await env.DB.prepare(
+      'SELECT name FROM d1_migrations ORDER BY id',
+    ).all<{ name: string }>()
+    const { results: tables } = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
     ).all<{ name: string }>()
 
-    expect(results.map((row) => row.name)).toEqual([
-      '_hollware_meta',
-      'assets',
-      'audit_log',
-      'auth_challenges',
-      'deliveries',
-      'entries',
-      // The full-text index (migrations/0008_search.sql) and the tables FTS5 keeps for it.
-      'entries_fts',
-      'entries_fts_config',
-      'entries_fts_content',
-      'entries_fts_data',
-      'entries_fts_docsize',
-      'entries_fts_idx',
-      'entry_embeddings',
-      'invitations',
-      'members',
-      'outbox',
-      'passkeys',
-      'publications',
-      'review_comments',
-      'reviews',
-      'revision_tags',
-      'revisions',
-      'schedules',
-      'sessions',
-      'site_changes',
-      'site_secrets',
-      'sites',
-      'tokens',
-      'users',
-    ])
+    expect(env.TEST_MIGRATIONS.length).toBeGreaterThan(0)
+    expect(applied.map((row) => row.name)).toEqual(
+      env.TEST_MIGRATIONS.map((migration) => migration.name),
+    )
+    expect(tables.map((row) => row.name)).toEqual(
+      expect.arrayContaining(['sites', 'entries', 'revisions', 'publications', 'users', 'tokens']),
+    )
   })
 })
