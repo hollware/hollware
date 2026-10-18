@@ -4,14 +4,12 @@ import type { Handlers } from '../ops/types.ts'
 import type { Principal } from '../auth/types.ts'
 import type { Actor, Clock, ContentStore } from '../ports.ts'
 
-/** What the publication of a schedule may do: what `publish` needs, in the scheduler's name. */
-const SCHEDULER_SCOPES: readonly Scope[] = ['content:read', 'content:write', 'content:publish']
-
 /**
  * The principal a schedule publishes as: the token, or the OAuth client, that scheduled it, with
- * the scopes a publication needs. An OAuth client is known by the id its actor kept (ADR-026).
+ * the scopes it holds now (`scopesNow`). An OAuth client is known by the id its actor kept
+ * (ADR-026).
  */
-function principalOf(actor: Actor, site: string): Principal {
+function principalOf(actor: Actor, site: string, scopes: readonly Scope[]): Principal {
   if (actor.kind === 'oauth_client') {
     const client = actor.meta?.['oauthClient']
     return {
@@ -19,7 +17,7 @@ function principalOf(actor: Actor, site: string): Principal {
       userId: actor.userId,
       clientId: typeof client === 'string' ? client : 'unknown',
       site,
-      scopes: SCHEDULER_SCOPES,
+      scopes,
     }
   }
   if (actor.tokenId === null) {
@@ -30,7 +28,7 @@ function principalOf(actor: Actor, site: string): Principal {
     userId: actor.userId,
     tokenId: actor.tokenId,
     site,
-    scopes: SCHEDULER_SCOPES,
+    scopes,
   }
 }
 
@@ -53,6 +51,11 @@ export async function runDueSchedules(input: {
   readonly clock: Clock
   readonly log: (entry: object) => void
   /**
+   * What who scheduled an entry may do now: a revoked token, a revoked grant, a member removed or
+   * a role that no longer publishes cancels the publication instead (T-108).
+   */
+  readonly scopesOf: (actor: Actor) => Promise<readonly Scope[]>
+  /**
    * The activity log (ADR-037), for the deployment acting for the person who scheduled each
    * entry; without it, no line is written.
    */
@@ -64,6 +67,29 @@ export async function runDueSchedules(input: {
   let cancelled = 0
   for (const schedule of due) {
     const requestId = `cron_${crypto.randomUUID()}`
+    const scopes = await input.scopesOf(schedule.actor)
+    if (!scopes.includes('content:publish')) {
+      await store.cancelSchedule(site.key, schedule.entryId)
+      cancelled += 1
+      await input.audit?.(systemActor(schedule.actor.userId), requestId).write(site, {
+        action: 'schedule.publish',
+        outcome: 'denied',
+        errorCode: 'insufficient_scope',
+        target: { type: 'entry', id: schedule.entryId },
+        detail: {
+          scheduledAt: schedule.scheduledAt,
+          scheduledBy: { kind: schedule.actor.kind, tokenId: schedule.actor.tokenId },
+        },
+      })
+      log({
+        kind: 'schedule',
+        requestId,
+        entryId: schedule.entryId,
+        scheduledAt: schedule.scheduledAt,
+        outcome: 'insufficient_scope',
+      })
+      continue
+    }
     const answer = await handlers.publish(
       {
         id: schedule.entryId,
@@ -73,7 +99,7 @@ export async function runDueSchedules(input: {
       },
       {
         site,
-        principal: principalOf(schedule.actor, site.key),
+        principal: principalOf(schedule.actor, site.key, scopes),
         view: 'head',
         store,
         clock,

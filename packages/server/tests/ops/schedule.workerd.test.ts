@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { handlers } from '../../src/ops/index.ts'
 import { runDueSchedules } from '../../src/schedule/run.ts'
+import { scopesNow } from '../../src/schedule/standing.ts'
 import { createAuditLog, type AuditActor } from '../../src/audit/log.ts'
 import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
 import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
@@ -13,7 +14,9 @@ import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 // and with the warnings acknowledged then, or keeps a schedule whose entry changed since (the entry
 // must go back to a draft), or publishes for an OAuth client as anything but that client;
 // unpublish stops cancelling a schedule; or publishAt is taken with a
-// group, or for an entry that is published.
+// group, or for an entry that is published; or the cron publishes for a token since revoked, a
+// person no longer a member or whose role no longer publishes, or an OAuth client whose grant is
+// gone (T-108: src/schedule/standing.ts).
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -48,6 +51,8 @@ function run(world: World, audited = false) {
     handlers,
     clock: world.time.clock,
     log: () => {},
+    scopesOf: (actor) =>
+      scopesNow({ db: env.DB, kv: env.OAUTH_KV }, actor, world.tenant.key, world.time.clock.now()),
     ...(audited
       ? {
           audit: (actor: AuditActor, requestId: string) =>
@@ -65,16 +70,54 @@ function run(world: World, audited = false) {
   })
 }
 
+const CLIENT = 'https://claude.ai/oauth/mcp-client.json'
+
+/** A grant of the OAuth client for the tenant's site, as the OAuth library keeps it in KV. */
+async function grant(world: World, id: string) {
+  await env.OAUTH_KV.put(
+    `grant:${world.tenant.userId}:${id}`,
+    JSON.stringify({
+      id,
+      clientId: CLIENT,
+      userId: world.tenant.userId,
+      scope: ['content:read', 'content:write', 'content:publish'],
+      metadata: { site: world.tenant.key },
+    }),
+  )
+}
+
+/**
+ * The seeded token writes only; the cron reads it again at the time (T-108), so a token that
+ * schedules a publication must hold content:publish in the database too.
+ */
+async function mayPublish(world: World) {
+  await env.DB.prepare('UPDATE tokens SET scopes = ?1 WHERE id = ?2')
+    .bind(
+      JSON.stringify(['content:read', 'content:write', 'content:publish']),
+      world.tenant.tokenId,
+    )
+    .run()
+}
+
+/** The entry scheduled by the tenant's token, for LATER, with the warning acknowledged. */
+async function scheduled(world: World) {
+  await mayPublish(world)
+  const id = await post(world)
+  await world.agent.publish({ id, version: 1, publishAt: LATER, acknowledgeWarnings: [TITLE_ACK] })
+  return id
+}
+
 describe('publishAt', () => {
   it('publishes at the time in the name of the OAuth client that scheduled it', async () => {
     const world = await newWorld(env.DB, 'schedule-oauth')
     const id = await post(world)
+    await grant(world, 'grant-1')
     const client = agentFor(
       world.context({
         principal: {
           kind: 'oauth',
           userId: world.tenant.userId,
-          clientId: 'https://claude.ai/oauth/mcp-client.json',
+          clientId: CLIENT,
           site: world.tenant.key,
           scopes: ['content:read', 'content:write', 'content:publish'],
         },
@@ -93,6 +136,7 @@ describe('publishAt', () => {
 
   it('schedules the entry, and the cron run publishes it at the time, in the name of who scheduled it', async () => {
     const world = await newWorld(env.DB, 'schedule')
+    await mayPublish(world)
     const id = await post(world)
 
     const asked = await world.agent.publish({ id, version: 1, publishAt: LATER })
@@ -126,6 +170,7 @@ describe('publishAt', () => {
 
   it('writes a line of the activity log for what it publishes, as the deployment for who scheduled it (ADR-037)', async () => {
     const world = await newWorld(env.DB, 'schedule-audit')
+    await mayPublish(world)
     const id = await post(world)
     await world.agent.publish({
       id,
@@ -157,6 +202,90 @@ describe('publishAt', () => {
         }),
       },
     ])
+  })
+
+  it('cancels what a token since revoked scheduled, and logs it as denied (T-108)', async () => {
+    const world = await newWorld(env.DB, 'schedule-revoked')
+    const id = await scheduled(world)
+    await env.DB.prepare('UPDATE tokens SET revoked_at = ?1 WHERE id = ?2')
+      .bind(LATER, world.tenant.tokenId)
+      .run()
+
+    world.time.set(LATER)
+
+    expect(await run(world, true)).toEqual({ published: 0, cancelled: 1 })
+    expect((await entryColumns(world.db, id))?.status).toBe('draft')
+    expect(await publicationsOf(world.db, id)).toEqual([])
+    const { results } = await env.DB.prepare(
+      'SELECT outcome, error_code FROM audit_log WHERE site_id = ?1',
+    )
+      .bind(world.tenant.key)
+      .all()
+    expect(results).toEqual([{ outcome: 'denied', error_code: 'insufficient_scope' }])
+  })
+
+  it('cancels it when the token expired, the person left, or the role no longer publishes (T-108)', async () => {
+    const expired = await newWorld(env.DB, 'schedule-expired')
+    const left = await newWorld(env.DB, 'schedule-left')
+    const demoted = await newWorld(env.DB, 'schedule-demoted')
+    const ids = [await scheduled(expired), await scheduled(left), await scheduled(demoted)]
+    await env.DB.prepare('UPDATE tokens SET expires_at = ?1 WHERE id = ?2')
+      .bind(LATER, expired.tenant.tokenId)
+      .run()
+    await env.DB.prepare('DELETE FROM members WHERE user_id = ?1 AND site_id = ?2')
+      .bind(left.tenant.userId, left.tenant.key)
+      .run()
+    await env.DB.prepare("UPDATE members SET role = 'author' WHERE user_id = ?1 AND site_id = ?2")
+      .bind(demoted.tenant.userId, demoted.tenant.key)
+      .run()
+
+    const runs = []
+    for (const world of [expired, left, demoted]) {
+      world.time.set(LATER)
+      runs.push(await run(world))
+    }
+
+    expect(runs).toEqual([
+      { published: 0, cancelled: 1 },
+      { published: 0, cancelled: 1 },
+      { published: 0, cancelled: 1 },
+    ])
+    for (const [index, world] of [expired, left, demoted].entries()) {
+      expect(await publicationsOf(world.db, ids[index] ?? '')).toEqual([])
+    }
+  })
+
+  it('cancels what an OAuth client scheduled once its grant of the site is revoked (T-108)', async () => {
+    const world = await newWorld(env.DB, 'schedule-oauth-revoked')
+    const id = await post(world)
+    const client = agentFor(
+      world.context({
+        principal: {
+          kind: 'oauth',
+          userId: world.tenant.userId,
+          clientId: CLIENT,
+          site: world.tenant.key,
+          scopes: ['content:read', 'content:write', 'content:publish'],
+        },
+      }),
+    )
+    await client.publish({ id, version: 1, publishAt: LATER, acknowledgeWarnings: [TITLE_ACK] })
+
+    world.time.set(LATER)
+
+    // The person revoked its grant for this site in the admin; one for another site stays.
+    await env.OAUTH_KV.put(
+      `grant:${world.tenant.userId}:grant-elsewhere`,
+      JSON.stringify({
+        id: 'grant-elsewhere',
+        clientId: CLIENT,
+        userId: world.tenant.userId,
+        scope: ['content:read', 'content:write', 'content:publish'],
+        metadata: { site: 'another-site' },
+      }),
+    )
+    expect(await run(world)).toEqual({ published: 0, cancelled: 1 })
+    expect(await publicationsOf(world.db, id)).toEqual([])
   })
 
   it('takes an entry that changed after it was scheduled back to a draft at the time', async () => {

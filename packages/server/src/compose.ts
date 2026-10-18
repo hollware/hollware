@@ -17,6 +17,7 @@ import { createAuditLog, dropExpiredLines } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
+import { scopesNow } from './schedule/standing.ts'
 import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
 import { healVectors, refreshRelated } from './semantic/index-entry.ts'
@@ -133,6 +134,8 @@ export function createHollwareWith(
           handlers,
           clock,
           log: writeLog,
+          scopesOf: (actor) =>
+            scopesNow({ db: env.DB, kv: env.OAUTH_KV }, actor, site.key, clock.now()),
           audit: (actor, requestId) =>
             createAuditLog({
               db: env.DB,

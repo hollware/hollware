@@ -82,7 +82,7 @@ export function parseTokenScopes(json: string): Scope[] {
  * whose expiry cannot be read is expired too: the check fails closed. The expiry is read as an
  * instant, so any ISO 8601 spelling of it works, with or without milliseconds.
  */
-function hasExpired(expiresAt: string | null, now: Date): boolean {
+export function hasExpired(expiresAt: string | null, now: Date): boolean {
   if (expiresAt === null) return false
   const instant = Date.parse(expiresAt)
   return Number.isNaN(instant) || instant <= now.getTime()

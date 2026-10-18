@@ -29,7 +29,8 @@ import {
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
 // refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
 // another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
-// person removed from the site keeps a token that works (T-20); or a spent refresh token works
+// person removed from the site keeps a token that works (T-20); or a spent refresh token works,
+// in whatever case its request names the media type,
 // again after a minute instead of revoking its grant (T-34); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
@@ -435,10 +436,15 @@ describe('an access token', () => {
   })
 
   /** A refresh of the tokens of a client, at the time of the worker's clock. */
-  const refreshWith = (worker: Booted, clientId: string, refresh: string) =>
+  const refreshWith = (
+    worker: Booted,
+    clientId: string,
+    refresh: string,
+    type = 'application/x-www-form-urlencoded',
+  ) =>
     worker.send('/oauth/token', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      headers: { 'content-type': type },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refresh,
@@ -497,6 +503,26 @@ describe('an access token', () => {
         target_type: 'grant',
       },
     ])
+  })
+
+  it('revokes it too when the spent token comes with the media type in capitals (T-34)', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { clientId, tokens } = await tokenFor(worker, 'editor')
+    const rotated = await (
+      await refreshWith(worker, clientId, tokens.refresh_token)
+    ).json<{ refresh_token: string }>()
+    worker.clock.set(new Date(Date.parse(NOW) + 61_000).toISOString())
+
+    // The library takes this type as it takes the lowercase one, so the check must see it too.
+    const stolen = await refreshWith(
+      worker,
+      clientId,
+      tokens.refresh_token,
+      ' Application/X-WWW-Form-Urlencoded; charset=UTF-8',
+    )
+    const own = await refreshWith(worker, clientId, rotated.refresh_token)
+
+    expect([stolen.status, own.status]).toEqual([400, 400])
   })
 
   it('is refused at once when the person is no longer a member of the site (T-20)', async () => {

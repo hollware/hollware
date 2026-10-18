@@ -31,8 +31,10 @@ async function sha256(text: string): Promise<string> {
 /** The refresh token of a token request, or `null` for any other request. */
 export async function refreshTokenOf(request: Request): Promise<RefreshToken | null> {
   if (request.method !== 'POST' || new URL(request.url).pathname !== '/oauth/token') return null
-  const type = request.headers.get('content-type') ?? ''
-  if (!type.startsWith('application/x-www-form-urlencoded')) return null
+  // Read as the library reads it, which takes the media type in any case and with spaces around:
+  // a token request it accepts must never pass by this check unseen.
+  const type = (request.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase()
+  if (type !== 'application/x-www-form-urlencoded') return null
   const form = new URLSearchParams(await request.clone().text())
   if (form.get('grant_type') !== 'refresh_token') return null
   const token = form.get('refresh_token') ?? ''
