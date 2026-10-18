@@ -17,8 +17,11 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
-        // Read here in Node and applied inside workerd by the setup file.
         bindings: {
+          // The tests reach the Worker at localhost, whatever public URL `hollware deploy` wrote
+          // into wrangler.jsonc: it answers only the Host of HOLLWARE_PUBLIC_URL.
+          HOLLWARE_PUBLIC_URL: 'http://localhost:5199',
+          // Read here in Node and applied inside workerd by the setup file.
           TEST_MIGRATIONS: await readD1Migrations({
             projectPath: import.meta.dirname,
             migrationsDir,

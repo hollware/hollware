@@ -16,7 +16,7 @@
  *
  * It needs the network (npm) and port 5199. Exits 0 when every step passed.
  */
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -114,6 +114,21 @@ async function main(): Promise<void> {
     for (const script of ['check', 'test', 'types:check']) {
       process.stdout.write(await run(pm, ['run', script], project, env))
     }
+
+    // `hollware deploy` writes the public URL into wrangler.jsonc: the project's tests still pass.
+    step('Its tests pass once wrangler.jsonc names a public URL, as after a deploy')
+    const config = join(project, 'wrangler.jsonc')
+    const local = readFileSync(config, 'utf8')
+    writeFileSync(
+      config,
+      local.replace(
+        '"HOLLWARE_PUBLIC_URL": "http://localhost:5199"',
+        '"HOLLWARE_PUBLIC_URL": "https://cms.example.com"',
+      ),
+    )
+    if (readFileSync(config, 'utf8') === local) fail('wrangler.jsonc has no localhost public URL')
+    process.stdout.write(await run(pm, ['run', 'test'], project, env))
+    writeFileSync(config, local)
 
     step('The dev server')
     stopDev = (await startDev(project, env)).stop
