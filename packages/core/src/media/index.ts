@@ -77,6 +77,18 @@ const SVG_FIX =
 
 const SVG_REFUSALS: readonly { readonly pattern: RegExp; readonly reason: string }[] = [
   { pattern: /<!DOCTYPE|<!ENTITY/i, reason: 'it declares a DOCTYPE or an entity' },
+  // Read before the rules below, which see the text as written: `&#106;avascript:` is
+  // `javascript:` to a parser, and `@\69mport` is `@import` to CSS. The five entities of XML
+  // stand for characters no rule looks for.
+  {
+    pattern: /&(?!(?:amp|lt|gt|quot|apos);)/i,
+    reason: 'it holds a character reference (&#…;) or an entity other than the five of XML',
+  },
+  { pattern: /\\/, reason: 'it holds a backslash, which CSS reads as an escape' },
+  {
+    pattern: /attributeName\s*=\s*["']?\s*(?:xlink:)?href/i,
+    reason: 'it animates a link (<set> or <animate> of href)',
+  },
   { pattern: /<script[\s>/]/i, reason: 'it holds a <script>' },
   { pattern: /<foreignObject[\s>/]/i, reason: 'it holds a <foreignObject>, which embeds HTML' },
   { pattern: /<(?:iframe|embed|object|audio|video)[\s>/]/i, reason: 'it embeds another document' },

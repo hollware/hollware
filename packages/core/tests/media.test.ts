@@ -17,7 +17,8 @@ import { Problems } from '../src/config/config-error.ts'
 // - "tells a file by its bytes": a format is read from anything but its magic numbers, or a text
 //   that only mentions <svg> passes for an SVG.
 // - "refuses an SVG …" and "takes a plain SVG": a script, an event handler, embedded HTML, an
-//   entity, a javascript: or data: URL, or a reference outside the file gets through; or a
+//   entity, a javascript: or data: URL, a reference outside the file, a character reference that
+//   spells one, a CSS escape, or an animation of a link gets through; or a
 //   gradient or a symbol referenced inside the file (#…) is refused.
 // - "converts by the site's setting": quality or anim is ever left to the binding's defaults (its
 //   default WebP is lossless and keeps one frame of a GIF: ADR-038), PNG is not lossless, a WebP
@@ -87,6 +88,9 @@ describe('checkSvg', () => {
       '<svg><style>@import url(https://evil.example/a.css);</style></svg>',
       '<svg><rect style="fill:url(https://evil.example/x)"/></svg>',
       '<svg><iframe src="x"></iframe></svg>',
+      '<svg><a><set attributeName="href" to="&#106;avascript:alert(1)"/><text>x</text></a></svg>',
+      '<svg><a><animate attributeName="xlink:href" values="#a;#b"/></a></svg>',
+      '<svg><style>@\\69mport "https://evil.example/a.css";</style></svg>',
     ]
     expect(refused.map((svg) => checkSvg(svg)?.reason)).toEqual([
       'it holds a <script>',
@@ -101,6 +105,9 @@ describe('checkSvg', () => {
       'its styles load something from outside',
       'its styles load something from outside',
       'it embeds another document',
+      'it holds a character reference (&#…;) or an entity other than the five of XML',
+      'it animates a link (<set> or <animate> of href)',
+      'it holds a backslash, which CSS reads as an escape',
     ])
     expect(checkSvg('<svg><script/></svg>')?.fix).toContain('SVG optimizer')
   })
@@ -108,7 +115,7 @@ describe('checkSvg', () => {
   it('takes a plain SVG, with gradients and symbols referenced inside it', () => {
     const plain = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10">
-  <metadata>made: by hand</metadata>
+  <metadata>made: by hand &amp; with &lt;care&gt;</metadata>
   <defs><linearGradient id="g"><stop offset="0"/></linearGradient><symbol id="s"><rect/></symbol></defs>
   <rect width="10" height="10" fill="url(#g)" style="fill: url( '#g' )"/>
   <use href="#s"/><use xlink:href="#s"/>
