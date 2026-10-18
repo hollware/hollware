@@ -28,7 +28,7 @@ Hollware's thesis is that an agent learns what it may write from errors that car
 - An agent finds out what it may write from the violations and from `describe_site`, and a typo in a component name is an error, not a missing paragraph.
 - The HTML of a published entry contains no raw HTML.
 - A site that renders the Markdown with its own pipeline, instead of the stored document, has to sanitize it itself; the documentation says so.
-- Changing the allowlist changes `pipelineVersion`, so `reparse` (v0.2) can rebuild the documents written before.
+- Changing the allowlist changes `pipelineVersion`, so the reparse of the cron (`server/src/derived/reparse.ts`) rebuilds the documents written before.
 
 ## Alternatives considered
 

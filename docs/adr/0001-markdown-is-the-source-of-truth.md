@@ -18,18 +18,18 @@ Markdown is the source of truth. Every revision stores the complete file, frontm
 
 A write parses the Markdown once with Comark. The parse validates the document, extracts the headings, links, images, components and word count, and produces the compact JSON document. That document is derived data: it is stored next to the `comark_version` that produced it.
 
-Derived data can be regenerated at any moment with `hollware reparse`, because everything in it can be rebuilt from the Markdown. On read, a site asks for the Markdown, the Comark document or HTML, whichever it renders best.
+Derived data can be regenerated at any moment, because everything in it can be rebuilt from the Markdown. On read, a site asks for the Markdown, the Comark document or HTML, whichever it renders best.
 
 Comark is pinned to an exact version in the pnpm catalog.
 
 ## Consequences
 
-- Upgrading Comark means regenerating documents. Every revision records `comark_version`, and `hollware reparse` rebuilds the derived columns (`document`, `comark_version`, `pipeline_version` and `word_count`) while the Markdown stays untouched.
+- Upgrading Comark means regenerating documents. Every revision records `comark_version`, and the cron rebuilds the derived columns (`server/src/derived/reparse.ts`, a batch a minute; amended 2026-10-18: it was to be a `hollware reparse` command, which never shipped) (`document`, `comark_version`, `pipeline_version` and `word_count`) while the Markdown stays untouched.
 - Revisions are readable diffs, and an export to plain Markdown files loses nothing.
 - Content that does not parse is rejected at write time, so every stored revision has a derived document.
 - Contracts can check body components and their props, because Comark parses the MDC syntax (see [ADR-004](0004-write-time-contracts-with-a-single-definition.md)).
 - A site with a Comark renderer for its framework draws the document without shipping a parser to the browser.
-- Comark's pre-1.0 status is a standing risk. The exact pin, `comark_version` and `reparse` are what keep it manageable.
+- Comark's pre-1.0 status is a standing risk. The exact pin, `comark_version` and the reparse of the cron are what keep it manageable.
 - Markdown lives in the database row, and D1 caps a row at 2 MB. A revision over 1.9 MB is rejected with a `size-limit` violation, and binaries go to R2.
 
 ## Alternatives considered

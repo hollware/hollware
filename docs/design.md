@@ -359,18 +359,18 @@ Each violation carries the id of its contract, a severity, a JSON Pointer to the
 
 ### MCP tools
 
-| Tool                                            | What it does                                                                                                   | Scope             | Phase     |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `describe_site`                                 | Collections, contracts as JSON Schema, allowed components and the style guide. The first thing an agent reads. | `content:read`    | 0.1       |
-| `list_entries`, `get_entry`, `get_translations` | Reads with filters by collection, locale, tag and status, and the translations of a group.                     | `content:read`    | 0.1       |
-| `create_draft`, `update_draft`                  | Writes Markdown. Returns the verdict of the contracts, or a conflict if the entry changed.                     | `content:write`   | 0.1       |
-| `validate`                                      | Runs the contracts without saving.                                                                             | `content:read`    | 0.1       |
-| `publish`, `unpublish`                          | Publishes if there are no errors. From v0.2 it takes a group of entries, and the effects run from an outbox.   | `content:publish` | 0.1       |
-| `schedule`                                      | Schedules the publication for a date.                                                                          | `content:publish` | 0.2       |
-| `list_revisions`, `restore`                     | History with author and a Markdown diff.                                                                       | `content:write`   | 0.2       |
-| `upload_asset`                                  | Uploads to R2 and returns the transformable URL.                                                               | `content:write`   | 0.2       |
-| `search`                                        | Full-text search and, from v0.5, semantic search.                                                              | `content:read`    | 0.2 / 0.5 |
-| `content_stats`                                 | Metrics per entry, so the agent can decide what to improve.                                                    | `content:read`    | 0.5       |
+The table is the shape of the 28 tools of 1.0; `api/mcp-tools.json` and [the reference](https://hollware.com/reference/mcp-tools.md) hold each one with its schema.
+
+| Tools                                                                                                | What they do                                                                                                   | Scope                           |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `describe_site`, `get_structure`                                                                     | Collections, contracts as JSON Schema, allowed components and the style guide. The first thing an agent reads. | `content:read`                  |
+| `list_entries`, `get_entry`, `get_translations`, `search`                                            | Reads with filters, the translations of a group, and full-text or semantic search.                             | `content:read`                  |
+| `validate`, `content_stats`, `list_reviews`                                                          | Runs the contracts without saving; what readers read; the review queue.                                        | `content:read`                  |
+| `create_draft`, `update_draft`, `delete_entry`, `restore_entry`                                      | Writes Markdown, with the verdict of the contracts or a conflict; the trash.                                   | `content:write`                 |
+| `publish`, `request_review`, `comment_review`                                                        | Publishes now or at a time (`publishAt`), or, without `content:publish`, asks for a review.                    | `content:write`                 |
+| `unpublish`, `approve_review`, `request_changes`                                                     | What only someone who publishes may do.                                                                        | `content:publish`               |
+| `upload_asset`, `list_assets`, `get_asset`                                                           | Images, converted once and kept in R2 (ADR-038).                                                               | `content:write`, `content:read` |
+| `create_site`, `update_site`, `set_collection`, `delete_site`, `restore_site`, `make_webhook_secret` | The structure of the sites, with no deploy (ADR-033).                                                          | `schema:admin`                  |
 
 The scopes are `content:read`, `content:write`, `content:publish` and `schema:admin`. The list of tools is the same for every client, and the scope is checked when a tool is called. v0.2 also adds a trash for entries, with the operations `delete_entry` and `restore_entry`.
 
@@ -392,25 +392,39 @@ import { WorkerEntrypoint } from 'cloudflare:workers'
 
 // Hollware's Worker: the RPC adapter of the registry
 export class Hollware extends WorkerEntrypoint<Env> {
-  getEntry(site: string, collection: string, slug: string, locale: string) {
-    // reads through the D1 Sessions API
+  getEntry(
+    site: string,
+    collection: string,
+    slug: string,
+    locale: string,
+    options?: { formats?: Format[]; preview?: string; related?: boolean },
+  ) {
+    // published, or the latest revision of the one entry a preview token names
   }
   listEntries(
     site: string,
     collection: string,
-    options: { locale?: string; tag?: string; limit?: number; cursor?: string },
+    options?: { locale?: string; tag?: string; limit?: number; cursor?: string },
   ) {
     // keyset pagination
   }
-  getTranslations(site: string, translationGroup: string) {
+  getTranslations(site: string, collection: string, translationGroup: string) {
     // the entries of a translation group
   }
   describeSite(site: string) {
     // collections, contracts and allowed components
   }
-  // v0.2
-  search(site: string, query: string, options: { locale?: string; semantic?: boolean }) {
-    // full-text search
+  search(
+    site: string,
+    query: string,
+    options?: {
+      locale?: string
+      collection?: string
+      limit?: number
+      mode?: 'fulltext' | 'semantic' | 'hybrid'
+    },
+  ) {
+    // full-text, semantic or both
   }
 }
 ```
@@ -425,19 +439,19 @@ const post = await env.HOLLWARE.getEntry('acme', 'blog', 'edge-caching-guide', '
 HTTP serves everything else, with an OpenAPI 3.1 document generated from the registry.
 
 ```http
-GET /v1/sites/acme/blog?locale=es&tag=agents
-GET /v1/sites/acme/blog/edge-caching-guide?locale=en
-GET /openapi.json
+GET /v1/blog?locale=es&tag=agents
+GET /v1/blog/en/edge-caching-guide
+GET /v1/openapi.json
 ```
 
 The CLI installs and maintains an instance.
 
 ```bash
-hollware init              # the site, its owner and a first personal token (v0.1)
+hollware init --site acme  # the site, its owner and a first personal token
 hollware migrate           # applies the D1 migrations of the installed version
-hollware import ./content/blog --site acme
+hollware deploy            # creates what the project needs on Cloudflare, migrates and deploys
+hollware import ./content --url https://cms.example.com --token-file ./token.txt
 hollware export ./backup --url https://cms.example.com --token-file ./token.txt
-hollware reparse --all     # v0.2, after upgrading Comark
 ```
 
 ## Data model
@@ -533,7 +547,7 @@ The SQL above is the sketch from the design phase. The v0.1 implementation refin
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | `@hollware/core`   | Contracts, operation specs, schemas and the Markdown pipeline with Comark. It does not depend on Cloudflare.                                                     | v0.1  |
 | `@hollware/server` | The Worker: operation handlers and their MCP, RPC and HTTP adapters, Hono, OAuth, D1 with Drizzle, Queues and, from v0.3, Workflows. It includes the migrations. | v0.1  |
-| `hollware`         | The CLI: init, migrate, token and import. Export and reparse arrive in v0.2.                                                                                     | v0.1  |
+| `hollware`         | The CLI: init, dev, deploy, doctor, migrate, tokens, import and export.                                                                                          | v0.1  |
 | `apps/playground`  | An instance of our own, to exercise the project in real use with `vp dev`.                                                                                       | v0.1  |
 | `@hollware/client` | The same typed interface over a service binding or over HTTP.                                                                                                    | v0.2  |
 | `@hollware/admin`  | Vue 3.5 and Nuxt UI 4, published compiled and served as static files of the Worker.                                                                              | v0.3  |
@@ -662,7 +676,7 @@ Nov–Dec 2026 · 3 weeks.
 - Full-text search
 - An HTTP API with OpenAPI 3.1, ETag and an edge cache that is purged on publish
 - `@hollware/client`, with the same interface over a binding or over HTTP
-- Export to Markdown as a backup, `reparse` and `reindex`, and scheduled backups
+- Export to Markdown as a backup, the reparse of derived columns by the cron, and scheduled backups
 - An `audit_log` of writes and denials
 - Optional code highlighting at write time
 - The demo deployment
@@ -776,7 +790,7 @@ The author's own site, sergioazocar.com, is not a validation target of this road
 - **The project eats the author's time.** Building a CMS competes with producing videos and posts. Mitigation: every stage ends with a pause and a publishable milestone, and the process of building is itself the content.
 - **Tools in transition.** Hono 5 is a release candidate, Drizzle v1 is a release candidate, the `cf` CLI is in beta and the MCP SDK moves every week. Mitigation: exact versions in the catalog, thin adapters with the version isolated in one file, and a review of the stack at the start of every stage.
 - **10 ms of CPU on the Free plan.** A heavy bundle or a slow parse breaks requests. Mitigation: Comark measures about 2.4 ms to parse and render 10,000 words once warm, but a cold isolate pays about 10 ms for the first write of 2,000 words (measured in Node on 2026-10-12). A size budget runs in CI, builds are minified, reads render stored documents without the parser, heavy work goes to Workflows or to the queue, and the demo of v0.2 measures it on Cloudflare.
-- **Comark is pre-1.0.** Its API and the shape of its document can change. Mitigation: `comark_version` on every revision and `hollware reparse`, which is possible because Markdown is the source of truth.
+- **Comark is pre-1.0.** Its API and the shape of its document can change. Mitigation: `comark_version` on every revision and the reparse of the cron, which rebuilds what an older Comark or pipeline made, possible because Markdown is the source of truth.
 - **Publishing rests on one account.** A release needs the maintainer's approval of the `npm` environment, and no second factor on npm. That approval is a human act only while the credentials the agents use cannot review deployments (ADR-015). Mitigation:
   - the organization enforces 2FA;
   - only `release` can deploy to the environment;

@@ -4,7 +4,7 @@ import type { Violation } from '../contracts/types.ts'
 /**
  * The shapes of the Markdown pipeline: Markdown in, the Comark document and what the contracts
  * need out (ADR-001, ADR-020). The Markdown is the source of truth; everything here is derived
- * from it and can be derived again by `reparse`.
+ * from it and can be derived again by the reparse of the cron.
  */
 
 /**

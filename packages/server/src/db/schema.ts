@@ -169,7 +169,7 @@ export const entries = sqliteTable(
 
 /**
  * Every version of an entry, appended and never changed (ADR-021). `markdown` is the whole file,
- * frontmatter included; the derived columns can be rebuilt by `reparse`.
+ * frontmatter included; the derived columns are rebuilt by the reparse of the cron (`derived/reparse.ts`).
  */
 export const revisions = sqliteTable(
   'revisions',

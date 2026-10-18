@@ -12,7 +12,7 @@ What the spikes and the review of the v0.1 plan found:
 
 - A child row of the revision, such as a tag, inserted unconditionally in that batch would point at a revision that a stale write never inserted. The foreign key then fails, and a `conflict` turns into a database error (review H6).
 - SQLite's `INSERT OR REPLACE` deletes the row it replaces without firing `DELETE` triggers, because `recursive_triggers` is off. A trigger on `DELETE` alone does not keep a row (spike S4).
-- `reparse` (v0.2) rebuilds the derived document when Comark or the pipeline changes ([ADR-020](0020-content-safety-is-a-contract.md)), so some columns of a revision must stay writable.
+- The reparse of the cron (`server/src/derived/reparse.ts`) rebuilds the derived document when Comark or the pipeline changes ([ADR-020](0020-content-safety-is-a-contract.md)), so some columns of a revision must stay writable.
 - The warnings a caller acknowledged to publish had nowhere to live (review M2).
 - drizzle-kit does not model triggers. `generate` never drops them, but a migration that rebuilds a table drops them with it.
 

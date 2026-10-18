@@ -17,6 +17,7 @@ import { createAuditLog, dropExpiredLines } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
+import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
 import { runDueSchedules } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
@@ -152,6 +153,8 @@ export function createHollwareWith(
         })
         // The lines of the activity log past the retention the owner chose (ADR-037).
         await dropExpiredLines(env.DB, site, clock.now())
+        // The revisions an older Comark or pipeline parsed, a batch each minute (ADR-021).
+        await reparseRevisions(env.DB, site, clock.now().toISOString(), writeLog)
         // Then the outbox, which holds the events of what was just published, too.
         await sweepOutbox({ queue: env.EVENTS, deps: deliveryDeps(env, site) })
         // And the vectors that no event brought in line (v0.5), a few entries each minute.
