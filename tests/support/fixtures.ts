@@ -21,6 +21,8 @@ export function publishedManifest(
     'packages/create-hollware': 'create-hollware',
   }
   const binName = unscoped[dir]
+  // The packages with a second entry, as the guard declares them (SUBPATHS).
+  const webhooks = dir === 'packages/client' || dir === 'packages/core'
   const manifest: Record<string, unknown> = {
     name: unscoped[dir] ?? `@hollware/${dir.slice('packages/'.length)}`,
     version: '0.0.0',
@@ -41,11 +43,18 @@ export function publishedManifest(
           ? ['dist', 'template']
           : ['dist'],
     type: 'module',
-    exports: { '.': './src/index.ts', './package.json': './package.json' },
+    exports: {
+      '.': './src/index.ts',
+      ...(webhooks ? { './webhooks': './src/webhooks.ts' } : {}),
+      './package.json': './package.json',
+    },
     publishConfig: {
       ...(binName === undefined ? {} : { bin: { [binName]: './dist/index.mjs' } }),
       exports: {
         '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
+        ...(webhooks
+          ? { './webhooks': { types: './dist/webhooks.d.mts', default: './dist/webhooks.mjs' } }
+          : {}),
         './package.json': './package.json',
       },
       access: 'public',

@@ -51,13 +51,36 @@ const BIN_NAMES: Readonly<Record<string, string>> = {
   'create-hollware': 'create-hollware',
 }
 
+/**
+ * The entries a package exports besides its root, by directory: each one a file of src/ with its
+ * own build. Only these exist, so a new one is a decision written here, never a slip.
+ */
+const SUBPATHS: Readonly<Record<string, readonly string[]>> = {
+  // The signature of webhooks with no zod, for a site whose zod is another major.
+  client: ['webhooks'],
+  core: ['webhooks'],
+}
+
 /** `exports` inside the workspace: the source (ADR-016). */
-const SOURCE_EXPORTS = { '.': './src/index.ts', './package.json': './package.json' }
+function sourceExports(name: string): Record<string, unknown> {
+  return {
+    '.': './src/index.ts',
+    ...Object.fromEntries((SUBPATHS[name] ?? []).map((sub) => [`./${sub}`, `./src/${sub}.ts`])),
+    './package.json': './package.json',
+  }
+}
 
 /** `publishConfig.exports`, which `pnpm pack` moves into `exports`: the build, `types` first. */
-const PUBLISHED_EXPORTS = {
-  '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
-  './package.json': './package.json',
+function publishedExportsOf(name: string): Record<string, unknown> {
+  const built = (entry: string) => ({
+    types: `./dist/${entry}.d.mts`,
+    default: `./dist/${entry}.mjs`,
+  })
+  return {
+    '.': built('index'),
+    ...Object.fromEntries((SUBPATHS[name] ?? []).map((sub) => [`./${sub}`, built(sub)])),
+    './package.json': './package.json',
+  }
 }
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -123,6 +146,7 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
     report('files', `"files" must list exactly ${show(shipped)}, found ${show(json.files)}`)
   }
 
+  const SOURCE_EXPORTS = sourceExports(name)
   if (!isDeepStrictEqual(json.exports, SOURCE_EXPORTS)) {
     report(
       'exports',
@@ -141,12 +165,16 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
       `"publishConfig" must hold {"access":"public","provenance":true} and nothing else besides "exports" and "bin", found ${show(json.publishConfig)}`,
     )
   }
-  const publishedRoot = isRecord(publishedExports) ? publishedExports['.'] : undefined
-  if (
-    !isDeepStrictEqual(publishedExports, PUBLISHED_EXPORTS) ||
-    !isRecord(publishedRoot) ||
-    !isDeepStrictEqual(Object.keys(publishedRoot), ['types', 'default'])
-  ) {
+  const PUBLISHED_EXPORTS = publishedExportsOf(name)
+  const typesFirst =
+    isRecord(publishedExports) &&
+    Object.entries(publishedExports)
+      .filter(([key]) => key !== './package.json')
+      .every(
+        ([, entry]) =>
+          isRecord(entry) && isDeepStrictEqual(Object.keys(entry), ['types', 'default']),
+      )
+  if (!isDeepStrictEqual(publishedExports, PUBLISHED_EXPORTS) || !typesFirst) {
     report(
       'published-exports',
       `"publishConfig.exports" must be ${show(PUBLISHED_EXPORTS)} with "types" first, found ${show(publishedExports)}`,

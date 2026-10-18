@@ -109,6 +109,14 @@
       "previewTokenFromCookie": "value",
       "signWebhook": "value",
       "verifyWebhook": "value"
+    },
+    "./webhooks": {
+      "EVENT_ID_HEADER": "value",
+      "SIGNATURE_HEADER": "value",
+      "TIMESTAMP_HEADER": "value",
+      "WebhookCheck": "type",
+      "signWebhook": "value",
+      "verifyWebhook": "value"
     }
   },
   "@hollware/core": {
@@ -302,6 +310,14 @@
       "verifyPreviewToken": "value",
       "verifyWebhook": "value",
       "webhookDefinition": "value"
+    },
+    "./webhooks": {
+      "EVENT_ID_HEADER": "value",
+      "SIGNATURE_HEADER": "value",
+      "TIMESTAMP_HEADER": "value",
+      "WebhookCheck": "type",
+      "signWebhook": "value",
+      "verifyWebhook": "value"
     }
   },
   "@hollware/nuxt": {

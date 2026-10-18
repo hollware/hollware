@@ -27,7 +27,8 @@ import { workspaceManifests } from '../support/workspace.ts'
 // type, files, publishConfig, engines or the build and publint scripts; its `exports` or `bin`
 // stop pointing at the source, or the published ones in publishConfig at dist; a published
 // package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
-// or a package's vite.config.ts stops building with `pack.exports.devExports: true`.
+// or a package's vite.config.ts stops building with `pack.exports.devExports: true`; or a package
+// exports an entry besides its root that SUBPATHS of tests/guards/manifests.ts does not declare.
 
 /** The published exports of every package, as the guard expects them. */
 const PUBLISHED_EXPORTS = {
@@ -117,13 +118,13 @@ describe('package manifests', () => {
     it('reports a package that resolves to dist inside the workspace', () => {
       expect(
         check({
-          manifests: replace('packages/client', { exports: PUBLISHED_EXPORTS }),
+          manifests: replace('packages/server', { exports: PUBLISHED_EXPORTS }),
           files,
         }),
       ).toEqual([
         {
           rule: 'manifest/exports',
-          file: 'packages/client/package.json',
+          file: 'packages/server/package.json',
           message:
             '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
         },
@@ -139,10 +140,10 @@ describe('package manifests', () => {
         access: 'public',
         provenance: true,
       }
-      expect(check({ manifests: replace('packages/client', { publishConfig }), files })).toEqual([
+      expect(check({ manifests: replace('packages/server', { publishConfig }), files })).toEqual([
         {
           rule: 'manifest/published-exports',
-          file: 'packages/client/package.json',
+          file: 'packages/server/package.json',
           message:
             '"publishConfig.exports" must be {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"} with "types" first, found {".":{"default":"./dist/index.mjs","types":"./dist/index.d.mts"},"./package.json":"./package.json"}',
         },
@@ -156,12 +157,28 @@ describe('package manifests', () => {
         provenance: true,
         registry: 'https://evil.example/',
       }
-      expect(check({ manifests: replace('packages/core', { publishConfig }), files })).toEqual([
+      expect(check({ manifests: replace('packages/server', { publishConfig }), files })).toEqual([
         {
           rule: 'manifest/publish-config',
-          file: 'packages/core/package.json',
+          file: 'packages/server/package.json',
           message:
             '"publishConfig" must hold {"access":"public","provenance":true} and nothing else besides "exports" and "bin", found {"exports":{".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"},"access":"public","provenance":true,"registry":"https://evil.example/"}',
+        },
+      ])
+    })
+
+    it('reports an entry that SUBPATHS does not declare', () => {
+      const exports = {
+        '.': './src/index.ts',
+        './vite': './src/vite.ts',
+        './package.json': './package.json',
+      }
+      expect(check({ manifests: replace('packages/admin', { exports }), files })).toEqual([
+        {
+          rule: 'manifest/exports',
+          file: 'packages/admin/package.json',
+          message:
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":"./src/index.ts","./vite":"./src/vite.ts","./package.json":"./package.json"}',
         },
       ])
     })
