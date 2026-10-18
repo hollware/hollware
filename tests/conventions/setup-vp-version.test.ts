@@ -38,7 +38,7 @@ describe('setup-vp version', () => {
     const workspace: unknown = parse(readText('pnpm-workspace.yaml'))
     const catalog = isRecord(workspace) ? workspace.catalog : undefined
     const viteVersion = isRecord(catalog) ? catalog['vite-plus'] : undefined
-    expect(viteVersion).toBe('1.2.0')
+    expect(viteVersion).toBe('1.3.0')
     const violations = checkSetupVpVersion({
       workflows: readRepoFiles(isWorkflowPath),
       viteVersion: typeof viteVersion === 'string' ? viteVersion : undefined,
