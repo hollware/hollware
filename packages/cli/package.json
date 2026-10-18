@@ -1,6 +1,6 @@
 {
   "name": "hollware",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "The Hollware CLI: init, migrate, token, import and export.",
   "homepage": "https://hollware.com",
   "bugs": {

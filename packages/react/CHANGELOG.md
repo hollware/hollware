@@ -1,5 +1,13 @@
 # @hollware/react
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- Updated dependencies [[`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58), [`51fc47c`](https://github.com/hollware/hollware/commit/51fc47c170d39ce69350c800d287309ba3ebb92e)]:
+  - @hollware/core@1.0.0-rc.2
+  - @hollware/client@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Patch Changes
