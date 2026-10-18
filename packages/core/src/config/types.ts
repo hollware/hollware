@@ -97,6 +97,13 @@ export interface SiteDefinition {
     /** How many days a line is kept, 30 to 3650; `null` keeps the log as long as the site. */
     readonly retentionDays?: number | null
   }
+  /** The daily backups of the site to the R2 bucket: each day, kept 30 days, by default. */
+  readonly backups?: {
+    /** `false` makes no backup; those already kept go when their retention passes. */
+    readonly enabled?: boolean
+    /** How many days each backup is kept, 1 to 365. */
+    readonly retentionDays?: number
+  }
   /** How the site converts the images it receives (ADR-038): WebP at 85, 2400 pixels wide. */
   readonly media?: {
     readonly format?: 'webp' | 'avif' | 'original'
@@ -157,7 +164,14 @@ export interface ResolvedSite {
   readonly cors: { readonly origins: readonly string[] }
   readonly events: ResolvedEvents
   readonly audit: ResolvedAudit
+  readonly backups: ResolvedBackups
   readonly media: ResolvedMedia
+}
+
+/** The daily backups of a site: whether the cron makes them, and how long each is kept. */
+export interface ResolvedBackups {
+  readonly enabled: boolean
+  readonly retentionDays: number
 }
 
 /** How a site converts the images it receives (ADR-038). */

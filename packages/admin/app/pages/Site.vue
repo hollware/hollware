@@ -13,6 +13,8 @@ import { parseWidths } from '../lib/media.ts'
 import {
   AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
+  BACKUP_RETENTION_MAX_DAYS,
+  BACKUP_RETENTION_MIN_DAYS,
   MEDIA_MAX_WIDTH,
   MEDIA_MIN_WIDTH,
 } from '@hollware/core'
@@ -43,6 +45,9 @@ const ipAddresses = ref<'off' | 'hashed'>('off')
 const keepForever = ref(true)
 const retentionDays = ref<number | undefined>(undefined)
 const retentionError = ref<string | null>(null)
+const backupsOn = ref(true)
+const backupsDays = ref<number | undefined>(30)
+const backupsError = ref<string | null>(null)
 const imageFormat = ref<'webp' | 'avif' | 'original'>('webp')
 const imageQuality = ref<number | undefined>(85)
 const imageMaxWidth = ref<number | undefined>(2400)
@@ -149,6 +154,9 @@ async function load() {
   keepForever.value = read.definition.audit.retentionDays === null
   retentionDays.value = read.definition.audit.retentionDays ?? undefined
   retentionError.value = null
+  backupsOn.value = read.definition.backups.enabled
+  backupsDays.value = read.definition.backups.retentionDays
+  backupsError.value = null
   imageFormat.value = read.definition.media.format
   imageQuality.value = read.definition.media.quality
   imageMaxWidth.value = read.definition.media.maxWidth
@@ -194,6 +202,32 @@ async function saveActivity() {
   const definition = {
     ...current.definition,
     audit: { ipAddresses: ipAddresses.value, retentionDays: retention.days },
+  }
+  await change.run((confirm) =>
+    api.call('update_site', { version: current.version, definition, confirm }),
+  )
+}
+
+async function saveBackups() {
+  const current = structure.value
+  if (current === null) return
+  const days = backupsDays.value
+  if (
+    typeof days !== 'number' ||
+    !Number.isInteger(days) ||
+    days < BACKUP_RETENTION_MIN_DAYS ||
+    days > BACKUP_RETENTION_MAX_DAYS
+  ) {
+    backupsError.value = m.value.site.backupsKeepInvalid(
+      BACKUP_RETENTION_MIN_DAYS,
+      BACKUP_RETENTION_MAX_DAYS,
+    )
+    return
+  }
+  backupsError.value = null
+  const definition = {
+    ...current.definition,
+    backups: { enabled: backupsOn.value, retentionDays: days },
   }
   await change.run((confirm) =>
     api.call('update_site', { version: current.version, definition, confirm }),
@@ -494,6 +528,29 @@ const PRESETS = computed(() => [
       <section aria-labelledby="backups" class="max-w-2xl space-y-4">
         <h2 id="backups" class="font-semibold">{{ m.site.backupsTitle }}</h2>
         <p class="text-sm text-muted">{{ m.site.backupsHelp }}</p>
+        <form
+          v-if="backupList?.outcome !== 'unavailable'"
+          class="space-y-4"
+          novalidate
+          @submit.prevent="saveBackups"
+        >
+          <USwitch v-model="backupsOn" :label="m.site.backupsOn" />
+          <UFormField
+            v-if="backupsOn"
+            :label="m.site.backupsKeep"
+            :help="m.site.backupsKeepHelp"
+            :error="backupsError ?? undefined"
+          >
+            <UInput
+              v-model.number="backupsDays"
+              type="number"
+              :min="BACKUP_RETENTION_MIN_DAYS"
+              :max="BACKUP_RETENTION_MAX_DAYS"
+              class="w-40"
+            />
+          </UFormField>
+          <UButton type="submit" :label="m.site.saveBackups" :loading="change.busy.value" />
+        </form>
         <p v-if="backupList?.outcome === 'unavailable'" class="text-sm text-muted">
           {{ m.site.backupsUnavailable }}
         </p>

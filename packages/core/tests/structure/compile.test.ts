@@ -11,7 +11,7 @@ import { markdownOf, NO_LOOKUPS } from '../contracts/support.ts'
 // Fails when: a site's definition (src/structure/compile.ts) stops compiling into the same
 // resolved site its 0.x config resolves to (src/structure/from-config.ts): the same rules, with
 // their parameters, the same verdict on an entry and the same hash of the rules, so that moving a
-// deployment keeps every stored verdict current; or stops refusing, with each problem at its
+// deployment keeps every stored verdict current, and the backup setting of the site; or stops refusing, with each problem at its
 // path, a rule the catalog lacks, parameters the rule does not take, a schema that is not of an
 // object, a definition of the wrong shape, or a contract of the config's own code; or a
 // deployment with no site stops compiling to none.
@@ -22,6 +22,7 @@ const CONFIG: HollwareConfig = {
       locales: ['es', 'en'],
       defaultLocale: 'es',
       url: 'https://blog.example.com',
+      backups: { enabled: false, retentionDays: 7 },
       collections: {
         posts: {
           schema: z.object({
@@ -70,6 +71,15 @@ function verdictOf(config: ResolvedConfig, title: string, phase: Phase) {
 
 describe('a 0.x config moved to a definition', () => {
   const definitions = definitionsFromConfig(CONFIG)
+
+  it('keeps the backup setting of the site', () => {
+    const compiled = compileSites(JSON.parse(JSON.stringify(definitions)))
+    expect(compiled.sites.get('blog')?.backups).toEqual({ enabled: false, retentionDays: 7 })
+    expect(resolveConfig(CONFIG).sites.get('blog')?.backups).toEqual({
+      enabled: false,
+      retentionDays: 7,
+    })
+  })
 
   it('keeps the rules with their parameters, and the id given to one', () => {
     expect(definitions['blog']?.collections['posts']?.rules).toEqual([

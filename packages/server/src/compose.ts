@@ -159,7 +159,7 @@ export function createHollwareWith(
         await dropExpiredLines(env.DB, site, clock.now())
         // The backup of the day, once its hour has come (backup/run.ts), in the bucket of images.
         if (env.MEDIA !== undefined) {
-          const backup = await backUpSite(env.DB, env.MEDIA, site.key, clock.now())
+          const backup = await backUpSite(env.DB, env.MEDIA, site, clock.now())
           if (backup === 'made') writeLog({ kind: 'backup', site: site.key, outcome: backup })
         }
         // The revisions an older Comark or pipeline parsed, a batch each minute (ADR-021).

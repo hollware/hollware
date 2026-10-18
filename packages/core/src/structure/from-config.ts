@@ -85,6 +85,7 @@ export function definitionsFromConfig(config: HollwareConfig): Record<string, Si
               retentionDays: site.audit.retentionDays ?? null,
             },
           }),
+      ...(site.backups === undefined ? {} : { backups: { ...site.backups } }),
       collections: Object.fromEntries(
         Object.entries(site.collections).map(([name, collection]) => [
           name,

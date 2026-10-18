@@ -10,8 +10,9 @@ import { warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, publishPost } from '../ops/world.ts'
 
 // Fails when: the daily backup (src/backup/run.ts) is made before its hour, more than once a day,
-// without an entry's latest Markdown or the published one when it differs, or keeps one past 30
-// days; or list_backups stops listing them newest first, or answers without the bucket; or
+// without an entry's latest Markdown or the published one when it differs, or keeps one past the
+// retention of the site (30 days by default); a site with its backups off gets one, or keeps one
+// past its retention, or the bucket is listed more than in the first minutes of 03:00; or list_backups stops listing them newest first, or answers without the bucket; or
 // GET /v1/backups/<date> serves one to anyone but a token with schema:admin of the site.
 
 vi.setConfig({ testTimeout: 60_000 })
@@ -35,12 +36,28 @@ describe('the daily backup', () => {
       markdown:
         '---\ntitle: Changed\ndescription: d\ndate: 2026-10-01\ntags: [a]\ntranslationGroup: kept\n---\nChanged.\n',
     })
-    // A backup older than the retention, which the run of the day drops.
+    // A backup older than the retention, which the run of the day drops, and one within it.
     await env.MEDIA.put(backupKey(site, '2026-09-01'), '{}')
+    await env.MEDIA.put(backupKey(site, '2026-09-20'), '{}')
 
-    const early = await backUpSite(env.DB, env.MEDIA, site, at('2026-10-18T02:59:00.000Z'))
-    const made = await backUpSite(env.DB, env.MEDIA, site, at('2026-10-18T03:00:00.000Z'))
-    const again = await backUpSite(env.DB, env.MEDIA, site, at('2026-10-18T09:00:00.000Z'))
+    const early = await backUpSite(
+      env.DB,
+      env.MEDIA,
+      world.tenant.site,
+      at('2026-10-18T02:59:00.000Z'),
+    )
+    const made = await backUpSite(
+      env.DB,
+      env.MEDIA,
+      world.tenant.site,
+      at('2026-10-18T03:00:00.000Z'),
+    )
+    const again = await backUpSite(
+      env.DB,
+      env.MEDIA,
+      world.tenant.site,
+      at('2026-10-18T09:00:00.000Z'),
+    )
 
     expect([early, made, again]).toEqual(['not_yet', 'made', 'done'])
     const object = await env.MEDIA.get(backupKey(site, '2026-10-18'))
@@ -62,13 +79,37 @@ describe('the daily backup', () => {
       ['es', 'guardado', false, true],
     ])
     expect(await env.MEDIA.head(backupKey(site, '2026-09-01'))).toBeNull()
+    expect(await env.MEDIA.head(backupKey(site, '2026-09-20'))).not.toBeNull()
+  })
+
+  it("follows the site's setting: its retention, and none when it turns them off", async () => {
+    const world = await newWorld(env.DB, 'backup-setting')
+    const site = world.tenant.site
+    const week = { ...site, backups: { enabled: true, retentionDays: 7 } }
+    const off = { ...site, backups: { enabled: false, retentionDays: 7 } }
+    await env.MEDIA.put(backupKey(site.key, '2026-10-10'), '{}')
+    await env.MEDIA.put(backupKey(site.key, '2026-10-12'), '{}')
+    const dates = async () =>
+      (await env.MEDIA.list({ prefix: `backups/${site.key}/` })).objects.map((object) =>
+        object.key.slice(-15, -5),
+      )
+
+    const made = await backUpSite(env.DB, env.MEDIA, week, at('2026-10-18T03:00:00.000Z'))
+    const kept = await dates()
+    const none = await backUpSite(env.DB, env.MEDIA, off, at('2026-10-20T04:00:00.000Z'))
+    const later = await dates()
+    const dropped = await backUpSite(env.DB, env.MEDIA, off, at('2026-10-21T03:02:00.000Z'))
+
+    expect([made, none, dropped]).toEqual(['made', 'off', 'off'])
+    expect(kept).toEqual(['2026-10-12', '2026-10-18'])
+    expect(later).toEqual(['2026-10-12', '2026-10-18'])
+    expect(await dates()).toEqual(['2026-10-18'])
   })
 
   it('is listed newest first, and is unavailable without the bucket', async () => {
     const world = await newWorld(env.DB, 'backup-list')
-    const site = world.tenant.key
-    await backUpSite(env.DB, env.MEDIA, site, at('2026-10-16T05:00:00.000Z'))
-    await backUpSite(env.DB, env.MEDIA, site, at('2026-10-17T05:00:00.000Z'))
+    await backUpSite(env.DB, env.MEDIA, world.tenant.site, at('2026-10-16T05:00:00.000Z'))
+    await backUpSite(env.DB, env.MEDIA, world.tenant.site, at('2026-10-17T05:00:00.000Z'))
 
     const listed = await listBackups({}, { ...world.context(), backups: backupsIn(env.MEDIA) })
     const none = await listBackups({}, { ...world.context(), backups: null })

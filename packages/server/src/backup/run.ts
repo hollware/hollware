@@ -1,3 +1,4 @@
+import type { ResolvedSite } from '@hollware/core'
 import type { Backups } from '../ports.ts'
 
 /**
@@ -6,11 +7,10 @@ import type { Backups } from '../ports.ts'
  * that is published. The Markdown is the source of truth (ADR-001), so a backup is everything
  * needed to make the site again with `hollware backup get` and `hollware import`. D1 Time Travel
  * keeps 30 days of the database; this keeps the content apart from it, in the bucket of the
- * images, which the Worker never serves from `backups/`.
+ * images, which the Worker never serves from `backups/`. Never the images themselves: they are in
+ * the bucket already, and never change. Each site turns its backups off or keeps them longer
+ * (`backups` of its definition).
  */
-
-/** How many days of backups are kept. */
-export const BACKUP_RETENTION_DAYS = 30
 
 /** The hour (UTC) from which the backup of the day is made, by the first run of the cron. */
 export const BACKUP_HOUR_UTC = 3
@@ -86,14 +86,44 @@ export const backupsIn = (bucket: BackupBucket): Backups => ({
   list: (site) => listBackups(bucket, site),
 })
 
+/** The backups of a site past the retention it chose, deleted. */
+async function dropOld(
+  bucket: BackupBucket,
+  site: string,
+  retentionDays: number,
+  now: Date,
+): Promise<void> {
+  const cutoff = new Date(now.getTime() - retentionDays * 86_400_000).toISOString().slice(0, 10)
+  const old = (await listBackups(bucket, site)).filter((backup) => backup.date < cutoff)
+  if (old.length > 0) await bucket.delete(old.map((backup) => backupKey(site, backup.date)))
+}
+
 /**
  * Makes the backup of the day once its hour has come and there is none yet, then drops the ones
- * past the retention. Answers what it did, for the log.
+ * past the retention the site chose. A site with its backups off gets none, and the ones it kept
+ * go when their retention passes: the cron looks once, in the first minutes of the hour of the
+ * backups, so that it does not list the bucket every minute. Answers what it did, for the log.
  */
 export async function backUpSite(
   db: D1Database,
   bucket: BackupBucket,
+  site: Pick<ResolvedSite, 'key' | 'backups'>,
+  now: Date,
+): Promise<'made' | 'not_yet' | 'done' | 'off'> {
+  if (!site.backups.enabled) {
+    if (now.getUTCHours() === BACKUP_HOUR_UTC && now.getUTCMinutes() < 5) {
+      await dropOld(bucket, site.key, site.backups.retentionDays, now)
+    }
+    return 'off'
+  }
+  return backUp(db, bucket, site.key, site.backups.retentionDays, now)
+}
+
+async function backUp(
+  db: D1Database,
+  bucket: BackupBucket,
   site: string,
+  retentionDays: number,
   now: Date,
 ): Promise<'made' | 'not_yet' | 'done'> {
   if (now.getUTCHours() < BACKUP_HOUR_UTC) return 'not_yet'
@@ -128,10 +158,6 @@ export async function backUpSite(
   await bucket.put(key, JSON.stringify(backup), {
     httpMetadata: { contentType: 'application/json' },
   })
-  const cutoff = new Date(now.getTime() - BACKUP_RETENTION_DAYS * 86_400_000)
-    .toISOString()
-    .slice(0, 10)
-  const old = (await listBackups(bucket, site)).filter((backup) => backup.date < cutoff)
-  if (old.length > 0) await bucket.delete(old.map((backup) => backupKey(site, backup.date)))
+  await dropOld(bucket, site, retentionDays, now)
   return 'made'
 }

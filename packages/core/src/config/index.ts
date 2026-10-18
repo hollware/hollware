@@ -3,6 +3,7 @@ export type {
   AuthDefinition,
   ResolvedAuth,
   ResolvedAudit,
+  ResolvedBackups,
   CollectionDefinition,
   ComponentDefinition,
   DescribedSchema,
@@ -17,6 +18,7 @@ export type {
 export { ConfigError, type ConfigProblem } from './config-error.ts'
 export { INDEXNOW_KEY } from './events.ts'
 export { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS, DEFAULT_AUDIT } from './audit.ts'
+export { BACKUP_RETENTION_MAX_DAYS, BACKUP_RETENTION_MIN_DAYS, DEFAULT_BACKUPS } from './backups.ts'
 export {
   DEFAULT_MEDIA,
   MEDIA_FORMATS,

@@ -495,8 +495,15 @@ export const en = {
     webhooks: 'Webhooks',
     backupsTitle: 'Backups',
     backupsHelp:
-      'A copy of the content of this site each day, after 03:00 UTC, kept 30 days in your R2 bucket: the definition of the site and the Markdown of every entry. "hollware backup get" writes one as files that "hollware import" takes back.',
+      'A copy of the content of this site each day, after 03:00 UTC, kept in your R2 bucket for the days you choose: the definition of the site and the Markdown of every entry. "hollware backup get" writes one as files that "hollware import" takes back.',
     noBackups: 'No backup yet: the first comes after 03:00 UTC.',
+    backupsOn: 'Back this site up each day',
+    backupsKeep: 'Days each backup is kept',
+    backupsKeepHelp:
+      'Each backup is a JSON file with the Markdown of every entry, never the images, which are in the bucket already. Older backups are deleted.',
+    backupsKeepInvalid: (min: number, max: number) =>
+      `Enter a whole number of days from ${min} to ${max}.`,
+    saveBackups: 'Save the backup settings',
     backupsUnavailable: 'Backups need the R2 bucket MEDIA of the deployment.',
     download: 'Download',
     downloadOne: (date: string) => `Download the backup of ${date}`,

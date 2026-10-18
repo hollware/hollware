@@ -35,8 +35,11 @@ describe('the config module', () => {
     expect(Object.keys(config).sort()).toEqual([
       'AUDIT_RETENTION_MAX_DAYS',
       'AUDIT_RETENTION_MIN_DAYS',
+      'BACKUP_RETENTION_MAX_DAYS',
+      'BACKUP_RETENTION_MIN_DAYS',
       'ConfigError',
       'DEFAULT_AUDIT',
+      'DEFAULT_BACKUPS',
       'DEFAULT_MAX_MARKDOWN_BYTES',
       'DEFAULT_MEDIA',
       'INDEXNOW_KEY',

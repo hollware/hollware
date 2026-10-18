@@ -507,13 +507,36 @@ test('the owner sets the narrower copies the images of the site get, in Site', a
   await expectAccessible(owner)
 })
 
-test('the owner finds the daily backups of the site in Site, none before the first cron', async () => {
+test('the owner finds the daily backups of the site in Site, keeps them a week, then turns them off', async () => {
   await owner.goto('/admin/site')
   await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()
   // The playground has its bucket, so list_backups answers ok, with no backup yet.
   await expect(
     owner.getByText(/^(No backup yet: the first comes after 03:00 UTC\.|Todavía no hay respaldos)/),
   ).toBeVisible()
+  // An owner keeps them a week, then turns them off; the setting stays after a reload.
+  const days = owner.getByRole('spinbutton', {
+    name: /^(Days each backup is kept|Días que se guarda)/,
+  })
+  await expect(days).toHaveValue('30')
+  await days.fill('7')
+  const save = owner.getByRole('button', {
+    name: /^(Save the backup settings|Guardar la configuración de respaldos)$/,
+  })
+  await save.click()
+  await expect(owner.getByText(/^(Saved|Guardado)/).first()).toBeVisible()
+  await owner.reload()
+  await expect(days).toHaveValue('7')
+  await owner
+    .getByRole('switch', { name: /^(Back this site up each day|Respaldar este sitio)/ })
+    .click()
+  await expect(days).toBeHidden()
+  await save.click()
+  await owner.reload()
+  await expect(
+    owner.getByRole('switch', { name: /^(Back this site up each day|Respaldar este sitio)/ }),
+  ).not.toBeChecked()
+  await expectAccessible(owner)
 })
 
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T-44, T-45, T-54)', async () => {

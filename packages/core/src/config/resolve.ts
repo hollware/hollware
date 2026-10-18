@@ -1,6 +1,7 @@
 import { readCollection, type SiteContext } from './collection.ts'
 import { ConfigError, Problems } from './config-error.ts'
 import { readAudit } from './audit.ts'
+import { readBackups } from './backups.ts'
 import { readMedia } from './media.ts'
 import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
@@ -155,8 +156,21 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
   const cors = readCors(keyPath(path, 'cors'), raw['cors'], problems)
   const events = readEvents(keyPath(path, 'events'), raw['events'], url, problems)
   const audit = readAudit(keyPath(path, 'audit'), raw['audit'], problems)
+  const backups = readBackups(keyPath(path, 'backups'), raw['backups'], problems)
   const media = readMedia(keyPath(path, 'media'), raw['media'], problems)
-  return { key, locales, defaultLocale, styleGuide, collections, url, cors, events, audit, media }
+  return {
+    key,
+    locales,
+    defaultLocale,
+    styleGuide,
+    collections,
+    url,
+    cors,
+    events,
+    audit,
+    backups,
+    media,
+  }
 }
 
 function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> {

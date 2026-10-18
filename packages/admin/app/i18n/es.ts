@@ -513,8 +513,15 @@ export const es: Messages = {
     webhooks: 'Webhooks',
     backupsTitle: 'Respaldos',
     backupsHelp:
-      'Una copia del contenido de este sitio cada día, después de las 03:00 UTC, guardada 30 días en tu bucket de R2: la definición del sitio y el Markdown de cada entrada. "hollware backup get" escribe uno como archivos que "hollware import" vuelve a cargar.',
+      'Una copia del contenido de este sitio cada día, después de las 03:00 UTC, guardada en tu bucket de R2 los días que elijas: la definición del sitio y el Markdown de cada entrada. "hollware backup get" escribe uno como archivos que "hollware import" vuelve a cargar.',
     noBackups: 'Todavía no hay respaldos: el primero llega después de las 03:00 UTC.',
+    backupsOn: 'Respaldar este sitio cada día',
+    backupsKeep: 'Días que se guarda cada respaldo',
+    backupsKeepHelp:
+      'Cada respaldo es un archivo JSON con el Markdown de cada entrada, nunca las imágenes, que ya están en el bucket. Los respaldos más antiguos se eliminan.',
+    backupsKeepInvalid: (min: number, max: number) =>
+      `Escribe un número entero de días entre ${min} y ${max}.`,
+    saveBackups: 'Guardar la configuración de respaldos',
     backupsUnavailable: 'Los respaldos necesitan el bucket de R2 MEDIA del despliegue.',
     download: 'Descargar',
     downloadOne: (date: string) => `Descargar el respaldo del ${date}`,

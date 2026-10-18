@@ -7,6 +7,11 @@ import {
   MEDIA_MAX_WIDTHS,
   MEDIA_MIN_WIDTH,
 } from '../config/media.ts'
+import {
+  BACKUP_RETENTION_MAX_DAYS,
+  BACKUP_RETENTION_MIN_DAYS,
+  DEFAULT_BACKUPS,
+} from '../config/backups.ts'
 
 /**
  * The definition of a site as data (ADR-033): what D1 stores for it and what the operations that
@@ -105,6 +110,24 @@ export const siteDefinitionData = z.strictObject({
     })
     .default({ ipAddresses: 'off', retentionDays: null })
     .describe('What the activity log of the site keeps (ADR-037). Only an owner should change it.'),
+  backups: z
+    .strictObject({
+      enabled: z
+        .boolean()
+        .default(DEFAULT_BACKUPS.enabled)
+        .describe(
+          'Whether the cron writes a backup of the site each day after 03:00 UTC to the R2 bucket of the deployment: the definition and the Markdown of every entry, never the images. false makes none; those already kept go when their retention passes.',
+        ),
+      retentionDays: z
+        .number()
+        .int()
+        .min(BACKUP_RETENTION_MIN_DAYS)
+        .max(BACKUP_RETENTION_MAX_DAYS)
+        .default(DEFAULT_BACKUPS.retentionDays)
+        .describe('How many days each daily backup is kept, 1 to 365.'),
+    })
+    .default({ ...DEFAULT_BACKUPS })
+    .describe('The daily backups of the site. Only an owner should change it.'),
   media: z
     .strictObject({
       format: z

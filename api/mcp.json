@@ -874,6 +874,29 @@
                 },
                 "type": "object"
               },
+              "backups": {
+                "additionalProperties": false,
+                "default": {
+                  "enabled": true,
+                  "retentionDays": 30
+                },
+                "description": "The daily backups of the site. Only an owner should change it.",
+                "properties": {
+                  "enabled": {
+                    "default": true,
+                    "description": "Whether the cron writes a backup of the site each day after 03:00 UTC to the R2 bucket of the deployment: the definition and the Markdown of every entry, never the images. false makes none; those already kept go when their retention passes.",
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "default": 30,
+                    "description": "How many days each daily backup is kept, 1 to 365.",
+                    "maximum": 365,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "collections": {
                 "additionalProperties": {
                   "additionalProperties": false,
@@ -2660,6 +2683,30 @@
                 "required": ["ipAddresses", "retentionDays"],
                 "type": "object"
               },
+              "backups": {
+                "additionalProperties": false,
+                "default": {
+                  "enabled": true,
+                  "retentionDays": 30
+                },
+                "description": "The daily backups of the site. Only an owner should change it.",
+                "properties": {
+                  "enabled": {
+                    "default": true,
+                    "description": "Whether the cron writes a backup of the site each day after 03:00 UTC to the R2 bucket of the deployment: the definition and the Markdown of every entry, never the images. false makes none; those already kept go when their retention passes.",
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "default": 30,
+                    "description": "How many days each daily backup is kept, 1 to 365.",
+                    "maximum": 365,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": ["enabled", "retentionDays"],
+                "type": "object"
+              },
               "collections": {
                 "additionalProperties": {
                   "additionalProperties": false,
@@ -2973,6 +3020,7 @@
               "cors",
               "events",
               "audit",
+              "backups",
               "media",
               "collections"
             ],
@@ -6741,6 +6789,29 @@
                     ],
                     "default": null,
                     "description": "The days each line of the activity log is kept; null keeps it as long as the site."
+                  }
+                },
+                "type": "object"
+              },
+              "backups": {
+                "additionalProperties": false,
+                "default": {
+                  "enabled": true,
+                  "retentionDays": 30
+                },
+                "description": "The daily backups of the site. Only an owner should change it.",
+                "properties": {
+                  "enabled": {
+                    "default": true,
+                    "description": "Whether the cron writes a backup of the site each day after 03:00 UTC to the R2 bucket of the deployment: the definition and the Markdown of every entry, never the images. false makes none; those already kept go when their retention passes.",
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "default": 30,
+                    "description": "How many days each daily backup is kept, 1 to 365.",
+                    "maximum": 365,
+                    "minimum": 1,
+                    "type": "integer"
                   }
                 },
                 "type": "object"
