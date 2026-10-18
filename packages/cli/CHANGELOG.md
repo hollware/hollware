@@ -1,5 +1,21 @@
 # hollware
 
+## 1.0.0-rc.2
+
+### Minor Changes
+
+- [`055d933`](https://github.com/hollware/hollware/commit/055d9332daf8cd27117e0a0e5868ffb2c735b1c1) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy --url https://cms.example.com` now serves the Worker there: a public URL on a domain of your own (not workers.dev) gets a `custom_domain` route in `wrangler.jsonc` before the first deploy, so Cloudflare makes its DNS record and its certificate, and the Worker is deployed once. A config with routes of its own is left as it is, and deploy says which route is missing.
+
+- [`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Images (ADR-038). `upload_asset` takes a JPEG, PNG, WebP, AVIF, GIF or SVG, judged by its bytes, and converts it once by the site's new `media` setting (WebP at 85 by default, PNG lossless, GIF with its frames, nothing wider than 2400 px; or AVIF, or the file as it came). An SVG is kept as it is, and refused when anything in it can run. R2 keeps the image and its original; content shows it as `img: asset:ast_…` or `![alt](asset:ast_…)`, which reads of the published site and HTML turn into the URL where the Worker serves it, cached for a year. `list_assets` and `get_asset` read them; the admin has an Images page; `hollware export --assets <dir> --assets-url <path>` writes the images for a site that serves them itself, and without it keeps the originals in `_assets/`, which `hollware import` uploads again under the same ids. A new project binds an R2 bucket (`MEDIA`), which the first deploy creates, and the Images binding (`IMAGES`); `hollware doctor` says when either is missing. Migration 0017 adds the `assets` table.
+
+### Patch Changes
+
+- [`28f0198`](https://github.com/hollware/hollware/commit/28f0198a417044d1d67584dcccaa9977bb97f657) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy` says why wrangler failed in full, over every line of a wrapped `[ERROR]`, and suggests `wrangler login` only when wrangler's failure is about logging in. Its closing line no longer says the deploy wrote ids into `wrangler.jsonc`: wrangler now binds what it creates to the deployed Worker by name.
+
+- [`d6ef107`](https://github.com/hollware/hollware/commit/d6ef10750cbd045b20225eb289b3b76859cba61a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project keeps working at localhost after `hollware deploy`: the starter's `vite.config.ts` sets `HOLLWARE_PUBLIC_URL` to `http://localhost:5199` in development (`vp dev`), whatever public URL the deploy wrote into `wrangler.jsonc`, and `hollware dev` waits for the server there. `hollware deploy` writes `worker-configuration.d.ts` again whenever it rewrites `wrangler.jsonc`, so `wrangler types --check` keeps passing.
+- Updated dependencies [[`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58), [`51fc47c`](https://github.com/hollware/hollware/commit/51fc47c170d39ce69350c800d287309ba3ebb92e)]:
+  - @hollware/core@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Minor Changes

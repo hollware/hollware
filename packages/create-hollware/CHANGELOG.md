@@ -1,5 +1,19 @@
 # create-hollware
 
+## 1.0.0-rc.2
+
+### Minor Changes
+
+- [`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Images (ADR-038). `upload_asset` takes a JPEG, PNG, WebP, AVIF, GIF or SVG, judged by its bytes, and converts it once by the site's new `media` setting (WebP at 85 by default, PNG lossless, GIF with its frames, nothing wider than 2400 px; or AVIF, or the file as it came). An SVG is kept as it is, and refused when anything in it can run. R2 keeps the image and its original; content shows it as `img: asset:ast_…` or `![alt](asset:ast_…)`, which reads of the published site and HTML turn into the URL where the Worker serves it, cached for a year. `list_assets` and `get_asset` read them; the admin has an Images page; `hollware export --assets <dir> --assets-url <path>` writes the images for a site that serves them itself, and without it keeps the originals in `_assets/`, which `hollware import` uploads again under the same ids. A new project binds an R2 bucket (`MEDIA`), which the first deploy creates, and the Images binding (`IMAGES`); `hollware doctor` says when either is missing. Migration 0017 adds the `assets` table.
+
+### Patch Changes
+
+- [`d6ef107`](https://github.com/hollware/hollware/commit/d6ef10750cbd045b20225eb289b3b76859cba61a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project keeps working at localhost after `hollware deploy`: the starter's `vite.config.ts` sets `HOLLWARE_PUBLIC_URL` to `http://localhost:5199` in development (`vp dev`), whatever public URL the deploy wrote into `wrangler.jsonc`, and `hollware dev` waits for the server there. `hollware deploy` writes `worker-configuration.d.ts` again whenever it rewrites `wrangler.jsonc`, so `wrangler types --check` keeps passing.
+
+- [`0f69adb`](https://github.com/hollware/hollware/commit/0f69adbd8f17cf0dc66175a60b98afc6dd4d9bdd) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project passes its own `vp check`: the starter formats and lints as Hollware writes it (no semicolons, single quotes, generated files left alone), has a `check` script, and `npm create hollware` formats the project after the install, so a longer name than the starter's never leaves a line too wide. Its `AGENTS.md` says how to update Hollware: every package to one exact version, then `hollware deploy`.
+
+- [`f38af74`](https://github.com/hollware/hollware/commit/f38af744088d5985b6cf5c849d56bb0183bae15f) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project's tests pass after `hollware deploy`: the starter's `vitest.config.ts` gives the Worker under test `HOLLWARE_PUBLIC_URL=http://localhost:5199`, whatever public URL the deploy wrote into `wrangler.jsonc`. They used to answer 403 in CI, where no `.dev.vars` sets it back to localhost.
+
 ## 1.0.0-rc.1
 
 ### Minor Changes

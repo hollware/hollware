@@ -1,5 +1,13 @@
 # @hollware/core
 
+## 1.0.0-rc.2
+
+### Minor Changes
+
+- [`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Images (ADR-038). `upload_asset` takes a JPEG, PNG, WebP, AVIF, GIF or SVG, judged by its bytes, and converts it once by the site's new `media` setting (WebP at 85 by default, PNG lossless, GIF with its frames, nothing wider than 2400 px; or AVIF, or the file as it came). An SVG is kept as it is, and refused when anything in it can run. R2 keeps the image and its original; content shows it as `img: asset:ast_…` or `![alt](asset:ast_…)`, which reads of the published site and HTML turn into the URL where the Worker serves it, cached for a year. `list_assets` and `get_asset` read them; the admin has an Images page; `hollware export --assets <dir> --assets-url <path>` writes the images for a site that serves them itself, and without it keeps the originals in `_assets/`, which `hollware import` uploads again under the same ids. A new project binds an R2 bucket (`MEDIA`), which the first deploy creates, and the Images binding (`IMAGES`); `hollware doctor` says when either is missing. Migration 0017 adds the `assets` table.
+
+- [`51fc47c`](https://github.com/hollware/hollware/commit/51fc47c170d39ce69350c800d287309ba3ebb92e) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `@hollware/client/webhooks` (and `@hollware/core/webhooks`): `verifyWebhook`, `signWebhook` and the header names, with no zod and no other import. A site whose own zod is another major, such as a Nuxt Content site on zod 3, checks Hollware's webhooks through it: the root entry evaluates every schema of Hollware with the site's zod, and fails at load.
+
 ## 1.0.0-rc.1
 
 ### Minor Changes

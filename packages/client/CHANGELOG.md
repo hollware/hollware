@@ -1,5 +1,16 @@
 # @hollware/client
 
+## 1.0.0-rc.2
+
+### Minor Changes
+
+- [`51fc47c`](https://github.com/hollware/hollware/commit/51fc47c170d39ce69350c800d287309ba3ebb92e) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `@hollware/client/webhooks` (and `@hollware/core/webhooks`): `verifyWebhook`, `signWebhook` and the header names, with no zod and no other import. A site whose own zod is another major, such as a Nuxt Content site on zod 3, checks Hollware's webhooks through it: the root entry evaluates every schema of Hollware with the site's zod, and fails at load.
+
+### Patch Changes
+
+- Updated dependencies [[`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58), [`51fc47c`](https://github.com/hollware/hollware/commit/51fc47c170d39ce69350c800d287309ba3ebb92e)]:
+  - @hollware/core@1.0.0-rc.2
+
 ## 1.0.0-rc.1
 
 ### Patch Changes
