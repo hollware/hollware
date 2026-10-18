@@ -10,7 +10,9 @@ import { boot, brokenDb, captureLogs, restoreLogs, wire } from './support.ts'
 // trailing slash) stops being the JSON 404; or a route that throws stops ending in the JSON 500:
 // the status, the body (a fixed message, and the id of the request in the fix), the headers, and,
 // above all, that nothing of the cause reaches the caller, where it stays in the log under the
-// same id. A D1 failure while a token is checked is that 500, never a 401. Each request has an id
+// same id. A D1 failure while a token is checked is that 500, never a 401. `GET /robots.txt`
+// stops keeping every crawler out, or an answer stops carrying `x-robots-tag: noindex, nofollow`
+// (HEADERS): a CMS is never a public site, the sites it feeds are. Each request has an id
 // of its own. The gateway is the Hono 5 app of `src/http/gateway.ts`, whose error handling is the
 // Hono 5 form of `src/http/errors.ts`; this runs it in workerd over the real D1.
 
@@ -22,6 +24,7 @@ const HEADERS = {
   'content-type': 'application/json',
   'strict-transport-security': 'max-age=31536000',
   'x-content-type-options': 'nosniff',
+  'x-robots-tag': 'noindex, nofollow',
 }
 
 const NOT_FOUND = {
@@ -52,6 +55,20 @@ describe('GET /health', () => {
   })
 })
 
+describe('GET /robots.txt', () => {
+  it('keeps every crawler out, to anyone, without a query', async () => {
+    const worker = boot()
+
+    const response = await worker.send('/robots.txt')
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('text/plain; charset=utf-8')
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+    expect(await response.text()).toBe('User-agent: *\nDisallow: /\n')
+    expect(worker.queries).toEqual([])
+  })
+})
+
 describe('GET /v1, the index of the read API', () => {
   it.each(['/v1', '/v1/'])(
     'answers %s with the two URLs to start from, to anyone',
@@ -66,6 +83,7 @@ describe('GET /v1, the index of the read API', () => {
           'content-type': 'application/json',
           'strict-transport-security': 'max-age=31536000',
           'x-content-type-options': 'nosniff',
+          'x-robots-tag': 'noindex, nofollow',
         },
         body: {
           openapi: 'https://hollware.test/v1/openapi.json',

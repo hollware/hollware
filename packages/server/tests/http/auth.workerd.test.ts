@@ -30,6 +30,7 @@ const NO_TOKEN = {
     pragma: 'no-cache',
     'strict-transport-security': 'max-age=31536000',
     'x-content-type-options': 'nosniff',
+    'x-robots-tag': 'noindex, nofollow',
     'www-authenticate': `Bearer realm="hollware", resource_metadata="${METADATA}", scope="content:read"`,
   },
   body: {
@@ -47,6 +48,7 @@ const REFUSED = {
     pragma: 'no-cache',
     'strict-transport-security': 'max-age=31536000',
     'x-content-type-options': 'nosniff',
+    'x-robots-tag': 'noindex, nofollow',
     'www-authenticate': `Bearer realm="hollware", resource_metadata="${METADATA}", error="invalid_token", scope="content:read"`,
   },
   body: {

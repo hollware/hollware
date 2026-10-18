@@ -19,6 +19,7 @@ const HEADERS = {
   'content-type': 'application/json',
   'strict-transport-security': 'max-age=31536000',
   'x-content-type-options': 'nosniff',
+  'x-robots-tag': 'noindex, nofollow',
 }
 
 /** With no usable public URL, nothing says the Worker is reached over https. */
@@ -26,6 +27,7 @@ const MISCONFIGURED_HEADERS = {
   'cache-control': 'no-store',
   'content-type': 'application/json',
   'x-content-type-options': 'nosniff',
+  'x-robots-tag': 'noindex, nofollow',
 }
 
 const MISCONFIGURED = {

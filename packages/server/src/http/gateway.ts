@@ -255,15 +255,18 @@ export function createGateway(options: GatewayOptions): Gateway {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID())
     await next()
-    // Every answer of the Worker: no type sniffing, and HTTPS only from the first visit on when
-    // the public URL is https. A route that set either keeps its own.
+    // Every answer of the Worker: no type sniffing, out of every search index (a CMS is never a
+    // public site: the sites it feeds are), and HTTPS only from the first visit on when the public
+    // URL is https. A route that set one keeps its own.
     const https = c.env.HOLLWARE_PUBLIC_URL?.startsWith('https://') === true
     const missing =
       !c.res.headers.has('x-content-type-options') ||
+      !c.res.headers.has('x-robots-tag') ||
       (https && !c.res.headers.has('strict-transport-security'))
     if (!missing) return
     const headers = new Headers(c.res.headers)
     if (!headers.has('x-content-type-options')) headers.set('x-content-type-options', 'nosniff')
+    if (!headers.has('x-robots-tag')) headers.set('x-robots-tag', 'noindex, nofollow')
     if (https && !headers.has('strict-transport-security')) {
       headers.set('strict-transport-security', 'max-age=31536000')
     }
@@ -319,6 +322,18 @@ export function createGateway(options: GatewayOptions): Gateway {
       await next()
     })
   }
+
+  // What crawlers read first: nothing here is theirs.
+  app.get(
+    '/robots.txt',
+    () =>
+      new Response('User-agent: *\nDisallow: /\n', {
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'cache-control': 'public, max-age=86400',
+        },
+      }),
+  )
 
   app.get('/health', () =>
     Response.json({ ok: true }, { headers: { 'cache-control': 'no-store' } }),

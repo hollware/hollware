@@ -53,6 +53,7 @@ describe('the admin', () => {
           'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()',
         'strict-transport-security': 'max-age=31536000',
         'x-content-type-options': 'nosniff',
+        'x-robots-tag': 'noindex, nofollow',
       })
     }
     expect(asked).toEqual(['/admin/', '/admin/'])
