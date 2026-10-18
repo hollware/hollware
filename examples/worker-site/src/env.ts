@@ -12,7 +12,7 @@ import type { HollwareRpc } from '@hollware/server'
  */
 export interface SiteEnv {
   readonly HOLLWARE: HollwareRpc
-  /** The key of the site in Hollware's hollware.config.ts. */
+  /** The key of the site in Hollware, as `hollware init --site` made it. */
   readonly HOLLWARE_SITE: string
   /** The entries on a page of the blog index. */
   readonly PAGE_SIZE: number
