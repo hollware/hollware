@@ -18,7 +18,9 @@ export const DEPLOY_USAGE = [
   '',
   'HOLLWARE_PUBLIC_URL must be the public URL of the Worker. While it is a localhost URL, the',
   'workers.dev URL that wrangler prints is written into wrangler.jsonc, and the Worker is deployed',
-  'again with it. Run "wrangler login" first.',
+  'again with it. A URL on a domain of your own (not workers.dev) also gets a route in',
+  'wrangler.jsonc that serves the Worker there as a custom domain: Cloudflare makes its DNS record',
+  'and its certificate, in a zone of the same account. Run "wrangler login" first.',
   '',
   'Options:',
   '  --url <url>  The public URL of the Worker, such as https://cms.example.com (default: the',
@@ -39,6 +41,36 @@ export function workersDevUrlOf(stdout: string): string | undefined {
 function isLoopback(url: string): boolean {
   const { hostname } = new URL(url)
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
+}
+
+/** The host of a public URL on a domain of its own: neither this machine nor workers.dev. */
+export function customDomainOf(url: string): string | undefined {
+  if (isLoopback(url)) return undefined
+  const { hostname } = new URL(url)
+  return /(?:^|\.)workers\.dev$/i.test(hostname) ? undefined : hostname
+}
+
+const ROUTES_KEY = /^\s*"routes"\s*:/m
+/** The first key of the starter's wrangler.jsonc, at the top level of the object. */
+const TOP_LEVEL_NAME = /^ {2}"name"\s*:\s*"[^"\n]*",[^\n]*\n/m
+
+/**
+ * `wrangler.jsonc` with a route that serves the Worker at `host` as a custom domain, after its
+ * `name`, and everything else as it was. A config with routes of its own is left as it is.
+ */
+export function withCustomDomain(text: string, host: string): string {
+  if (ROUTES_KEY.test(text)) return text
+  if (!TOP_LEVEL_NAME.test(text)) {
+    throw new CliError(
+      `wrangler.jsonc has no "name" at its top. Add "routes": [{ "pattern": "${host}", "custom_domain": true }] to it.`,
+    )
+  }
+  return text.replace(
+    TOP_LEVEL_NAME,
+    (line) =>
+      `${line}  // The custom domain of the Worker: Cloudflare makes its DNS record and its certificate.\n` +
+      `  "routes": [{ "pattern": ${JSON.stringify(host)}, "custom_domain": true }],\n`,
+  )
 }
 
 const PUBLIC_URL_VALUE = /("HOLLWARE_PUBLIC_URL"\s*:\s*)"[^"\n]*"/
@@ -83,17 +115,38 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   const configured = publicUrlOf(io.cwd, undefined)
   const asked = values.url === undefined ? undefined : publicUrlOf(io.cwd, values.url)
   const database = resolveDatabase(io.cwd, undefined)
+  const known =
+    asked ?? (configured !== undefined && !isLoopback(configured) ? configured : undefined)
+  const domain = known === undefined ? undefined : customDomainOf(known)
+  let written = configured
+  if (known !== undefined && domain !== undefined) {
+    // A domain of its own is known before the first deploy, which then serves it at once.
+    const before = readFileSync(file, 'utf8')
+    const withUrl = known === configured ? before : withPublicUrl(before, known)
+    const after = withCustomDomain(withUrl, domain)
+    if (after === withUrl && !withUrl.includes(JSON.stringify(domain))) {
+      io.out(
+        `wrangler.jsonc has routes of its own and none for ${domain}: add { "pattern": "${domain}", "custom_domain": true } to them.`,
+      )
+    }
+    if (after !== before) {
+      writeFileSync(file, after)
+      io.out(
+        `Serving the Worker at ${domain}: set HOLLWARE_PUBLIC_URL and its route in wrangler.jsonc.`,
+      )
+    }
+    written = known
+  }
 
   io.out('Deploying with wrangler ...')
   const printed = await wranglerDeploy(io)
-  let url = asked ?? (configured !== undefined && !isLoopback(configured) ? configured : undefined)
-  url ??= workersDevUrlOf(printed)
+  const url = known ?? workersDevUrlOf(printed)
   if (url === undefined) {
     throw new CliError(
       'wrangler deployed the Worker but printed no workers.dev URL. Run "hollware deploy --url <the public URL of the Worker>".',
     )
   }
-  if (url !== configured) {
+  if (url !== written) {
     writeFileSync(file, withPublicUrl(readFileSync(file, 'utf8'), url))
     io.out(`Set HOLLWARE_PUBLIC_URL to ${url} in wrangler.jsonc. Deploying again with it ...`)
     await wranglerDeploy(io)

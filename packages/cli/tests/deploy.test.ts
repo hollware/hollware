@@ -5,17 +5,28 @@
 //   next step for a database without an owner is not said.
 // - "keeps a public URL that is not localhost, and deploys once": a configured public URL is
 //   replaced by the workers.dev one, or the Worker is deployed twice for nothing.
-// - "takes --url over both": `--url` is ignored, or written as given and not as its origin.
+// - "serves a domain of its own …": `--url` is ignored or written as given and not as its origin,
+//   the custom domain gets no route (or another host, or a line more than its route), or the Worker
+//   is deployed twice.
+// - "leaves routes of its own …": a config with routes gets a second "routes", or no word on the
+//   missing route.
+// - "tells a domain of its own …": `customDomainOf` routes localhost or workers.dev, or misses a
+//   custom host.
 // - "stops when wrangler cannot deploy …": a failed deploy goes on to migrate.
 // - "stops when it can tell no public URL": a deploy that prints no workers.dev URL, with a
 //   localhost URL, goes on without one.
 // - "reads the workers.dev URL …": `workersDevUrlOf` misses the URL among wrangler's colors, or
 //   takes another host for it.
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { withPublicUrl, workersDevUrlOf } from '../src/commands/deploy.ts'
+import {
+  customDomainOf,
+  withCustomDomain,
+  withPublicUrl,
+  workersDevUrlOf,
+} from '../src/commands/deploy.ts'
 import { d1, failed, fakeWrangler, ok, type FakeWrangler } from './support/fake-wrangler.ts'
 import { run } from './support/io.ts'
 import { tempDirs } from './support/project.ts'
@@ -26,6 +37,22 @@ const temp = tempDirs()
 function wranglerJsonc(url: string): string {
   return `{
   "name": "my-hollware",
+  "vars": {
+    // The only Host and Origin the Worker answers.
+    "HOLLWARE_PUBLIC_URL": "${url}",
+  },
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "my-hollware" }],
+}
+`
+}
+
+/** The same `wrangler.jsonc`, served at `host` as a custom domain: what deploy writes. */
+function routedJsonc(url: string, host: string): string {
+  return `{
+  "name": "my-hollware",
+  // The custom domain of the Worker: Cloudflare makes its DNS record and its certificate.
+  "routes": [{ "pattern": "${host}", "custom_domain": true }],
   "vars": {
     // The only Host and Origin the Worker answers.
     "HOLLWARE_PUBLIC_URL": "${url}",
@@ -123,39 +150,67 @@ describe('hollware deploy', () => {
       ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1', site: 'blog' }]),
     )
-    const project = setup(wrangler, 'https://cms.example.com')
+    const project = setup(wrangler, 'https://my-hollware.ada.workers.dev')
 
     const { code, out } = await project.run(['deploy'])
 
     expect(code).toBe(0)
     expect(wrangler.calls.map((call) => call.args[0])).toEqual(['deploy', 'secret', 'd1', 'd1'])
-    expect(project.config()).toBe(wranglerJsonc('https://cms.example.com'))
+    expect(project.config()).toBe(wranglerJsonc('https://my-hollware.ada.workers.dev'))
     expect(out.at(-1)).toBe(
       [
-        'Hollware is live at https://cms.example.com.',
+        'Hollware is live at https://my-hollware.ada.workers.dev.',
         '',
-        '  MCP    https://cms.example.com/mcp',
-        '  Admin  https://cms.example.com/admin/',
+        '  MCP    https://my-hollware.ada.workers.dev/mcp',
+        '  Admin  https://my-hollware.ada.workers.dev/admin/',
         '',
         'Commit wrangler.jsonc: it holds the ids of what the deploy created, and the public URL.',
       ].join('\n'),
     )
   })
 
-  it('takes --url over both, as its origin', async () => {
+  it('serves a domain of its own from --url, as its origin, with one deploy', async () => {
     const wrangler = fakeWrangler(
-      ok(DEPLOYED),
       ok(DEPLOYED),
       ok(HAS_MASTER),
       ok('✅ No migrations to apply!'),
       d1([{ id: 'usr_1' }]),
     )
-    const project = setup(wrangler, 'https://old.example.com')
+    const project = setup(wrangler, 'http://localhost:5199')
 
-    const { code } = await project.run(['deploy', '--url', 'https://cms.example.com/admin/'])
+    const { code, out } = await project.run(['deploy', '--url', 'https://cms.example.com/admin/'])
 
     expect(code).toBe(0)
-    expect(project.config()).toBe(wranglerJsonc('https://cms.example.com'))
+    expect(wrangler.calls.map((call) => call.args[0])).toEqual(['deploy', 'secret', 'd1', 'd1'])
+    expect(project.config()).toBe(routedJsonc('https://cms.example.com', 'cms.example.com'))
+    expect(out[0]).toBe(
+      'Serving the Worker at cms.example.com: set HOLLWARE_PUBLIC_URL and its route in wrangler.jsonc.',
+    )
+  })
+
+  it('leaves routes of its own as they are, and says which route is missing', async () => {
+    const wrangler = fakeWrangler(
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      ok('✅ No migrations to apply!'),
+      d1([{ id: 'usr_1' }]),
+    )
+    const project = setup(wrangler, 'https://cms.example.com')
+    const own = project
+      .config()
+      .replace(
+        '  "vars"',
+        '  "routes": [{ "pattern": "example.com/*", "zone_name": "example.com" }],\n  "vars"',
+      )
+    writeFileSync(join(project.cwd, 'wrangler.jsonc'), own)
+
+    const { code, out } = await project.run(['deploy'])
+
+    expect(code).toBe(0)
+    expect(project.config()).toBe(own)
+    expect(out[0]).toBe(
+      'wrangler.jsonc has routes of its own and none for cms.example.com: add { "pattern": "cms.example.com", "custom_domain": true } to them.',
+    )
   })
 
   it('stops when wrangler cannot deploy, and migrates nothing', async () => {
@@ -198,6 +253,37 @@ describe('the helpers of deploy', () => {
     )
     expect(() => withPublicUrl('{ "name": "x" }', 'https://a.example')).toThrow(
       'wrangler.jsonc has no "HOLLWARE_PUBLIC_URL" in "vars".',
+    )
+  })
+
+  it('tells a domain of its own from this machine and workers.dev', () => {
+    expect(
+      [
+        'https://cms.example.com',
+        'https://example.com',
+        'https://my-hollware.ada.workers.dev',
+        'https://workers.dev',
+        'https://notworkers.dev',
+        'http://localhost:5199',
+        'http://127.0.0.1:5199',
+      ].map((url) => customDomainOf(url)),
+    ).toEqual([
+      'cms.example.com',
+      'example.com',
+      undefined,
+      undefined,
+      'notworkers.dev',
+      undefined,
+      undefined,
+    ])
+  })
+
+  it('adds the route once, and refuses a config whose name it cannot find', () => {
+    const routed = withCustomDomain(wranglerJsonc('https://cms.example.com'), 'cms.example.com')
+    expect(routed).toBe(routedJsonc('https://cms.example.com', 'cms.example.com'))
+    expect(withCustomDomain(routed, 'other.example.com')).toBe(routed)
+    expect(() => withCustomDomain('{ "name": "x" }', 'cms.example.com')).toThrow(
+      'wrangler.jsonc has no "name" at its top.',
     )
   })
 })
