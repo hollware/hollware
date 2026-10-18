@@ -15,6 +15,8 @@
 // - "refuses a manifest …", "stops before any entry …", "counts the images of a dry run": import
 //   reads a file the manifest names outside _assets, goes on to the entries after an image was
 //   not taken, or uploads in a dry run.
+// - "writes the 301s …": a published export leaves out redirects.json when the site has redirects,
+//   writes one without both paths, or fails on a Hollware that has no list_redirects.
 // - "pages through list_entries": `nextCursor` is not followed, or is sent wrong.
 // - "--dry-run lists what it would write …": `--dry-run` writes a file or a directory.
 // - "refuses a directory that is not empty …" / "refuses a file": `checkTarget` lets a directory
@@ -687,6 +689,36 @@ describe('hollware export and its images (ADR-038)', () => {
       expect.stringMatching(/^Would upload 1 image of .*backup\/_assets\.$/),
     )
     expect(calls(other, 'upload_asset')).toEqual([])
+  })
+
+  it('writes the 301s of the entries that moved to redirects.json, for a site that builds from it', async () => {
+    const { stub } = await siteWithAnImage()
+    const moved = await serve({
+      redirects: [
+        {
+          from: 'old-talk',
+          to: 'talk',
+          fromPath: '/en/talks/old-talk/',
+          toPath: '/en/talks/talk/',
+        },
+        // No route for the locale: no path to answer, so not in the file.
+        { from: 'gone', to: 'here', fromPath: null, toPath: null },
+      ],
+    })
+    for (const [key, entry] of stub.entries) moved.entries.set(key, entry)
+    for (const [key, asset] of stub.assets) moved.assets.set(key, asset)
+    const base = temp.make()
+
+    const exported = await runExport(base, 'site', moved.url, ['--published'])
+    const older = await runExport(base, 'older', stub.url, ['--published'])
+
+    expect([exported.code, older.code]).toEqual([0, 0])
+    expect(JSON.parse(readFileSync(join(base, 'site/redirects.json'), 'utf8'))).toEqual([
+      { from: '/en/talks/old-talk/', to: '/en/talks/talk/', status: 301 },
+    ])
+    expect(exported.out).toContain('Wrote 1 redirect to site/redirects.json.')
+    // A Hollware without list_redirects: no file, and no error.
+    expect(existsSync(join(base, 'older/redirects.json'))).toBe(false)
   })
 
   it('takes --assets and --assets-url together or not at all', async () => {

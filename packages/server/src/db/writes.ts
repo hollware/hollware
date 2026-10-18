@@ -1,6 +1,6 @@
 import { newId } from '@hollware/core'
 import type { EntryRef } from '@hollware/core'
-import { and, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { alias } from 'drizzle-orm/sqlite-core'
 
@@ -12,6 +12,7 @@ import type {
   NewRevision,
   OutboxEvent,
   PublishWrite,
+  StoredRedirect,
   StoredRevision,
   WriteRefusal,
 } from '../ports.ts'
@@ -21,7 +22,7 @@ import { findEntryById, findRevision } from './reads.ts'
 import { approvePendingReview, cancelPendingReview } from './reviews.ts'
 import { dropSchedule, dropUnpublish } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
-import { entries, outbox, publications, revisions, schedules, sites } from './schema.ts'
+import { entries, outbox, publications, redirects, revisions, schedules, sites } from './schema.ts'
 import { tooLarge } from './size.ts'
 import { valuesOf } from './statements.ts'
 import {
@@ -624,4 +625,162 @@ function insertEventWhere(
     .select(
       sql`select ${valuesOf(outbox, row)} from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), sql`${event === null ? 0 : 1} = 1`, ...conditions)}`,
     )
+}
+
+/**
+ * Gives an entry another slug in one batch, while it is at `expectedVersion`: its old slug becomes
+ * a redirect when `redirect` says so (an entry that was ever published), a redirect from the new
+ * slug goes (the slug is an entry's again), an event tells the subscribers when it is published,
+ * and the entry gets the slug and the next version. A slug another entry of the collection and
+ * locale holds is `taken`, and nothing is written.
+ */
+export async function moveEntry(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: {
+    readonly entryId: string
+    readonly expectedVersion: number
+    readonly slug: string
+    readonly redirect: boolean
+    readonly event: OutboxEvent | null
+  },
+): Promise<{ readonly outcome: 'moved'; readonly view: EntryView } | WriteRefusal> {
+  const now = clock.now().toISOString()
+  const atVersion = and(
+    eq(entries.id, write.entryId),
+    eq(entries.siteId, site),
+    eq(entries.version, write.expectedVersion),
+    isNull(entries.deletedAt),
+  )
+  const before = await findEntryById(db, site, write.entryId, 'head')
+  if (before === null) return { outcome: 'not_found' }
+  if (before.entry.version !== write.expectedVersion) {
+    return {
+      outcome: 'conflict',
+      currentVersion: before.entry.version,
+      headRevision: before.entry.headRevision,
+    }
+  }
+  const [holder] = await db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(
+      and(
+        eq(entries.siteId, site),
+        eq(entries.collection, before.entry.collection),
+        eq(entries.locale, before.entry.locale),
+        eq(entries.slug, write.slug),
+      ),
+    )
+  if (holder !== undefined) return { outcome: 'taken', field: 'slug', by: holder.id }
+  const row = {
+    id: newId('rdr'),
+    siteId: site,
+    collection: before.entry.collection,
+    locale: before.entry.locale,
+    fromSlug: before.entry.slug,
+    entryId: write.entryId,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const statements: BatchItem<'sqlite'>[] = [
+    // The slug is an entry's again: a redirect from it would hide the entry.
+    db
+      .delete(redirects)
+      .where(
+        and(
+          eq(redirects.siteId, site),
+          eq(redirects.collection, before.entry.collection),
+          eq(redirects.locale, before.entry.locale),
+          eq(redirects.fromSlug, write.slug),
+          sql`exists (select 1 from ${entries} where ${atVersion})`,
+        ),
+      ),
+    ...(write.redirect
+      ? [
+          db
+            .insert(redirects)
+            .select(sql`select ${valuesOf(redirects, row)} from ${entries} where ${atVersion}`)
+            .onConflictDoUpdate({
+              target: [
+                redirects.siteId,
+                redirects.collection,
+                redirects.locale,
+                redirects.fromSlug,
+              ],
+              set: { entryId: write.entryId, updatedAt: now },
+            }),
+        ]
+      : []),
+    insertEventWhere(db, site, write.entryId, write.event, 'entry.published', now, [
+      eq(entries.version, write.expectedVersion),
+      eq(entries.status, 'published'),
+    ]),
+    db
+      .update(entries)
+      .set({ slug: write.slug, version: sql`${entries.version} + 1`, updatedAt: now })
+      .where(atVersion),
+  ]
+  const [first, ...rest] = statements
+  if (first !== undefined) await db.batch([first, ...rest])
+  const view = await findEntryById(db, site, write.entryId, 'head')
+  if (view === null) return { outcome: 'not_found' }
+  // Another write got in between: the entry is at another version, and keeps its slug.
+  if (view.entry.version !== write.expectedVersion + 1 || view.entry.slug !== write.slug) {
+    return {
+      outcome: 'conflict',
+      currentVersion: view.entry.version,
+      headRevision: view.entry.headRevision,
+    }
+  }
+  return { outcome: 'moved', view }
+}
+
+/** The redirects of a site, newest first, a page after `cursor`. */
+export async function listRedirects(
+  db: Db,
+  site: string,
+  query: {
+    readonly collection?: string
+    readonly locale?: string
+    readonly limit: number
+    readonly cursor: { readonly createdAt: string; readonly id: string } | null
+  },
+): Promise<readonly StoredRedirect[]> {
+  const rows = await db
+    .select({
+      id: redirects.id,
+      collection: redirects.collection,
+      locale: redirects.locale,
+      from: redirects.fromSlug,
+      entryId: redirects.entryId,
+      to: entries.slug,
+      createdAt: redirects.createdAt,
+    })
+    .from(redirects)
+    .innerJoin(
+      entries,
+      and(eq(entries.id, redirects.entryId), eq(entries.siteId, redirects.siteId)),
+    )
+    .where(
+      and(
+        eq(redirects.siteId, site),
+        isNull(entries.deletedAt),
+        query.collection === undefined ? undefined : eq(redirects.collection, query.collection),
+        query.locale === undefined ? undefined : eq(redirects.locale, query.locale),
+        query.cursor === null
+          ? undefined
+          : or(
+              lt(redirects.createdAt, query.cursor.createdAt),
+              and(
+                eq(redirects.createdAt, query.cursor.createdAt),
+                lt(redirects.id, query.cursor.id),
+              ),
+            ),
+      ),
+    )
+    .orderBy(desc(redirects.createdAt), desc(redirects.id))
+    .limit(query.limit)
+  return rows
 }

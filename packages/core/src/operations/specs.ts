@@ -391,6 +391,63 @@ export const unpublish = defineOperation({
   outcomes: { unpublished: { isError: false }, not_found: { isError: true } },
 })
 
+const redirect = z.object({
+  collection: z.string(),
+  locale: z.string(),
+  from: z.string().describe('The slug the entry had: its old path is answered with a 301.'),
+  to: z.string().describe('The slug the entry has now.'),
+  fromPath: z
+    .string()
+    .nullable()
+    .describe('The old path on the site, from the route of the collection.'),
+  toPath: z.string().nullable().describe('The path now.'),
+  entryId,
+})
+
+export const moveEntry = defineOperation({
+  name: 'move_entry',
+  title: 'Change the slug of an entry',
+  description:
+    "Gives an entry another slug, and so another path on the site, if the entry is still at the version you read; it keeps its revisions and its translations. An entry that was ever published keeps its old slug as a redirect (list_redirects), so a site answers the old path with a 301 and links and search engines follow. Moving a published entry takes content:publish; the site's pages of it are purged. A slug another entry of the collection and locale holds answers taken.",
+  input: z.strictObject({ id: entryId, version, slug: slug.describe('The new slug.') }),
+  output: z.object({
+    outcome: z.enum(['moved', 'unchanged', 'taken', 'conflict', 'not_found']),
+    entry: entrySummary.optional(),
+    redirect: redirect.optional().describe('With moved, for an entry that was ever published.'),
+    conflict: conflict.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'edit',
+  outcomes: {
+    moved: { isError: false },
+    unchanged: { isError: false },
+    taken: { isError: true },
+    conflict: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
+export const listRedirects = defineOperation({
+  name: 'list_redirects',
+  title: 'List the redirects of the site',
+  description:
+    "Lists the old paths of the site's entries that moved (move_entry) and where each goes now, newest first: what a site answers with a 301. Narrow it to a collection or a locale; pass the nextCursor of an answer as cursor for the next page.",
+  input: z.strictObject({
+    collection: collectionName.optional(),
+    locale: locale.optional(),
+    limit: z.number().int().min(1).max(500).default(100),
+    cursor: z.string().min(1).optional(),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok']),
+    redirects: z.array(redirect),
+    nextCursor: z.string().nullable(),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false } },
+})
+
 export const scheduleUnpublish = defineOperation({
   name: 'schedule_unpublish',
   title: 'Unpublish an entry at a time',
@@ -941,9 +998,11 @@ export const OPERATIONS = [
   getTranslations,
   listAssets,
   listEntries,
+  listRedirects,
   listReviews,
   listRevisions,
   makeWebhookSecret,
+  moveEntry,
   publish,
   requestChanges,
   requestReview,

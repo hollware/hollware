@@ -9,6 +9,7 @@ import {
   validate,
   type Scope,
   getAsset,
+  listRedirects,
   uploadAsset,
 } from '@hollware/core'
 import {
@@ -112,6 +113,11 @@ export interface StubOptions {
   site?: { key: string; locales: string[]; collections: string[] }
   /** The most entries a page of `list_entries` holds, whatever limit is asked; the limit when absent. */
   pageSize?: number
+  /**
+   * The redirects of the site, as list_redirects answers them; without it the stub has no such
+   * tool, as a Hollware before 1.0 had not.
+   */
+  redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
   /** Answers every `upload_asset` with `refused` and this problem, as Hollware refuses a file. */
   refuseUploads?: { message: string; fix: string }
 }
@@ -300,12 +306,37 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               revision: revisionId(entry),
               verdict: verdictOf(fileOf(entry, markdown), 'write'),
               lastPublication: null,
+              unpublishAt: null,
               markdown,
             },
           })
         }),
       ),
     )
+
+    const redirects = options.redirects
+    if (redirects !== undefined) {
+      server.registerTool(
+        listRedirects.name,
+        {
+          ...describe(listRedirects),
+          inputSchema: listRedirects.input,
+          outputSchema: listRedirects.output,
+        },
+        guarded(listRedirects.name, () =>
+          reply(listRedirects.outcomes, {
+            outcome: 'ok',
+            redirects: redirects.map((redirect) => ({
+              ...redirect,
+              collection: 'blog',
+              locale: 'en',
+              entryId: 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
+            })),
+            nextCursor: null,
+          }),
+        ),
+      )
+    }
 
     keep(
       getAsset.name,

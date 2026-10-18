@@ -6,7 +6,7 @@ import { CANNED } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
 
 // Fails when: the class a site reaches over a service binding (`Hollware`, `src/rpc/entrypoint.ts`)
-// stops being exactly the five methods of `HollwareRpc`: a sixth public member on it or on what it
+// stops being exactly the six methods of `HollwareRpc`: a seventh public member on it or on what it
 // inherits (anything on the prototype is callable by a Worker with the binding, and a writing
 // method must never be), or one of the four missing; stops handing each call to the operation of
 // its name with its arguments in the right order, over the environment the class was built with;
@@ -36,11 +36,12 @@ const RPC_METHODS: Record<keyof HollwareRpc, true> = {
   getEntry: true,
   getTranslations: true,
   listEntries: true,
+  listRedirects: true,
   search: true,
 }
 
 describe('the Hollware class', () => {
-  it('has the five methods of HollwareRpc and nothing else, own or inherited', () => {
+  it('has the six methods of HollwareRpc and nothing else, own or inherited', () => {
     const { worker } = boot()
 
     expect(callableNames(worker.Hollware.prototype)).toEqual([
@@ -48,6 +49,7 @@ describe('the Hollware class', () => {
       'getEntry',
       'getTranslations',
       'listEntries',
+      'listRedirects',
       'search',
     ])
     expect(Object.keys(RPC_METHODS).sort()).toEqual([
@@ -55,6 +57,7 @@ describe('the Hollware class', () => {
       'getEntry',
       'getTranslations',
       'listEntries',
+      'listRedirects',
       'search',
     ])
   })

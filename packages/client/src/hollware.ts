@@ -158,6 +158,15 @@ export interface Hollware {
   search(query: string, options?: SearchOptions): Promise<SearchPage>
   /** The site: its locales, its collections, their routes and their schemas. */
   describeSite(): Promise<SiteDescription>
+  /**
+   * Where an entry that moved is now, for the slug it had: its slug and path, for a 301 from the
+   * old path; `undefined` when nothing moved from there. Read it when `getEntry` finds nothing.
+   */
+  redirectFor(
+    collection: string,
+    locale: string,
+    slug: string,
+  ): Promise<{ readonly slug: string; readonly path: string | null } | undefined>
 }
 
 function readerOf(options: ReaderOptions): HollwareReader {
@@ -246,6 +255,22 @@ export function createHollware(options: HollwareOptions): Hollware {
           ...(result.passage === undefined ? {} : { passage: result.passage }),
         })),
       }
+    },
+    async redirectFor(collection, locale, slug) {
+      const reader = readerOf(options)
+      let cursor: string | undefined
+      do {
+        const page = await reader.listRedirects(site, {
+          collection,
+          locale,
+          limit: 500,
+          ...(cursor === undefined ? {} : { cursor }),
+        })
+        const found = page.redirects.find((redirect) => redirect.from === slug)
+        if (found !== undefined) return { slug: found.to, path: found.toPath }
+        cursor = page.nextCursor ?? undefined
+      } while (cursor !== undefined)
+      return undefined
     },
     async describeSite() {
       return (await readerOf(options).describeSite(site)).site

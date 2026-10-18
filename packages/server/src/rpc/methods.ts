@@ -4,6 +4,7 @@ import {
   getTranslations as getTranslationsSpec,
   HollwareError,
   listEntries as listEntriesSpec,
+  listRedirects as listRedirectsSpec,
   verifyPreviewToken,
   search as searchSpec,
   type ErrorCode,
@@ -31,7 +32,7 @@ export interface RpcLogEntry {
   readonly detail: string
 }
 
-/** What the five methods stand on, built once for the isolate. */
+/** What the six methods stand on, built once for the isolate. */
 export interface RpcDeps {
   /** The sites this deployment serves, by key; a call names one of them. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
@@ -257,7 +258,7 @@ async function run<Schema extends z.ZodType, Output>(
 /**
  * The read-only RPC surface (`HollwareRpc`) over the bindings of one invocation. It is a function
  * and not the entrypoint so that it runs in any test; `entrypoint.ts` is the class that calls it.
- * It has the five methods and nothing that writes, and none of them reaches a handler other than
+ * It has the six methods and nothing that writes, and none of them reaches a handler other than
  * the one that reads.
  */
 export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
@@ -330,6 +331,16 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         describeSiteSpec.input,
         () => ({}),
         deps.handlers.describe_site,
+      ),
+    listRedirects: (site, options) =>
+      run(
+        deps,
+        env,
+        'listRedirects',
+        site,
+        listRedirectsSpec.input,
+        () => readOptions(options, ['collection', 'locale', 'limit', 'cursor']),
+        deps.handlers.list_redirects,
       ),
     search: (site, query, options) =>
       run(

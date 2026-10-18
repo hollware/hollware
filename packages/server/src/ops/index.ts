@@ -6,6 +6,7 @@ import { getEntry } from './get-entry.ts'
 import { getTranslations } from './get-translations.ts'
 import { getRevision, listRevisions, restoreRevision } from './history.ts'
 import { listEntries } from './list-entries.ts'
+import { listRedirects, moveEntry } from './move.ts'
 import { scheduleUnpublish } from './schedule-unpublish.ts'
 import { search } from './search.ts'
 import {
@@ -52,11 +53,13 @@ export const handlers = defineHandlers({
   get_translations: getTranslations,
   list_assets: listAssets,
   list_entries: listEntries,
+  list_redirects: listRedirects,
   schedule_unpublish: scheduleUnpublish,
   search,
   list_reviews: listReviews,
   list_revisions: listRevisions,
   make_webhook_secret: makeWebhookSecret,
+  move_entry: moveEntry,
   publish,
   request_changes: requestChanges,
   request_review: requestReview,

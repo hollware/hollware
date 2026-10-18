@@ -63,6 +63,8 @@ export const STORE: ContentStore = {
   lastPublication: unused,
   listRevisions: unused,
   findRevision: unused,
+  moveEntry: unused,
+  listRedirects: unused,
   sourceHeadTimes: unused,
   revisionTimes: unused,
   scheduleUnpublish: unused,
@@ -470,6 +472,30 @@ export const CANNED: Canned = {
   },
   list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
   get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
+  move_entry: {
+    moved: { outcome: 'moved', entry: { ...SUMMARY, slug: 'hello-again', version: 2 } },
+    unchanged: { outcome: 'unchanged', entry: SUMMARY },
+    taken: { outcome: 'taken' },
+    conflict: { outcome: 'conflict', conflict: CONFLICT },
+    not_found: { outcome: 'not_found' },
+  },
+  list_redirects: {
+    ok: {
+      outcome: 'ok',
+      redirects: [
+        {
+          collection: 'blog',
+          locale: 'en',
+          from: 'hello-world',
+          to: 'hello-again',
+          fromPath: '/en/blog/hello-world/',
+          toPath: '/en/blog/hello-again/',
+          entryId: ENTRY_ID,
+        },
+      ],
+      nextCursor: null,
+    },
+  },
   schedule_unpublish: {
     scheduled: { outcome: 'scheduled', entry: SUMMARY, unpublishAt: '2026-11-01T00:00:00.000Z' },
     unpublished: { outcome: 'unpublished', entry: SUMMARY },
@@ -552,6 +578,8 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     get_asset: { id: 'ast_0123456789abcdef0123456789' },
     list_revisions: { id: ENTRY_ID },
     schedule_unpublish: { id: ENTRY_ID, unpublishAt: '2026-11-01T00:00:00.000Z' },
+    move_entry: { id: ENTRY_ID, version: 1, slug: 'hello-again' },
+    list_redirects: {},
     get_revision: { id: REVISION_ID },
     restore_revision: { id: ENTRY_ID, version: 1, revision: REVISION_ID },
     restore_site: { key: 'notes' },
@@ -705,6 +733,15 @@ export function fakeHandlers(
     get_asset: record(
       'get_asset',
       overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
+    ),
+    move_entry: record(
+      'move_entry',
+      overrides.move_entry ?? (async () => pick(CANNED.move_entry, outcomes.move_entry ?? 'moved')),
+    ),
+    list_redirects: record(
+      'list_redirects',
+      overrides.list_redirects ??
+        (async () => pick(CANNED.list_redirects, outcomes.list_redirects ?? 'ok')),
     ),
     schedule_unpublish: record(
       'schedule_unpublish',

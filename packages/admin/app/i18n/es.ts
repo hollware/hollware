@@ -248,6 +248,14 @@ export const es: Messages = {
     missing: 'Esa entrada no existe.',
     unpublishedChanges: 'cambios sin publicar',
     translationBehind: 'El original cambió después de guardar esta traducción',
+    changeUrl: 'Cambiar URL',
+    moveTitle: 'Cambiar la URL de esta entrada',
+    newSlug: 'Slug nuevo',
+    moveHelp:
+      'Minúsculas, dígitos y guiones. Una entrada que se publicó alguna vez mantiene su URL anterior como una redirección a la nueva.',
+    moved: 'La URL cambió',
+    notMoved: 'La URL no cambió',
+    slugTaken: 'Otra entrada de esta colección e idioma ya tiene ese slug.',
     publishes: (at: string) => `se publica el ${at}`,
     version: (version: number) => `v${version}`,
     unsaved: 'sin guardar',
@@ -484,6 +492,10 @@ export const es: Messages = {
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
     webhooks: 'Webhooks',
+    redirectsTitle: 'Redirecciones',
+    redirectsHelp:
+      'Las rutas anteriores de las entradas cuyo slug cambió, y adónde va cada una ahora. Tu sitio responde la ruta anterior con un 301 (list_redirects, o redirects.json de una exportación).',
+    noRedirects: 'Ninguna entrada ha cambiado de URL todavía.',
     webhooksNote:
       'Cada publicación, actualización y despublicación se envía, firmada, a cada uno: un sitio que guarda sus páginas en caché las purga, un boletín prepara un número.',
     signedByHollware: 'firmado con el secreto de Hollware',

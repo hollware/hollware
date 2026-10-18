@@ -9,6 +9,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'update_draft',
   'publish',
   'unpublish',
+  'move_entry',
   'schedule_unpublish',
   'delete_entry',
   'restore_entry',

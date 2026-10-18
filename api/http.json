@@ -13,6 +13,73 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/redirects": {
+      "get": {
+        "operationId": "list_redirects",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "collection",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The old paths of entries that moved, and where each goes now",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          }
+        }
+      }
+    },
     "/v1/search": {
       "get": {
         "operationId": "search",

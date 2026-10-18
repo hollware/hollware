@@ -457,6 +457,34 @@ test('signing in goes back to a page of this Hollware, and never to another host
   await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
 })
 
+test('the owner changes the URL of a published entry, and the site keeps the old one as a redirect', async () => {
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await expect(owner.getByRole('heading', { name: /^Hola mundo/, level: 1 })).toBeVisible()
+  const change = owner.getByRole('button', { name: /^(Change URL|Cambiar URL)$/ })
+  await change.click()
+  await owner.getByRole('dialog').getByRole('textbox').fill('hola-de-nuevo')
+  await expectAccessible(owner)
+  await owner
+    .getByRole('dialog')
+    .getByRole('button', { name: /^(Change URL|Cambiar URL)$/ })
+    .click()
+  await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-de-nuevo$/)
+
+  await owner.goto('/admin/site')
+  await expect(owner.getByText(/hola-mundo/).first()).toBeVisible()
+  await expect(owner.getByText(/hola-de-nuevo/).first()).toBeVisible()
+
+  // Back to its slug: the redirect from it goes, and the one from hola-de-nuevo leads home.
+  await owner.goto('/admin/entries/blog/es/hola-de-nuevo')
+  await owner.getByRole('button', { name: /^(Change URL|Cambiar URL)$/ }).click()
+  await owner.getByRole('dialog').getByRole('textbox').fill('hola-mundo')
+  await owner
+    .getByRole('dialog')
+    .getByRole('button', { name: /^(Change URL|Cambiar URL)$/ })
+    .click()
+  await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
+})
+
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T-44, T-45, T-54)', async () => {
   // The admin is in Spanish since the tests before; the owner has the one passkey of setup. The
   // last test: signing out ends the session the tests before signed in with.

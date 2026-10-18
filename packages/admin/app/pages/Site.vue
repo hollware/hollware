@@ -96,8 +96,16 @@ function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
+type Redirect = Output<'list_redirects'>['redirects'][number]
+const redirectList = ref<Redirect[]>([])
+
 async function load() {
-  const [read, who] = await Promise.all([api.call('get_structure', {}), api.admin<Me>('me')])
+  const [read, who, moved] = await Promise.all([
+    api.call('get_structure', {}),
+    api.admin<Me>('me'),
+    api.call('list_redirects', { limit: 500 }),
+  ])
+  redirectList.value = moved.redirects
   structure.value = read
   me.value = who
   locales.value = [...read.definition.locales]
@@ -380,6 +388,23 @@ const PRESETS = computed(() => [
             :loading="change.busy.value"
           />
         </form>
+      </section>
+
+      <section aria-labelledby="redirects" class="max-w-2xl space-y-4">
+        <h2 id="redirects" class="font-semibold">{{ m.site.redirectsTitle }}</h2>
+        <p class="text-sm text-muted">{{ m.site.redirectsHelp }}</p>
+        <p v-if="redirectList.length === 0" class="text-sm text-muted">{{ m.site.noRedirects }}</p>
+        <ul v-else class="divide-y divide-default rounded-lg border border-default text-sm">
+          <li
+            v-for="redirect in redirectList"
+            :key="`${redirect.collection}/${redirect.locale}/${redirect.from}`"
+            class="flex flex-wrap items-center gap-2 px-3 py-2 font-mono"
+          >
+            <span>{{ redirect.fromPath ?? redirect.from }}</span>
+            <UIcon name="i-lucide-arrow-right" class="text-muted" aria-hidden="true" />
+            <span>{{ redirect.toPath ?? redirect.to }}</span>
+          </li>
+        </ul>
       </section>
 
       <section aria-labelledby="sites" class="max-w-2xl space-y-4">

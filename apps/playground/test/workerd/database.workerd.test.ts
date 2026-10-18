@@ -34,6 +34,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'outbox',
     'passkeys',
     'publications',
+    'redirects',
     'review_comments',
     'reviews',
     'revision_tags',
@@ -44,6 +45,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'site_secrets',
     'sites',
     'tokens',
+    'unpublishes',
     'users',
   ])
 })

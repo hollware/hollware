@@ -15,7 +15,7 @@ import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER } from './workers.ts
 
 // Fails when: @hollware/client stops reading the same published content over a service binding
 // and over HTTP (one suite, both transports), or the read API of the built Worker (src/http/
-// read-api.ts) stops serving the five read methods at /v1 (search included) to a token with content:read, passing
+// read-api.ts) stops serving the six read methods at /v1 (search included) to a token with content:read, passing
 // on a search's mode (refusing one it does not know) and get_entry's related, stops answering an
 // input the caller got wrong with its code and status (400 or 404) instead of a 500, stops
 // answering 304 to its own ETag, stops refusing a request without a token or one that writes, or
@@ -189,7 +189,7 @@ describe('the read API', () => {
     expect([anonymous.status, write.status]).toEqual([401, 405])
   })
 
-  it('describes its five routes in OpenAPI 3.1', async () => {
+  it('describes its six routes in OpenAPI 3.1', async () => {
     const document: unknown = await (await get('/v1/openapi.json')).json()
 
     expect(document).toMatchObject({ openapi: '3.1.0' })
@@ -199,6 +199,7 @@ describe('the read API', () => {
         : [],
     ).toEqual([
       '/v1/site',
+      '/v1/redirects',
       '/v1/search',
       '/v1/{collection}',
       '/v1/{collection}/translations/{group}',

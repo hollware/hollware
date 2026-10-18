@@ -40,6 +40,8 @@ export interface Session {
     spec: ToolSpec<Input, Output>,
     input: z.input<Input>,
   ) => Promise<z.output<Output>>
+  /** Whether the server has a tool: an older Hollware may lack one this CLI knows. */
+  has: (tool: string) => Promise<boolean>
   close: () => Promise<void>
 }
 
@@ -62,6 +64,7 @@ export async function openSession(endpoint: URL, token: string, version: string)
     await client.close().catch(() => undefined)
     throw explain(error, endpoint) ?? error
   }
+  let tools: Promise<ReadonlySet<string>> | undefined
   return {
     call: async (spec, input) => {
       let result: CallToolResult
@@ -73,6 +76,10 @@ export async function openSession(endpoint: URL, token: string, version: string)
       const answer = spec.output.safeParse(payloadOf(result))
       if (answer.success) return answer.data
       throw new ToolFailure(`${spec.name} failed: ${wordsOf(result)}`)
+    },
+    has: async (tool) => {
+      tools ??= client.listTools().then((listed) => new Set(listed.tools.map((one) => one.name)))
+      return (await tools).has(tool)
     },
     close: () => client.close().catch(() => undefined),
   }

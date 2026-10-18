@@ -6,7 +6,7 @@ import type { Proceed } from '../oauth/server.ts'
 import type { GatewayEnv } from './types.ts'
 
 /**
- * The HTTP read API (v0.2): the five read methods of the RPC binding, for a site that is not a
+ * The HTTP read API (v0.2): the six read methods of the RPC binding, for a site that is not a
  * Worker of the same account. It serves published content only (but for `get_entry` with a valid
  * preview token, whose answer is never cached), to a personal token, a read token
  * (`hw_read_`) or an OAuth access token with `content:read` (ADR-026), of one site, and answers
@@ -206,6 +206,22 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     '/v1/site',
     readRoute(async (c) => answer(c, await options.read(c.env).describeSite(c.get('site')))),
   )
+  app.get(
+    '/v1/redirects',
+    readRoute(async (c) => {
+      const query = c.req.query()
+      const limit = query['limit'] === undefined ? undefined : Number(query['limit'])
+      return answer(
+        c,
+        await options.read(c.env).listRedirects(c.get('site'), {
+          ...(query['collection'] === undefined ? {} : { collection: query['collection'] }),
+          ...(query['locale'] === undefined ? {} : { locale: query['locale'] }),
+          ...(limit === undefined ? {} : { limit }),
+          ...(query['cursor'] === undefined ? {} : { cursor: query['cursor'] }),
+        }),
+      )
+    }),
+  )
   // Before /v1/:collection, which would take "search" for the name of a collection.
   app.get(
     '/v1/search',
@@ -332,6 +348,21 @@ export function openApiDocument(): object {
     paths: {
       '/v1/site': {
         get: { operationId: 'describe_site', responses: { '200': ok('The site'), ...common } },
+      },
+      '/v1/redirects': {
+        get: {
+          operationId: 'list_redirects',
+          parameters: [
+            param('collection', 'query', false),
+            param('locale', 'query', false),
+            param('limit', 'query', false),
+            param('cursor', 'query', false),
+          ],
+          responses: {
+            '200': ok('The old paths of entries that moved, and where each goes now'),
+            ...common,
+          },
+        },
       },
       '/v1/search': {
         get: {

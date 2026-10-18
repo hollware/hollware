@@ -72,6 +72,38 @@ function fakeReader(missing: readonly string[] = []) {
       calls.push(['describe', ...args])
       return { outcome: 'ok', site: SITE }
     },
+    async listRedirects(...args) {
+      calls.push(['redirects', ...args])
+      const page = args[1]?.cursor === undefined ? 1 : 2
+      return {
+        outcome: 'ok',
+        redirects:
+          page === 1
+            ? [
+                {
+                  collection: 'blog',
+                  locale: 'en',
+                  from: 'elsewhere',
+                  to: 'other',
+                  fromPath: '/en/blog/elsewhere/',
+                  toPath: '/en/blog/other/',
+                  entryId: 'ent_01J9ZQ3X5V7K2M4N6P8R0T1W3Z',
+                },
+              ]
+            : [
+                {
+                  collection: 'blog',
+                  locale: 'en',
+                  from: 'old-hello',
+                  to: 'hello',
+                  fromPath: '/en/blog/old-hello/',
+                  toPath: '/en/blog/hello/',
+                  entryId: 'ent_01J9ZQ3X5V7K2M4N6P8R0T1W3Y',
+                },
+              ],
+        nextCursor: page === 1 ? 'c2' : null,
+      }
+    },
     async search(...args) {
       calls.push(['search', ...args])
       return {
@@ -92,6 +124,20 @@ function fakeReader(missing: readonly string[] = []) {
 }
 
 describe('createHollware', () => {
+  it('finds where an entry that moved is now, over every page of the redirects', async () => {
+    const { reader, calls } = fakeReader()
+    const hollware = createHollware({ site: 's', reader })
+
+    const moved = await hollware.redirectFor('blog', 'en', 'old-hello')
+    const never = await hollware.redirectFor('blog', 'en', 'never-was')
+
+    expect([moved, never]).toEqual([{ slug: 'hello', path: '/en/blog/hello/' }, undefined])
+    expect(calls.slice(0, 2)).toEqual([
+      ['redirects', 's', { collection: 'blog', locale: 'en', limit: 500 }],
+      ['redirects', 's', { collection: 'blog', locale: 'en', limit: 500, cursor: 'c2' }],
+    ])
+  })
+
   it('searches the site, and sends the page no more of each entry than a summary', async () => {
     const { reader, calls } = fakeReader()
     const hollware = createHollware({ site: 's', reader })

@@ -25,6 +25,7 @@ export const RESERVED_COLLECTION_NAMES: readonly string[] = [
   'admin',
   'assets',
   'ops',
+  'redirects',
   'search',
   'site',
 ]

@@ -28,6 +28,7 @@ declare module 'vue' {
     UDashboardSidebarCollapse: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/DashboardSidebarCollapse.vue')['default']
     UDropdownMenu: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/DropdownMenu.vue')['default']
     UFormField: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/FormField.vue')['default']
+    UIcon: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/vue/components/Icon.vue')['default']
     UInput: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/Input.vue')['default']
     UInputNumber: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/InputNumber.vue')['default']
     UInputTags: typeof import('./../../../node_modules/.pnpm/@nuxt+ui@4.12.0_bc987a2a2cdc3267539103d07120c0b6/node_modules/@nuxt/ui/dist/runtime/components/InputTags.vue')['default']

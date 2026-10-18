@@ -5,7 +5,7 @@ import { expect, it } from 'vitest'
 // Fails when: src/index.ts stops exporting the class `Hollware` of createHollware(config), which
 // sites reach over a service binding, or builds it from another config than
 // hollware.config.ts: describeSite must answer the playground's site, with its two locales and the
-// routes of its blog. The five methods and their errors are the server package's tests, and the
+// routes of its blog. The six methods and their errors are the server package's tests, and the
 // binding itself is the harness's (test/harness).
 
 // Cloudflare's `Service<...>` types every answer that holds `unknown` as `never`, so the stub is

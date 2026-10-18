@@ -43,6 +43,9 @@ const acknowledgeOpen = ref(false)
 const unpublishOpen = ref(false)
 const trashOpen = ref(false)
 const scheduleOpen = ref(false)
+const moveOpen = ref(false)
+const newSlug = ref('')
+const slugValid = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newSlug.value))
 /** What the dialog of a time schedules: the publication of a draft, or the end of a published one. */
 const scheduleMode = ref<'publish' | 'unpublish'>('publish')
 const publishAt = ref('')
@@ -306,6 +309,45 @@ const scheduleError = computed(() => {
   return at <= Date.now() ? m.value.entry.pickFuture : null
 })
 
+/** Gives the entry the slug of the dialog, and opens it at its new place. */
+async function move() {
+  if (entry.value === null) return
+  busy.value = true
+  try {
+    const answer = await api.call('move_entry', {
+      id: entry.value.id,
+      version: entry.value.version,
+      slug: newSlug.value,
+    })
+    switch (answer.outcome) {
+      case 'moved':
+      case 'unchanged':
+        moveOpen.value = false
+        toast.add({ title: m.value.entry.moved, color: 'success' })
+        if (answer.entry !== undefined) await router.replace(entryPath(answer.entry))
+        break
+      case 'taken':
+        toast.add({
+          title: m.value.entry.notMoved,
+          description: m.value.entry.slugTaken,
+          color: 'error',
+        })
+        break
+      case 'conflict':
+        moveOpen.value = false
+        conflictOpen.value = true
+        break
+      case 'not_found':
+        missing.value = true
+        break
+    }
+  } catch (error) {
+    report(error, m.value.entry.notMoved)
+  } finally {
+    busy.value = false
+  }
+}
+
 /** Takes a published entry off the site at the time of the dialog, or keeps it with `null`. */
 async function scheduleUnpublish(at: string | null) {
   if (entry.value === null) return
@@ -512,6 +554,14 @@ const tabs = computed(() => [
                 >{{ entry.collection }}/{{ entry.slug }} ·
                 {{ m.entry.version(entry.version) }}</span
               >
+              <UButton
+                :label="m.entry.changeUrl"
+                icon="i-lucide-link"
+                size="xs"
+                variant="ghost"
+                :disabled="dirty"
+                @click="((newSlug = entry.slug), (moveOpen = true))"
+              />
               <span v-if="dirty" class="text-warning">{{ m.entry.unsaved }}</span>
             </p>
           </div>
@@ -604,6 +654,23 @@ const tabs = computed(() => [
           </template>
         </UTabs>
       </div>
+
+      <UModal v-model:open="moveOpen" :title="m.entry.moveTitle">
+        <template #body>
+          <UFormField :label="m.entry.newSlug" :help="m.entry.moveHelp">
+            <UInput v-model="newSlug" class="w-full font-mono" />
+          </UFormField>
+        </template>
+        <template #footer>
+          <UButton :label="m.common.cancel" variant="ghost" @click="moveOpen = false" />
+          <UButton
+            :label="m.entry.changeUrl"
+            :loading="busy"
+            :disabled="!slugValid || newSlug === entry.slug"
+            @click="move"
+          />
+        </template>
+      </UModal>
 
       <UModal v-model:open="conflictOpen" :title="m.entry.conflictTitle">
         <template #body>

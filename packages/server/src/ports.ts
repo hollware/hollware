@@ -219,6 +219,17 @@ export interface StoredSchedule {
   readonly actor: Actor
 }
 
+/** An old slug of an entry that moved, and the slug it has now. */
+export interface StoredRedirect {
+  readonly id: string
+  readonly collection: string
+  readonly locale: string
+  readonly from: string
+  readonly to: string
+  readonly entryId: string
+  readonly createdAt: string
+}
+
 /** An unpublication at a time, as the cron reads it. */
 export interface StoredUnpublish {
   readonly entryId: string
@@ -397,6 +408,30 @@ export interface ContentStore {
   dueSchedules(site: string, now: string): Promise<readonly StoredSchedule[]>
   /** Takes a scheduled entry back to a draft and drops its schedule. */
   cancelSchedule(site: string, entryId: string): Promise<void>
+  /**
+   * Gives an entry another slug while it is at `expectedVersion`, keeping its old one as a
+   * redirect when `redirect` says so, with an event when it is published.
+   */
+  moveEntry(
+    site: string,
+    write: {
+      readonly entryId: string
+      readonly expectedVersion: number
+      readonly slug: string
+      readonly redirect: boolean
+      readonly event: OutboxEvent | null
+    },
+  ): Promise<{ readonly outcome: 'moved'; readonly view: EntryView } | WriteRefusal>
+  /** The redirects of the site, newest first, a page after `cursor`. */
+  listRedirects(
+    site: string,
+    query: {
+      readonly collection?: string
+      readonly locale?: string
+      readonly limit: number
+      readonly cursor: { readonly createdAt: string; readonly id: string } | null
+    },
+  ): Promise<readonly StoredRedirect[]>
   /** Schedules the unpublication of a published entry, or moves the time of the one it has. */
   scheduleUnpublish(
     site: string,

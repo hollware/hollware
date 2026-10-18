@@ -1,4 +1,11 @@
-import type { describeSite, getEntry, getTranslations, listEntries, search } from '@hollware/core'
+import type {
+  describeSite,
+  getEntry,
+  getTranslations,
+  listEntries,
+  listRedirects,
+  search,
+} from '@hollware/core'
 import type * as z from 'zod'
 
 export { signWebhook, verifyWebhook, type WebhookCheck } from '@hollware/core'
@@ -50,7 +57,7 @@ export type Format = 'markdown' | 'document' | 'html'
 export type SearchMode = 'fulltext' | 'semantic' | 'hybrid'
 
 /**
- * What a site reads from Hollware: the published content, through the five read methods. A
+ * What a site reads from Hollware: the published content, through the six read methods. A
  * service binding to a Hollware Worker already has this shape; `createClient` gives the same over
  * HTTP, so a site can move from one transport to the other without changing a call.
  */
@@ -103,6 +110,16 @@ export interface HollwareReader {
       readonly minScore?: number
     },
   ): Promise<Output<typeof search>>
+  /** The old paths of entries that moved, and where each goes now: what a site answers with a 301. */
+  listRedirects(
+    site: string,
+    options?: {
+      readonly collection?: string
+      readonly locale?: string
+      readonly limit?: number
+      readonly cursor?: string
+    },
+  ): Promise<Output<typeof listRedirects>>
 }
 
 export type ClientOptions =
@@ -218,6 +235,16 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
         passages: options.passages === true ? 'true' : undefined,
         minScore: options.minScore === undefined ? undefined : String(options.minScore),
       }),
+    listRedirects: (
+      _site: string,
+      options: { collection?: string; locale?: string; limit?: number; cursor?: string } = {},
+    ) =>
+      get('redirects', {
+        collection: options.collection,
+        locale: options.locale,
+        limit: options.limit === undefined ? undefined : String(options.limit),
+        cursor: options.cursor,
+      }),
   }
   return reader
 }
@@ -237,6 +264,7 @@ export function createClient(options: ClientOptions): HollwareReader {
     getTranslations: async (...args) => narrow(await reader.getTranslations(...args)),
     describeSite: async (...args) => narrow(await reader.describeSite(...args)),
     search: async (...args) => narrow(await reader.search(...args)),
+    listRedirects: async (...args) => narrow(await reader.listRedirects(...args)),
   }
 }
 

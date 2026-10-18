@@ -103,7 +103,7 @@ describe('the binding of the site', () => {
     ])
   })
 
-  it('answers the five read methods', async () => {
+  it('answers the six read methods', async () => {
     const { HOLLWARE } = await server.getWorker<{ HOLLWARE: HollwareRpc }>(SITE_WORKER).getEnv()
 
     expect(await HOLLWARE.listEntries(SITE_KEY, 'blog')).toEqual({
@@ -120,6 +120,11 @@ describe('the binding of the site', () => {
     expect(await HOLLWARE.describeSite(SITE_KEY)).toMatchObject({
       outcome: 'ok',
       site: { key: 'playground' },
+    })
+    expect(await HOLLWARE.listRedirects(SITE_KEY)).toEqual({
+      outcome: 'ok',
+      redirects: [],
+      nextCursor: null,
     })
     // The playground has no semantic search locally: the search is full text, and says so.
     expect(await HOLLWARE.search(SITE_KEY, 'nothing written yet')).toMatchObject({

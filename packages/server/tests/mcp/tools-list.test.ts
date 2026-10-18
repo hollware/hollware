@@ -56,9 +56,11 @@ const TOOLS = [
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
   { name: 'list_assets', title: 'List the images of the site', annotations: READ },
   { name: 'list_entries', title: 'List entries', annotations: READ },
+  { name: 'list_redirects', title: 'List the redirects of the site', annotations: READ },
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'list_revisions', title: 'List the revisions of an entry', annotations: READ },
   { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
+  { name: 'move_entry', title: 'Change the slug of an entry', annotations: CHANGE },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
@@ -94,6 +96,8 @@ const OUTCOMES: Record<string, string[]> = {
   list_assets: ['ok'],
   get_asset: ['ok', 'not_found'],
   list_revisions: ['ok', 'not_found'],
+  move_entry: ['moved', 'unchanged', 'taken', 'conflict', 'not_found'],
+  list_redirects: ['ok'],
   schedule_unpublish: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
   get_revision: ['ok', 'not_found'],
   restore_revision: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
@@ -249,9 +253,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(64)
+    expect(converters).toHaveLength(68)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 64 }, () => 1),
+      Array.from({ length: 68 }, () => 1),
     )
   })
 })
@@ -276,9 +280,11 @@ describe('the tool table', () => {
       'get_translations',
       'list_assets',
       'list_entries',
+      'list_redirects',
       'list_reviews',
       'list_revisions',
       'make_webhook_secret',
+      'move_entry',
       'publish',
       'request_changes',
       'request_review',

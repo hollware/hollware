@@ -134,6 +134,13 @@
       "when": 1792359128747,
       "tag": "0018_unpublishes",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1792360391741,
+      "tag": "0019_redirects",
+      "breakpoints": true
     }
   ]
 }

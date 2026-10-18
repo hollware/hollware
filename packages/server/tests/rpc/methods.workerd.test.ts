@@ -8,7 +8,7 @@ import { failure, onlyCall, SITE, SITE_KEY, testClock, watchDb } from '../http/s
 import { CANNED, ENTRY_ID, fakeHandlers, type Overrides } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
 
-// Fails when: the five methods of the RPC surface (`createRpc`, `src/rpc/methods.ts`) stop doing
+// Fails when: the six methods of the RPC surface (`createRpc`, `src/rpc/methods.ts`) stop doing
 // what the binding of a site relies on. Each method must check that its site is the one of this
 // deployment before anything else (a wrong site is `invalid_input` whose message and fix name the
 // site served, and no session is opened for it); build the input of its operation from its

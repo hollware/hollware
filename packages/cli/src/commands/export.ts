@@ -4,6 +4,7 @@ import {
   getAsset,
   getEntry,
   listEntries,
+  listRedirects,
   schemas,
   type ImageFormat,
 } from '@hollware/core'
@@ -35,7 +36,8 @@ export const EXPORT_USAGE = [
   '  --collection <name>  Export only this collection; repeat it for several',
   '  --locale <code>      Export only this locale; repeat it for several',
   '  --published          Export only the published entries, as they are published; by default the',
-  '                       latest revision of every entry, drafts included',
+  '                       latest revision of every entry, drafts included; with it, redirects.json',
+  '                       holds the 301s of the entries that moved (move_entry), for a site to serve',
   '  --assets <dir>       Write the images the entries show to <dir>, as the site serves them,',
   '                       and point each asset: reference at --assets-url: for a site that',
   '                       serves its images itself. Without it, the images go to <directory>/_assets',
@@ -188,6 +190,7 @@ async function exportEntries(plan: Plan): Promise<number> {
   const session = await openSession(plan.endpoint, token, readVersion())
   let files: ExportFile[]
   let images: ExportImage[]
+  let moved: { from: string; to: string; status: 301 }[] = []
   let siteKey: string
   try {
     const { site } = await session.call(describeSite, {})
@@ -207,6 +210,8 @@ async function exportEntries(plan: Plan): Promise<number> {
     const listed = await listAll(session, collections, locales, published)
     files = await readAll(session, listed, published)
     images = await readImages(session, plan, files)
+    // What a site that builds from the export answers with a 301: the paths of entries that moved.
+    if (published && (await session.has(listRedirects.name))) moved = await readRedirects(session)
   } finally {
     await session.close()
   }
@@ -255,6 +260,14 @@ async function exportEntries(plan: Plan): Promise<number> {
       )
     }
   }
+  if (moved.length > 0) {
+    writeFileSync(join(root, 'redirects.json'), `${JSON.stringify(moved, null, 2)}\n`, {
+      flag: 'wx',
+    })
+    out(
+      `Wrote ${count(moved.length, 'redirect')} to ${printable(join(directory, 'redirects.json'))}.`,
+    )
+  }
   if (images.length > 0) {
     out(
       `Wrote ${count(images.filter((image) => image.path !== 'assets.json').length, 'image')} to ${printable(imagesShown)}.`,
@@ -264,6 +277,27 @@ async function exportEntries(plan: Plan): Promise<number> {
     `Exported ${count(files.length, 'entry', 'entries')} of the site ${printable(siteKey)} to ${printable(directory)} (${view}):\n${groupSummary(files)}`,
   )
   return 0
+}
+
+/** Every redirect of the site with a path on each side, oldest last, as `redirects.json` holds them. */
+async function readRedirects(
+  session: Session,
+): Promise<{ from: string; to: string; status: 301 }[]> {
+  const all: { from: string; to: string; status: 301 }[] = []
+  let cursor: string | undefined
+  do {
+    const page = await session.call(listRedirects, {
+      limit: 500,
+      ...(cursor === undefined ? {} : { cursor }),
+    })
+    for (const redirect of page.redirects) {
+      if (redirect.fromPath !== null && redirect.toPath !== null) {
+        all.push({ from: redirect.fromPath, to: redirect.toPath, status: 301 })
+      }
+    }
+    cursor = page.nextCursor ?? undefined
+  } while (cursor !== undefined)
+  return all
 }
 
 /** The names asked for, each checked against what the site has; all of them when none is. */

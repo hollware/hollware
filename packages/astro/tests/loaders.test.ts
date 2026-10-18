@@ -90,6 +90,9 @@ function fakeReader(published: readonly Published[]) {
     async search() {
       throw new Error('not read')
     },
+    async listRedirects() {
+      throw new Error('not read')
+    },
   }
   return { reader, calls, previews }
 }

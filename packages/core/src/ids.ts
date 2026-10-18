@@ -19,6 +19,7 @@ export const ID_PREFIXES = {
   member: 'mbr',
   passkey: 'pky',
   publication: 'pub',
+  redirect: 'rdr',
   revision: 'rev',
   revisionTag: 'tag',
   review: 'rvw',

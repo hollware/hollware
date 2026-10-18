@@ -2997,6 +2997,91 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "collection": {
+            "description": "A collection of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "cursor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 100,
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "locale": {
+            "description": "A locale of the site, as describe_site lists it.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_redirects",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "nextCursor": {
+            "type": ["string", "null"]
+          },
+          "outcome": {
+            "enum": ["ok"],
+            "type": "string"
+          },
+          "redirects": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "entryId": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "from": {
+                  "description": "The slug the entry had: its old path is answered with a 301.",
+                  "type": "string"
+                },
+                "fromPath": {
+                  "description": "The old path on the site, from the route of the collection.",
+                  "type": ["string", "null"]
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "to": {
+                  "description": "The slug the entry has now.",
+                  "type": "string"
+                },
+                "toPath": {
+                  "description": "The path now.",
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["collection", "locale", "from", "to", "fromPath", "toPath", "entryId"],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["outcome", "redirects", "nextCursor"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "List the redirects of the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
           "limit": {
             "default": 50,
             "maximum": 100,
@@ -3371,6 +3456,185 @@
       },
       "scopes": ["schema:admin"],
       "title": "Make the secret of a webhook"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The new slug.",
+            "maxLength": 200,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "version": {
+            "description": "The version of the entry you read. A change against an older version answers conflict.",
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": ["id", "version", "slug"],
+        "type": "object"
+      },
+      "name": "move_entry",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "translationOutdated": {
+                "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                "type": "boolean"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["moved", "unchanged", "taken", "conflict", "not_found"],
+            "type": "string"
+          },
+          "redirect": {
+            "additionalProperties": false,
+            "description": "With moved, for an entry that was ever published.",
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "from": {
+                "description": "The slug the entry had: its old path is answered with a 301.",
+                "type": "string"
+              },
+              "fromPath": {
+                "description": "The old path on the site, from the route of the collection.",
+                "type": ["string", "null"]
+              },
+              "locale": {
+                "type": "string"
+              },
+              "to": {
+                "description": "The slug the entry has now.",
+                "type": "string"
+              },
+              "toPath": {
+                "description": "The path now.",
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["collection", "locale", "from", "to", "fromPath", "toPath", "entryId"],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Change the slug of an entry"
     },
     {
       "effect": "write",

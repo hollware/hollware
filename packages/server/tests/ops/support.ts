@@ -13,8 +13,10 @@ import {
   getRevision as getRevisionSpec,
   getTranslations as getTranslationsSpec,
   listEntries as listEntriesSpec,
+  listRedirects as listRedirectsSpec,
   listReviews as listReviewsSpec,
   listRevisions as listRevisionsSpec,
+  moveEntry as moveEntrySpec,
   processMarkdown,
   publish as publishSpec,
   requestChanges as requestChangesSpec,
@@ -287,6 +289,10 @@ export function agent(context: OperationContext) {
       call(restoreRevisionSpec, handlers.restore_revision, input, context),
     scheduleUnpublish: (input: z.input<typeof scheduleUnpublishSpec.input>) =>
       call(scheduleUnpublishSpec, handlers.schedule_unpublish, input, context),
+    moveEntry: (input: z.input<typeof moveEntrySpec.input>) =>
+      call(moveEntrySpec, handlers.move_entry, input, context),
+    listRedirects: (input: z.input<typeof listRedirectsSpec.input> = {}) =>
+      call(listRedirectsSpec, handlers.list_redirects, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),
     getEntry: (input: z.input<typeof getEntrySpec.input>) =>
       call(getEntrySpec, handlers.get_entry, input, context),
@@ -360,6 +366,8 @@ export const UNTOUCHED: ContentStore = {
   lastPublication: () => touched('lastPublication'),
   listRevisions: () => touched('listRevisions'),
   findRevision: () => touched('findRevision'),
+  moveEntry: () => touched('moveEntry'),
+  listRedirects: () => touched('listRedirects'),
   sourceHeadTimes: () => touched('sourceHeadTimes'),
   revisionTimes: () => touched('revisionTimes'),
   scheduleUnpublish: () => touched('scheduleUnpublish'),

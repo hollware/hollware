@@ -234,6 +234,14 @@ export const en = {
     missing: 'There is no such entry.',
     unpublishedChanges: 'unpublished changes',
     translationBehind: 'Its source changed after this translation was saved',
+    changeUrl: 'Change URL',
+    moveTitle: 'Change the URL of this entry',
+    newSlug: 'New slug',
+    moveHelp:
+      'Lowercase letters, digits and hyphens. An entry that was ever published keeps its old URL as a redirect to the new one.',
+    moved: 'The URL changed',
+    notMoved: 'The URL did not change',
+    slugTaken: 'Another entry of this collection and locale has that slug.',
     publishes: (at: string) => `publishes ${at}`,
     version: (version: number) => `v${version}`,
     unsaved: 'unsaved',
@@ -466,6 +474,10 @@ export const en = {
       `Enter a whole number of days from ${min} to ${max}, or keep the log forever.`,
     saveActivity: 'Save the activity log settings',
     webhooks: 'Webhooks',
+    redirectsTitle: 'Redirects',
+    redirectsHelp:
+      'The old paths of entries whose slug changed, and where each goes now. Your site answers the old path with a 301 (list_redirects, or redirects.json of an export).',
+    noRedirects: 'No entry has moved yet.',
     webhooksNote:
       'Every publish, update and unpublish is sent, signed, to each of them: a site that keeps its pages in a cache purges them, a newsletter drafts an issue.',
     signedByHollware: "signed by Hollware's secret",

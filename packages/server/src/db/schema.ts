@@ -346,6 +346,35 @@ export const schedules = sqliteTable(
 )
 
 /**
+ * The slugs an entry had before it moved (`move_entry`): a site answers the old path with a 301 to
+ * the entry's path now. One row per old slug; a slug a new entry takes, or the entry takes back,
+ * leaves the table.
+ */
+export const redirects = sqliteTable(
+  'redirects',
+  {
+    id: id('rdr'),
+    siteId: siteId(),
+    collection: text('collection').notNull(),
+    locale: text('locale').notNull(),
+    fromSlug: text('from_slug').notNull(),
+    entryId: text('entry_id').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('redirects_id_site').on(t.id, t.siteId),
+    unique('redirects_from').on(t.siteId, t.collection, t.locale, t.fromSlug),
+    index('redirects_entry').on(t.siteId, t.entryId),
+    foreignKey({ name: 'redirects_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'redirects_entry_fk',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+  ],
+)
+
+/**
  * Unpublications at a time: one per published entry at most. The cron trigger takes the entry off
  * the site once `unpublish_at` has passed, in the name of who scheduled it and only if they may
  * still publish (T-108); an unpublish before it drops it.

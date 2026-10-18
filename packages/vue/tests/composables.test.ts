@@ -78,6 +78,9 @@ function fakeReader(options: { missing?: string[]; failing?: string[] } = {}) {
     async search() {
       throw new Error('not read')
     },
+    async listRedirects() {
+      throw new Error('not read')
+    },
   }
   return {
     reader,

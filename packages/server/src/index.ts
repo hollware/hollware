@@ -5,6 +5,7 @@ import type {
   HollwareConfig,
   listEntries,
   search,
+  listRedirects,
 } from '@hollware/core'
 import type { WorkerEntrypoint } from 'cloudflare:workers'
 import type * as z from 'zod'
@@ -150,6 +151,16 @@ export interface HollwareRpc {
       readonly minScore?: number
     },
   ): Promise<Output<typeof search>>
+  /** The old paths of entries that moved, and where each goes now: what a site answers with a 301. */
+  listRedirects(
+    site: string,
+    options?: {
+      readonly collection?: string
+      readonly locale?: string
+      readonly limit?: number
+      readonly cursor?: string
+    },
+  ): Promise<Output<typeof listRedirects>>
 }
 
 /**

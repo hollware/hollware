@@ -5,7 +5,7 @@ import { blogPath, entryPath, isLocale, LOCALES, matchRoute, type Locale } from 
 
 /**
  * A blog that reads Hollware over a service binding (Workers RPC): no network in between and no
- * token. The binding offers five read-only methods, and they answer with published content only,
+ * token. The binding offers six read-only methods, and they answer with published content only,
  * so a draft is not here to leak: asking for one is asking for an entry that does not exist.
  *
  *   /blog/                    the Spanish index, newest first; ?tag=… filters and ?cursor=… pages
