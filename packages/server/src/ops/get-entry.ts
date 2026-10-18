@@ -56,5 +56,5 @@ async function relatedEntries(context: OperationContext, entryId: string) {
     related.map((item) => item.id),
     'published',
   )
-  return summaries.map(entrySummary)
+  return summaries.map((summary) => forReaders(context, entrySummary(summary)))
 }

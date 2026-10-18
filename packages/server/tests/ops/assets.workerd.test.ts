@@ -1,9 +1,11 @@
 import { env } from 'cloudflare:workers'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-import type { Conversion } from '@hollware/core'
+import { MAX_ASSET_BYTES, makePreviewToken, type Conversion } from '@hollware/core'
 import { d1Catalog, r2Files } from '../../src/media/cloudflare.ts'
 import { getAsset, listAssets, uploadAsset } from '../../src/ops/assets.ts'
+import { handlers } from '../../src/ops/index.ts'
+import { createRpc } from '../../src/rpc/index.ts'
 import type { ImageConverter, ImageInfo, Media } from '../../src/ports.ts'
 import type { OperationContext } from '../../src/ops/types.ts'
 import { agent, blogPost, warmUpComark } from './support.ts'
@@ -22,6 +24,9 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 //   unavailable with a fix, or leave something behind; without the binding the file is not kept.
 // - "lists and gets …": a page is not newest first, the cursor does not continue it, or a site
 //   reads another's asset.
+// - "a read of the published site sees URLs …": get_entry, list_entries or get_translations of
+//   a site (the published view, or a reader's preview of the head) keep `asset:` in the
+//   frontmatter or the document, or MCP stops seeing what the agent wrote.
 // - "a read of the published site …": the published view or HTML keeps `asset:`, or the head view
 //   (an agent over MCP) does not.
 
@@ -36,10 +41,15 @@ const WEBP_OUT = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 converted')
 const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4"/></svg>'
 
-const base64 = (bytes: Uint8Array | string) =>
-  btoa(
-    String.fromCharCode(...(typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes)),
-  )
+/** Base64 of bytes or text, a chunk at a time: a spread of 10 MB would overflow the stack. */
+const base64 = (bytes: Uint8Array | string) => {
+  const all = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes
+  let binary = ''
+  for (let at = 0; at < all.length; at += 0x8000) {
+    binary += String.fromCharCode(...all.subarray(at, at + 0x8000))
+  }
+  return btoa(binary)
+}
 
 /** A converter that answers what it is told, and records what it was asked. */
 function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: Error) {
@@ -318,6 +328,38 @@ describe('upload_asset', () => {
   })
 })
 
+describe('upload_asset at its limits', () => {
+  it('refuses a file past 10 MB before it writes anything, and says how big it was', async () => {
+    const world = await newWorld(env.DB, 'media-big')
+    const big = new Uint8Array(MAX_ASSET_BYTES + 1)
+    big.set(PNG)
+
+    const answer = await uploadAsset(
+      { filename: 'big.png', alt: 'Too big', data: base64(big) },
+      withMedia(world.context(), mediaWith(null)),
+    )
+
+    expect([answer.outcome, answer.problem?.message]).toEqual([
+      'refused',
+      'The file is 10485761 bytes, more than the 10485760 an image may be.',
+    ])
+    expect((await env.MEDIA.list({ prefix: `originals/${world.tenant.key}/` })).objects).toEqual([])
+  })
+
+  it('fails on an error of the Images binding it does not know, instead of blaming the file', async () => {
+    const world = await newWorld(env.DB, 'media-unknown')
+    const { images } = fakeImages({ format: 'image/png', width: 10, height: 10 }, { code: 9999 })
+
+    await expect(
+      uploadAsset(
+        { filename: 'a.png', alt: 'x', data: base64(new Uint8Array([...PNG, 9])) },
+        withMedia(world.context(), mediaWith(images)),
+      ),
+    ).rejects.toThrow('IMAGES_TRANSFORM_ERROR')
+    expect(await rows(world.tenant.key)).toBe(0)
+  })
+})
+
 describe('list_assets and get_asset', () => {
   it('lists newest first with a cursor, and a site reads only its own', async () => {
     const world = await newWorld(env.DB, 'library')
@@ -381,6 +423,7 @@ describe('asset references in reads', () => {
           date: '2026-10-01',
           tags: '[cloudflare]',
           translationGroup: 'with-an-image',
+          cover: `asset:${id}`,
         },
         `\n# With an image\n\n![The cover](asset:${id})\n`,
       ),
@@ -404,5 +447,94 @@ describe('asset references in reads', () => {
     expect(JSON.stringify(reader.entry?.document)).not.toContain('asset:')
     expect(JSON.stringify(reader.entry?.document)).toContain(url)
     expect(reader.entry?.html).toContain(`src="${url}"`)
+
+    expect([head.entry?.frontmatter['cover'], reader.entry?.frontmatter['cover']]).toEqual([
+      `asset:${id}`,
+      url,
+    ])
+
+    // A site's preview of a draft reads the head revision, as a reader: URLs too.
+    const preview = await agent({ ...withMedia(world.context(), media), reader: true }).getEntry({
+      ...key,
+      formats: ['document'],
+    })
+    expect(preview.entry?.frontmatter['cover']).toBe(url)
+    expect(JSON.stringify(preview.entry?.document)).not.toContain('asset:')
+
+    // Lists and translations of the published site, against what an agent lists.
+    const site = agent(withMedia(world.context({ view: 'published' }), media))
+    const listed = await site.listEntries({ collection: 'blog', locale: 'en' })
+    const mine = await agent(withMedia(world.context(), media)).listEntries({
+      collection: 'blog',
+      locale: 'en',
+    })
+    const group = await site.getTranslations({
+      collection: 'blog',
+      translationGroup: 'with-an-image',
+    })
+    expect([
+      listed.entries?.[0]?.frontmatter['cover'],
+      mine.entries?.[0]?.frontmatter['cover'],
+      group.entries?.find((entry) => entry.locale === 'en')?.frontmatter['cover'],
+    ]).toEqual([url, `asset:${id}`, url])
+  })
+
+  it('reaches a site over RPC as URLs, published or in a preview of the draft', async () => {
+    const world = await newWorld(env.DB, 'rpc-pictures')
+    const uploaded = await uploadAsset(
+      { filename: 'r.png', alt: 'Cover', data: base64(new Uint8Array([...PNG, 77])) },
+      withMedia(world.context(), mediaWith(null)),
+    )
+    const id = uploaded.asset?.id ?? ''
+    const created = await world.agent.createDraft({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'over-rpc',
+      markdown: blogPost(
+        {
+          title: 'Over RPC',
+          date: '2026-10-01',
+          tags: '[cloudflare]',
+          translationGroup: 'over-rpc',
+          cover: `asset:${id}`,
+        },
+        '\n# Over RPC\n',
+      ),
+    })
+    if (created.entry === undefined) throw new Error(JSON.stringify(created))
+    await createPost(world, { slug: 'por-rpc', locale: 'es', group: 'over-rpc' })
+    await publishPost(world, created.entry)
+    const secret = 's'.repeat(32)
+    const rpc = createRpc(
+      {
+        sites: new Map([[world.tenant.key, world.tenant.site]]),
+        handlers,
+        clock: world.time.clock,
+        log: () => {},
+      },
+      {
+        DB: env.DB,
+        MEDIA: env.MEDIA,
+        HOLLWARE_SECRET: secret,
+        HOLLWARE_PUBLIC_URL: 'https://cms.example.com',
+      },
+    )
+    const { token } = await makePreviewToken({
+      secret,
+      site: world.tenant.key,
+      entryId: created.entry.id,
+      now: world.time.clock.now(),
+    })
+
+    const published = await rpc.getEntry(world.tenant.key, 'blog', 'over-rpc', 'en')
+    const previewed = await rpc.getEntry(world.tenant.key, 'blog', 'over-rpc', 'en', {
+      preview: token,
+    })
+
+    const url = `https://cms.example.com/assets/${world.tenant.key}/${id}`
+    expect([published.entry?.frontmatter['cover'], previewed.entry?.frontmatter['cover']]).toEqual([
+      url,
+      url,
+    ])
   })
 })

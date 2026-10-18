@@ -243,6 +243,7 @@ async function run<Schema extends z.ZodType, Output>(
     requestId,
     semantic: semanticOfEnv(env),
     media: mediaOfEnv(env),
+    reader: true,
   }
   try {
     return await handler(input, context)

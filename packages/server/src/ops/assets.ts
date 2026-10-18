@@ -223,12 +223,14 @@ export function assetUrlOf(
 }
 
 /**
- * A value as a read of the published site sees it (RPC, the read API): every `asset:` reference
- * in it as the image's URL. Over MCP, an agent reads what it wrote.
+ * A value as a site reads it (RPC and the read API, the published view or a preview): every
+ * `asset:` reference in it as the image's URL. Over MCP, an agent reads what it wrote.
  */
 export function forReaders<T>(
-  context: Pick<OperationContext, 'media' | 'site' | 'view'>,
+  context: Pick<OperationContext, 'media' | 'site' | 'view' | 'reader'>,
   value: T,
 ): T {
-  return context.view === 'published' ? resolveAssetReferences(value, assetUrlOf(context)) : value
+  return context.reader === true || context.view === 'published'
+    ? resolveAssetReferences(value, assetUrlOf(context))
+    : value
 }

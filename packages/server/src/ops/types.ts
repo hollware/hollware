@@ -40,6 +40,12 @@ export interface OperationContext {
   readonly structure?: Structure
   /** The images of the site (ADR-038), when the Worker has their R2 bucket; absent or `null` without. */
   readonly media?: Media | null
+  /**
+   * A site reads: RPC and the read API, whatever the view, a preview of a draft included. A
+   * reader sees the URL of each image where content wrote `asset:`; an agent over MCP sees what it
+   * wrote.
+   */
+  readonly reader?: boolean
 }
 
 /** The handler of one operation: its parsed input in, its output out. */
