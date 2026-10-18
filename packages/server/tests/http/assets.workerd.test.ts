@@ -9,6 +9,8 @@ import { boot, restoreLogs, SITE_KEY } from './support.ts'
 // - "serves an image to anyone": GET /assets/<site>/<id> stops answering the file of R2 with its
 //   type, a year of immutable cache and a policy that lets any page show it; an SVG loses its
 //   sandbox; a missing or malformed one is anything but the JSON 404.
+// - "serves the copies of an image …": GET /assets/<site>/<id>/<width> stops answering the copy of
+//   R2 under its key, or answers a width that is no number of pixels from R2.
 // - "gives the original to a person of the site": the original is served without a token, to a
 //   read token, or to a token of another site; or with a cache a shared proxy may keep.
 // - "keeps an asset as it is": a delete of a row, or a change of anything but its alt, goes through.
@@ -42,6 +44,7 @@ async function seedAsset(
     width: null,
     height: null,
     bytes: body.length,
+    widths: [],
     originalFormat: 'image/png',
     originalBytes: PNG.length,
     alt: 'A test image',
@@ -111,6 +114,42 @@ describe('GET /assets/<site>/<id>', () => {
     ])
     expect(asked).toEqual([`sites/${SITE_KEY}/ast_0000000000000000000000dead`])
     expect(await missing.json()).toMatchObject({ code: 'not_found' })
+  })
+})
+
+describe('GET /assets/<site>/<id>/<width>', () => {
+  it('serves the copies of an image as the image, and asks R2 nothing for a width that is none', async () => {
+    const seeded = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const id = 'ast_0a0b0c0d0e0f00112233445566'
+    const copy = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 640')
+    await seedAsset(SITE_KEY, seeded.userId, id, 'image/webp', new Uint8Array([1]))
+    await env.MEDIA.put(`sites/${SITE_KEY}/${id}/640`, copy, {
+      httpMetadata: { contentType: 'image/webp' },
+    })
+    const asked: string[] = []
+    const bucket = new Proxy(env.MEDIA, {
+      get(target, property, receiver) {
+        if (property !== 'get') return Reflect.get(target, property, receiver)
+        return (key: string) => {
+          asked.push(key)
+          return target.get(key)
+        }
+      },
+    })
+    const worker = boot({ bindings: { MEDIA: bucket } })
+
+    const served = await worker.send(`/assets/${SITE_KEY}/${id}/640`)
+    const absent = await worker.send(`/assets/${SITE_KEY}/${id}/1280`)
+    const odd = await worker.send(`/assets/${SITE_KEY}/${id}/0640`)
+    const tiny = await worker.send(`/assets/${SITE_KEY}/${id}/64`)
+
+    expect([served.status, absent.status, odd.status, tiny.status]).toEqual([200, 404, 404, 404])
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(copy)
+    expect([served.headers.get('content-type'), served.headers.get('cache-control')]).toEqual([
+      'image/webp',
+      'public, max-age=31536000, immutable',
+    ])
+    expect(asked).toEqual([`sites/${SITE_KEY}/${id}/640`, `sites/${SITE_KEY}/${id}/1280`])
   })
 })
 

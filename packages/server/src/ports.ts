@@ -705,6 +705,8 @@ export interface AssetRow {
   readonly width: number | null
   readonly height: number | null
   readonly bytes: number
+  /** The widths of its narrower copies, smallest first: each is served at `<url>/<width>`. */
+  readonly widths: readonly number[]
   readonly originalFormat: string
   readonly originalBytes: number
   readonly alt: string
@@ -716,6 +718,8 @@ export interface AssetRow {
 /** The rows of `assets`, of one site at a time. */
 export interface AssetCatalog {
   byId(site: string, id: string): Promise<AssetRow | null>
+  /** The assets of the site with these ids, in no order; an id it does not have is left out. */
+  byIds(site: string, ids: readonly string[]): Promise<readonly AssetRow[]>
   /** The asset of the site with these bytes, by their SHA-256. */
   bySha256(site: string, sha256: string): Promise<AssetRow | null>
   /** Writes the row, or answers the one of the same bytes that is there already. */

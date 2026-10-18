@@ -2,7 +2,7 @@ import { backupKey, backupsIn } from '../backup/run.ts'
 import { isSiteKey, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
-import { originalKey, servedKey } from '../ops/assets.ts'
+import { originalKey, servedKey, variantKey } from '../ops/assets.ts'
 import { Hono, type Context } from 'hono'
 import { checkHostAndOrigin, unauthorized } from '../auth/index.ts'
 import { connect } from '../db/d1.ts'
@@ -478,13 +478,15 @@ export function createGateway(options: GatewayOptions): Gateway {
   // The images of the sites (ADR-038): to anyone, and never different under the same URL, since
   // an id is the hash of the file. A page of any origin may show one; an SVG runs nothing even
   // when it is opened on its own, in the origin of the admin.
-  app.get('/assets/:site/:id', async (c) => {
-    const { site, id } = c.req.param()
+  // A copy of one, narrower, for srcset (`<url>/<width>`), is served the same way.
+  const serveAsset = async (
+    c: Context<GatewayEnv>,
+    keyOf: (site: string, id: string) => string | null,
+  ) => {
+    const { site = '', id = '' } = c.req.param()
     const media = mediaOfEnv(c.env)
-    const file =
-      media === null || !isSiteKey(site) || !ASSET_ID.test(id)
-        ? null
-        : await media.files.get(servedKey(site, id))
+    const key = media === null || !isSiteKey(site) || !ASSET_ID.test(id) ? null : keyOf(site, id)
+    const file = media === null || key === null ? null : await media.files.get(key)
     if (file === null) {
       return Response.json(
         {
@@ -507,6 +509,13 @@ export function createGateway(options: GatewayOptions): Gateway {
       )
     }
     return new Response(file.body, { headers })
+  }
+  app.get('/assets/:site/:id', (c) => serveAsset(c, servedKey))
+  app.get('/assets/:site/:id/:width', (c) => {
+    const width = c.req.param('width')
+    return serveAsset(c, (site, id) =>
+      /^[1-9]\d{2,3}$/.test(width) ? variantKey(site, id, Number(width)) : null,
+    )
   })
 
   // A daily backup of the site (backup/run.ts), for an owner: the whole content, so schema:admin.

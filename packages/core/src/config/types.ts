@@ -102,6 +102,8 @@ export interface SiteDefinition {
     readonly format?: 'webp' | 'avif' | 'original'
     readonly quality?: number
     readonly maxWidth?: number
+    /** The narrower copies made of each image for `srcset`, in pixels: 640 and 1280 by default. */
+    readonly widths?: readonly number[]
   }
 }
 
@@ -166,6 +168,11 @@ export interface ResolvedMedia {
   readonly quality: number
   /** The widest an image is kept, in pixels; a wider one is scaled down, never up. */
   readonly maxWidth: number
+  /**
+   * The widths of the narrower copies of each image, smallest first, for `srcset`: an image gets
+   * those narrower than itself, made when it is uploaded. Empty makes none.
+   */
+  readonly widths: readonly number[]
 }
 
 /** What the activity log of a site keeps (ADR-037). */

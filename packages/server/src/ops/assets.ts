@@ -1,10 +1,14 @@
 import {
   assetIdOf,
+  assetIdsIn,
   resolveAssetReferences,
   checkSvg,
   conversionOf,
   MAX_ASSET_BYTES,
   sniffImage,
+  srcsetOf,
+  variantConversion,
+  variantWidthsOf,
   type ImageFormat,
 } from '@hollware/core'
 import type { AssetRow, Media } from '../ports.ts'
@@ -24,17 +28,23 @@ const NO_BUCKET = {
 /** The keys of an asset's files in R2: the file served, and the file as it was uploaded. */
 export const servedKey = (site: string, id: string) => `sites/${site}/${id}`
 export const originalKey = (site: string, id: string) => `originals/${site}/${id}`
+/** The key of its copy `width` pixels wide, made for `srcset`, served at `<url>/<width>`. */
+export const variantKey = (site: string, id: string, width: number) =>
+  `${servedKey(site, id)}/${width}`
 
 /** An asset as the operations answer it. */
 export function assetView(row: AssetRow, media: Media) {
+  const url = `${media.baseUrl}${row.site}/${row.id}`
   return {
     id: row.id,
     reference: `asset:${row.id}`,
-    url: `${media.baseUrl}${row.site}/${row.id}`,
+    url,
     format: row.format as ImageFormat,
     width: row.width,
     height: row.height,
     bytes: row.bytes,
+    widths: [...row.widths],
+    srcset: srcsetOf(url, row),
     originalFormat: row.originalFormat as ImageFormat,
     originalBytes: row.originalBytes,
     alt: row.alt,
@@ -152,8 +162,12 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     }
   }
 
+  const variants = await variantsOf(media, original, originalFormat, format, width, context)
   await media.files.put(servedKey(site, id), served, format)
   await media.files.put(originalKey(site, id), original, originalFormat)
+  for (const variant of variants) {
+    await media.files.put(variantKey(site, id, variant.width), variant.bytes, variant.format)
+  }
   const { row, created } = await media.catalog.insert({
     id,
     site,
@@ -162,6 +176,7 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     width,
     height,
     bytes: served.length,
+    widths: variants.map((variant) => variant.width),
     originalFormat,
     originalBytes: original.length,
     alt: input.alt,
@@ -170,6 +185,36 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     createdAt: context.clock.now().toISOString(),
   })
   return { outcome: created ? 'created' : 'exists', asset: assetView(row, media) }
+}
+
+/**
+ * The narrower copies of an image for `srcset`, made from the file as it was uploaded, in the
+ * format it is served in: none without the binding. When the month's allowance runs out halfway,
+ * the image keeps the copies already made, since the image itself was converted.
+ */
+async function variantsOf(
+  media: Media,
+  original: Uint8Array,
+  originalFormat: ImageFormat,
+  format: string,
+  width: number | null,
+  context: OperationContext,
+) {
+  const made: { width: number; bytes: Uint8Array; format: string }[] = []
+  if (media.images === null || (format !== 'image/webp' && format !== 'image/avif')) return made
+  for (const copy of variantWidthsOf(format, width, context.site.media)) {
+    try {
+      const converted = await media.images.convert(
+        original,
+        variantConversion(format, originalFormat, copy, context.site.media),
+      )
+      made.push({ width: copy, ...converted })
+    } catch (error) {
+      if (imagesCode(error) === 9422) break
+      throw error
+    }
+  }
+  return made
 }
 
 /** The cursor of a page: the `createdAt` and id of its last row, in base64url. */
@@ -232,7 +277,41 @@ export function forReaders<T>(
   context: Pick<OperationContext, 'media' | 'site' | 'view' | 'reader'>,
   value: T,
 ): T {
-  return context.reader === true || context.view === 'published'
-    ? resolveAssetReferences(value, assetUrlOf(context))
-    : value
+  return readsUrls(context) ? resolveAssetReferences(value, assetUrlOf(context)) : value
+}
+
+/** Whether the call reads `asset:` references as URLs: a site, or the published view. */
+export const readsUrls = (context: Pick<OperationContext, 'view' | 'reader'>) =>
+  context.reader === true || context.view === 'published'
+
+/** The assets of the site that values (a frontmatter, a document) name, by id. */
+export async function imagesNamed(
+  context: Pick<OperationContext, 'media' | 'site'>,
+  values: readonly unknown[],
+): Promise<ReadonlyMap<string, AssetRow>> {
+  const media = context.media ?? null
+  const ids = assetIdsIn(values)
+  if (media === null || ids.length === 0) return new Map()
+  const rows = await media.catalog.byIds(context.site.key, ids)
+  return new Map(rows.map((row) => [row.id, row]))
+}
+
+/**
+ * The `images` of a summary: by URL, the size and `srcset` of each image its frontmatter names,
+ * where references are read as URLs. Nothing when it names none the site has.
+ */
+export function summaryImages(
+  context: Pick<OperationContext, 'media' | 'site' | 'view' | 'reader'>,
+  frontmatter: unknown,
+  images: ReadonlyMap<string, AssetRow>,
+) {
+  if (!readsUrls(context)) return {}
+  const urlOf = assetUrlOf(context)
+  const named = assetIdsIn(frontmatter).flatMap((id) => {
+    const row = images.get(id)
+    if (row === undefined) return []
+    const url = urlOf(id)
+    return [[url, { width: row.width, height: row.height, srcset: srcsetOf(url, row) }] as const]
+  })
+  return named.length === 0 ? {} : { images: Object.fromEntries(named) }
 }

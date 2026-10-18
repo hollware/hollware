@@ -1,6 +1,6 @@
 import { referencedSlugs, renderHtml, resolveAssetReferences } from '@hollware/core'
 import type { EntryView } from '../ports.ts'
-import { assetUrlOf, forReaders } from './assets.ts'
+import { assetUrlOf, forReaders, imagesNamed, readsUrls, summaryImages } from './assets.ts'
 import { translationOutdated } from './translations.ts'
 import {
   entrySummary,
@@ -32,15 +32,28 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
     translationOutdated(context, [found]),
   ])
   const stale = outdated.get(entry.id)
+  const summary = entrySummary(found)
+  const html = input.formats.includes('html')
+  const urls = readsUrls(context)
+  // The images a reader lays out: those of the frontmatter, and those of the document it renders.
+  const images =
+    urls || html
+      ? await imagesNamed(context, [
+          urls ? summary.frontmatter : null,
+          html || (urls && input.formats.includes('document')) ? revision.document : null,
+        ])
+      : new Map()
+  const imageOf = (id: string) => images.get(id)
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
   const references = input.references ? await referencedEntries(context, found) : undefined
   return {
     outcome: 'ok',
     entry: {
       ...forReaders(context, {
-        ...entrySummary(found),
+        ...summary,
         ...(stale === undefined ? {} : { translationOutdated: stale }),
       }),
+      ...summaryImages(context, summary.frontmatter, images),
       revision: revision.id,
       unpublishAt,
       verdict: verdictView(revision.verdict),
@@ -48,12 +61,19 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
       // Only what was asked for: a document or its HTML can weigh megabytes.
       ...(input.formats.includes('markdown') ? { markdown: revision.markdown } : {}),
       ...(input.formats.includes('document')
-        ? { document: forReaders(context, revision.document) }
-        : {}),
-      // HTML is for showing: its images are always the URLs where the Worker serves them.
-      ...(input.formats.includes('html')
         ? {
-            html: await renderHtml(resolveAssetReferences(revision.document, assetUrlOf(context))),
+            document: urls
+              ? resolveAssetReferences(revision.document, assetUrlOf(context), imageOf)
+              : revision.document,
+          }
+        : {}),
+      // HTML is for showing: its images are always the URLs where the Worker serves them, with
+      // their size and srcset.
+      ...(html
+        ? {
+            html: await renderHtml(
+              resolveAssetReferences(revision.document, assetUrlOf(context), imageOf),
+            ),
           }
         : {}),
     },

@@ -81,12 +81,25 @@ interface Row {
   readonly width: number | null
   readonly height: number | null
   readonly bytes: number
+  readonly widths: string
   readonly original_format: string
   readonly original_bytes: number
   readonly alt: string
   readonly filename: string
   readonly created_by: string
   readonly created_at: string
+}
+
+/** The widths of a row: whole numbers of a JSON array, and none from anything else. */
+function widthsOf(text: string): number[] {
+  try {
+    const parsed: unknown = JSON.parse(text)
+    return Array.isArray(parsed)
+      ? parsed.filter((width): width is number => Number.isSafeInteger(width) && width > 0)
+      : []
+  } catch {
+    return []
+  }
 }
 
 const rowOf = (row: Row): AssetRow => ({
@@ -97,6 +110,7 @@ const rowOf = (row: Row): AssetRow => ({
   width: row.width,
   height: row.height,
   bytes: row.bytes,
+  widths: widthsOf(row.widths),
   originalFormat: row.original_format,
   originalBytes: row.original_bytes,
   alt: row.alt,
@@ -116,6 +130,21 @@ export function d1Catalog(db: D1Database): AssetCatalog {
   }
   return {
     byId,
+    async byIds(site, ids) {
+      const rows: AssetRow[] = []
+      // D1 binds at most 100 values to a statement: the site and 90 ids at a time.
+      for (let start = 0; start < ids.length; start += 90) {
+        const slice = ids.slice(start, start + 90)
+        const { results } = await db
+          .prepare(
+            `SELECT * FROM assets WHERE site_id = ? AND id IN (${slice.map(() => '?').join(', ')})`,
+          )
+          .bind(site, ...slice)
+          .all<Row>()
+        rows.push(...results.map(rowOf))
+      }
+      return rows
+    },
     async bySha256(site, sha256) {
       const row = await db
         .prepare('SELECT * FROM assets WHERE site_id = ? AND sha256 = ?')
@@ -126,9 +155,9 @@ export function d1Catalog(db: D1Database): AssetCatalog {
     async insert(asset) {
       const written = await db
         .prepare(
-          `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, original_format,
-             original_bytes, alt, filename, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, widths,
+             original_format, original_bytes, alt, filename, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (site_id, sha256) DO NOTHING
            RETURNING *`,
         )
@@ -140,6 +169,7 @@ export function d1Catalog(db: D1Database): AssetCatalog {
           asset.width,
           asset.height,
           asset.bytes,
+          JSON.stringify(asset.widths),
           asset.originalFormat,
           asset.originalBytes,
           asset.alt,

@@ -473,6 +473,25 @@ export const en = {
     retentionInvalid: (min: number, max: number) =>
       `Enter a whole number of days from ${min} to ${max}, or keep the log forever.`,
     saveActivity: 'Save the activity log settings',
+    imagesTitle: 'Images',
+    imagesNote:
+      'How the images uploaded from now on are kept. Those already uploaded stay as they are.',
+    imageFormat: 'Format',
+    formatWebp: 'WebP',
+    formatAvif: 'AVIF',
+    formatOriginal: 'As they come',
+    imageFormatHelp:
+      'What JPEG, PNG and GIF images become. PNG stays lossless, a GIF keeps its frames, and SVG is never converted.',
+    imageQuality: 'Quality of photographs',
+    imageQualityHelp: 'From 1 to 100; 85 keeps a photograph sharp at a fraction of its weight.',
+    imageMaxWidth: 'Widest image, in pixels',
+    imageMaxWidthHelp: 'A wider image is scaled down, never up.',
+    imageWidths: 'Narrower copies, in pixels',
+    imageWidthsHelp:
+      'Each image also gets a copy of each of these widths narrower than itself, so a phone loads a small one: srcset. Each copy is one more conversion of Cloudflare Images, which counts towards its monthly allowance. Empty makes none.',
+    imageWidthsInvalid: (min: number, max: number, most: number) =>
+      `Enter up to ${most} whole numbers from ${min} to ${max}, apart by commas, such as 640, 1280.`,
+    saveImages: 'Save the image settings',
     webhooks: 'Webhooks',
     backupsTitle: 'Backups',
     backupsHelp:
@@ -603,6 +622,7 @@ export const en = {
   },
   images: {
     title: 'Images',
+    copies: (widths: string) => `copies ${widths} px`,
     intro:
       'The images of the site, newest first. Each is converted once when it arrives (WebP by default); copy its reference into an entry to show it.',
     file: 'Image',

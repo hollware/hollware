@@ -33,6 +33,7 @@ export {
   type ListEntriesOptions,
   type PageDocument,
   type PageEntry,
+  type PageImage,
   type PageSummary,
   type ReaderOptions,
   type SearchOptions,

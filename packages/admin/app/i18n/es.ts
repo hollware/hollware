@@ -491,6 +491,25 @@ export const es: Messages = {
     retentionInvalid: (min: number, max: number) =>
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
+    imagesTitle: 'Imágenes',
+    imagesNote:
+      'Cómo se guardan las imágenes que se suban desde ahora. Las que ya están no cambian.',
+    imageFormat: 'Formato',
+    formatWebp: 'WebP',
+    formatAvif: 'AVIF',
+    formatOriginal: 'Tal como llegan',
+    imageFormatHelp:
+      'En qué se convierten las imágenes JPEG, PNG y GIF. PNG se mantiene sin pérdida, un GIF conserva sus cuadros y SVG nunca se convierte.',
+    imageQuality: 'Calidad de las fotografías',
+    imageQualityHelp: 'De 1 a 100; 85 mantiene nítida una fotografía con una fracción de su peso.',
+    imageMaxWidth: 'Ancho máximo, en píxeles',
+    imageMaxWidthHelp: 'Una imagen más ancha se reduce, nunca se agranda.',
+    imageWidths: 'Copias más angostas, en píxeles',
+    imageWidthsHelp:
+      'Cada imagen recibe también una copia de cada uno de estos anchos menores que el suyo, para que un teléfono cargue una pequeña: srcset. Cada copia es una conversión más de Cloudflare Images, que cuenta para su cuota mensual. Vacío no hace ninguna.',
+    imageWidthsInvalid: (min: number, max: number, most: number) =>
+      `Escribe hasta ${most} números enteros entre ${min} y ${max}, separados por comas, como 640, 1280.`,
+    saveImages: 'Guardar la configuración de imágenes',
     webhooks: 'Webhooks',
     backupsTitle: 'Respaldos',
     backupsHelp:
@@ -623,6 +642,7 @@ export const es: Messages = {
   },
   images: {
     title: 'Imágenes',
+    copies: (widths: string) => `copias de ${widths} px`,
     intro:
       'Las imágenes del sitio, de la más nueva a la más antigua. Cada una se convierte una vez al llegar (a WebP por defecto); copia su referencia en una entrada para mostrarla.',
     file: 'Imagen',

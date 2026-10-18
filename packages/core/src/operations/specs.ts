@@ -936,6 +936,19 @@ const asset = z.object({
   width: z.number().int().nullable().describe('In pixels; null for an SVG.'),
   height: z.number().int().nullable(),
   bytes: z.number().int().describe('The size of the file served.'),
+  widths: z
+    .array(z.number().int())
+    .optional()
+    .describe(
+      'The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.',
+    ),
+  srcset: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'Its copies and itself as the srcset of an img, such as "<url>/640 640w, <url> 1600w"; null when it has no copy.',
+    ),
   originalFormat: z.enum(IMAGE_FORMATS).describe('What it was sent as.'),
   originalBytes: z.number().int(),
   alt: z.string().describe('What it shows, for whoever cannot see it.'),
@@ -950,7 +963,7 @@ export const uploadAsset = defineOperation({
   name: 'upload_asset',
   title: 'Upload an image',
   description:
-    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
+    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth) and makes the narrower copies of its widths for srcset (640 and 1280 pixels by default), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
   input: z.strictObject({
     filename: z.string().min(1).max(200).describe('Its name, such as continuum.png.'),
     alt: z

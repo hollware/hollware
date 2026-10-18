@@ -1,6 +1,12 @@
 import * as z from 'zod'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
-import { DEFAULT_MEDIA, MEDIA_FORMATS, MEDIA_MAX_WIDTH, MEDIA_MIN_WIDTH } from '../config/media.ts'
+import {
+  DEFAULT_MEDIA,
+  MEDIA_FORMATS,
+  MEDIA_MAX_WIDTH,
+  MEDIA_MAX_WIDTHS,
+  MEDIA_MIN_WIDTH,
+} from '../config/media.ts'
 
 /**
  * The definition of a site as data (ADR-033): what D1 stores for it and what the operations that
@@ -121,8 +127,19 @@ export const siteDefinitionData = z.strictObject({
         .max(MEDIA_MAX_WIDTH)
         .default(DEFAULT_MEDIA.maxWidth)
         .describe('The widest an image is kept, in pixels; a wider one is scaled down, never up.'),
+      widths: z
+        .array(z.number().int().min(MEDIA_MIN_WIDTH).max(MEDIA_MAX_WIDTH))
+        .max(MEDIA_MAX_WIDTHS)
+        .refine(
+          (widths) => widths.every((width, at) => at === 0 || width > (widths[at - 1] ?? 0)),
+          'Smallest first, each width once.',
+        )
+        .default([...DEFAULT_MEDIA.widths])
+        .describe(
+          'The widths, in pixels and smallest first, of the narrower copies made of each image when it is uploaded, for srcset: an image gets those narrower than itself. [] makes none; each copy is one more conversion of Cloudflare Images.',
+        ),
     })
-    .default({ ...DEFAULT_MEDIA })
+    .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })
     .describe('How the site converts the images it receives (ADR-038).'),
   collections: z.record(z.string(), collectionDefinitionData),
 })

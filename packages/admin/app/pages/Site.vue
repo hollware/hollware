@@ -9,7 +9,13 @@ import { sitePreset, type Preset } from '@hollware/core'
 import { api, auth } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 import { parseRetention } from '../lib/activity.ts'
-import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '@hollware/core'
+import { parseWidths } from '../lib/media.ts'
+import {
+  AUDIT_RETENTION_MAX_DAYS,
+  AUDIT_RETENTION_MIN_DAYS,
+  MEDIA_MAX_WIDTH,
+  MEDIA_MIN_WIDTH,
+} from '@hollware/core'
 
 type Structure = Output<'get_structure'>
 interface Me {
@@ -37,6 +43,11 @@ const ipAddresses = ref<'off' | 'hashed'>('off')
 const keepForever = ref(true)
 const retentionDays = ref<number | undefined>(undefined)
 const retentionError = ref<string | null>(null)
+const imageFormat = ref<'webp' | 'avif' | 'original'>('webp')
+const imageQuality = ref<number | undefined>(85)
+const imageMaxWidth = ref<number | undefined>(2400)
+const imageWidths = ref('')
+const imageWidthsError = ref<string | null>(null)
 const hookName = ref('')
 const hookUrl = ref('')
 /** The secret just made for a webhook: shown this once. */
@@ -138,6 +149,11 @@ async function load() {
   keepForever.value = read.definition.audit.retentionDays === null
   retentionDays.value = read.definition.audit.retentionDays ?? undefined
   retentionError.value = null
+  imageFormat.value = read.definition.media.format
+  imageQuality.value = read.definition.media.quality
+  imageMaxWidth.value = read.definition.media.maxWidth
+  imageWidths.value = read.definition.media.widths.join(', ')
+  imageWidthsError.value = null
 }
 onMounted(load)
 
@@ -178,6 +194,30 @@ async function saveActivity() {
   const definition = {
     ...current.definition,
     audit: { ipAddresses: ipAddresses.value, retentionDays: retention.days },
+  }
+  await change.run((confirm) =>
+    api.call('update_site', { version: current.version, definition, confirm }),
+  )
+}
+
+async function saveImages() {
+  const current = structure.value
+  if (current === null) return
+  const widths = parseWidths(imageWidths.value)
+  if (!widths.ok) {
+    imageWidthsError.value = m.value.site.imageWidthsInvalid(widths.min, widths.max, widths.most)
+    return
+  }
+  imageWidthsError.value = null
+  // A quality or a width out of range is the server's to refuse, with what to change.
+  const definition = {
+    ...current.definition,
+    media: {
+      format: imageFormat.value,
+      quality: imageQuality.value ?? current.definition.media.quality,
+      maxWidth: imageMaxWidth.value ?? current.definition.media.maxWidth,
+      widths: widths.widths,
+    },
   }
   await change.run((confirm) =>
     api.call('update_site', { version: current.version, definition, confirm }),
@@ -338,6 +378,46 @@ const PRESETS = computed(() => [
           />
         </UFormField>
         <UButton type="submit" :label="m.site.saveActivity" :loading="change.busy.value" />
+      </form>
+
+      <form
+        class="max-w-2xl space-y-4"
+        aria-labelledby="images"
+        novalidate
+        @submit.prevent="saveImages"
+      >
+        <h2 id="images" class="font-semibold">{{ m.site.imagesTitle }}</h2>
+        <p class="text-sm text-muted">{{ m.site.imagesNote }}</p>
+        <URadioGroup
+          v-model="imageFormat"
+          :legend="m.site.imageFormat"
+          :description="m.site.imageFormatHelp"
+          :items="[
+            { label: m.site.formatWebp, value: 'webp' },
+            { label: m.site.formatAvif, value: 'avif' },
+            { label: m.site.formatOriginal, value: 'original' },
+          ]"
+        />
+        <UFormField :label="m.site.imageQuality" :help="m.site.imageQualityHelp">
+          <UInput v-model.number="imageQuality" type="number" :min="1" :max="100" class="w-40" />
+        </UFormField>
+        <UFormField :label="m.site.imageMaxWidth" :help="m.site.imageMaxWidthHelp">
+          <UInput
+            v-model.number="imageMaxWidth"
+            type="number"
+            :min="MEDIA_MIN_WIDTH"
+            :max="MEDIA_MAX_WIDTH"
+            class="w-40"
+          />
+        </UFormField>
+        <UFormField
+          :label="m.site.imageWidths"
+          :help="m.site.imageWidthsHelp"
+          :error="imageWidthsError ?? undefined"
+        >
+          <UInput v-model="imageWidths" class="w-60" />
+        </UFormField>
+        <UButton type="submit" :label="m.site.saveImages" :loading="change.busy.value" />
       </form>
 
       <section aria-labelledby="webhooks" class="max-w-2xl space-y-4">

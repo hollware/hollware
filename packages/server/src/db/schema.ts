@@ -827,6 +827,11 @@ export const assets = sqliteTable(
     width: integer('width'),
     height: integer('height'),
     bytes: integer('bytes').notNull(),
+    /**
+     * The widths of the narrower copies made for `srcset`, smallest first, as a JSON array: each is
+     * served at `<url>/<width>`. `[]` for an image with none, and for those uploaded before 1.0.0-rc.3.
+     */
+    widths: text('widths').notNull().default('[]'),
     originalFormat: text('original_format').notNull(),
     originalBytes: integer('original_bytes').notNull(),
     alt: text('alt').notNull(),

@@ -122,6 +122,8 @@ onMounted(() => load())
       >
         <img
           :src="asset.url"
+          :srcset="asset.srcset ?? undefined"
+          sizes="320px"
           :alt="asset.alt"
           loading="lazy"
           class="bg-elevated aspect-video w-full rounded object-contain"
@@ -130,6 +132,9 @@ onMounted(() => load())
         <p class="text-muted text-xs">
           {{ asset.filename }} · {{ sizeOf(asset.bytes) }}
           <template v-if="asset.width !== null"> · {{ asset.width }}×{{ asset.height }}</template>
+          <template v-if="(asset.widths ?? []).length > 0">
+            · {{ m.images.copies((asset.widths ?? []).join(', ')) }}</template
+          >
           · {{ formatDate(asset.createdAt) }}
         </p>
         <UButton size="xs" variant="soft" icon="i-lucide-copy" @click="copy(asset)">

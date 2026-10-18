@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   assetIdIn,
   assetIdOf,
+  assetIdsIn,
   checkSvg,
   conversionOf,
   DEFAULT_MEDIA,
   processMarkdown,
   resolveAssetReferences,
   sniffImage,
+  variantWidthsOf,
 } from '../src/index.ts'
 import { readMedia } from '../src/config/media.ts'
 import { Problems } from '../src/config/config-error.ts'
@@ -23,9 +25,14 @@ import { Problems } from '../src/config/config-error.ts'
 // - "converts by the site's setting": quality or anim is ever left to the binding's defaults (its
 //   default WebP is lossless and keeps one frame of a GIF: ADR-038), PNG is not lossless, a WebP
 //   or an AVIF is converted when it fits, an image is scaled up, or SVG or `original` is converted.
+// - "makes the copies narrower …": a copy as wide as the file, of an SVG or a JPEG, or under
+//   `original`, is asked for.
 // - "names an asset by its bytes": the id stops being `ast_` and the first 26 hex of the hash.
 // - "resolves asset: references": a value that is not exactly a reference changes, or one is
 //   missed inside an array or a nested object.
+// - "gives an img of a document its size and copies": an author's own size is replaced, an image
+//   without copies gets a srcset, one the site does not have or an SVG gets a size, or a `sizes`
+//   lets the image grow past its own width; or assetIdsIn misses a nested reference or repeats one.
 // - "keeps an asset: image": the Markdown pipeline drops `![alt](asset:…)` as an unsafe URL.
 // - "reads the media setting": a value out of range is taken, or a missing one is not the default.
 
@@ -157,6 +164,18 @@ describe('conversionOf', () => {
       { format: 'image/webp', quality: 85, anim: true },
     ])
   })
+
+  it('makes the copies narrower than the file served, only as WebP or AVIF', () => {
+    const original = { ...DEFAULT_MEDIA, format: 'original' as const }
+    expect([
+      variantWidthsOf('image/webp', 1600, DEFAULT_MEDIA),
+      variantWidthsOf('image/avif', 1280, DEFAULT_MEDIA),
+      variantWidthsOf('image/webp', 640, DEFAULT_MEDIA),
+      variantWidthsOf('image/svg+xml', null, DEFAULT_MEDIA),
+      variantWidthsOf('image/jpeg', 1600, DEFAULT_MEDIA),
+      variantWidthsOf('image/webp', 1600, original),
+    ]).toEqual([[640, 1280], [640], [], [], [], []])
+  })
 })
 
 describe('asset references', () => {
@@ -193,6 +212,65 @@ describe('asset references', () => {
     expect(value.img).toBe(`asset:${id}`)
   })
 
+  it('gives an img of a document its size and copies, and keeps the size its author gave', () => {
+    const photo = 'ast_0123456789abcdef0123456789'
+    const plain = 'ast_aaaaaaaaaaaaaaaaaaaaaaaaaa'
+    const logo = 'ast_bbbbbbbbbbbbbbbbbbbbbbbbbb'
+    const gone = 'ast_cccccccccccccccccccccccccc'
+    const url = (id: string) => `https://cms.test/assets/blog/${id}`
+    const sizes = new Map([
+      [photo, { width: 1600, height: 900, widths: [640, 1280] }],
+      [plain, { width: 500, height: 400, widths: [] }],
+      [logo, { width: null, height: null, widths: [] }],
+    ])
+    const document = {
+      frontmatter: { cover: `asset:${photo}` },
+      meta: {},
+      nodes: [
+        ['p', {}, ['img', { src: `asset:${photo}`, alt: 'Photo' }]],
+        ['img', { src: `asset:${photo}`, alt: 'Small', width: '320' }],
+        ['img', { src: `asset:${plain}`, alt: 'Plain' }],
+        ['img', { src: `asset:${logo}`, alt: 'Logo' }],
+        ['img', { src: `asset:${gone}`, alt: 'Gone' }],
+      ],
+    }
+
+    const resolved = resolveAssetReferences(document, url, (id) => sizes.get(id))
+
+    expect(assetIdsIn(document)).toEqual([photo, plain, logo, gone])
+    expect(resolved.frontmatter.cover).toBe(url(photo))
+    expect(resolved.nodes).toEqual([
+      [
+        'p',
+        {},
+        [
+          'img',
+          {
+            src: url(photo),
+            alt: 'Photo',
+            srcset: `${url(photo)}/640 640w, ${url(photo)}/1280 1280w, ${url(photo)} 1600w`,
+            sizes: '(min-width: 1600px) 1600px, 100vw',
+            width: '1600',
+            height: '900',
+          },
+        ],
+      ],
+      [
+        'img',
+        {
+          src: url(photo),
+          alt: 'Small',
+          width: '320',
+          srcset: `${url(photo)}/640 640w, ${url(photo)}/1280 1280w, ${url(photo)} 1600w`,
+          sizes: '(min-width: 1600px) 1600px, 100vw',
+        },
+      ],
+      ['img', { src: url(plain), alt: 'Plain', width: '500', height: '400' }],
+      ['img', { src: url(logo), alt: 'Logo' }],
+      ['img', { src: url(gone), alt: 'Gone' }],
+    ])
+  })
+
   it('keeps an asset: image through the Markdown pipeline', async () => {
     const id = 'ast_0123456789abcdef0123456789'
     const result = await processMarkdown(`# Title\n\n![The pipeline](asset:${id})\n`, {
@@ -214,19 +292,29 @@ describe('readMedia', () => {
   it('reads the media setting, and refuses what is out of range with a fix', () => {
     const problems = new Problems()
     expect(readMedia('media', undefined, problems)).toEqual(DEFAULT_MEDIA)
-    expect(readMedia('media', { format: 'avif', quality: 60, maxWidth: 1600 }, problems)).toEqual({
-      format: 'avif',
-      quality: 60,
-      maxWidth: 1600,
-    })
+    expect(
+      readMedia(
+        'media',
+        { format: 'avif', quality: 60, maxWidth: 1600, widths: [960, 480] },
+        problems,
+      ),
+    ).toEqual({ format: 'avif', quality: 60, maxWidth: 1600, widths: [480, 960] })
+    expect(readMedia('media', { widths: [] }, problems).widths).toEqual([])
     expect(problems.list).toEqual([])
-    expect(readMedia('media', { format: 'png', quality: 101, maxWidth: 100 }, problems)).toEqual(
-      DEFAULT_MEDIA,
-    )
+    expect(
+      readMedia('media', { format: 'png', quality: 101, maxWidth: 100, widths: [100] }, problems),
+    ).toEqual(DEFAULT_MEDIA)
+    for (const widths of [[640, 640], [320, 480, 640, 800, 960], [640.5], '640'])
+      readMedia('media', { widths }, problems)
     expect(problems.list.map((problem) => problem.path)).toEqual([
       'media.format',
       'media.quality',
       'media.maxWidth',
+      'media.widths',
+      'media.widths',
+      'media.widths',
+      'media.widths',
+      'media.widths',
     ])
     expect(problems.list.every((problem) => problem.fix.length > 0)).toBe(true)
   })

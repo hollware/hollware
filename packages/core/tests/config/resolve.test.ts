@@ -100,7 +100,7 @@ describe('resolveConfig', () => {
       cors: { origins: [] },
       events: { webhooks: [], indexNow: null },
       audit: { ipAddresses: 'off', retentionDays: null },
-      media: { format: 'webp', quality: 85, maxWidth: 2400 },
+      media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280] },
       collections: new Map([
         [
           'blog',
@@ -197,7 +197,7 @@ describe('resolveConfig', () => {
       cors: { origins: [] },
       events: { webhooks: [], indexNow: null },
       audit: { ipAddresses: 'off', retentionDays: null },
-      media: { format: 'webp', quality: 85, maxWidth: 2400 },
+      media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280] },
       collections: new Map([
         [
           'posts',

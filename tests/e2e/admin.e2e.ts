@@ -485,6 +485,28 @@ test('the owner changes the URL of a published entry, and the site keeps the old
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
 })
 
+test('the owner sets the narrower copies the images of the site get, in Site', async () => {
+  await owner.goto('/admin/site')
+  const widths = owner.getByRole('textbox', { name: /^(Narrower copies|Copias más angostas)/ })
+  await expect(widths).toHaveValue('640, 1280')
+  await widths.fill('1600 480')
+  await owner
+    .getByRole('button', {
+      name: /^(Save the image settings|Guardar la configuración de imágenes)$/,
+    })
+    .click()
+  await expect(owner.getByText(/^(Saved|Guardado)/).first()).toBeVisible()
+  await owner.reload()
+  await expect(widths).toHaveValue('480, 1600')
+  await widths.fill('640, 1280')
+  await owner
+    .getByRole('button', {
+      name: /^(Save the image settings|Guardar la configuración de imágenes)$/,
+    })
+    .click()
+  await expectAccessible(owner)
+})
+
 test('the owner finds the daily backups of the site in Site, none before the first cron', async () => {
   await owner.goto('/admin/site')
   await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()

@@ -107,6 +107,19 @@ export const entrySummary = z.object({
     .describe(
       "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
     ),
+  images: z
+    .record(
+      z.string(),
+      z.object({
+        width: z.number().int().nullable(),
+        height: z.number().int().nullable(),
+        srcset: z.string().nullable(),
+      }),
+    )
+    .optional()
+    .describe(
+      'Where asset: references are read as URLs (a site over RPC or the read API, or the published view): the images its frontmatter names, by URL, with their size and srcset, to lay out a cover. Absent when it names none.',
+    ),
 })
 
 export const publication = z.object({

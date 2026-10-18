@@ -43,6 +43,7 @@ describe('the config module', () => {
       'MAX_MARKDOWN_BYTES_CEILING',
       'MEDIA_FORMATS',
       'MEDIA_MAX_WIDTH',
+      'MEDIA_MAX_WIDTHS',
       'MEDIA_MIN_WIDTH',
       'SITE_KEY_MAX_LENGTH',
       'SITE_KEY_PATTERN',

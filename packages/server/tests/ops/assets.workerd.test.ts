@@ -14,7 +14,11 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 // Fails when (src/ops/assets.ts, src/media/cloudflare.ts, ADR-038):
 // - "converts once …": the converter is asked for anything but the site's setting with quality and
 //   anim given, the file served or the original is not in R2 under its key, or the row is not
-//   written with the size the converter made.
+//   written with the size the converter made, or its copy 640 pixels wide is not made from the
+//   original, kept at <served>/640 and answered in widths and srcset.
+// - "makes the copies of the widths of the site …": the copies are not the site's widths, the
+//   allowance running out at a copy refuses the image instead of keeping those made, or
+//   `widths: []` still makes one.
 // - "is the same asset …": the same bytes convert or write again, or a second row appears.
 // - "scales down …": a wide image keeps its width, or its height is not scaled with it.
 // - "keeps a plain SVG … refuses one that can run": an SVG reaches the converter, or a refused one
@@ -28,7 +32,9 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 //   a site (the published view, or a reader's preview of the head) keep `asset:` in the
 //   frontmatter or the document, or MCP stops seeing what the agent wrote.
 // - "a read of the published site …": the published view or HTML keeps `asset:`, or the head view
-//   (an agent over MCP) does not.
+//   (an agent over MCP) does not; the HTML or a reader's document loses the srcset, sizes and size
+//   of an image; or `images` of the summary (get_entry, list_entries) is missing for a site or
+//   given to an agent.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -51,6 +57,12 @@ const base64 = (bytes: Uint8Array | string) => {
   return btoa(binary)
 }
 
+/** What the fake converter makes: a narrower copy names its width, so a test tells them apart. */
+const copyOut = (conversion: Conversion) =>
+  conversion.width === undefined || conversion.width === 2400
+    ? WEBP_OUT
+    : new TextEncoder().encode(`RIFF\0\0\0\0WEBPVP8 ${conversion.width}`)
+
 /** A converter that answers what it is told, and records what it was asked. */
 function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: Error) {
   const asked: Conversion[] = []
@@ -62,7 +74,7 @@ function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: E
     convert: async (_bytes, conversion) => {
       asked.push(conversion)
       if (failure !== undefined) throw Object.assign(new Error('IMAGES_TRANSFORM_ERROR'), failure)
-      return { bytes: WEBP_OUT, format: conversion.format }
+      return { bytes: copyOut(conversion), format: conversion.format }
     },
   }
   return { images, asked }
@@ -109,17 +121,24 @@ describe('upload_asset', () => {
       context,
     )
 
-    expect(asked).toEqual([{ format: 'image/webp', quality: 85, anim: true }])
+    // The file served, then its copy 640 pixels wide: 1280 is not narrower than the image.
+    expect(asked).toEqual([
+      { format: 'image/webp', quality: 85, anim: true },
+      { format: 'image/webp', quality: 85, anim: true, width: 640 },
+    ])
     expect(answer.outcome).toBe('created')
     const id = answer.asset?.id ?? ''
+    const url = `https://cms.example.com/assets/${world.tenant.key}/${id}`
     expect(answer.asset).toEqual({
       id,
       reference: `asset:${id}`,
-      url: `https://cms.example.com/assets/${world.tenant.key}/${id}`,
+      url,
       format: 'image/webp',
       width: 1200,
       height: 800,
       bytes: WEBP_OUT.length,
+      widths: [640],
+      srcset: `${url}/640 640w, ${url} 1200w`,
       originalFormat: 'image/jpeg',
       originalBytes: JPEG.length,
       alt: 'The stage',
@@ -129,6 +148,41 @@ describe('upload_asset', () => {
     expect(id).toMatch(/^ast_[0-9a-f]{26}$/)
     expect(await stored(`sites/${world.tenant.key}/${id}`)).toEqual(WEBP_OUT)
     expect(await stored(`originals/${world.tenant.key}/${id}`)).toEqual(JPEG)
+    expect(await stored(`sites/${world.tenant.key}/${id}/640`)).toEqual(
+      new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 640'),
+    )
+  })
+
+  it('makes the copies of the widths of the site, keeps those made when the allowance ends, and none when it says none', async () => {
+    const asked: Conversion[] = []
+    // The allowance of the month runs out at the second copy.
+    const images: ImageConverter = {
+      info: async () => ({ format: 'image/jpeg', width: 2000, height: 1000 }),
+      convert: async (_bytes, conversion) => {
+        asked.push(conversion)
+        if (asked.length === 3)
+          throw Object.assign(new Error('IMAGES_TRANSFORM_ERROR'), { code: 9422 })
+        return { bytes: copyOut(conversion), format: conversion.format }
+      },
+    }
+    const context = withMedia(world.context(), mediaWith(images))
+    const site = { ...context.site, media: { ...context.site.media, widths: [] } }
+    const jpeg = (n: number) => base64(new Uint8Array([...JPEG, n]))
+
+    const halfway = await uploadAsset({ filename: 'a.jpg', alt: 'A', data: jpeg(1) }, context)
+    const none = await uploadAsset(
+      { filename: 'b.jpg', alt: 'B', data: jpeg(2) },
+      { ...context, site },
+    )
+
+    expect(asked.map((conversion) => conversion.width)).toEqual([undefined, 640, 1280, undefined])
+    expect([halfway.outcome, halfway.asset?.widths]).toEqual(['created', [640]])
+    expect([none.outcome, none.asset?.widths, none.asset?.srcset]).toEqual(['created', [], null])
+    const keys = await env.MEDIA.list({ prefix: `sites/${world.tenant.key}/${halfway.asset?.id}` })
+    expect(keys.objects.map((object) => object.key.split('/').slice(2).join('/'))).toEqual([
+      `${halfway.asset?.id}`,
+      `${halfway.asset?.id}/640`,
+    ])
   })
 
   it('is the same asset for the same bytes: nothing converts or writes again', async () => {
@@ -204,7 +258,11 @@ describe('upload_asset', () => {
       context,
     )
 
-    expect(asked).toEqual([{ format: 'image/webp', quality: 100, anim: true, width: 2400 }])
+    expect(asked).toEqual([
+      { format: 'image/webp', quality: 100, anim: true, width: 2400 },
+      { format: 'image/webp', quality: 100, anim: true, width: 640 },
+      { format: 'image/webp', quality: 100, anim: true, width: 1280 },
+    ])
     expect([answer.asset?.width, answer.asset?.height]).toEqual([2400, 1200])
   })
 
@@ -406,7 +464,7 @@ describe('list_assets and get_asset', () => {
 describe('asset references in reads', () => {
   it('a read of the published site sees URLs; an agent over MCP sees what it wrote', async () => {
     const world = await newWorld(env.DB, 'pictures')
-    const media = mediaWith(null)
+    const media = mediaWith(fakeImages({ format: 'image/png', width: 1600, height: 900 }).images)
     const uploaded = await uploadAsset(
       { filename: 'c.png', alt: 'Cover', data: base64(new Uint8Array([...PNG, 42])) },
       withMedia(world.context(), media),
@@ -442,11 +500,22 @@ describe('asset references in reads', () => {
       formats: ['document', 'html'],
     })
 
+    const srcset = `${url}/640 640w, ${url}/1280 1280w, ${url} 1600w`
     expect(JSON.stringify(head.entry?.document)).toContain(`asset:${id}`)
     expect(head.entry?.html).toContain(`src="${url}"`)
     expect(JSON.stringify(reader.entry?.document)).not.toContain('asset:')
     expect(JSON.stringify(reader.entry?.document)).toContain(url)
     expect(reader.entry?.html).toContain(`src="${url}"`)
+    // Whoever reads the HTML gets the copies and the size of each image, MCP as a site.
+    for (const html of [head.entry?.html, reader.entry?.html]) {
+      expect(html).toContain(`srcset="${srcset}"`)
+      expect(html).toContain('sizes="(min-width: 1600px) 1600px, 100vw"')
+      expect(html).toContain('width="1600" height="900"')
+    }
+    expect(JSON.stringify(reader.entry?.document)).toContain(`"srcset":"${srcset}"`)
+    // The cover of the frontmatter, by its URL, for a site; nothing for an agent.
+    expect(reader.entry?.images).toEqual({ [url]: { width: 1600, height: 900, srcset } })
+    expect(head.entry?.images).toBe(undefined)
 
     expect([head.entry?.frontmatter['cover'], reader.entry?.frontmatter['cover']]).toEqual([
       `asset:${id}`,
@@ -477,6 +546,10 @@ describe('asset references in reads', () => {
       mine.entries?.[0]?.frontmatter['cover'],
       group.entries?.find((entry) => entry.locale === 'en')?.frontmatter['cover'],
     ]).toEqual([url, `asset:${id}`, url])
+    expect([listed.entries?.[0]?.images?.[url]?.srcset, mine.entries?.[0]?.images]).toEqual([
+      srcset,
+      undefined,
+    ])
   })
 
   it('reaches a site over RPC as URLs, published or in a preview of the draft', async () => {

@@ -10,10 +10,37 @@ export const MEDIA_MIN_WIDTH = 320
 /** The widest: past it the binding's area limit comes first, and no page shows more. */
 export const MEDIA_MAX_WIDTH = 8192
 
-/** What a site that says nothing gets: WebP at 85, and nothing wider than 2400 pixels. */
-export const DEFAULT_MEDIA: ResolvedMedia = { format: 'webp', quality: 85, maxWidth: 2400 }
+/** The most narrower copies an image gets: each one is a conversion, and the month has a limit. */
+export const MEDIA_MAX_WIDTHS = 4
 
-const FIX = 'Declare it as { format: "webp", quality: 85, maxWidth: 2400 }, or remove it.'
+/**
+ * What a site that says nothing gets: WebP at 85, nothing wider than 2400 pixels, and copies 640
+ * and 1280 pixels wide of each image wider than them.
+ */
+export const DEFAULT_MEDIA: ResolvedMedia = {
+  format: 'webp',
+  quality: 85,
+  maxWidth: 2400,
+  widths: [640, 1280],
+}
+
+const FIX =
+  'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280] }, or remove it.'
+
+/**
+ * The widths of the narrower copies, smallest first, or `null` when the value is not a list of
+ * up to `MEDIA_MAX_WIDTHS` distinct whole numbers of pixels from `MEDIA_MIN_WIDTH` to `MEDIA_MAX_WIDTH`.
+ */
+export function mediaWidths(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length > MEDIA_MAX_WIDTHS) return null
+  const widths: number[] = []
+  for (const width of value) {
+    if (!isWhole(width) || width < MEDIA_MIN_WIDTH || width > MEDIA_MAX_WIDTH) return null
+    if (widths.includes(width)) return null
+    widths.push(width)
+  }
+  return widths.sort((a, b) => a - b)
+}
 
 /** How a site converts the images it receives (ADR-038). */
 export function readMedia(path: string, raw: unknown, problems: Problems): ResolvedMedia {
@@ -22,7 +49,7 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
     problems.add(path, wrongType(raw, 'an object'), FIX)
     return DEFAULT_MEDIA
   }
-  let { format, quality, maxWidth } = DEFAULT_MEDIA
+  let { format, quality, maxWidth, widths } = DEFAULT_MEDIA
   const rawFormat = raw['format']
   if (rawFormat !== undefined) {
     if (MEDIA_FORMATS.some((candidate) => candidate === rawFormat)) {
@@ -58,7 +85,19 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
       )
     }
   }
-  return { format, quality, maxWidth }
+  const rawWidths = raw['widths']
+  if (rawWidths !== undefined) {
+    const read = mediaWidths(rawWidths)
+    if (read !== null) widths = read
+    else {
+      problems.add(
+        keyPath(path, 'widths'),
+        `${Array.isArray(rawWidths) ? 'this list' : wrongType(rawWidths, 'a list')} is not up to ${MEDIA_MAX_WIDTHS} different whole numbers of pixels from ${MEDIA_MIN_WIDTH} to ${MEDIA_MAX_WIDTH}`,
+        'Give the widths of the narrower copies made of each image for srcset, such as [640, 1280], or [] for none.',
+      )
+    }
+  }
+  return { format, quality, maxWidth, widths }
 }
 
 function isWhole(value: unknown): value is number {

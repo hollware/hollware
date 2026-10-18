@@ -7,7 +7,7 @@ import { createHollware, hollwareBinding, type HollwareReader } from '../src/ind
 // preview that was not read with one, or lets the verdict, the revision or the last publication
 // of an entry reach the page, or answers an entry that is not found as anything but `undefined`;
 // or listEntries stops passing the site, the collection and its filters through, or lets a field
-// beyond a summary reach the page; or getTranslations stops answering `{ locale, slug }` pairs;
+// beyond a summary reach the page, or drops the images of its frontmatter; or getTranslations stops answering `{ locale, slug }` pairs;
 // or search stops passing the site, the query and its options, or lets more than a summary of an
 // entry reach the page, or describeSite stops reading the site of the reader; or a reader given
 // as a function is called once, at import time, instead of on each read; or
@@ -41,6 +41,15 @@ function entry(slug: string): Found {
   }
 }
 
+// The images of a frontmatter, as a site reads them: by URL, with their size and srcset.
+const COVER = {
+  'https://cms.test/assets/s/ast_0123456789abcdef0123456789': {
+    width: 1600,
+    height: 900,
+    srcset: 'https://cms.test/assets/s/ast_0123456789abcdef0123456789/640 640w',
+  },
+}
+
 type Described = Awaited<ReturnType<HollwareReader['describeSite']>>['site']
 // A site as describe_site answers it, with no collection.
 const SITE: Described = {
@@ -62,7 +71,7 @@ function fakeReader(missing: readonly string[] = []) {
     },
     async listEntries(...args) {
       calls.push(['list', ...args])
-      return { outcome: 'ok', entries: [entry('one')], nextCursor: 'c2' }
+      return { outcome: 'ok', entries: [{ ...entry('one'), images: COVER }], nextCursor: 'c2' }
     },
     async getTranslations(...args) {
       calls.push(['translations', ...args])
@@ -247,6 +256,7 @@ describe('createHollware', () => {
         tags: ['a'],
         publishedAt: AT,
         updatedAt: AT,
+        images: COVER,
       },
     ])
   })

@@ -150,6 +150,58 @@ export function conversionOf(
 }
 
 /**
+ * The widths of the narrower copies an image gets when it is uploaded, for `srcset`: the site's
+ * `widths` narrower than the file served. None for an SVG, which scales by itself, none when the
+ * site keeps files as they came, and none for a file that is not WebP or AVIF, which is what the
+ * copies are made as.
+ */
+export function variantWidthsOf(
+  format: string,
+  width: number | null,
+  media: ResolvedMedia,
+): number[] {
+  if (width === null || media.format === 'original') return []
+  if (format !== 'image/webp' && format !== 'image/avif') return []
+  return media.widths.filter((candidate) => candidate < width)
+}
+
+/** What the binding is asked for to make the copy `width` pixels wide of a file served as `format`. */
+export function variantConversion(
+  format: 'image/webp' | 'image/avif',
+  originalFormat: ImageFormat,
+  width: number,
+  media: ResolvedMedia,
+): Conversion {
+  return {
+    format,
+    quality: originalFormat === 'image/png' ? 100 : media.quality,
+    anim: true,
+    width,
+  }
+}
+
+/** What a reader needs of an image to lay it out and pick its copy. */
+export interface ImageSizes {
+  /** In pixels; `null` for an SVG. */
+  readonly width: number | null
+  readonly height: number | null
+  /** The widths of its narrower copies, smallest first: each is served at `<url>/<width>`. */
+  readonly widths: readonly number[]
+}
+
+/** The `srcset` of an image served at `url`: its copies and itself, or `null` when it has no copy. */
+export function srcsetOf(url: string, image: ImageSizes): string | null {
+  if (image.width === null || image.widths.length === 0) return null
+  return [
+    ...image.widths.map((width) => `${url}/${width} ${width}w`),
+    `${url} ${image.width}w`,
+  ].join(', ')
+}
+
+/** The `sizes` that goes with it: as wide as the layout, never wider than the image itself. */
+export const sizesOf = (width: number) => `(min-width: ${width}px) ${width}px, 100vw`
+
+/**
  * The id of an asset: `ast_` and 26 hex of the SHA-256 of its site's key and the SHA-256 of its
  * original bytes. The same file is the same asset in a site, and another one in another site:
  * ids are unique in a deployment, which serves several sites. Assets uploaded by 1.0.0-rc.2 and
@@ -173,17 +225,88 @@ export function assetIdIn(value: string): string | null {
   return ASSET_REFERENCE.exec(value.trim())?.[1] ?? null
 }
 
+/** The ids of the assets a value (a frontmatter, a document) names, each once, in order. */
+export function assetIdsIn(value: unknown): string[] {
+  const ids = new Set<string>()
+  const visit = (node: unknown, depth: number): void => {
+    if (depth > 200) return
+    if (typeof node === 'string') {
+      const id = assetIdIn(node)
+      if (id !== null) ids.add(id)
+    } else if (Array.isArray(node)) {
+      for (const child of node) visit(child, depth + 1)
+    } else if (typeof node === 'object' && node !== null) {
+      for (const child of Object.values(node)) visit(child, depth + 1)
+    }
+  }
+  visit(value, 0)
+  return [...ids]
+}
+
+/**
+ * The props of an `img` element of a document whose `src` is an `asset:` reference, as a reader
+ * gets them: the URL, the size the author did not give, and `srcset` and `sizes` when the image
+ * has narrower copies.
+ */
+function imageProps(
+  props: Readonly<Record<string, unknown>>,
+  url: string,
+  image: ImageSizes | undefined,
+): Record<string, unknown> {
+  const resolved: Record<string, unknown> = { ...props, src: url }
+  if (image === undefined || image.width === null) return resolved
+  const srcset = srcsetOf(url, image)
+  if (srcset !== null) {
+    resolved['srcset'] = srcset
+    resolved['sizes'] = sizesOf(image.width)
+  }
+  // An author who sized an image keeps the size; one who did not gets the image's own, so the
+  // page keeps its room while it loads.
+  if (props['width'] === undefined && props['height'] === undefined && image.height !== null) {
+    resolved['width'] = String(image.width)
+    resolved['height'] = String(image.height)
+  }
+  return resolved
+}
+
 /**
  * A copy of a value (a frontmatter, a document) with every string that is an `asset:` reference
- * replaced by the URL `urlOf` gives its id. Everything else is copied as it is.
+ * replaced by the URL `urlOf` gives its id. With `imageOf`, an `img` element of a document whose
+ * `src` is a reference also gets its size, `srcset` and `sizes` (`imageProps`). Everything else is
+ * copied as it is.
  */
-export function resolveAssetReferences<T>(value: T, urlOf: (id: string) => string): T {
+export function resolveAssetReferences<T>(
+  value: T,
+  urlOf: (id: string) => string,
+  imageOf?: (id: string) => ImageSizes | undefined,
+): T {
   const visit = (node: unknown): unknown => {
     if (typeof node === 'string') {
       const id = assetIdIn(node)
       return id === null ? node : urlOf(id)
     }
-    if (Array.isArray(node)) return node.map(visit)
+    if (Array.isArray(node)) {
+      const props: unknown = node[1]
+      if (
+        imageOf !== undefined &&
+        node[0] === 'img' &&
+        typeof props === 'object' &&
+        props !== null &&
+        !Array.isArray(props)
+      ) {
+        const src: unknown = Reflect.get(props, 'src')
+        const id = typeof src === 'string' ? assetIdIn(src) : null
+        if (id !== null) {
+          const resolved = visit(props)
+          return [
+            'img',
+            imageProps(resolved as Record<string, unknown>, urlOf(id), imageOf(id)),
+            ...node.slice(2).map(visit),
+          ]
+        }
+      }
+      return node.map(visit)
+    }
     if (typeof node === 'object' && node !== null) {
       const copy: Record<string, unknown> = {}
       for (const [key, child] of Object.entries(node)) {

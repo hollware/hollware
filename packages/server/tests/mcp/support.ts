@@ -43,7 +43,7 @@ export const SITE: ResolvedSite = {
   cors: { origins: [] },
   events: { webhooks: [], indexNow: null },
   audit: { ipAddresses: 'off', retentionDays: null },
-  media: { format: 'webp', quality: 85, maxWidth: 2400 },
+  media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280] },
 }
 
 const unused = (): never => {
@@ -270,16 +270,19 @@ const ASSET = {
   id: 'ast_0123456789abcdef0123456789',
   reference: 'asset:ast_0123456789abcdef0123456789',
   url: 'https://cms.example.com/assets/ast_0123456789abcdef0123456789',
-  format: 'image/webp',
+  format: 'image/webp' as const,
   width: 1200,
   height: 630,
   bytes: 48211,
-  originalFormat: 'image/png',
+  widths: [640],
+  srcset:
+    'https://cms.example.com/assets/ast_0123456789abcdef0123456789/640 640w, https://cms.example.com/assets/ast_0123456789abcdef0123456789 1200w',
+  originalFormat: 'image/png' as const,
   originalBytes: 312009,
   alt: 'A diagram of the pipeline',
   filename: 'pipeline.png',
   createdAt: '2026-10-18T00:00:00.000Z',
-} as const
+}
 
 export const CANNED: Canned = {
   approve_review: {

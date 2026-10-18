@@ -141,6 +141,13 @@
       "when": 1792360391741,
       "tag": "0019_redirects",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792362685352,
+      "tag": "0020_asset_widths",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,14 @@ export type HollwareOptions = ReaderOptions & {
 }
 
 /** What a page shows of an entry in a listing: no verdict, no revision, no state of review. */
+/** What a page needs of an image to lay it out: `<img src={url} srcset={srcset} width height>`. */
+export interface PageImage {
+  /** In pixels; `null` for an SVG. */
+  readonly width: number | null
+  readonly height: number | null
+  readonly srcset: string | null
+}
+
 export interface PageSummary {
   readonly id: string
   readonly collection: string
@@ -37,6 +45,11 @@ export interface PageSummary {
   readonly tags: readonly string[]
   readonly publishedAt: string | null
   readonly updatedAt: string
+  /**
+   * The images its frontmatter names (a cover), by the URL the frontmatter holds: their size, and
+   * the `srcset` of their narrower copies, or `null` when they have none.
+   */
+  readonly images?: Readonly<Record<string, PageImage>>
 }
 
 /** The document of an entry: what `<HollwareContent>` of `@hollware/react` and `@hollware/vue` renders. */
@@ -190,6 +203,11 @@ interface SummaryFields {
   readonly tags: readonly string[]
   readonly publishedAt: string | null
   readonly updatedAt: string
+  /**
+   * The images its frontmatter names (a cover), by the URL the frontmatter holds: their size, and
+   * the `srcset` of their narrower copies, or `null` when they have none.
+   */
+  readonly images?: Readonly<Record<string, PageImage>>
 }
 
 /** The fields of a summary that a page may see, picked one by one so no other one travels. */
@@ -204,6 +222,7 @@ function summaryOf(entry: SummaryFields): PageSummary {
     tags: entry.tags,
     publishedAt: entry.publishedAt,
     updatedAt: entry.updatedAt,
+    ...(entry.images === undefined ? {} : { images: entry.images }),
   }
 }
 
