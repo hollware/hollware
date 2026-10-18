@@ -145,7 +145,8 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     } catch (error) {
       const code = imagesCode(error)
       if (code === 9422) return NO_ALLOWANCE
-      if (code === 9412) return NOT_READABLE
+      // 9412: not an image; 9516: it could not be decoded (seen on a PNG cut short, 2026-10-18).
+      if (code === 9412 || code === 9516) return NOT_READABLE
       throw error
     }
   }

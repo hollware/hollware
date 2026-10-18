@@ -18,7 +18,7 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 // - "keeps a plain SVG … refuses one that can run": an SVG reaches the converter, or a refused one
 //   leaves a file or a row behind.
 // - "refuses what is not an image": the name or the claimed type is trusted over the bytes.
-// - "says when it cannot": no bucket, or the converter's 9412 and 9422, are not refused or
+// - "says when it cannot": no bucket, or the converter's 9412, 9516 and 9422, are not refused or
 //   unavailable with a fix, or leave something behind; without the binding the file is not kept.
 // - "lists and gets …": a page is not newest first, the cursor does not continue it, or a site
 //   reads another's asset.
@@ -40,10 +40,13 @@ const base64 = (bytes: Uint8Array | string) =>
   )
 
 /** A converter that answers what it is told, and records what it was asked. */
-function fakeImages(info: ImageInfo, failure?: { code: number }) {
+function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: Error) {
   const asked: Conversion[] = []
   const images: ImageConverter = {
-    info: async () => info,
+    info: async () => {
+      if (infoFailure !== undefined) throw infoFailure
+      return info
+    },
     convert: async (_bytes, conversion) => {
       asked.push(conversion)
       if (failure !== undefined) throw Object.assign(new Error('IMAGES_TRANSFORM_ERROR'), failure)
@@ -225,11 +228,30 @@ describe('upload_asset', () => {
       ),
     )
 
-    expect([noBucket.outcome, quota.outcome, unreadable.outcome]).toEqual([
+    // What the binding threw on a damaged PNG in staging: its code is only in the message.
+    const damaged = await uploadAsset(
+      { filename: 'a.png', alt: 'x', data: png(5) },
+      withMedia(
+        world.context(),
+        mediaWith(
+          fakeImages(
+            { format: 'image/png', width: 10, height: 10 },
+            undefined,
+            new Error(
+              'IMAGES_INFO_ERROR 9516: Could not resize the image: error during decoding: Error while decoding the PNG image. The file may be incomplete or damaged',
+            ),
+          ).images,
+        ),
+      ),
+    )
+
+    expect([noBucket.outcome, quota.outcome, unreadable.outcome, damaged.outcome]).toEqual([
       'unavailable',
       'unavailable',
       'refused',
+      'refused',
     ])
+    expect(damaged.problem?.message).toContain('damaged')
     expect(noBucket.problem?.fix).toContain('MEDIA')
     expect(quota.problem?.message).toContain('allowance')
     expect(await rows(world.tenant.key)).toBe(before)
