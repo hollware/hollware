@@ -47,6 +47,7 @@ const TOOLS = [
   'restore_entry',
   'restore_revision',
   'restore_site',
+  'schedule_unpublish',
   'search',
   'set_collection',
   'unpublish',

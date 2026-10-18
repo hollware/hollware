@@ -19,7 +19,7 @@ import type { Db } from './d1.ts'
 import { isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
 import { approvePendingReview, cancelPendingReview } from './reviews.ts'
-import { dropSchedule } from './schedules.ts'
+import { dropSchedule, dropUnpublish } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
 import { entries, outbox, publications, revisions, schedules, sites } from './schema.ts'
 import { tooLarge } from './size.ts'
@@ -476,6 +476,7 @@ export async function unpublish(
       eq(entries.status, 'published'),
     ]),
     dropSchedule(db, site, write.entryId),
+    dropUnpublish(db, site, write.entryId),
     db
       .update(entries)
       .set({

@@ -63,6 +63,10 @@ export const STORE: ContentStore = {
   lastPublication: unused,
   listRevisions: unused,
   findRevision: unused,
+  scheduleUnpublish: unused,
+  cancelUnpublish: unused,
+  unpublishOf: unused,
+  dueUnpublishes: unused,
   createEntry: unused,
   appendRevision: unused,
   publish: unused,
@@ -179,6 +183,7 @@ export const SUMMARY: EntrySummary = {
 export const ENTRY: Entry = {
   ...SUMMARY,
   revision: REVISION_ID,
+  unpublishAt: null,
   verdict: VERDICT_OK,
   lastPublication: null,
   markdown: '---\ntitle: Hello world\n---\nHello.',
@@ -463,6 +468,13 @@ export const CANNED: Canned = {
   },
   list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
   get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
+  schedule_unpublish: {
+    scheduled: { outcome: 'scheduled', entry: SUMMARY, unpublishAt: '2026-11-01T00:00:00.000Z' },
+    unpublished: { outcome: 'unpublished', entry: SUMMARY },
+    cancelled: { outcome: 'cancelled', entry: SUMMARY, unpublishAt: null },
+    not_published: { outcome: 'not_published', entry: SUMMARY },
+    not_found: { outcome: 'not_found' },
+  },
   list_revisions: {
     ok: { outcome: 'ok', revisions: [HISTORY_REVISION], nextCursor: null },
     not_found: { outcome: 'not_found' },
@@ -537,6 +549,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     list_assets: {},
     get_asset: { id: 'ast_0123456789abcdef0123456789' },
     list_revisions: { id: ENTRY_ID },
+    schedule_unpublish: { id: ENTRY_ID, unpublishAt: '2026-11-01T00:00:00.000Z' },
     get_revision: { id: REVISION_ID },
     restore_revision: { id: ENTRY_ID, version: 1, revision: REVISION_ID },
     restore_site: { key: 'notes' },
@@ -690,6 +703,11 @@ export function fakeHandlers(
     get_asset: record(
       'get_asset',
       overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
+    ),
+    schedule_unpublish: record(
+      'schedule_unpublish',
+      overrides.schedule_unpublish ??
+        (async () => pick(CANNED.schedule_unpublish, outcomes.schedule_unpublish ?? 'scheduled')),
     ),
     list_revisions: record(
       'list_revisions',

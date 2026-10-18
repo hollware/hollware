@@ -27,6 +27,7 @@ const handlers: Handlers = {
   list_assets: notYet,
   get_asset: notYet,
   list_revisions: notYet,
+  schedule_unpublish: notYet,
   get_revision: notYet,
   restore_revision: notYet,
   publish: notYet,

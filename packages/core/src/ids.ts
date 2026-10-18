@@ -28,6 +28,7 @@ export const ID_PREFIXES = {
   siteChange: 'sit',
   siteSecret: 'sec',
   token: 'tok',
+  unpublish: 'unp',
   user: 'usr',
 } as const
 

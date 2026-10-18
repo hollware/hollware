@@ -19,13 +19,17 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
   )
   if (found === null) return { outcome: 'not_found' }
   const { entry, revision } = found
-  const publication = await context.store.lastPublication(context.site.key, entry.id)
+  const [publication, unpublishAt] = await Promise.all([
+    context.store.lastPublication(context.site.key, entry.id),
+    context.store.unpublishOf(context.site.key, entry.id),
+  ])
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
   return {
     outcome: 'ok',
     entry: {
       ...forReaders(context, entrySummary(found)),
       revision: revision.id,
+      unpublishAt,
       verdict: verdictView(revision.verdict),
       lastPublication: publicationView(publication),
       // Only what was asked for: a document or its HTML can weigh megabytes.

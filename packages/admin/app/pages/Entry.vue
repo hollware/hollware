@@ -43,6 +43,8 @@ const acknowledgeOpen = ref(false)
 const unpublishOpen = ref(false)
 const trashOpen = ref(false)
 const scheduleOpen = ref(false)
+/** What the dialog of a time schedules: the publication of a draft, or the end of a published one. */
+const scheduleMode = ref<'publish' | 'unpublish'>('publish')
 const publishAt = ref('')
 /** What publish waits for once the warnings are acknowledged: now, or a time. */
 let pendingAt: string | undefined
@@ -287,7 +289,8 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
   }
 }
 
-function openSchedule() {
+function openSchedule(mode: 'publish' | 'unpublish' = 'publish') {
+  scheduleMode.value = mode
   // An hour from now, to the minute, in the person's own zone: what a datetime-local input shows.
   const soon = new Date(Date.now() + 3_600_000)
   soon.setSeconds(0, 0)
@@ -302,6 +305,30 @@ const scheduleError = computed(() => {
   if (Number.isNaN(at)) return m.value.entry.pickDateTime
   return at <= Date.now() ? m.value.entry.pickFuture : null
 })
+
+/** Takes a published entry off the site at the time of the dialog, or keeps it with `null`. */
+async function scheduleUnpublish(at: string | null) {
+  if (entry.value === null) return
+  busy.value = true
+  scheduleOpen.value = false
+  try {
+    const answer = await api.call('schedule_unpublish', { id: entry.value.id, unpublishAt: at })
+    await load()
+    toast.add({
+      title:
+        answer.outcome === 'scheduled'
+          ? m.value.entry.unpublishScheduled
+          : answer.outcome === 'unpublished'
+            ? m.value.entry.unpublished
+            : m.value.entry.unpublishKept,
+      color: 'success',
+    })
+  } catch (error) {
+    report(error, m.value.entry.notScheduledUnpublish)
+  } finally {
+    busy.value = false
+  }
+}
 
 async function unpublish() {
   if (entry.value === null) return
@@ -412,7 +439,14 @@ const tabs = computed(() => [
         icon="i-lucide-calendar-clock"
         variant="outline"
         :disabled="dirty"
-        @click="openSchedule"
+        @click="openSchedule('publish')"
+      />
+      <UButton
+        v-if="entry.status === 'published' && entry.unpublishAt === null"
+        :label="m.entry.unpublishLater"
+        icon="i-lucide-calendar-x"
+        variant="outline"
+        @click="openSchedule('unpublish')"
       />
       <UButton
         v-if="entry.status !== 'draft'"
@@ -452,6 +486,21 @@ const tabs = computed(() => [
               <span v-if="entry.scheduledAt !== null">{{
                 m.entry.publishes(formatDateTime(entry.scheduledAt))
               }}</span>
+              <template v-if="entry.unpublishAt !== null">
+                <UBadge
+                  :label="m.entry.leaves(formatDateTime(entry.unpublishAt))"
+                  color="warning"
+                  variant="outline"
+                  icon="i-lucide-calendar-x"
+                />
+                <UButton
+                  :label="m.entry.keepPublished"
+                  size="xs"
+                  variant="ghost"
+                  :loading="busy"
+                  @click="scheduleUnpublish(null)"
+                />
+              </template>
               <span class="font-mono"
                 >{{ entry.collection }}/{{ entry.slug }} ·
                 {{ m.entry.version(entry.version) }}</span
@@ -609,11 +658,14 @@ const tabs = computed(() => [
         </template>
       </UModal>
 
-      <UModal v-model:open="scheduleOpen" :title="m.entry.scheduleTitle">
+      <UModal
+        v-model:open="scheduleOpen"
+        :title="scheduleMode === 'publish' ? m.entry.scheduleTitle : m.entry.unpublishAtTitle"
+      >
         <template #body>
           <UFormField
-            :label="m.entry.publishAt"
-            :help="m.entry.publishAtHelp"
+            :label="scheduleMode === 'publish' ? m.entry.publishAt : m.entry.unpublishAt"
+            :help="scheduleMode === 'publish' ? m.entry.publishAtHelp : m.entry.unpublishAtHelp"
             :error="scheduleError ?? undefined"
           >
             <UInput v-model="publishAt" type="datetime-local" class="w-full" />
@@ -622,9 +674,13 @@ const tabs = computed(() => [
         <template #footer>
           <UButton :label="m.common.cancel" variant="ghost" @click="scheduleOpen = false" />
           <UButton
-            :label="m.entry.schedule"
+            :label="scheduleMode === 'publish' ? m.entry.schedule : m.entry.unpublishLater"
             :disabled="scheduleError !== null"
-            @click="publish([], new Date(publishAt).toISOString())"
+            @click="
+              scheduleMode === 'publish'
+                ? publish([], new Date(publishAt).toISOString())
+                : scheduleUnpublish(new Date(publishAt).toISOString())
+            "
           />
         </template>
       </UModal>

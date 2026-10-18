@@ -123,11 +123,22 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
 })
 
-test('the owner unpublishes an entry, then schedules it', async () => {
+test('the owner schedules the end of an entry, unpublishes it, then schedules it', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
   await expect(owner.getByRole('navigation', { name: 'Translations' })).toContainText('en')
+  // It leaves the site at a time, then stays after all.
+  await owner.getByRole('button', { name: 'Unpublish later' }).click()
+  await expect(owner.getByRole('dialog')).toContainText('Take it off the site at a time')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish later' }).click()
+  await expect(owner.getByText('It will leave the site at that time').first()).toBeVisible()
+  await expect(owner.getByText(/^Leaves the site on /)).toBeVisible()
+  await owner.getByRole('button', { name: 'Keep it published' }).click()
+  await expect(owner.getByText('It stays published').first()).toBeVisible()
+  await expect(owner.getByText(/^Leaves the site on /)).toHaveCount(0)
+
   await owner.getByRole('button', { name: 'Unpublish', exact: true }).click()
+  await expect(owner.getByRole('dialog')).toContainText('Unpublish this entry?')
   await expectAccessible(owner)
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish', exact: true }).click()
   await expect(owner.getByText('Unpublished', { exact: true }).first()).toBeVisible()

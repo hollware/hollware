@@ -215,6 +215,13 @@ export interface StoredSchedule {
   readonly actor: Actor
 }
 
+/** An unpublication at a time, as the cron reads it. */
+export interface StoredUnpublish {
+  readonly entryId: string
+  readonly unpublishAt: string
+  readonly actor: Actor
+}
+
 /** One entry of a publication: what `publish` and `publishGroup` write for it. */
 export interface PublishWrite {
   readonly entryId: string
@@ -375,6 +382,17 @@ export interface ContentStore {
   dueSchedules(site: string, now: string): Promise<readonly StoredSchedule[]>
   /** Takes a scheduled entry back to a draft and drops its schedule. */
   cancelSchedule(site: string, entryId: string): Promise<void>
+  /** Schedules the unpublication of a published entry, or moves the time of the one it has. */
+  scheduleUnpublish(
+    site: string,
+    write: { readonly entryId: string; readonly at: string; readonly actor: Actor },
+  ): Promise<'scheduled' | 'not_published' | 'not_found'>
+  /** Drops the unpublication of an entry; `false` when it had none. */
+  cancelUnpublish(site: string, entryId: string): Promise<boolean>
+  /** When an entry is to be unpublished, or `null`. */
+  unpublishOf(site: string, entryId: string): Promise<string | null>
+  /** The unpublications whose time has come, oldest first. */
+  dueUnpublishes(site: string, now: string): Promise<readonly StoredUnpublish[]>
   /**
    * Asks for the head revision of an entry to be published, if the entry is still at
    * `expectedVersion`. An entry has one pending review at most: asking again answers it.

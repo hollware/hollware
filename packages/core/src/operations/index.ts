@@ -20,6 +20,7 @@ export {
   requestReview,
   restoreEntry,
   restoreRevision,
+  scheduleUnpublish,
   search,
   unpublish,
   updateDraft,

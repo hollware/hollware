@@ -16,5 +16,6 @@
   "0014_entry_trash.sql": "dc512b6403e2d85907dc1696d7a1478cbf85db6c50521e22eea90c9bffaabd77",
   "0015_site_changes_append_only.sql": "9ca40f9a48e5b2d7e9b9ebf0fad9cd1de7c9d6ad350fc6588b156abfe545b4bc",
   "0016_audit_log.sql": "818b270b606dedded1bea4ebfc7b5c2d09711cdde5ab6794520aae525d49909c",
-  "0017_assets.sql": "bba33145e38953bbd58047866fc95cdfcbd21cb224041fe2cdbfefa0febb43c8"
+  "0017_assets.sql": "bba33145e38953bbd58047866fc95cdfcbd21cb224041fe2cdbfefa0febb43c8",
+  "0018_unpublishes.sql": "4154c8b798467008f1b4c1275247fe723163d71e84f9f5aab4fb24872f1fbc61"
 }

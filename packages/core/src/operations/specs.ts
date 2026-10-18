@@ -361,6 +361,34 @@ export const unpublish = defineOperation({
   outcomes: { unpublished: { isError: false }, not_found: { isError: true } },
 })
 
+export const scheduleUnpublish = defineOperation({
+  name: 'schedule_unpublish',
+  title: 'Unpublish an entry at a time',
+  description:
+    'Takes a published entry off the site at a time, as an ISO 8601 date and time: for an offer, an event or a notice that ends. It stays published until then, and the cron unpublishes it within a minute of the time, in your name, if you may still publish. A time that has passed unpublishes it now. Scheduling again moves the time; unpublishAt null cancels it. get_entry says when, as unpublishAt.',
+  input: z.strictObject({
+    id: entryId,
+    unpublishAt: z.iso
+      .datetime({ offset: true })
+      .nullable()
+      .describe('When to unpublish it, or null to cancel the unpublication it has.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found']),
+    entry: entrySummary.optional(),
+    unpublishAt: z.string().nullable().optional().describe('With scheduled: the time, in UTC.'),
+  }),
+  scopes: ['content:publish'],
+  effect: 'destructive',
+  outcomes: {
+    scheduled: { isError: false },
+    unpublished: { isError: false },
+    cancelled: { isError: false },
+    not_published: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
 export const deleteEntry = defineOperation({
   name: 'delete_entry',
   title: 'Move an entry to the trash',
@@ -892,6 +920,7 @@ export const OPERATIONS = [
   restoreEntry,
   restoreRevision,
   restoreSite,
+  scheduleUnpublish,
   search,
   setCollection,
   unpublish,

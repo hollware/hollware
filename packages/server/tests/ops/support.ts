@@ -21,6 +21,7 @@ import {
   requestReview as requestReviewSpec,
   restoreEntry as restoreEntrySpec,
   restoreRevision as restoreRevisionSpec,
+  scheduleUnpublish as scheduleUnpublishSpec,
   search as searchSpec,
   renderHtml,
   resolveConfig,
@@ -284,6 +285,8 @@ export function agent(context: OperationContext) {
       call(getRevisionSpec, handlers.get_revision, input, context),
     restoreRevision: (input: z.input<typeof restoreRevisionSpec.input>) =>
       call(restoreRevisionSpec, handlers.restore_revision, input, context),
+    scheduleUnpublish: (input: z.input<typeof scheduleUnpublishSpec.input>) =>
+      call(scheduleUnpublishSpec, handlers.schedule_unpublish, input, context),
     describeSite: () => call(describeSiteSpec, handlers.describe_site, {}, context),
     getEntry: (input: z.input<typeof getEntrySpec.input>) =>
       call(getEntrySpec, handlers.get_entry, input, context),
@@ -357,6 +360,10 @@ export const UNTOUCHED: ContentStore = {
   lastPublication: () => touched('lastPublication'),
   listRevisions: () => touched('listRevisions'),
   findRevision: () => touched('findRevision'),
+  scheduleUnpublish: () => touched('scheduleUnpublish'),
+  cancelUnpublish: () => touched('cancelUnpublish'),
+  unpublishOf: () => touched('unpublishOf'),
+  dueUnpublishes: () => touched('dueUnpublishes'),
   createEntry: () => touched('createEntry'),
   appendRevision: () => touched('appendRevision'),
   publish: () => touched('publish'),

@@ -9,17 +9,17 @@ import { createGateway } from './http/index.ts'
 import type { HollwareEnv, HollwareWorker } from './index.ts'
 import { createMcpEndpoint } from './mcp/index.ts'
 import type { Handlers } from './ops/types.ts'
-import type { Clock } from './ports.ts'
+import type { Actor, Clock } from './ports.ts'
 import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
 import { dropExpired } from './identity/store.ts'
-import { createAuditLog, dropExpiredLines } from './audit/log.ts'
+import { createAuditLog, dropExpiredLines, type AuditActor } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { consumeEvents, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
-import { runDueSchedules } from './schedule/run.ts'
+import { runDueSchedules, runDueUnpublishes } from './schedule/run.ts'
 import { semanticOfEnv } from './semantic/cloudflare.ts'
 import { healVectors, refreshRelated } from './semantic/index-entry.ts'
 import { createSiteRegistry } from './structure/registry.ts'
@@ -132,15 +132,16 @@ export function createHollwareWith(
     // The cron trigger: publishes what was scheduled and is due (ADR-025), site by site.
     scheduled: async (controller, env, ctx) => {
       const each = async (site: ResolvedSite) => {
-        await runDueSchedules({
+        // What was scheduled to be published or unpublished and is due, in its author's name.
+        const due = {
           site,
           store: createD1Store(env.DB, { clock }),
           handlers,
           clock,
           log: writeLog,
-          scopesOf: (actor) =>
+          scopesOf: (actor: Actor) =>
             scopesNow({ db: env.DB, kv: env.OAUTH_KV }, actor, site.key, clock.now()),
-          audit: (actor, requestId) =>
+          audit: (actor: AuditActor, requestId: string) =>
             createAuditLog({
               db: env.DB,
               actor,
@@ -150,7 +151,9 @@ export function createHollwareWith(
               now: () => clock.now(),
               log: writeLog,
             }),
-        })
+        }
+        await runDueSchedules(due)
+        await runDueUnpublishes(due)
         // The lines of the activity log past the retention the owner chose (ADR-037).
         await dropExpiredLines(env.DB, site, clock.now())
         // The revisions an older Comark or pipeline parsed, a batch each minute (ADR-021).

@@ -222,6 +222,7 @@ describe('get_entry', () => {
     expect(read.entry).toEqual({
       ...created.entry,
       revision: expect.stringMatching(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/),
+      unpublishAt: null,
       verdict: created.verdict,
       lastPublication: null,
       markdown,

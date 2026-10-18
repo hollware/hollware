@@ -375,7 +375,7 @@ describe('the output cap', () => {
   const entryWith = (markdown: string): Overrides => ({
     get_entry: async () => ({ outcome: 'ok', entry: { ...ENTRY, markdown } }),
   })
-  const BASE_BYTES = 523
+  const BASE_BYTES = 542
 
   it('lets through an answer of exactly the cap, and refuses one byte more', async () => {
     const atCap = endpointWith(entryWith('a'.repeat(OUTPUT_CAP_BYTES - BASE_BYTES)))
@@ -405,7 +405,7 @@ describe('the output cap', () => {
     expect(answer.result.isError).toBe(true)
     expect(textOf(answer.result)).toMatchObject({
       code: 'output_too_large',
-      message: 'The answer of get_entry is 1200523 bytes, over the cap of 1048576 bytes.',
+      message: 'The answer of get_entry is 1200542 bytes, over the cap of 1048576 bytes.',
     })
   })
 

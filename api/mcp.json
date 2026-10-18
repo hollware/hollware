@@ -1816,6 +1816,10 @@
               "translationGroup": {
                 "type": ["string", "null"]
               },
+              "unpublishAt": {
+                "description": "When a published entry is to be taken off the site, or null (schedule_unpublish).",
+                "type": ["string", "null"]
+              },
               "updatedAt": {
                 "type": "string"
               },
@@ -1929,6 +1933,7 @@
               "deletedAt",
               "updatedAt",
               "revision",
+              "unpublishAt",
               "verdict",
               "lastPublication"
             ],
@@ -4432,6 +4437,134 @@
       },
       "scopes": ["schema:admin"],
       "title": "Bring a site back from the trash"
+    },
+    {
+      "effect": "destructive",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of an entry (ent_…), as the other operations return it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "unpublishAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to unpublish it, or null to cancel the unpublication it has."
+          }
+        },
+        "required": ["id", "unpublishAt"],
+        "type": "object"
+      },
+      "name": "schedule_unpublish",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "deletedAt": {
+                "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                "type": ["string", "null"]
+              },
+              "frontmatter": {
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "hasUnpublishedChanges": {
+                "description": "Whether the latest revision differs from the published one.",
+                "type": "boolean"
+              },
+              "id": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "locale": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "description": "When the entry was first published, or null.",
+                "type": ["string", "null"]
+              },
+              "scheduledAt": {
+                "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                "type": ["string", "null"]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "status": {
+                "enum": ["draft", "scheduled", "published"],
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "translationGroup": {
+                "type": ["string", "null"]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "collection",
+              "locale",
+              "slug",
+              "translationGroup",
+              "status",
+              "version",
+              "frontmatter",
+              "tags",
+              "hasUnpublishedChanges",
+              "publishedAt",
+              "scheduledAt",
+              "deletedAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["scheduled", "unpublished", "cancelled", "not_published", "not_found"],
+            "type": "string"
+          },
+          "unpublishAt": {
+            "description": "With scheduled: the time, in UTC.",
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:publish"],
+      "title": "Unpublish an entry at a time"
     },
     {
       "effect": "read",

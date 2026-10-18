@@ -346,6 +346,45 @@ export const schedules = sqliteTable(
 )
 
 /**
+ * Unpublications at a time: one per published entry at most. The cron trigger takes the entry off
+ * the site once `unpublish_at` has passed, in the name of who scheduled it and only if they may
+ * still publish (T-108); an unpublish before it drops it.
+ */
+export const unpublishes = sqliteTable(
+  'unpublishes',
+  {
+    id: id('unp'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    unpublishAt: text('unpublish_at').notNull(),
+    actorKind: text('actor_kind').notNull(),
+    actorUserId: text('actor_user_id').notNull(),
+    actorTokenId: text('actor_token_id'),
+    actorMeta: text('actor_meta'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('unpublishes_id_site').on(t.id, t.siteId),
+    unique('unpublishes_entry').on(t.siteId, t.entryId),
+    index('unpublishes_due').on(t.unpublishAt),
+    foreignKey({ name: 'unpublishes_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'unpublishes_entry_fk',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+    foreignKey({ name: 'unpublishes_user', columns: [t.actorUserId], foreignColumns: [users.id] }),
+    foreignKey({
+      name: 'unpublishes_token',
+      columns: [t.actorTokenId, t.siteId],
+      foreignColumns: [tokens.id, tokens.siteId],
+    }),
+    check('unpublishes_actor_kind', sql`${t.actorKind} IN ('token', 'user', 'oauth_client')`),
+    check('unpublishes_json', sql`${t.actorMeta} IS NULL OR json_valid(${t.actorMeta})`),
+  ],
+)
+
+/**
  * The effects of a publication (ADR-025), written in the batch that publishes or unpublishes: one
  * row per event. The Queue consumer delivers each event to every subscriber, and records it in
  * `deliveries`; `sent_at` says that the event was put on the Queue. A change of the structure of

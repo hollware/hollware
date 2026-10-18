@@ -65,6 +65,7 @@ const TOOLS = [
   { name: 'restore_entry', title: 'Bring an entry back from the trash', annotations: CHANGE },
   { name: 'restore_revision', title: 'Go back to a revision', annotations: CHANGE },
   { name: 'restore_site', title: 'Bring a site back from the trash', annotations: CHANGE },
+  { name: 'schedule_unpublish', title: 'Unpublish an entry at a time', annotations: DESTROY },
   { name: 'search', title: 'Search entries', annotations: READ },
   { name: 'set_collection', title: 'Add, change or remove a collection', annotations: DESTROY },
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
@@ -93,6 +94,7 @@ const OUTCOMES: Record<string, string[]> = {
   list_assets: ['ok'],
   get_asset: ['ok', 'not_found'],
   list_revisions: ['ok', 'not_found'],
+  schedule_unpublish: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
   get_revision: ['ok', 'not_found'],
   restore_revision: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   publish: [
@@ -247,9 +249,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(62)
+    expect(converters).toHaveLength(64)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 62 }, () => 1),
+      Array.from({ length: 64 }, () => 1),
     )
   })
 })
@@ -283,6 +285,7 @@ describe('the tool table', () => {
       'restore_entry',
       'restore_revision',
       'restore_site',
+      'schedule_unpublish',
       'search',
       'set_collection',
       'unpublish',

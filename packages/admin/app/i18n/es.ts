@@ -275,6 +275,16 @@ export const es: Messages = {
       'La entrada sale del sitio público: su página responde 404 y desaparece de los listados y de la búsqueda. Sigue aquí como borrador, con todas sus revisiones, y puede publicarse de nuevo.',
     cancelTheSchedule: 'Cancelar la programación',
     scheduleTitle: 'Programar la publicación',
+    unpublishLater: 'Despublicar después',
+    unpublishAtTitle: 'Sacarla del sitio en una fecha',
+    unpublishAt: 'Despublicar el',
+    unpublishAtHelp:
+      'En tu zona horaria. Sigue en el sitio hasta entonces, y sale dentro del minuto de esa hora.',
+    leaves: (date: string) => `Sale del sitio el ${date}`,
+    keepPublished: 'Mantenerla publicada',
+    unpublishScheduled: 'Saldrá del sitio a esa hora',
+    unpublishKept: 'Sigue publicada',
+    notScheduledUnpublish: 'No se programó',
     publishAt: 'Publicar el',
     publishAtHelp:
       'En tu zona horaria. Se publica a menos de un minuto de esa hora, salvo que cambie antes.',

@@ -6,6 +6,7 @@ import { getEntry } from './get-entry.ts'
 import { getTranslations } from './get-translations.ts'
 import { getRevision, listRevisions, restoreRevision } from './history.ts'
 import { listEntries } from './list-entries.ts'
+import { scheduleUnpublish } from './schedule-unpublish.ts'
 import { search } from './search.ts'
 import {
   createSite,
@@ -51,6 +52,7 @@ export const handlers = defineHandlers({
   get_translations: getTranslations,
   list_assets: listAssets,
   list_entries: listEntries,
+  schedule_unpublish: scheduleUnpublish,
   search,
   list_reviews: listReviews,
   list_revisions: listRevisions,

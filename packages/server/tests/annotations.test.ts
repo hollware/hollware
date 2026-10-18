@@ -72,6 +72,7 @@ describe('MCP hints', () => {
       restore_entry: 'changes',
       restore_revision: 'changes',
       restore_site: 'changes',
+      schedule_unpublish: 'destructive',
       search: 'read-only',
       set_collection: 'destructive',
       unpublish: 'destructive',

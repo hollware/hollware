@@ -119,6 +119,10 @@ export const document = z.object({
 
 export const entry = entrySummary.extend({
   revision: revisionId.describe('The revision this view shows.'),
+  unpublishAt: z
+    .string()
+    .nullable()
+    .describe('When a published entry is to be taken off the site, or null (schedule_unpublish).'),
   verdict: verdict.describe('The verdict of the contracts when this revision was written.'),
   lastPublication: publication.nullable(),
   markdown: z.string().optional(),

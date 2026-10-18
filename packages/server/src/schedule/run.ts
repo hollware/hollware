@@ -133,3 +133,65 @@ export async function runDueSchedules(input: {
   }
   return { published, cancelled }
 }
+
+/**
+ * Unpublishes the entries whose time has come (`schedule_unpublish`), one by one, through the same
+ * handler as `unpublish`, in the name of who scheduled each one, and only while they may still
+ * publish (T-108): otherwise the unpublication is dropped and the log says denied.
+ */
+export async function runDueUnpublishes(input: {
+  readonly site: ResolvedSite
+  readonly store: ContentStore
+  readonly handlers: Handlers
+  readonly clock: Clock
+  readonly log: (entry: object) => void
+  readonly scopesOf: (actor: Actor) => Promise<readonly Scope[]>
+  readonly audit?: (actor: AuditActor, requestId: string) => AuditLog
+}): Promise<ScheduleRun> {
+  const { site, store, handlers, clock, log } = input
+  const due = await store.dueUnpublishes(site.key, clock.now().toISOString())
+  let published = 0
+  let cancelled = 0
+  for (const unpublication of due) {
+    const requestId = `cron_${crypto.randomUUID()}`
+    const scopes = await input.scopesOf(unpublication.actor)
+    const allowed = scopes.includes('content:publish')
+    if (allowed) {
+      await handlers.unpublish(
+        { id: unpublication.entryId },
+        {
+          site,
+          principal: principalOf(unpublication.actor, site.key, scopes),
+          view: 'head',
+          store,
+          clock,
+          client: unpublication.actor.meta,
+          requestId,
+        },
+      )
+      published += 1
+    } else {
+      cancelled += 1
+    }
+    // The unpublish dropped it; one that was not allowed, or of an entry gone meanwhile, goes too.
+    await store.cancelUnpublish(site.key, unpublication.entryId)
+    await input.audit?.(systemActor(unpublication.actor.userId), requestId).write(site, {
+      action: 'schedule.unpublish',
+      outcome: allowed ? 'ok' : 'denied',
+      errorCode: allowed ? null : 'insufficient_scope',
+      target: { type: 'entry', id: unpublication.entryId },
+      detail: {
+        unpublishAt: unpublication.unpublishAt,
+        scheduledBy: { kind: unpublication.actor.kind, tokenId: unpublication.actor.tokenId },
+      },
+    })
+    log({
+      kind: 'unpublish_schedule',
+      requestId,
+      entryId: unpublication.entryId,
+      unpublishAt: unpublication.unpublishAt,
+      outcome: allowed ? 'unpublished' : 'insufficient_scope',
+    })
+  }
+  return { published, cancelled }
+}

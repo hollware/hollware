@@ -34,6 +34,7 @@ function entry(slug: string): Found {
     deletedAt: null,
     updatedAt: AT,
     revision: 'rev_01J9ZQ3X5V7K2M4N6P8R0T1W3Y',
+    unpublishAt: null,
     verdict: { ok: true, phase: 'publish', errors: [], warnings: [], contractsHash: 'h' },
     lastPublication: null,
     document: { nodes: [['p', {}, slug]], frontmatter: {}, meta: {} },

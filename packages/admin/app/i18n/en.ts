@@ -261,6 +261,16 @@ export const en = {
       'The entry leaves the public site: its page answers 404 and it drops out of listings and search. It stays here as a draft, with all its revisions, and can be published again.',
     cancelTheSchedule: 'Cancel the schedule',
     scheduleTitle: 'Schedule the publication',
+    unpublishLater: 'Unpublish later',
+    unpublishAtTitle: 'Take it off the site at a time',
+    unpublishAt: 'Unpublish at',
+    unpublishAtHelp:
+      'In your time zone. It stays on the site until then, and leaves it within a minute of the time.',
+    leaves: (date: string) => `Leaves the site on ${date}`,
+    keepPublished: 'Keep it published',
+    unpublishScheduled: 'It will leave the site at that time',
+    unpublishKept: 'It stays published',
+    notScheduledUnpublish: 'Not scheduled',
     publishAt: 'Publish at',
     publishAtHelp:
       'In your time zone. It is published within a minute of the time, unless it changes first.',

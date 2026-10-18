@@ -201,7 +201,11 @@ describe('a publication that the schema forbids', () => {
       actor: VIEW.revision.actor,
       createdAt: '2026-10-13T09:30:00.000Z',
     }
-    const store = scripted({ findEntry: async () => VIEW, lastPublication: async () => corrupt })
+    const store = scripted({
+      findEntry: async () => VIEW,
+      lastPublication: async () => corrupt,
+      unpublishOf: async () => null,
+    })
 
     await expect(
       callerOver(store).getEntry({ collection: 'blog', locale: 'en', slug: 'a-post' }),

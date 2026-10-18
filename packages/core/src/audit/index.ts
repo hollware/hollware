@@ -9,6 +9,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'update_draft',
   'publish',
   'unpublish',
+  'schedule_unpublish',
   'delete_entry',
   'restore_entry',
   'restore_revision',
@@ -45,6 +46,8 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'app.refresh_reused',
   /** The cron published an entry whose time had come, for the person who scheduled it. */
   'schedule.publish',
+  /** The cron unpublished an entry whose time had come, for the person who scheduled it. */
+  'schedule.unpublish',
 ] as const
 
 export const AUDIT_ACTIONS = [...OPERATION_AUDIT_ACTIONS, ...IDENTITY_AUDIT_ACTIONS] as const

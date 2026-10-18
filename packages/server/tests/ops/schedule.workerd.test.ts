@@ -2,11 +2,11 @@ import { env } from 'cloudflare:workers'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { handlers } from '../../src/ops/index.ts'
-import { runDueSchedules } from '../../src/schedule/run.ts'
+import { runDueSchedules, runDueUnpublishes } from '../../src/schedule/run.ts'
 import { scopesNow } from '../../src/schedule/standing.ts'
 import { createAuditLog, type AuditActor } from '../../src/audit/log.ts'
 import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
-import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
+import { createPost, entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 
 // Fails when: a publish with publishAt stops scheduling the entry (status scheduled at the next
 // version, no publication yet) after the same checks as a publish; the cron run (src/schedule/
@@ -16,7 +16,9 @@ import { entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 // unpublish stops cancelling a schedule; or publishAt is taken with a
 // group, or for an entry that is published; or the cron publishes for a token since revoked, a
 // person no longer a member or whose role no longer publishes, or an OAuth client whose grant is
-// gone (T-108: src/schedule/standing.ts).
+// gone (T-108: src/schedule/standing.ts); or schedule_unpublish stops taking a published entry off
+// the site at its time (and only a published one), or cancelling, or unpublishing now for a time
+// that passed, or the cron unpublishes for someone who may no longer publish.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -339,5 +341,126 @@ describe('publishAt', () => {
     await expect(
       world.agent.publish({ id, version: 2, publishAt: LATER, acknowledgeWarnings: [TITLE_ACK] }),
     ).rejects.toThrow('The entry is published')
+  })
+})
+
+describe('schedule_unpublish', () => {
+  async function published(label: string) {
+    const world = await newWorld(env.DB, label)
+    await mayPublish(world)
+    const id = await post(world)
+    await world.agent.publish({ id, version: 1, acknowledgeWarnings: [TITLE_ACK] })
+    return { world, id }
+  }
+
+  function unpublishRun(world: World, audited = false) {
+    return runDueUnpublishes({
+      site: world.tenant.site,
+      store: world.store,
+      handlers,
+      clock: world.time.clock,
+      log: () => {},
+      scopesOf: (actor) =>
+        scopesNow(
+          { db: env.DB, kv: env.OAUTH_KV },
+          actor,
+          world.tenant.key,
+          world.time.clock.now(),
+        ),
+      ...(audited
+        ? {
+            audit: (actor: AuditActor, requestId: string) =>
+              createAuditLog({
+                db: env.DB,
+                actor,
+                requestId,
+                address: null,
+                master: undefined,
+                now: () => world.time.clock.now(),
+                log: () => {},
+              }),
+          }
+        : {}),
+    })
+  }
+
+  it('keeps a published entry live until its time, then takes it off the site', async () => {
+    const { world, id } = await published('unpublish-at')
+
+    const scheduled = await world.agent.scheduleUnpublish({ id, unpublishAt: LATER })
+    const read = await world.agent.getEntry({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'scheduled-post',
+    })
+
+    expect([scheduled.outcome, scheduled.unpublishAt, read.entry?.unpublishAt]).toEqual([
+      'scheduled',
+      LATER,
+      LATER,
+    ])
+    expect(await unpublishRun(world)).toEqual({ published: 0, cancelled: 0 })
+    expect((await entryColumns(world.db, id))?.status).toBe('published')
+
+    world.time.set(LATER)
+    expect(await unpublishRun(world, true)).toEqual({ published: 1, cancelled: 0 })
+    expect((await entryColumns(world.db, id))?.status).toBe('draft')
+    expect(await unpublishRun(world)).toEqual({ published: 0, cancelled: 0 })
+    const { results } = await env.DB.prepare(
+      "SELECT outcome FROM audit_log WHERE site_id = ?1 AND action = 'schedule.unpublish'",
+    )
+      .bind(world.tenant.key)
+      .all()
+    expect(results).toEqual([{ outcome: 'ok' }])
+  })
+
+  it('takes only a published entry, cancels with null, and unpublishes now for a time gone by', async () => {
+    const { world, id } = await published('unpublish-cases')
+    const draft = (await createPost(world, { slug: 'still-a-draft', group: 'still-a-draft' })).id
+
+    const notLive = await world.agent.scheduleUnpublish({ id: draft, unpublishAt: LATER })
+    await world.agent.scheduleUnpublish({ id, unpublishAt: LATER })
+    const cancelled = await world.agent.scheduleUnpublish({ id, unpublishAt: null })
+    world.time.set(LATER)
+    const none = await unpublishRun(world)
+    const now = await world.agent.scheduleUnpublish({ id, unpublishAt: '2026-10-13T11:00:00.000Z' })
+
+    expect([notLive.outcome, cancelled.outcome, none, now.outcome]).toEqual([
+      'not_published',
+      'cancelled',
+      { published: 0, cancelled: 0 },
+      'unpublished',
+    ])
+    expect((await entryColumns(world.db, id))?.status).toBe('draft')
+  })
+
+  it('is dropped by an unpublish before its time, so a new publication stays live', async () => {
+    const { world, id } = await published('unpublish-dropped')
+    await world.agent.scheduleUnpublish({ id, unpublishAt: LATER })
+
+    const off = await world.agent.unpublish({ id })
+    await world.agent.publish({
+      id,
+      version: off.entry?.version ?? 0,
+      acknowledgeWarnings: [TITLE_ACK],
+    })
+    world.time.set(LATER)
+
+    expect(await unpublishRun(world)).toEqual({ published: 0, cancelled: 0 })
+    expect((await entryColumns(world.db, id))?.status).toBe('published')
+  })
+
+  it('does not unpublish for a token since revoked, and drops the schedule (T-108)', async () => {
+    const { world, id } = await published('unpublish-revoked')
+    await world.agent.scheduleUnpublish({ id, unpublishAt: LATER })
+    await env.DB.prepare('UPDATE tokens SET revoked_at = ?1 WHERE id = ?2')
+      .bind(LATER, world.tenant.tokenId)
+      .run()
+
+    world.time.set(LATER)
+
+    expect(await unpublishRun(world)).toEqual({ published: 0, cancelled: 1 })
+    expect((await entryColumns(world.db, id))?.status).toBe('published')
+    expect(await unpublishRun(world)).toEqual({ published: 0, cancelled: 0 })
   })
 })

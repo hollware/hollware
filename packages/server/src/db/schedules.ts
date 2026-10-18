@@ -1,10 +1,17 @@
 import { newId } from '@hollware/core'
 import type { AcknowledgedWarning } from '@hollware/core'
-import { and, eq, lte, sql } from 'drizzle-orm'
-import type { Actor, Clock, EntryView, StoredSchedule, WriteRefusal } from '../ports.ts'
+import { and, eq, isNull, lte, sql } from 'drizzle-orm'
+import type {
+  Actor,
+  Clock,
+  EntryView,
+  StoredSchedule,
+  StoredUnpublish,
+  WriteRefusal,
+} from '../ports.ts'
 import type { Db } from './d1.ts'
 import { findEntryById } from './reads.ts'
-import { entries, schedules } from './schema.ts'
+import { entries, schedules, unpublishes } from './schema.ts'
 import { actorColumns, valuesOf } from './statements.ts'
 
 /**
@@ -159,4 +166,93 @@ function parseMeta(text: string): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? Object.fromEntries(Object.entries(value))
     : null
+}
+
+/**
+ * Unpublications at a time: one row of `unpublishes` per published entry. Scheduling one again
+ * moves its time; an unpublish, now or at its time, drops it.
+ */
+
+/** Statements that drop the unpublication of an entry, in the batch of a write that ends it. */
+export function dropUnpublish(db: Db, site: string, entryId: string) {
+  return db
+    .delete(unpublishes)
+    .where(and(eq(unpublishes.siteId, site), eq(unpublishes.entryId, entryId)))
+}
+
+/** Schedules the unpublication of a published entry at `at`, or moves the one it has. */
+export async function scheduleUnpublish(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: { readonly entryId: string; readonly at: string; readonly actor: Actor },
+): Promise<'scheduled' | 'not_published' | 'not_found'> {
+  const now = clock.now().toISOString()
+  const published = and(
+    eq(entries.id, write.entryId),
+    eq(entries.siteId, site),
+    eq(entries.status, 'published'),
+    isNull(entries.deletedAt),
+  )
+  const row = {
+    id: newId('unp'),
+    siteId: site,
+    entryId: write.entryId,
+    unpublishAt: write.at,
+    ...actorColumns(write.actor),
+    createdAt: now,
+    updatedAt: now,
+  }
+  const [, inserted] = await db.batch([
+    dropUnpublish(db, site, write.entryId),
+    db
+      .insert(unpublishes)
+      .select(sql`select ${valuesOf(unpublishes, row)} from ${entries} where ${published}`)
+      .returning({ id: unpublishes.id }),
+  ])
+  if (inserted.length > 0) return 'scheduled'
+  const [exists] = await db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(and(eq(entries.id, write.entryId), eq(entries.siteId, site), isNull(entries.deletedAt)))
+  return exists === undefined ? 'not_found' : 'not_published'
+}
+
+/** Drops the unpublication of an entry; `false` when it had none. */
+export async function cancelUnpublish(db: Db, site: string, entryId: string): Promise<boolean> {
+  const dropped = await dropUnpublish(db, site, entryId).returning({ id: unpublishes.id })
+  return dropped.length > 0
+}
+
+/** When an entry is to be unpublished, or `null`. */
+export async function unpublishOf(db: Db, site: string, entryId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ at: unpublishes.unpublishAt })
+    .from(unpublishes)
+    .where(and(eq(unpublishes.siteId, site), eq(unpublishes.entryId, entryId)))
+  return row?.at ?? null
+}
+
+/** The unpublications of a site whose time has come, oldest first. */
+export async function dueUnpublishes(
+  db: Db,
+  site: string,
+  now: string,
+): Promise<readonly StoredUnpublish[]> {
+  const rows = await db
+    .select()
+    .from(unpublishes)
+    .where(and(eq(unpublishes.siteId, site), lte(unpublishes.unpublishAt, now)))
+    .orderBy(unpublishes.unpublishAt)
+    .limit(50)
+  return rows.map((row) => ({
+    entryId: row.entryId,
+    unpublishAt: row.unpublishAt,
+    actor: {
+      kind: actorKindOf(row.actorKind),
+      userId: row.actorUserId,
+      tokenId: row.actorTokenId,
+      meta: row.actorMeta === null ? null : parseMeta(row.actorMeta),
+    },
+  }))
 }
