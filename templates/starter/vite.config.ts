@@ -4,6 +4,12 @@ import { defineConfig } from 'vite-plus'
 
 /** Where `vp dev` serves Hollware: the URL of HOLLWARE_PUBLIC_URL before the first deploy. */
 const LOCAL_URL = 'http://localhost:5199'
+/**
+ * HOLLWARE_SECRET of this machine's Hollware, which seals the secrets of webhooks and signs preview
+ * links: a fixed value, for development only (a deployed Worker gets its own from
+ * `hollware deploy`). A .dev.vars with HOLLWARE_SECRET takes its place.
+ */
+const LOCAL_SECRET = 'hollware-local-development-only-not-a-secret'
 
 export default defineConfig(({ command }) => ({
   plugins: [
@@ -12,7 +18,13 @@ export default defineConfig(({ command }) => ({
       // the Host of HOLLWARE_PUBLIC_URL: in development it is this machine's, whatever is deployed.
       config:
         command === 'serve'
-          ? (config) => ({ vars: { ...config.vars, HOLLWARE_PUBLIC_URL: LOCAL_URL } })
+          ? (config) => ({
+              vars: {
+                HOLLWARE_SECRET: LOCAL_SECRET,
+                ...config.vars,
+                HOLLWARE_PUBLIC_URL: LOCAL_URL,
+              },
+            })
           : undefined,
     }),
   ],
