@@ -30,6 +30,8 @@ beforeAll(warmUpComark, 120_000)
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6])
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 8, 9])
+// Another PNG, uploaded only as an asset of rc.2 would have been.
+const PNG_SMALL = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 4, 2])
 const WEBP_OUT = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 converted')
 const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4"/></svg>'
@@ -112,7 +114,7 @@ describe('upload_asset', () => {
       originalBytes: JPEG.length,
       alt: 'The stage',
       filename: 'talk.jpg',
-      createdAt: answer.asset?.createdAt,
+      createdAt: '2026-10-13T10:00:00.000Z',
     })
     expect(id).toMatch(/^ast_[0-9a-f]{26}$/)
     expect(await stored(`sites/${world.tenant.key}/${id}`)).toEqual(WEBP_OUT)
@@ -133,6 +135,54 @@ describe('upload_asset', () => {
     expect([again.asset?.filename, again.asset?.alt]).toEqual(['talk.jpg', 'The stage'])
     expect(asked).toEqual([])
     expect(await rows(world.tenant.key)).toBe(before)
+  })
+
+  it('is another asset, with its own id, for the same bytes in another site', async () => {
+    const neighbour = await newWorld(env.DB, 'media-neighbour')
+    const { images } = fakeImages({ format: 'image/jpeg', width: 1200, height: 800 })
+
+    const mine = await uploadAsset(
+      { filename: 'talk.jpg', alt: 'The stage', data: base64(JPEG) },
+      withMedia(world.context(), mediaWith(images)),
+    )
+    const theirs = await uploadAsset(
+      { filename: 'talk.jpg', alt: 'Their stage', data: base64(JPEG) },
+      withMedia(neighbour.context(), mediaWith(images)),
+    )
+
+    expect([mine.outcome, theirs.outcome]).toEqual(['exists', 'created'])
+    expect(theirs.asset?.id).not.toBe(mine.asset?.id)
+    expect(await rows(neighbour.tenant.key)).toBe(1)
+  })
+
+  it('finds an asset of rc.2 and before, named by its bytes alone, by those bytes', async () => {
+    const legacy = await newWorld(env.DB, 'media-legacy')
+    const sha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', PNG_SMALL))]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('')
+    await env.DB.prepare(
+      `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, original_format,
+         original_bytes, alt, filename, created_by, created_at, updated_at)
+       VALUES (?1, ?2, ?3, 'image/png', 1, 1, 8, 'image/png', ?4, 'Old', 'old.png', ?5, ?6, ?6)`,
+    )
+      .bind(
+        `ast_${sha.slice(0, 26)}`,
+        legacy.tenant.key,
+        sha,
+        PNG_SMALL.length,
+        legacy.tenant.userId,
+        '2026-10-01T00:00:00.000Z',
+      )
+      .run()
+
+    const again = await uploadAsset(
+      { filename: 'old.png', alt: 'Old', data: base64(PNG_SMALL) },
+      withMedia(legacy.context(), mediaWith(null)),
+    )
+
+    expect([again.outcome, again.asset?.id]).toEqual(['exists', `ast_${sha.slice(0, 26)}`])
+    // Found before anything is written: no file under another id in R2.
+    expect((await env.MEDIA.list({ prefix: `sites/${legacy.tenant.key}/` })).objects).toEqual([])
   })
 
   it('scales down a wide PNG, lossless, and its height with it', async () => {

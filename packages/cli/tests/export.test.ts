@@ -10,6 +10,8 @@
 //   narrowing to what was asked, or the locale stops reaching `list_entries`, or a name the site
 //   does not have is let through to the server.
 // - "--site stops when the token is of another site": the key of `describe_site` is not compared.
+// - "… an import into another site uploads, with the ids of that site": import keeps the ids the
+//   export wrote when the other site gives its images other ids (withAssetIds of import.ts).
 // - "pages through list_entries": `nextCursor` is not followed, or is sent wrong.
 // - "--dry-run lists what it would write …": `--dry-run` writes a file or a directory.
 // - "refuses a directory that is not empty …" / "refuses a file": `checkTarget` lets a directory
@@ -557,7 +559,7 @@ describe('hollware export and its images (ADR-038)', () => {
     expect(filesOf(join(base, 'content'))).toEqual(['blog/en/talk.md'])
   })
 
-  it('by default, keeps the originals in _assets, which an import into another site uploads under the same ids', async () => {
+  it('by default, keeps the originals in _assets, which an import into another site uploads, with the ids of that site', async () => {
     const { stub, id } = await siteWithAnImage()
     const base = temp.make()
 
@@ -572,7 +574,9 @@ describe('hollware export and its images (ADR-038)', () => {
     })
     expect(readFileSync(join(root, 'blog/en/talk.md'), 'utf8')).toContain(`asset:${id}`)
 
-    const other = await serve()
+    const other = await serve({
+      site: { key: 'docs', locales: ['en', 'es'], collections: ['blog'] },
+    })
     const imported = await run(['import', root, '--url', other.url], {
       readStdin: () => Promise.resolve(`${TOKEN}\n`),
     })
@@ -583,7 +587,13 @@ describe('hollware export and its images (ADR-038)', () => {
     expect(calls(other, 'upload_asset')).toEqual([
       { filename: 'stage.png', alt: 'The stage', data: Buffer.from(PNG).toString('base64') },
     ])
-    expect([...other.assets.keys()]).toEqual([id])
+    // In the site docs the same bytes are another asset (its key and the bytes name it), and the
+    // entry shows that one: both references are written with its id.
+    const moved = 'ast_d77cb4e3ded5aebde6b153c416'
+    expect([...other.assets.keys()]).toEqual([moved])
+    expect(calls(other, 'create_draft').map((call) => call['markdown'])).toEqual([
+      `---\ntitle: Talk\nimg: asset:${moved}\n---\n\n![The stage](asset:${moved})\n`,
+    ])
   })
 
   it('takes --assets and --assets-url together or not at all', async () => {

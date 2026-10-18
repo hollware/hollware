@@ -44,6 +44,11 @@ Input is up to 20 MB. R2 keeps 10 GB free.
   input. The type comes from the bytes (`info()`, and a check of the magic numbers before it),
   never from the name or a header: JPEG, PNG, WebP, AVIF, GIF and SVG, anything else refused with
   its fix. The same bytes in the same site are one asset (sha256), so an upload is idempotent.
+  Its id is `ast_` and 26 hex of the SHA-256 of the site's key and the SHA-256 of the bytes, so
+  the same file in two sites of one deployment is two assets with two ids (amended 2026-10-18:
+  rc.2 named an asset by its bytes alone, and the same file in a second site failed on the
+  primary key; assets of rc.2 keep their ids, and an upload finds them by their bytes). An
+  import into another site maps the ids its export wrote to the ones that site gives.
 - **Conversion, by the site's `media` setting** (in its definition, ADR-033, changed in the admin
   with no deploy): `{ format: 'webp' | 'avif' | 'original', quality: 85, maxWidth: 2400 }` by
   default `webp`, 85, 2400.
@@ -68,7 +73,7 @@ Input is up to 20 MB. R2 keeps 10 GB free.
   asset:ast_…`) and in Markdown (`![alt](asset:ast_…)`). The contract `images-have-alt` reads the
   asset's `alt` when the Markdown has none. Rendering and the read API resolve it to the asset's
   URL; MCP keeps it as written, so what an agent reads is what it wrote.
-- **Delivery.** The Worker serves `GET /assets/<id>.<ext>` from R2, to anyone, with
+- **Delivery.** The Worker serves `GET /assets/<site>/<id>` from R2, to anyone, with
   `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`, and for
   an SVG `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`.
 - **Sites own their pictures.** `hollware export --assets <dir> --assets-url <path>` writes each

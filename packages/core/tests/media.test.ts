@@ -153,10 +153,13 @@ describe('conversionOf', () => {
 })
 
 describe('asset references', () => {
-  it('names an asset by its bytes: ast_ and the first 26 hex of the hash', () => {
-    expect(assetIdOf('9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08')).toBe(
-      'ast_9f86d081884c7d659a2feaa0c5',
-    )
+  it('names an asset by its site and its bytes, so two sites never share an id', async () => {
+    const bytes = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
+    // ast_ and the first 26 hex of the SHA-256 of "blog:<hash>" and of "docs:<hash>".
+    expect([await assetIdOf('blog', bytes), await assetIdOf('docs', bytes)]).toEqual([
+      'ast_d00d6e7de2db11d072c51ee81a',
+      'ast_07e2d3775ec24d9af807a6057c',
+    ])
   })
 
   it('resolves asset: references, deep inside a value, and nothing else', () => {

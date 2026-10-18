@@ -113,10 +113,11 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
     )
   }
   const sha256 = await sha256Of(original)
-  const id = assetIdOf(sha256)
   const site = context.site.key
-  const existing = await media.catalog.byId(site, id)
+  // By the bytes, whatever id they got: an asset of rc.2 and before has the id of its bytes alone.
+  const existing = await media.catalog.bySha256(site, sha256)
   if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
+  const id = await assetIdOf(site, sha256)
 
   let served = original
   let format: string = originalFormat

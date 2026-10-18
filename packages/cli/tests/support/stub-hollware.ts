@@ -330,7 +330,9 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         },
         guarded(uploadAsset.name, (args) => {
           const original = new Uint8Array(Buffer.from(args.data, 'base64'))
-          const id = `ast_${createHash('sha256').update(original).digest('hex').slice(0, 26)}`
+          // As Hollware names an asset: by its site and its bytes (assetIdOf of @hollware/core).
+          const bytes = createHash('sha256').update(original).digest('hex')
+          const id = `ast_${createHash('sha256').update(`${site.key}:${bytes}`).digest('hex').slice(0, 26)}`
           const found = assets.get(id)
           if (found !== undefined)
             return reply(uploadAsset.outcomes, { outcome: 'exists', asset: assetView(found) })

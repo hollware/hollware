@@ -188,8 +188,9 @@ async function importFiles({
 
   const session = await openSession(endpoint, token, readVersion())
   try {
-    await uploadImages(session, root, directory, dryRun, out)
-    const checks = await validateAll(session, corpus.files)
+    const moved = await uploadImages(session, root, directory, dryRun, out)
+    const files = withAssetIds(corpus.files, moved)
+    const checks = await validateAll(session, files)
     if (dryRun) out(dryRunReport(checks))
     const refused = checks.filter(
       (check) => check.refusals.length > 0 || check.failure !== undefined,
@@ -203,7 +204,7 @@ async function importFiles({
     }
     out(`Validated ${count(checks.length, 'file')}: none would be refused.`)
 
-    const drafts = await writeDrafts(session, corpus.files, out, checks)
+    const drafts = await writeDrafts(session, files, out, checks)
     out(
       `Drafts: ${drafts.created} created, ${drafts.updated} updated, ${drafts.unchanged} unchanged${drafts.failed === 0 ? '' : `, ${drafts.failed} failed`}.`,
     )
@@ -624,9 +625,33 @@ function listSome(paths: readonly string[]): string {
 }
 
 /**
+ * The files with every `asset:` reference to an id that `moved` maps written with its new id: an
+ * image gets another id in another site (ids are of a site and the bytes), so an export of one
+ * site imported into another shows its images still. Files without such a reference stay as they
+ * are, byte for byte.
+ */
+export function withAssetIds(
+  files: readonly ContentFile[],
+  moved: ReadonlyMap<string, string>,
+): ContentFile[] {
+  if (moved.size === 0) return [...files]
+  return files.map((file) => ({
+    ...file,
+    markdown: file.markdown.replace(
+      /asset:(ast_[0-9a-f]{26})(?![0-9a-f])/g,
+      (whole, id: string) => {
+        const now = moved.get(id)
+        return now === undefined ? whole : `asset:${now}`
+      },
+    ),
+  }))
+}
+
+/**
  * The images an export kept in `_assets/` (ADR-038), uploaded before the entries that show them:
- * each is the file as it was uploaded, so it gets its id again and every `asset:` reference of the
- * entries still names it. An image the site has already is `exists`, and nothing changes.
+ * each is the file as it was uploaded, so in the same site it gets its id again and every `asset:`
+ * reference of the entries still names it; in another site it gets another id, which the answer
+ * maps. An image the site has already is `exists`, and nothing changes.
  */
 async function uploadImages(
   session: Session,
@@ -634,9 +659,10 @@ async function uploadImages(
   directory: string,
   dryRun: boolean,
   out: (message: string) => void,
-): Promise<void> {
+): Promise<Map<string, string>> {
+  const moved = new Map<string, string>()
   const manifestFile = join(root, '_assets', 'assets.json')
-  if (!existsSync(manifestFile)) return
+  if (!existsSync(manifestFile)) return moved
   let manifest: Record<string, { alt?: unknown; filename?: unknown }>
   try {
     manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
@@ -646,7 +672,7 @@ async function uploadImages(
   const names = Object.keys(manifest).sort()
   if (dryRun) {
     out(`Would upload ${count(names.length, 'image')} of ${directory}/_assets.`)
-    return
+    return moved
   }
   let created = 0
   let existing = 0
@@ -670,14 +696,12 @@ async function uploadImages(
         `could not upload ${printable(name)}: ${answer.problem?.message ?? answer.outcome} ${answer.problem?.fix ?? ''}`.trim(),
       )
     }
-    if (
-      answer.asset !== undefined &&
-      `${answer.asset.id}.` !== name.slice(0, answer.asset.id.length + 1)
-    ) {
-      throw new CliError(
-        `${printable(name)} came back as ${answer.asset.id}: the file is not the one the export wrote.`,
-      )
+    const exported = name.slice(0, name.indexOf('.'))
+    if (answer.asset === undefined) {
+      throw new CliError(`could not upload ${printable(name)}: Hollware answered no asset.`)
     }
+    if (answer.asset.id !== exported) moved.set(exported, answer.asset.id)
   }
   out(`Images: ${created} uploaded, ${existing} already there.`)
+  return moved
 }

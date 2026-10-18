@@ -116,6 +116,13 @@ export function d1Catalog(db: D1Database): AssetCatalog {
   }
   return {
     byId,
+    async bySha256(site, sha256) {
+      const row = await db
+        .prepare('SELECT * FROM assets WHERE site_id = ? AND sha256 = ?')
+        .bind(site, sha256)
+        .first<Row>()
+      return row === null ? null : rowOf(row)
+    },
     async insert(asset) {
       const written = await db
         .prepare(

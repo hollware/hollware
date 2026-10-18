@@ -137,9 +137,19 @@ export function conversionOf(
   }
 }
 
-/** The id of an asset, from the SHA-256 of its original bytes: the same file is the same asset. */
-export function assetIdOf(sha256Hex: string): string {
-  return `ast_${sha256Hex.slice(0, 26)}`
+/**
+ * The id of an asset: `ast_` and 26 hex of the SHA-256 of its site's key and the SHA-256 of its
+ * original bytes. The same file is the same asset in a site, and another one in another site:
+ * ids are unique in a deployment, which serves several sites. Assets uploaded by 1.0.0-rc.2 and
+ * before keep the id they got from the bytes alone.
+ */
+export async function assetIdOf(site: string, sha256Hex: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(`${site}:${sha256Hex}`),
+  )
+  const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `ast_${hex.slice(0, 26)}`
 }
 
 /** What content writes to name an asset: `asset:ast_…`. */

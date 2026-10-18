@@ -614,6 +614,8 @@ export interface AssetRow {
 /** The rows of `assets`, of one site at a time. */
 export interface AssetCatalog {
   byId(site: string, id: string): Promise<AssetRow | null>
+  /** The asset of the site with these bytes, by their SHA-256. */
+  bySha256(site: string, sha256: string): Promise<AssetRow | null>
   /** Writes the row, or answers the one of the same bytes that is there already. */
   insert(row: AssetRow): Promise<{ readonly row: AssetRow; readonly created: boolean }>
   /** Newest first; the cursor is the `createdAt` and id of the last row of the page before. */
