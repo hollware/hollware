@@ -134,7 +134,7 @@ describe('hollware deploy', () => {
         '  MCP    https://my-hollware.ada.workers.dev/mcp',
         '  Admin  https://my-hollware.ada.workers.dev/admin/',
         '',
-        'Commit wrangler.jsonc: it holds the ids of what the deploy created, and the public URL.',
+        'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
         '',
         'Next: create your site and its owner in the remote database. It prints a token for your',
         'agents and a link to set up your passkey; shape the site in the admin afterwards:',
@@ -164,7 +164,7 @@ describe('hollware deploy', () => {
         '  MCP    https://my-hollware.ada.workers.dev/mcp',
         '  Admin  https://my-hollware.ada.workers.dev/admin/',
         '',
-        'Commit wrangler.jsonc: it holds the ids of what the deploy created, and the public URL.',
+        'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
       ].join('\n'),
     )
   })
@@ -221,9 +221,25 @@ describe('hollware deploy', () => {
 
     expect(code).toBe(1)
     expect(err).toEqual([
-      'hollware deploy: wrangler could not deploy: Not logged in.. Is wrangler logged in ("wrangler login")?',
+      'hollware deploy: wrangler could not deploy: Not logged in. Is wrangler logged in ("wrangler login")?',
     ])
     expect(wrangler.calls).toHaveLength(1)
+  })
+
+  it('says the whole reason, and nothing of logging in when that is not it', async () => {
+    const wrangler = fakeWrangler(
+      failed(
+        '✘ [ERROR] Found both a user configuration file at "wrangler.jsonc"\n  and a deploy configuration file at "../.wrangler/deploy/config.json".\n',
+      ),
+    )
+    const project = setup(wrangler, 'http://localhost:5199')
+
+    const { code, err } = await project.run(['deploy'])
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware deploy: wrangler could not deploy: Found both a user configuration file at "wrangler.jsonc" and a deploy configuration file at "../.wrangler/deploy/config.json".',
+    ])
   })
 
   it('stops when it can tell no public URL', async () => {

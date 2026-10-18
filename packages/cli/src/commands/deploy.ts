@@ -28,6 +28,15 @@ export const DEPLOY_USAGE = [
   '  --help       Show this help',
 ].join('\n')
 
+/** "Run wrangler login" only when wrangler says so: another failure has nothing to do with it. */
+function loginHint(result: { stdout: string; stderr: string }): string {
+  return /not logged in|log ?in|authenticat|oauth|api token/i.test(
+    `${result.stdout}\n${result.stderr}`,
+  )
+    ? ' Is wrangler logged in ("wrangler login")?'
+    : ''
+}
+
 /** The workers.dev URL that `wrangler deploy` prints, or `undefined`. */
 export function workersDevUrlOf(stdout: string): string | undefined {
   // The host ends at workers.dev: `….workers.dev.evil.example` is another host.
@@ -92,7 +101,7 @@ async function wranglerDeploy(io: Io): Promise<string> {
   const deployed = await io.wrangler(['deploy'])
   if (deployed.code !== 0) {
     throw new CliError(
-      `wrangler could not deploy: ${failureReason(deployed)}. Is wrangler logged in ("wrangler login")?`,
+      `wrangler could not deploy: ${failureReason(deployed).replace(/\.$/, '')}.${loginHint(deployed)}`,
     )
   }
   return deployed.stdout
@@ -163,7 +172,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
       `  MCP    ${url}/mcp`,
       `  Admin  ${url}/admin/`,
       '',
-      'Commit wrangler.jsonc: it holds the ids of what the deploy created, and the public URL.',
+      'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
       ...(owners.length === 0
         ? [
             '',

@@ -124,6 +124,16 @@ describe('failureReason', () => {
       'No migrations present at /project/migrations.',
     ],
     [
+      'an [ERROR] that goes on over more lines, up to the blank one',
+      {
+        code: 1,
+        stdout: '',
+        stderr:
+          '✘ [ERROR] Found both a user configuration file at "wrangler.jsonc"\n  and a deploy configuration file at "../.wrangler/deploy/config.json".\n\n  More help below.\n',
+      },
+      'Found both a user configuration file at "wrangler.jsonc" and a deploy configuration file at "../.wrangler/deploy/config.json".',
+    ],
+    [
       'the last line of stderr when there is no [ERROR], ignoring the notice about the log file',
       {
         code: 1,

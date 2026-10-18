@@ -93,11 +93,20 @@ export function failureReason(result: WranglerResult): string {
   const stderr = stripAnsi(result.stderr)
   const fromJson = jsonError(stdout.trim())
   if (fromJson !== undefined) return oneLine(fromJson)
-  const stderrLines = linesOf(stderr)
-  for (const line of stderrLines) {
+  // An [ERROR] goes on over the lines after it, until a blank one or another marker: wrangler
+  // wraps a long message, and its first line alone can say the opposite of the whole.
+  const raw = stderr.split('\n').map((line) => line.trim())
+  for (const [index, line] of raw.entries()) {
     const message = /^\W*\[ERROR\]\s*(.+)$/.exec(line)?.[1]
-    if (message !== undefined) return oneLine(message)
+    if (message === undefined) continue
+    const parts = [message]
+    for (const next of raw.slice(index + 1)) {
+      if (next === '' || /^\W*\[(?:ERROR|WARNING|INFO)\]/.test(next)) break
+      parts.push(next)
+    }
+    return oneLine(parts.join(' '))
   }
+  const stderrLines = linesOf(stderr)
   const last = stderrLines.at(-1) ?? linesOf(stdout).at(-1)
   return oneLine(last ?? `wrangler exited with code ${result.code} and printed nothing`)
 }
