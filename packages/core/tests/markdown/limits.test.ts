@@ -114,6 +114,7 @@ describe('the byte order mark', () => {
       images: [],
       components: [],
       words: 0,
+      codeWords: 0,
       disallowed: [],
     })
   })

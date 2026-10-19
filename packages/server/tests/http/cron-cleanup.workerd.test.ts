@@ -92,7 +92,7 @@ describe('the cron trigger and what of sign-in expired', () => {
       .prepare('SELECT pipeline_version, document FROM revisions WHERE entry_id = ?1')
       .bind(entry)
       .first<{ pipeline_version: string; document: string }>()
-    expect(row?.pipeline_version).toBe('2')
+    expect(row?.pipeline_version).toBe('3')
     expect(row?.document).not.toBe('{}')
   })
 })

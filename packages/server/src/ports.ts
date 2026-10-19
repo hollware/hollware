@@ -57,6 +57,8 @@ export interface StoredRevision {
   readonly comarkVersion: string
   readonly pipelineVersion: string
   readonly wordCount: number
+  /** The words of its code blocks, apart from `wordCount`. */
+  readonly codeWords: number
   /** The verdict of the `write` phase when the revision was written. */
   readonly verdict: Verdict
   readonly tags: readonly string[]
@@ -96,6 +98,7 @@ export interface RevisionSummary {
   readonly tags: readonly string[]
   /** What the fields Hollware fills are made from (`automaticFields` of a collection). */
   readonly wordCount: number
+  readonly codeWords: number
   readonly createdAt: string
 }
 
@@ -125,6 +128,7 @@ export interface NewRevision {
   readonly comarkVersion: string
   readonly pipelineVersion: string
   readonly wordCount: number
+  readonly codeWords: number
   readonly verdict: Verdict
   readonly tags: readonly string[]
   readonly actor: Actor

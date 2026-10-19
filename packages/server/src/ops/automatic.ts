@@ -24,6 +24,7 @@ export function automaticValues(
       publishedAt: view.entry.publishedAt,
       revisionCreatedAt: view.revision.createdAt,
       wordCount: view.revision.wordCount,
+      codeWords: view.revision.codeWords,
     },
     view.revision.frontmatter,
   )

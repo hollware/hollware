@@ -95,6 +95,9 @@ interface State {
   readonly ids: HeadingIds
   words: number
   inWord: boolean
+  /** The words inside code blocks, which a reader reads too: counted apart from `words`. */
+  codeWords: number
+  inCodeWord: boolean
   problem: Problem | undefined
 }
 
@@ -136,6 +139,18 @@ function countNewlines(text: string): number {
     at = text.indexOf('\n', at + 1)
   }
   return count
+}
+
+/** The words of a code block, separated by whitespace as the words of the text are. */
+function addCode(state: State, text: string): void {
+  for (let at = 0; at < text.length; at++) {
+    if (isSpace(text.charCodeAt(at))) {
+      state.inCodeWord = false
+    } else if (!state.inCodeWord) {
+      state.inCodeWord = true
+      state.codeWords++
+    }
+  }
 }
 
 function addText(state: State, text: string): void {
@@ -335,7 +350,8 @@ function walk(
   for (let at = start; at < list.length; at++) {
     const node = list[at]
     if (typeof node === 'string') {
-      if (!inPre) addText(state, node)
+      if (inPre) addCode(state, node)
+      else addText(state, node)
       cursor += countNewlines(node)
     } else if (Array.isArray(node)) {
       cursor = visit(state, list, at, node, cursor, depth, inPre)
@@ -402,7 +418,10 @@ function visit(
   else if (tag === 'img') collectImage(state, props, line)
 
   const inline = INLINE_TAGS.has(tag)
-  if (!inline) state.inWord = false
+  if (!inline) {
+    state.inWord = false
+    state.inCodeWord = false
+  }
   if (tag === 'br') return line + 1
   const end = walk(state, node, 2, content ?? line, depth + 1, inPre || tag === 'pre')
   if (!inline) state.inWord = false
@@ -421,6 +440,7 @@ function visit(
  * Judges and extracts a document: see the comment at the top of this file. The `words` are
  * the whitespace-separated words of the text outside code blocks, with the headings, the list
  * items, the link text and the text inside components, and without URLs and the marks of Markdown.
+ * The `codeWords` are those of the code blocks, apart, for a reading time that counts them too.
  */
 export function analyzeDocument(document: MarkdownDocument, options: AnalyzeOptions): Analysis {
   const state: State = {
@@ -436,6 +456,8 @@ export function analyzeDocument(document: MarkdownDocument, options: AnalyzeOpti
     ids: new HeadingIds(),
     words: 0,
     inWord: false,
+    codeWords: 0,
+    inCodeWord: false,
     problem: undefined,
   }
   walk(state, document.nodes, 0, options.lineOffset + 1, 1, false)
@@ -454,6 +476,7 @@ export function analyzeDocument(document: MarkdownDocument, options: AnalyzeOpti
       images: state.images,
       components: state.components,
       words: state.words,
+      codeWords: state.codeWords,
       disallowed: state.disallowed,
     },
     problem: state.problem,

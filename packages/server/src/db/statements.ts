@@ -53,6 +53,7 @@ export function revisionRow(input: {
     comarkVersion: revision.comarkVersion,
     pipelineVersion: revision.pipelineVersion,
     wordCount: revision.wordCount,
+    codeWords: revision.codeWords,
     verdict: JSON.stringify(revision.verdict),
     ...actorColumns(revision.actor),
     createdAt: input.now,

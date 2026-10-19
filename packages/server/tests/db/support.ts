@@ -85,6 +85,7 @@ export function newRevision(actor: Actor, overrides: Partial<NewRevision> = {}):
     comarkVersion: '0.7.0',
     pipelineVersion: '1',
     wordCount: 2,
+    codeWords: 0,
     verdict: VERDICT,
     tags: [],
     actor,

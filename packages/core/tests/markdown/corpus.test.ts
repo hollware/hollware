@@ -90,6 +90,7 @@ describe('the blog corpus', () => {
       images: [{ src: '/images/edge-caching-basics.png', alt: 'A diagram of the flow', line: 33 }],
       components: [{ name: 'callout', props: { type: 'tip' }, line: 19 }],
       words: 100,
+      codeWords: 5,
       disallowed: [],
     })
     expect(result.frontmatter).toStrictEqual({
@@ -122,6 +123,7 @@ describe('the blog corpus', () => {
       images: [{ src: '/images/cache-en-el-borde.png', alt: 'Un diagrama del flujo', line: 33 }],
       components: [{ name: 'callout', props: { type: 'tip' }, line: 19 }],
       words: 101,
+      codeWords: 5,
       disallowed: [],
     })
   })

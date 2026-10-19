@@ -160,6 +160,7 @@ function storedRevision(input: {
     comarkVersion: revision.comarkVersion,
     pipelineVersion: revision.pipelineVersion,
     wordCount: revision.wordCount,
+    codeWords: revision.codeWords,
     verdict: revision.verdict,
     tags: input.tags,
     actor: revision.actor,

@@ -43,6 +43,7 @@ export const revisionFields = {
   comarkVersion: revisions.comarkVersion,
   pipelineVersion: revisions.pipelineVersion,
   wordCount: revisions.wordCount,
+  codeWords: revisions.codeWords,
   verdict: revisions.verdict,
   actorKind: revisions.actorKind,
   actorUserId: revisions.actorUserId,
@@ -60,6 +61,7 @@ export const revisionSummaryFields = {
   id: revisions.id,
   frontmatter: revisions.frontmatter,
   wordCount: revisions.wordCount,
+  codeWords: revisions.codeWords,
   createdAt: revisions.createdAt,
 }
 
@@ -168,6 +170,7 @@ export function toRevision(row: RevisionRow, tagsJson: string): StoredRevision {
     comarkVersion: row.comarkVersion,
     pipelineVersion: row.pipelineVersion,
     wordCount: row.wordCount,
+    codeWords: row.codeWords,
     verdict,
     tags: parseTags(tagsJson),
     actor: toActor(row),
@@ -182,6 +185,7 @@ export function toRevisionSummary(row: RevisionSummaryRow, tagsJson: string): Re
     frontmatter,
     tags: parseTags(tagsJson),
     wordCount: row.wordCount,
+    codeWords: row.codeWords,
     createdAt: row.createdAt,
   }
 }

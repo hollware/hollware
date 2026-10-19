@@ -78,6 +78,7 @@ describe('the playground config', () => {
           frontmatter: {},
           document: { nodes: [], frontmatter: {}, meta: {} },
           extracted: {
+            codeWords: 0,
             headings: [],
             links: [],
             images: [],

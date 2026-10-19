@@ -10,7 +10,7 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 // list_entries and get_translations; or reach an agent over MCP in the frontmatter, which reads
 // what was written; or get_entry stops answering their values apart as `automatic`; or the date
 // written in the Markdown stops winning for firstPublished, a change after the first publication
-// stops showing as lastModified, or the reading time is not the words at 200 a minute.
+// stops showing as lastModified, or the reading time is not the words and the code at 200 a minute.
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -52,7 +52,7 @@ describe('the fields Hollware fills', () => {
     const changed = await world.agent.updateDraft({
       id: en.id,
       version: live.version,
-      markdown: `---\ntitle: Filled\ndescription: d\ndate: 2020-01-01\ntags: [cloudflare]\ntranslationGroup: filled\n---\n\n${'word '.repeat(450)}\n`,
+      markdown: `---\ntitle: Filled\ndescription: d\ndate: 2020-01-01\ntags: [cloudflare]\ntranslationGroup: filled\n---\n\n${'word '.repeat(450)}\n\n~~~sh\n${'code '.repeat(200)}\n~~~\n`,
     })
     await publishPost(world, changed.entry ?? en, LATER)
     const second = await reader.getEntry({ ...key, formats: ['document'] })
@@ -63,14 +63,14 @@ describe('the fields Hollware fills', () => {
     // The date written wins; nothing changed after the first publication; eight words, a minute.
     expect(first.entry?.frontmatter).toMatchObject({ date: '2020-01-01', minutes: 1, words: 8 })
     expect(first.entry?.frontmatter).not.toHaveProperty('modified')
-    // Changed after it went out: modified is when; 450 words are three minutes.
+    // Changed after it went out: modified is when; 450 words and 200 of code are four minutes.
     expect(second.entry?.frontmatter).toMatchObject({
       date: '2020-01-01',
       modified: LATER,
-      minutes: 3,
+      minutes: 4,
     })
-    expect(second.entry?.document?.frontmatter).toMatchObject({ modified: LATER, minutes: 3 })
-    expect(listed.entries?.[0]?.frontmatter).toMatchObject({ modified: LATER, minutes: 3 })
+    expect(second.entry?.document?.frontmatter).toMatchObject({ modified: LATER, minutes: 4 })
+    expect(listed.entries?.[0]?.frontmatter).toMatchObject({ modified: LATER, minutes: 4 })
     expect(group.entries?.find((one) => one.locale === 'en')?.frontmatter).toMatchObject({
       modified: LATER,
     })
@@ -79,7 +79,7 @@ describe('the fields Hollware fills', () => {
     expect(agentView.entry?.automatic).toEqual({
       date: '2020-01-01',
       modified: LATER,
-      minutes: 3,
+      minutes: 4,
       words: 450,
     })
   })

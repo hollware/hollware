@@ -95,6 +95,7 @@ describe('findEntry and findEntryById', () => {
         comarkVersion: '0.7.0',
         pipelineVersion: '1',
         wordCount: 4,
+        codeWords: 0,
         verdict: {
           ok: false,
           phase: 'write',
@@ -333,6 +334,7 @@ describe('listTranslations', () => {
         frontmatter: { title: 'en draft' },
         tags: ['edge', 'wip'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T,
       },
       {
@@ -340,6 +342,7 @@ describe('listTranslations', () => {
         frontmatter: { title: 'es' },
         tags: ['borde'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T,
       },
       {
@@ -347,6 +350,7 @@ describe('listTranslations', () => {
         frontmatter: { title: 'pt' },
         tags: ['borda'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T,
       },
     ])
@@ -368,6 +372,7 @@ describe('listTranslations', () => {
         frontmatter: { title: 'en live' },
         tags: ['edge'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T,
       },
       {
@@ -375,6 +380,7 @@ describe('listTranslations', () => {
         frontmatter: { title: 'es' },
         tags: ['borde'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T,
       },
     ])

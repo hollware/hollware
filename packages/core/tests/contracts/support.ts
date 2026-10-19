@@ -150,6 +150,7 @@ export function markdownOf(parts: MarkdownParts = {}): ProcessedMarkdown {
     frontmatter: parts.frontmatter ?? FRONTMATTER,
     document: { nodes: [], frontmatter: {}, meta: {} },
     extracted: {
+      codeWords: 0,
       headings: [],
       links: parts.links ?? [],
       images: parts.images ?? [],

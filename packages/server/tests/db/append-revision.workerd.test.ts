@@ -104,6 +104,7 @@ describe('appendRevision', () => {
         comarkVersion: '0.7.0',
         pipelineVersion: '1',
         wordCount: 2,
+        codeWords: 0,
         verdict: VERDICT,
         tags: ['new', 'old'],
         actor: { ...owner.actor, meta: { client: 'claude-code' } },
@@ -477,7 +478,7 @@ describe('the optimistic write, as SQL', () => {
     expect(answer.outcome).toBe('saved')
     expect(batches).toEqual([4])
     expect(prepared).toEqual([
-      'insert into "revisions" ("id", "site_id", "entry_id", "markdown", "frontmatter", "document", "comark_version", "pipeline_version", "word_count", "verdict", "actor_kind", "actor_user_id", "actor_token_id", "actor_meta", "created_at", "updated_at") select ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? from "entries" where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?)',
+      'insert into "revisions" ("id", "site_id", "entry_id", "markdown", "frontmatter", "document", "comark_version", "pipeline_version", "word_count", "code_words", "verdict", "actor_kind", "actor_user_id", "actor_token_id", "actor_meta", "created_at", "updated_at") select ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? from "entries" where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?)',
       'insert into "revision_tags" ("id", "site_id", "revision_id", "tag", "created_at", "updated_at") with "t" ("id", "tag") as (values (?, ?), (?, ?)) select "t"."id", ?, ?, "t"."tag", ?, ? from "t" where exists (select 1 from "revisions" where ("revisions"."id" = ? and "revisions"."site_id" = ?))',
       'update "reviews" set "status" = ?, "updated_at" = ? where ("reviews"."site_id" = ? and "reviews"."entry_id" = ? and "reviews"."status" = ? and exists (select 1 from "entries" where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?)))',
       'update "entries" set "translation_group" = ?, "version" = "entries"."version" + 1, "head_rev" = ?, "updated_at" = ? where ("entries"."id" = ? and "entries"."site_id" = ? and "entries"."version" = ?) returning "id", "collection", "locale", "slug", "translation_group", "status", "version", "head_rev", "published_rev", "published_at", "scheduled_at", "deleted_at", "updated_at"',

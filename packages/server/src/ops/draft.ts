@@ -127,6 +127,7 @@ export function revisionOf(input: {
     comarkVersion: processed.comarkVersion,
     pipelineVersion: processed.pipelineVersion,
     wordCount: processed.extracted.words,
+    codeWords: processed.extracted.codeWords,
     verdict: input.verdict,
     tags: tagsOf(input.collection, processed.frontmatter),
     actor: input.actor,

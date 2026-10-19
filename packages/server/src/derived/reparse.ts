@@ -53,7 +53,7 @@ export async function reparseRevisions(
     await db
       .prepare(
         `UPDATE revisions SET frontmatter = ?1, document = ?2, word_count = ?3, pipeline_version = ?4,
-           comark_version = ?5, updated_at = ?6 WHERE id = ?7 AND site_id = ?8`,
+           comark_version = ?5, updated_at = ?6, code_words = ?9 WHERE id = ?7 AND site_id = ?8`,
       )
       .bind(
         JSON.stringify(value.frontmatter),
@@ -64,6 +64,7 @@ export async function reparseRevisions(
         now,
         stale.id,
         site.key,
+        value.extracted.codeWords,
       )
       .run()
   }

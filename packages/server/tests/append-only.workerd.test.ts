@@ -21,6 +21,7 @@ const TABLES = [
       'comark_version',
       'pipeline_version',
       'word_count',
+      'code_words',
       'updated_at',
     ],
     immutable: [

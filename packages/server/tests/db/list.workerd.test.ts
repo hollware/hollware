@@ -205,6 +205,7 @@ describe('listEntries in the head view', () => {
           frontmatter: { title: 'A', nested: { list: [1, 2] } },
           tags: ['x', 'y'],
           wordCount: 1,
+          codeWords: 0,
           createdAt: T1,
         },
       },
@@ -269,6 +270,7 @@ describe('listEntries in the published view', () => {
         frontmatter: { title: 'live' },
         tags: ['news'],
         wordCount: 1,
+        codeWords: 0,
         createdAt: T3,
       },
     ])
@@ -475,7 +477,7 @@ function revisionColumns(statement: string): string[] {
  * What every listing selects: the entry; the id, frontmatter, word count and date of the revision,
  * which the fields Hollware fills are made from; and its tags.
  */
-const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
+const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."code_words", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
 
 describe('the statements of a listing', () => {
   it('read the id, frontmatter, word count and date of a revision and no other column of it: never the Markdown, the document or the verdict', async () => {
@@ -506,7 +508,14 @@ describe('the statements of a listing', () => {
     // frontmatter, its word count and its date, and its site, which joins it to its entry.
     expect(prepared).toHaveLength(queries.length + 2)
     expect(prepared.map(revisionColumns)).toEqual(
-      Array(queries.length + 2).fill(['created_at', 'frontmatter', 'id', 'site_id', 'word_count']),
+      Array(queries.length + 2).fill([
+        'code_words',
+        'created_at',
+        'frontmatter',
+        'id',
+        'site_id',
+        'word_count',
+      ]),
     )
   })
 

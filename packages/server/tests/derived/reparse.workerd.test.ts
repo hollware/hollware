@@ -6,7 +6,8 @@ import { blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 
 // Fails when: the cron's reparse (src/derived/reparse.ts) stops rebuilding the document of a
-// revision an older pipeline parsed, or rebuilds one of another site, or keeps trying one the
+// revision an older pipeline parsed, with its words and the words of its code, or rebuilds one of
+// another site, or keeps trying one the
 // pipeline now refuses (or of a collection that is gone) every minute, or takes more than its
 // batch in one run.
 
@@ -27,7 +28,7 @@ async function draft(world: World, slug: string) {
         tags: '[cloudflare]',
         translationGroup: slug,
       },
-      '\n# Parsed again\n\nThree more words.\n',
+      '\n# Parsed again\n\nThree more words.\n\n```sh\nnpx hollware dev\n```\n',
     ),
   })
   if (created.entry === undefined) throw new Error(JSON.stringify(created))
@@ -37,16 +38,18 @@ async function draft(world: World, slug: string) {
 /** Makes the revisions of an entry look as an older pipeline left them. */
 async function age(entryId: string) {
   await env.DB.prepare(
-    "UPDATE revisions SET pipeline_version = '1', document = '{}', word_count = 0 WHERE entry_id = ?1",
+    "UPDATE revisions SET pipeline_version = '1', document = '{}', word_count = 0, code_words = 0 WHERE entry_id = ?1",
   )
     .bind(entryId)
     .run()
 }
 
 const columns = (entryId: string) =>
-  env.DB.prepare('SELECT pipeline_version, document, word_count FROM revisions WHERE entry_id = ?1')
+  env.DB.prepare(
+    'SELECT pipeline_version, document, word_count, code_words FROM revisions WHERE entry_id = ?1',
+  )
     .bind(entryId)
-    .first<{ pipeline_version: string; document: string; word_count: number }>()
+    .first<{ pipeline_version: string; document: string; word_count: number; code_words: number }>()
 
 describe('the reparse of the cron', () => {
   it('rebuilds what an older pipeline made, in its own site only', async () => {
@@ -62,7 +65,14 @@ describe('the reparse of the cron', () => {
 
     expect(looked).toBe(1)
     expect(await columns(mine)).toEqual(fresh)
-    expect(await columns(theirs)).toEqual({ pipeline_version: '1', document: '{}', word_count: 0 })
+    // The words of its code block, which a reading time counts.
+    expect(fresh?.code_words).toBe(3)
+    expect(await columns(theirs)).toEqual({
+      pipeline_version: '1',
+      document: '{}',
+      word_count: 0,
+      code_words: 0,
+    })
     expect(await reparseRevisions(env.DB, world.tenant.site, AT, () => {})).toBe(0)
   })
 
@@ -75,7 +85,12 @@ describe('the reparse of the cron', () => {
 
     await reparseRevisions(env.DB, world.tenant.site, AT, (entry) => logged.push(entry))
 
-    expect(await columns(id)).toEqual({ pipeline_version: '2', document: '{}', word_count: 0 })
+    expect(await columns(id)).toEqual({
+      pipeline_version: '3',
+      document: '{}',
+      word_count: 0,
+      code_words: 0,
+    })
     expect(logged).toEqual([
       {
         kind: 'reparse',

@@ -31,11 +31,12 @@ const HUGE = 'a'.repeat(1_950_000)
  * The bytes of every column of a revision row written for `revision()` below, apart from the
  * Markdown: the revision id 30 (`rev_` and 26 characters), the site key 41 (`size-` and a UUID of
  * 36), the entry id 30, the frontmatter `{"title":"Hello"}` 17, the document 76, the versions
- * `0.7.0` and `1` 5 and 1, the word count 8 (an integer counts as 8), the verdict 78, the actor
+ * `0.7.0` and `1` 5 and 1, the word count and the words of code 8 each (an integer counts as 8),
+ * the verdict 78, the actor
  * kind `token` 5, the ids of its user and its token 30 and 30, no meta 0, and `created_at` and
  * `updated_at` 24 each.
  */
-const OTHER_COLUMNS = 399
+const OTHER_COLUMNS = 407
 
 const HELLO = { collection: 'blog', locale: 'en', slug: 'hello' }
 
@@ -47,7 +48,7 @@ async function setup() {
 }
 
 describe('createEntry with a row over the limit', () => {
-  it('counts the bytes of every column, the Markdown in UTF-8: 1,000,000 two-byte characters and 399 more', async () => {
+  it('counts the bytes of every column, the Markdown in UTF-8: 1,000,000 two-byte characters and 407 more', async () => {
     const { owner, store, revision } = await setup()
 
     const answer = await store.createEntry(owner.site, {

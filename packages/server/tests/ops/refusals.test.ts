@@ -48,6 +48,7 @@ const VIEW: EntryView = {
     comarkVersion: '0.7.0',
     pipelineVersion: '1',
     wordCount: 8,
+    codeWords: 0,
     verdict: { ok: true, phase: 'write', errors: [], warnings: [], contractsHash: 'stored' },
     tags: [],
     actor: { kind: 'token', userId: tenant.userId, tokenId: tenant.tokenId, meta: null },

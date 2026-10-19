@@ -12,7 +12,8 @@ import { isRecord, keyPath, type JsonObject, wrongType } from './values.ts'
  *   wins, so content moved from elsewhere keeps its history.
  * - `lastModified`: the date of the revision read, when it was written after the entry was first
  *   published; a later date written in the Markdown wins. Nothing before the first change.
- * - `readingTime`: minutes, at 200 words a minute, at least one.
+ * - `readingTime`: minutes, at 200 words a minute, the code blocks included: a reader reads them
+ *   too. At least one.
  * - `wordCount`: the words of the body.
  */
 export const AUTOMATIC_KINDS = [
@@ -107,6 +108,8 @@ export interface AutomaticFacts {
   /** When the revision being read was written. */
   readonly revisionCreatedAt: string
   readonly wordCount: number
+  /** The words of its code blocks, which the reading time counts besides `wordCount`. */
+  readonly codeWords: number
 }
 
 const formatted = (iso: string, format: AutomaticField['format']) =>
@@ -144,7 +147,10 @@ export function withAutomaticFields(
         break
       }
       case 'readingTime':
-        filled[field] = Math.max(1, Math.ceil(facts.wordCount / WORDS_PER_MINUTE))
+        filled[field] = Math.max(
+          1,
+          Math.ceil((facts.wordCount + facts.codeWords) / WORDS_PER_MINUTE),
+        )
         break
       case 'wordCount':
         filled[field] = facts.wordCount

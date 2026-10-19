@@ -78,6 +78,8 @@ export interface ExtractedContent {
   readonly components: readonly ComponentUse[]
   /** The words of the body, which `word_count` stores. */
   readonly words: number
+  /** The words of its code blocks, apart from `words`, which `code_words` stores. */
+  readonly codeWords: number
   readonly disallowed: readonly DisallowedMarker[]
 }
 

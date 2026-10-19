@@ -183,6 +183,7 @@ describe('the schema as a gate', () => {
         extracted: {
           headings: [],
           words: 0,
+          codeWords: 0,
           components: [],
           links: [
             {
@@ -630,6 +631,7 @@ describe('every built-in contract', () => {
         extracted: {
           headings: [],
           words: 0,
+          codeWords: 0,
           links: [
             {
               href: '/blog/draft/',

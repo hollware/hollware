@@ -185,6 +185,11 @@ export const revisions = sqliteTable(
     comarkVersion: text('comark_version').notNull(),
     pipelineVersion: text('pipeline_version').notNull(),
     wordCount: integer('word_count').notNull(),
+    /**
+     * The words of its code blocks, apart from `word_count`: a reading time counts them too.
+     * Derived, like `word_count`; 0 until the reparse of the cron reaches a revision of before.
+     */
+    codeWords: integer('code_words').notNull().default(0),
     /** The verdict of the contracts when the revision was written, as JSON. */
     verdict: text('verdict').notNull(),
     actorKind: text('actor_kind').notNull(),
