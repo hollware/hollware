@@ -44,12 +44,12 @@ export const en = {
       truth: {
         title: 'One source of truth',
         description:
-          'D1 keeps every entry and every revision, append only. Markdown goes in and comes back out byte for byte, never locked in a format of ours.',
+          'D1 keeps every entry and every revision, append only: go back to any of them, and a backup of each day lands in R2. Markdown goes in and comes back out byte for byte, never locked in a format of ours.',
       },
       edge: {
         title: 'Read at the edge',
         description:
-          'A Worker reads published content over a service binding: no network, no token. Pages stay at the edge, and are purged by tag the moment you publish.',
+          'A Worker reads published content over a service binding: no network, no token, images with their srcset. Pages stay at the edge, and are purged by tag the moment you publish.',
       },
       people: {
         title: 'People stay in the loop',

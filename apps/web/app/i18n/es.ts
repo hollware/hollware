@@ -43,12 +43,12 @@ export const es: Messages = {
       truth: {
         title: 'Una sola fuente de verdad',
         description:
-          'D1 guarda cada entrada y cada revisión, sin borrar nunca. El Markdown entra y sale idéntico, byte por byte, sin quedar atrapado en un formato propio.',
+          'D1 guarda cada entrada y cada revisión, sin borrar nunca: vuelve a cualquiera de ellas, y cada día queda un respaldo en R2. El Markdown entra y sale idéntico, byte por byte, sin quedar atrapado en un formato propio.',
       },
       edge: {
         title: 'Lectura en el borde',
         description:
-          'Un Worker lee el contenido publicado por un service binding: sin red y sin token. Las páginas quedan en el borde y se purgan por etiqueta en cuanto publicas.',
+          'Un Worker lee el contenido publicado por un service binding: sin red, sin token y con el srcset de cada imagen. Las páginas quedan en el borde y se purgan por etiqueta en cuanto publicas.',
       },
       people: {
         title: 'Las personas siguen al mando',
