@@ -492,6 +492,9 @@ export const en = {
     imageWidthsInvalid: (min: number, max: number, most: number) =>
       `Enter up to ${most} whole numbers from ${min} to ${max}, apart by commas, such as 640, 1280.`,
     saveImages: 'Save the image settings',
+    keepOriginals: 'Keep the original of each image',
+    keepOriginalsHelp:
+      'The file as it was uploaded, never served, from which a later change of format starts. Off, only the file served and its copies take storage; the downloads of an original and hollware export give the file served instead.',
     webhooks: 'Webhooks',
     backupsTitle: 'Backups',
     backupsHelp:

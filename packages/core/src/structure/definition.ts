@@ -161,6 +161,12 @@ export const siteDefinitionData = z.strictObject({
         .describe(
           'The widths, in pixels and smallest first, of the narrower copies made of each image when it is uploaded, for srcset: an image gets those narrower than itself. [] makes none; each copy is one more conversion of Cloudflare Images.',
         ),
+      keepOriginals: z
+        .boolean()
+        .default(DEFAULT_MEDIA.keepOriginals)
+        .describe(
+          'Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.',
+        ),
     })
     .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })
     .describe('How the site converts the images it receives (ADR-038).'),

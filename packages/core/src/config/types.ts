@@ -111,6 +111,8 @@ export interface SiteDefinition {
     readonly maxWidth?: number
     /** The narrower copies made of each image for `srcset`, in pixels: 640 and 1280 by default. */
     readonly widths?: readonly number[]
+    /** Whether the file as it was uploaded is kept besides the one served: true by default. */
+    readonly keepOriginals?: boolean
   }
 }
 
@@ -187,6 +189,11 @@ export interface ResolvedMedia {
    * those narrower than itself, made when it is uploaded. Empty makes none.
    */
   readonly widths: readonly number[]
+  /**
+   * Whether the file as it was uploaded is kept in R2 besides the one served, never served itself:
+   * what a later change of format starts from. `false` keeps only what is served, and the copies.
+   */
+  readonly keepOriginals: boolean
 }
 
 /** What the activity log of a site keeps (ADR-037). */

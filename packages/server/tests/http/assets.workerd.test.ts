@@ -13,6 +13,8 @@ import { boot, restoreLogs, SITE_KEY } from './support.ts'
 //   R2 under its key, or answers a width that is no number of pixels from R2.
 // - "gives the original to a person of the site": the original is served without a token, to a
 //   read token, or to a token of another site; or with a cache a shared proxy may keep.
+// - "gives the file it serves": the original route answers 404 for a site that keeps no
+//   originals instead of the file served.
 // - "keeps an asset as it is": a delete of a row, or a change of anything but its alt, goes through.
 // - "asks the binding with quality and anim": the adapter leaves either to the binding's defaults,
 //   or scales without being asked.
@@ -150,6 +152,22 @@ describe('GET /assets/<site>/<id>/<width>', () => {
       'public, max-age=31536000, immutable',
     ])
     expect(asked).toEqual([`sites/${SITE_KEY}/${id}/640`, `sites/${SITE_KEY}/${id}/1280`])
+  })
+})
+
+describe('GET /v1/assets/<id>/original, for a site that keeps no originals', () => {
+  it('gives the file it serves', async () => {
+    const owner = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const id = 'ast_0f0e0d0c0b0a09080706050403'
+    const served = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 served')
+    await seedAsset(SITE_KEY, owner.userId, id, 'image/webp', served)
+    await env.MEDIA.delete(`originals/${SITE_KEY}/${id}`)
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+
+    const answer = await worker.send(`/v1/assets/${id}/original`, { token: owner.token })
+
+    expect([answer.status, answer.headers.get('content-type')]).toEqual([200, 'image/webp'])
+    expect(new Uint8Array(await answer.arrayBuffer())).toEqual(served)
   })
 })
 

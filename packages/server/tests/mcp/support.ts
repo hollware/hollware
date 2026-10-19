@@ -44,7 +44,7 @@ export const SITE: ResolvedSite = {
   events: { webhooks: [], indexNow: null },
   audit: { ipAddresses: 'off', retentionDays: null },
   backups: { enabled: true, retentionDays: 30 },
-  media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280] },
+  media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true },
 }
 
 const unused = (): never => {

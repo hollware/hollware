@@ -1133,6 +1133,7 @@
                 "additionalProperties": false,
                 "default": {
                   "format": "webp",
+                  "keepOriginals": true,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -1144,6 +1145,11 @@
                     "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
                     "enum": ["webp", "avif", "original"],
                     "type": "string"
+                  },
+                  "keepOriginals": {
+                    "default": true,
+                    "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
+                    "type": "boolean"
                   },
                   "maxWidth": {
                     "default": 2400,
@@ -2954,6 +2960,7 @@
                 "additionalProperties": false,
                 "default": {
                   "format": "webp",
+                  "keepOriginals": true,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -2965,6 +2972,11 @@
                     "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
                     "enum": ["webp", "avif", "original"],
                     "type": "string"
+                  },
+                  "keepOriginals": {
+                    "default": true,
+                    "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
+                    "type": "boolean"
                   },
                   "maxWidth": {
                     "default": 2400,
@@ -2992,7 +3004,7 @@
                     "type": "array"
                   }
                 },
-                "required": ["format", "quality", "maxWidth", "widths"],
+                "required": ["format", "quality", "maxWidth", "widths", "keepOriginals"],
                 "type": "object"
               },
               "styleGuide": {
@@ -7052,6 +7064,7 @@
                 "additionalProperties": false,
                 "default": {
                   "format": "webp",
+                  "keepOriginals": true,
                   "maxWidth": 2400,
                   "quality": 85,
                   "widths": [640, 1280]
@@ -7063,6 +7076,11 @@
                     "description": "What JPEG, PNG and GIF images become when they arrive: \"webp\", \"avif\", or \"original\" to keep them as they came. SVG is never converted.",
                     "enum": ["webp", "avif", "original"],
                     "type": "string"
+                  },
+                  "keepOriginals": {
+                    "default": true,
+                    "description": "Whether the file as it was uploaded is kept in R2 besides the one served, for a later change of format. false keeps only the file served and its copies, which takes less storage; the images uploaded before keep theirs.",
+                    "type": "boolean"
                   },
                   "maxWidth": {
                     "default": 2400,

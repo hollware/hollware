@@ -52,6 +52,7 @@ const imageFormat = ref<'webp' | 'avif' | 'original'>('webp')
 const imageQuality = ref<number | undefined>(85)
 const imageMaxWidth = ref<number | undefined>(2400)
 const imageWidths = ref('')
+const keepOriginals = ref(true)
 const imageWidthsError = ref<string | null>(null)
 const hookName = ref('')
 const hookUrl = ref('')
@@ -161,6 +162,7 @@ async function load() {
   imageQuality.value = read.definition.media.quality
   imageMaxWidth.value = read.definition.media.maxWidth
   imageWidths.value = read.definition.media.widths.join(', ')
+  keepOriginals.value = read.definition.media.keepOriginals
   imageWidthsError.value = null
 }
 onMounted(load)
@@ -251,6 +253,7 @@ async function saveImages() {
       quality: imageQuality.value ?? current.definition.media.quality,
       maxWidth: imageMaxWidth.value ?? current.definition.media.maxWidth,
       widths: widths.widths,
+      keepOriginals: keepOriginals.value,
     },
   }
   await change.run((confirm) =>
@@ -450,6 +453,9 @@ const PRESETS = computed(() => [
           :error="imageWidthsError ?? undefined"
         >
           <UInput v-model="imageWidths" class="w-60" />
+        </UFormField>
+        <UFormField :help="m.site.keepOriginalsHelp">
+          <USwitch v-model="keepOriginals" :label="m.site.keepOriginals" />
         </UFormField>
         <UButton type="submit" :label="m.site.saveImages" :loading="change.busy.value" />
       </form>

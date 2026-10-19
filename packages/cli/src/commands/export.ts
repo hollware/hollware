@@ -6,6 +6,7 @@ import {
   listEntries,
   listRedirects,
   schemas,
+  sniffImage,
   type ImageFormat,
 } from '@hollware/core'
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
@@ -453,8 +454,11 @@ async function readImages(
       urls.set(id, `${plan.assets.url}${name}`)
     } else {
       const original = new URL(`/v1/assets/${id}/original`, plan.endpoint)
-      const name = `${id}.${EXTENSIONS[asset.originalFormat satisfies ImageFormat]}`
-      images.push({ path: name, bytes: await download(original, plan.token, id) })
+      const bytes = await download(original, plan.token, id)
+      // A site that keeps no originals answers the file it serves: named by what its bytes are.
+      const format: ImageFormat = sniffImage(bytes) ?? asset.originalFormat
+      const name = `${id}.${EXTENSIONS[format]}`
+      images.push({ path: name, bytes })
       manifest[name] = { alt: asset.alt, filename: asset.filename }
     }
   }

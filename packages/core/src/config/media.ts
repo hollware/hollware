@@ -22,10 +22,11 @@ export const DEFAULT_MEDIA: ResolvedMedia = {
   quality: 85,
   maxWidth: 2400,
   widths: [640, 1280],
+  keepOriginals: true,
 }
 
 const FIX =
-  'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280] }, or remove it.'
+  'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true }, or remove it.'
 
 /**
  * The widths of the narrower copies, smallest first, or `null` when the value is not a list of
@@ -49,7 +50,7 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
     problems.add(path, wrongType(raw, 'an object'), FIX)
     return DEFAULT_MEDIA
   }
-  let { format, quality, maxWidth, widths } = DEFAULT_MEDIA
+  let { format, quality, maxWidth, widths, keepOriginals } = DEFAULT_MEDIA
   const rawFormat = raw['format']
   if (rawFormat !== undefined) {
     if (MEDIA_FORMATS.some((candidate) => candidate === rawFormat)) {
@@ -97,7 +98,16 @@ export function readMedia(path: string, raw: unknown, problems: Problems): Resol
       )
     }
   }
-  return { format, quality, maxWidth, widths }
+  const rawKeep = raw['keepOriginals']
+  if (typeof rawKeep === 'boolean') keepOriginals = rawKeep
+  else if (rawKeep !== undefined) {
+    problems.add(
+      keyPath(path, 'keepOriginals'),
+      wrongType(rawKeep, 'true or false'),
+      'Use true to keep each file as it was uploaded, or false to keep only the one served.',
+    )
+  }
+  return { format, quality, maxWidth, widths, keepOriginals }
 }
 
 function isWhole(value: unknown): value is number {

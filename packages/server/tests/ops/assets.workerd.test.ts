@@ -19,6 +19,8 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 // - "makes the copies of the widths of the site …": the copies are not the site's widths, the
 //   allowance running out at a copy refuses the image instead of keeping those made, or
 //   `widths: []` still makes one.
+// - "keeps no original …": the original is written under media.keepOriginals false, or the file
+//   served or its copies are not.
 // - "is the same asset …": the same bytes convert or write again, or a second row appears.
 // - "scales down …": a wide image keeps its width, or its height is not scaled with it.
 // - "keeps a plain SVG … refuses one that can run": an SVG reaches the converter, or a refused one
@@ -183,6 +185,23 @@ describe('upload_asset', () => {
       `${halfway.asset?.id}`,
       `${halfway.asset?.id}/640`,
     ])
+  })
+
+  it('keeps no original when the site says so: only the file served and its copies', async () => {
+    const { images } = fakeImages({ format: 'image/jpeg', width: 1200, height: 800 })
+    const context = withMedia(world.context(), mediaWith(images))
+    const site = { ...context.site, media: { ...context.site.media, keepOriginals: false } }
+
+    const answer = await uploadAsset(
+      { filename: 'lean.jpg', alt: 'Lean', data: base64(new Uint8Array([...JPEG, 99])) },
+      { ...context, site },
+    )
+
+    const id = answer.asset?.id ?? ''
+    expect(answer.outcome).toBe('created')
+    expect(await stored(`originals/${world.tenant.key}/${id}`)).toBe(null)
+    expect(await stored(`sites/${world.tenant.key}/${id}`)).toEqual(WEBP_OUT)
+    expect(await stored(`sites/${world.tenant.key}/${id}/640`)).not.toBe(null)
   })
 
   it('is the same asset for the same bytes: nothing converts or writes again', async () => {

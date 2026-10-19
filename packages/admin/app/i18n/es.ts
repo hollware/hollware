@@ -510,6 +510,9 @@ export const es: Messages = {
     imageWidthsInvalid: (min: number, max: number, most: number) =>
       `Escribe hasta ${most} números enteros entre ${min} y ${max}, separados por comas, como 640, 1280.`,
     saveImages: 'Guardar la configuración de imágenes',
+    keepOriginals: 'Guardar el original de cada imagen',
+    keepOriginalsHelp:
+      'El archivo tal como se subió, que nunca se sirve, desde el que parte un cambio de formato posterior. Desactivado, solo ocupan espacio el archivo servido y sus copias; la descarga de un original y hollware export entregan el archivo servido.',
     webhooks: 'Webhooks',
     backupsTitle: 'Respaldos',
     backupsHelp:

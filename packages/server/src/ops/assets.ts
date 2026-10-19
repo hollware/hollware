@@ -164,7 +164,10 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
 
   const variants = await variantsOf(media, original, originalFormat, format, width, context)
   await media.files.put(servedKey(site, id), served, format)
-  await media.files.put(originalKey(site, id), original, originalFormat)
+  // The file as it came, for a later change of format, unless the site keeps only what it serves.
+  if (context.site.media.keepOriginals) {
+    await media.files.put(originalKey(site, id), original, originalFormat)
+  }
   for (const variant of variants) {
     await media.files.put(variantKey(site, id, variant.width), variant.bytes, variant.format)
   }

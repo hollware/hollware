@@ -298,14 +298,22 @@ describe('readMedia', () => {
         { format: 'avif', quality: 60, maxWidth: 1600, widths: [960, 480] },
         problems,
       ),
-    ).toEqual({ format: 'avif', quality: 60, maxWidth: 1600, widths: [480, 960] })
+    ).toEqual({
+      format: 'avif',
+      quality: 60,
+      maxWidth: 1600,
+      widths: [480, 960],
+      keepOriginals: true,
+    })
     expect(readMedia('media', { widths: [] }, problems).widths).toEqual([])
+    expect(readMedia('media', { keepOriginals: false }, problems).keepOriginals).toBe(false)
     expect(problems.list).toEqual([])
     expect(
       readMedia('media', { format: 'png', quality: 101, maxWidth: 100, widths: [100] }, problems),
     ).toEqual(DEFAULT_MEDIA)
     for (const widths of [[640, 640], [320, 480, 640, 800, 960], [640.5], '640'])
       readMedia('media', { widths }, problems)
+    readMedia('media', { keepOriginals: 'no' }, problems)
     expect(problems.list.map((problem) => problem.path)).toEqual([
       'media.format',
       'media.quality',
@@ -315,6 +323,7 @@ describe('readMedia', () => {
       'media.widths',
       'media.widths',
       'media.widths',
+      'media.keepOriginals',
     ])
     expect(problems.list.every((problem) => problem.fix.length > 0)).toBe(true)
   })

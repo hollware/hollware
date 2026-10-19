@@ -498,6 +498,10 @@ test('the owner sets the narrower copies the images of the site get, in Site', a
   await expect(owner.getByText(/^(Saved|Guardado)/).first()).toBeVisible()
   await owner.reload()
   await expect(widths).toHaveValue('480, 1600')
+  const originals = owner.getByRole('switch', {
+    name: /^(Keep the original of each image|Guardar el original de cada imagen)$/,
+  })
+  await expect(originals).toBeChecked()
   await widths.fill('640, 1280')
   await owner
     .getByRole('button', {

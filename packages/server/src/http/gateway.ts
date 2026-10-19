@@ -559,8 +559,12 @@ export function createGateway(options: GatewayOptions): Gateway {
       const media = mediaOfEnv(c.env)
       const row =
         media === null || !ASSET_ID.test(id) ? null : await media.catalog.byId(principal.site, id)
+      // A site that keeps no originals (media.keepOriginals) gives the file it serves instead.
       const file =
-        media === null || row === null ? null : await media.files.get(originalKey(row.site, row.id))
+        media === null || row === null
+          ? null
+          : ((await media.files.get(originalKey(row.site, row.id))) ??
+            (await media.files.get(servedKey(row.site, row.id))))
       if (file === null) {
         return Response.json(
           {

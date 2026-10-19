@@ -15,6 +15,8 @@
 // - "refuses a manifest …", "stops before any entry …", "counts the images of a dry run": import
 //   reads a file the manifest names outside _assets, goes on to the entries after an image was
 //   not taken, or uploads in a dry run.
+// - "names an image by its bytes …": an image of _assets is named by the format it was uploaded as
+//   when the file Hollware gave is another (a site that keeps no originals gives the one served).
 // - "writes the 301s …": a published export leaves out redirects.json when the site has redirects,
 //   writes one without both paths, or fails on a Hollware that has no list_redirects.
 // - "pages through list_entries": `nextCursor` is not followed, or is sent wrong.
@@ -544,6 +546,20 @@ describe('hollware export and its images (ADR-038)', () => {
     })
     return { stub, id }
   }
+
+  it('names an image by its bytes, when a site that keeps no originals gives the file it serves', async () => {
+    const { stub, id } = await siteWithAnImage()
+    const webp = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 served')
+    const asset = stub.assets.get(id)
+    if (asset === undefined) throw new Error('no asset')
+    stub.assets.set(id, { ...asset, original: webp })
+    const base = temp.make()
+
+    const { code } = await runExport(base, 'backup', stub.url, ['--published'])
+
+    expect(code).toBe(0)
+    expect(filesOf(join(base, 'backup', '_assets'))).toEqual(['assets.json', `${id}.webp`])
+  })
 
   it('for a site, writes each image as it is served and points the references at --assets-url', async () => {
     const { stub, id } = await siteWithAnImage()
