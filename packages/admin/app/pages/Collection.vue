@@ -5,10 +5,12 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RuleEditor from '../components/RuleEditor.vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
-import { collectionDefinitionData } from '@hollware/core'
+import { AUTOMATIC_KINDS, collectionDefinitionData } from '@hollware/core'
 import type { Output } from '../lib/api.ts'
 import { cleanParams } from '../lib/params.ts'
 import {
+  automaticChoices,
+  automaticOf,
   fieldsFromSchema,
   newField,
   problemsOf,
@@ -96,6 +98,15 @@ function move(index: number, by: -1 | 1) {
   const [field] = fields.splice(index, 1)
   if (field !== undefined) fields.splice(index + by, 0, field)
 }
+/** Hollware fills the field, or a person writes it again. */
+function setAutomatic(key: string, value: string) {
+  const current = collection.value
+  if (current === null) return
+  const { [key]: _gone, ...rest } = current.automaticFields
+  const kind = AUTOMATIC_KINDS.find((one) => one === value)
+  current.automaticFields = kind === undefined ? rest : { ...rest, [key]: kind }
+}
+
 function addRule() {
   collection.value?.rules.push({ rule: 'field-length', severity: 'warning', params: {} })
 }
@@ -113,9 +124,17 @@ function edited(): Collection | null {
   if (collection.value === null || builder.value === null) return null
   const parsedComponents = componentsValue()
   if (parsedComponents === undefined) return null
+  const automaticFields = automaticOf(builder.value.fields, collection.value.automaticFields)
   return {
     ...collection.value,
-    schema: schemaFromFields(builder.value),
+    // A field Hollware fills is never required: nobody writes it.
+    schema: schemaFromFields({
+      ...builder.value,
+      fields: builder.value.fields.map((field) =>
+        automaticFields[field.key] === undefined ? field : { ...field, required: false },
+      ),
+    }),
+    automaticFields,
     components: parsedComponents,
     rules: collection.value.rules.map((rule) => ({ ...rule, params: cleanParams(rule.params) })),
   }
@@ -254,7 +273,29 @@ async function remove() {
               <UFormField :label="m.collection.kind">
                 <USelect v-model="field.kind" :items="KINDS" class="w-full" />
               </UFormField>
-              <USwitch v-model="field.required" :label="m.collection.required" />
+              <UFormField
+                v-if="automaticChoices(field.kind).length > 0 && collection !== null"
+                :label="m.collection.automatic"
+                :help="m.collection.automaticHelp"
+              >
+                <USelect
+                  :model-value="collection.automaticFields[field.key] ?? NONE"
+                  :items="[
+                    { label: m.collection.byHand, value: NONE },
+                    ...automaticChoices(field.kind).map((value) => ({
+                      label: m.collection.automaticKinds[value],
+                      value,
+                    })),
+                  ]"
+                  class="w-full"
+                  @update:model-value="setAutomatic(field.key, String($event))"
+                />
+              </UFormField>
+              <USwitch
+                v-if="collection?.automaticFields[field.key] === undefined"
+                v-model="field.required"
+                :label="m.collection.required"
+              />
             </div>
             <div class="flex items-start gap-1">
               <UButton

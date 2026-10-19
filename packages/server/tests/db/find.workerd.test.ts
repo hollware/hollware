@@ -13,6 +13,8 @@ import { idFactory, insertEntries, newRevision, seedOwner, siteKey } from './sup
 // to what was written), or listTranslations stops answering the summary of a revision (id,
 // frontmatter and tags) and nothing else.
 
+/** When the revisions of the groups were written: what their summaries answer. */
+const T = '2026-10-12T10:00:00.000Z'
 const BLOG = { collection: 'blog', locale: 'en', slug: 'edge-caching' }
 
 describe('findEntry and findEntryById', () => {
@@ -241,7 +243,15 @@ describe('listTranslations', () => {
         slug: 'cache-na-borda',
         translationGroup: 'edge',
         updatedAt: '2026-10-12T10:00:00.000Z',
-        revisions: [{ id: id('rev_pt'), frontmatter: { title: 'pt' }, tags: ['borda'] }],
+        revisions: [
+          {
+            id: id('rev_pt'),
+            frontmatter: { title: 'pt' },
+            tags: ['borda'],
+            wordCount: 1,
+            createdAt: T,
+          },
+        ],
       },
       {
         id: id('ent_en'),
@@ -249,8 +259,20 @@ describe('listTranslations', () => {
         translationGroup: 'edge',
         updatedAt: '2026-10-12T10:00:00.000Z',
         revisions: [
-          { id: id('rev_en1'), frontmatter: { title: 'en live' }, tags: ['edge'] },
-          { id: id('rev_en2'), frontmatter: { title: 'en draft' }, tags: ['edge', 'wip'] },
+          {
+            id: id('rev_en1'),
+            frontmatter: { title: 'en live' },
+            tags: ['edge'],
+            wordCount: 1,
+            createdAt: T,
+          },
+          {
+            id: id('rev_en2'),
+            frontmatter: { title: 'en draft' },
+            tags: ['edge', 'wip'],
+            wordCount: 1,
+            createdAt: T,
+          },
         ],
         published: { revision: id('rev_en1'), sortKey: 'k', ...at },
       },
@@ -260,7 +282,15 @@ describe('listTranslations', () => {
         slug: 'cache-en-el-borde',
         translationGroup: 'edge',
         updatedAt: '2026-10-12T10:00:00.000Z',
-        revisions: [{ id: id('rev_es'), frontmatter: { title: 'es' }, tags: ['borde'] }],
+        revisions: [
+          {
+            id: id('rev_es'),
+            frontmatter: { title: 'es' },
+            tags: ['borde'],
+            wordCount: 1,
+            createdAt: T,
+          },
+        ],
         published: { revision: id('rev_es'), sortKey: 'k', ...at },
       },
       {
@@ -298,9 +328,27 @@ describe('listTranslations', () => {
     ])
     // A summary of each head revision: its id, frontmatter and tags, and nothing else.
     expect(group.map((view) => view.revision)).toEqual([
-      { id: id('rev_en2'), frontmatter: { title: 'en draft' }, tags: ['edge', 'wip'] },
-      { id: id('rev_es'), frontmatter: { title: 'es' }, tags: ['borde'] },
-      { id: id('rev_pt'), frontmatter: { title: 'pt' }, tags: ['borda'] },
+      {
+        id: id('rev_en2'),
+        frontmatter: { title: 'en draft' },
+        tags: ['edge', 'wip'],
+        wordCount: 1,
+        createdAt: T,
+      },
+      {
+        id: id('rev_es'),
+        frontmatter: { title: 'es' },
+        tags: ['borde'],
+        wordCount: 1,
+        createdAt: T,
+      },
+      {
+        id: id('rev_pt'),
+        frontmatter: { title: 'pt' },
+        tags: ['borda'],
+        wordCount: 1,
+        createdAt: T,
+      },
     ])
     expect(group.map((view) => view.entry.status)).toEqual(['published', 'published', 'draft'])
   })
@@ -315,8 +363,20 @@ describe('listTranslations', () => {
       ['es', id('ent_es')],
     ])
     expect(group.map((view) => view.revision)).toEqual([
-      { id: id('rev_en1'), frontmatter: { title: 'en live' }, tags: ['edge'] },
-      { id: id('rev_es'), frontmatter: { title: 'es' }, tags: ['borde'] },
+      {
+        id: id('rev_en1'),
+        frontmatter: { title: 'en live' },
+        tags: ['edge'],
+        wordCount: 1,
+        createdAt: T,
+      },
+      {
+        id: id('rev_es'),
+        frontmatter: { title: 'es' },
+        tags: ['borde'],
+        wordCount: 1,
+        createdAt: T,
+      },
     ])
   })
 

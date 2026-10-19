@@ -118,6 +118,7 @@ describe('resolveConfig', () => {
             translationGroupField: 'translationGroup',
             tagsField: 'tags',
             sortByField: 'date',
+            automaticFields: {},
             components: new Map([
               [
                 'callout',
@@ -222,6 +223,7 @@ describe('resolveConfig', () => {
             translationGroupField: null,
             tagsField: null,
             sortByField: null,
+            automaticFields: {},
             components: new Map(),
             contracts: [],
             maxMarkdownBytes: 524288,

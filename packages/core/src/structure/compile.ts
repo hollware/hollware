@@ -28,6 +28,38 @@ function isObjectSchema(schema: Readonly<Record<string, unknown>>): boolean {
   return schema['type'] === 'object'
 }
 
+/**
+ * The schema of a frontmatter with the fields Hollware fills marked `readOnly` and never required:
+ * nobody writes them, and a draft without them is complete. What else the schema says is kept.
+ */
+function withAutomatic(
+  schema: Readonly<Record<string, unknown>>,
+  automatic: Readonly<Record<string, string>>,
+): Record<string, unknown> {
+  const names = Object.keys(automatic)
+  if (names.length === 0) return { ...schema }
+  const properties = schema['properties']
+  const required = schema['required']
+  return {
+    ...schema,
+    ...(typeof properties === 'object' && properties !== null && !Array.isArray(properties)
+      ? {
+          properties: Object.fromEntries(
+            Object.entries(properties).map(([name, property]) => [
+              name,
+              names.includes(name) && typeof property === 'object' && property !== null
+                ? { ...property, readOnly: true }
+                : property,
+            ]),
+          ),
+        }
+      : {}),
+    ...(Array.isArray(required)
+      ? { required: required.filter((name) => !names.includes(String(name))) }
+      : {}),
+  }
+}
+
 function compileCollection(
   path: string,
   collection: CollectionDefinitionData,
@@ -72,13 +104,16 @@ function compileCollection(
     contracts.push(entry.make(params.data, rule.severity, rule.id))
   })
   return {
-    schema: describedSchemaOf(collection.schema),
+    schema: describedSchemaOf(withAutomatic(collection.schema, collection.automaticFields)),
     routes: collection.routes,
     ...(collection.translationGroupField === null
       ? {}
       : { translations: { groupBy: collection.translationGroupField } }),
     ...(collection.tagsField === null ? {} : { tags: collection.tagsField }),
     ...(collection.sortByField === null ? {} : { sortBy: collection.sortByField }),
+    ...(Object.keys(collection.automaticFields).length === 0
+      ? {}
+      : { automatic: collection.automaticFields }),
     components,
     contracts,
     ...(collection.maxMarkdownBytes === null

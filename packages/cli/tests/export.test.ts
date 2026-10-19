@@ -6,6 +6,9 @@
 //   or `get_entry` for the published revision without --published.
 // - "--published exports the published revision of the published entries only": `list_entries`
 //   is not asked for `status: 'published'`, or `get_entry` is not asked for `published: true`.
+// - "--published writes the fields Hollware fills …": the `automatic` values of get_entry are not
+//   written into the frontmatter of a published export, a line whose value is the one written is
+//   rewritten, or an export of the latest revisions (a backup) changes a byte.
 // - "--collection and --locale narrow …" / "refuses a collection or a locale …": `chosen` stops
 //   narrowing to what was asked, or the locale stops reaching `list_entries`, or a name the site
 //   does not have is let through to the server.
@@ -231,6 +234,32 @@ describe('hollware export', () => {
       { collection: 'docs', status: 'published', limit: 100 },
     ])
     expect(calls(stub, 'get_entry').map((args) => args.published)).toEqual([true, true])
+  })
+
+  it('--published writes the fields Hollware fills, as a site reads them, and nothing else', async () => {
+    const stub = await serve()
+    const markdown = '---\ntitle: Filled\ndate: 2020-01-01\nminutes: 9\n---\n\n# Filled\n'
+    stub.entries.set('blog/en/filled', {
+      id: id(990),
+      collection: 'blog',
+      locale: 'en',
+      slug: 'filled',
+      version: 1,
+      revisions: [markdown],
+      published: 0,
+      frontmatter: { title: 'Filled', date: '2020-01-01', minutes: 9 },
+      automatic: { date: '2020-01-01', modified: '2026-10-20', minutes: 3 },
+    })
+    const base = temp.make()
+
+    const site = await runExport(base, 'site', stub.url, ['--published'])
+    const backup = await runExport(base, 'backup', stub.url)
+
+    expect([site.code, backup.code]).toEqual([0, 0])
+    expect(readFileSync(join(base, 'site/blog/en/filled.md'), 'utf8')).toBe(
+      '---\ntitle: Filled\ndate: 2020-01-01\nminutes: 3\nmodified: "2026-10-20"\n---\n\n# Filled\n',
+    )
+    expect(readFileSync(join(base, 'backup/blog/en/filled.md'), 'utf8')).toBe(markdown)
   })
 
   it('--collection and --locale narrow it to what they name, and repeat', async () => {

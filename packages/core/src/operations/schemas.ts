@@ -1,3 +1,4 @@
+import { AUTOMATIC_KINDS } from '../config/automatic.ts'
 import * as z from 'zod'
 
 /**
@@ -138,6 +139,12 @@ export const document = z.object({
 
 export const entry = entrySummary.extend({
   revision: revisionId.describe('The revision this view shows.'),
+  automatic: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe(
+      "The values of the fields Hollware fills (the collection's automaticFields) for this revision, as a site reads them in its frontmatter. Absent when the collection names none.",
+    ),
   unpublishAt: z
     .string()
     .nullable()
@@ -261,6 +268,12 @@ export const collectionDescription = z.object({
     .nullable()
     .describe(
       'The frontmatter field, a date, that orders published listings, newest first; null when they follow the date of first publication.',
+    ),
+  automaticFields: z
+    .record(z.string(), z.enum(AUTOMATIC_KINDS))
+    .optional()
+    .describe(
+      'The fields Hollware fills itself, by name, and how: firstPublished, lastModified, readingTime or wordCount. Do not write them: a site reads them filled.',
     ),
   components: z.array(componentDescription),
   contracts: z.array(contractDescription),

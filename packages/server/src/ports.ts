@@ -94,6 +94,9 @@ export interface RevisionSummary {
   readonly id: string
   readonly frontmatter: Readonly<Record<string, unknown>>
   readonly tags: readonly string[]
+  /** What the fields Hollware fills are made from (`automaticFields` of a collection). */
+  readonly wordCount: number
+  readonly createdAt: string
 }
 
 /** An entry with the summary of the revision of the view that was asked for. */

@@ -38,6 +38,7 @@ export function collectionPreset(
     translationGroupField: null,
     tagsField: null,
     sortByField: null,
+    automaticFields: {},
     components: {},
     rules: [],
     maxMarkdownBytes: null,
@@ -65,11 +66,13 @@ export function collectionPreset(
             tags: { type: 'array', items: { type: 'string', minLength: 1 } },
             ...(translated ? { translationGroup: { type: 'string', minLength: 1 } } : {}),
           },
-          required: ['title', 'description', 'date', ...(translated ? ['translationGroup'] : [])],
+          required: ['title', 'description', ...(translated ? ['translationGroup'] : [])],
         },
         translationGroupField: translated ? 'translationGroup' : null,
         tagsField: 'tags',
         sortByField: 'date',
+        // The date a post first went out, filled when it is published; one written wins.
+        automaticFields: { date: 'firstPublished' },
         rules: [
           { rule: 'images-have-alt', severity: 'error', params: {} },
           { rule: 'internal-links-resolve', severity: 'warning', params: {} },

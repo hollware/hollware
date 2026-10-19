@@ -103,6 +103,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     translationGroupField: parts.translationGroupField ?? null,
     tagsField: 'tags',
     sortByField: null,
+    automaticFields: {},
     components: new Map(Object.entries(parts.components ?? {})),
     contracts: parts.contracts ?? [],
     maxMarkdownBytes: 524_288,

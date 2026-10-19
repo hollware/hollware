@@ -215,6 +215,21 @@ test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no d
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
 })
 
+test('the owner lets Hollware fill the date of the blog, which nobody writes then', async () => {
+  await owner.goto('/admin/collections/blog')
+  await expect(owner.getByRole('heading', { name: 'blog', level: 1 })).toBeVisible()
+  const who = owner.getByRole('combobox', { name: 'Who writes it' }).first()
+  await who.click()
+  await owner.getByRole('option', { name: 'Hollware: the date it was first published' }).click()
+  await owner.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(owner.getByText('Saved: it applies at once').first()).toBeVisible()
+  await owner.reload()
+  await expect(owner.getByRole('combobox', { name: 'Who writes it' }).first()).toContainText(
+    'Hollware: the date it was first published',
+  )
+  await expectAccessible(owner)
+})
+
 test('the owner adds a webhook, whose secret Hollware makes and shows once', async () => {
   await owner.goto('/admin/site')
   await expect(owner.getByRole('heading', { name: 'Webhooks' })).toBeVisible()

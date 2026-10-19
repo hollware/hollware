@@ -1,5 +1,5 @@
 import { HollwareError } from '@hollware/core'
-import { entrySummary } from './answers.ts'
+import { summaryFor } from './automatic.ts'
 import { forReaders } from './assets.ts'
 import { requireCollection } from './collections.ts'
 import { translationOutdated } from './translations.ts'
@@ -28,7 +28,7 @@ export const getTranslations: OperationHandler<'get_translations'> = async (inpu
     entries: group.map((entry) => {
       const stale = outdated.get(entry.entry.id)
       return forReaders(context, {
-        ...entrySummary(entry),
+        ...summaryFor(context, entry),
         ...(stale === undefined ? {} : { translationOutdated: stale }),
       })
     }),

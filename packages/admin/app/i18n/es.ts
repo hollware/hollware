@@ -394,6 +394,16 @@ export const es: Messages = {
     values: 'Valores',
     kind: 'Tipo',
     required: 'Obligatorio',
+    automatic: 'Quién lo escribe',
+    automaticHelp:
+      'Hollware lo llena cuando un sitio lee la entrada: nadie lo escribe y el formulario no lo muestra.',
+    byHand: 'Quien escribe la entrada',
+    automaticKinds: {
+      firstPublished: 'Hollware: la fecha en que se publicó por primera vez',
+      lastModified: 'Hollware: la fecha de su último cambio',
+      readingTime: 'Hollware: el tiempo de lectura, en minutos',
+      wordCount: 'Hollware: la cantidad de palabras',
+    },
     moveUp: (field: string) => `Subir ${field}`,
     moveDown: (field: string) => `Bajar ${field}`,
     removeField: (field: string) => `Eliminar ${field}`,

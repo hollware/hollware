@@ -1,4 +1,4 @@
-import { entrySummary } from './answers.ts'
+import { summaryFor } from './automatic.ts'
 import { forReaders, imagesNamed, readsUrls, summaryImages } from './assets.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import { translationOutdated } from './translations.ts'
@@ -20,7 +20,7 @@ export const listEntries: OperationHandler<'list_entries'> = async (input, conte
     cursor: input.cursor,
   })
   const outdated = await translationOutdated(context, page.entries)
-  const summaries = page.entries.map(entrySummary)
+  const summaries = page.entries.map((view) => summaryFor(context, view))
   // A site lays out the covers of a listing: the images the frontmatters name, in one read.
   const images = readsUrls(context)
     ? await imagesNamed(

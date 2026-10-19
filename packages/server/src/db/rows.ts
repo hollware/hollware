@@ -59,6 +59,8 @@ export const revisionFields = {
 export const revisionSummaryFields = {
   id: revisions.id,
   frontmatter: revisions.frontmatter,
+  wordCount: revisions.wordCount,
+  createdAt: revisions.createdAt,
 }
 
 /** The columns of `publications` that `StoredPublication` holds. */
@@ -175,7 +177,13 @@ export function toRevision(row: RevisionRow, tagsJson: string): StoredRevision {
 
 export function toRevisionSummary(row: RevisionSummaryRow, tagsJson: string): RevisionSummary {
   const frontmatter: Readonly<Record<string, unknown>> = JSON.parse(row.frontmatter)
-  return { id: row.id, frontmatter, tags: parseTags(tagsJson) }
+  return {
+    id: row.id,
+    frontmatter,
+    tags: parseTags(tagsJson),
+    wordCount: row.wordCount,
+    createdAt: row.createdAt,
+  }
 }
 
 export function toPublication(row: PublicationRow): StoredPublication {

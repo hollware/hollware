@@ -901,6 +901,18 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "automaticFields": {
+                      "additionalProperties": {
+                        "enum": ["firstPublished", "lastModified", "readingTime", "wordCount"],
+                        "type": "string"
+                      },
+                      "default": {},
+                      "description": "The fields Hollware fills itself, so that nobody writes them: { \"date\": \"firstPublished\", \"dateModified\": \"lastModified\", \"readingTime\": \"readingTime\" }. firstPublished and lastModified fill a date field (a date written in the Markdown wins for the first, and a later one for the second); readingTime (minutes at 200 words a minute) and wordCount fill an integer. A site reads them filled; they are never required.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
                     "components": {
                       "additionalProperties": {
                         "additionalProperties": false,
@@ -1493,6 +1505,17 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "automaticFields": {
+                      "additionalProperties": {
+                        "enum": ["firstPublished", "lastModified", "readingTime", "wordCount"],
+                        "type": "string"
+                      },
+                      "description": "The fields Hollware fills itself, by name, and how: firstPublished, lastModified, readingTime or wordCount. Do not write them: a site reads them filled.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
                     "components": {
                       "items": {
                         "additionalProperties": false,
@@ -1842,6 +1865,14 @@
           "entry": {
             "additionalProperties": false,
             "properties": {
+              "automatic": {
+                "additionalProperties": {},
+                "description": "The values of the fields Hollware fills (the collection's automaticFields) for this revision, as a site reads them in its frontmatter. Absent when the collection names none.",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
               "collection": {
                 "type": "string"
               },
@@ -2717,6 +2748,18 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "automaticFields": {
+                      "additionalProperties": {
+                        "enum": ["firstPublished", "lastModified", "readingTime", "wordCount"],
+                        "type": "string"
+                      },
+                      "default": {},
+                      "description": "The fields Hollware fills itself, so that nobody writes them: { \"date\": \"firstPublished\", \"dateModified\": \"lastModified\", \"readingTime\": \"readingTime\" }. firstPublished and lastModified fill a date field (a date written in the Markdown wins for the first, and a later one for the second); readingTime (minutes at 200 words a minute) and wordCount fill an integer. A site reads them filled; they are never required.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
                     "components": {
                       "additionalProperties": {
                         "additionalProperties": false,
@@ -2860,6 +2903,7 @@
                     "translationGroupField",
                     "tagsField",
                     "sortByField",
+                    "automaticFields",
                     "components",
                     "rules",
                     "maxMarkdownBytes",
@@ -6133,6 +6177,18 @@
               {
                 "additionalProperties": false,
                 "properties": {
+                  "automaticFields": {
+                    "additionalProperties": {
+                      "enum": ["firstPublished", "lastModified", "readingTime", "wordCount"],
+                      "type": "string"
+                    },
+                    "default": {},
+                    "description": "The fields Hollware fills itself, so that nobody writes them: { \"date\": \"firstPublished\", \"dateModified\": \"lastModified\", \"readingTime\": \"readingTime\" }. firstPublished and lastModified fill a date field (a date written in the Markdown wins for the first, and a later one for the second); readingTime (minutes at 200 words a minute) and wordCount fill an integer. A site reads them filled; they are never required.",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
                   "components": {
                     "additionalProperties": {
                       "additionalProperties": false,
@@ -7082,6 +7138,18 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "automaticFields": {
+                      "additionalProperties": {
+                        "enum": ["firstPublished", "lastModified", "readingTime", "wordCount"],
+                        "type": "string"
+                      },
+                      "default": {},
+                      "description": "The fields Hollware fills itself, so that nobody writes them: { \"date\": \"firstPublished\", \"dateModified\": \"lastModified\", \"readingTime\": \"readingTime\" }. firstPublished and lastModified fill a date field (a date written in the Markdown wins for the first, and a later one for the second); readingTime (minutes at 200 words a minute) and wordCount fill an integer. A site reads them filled; they are never required.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
                     "components": {
                       "additionalProperties": {
                         "additionalProperties": false,

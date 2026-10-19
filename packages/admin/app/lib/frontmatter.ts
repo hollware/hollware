@@ -27,7 +27,7 @@ export interface Field {
 /** A string over this length is a long text in the form. */
 const LONG_TEXT = 120
 
-/** The fields of a collection's frontmatter, in the order of its schema. */
+/** The fields a person writes in a collection's frontmatter, in the order of its schema. */
 export function fieldsOf(schema: JsonSchema): Field[] {
   const properties = isRecord(schema['properties']) ? schema['properties'] : {}
   const required = new Set(
@@ -36,7 +36,8 @@ export function fieldsOf(schema: JsonSchema): Field[] {
       : [],
   )
   return Object.entries(properties).flatMap(([key, value]): Field[] => {
-    if (!isRecord(value)) return []
+    // A field Hollware fills (readOnly: automaticFields of the collection) is nobody's to write.
+    if (!isRecord(value) || value['readOnly'] === true) return []
     const maxLength = typeof value['maxLength'] === 'number' ? value['maxLength'] : null
     const base = {
       key,

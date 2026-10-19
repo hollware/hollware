@@ -204,6 +204,8 @@ describe('listEntries in the head view', () => {
           id: id('rev_a'),
           frontmatter: { title: 'A', nested: { list: [1, 2] } },
           tags: ['x', 'y'],
+          wordCount: 1,
+          createdAt: T1,
         },
       },
     ])
@@ -262,7 +264,13 @@ describe('listEntries in the published view', () => {
     })
 
     expect(page.entries.map((view) => view.revision)).toEqual([
-      { id: id('rev_1'), frontmatter: { title: 'live' }, tags: ['news'] },
+      {
+        id: id('rev_1'),
+        frontmatter: { title: 'live' },
+        tags: ['news'],
+        wordCount: 1,
+        createdAt: T3,
+      },
     ])
     expect(page.entries[0]?.entry.headRevision).toBe(id('rev_2'))
   })
@@ -463,11 +471,14 @@ function revisionColumns(statement: string): string[] {
     .toSorted()
 }
 
-/** What every listing selects: the entry, the id and the frontmatter of the revision, its tags. */
-const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
+/**
+ * What every listing selects: the entry; the id, frontmatter, word count and date of the revision,
+ * which the fields Hollware fills are made from; and its tags.
+ */
+const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
 
 describe('the statements of a listing', () => {
-  it('read the id and the frontmatter of a revision and no other column of it: never the Markdown, the document or the verdict', async () => {
+  it('read the id, frontmatter, word count and date of a revision and no other column of it: never the Markdown, the document or the verdict', async () => {
     const owner = await seedOwner(env.DB, siteKey('list-sql'))
     const { db, prepared } = recordStatements(env.DB)
     const store = createD1Store(db)
@@ -491,11 +502,11 @@ describe('the statements of a listing', () => {
     await store.listTranslations(owner.site, 'blog', 'g', 'head')
     await store.listTranslations(owner.site, 'blog', 'g', 'published')
 
-    // One statement for each listing, and each reads the same three columns of `revisions`: its
-    // id and its frontmatter, and its site, which joins it to its entry.
+    // One statement for each listing, and each reads the same columns of `revisions`: its id, its
+    // frontmatter, its word count and its date, and its site, which joins it to its entry.
     expect(prepared).toHaveLength(queries.length + 2)
     expect(prepared.map(revisionColumns)).toEqual(
-      Array(queries.length + 2).fill(['frontmatter', 'id', 'site_id']),
+      Array(queries.length + 2).fill(['created_at', 'frontmatter', 'id', 'site_id', 'word_count']),
     )
   })
 

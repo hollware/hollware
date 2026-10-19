@@ -1,13 +1,9 @@
 import { referencedSlugs, renderHtml, resolveAssetReferences } from '@hollware/core'
 import type { EntryView } from '../ports.ts'
 import { assetUrlOf, forReaders, imagesNamed, readsUrls, summaryImages } from './assets.ts'
+import { automaticValues, summaryFor } from './automatic.ts'
 import { translationOutdated } from './translations.ts'
-import {
-  entrySummary,
-  publicationView,
-  verdictView,
-  type EntrySummary as EntrySummaryOutput,
-} from './answers.ts'
+import { publicationView, verdictView, type EntrySummary as EntrySummaryOutput } from './answers.ts'
 import { collectionOfEntry, requireCollection, requireLocale } from './collections.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
@@ -32,7 +28,8 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
     translationOutdated(context, [found]),
   ])
   const stale = outdated.get(entry.id)
-  const summary = entrySummary(found)
+  const summary = summaryFor(context, found)
+  const automatic = automaticValues(context, found)
   const html = input.formats.includes('html')
   const urls = readsUrls(context)
   // The images a reader lays out: those of the frontmatter, and those of the document it renders.
@@ -55,6 +52,7 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
       }),
       ...summaryImages(context, summary.frontmatter, images),
       revision: revision.id,
+      ...(Object.keys(automatic).length === 0 ? {} : { automatic }),
       unpublishAt,
       verdict: verdictView(revision.verdict),
       lastPublication: publicationView(publication),
@@ -63,7 +61,10 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
       ...(input.formats.includes('document')
         ? {
             document: urls
-              ? resolveAssetReferences(revision.document, assetUrlOf(context), imageOf)
+              ? {
+                  ...resolveAssetReferences(revision.document, assetUrlOf(context), imageOf),
+                  frontmatter: forReaders(context, summary.frontmatter),
+                }
               : revision.document,
           }
         : {}),
@@ -108,7 +109,7 @@ async function referencedEntries(context: OperationContext, found: EntryView) {
       ),
     )
     answer[field] = views.flatMap((view) =>
-      view === null ? [] : [forReaders(context, entrySummary(view))],
+      view === null ? [] : [forReaders(context, summaryFor(context, view))],
     )
   }
   return answer
@@ -126,5 +127,5 @@ async function relatedEntries(context: OperationContext, entryId: string) {
     related.map((item) => item.id),
     'published',
   )
-  return summaries.map((summary) => forReaders(context, entrySummary(summary)))
+  return summaries.map((summary) => forReaders(context, summaryFor(context, summary)))
 }

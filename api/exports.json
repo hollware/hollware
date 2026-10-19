@@ -131,11 +131,15 @@
       "AUDIT_OUTCOMES": "value",
       "AUDIT_RETENTION_MAX_DAYS": "value",
       "AUDIT_RETENTION_MIN_DAYS": "value",
+      "AUTOMATIC_KINDS": "value",
       "AcknowledgedWarning": "type",
       "AuditAction": "type",
       "AuditActorKind": "type",
       "AuditOutcome": "type",
       "AuthDefinition": "type",
+      "AutomaticFacts": "type",
+      "AutomaticField": "type",
+      "AutomaticKind": "type",
       "BACKUP_RETENTION_MAX_DAYS": "value",
       "BACKUP_RETENTION_MIN_DAYS": "value",
       "BUILT_IN_CONTRACT_IDS": "value",
@@ -253,6 +257,7 @@
       "TaggedEntry": "type",
       "Verdict": "type",
       "Violation": "type",
+      "WORDS_PER_MINUTE": "value",
       "WebhookCheck": "type",
       "approveReview": "value",
       "assetIdIn": "value",
@@ -355,7 +360,8 @@
       "variantWidthsOf": "value",
       "verifyPreviewToken": "value",
       "verifyWebhook": "value",
-      "webhookDefinition": "value"
+      "webhookDefinition": "value",
+      "withAutomaticFields": "value"
     },
     "./webhooks": {
       "EVENT_ID_HEADER": "value",

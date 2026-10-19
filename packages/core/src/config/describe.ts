@@ -21,6 +21,13 @@ function describeCollection(
     translationGroupField: collection.translationGroupField,
     tagsField: collection.tagsField,
     sortByField: collection.sortByField,
+    ...(Object.keys(collection.automaticFields).length === 0
+      ? {}
+      : {
+          automaticFields: Object.fromEntries(
+            Object.entries(collection.automaticFields).map(([field, { kind }]) => [field, kind]),
+          ),
+        }),
     components: [...collection.components].map(([name, component]) => ({
       name,
       description: component.description ?? null,

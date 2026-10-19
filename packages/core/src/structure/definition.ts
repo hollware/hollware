@@ -1,3 +1,4 @@
+import { AUTOMATIC_KINDS } from '../config/automatic.ts'
 import * as z from 'zod'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
 import {
@@ -56,6 +57,12 @@ export const collectionDefinitionData = z.strictObject({
   translationGroupField: z.string().min(1).nullable().default(null),
   tagsField: z.string().min(1).nullable().default(null),
   sortByField: z.string().min(1).nullable().default(null),
+  automaticFields: z
+    .record(z.string(), z.enum(AUTOMATIC_KINDS))
+    .default({})
+    .describe(
+      'The fields Hollware fills itself, so that nobody writes them: { "date": "firstPublished", "dateModified": "lastModified", "readingTime": "readingTime" }. firstPublished and lastModified fill a date field (a date written in the Markdown wins for the first, and a later one for the second); readingTime (minutes at 200 words a minute) and wordCount fill an integer. A site reads them filled; they are never required.',
+    ),
   components: z.record(z.string(), componentDefinitionData).default({}),
   rules: z.array(ruleDefinition).default([]),
   maxMarkdownBytes: z.number().int().positive().nullable().default(null),

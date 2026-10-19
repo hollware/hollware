@@ -45,6 +45,7 @@ function collectionOf(
     translationGroupField: collection.translations?.groupBy ?? null,
     tagsField: collection.tags ?? null,
     sortByField: collection.sortBy ?? null,
+    automaticFields: { ...collection.automatic },
     components: Object.fromEntries(
       Object.entries(collection.components ?? {}).map(([name, component]) => [
         name,

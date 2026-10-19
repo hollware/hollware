@@ -1,6 +1,6 @@
 import { chunksOf, type Chunk } from '@hollware/core'
 import type { SearchHit } from '../ports.ts'
-import { entrySummary } from './answers.ts'
+import { summaryFor } from './automatic.ts'
 import { forReaders } from './assets.ts'
 import { collectionOfEntry, requireCollection, requireLocale } from './collections.ts'
 import { entryPath } from './event.ts'
@@ -49,7 +49,7 @@ export const search: OperationHandler<'search'> = async (input, context) => {
     results: hits.map((hit, place) => {
       const passage = passages[place]
       return {
-        entry: forReaders(context, entrySummary(hit.entry)),
+        entry: forReaders(context, summaryFor(context, hit.entry)),
         snippet: hit.snippet,
         score: hit.score,
         ...(passage === undefined ? {} : { passage }),

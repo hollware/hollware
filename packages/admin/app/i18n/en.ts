@@ -377,6 +377,16 @@ export const en = {
     values: 'Values',
     kind: 'Kind',
     required: 'Required',
+    automatic: 'Who writes it',
+    automaticHelp:
+      'Hollware fills it when a site reads the entry: nobody writes it, and the form leaves it out.',
+    byHand: 'Whoever writes the entry',
+    automaticKinds: {
+      firstPublished: 'Hollware: the date it was first published',
+      lastModified: 'Hollware: the date of its last change',
+      readingTime: 'Hollware: the reading time, in minutes',
+      wordCount: 'Hollware: the number of words',
+    },
     moveUp: (field: string) => `Move ${field} up`,
     moveDown: (field: string) => `Move ${field} down`,
     removeField: (field: string) => `Remove ${field}`,

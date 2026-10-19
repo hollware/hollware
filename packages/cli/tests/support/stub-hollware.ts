@@ -74,6 +74,10 @@ export interface StubEntry {
   deletedAt?: string | null
   /** The verdict of the latest revision as it was written, which Hollware keeps with it. */
   written?: ReturnType<typeof writtenVerdict>
+  /** The frontmatter as written, which a summary answers; `{}` when absent. */
+  frontmatter?: Record<string, unknown>
+  /** The values of the fields Hollware fills, which get_entry answers apart. */
+  automatic?: Record<string, unknown>
 }
 
 /** The shape of a verdict the stub keeps with a revision. */
@@ -238,7 +242,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       translationGroup: null,
       status: entry.published === null ? ('draft' as const) : ('published' as const),
       version: entry.version,
-      frontmatter: {},
+      frontmatter: entry.frontmatter ?? {},
       tags: [],
       hasUnpublishedChanges: entry.published !== entry.revisions.length - 1,
       publishedAt: entry.published === null ? null : STUB_TIME,
@@ -310,6 +314,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               verdict: verdictOf(fileOf(entry, markdown), 'write'),
               lastPublication: null,
               unpublishAt: null,
+              ...(entry.automatic === undefined ? {} : { automatic: entry.automatic }),
               markdown,
             },
           })

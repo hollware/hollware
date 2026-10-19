@@ -6,6 +6,7 @@
  * over as a schema of its new kind.
  */
 
+import type { AutomaticKind } from '@hollware/core'
 import type { Messages } from '../i18n/en.ts'
 
 type Json = Record<string, unknown>
@@ -201,4 +202,37 @@ export function problemsOf(
     }
   }
   return problems
+}
+
+/** What Hollware can fill in a field of a kind: dates in a date, counts in a number. */
+export function automaticChoices(kind: BuilderKind): readonly AutomaticKind[] {
+  switch (kind) {
+    case 'date':
+    case 'datetime':
+      return ['firstPublished', 'lastModified']
+    case 'number':
+    case 'integer':
+      return ['readingTime', 'wordCount']
+    default:
+      return []
+  }
+}
+
+/**
+ * The fields Hollware fills, as the collection is saved: only fields that are still there, of a
+ * kind that takes what Hollware fills them with. A field renamed or of another kind is written
+ * by hand again.
+ */
+export function automaticOf(
+  fields: readonly BuilderField[],
+  automatic: Readonly<Record<string, AutomaticKind>>,
+): Record<string, AutomaticKind> {
+  return Object.fromEntries(
+    fields.flatMap((field) => {
+      const kind = automatic[field.key]
+      return kind !== undefined && automaticChoices(field.kind).includes(kind)
+        ? [[field.key, kind]]
+        : []
+    }),
+  )
 }

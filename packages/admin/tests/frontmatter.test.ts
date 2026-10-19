@@ -5,7 +5,8 @@ import { pageUrl } from '../app/lib/site.ts'
 
 // Fails when: the form of the frontmatter (app/lib/frontmatter.ts) stops making a field of each
 // property its schema describes, of the kind the editor shows (a date, a choice, a list of
-// strings, a long text over 120 characters, a number, a switch), with what is required; stops
+// strings, a long text over 120 characters, a number, a switch), with what is required, or makes
+// one of a field Hollware fills (readOnly); stops
 // reading the values of a frontmatter, or reads one that does not parse; or, writing the values
 // back, changes anything of the body; or the link of an entry to its page (app/lib/site.ts) stops
 // joining the site's origin and the route of its locale with its slug.
@@ -21,12 +22,14 @@ const SCHEMA = {
     order: { type: 'integer' },
     featured: { type: 'boolean' },
     meta: { type: 'object' },
+    // Filled by Hollware (automaticFields): nobody writes it.
+    minutes: { type: 'integer', readOnly: true },
   },
   required: ['title', 'date'],
 }
 
 describe('fieldsOf', () => {
-  it('makes a field of each property it knows, of its kind, with what is required', () => {
+  it('makes a field of each property it knows, of its kind, with what is required, and none of what Hollware fills', () => {
     expect(
       fieldsOf(SCHEMA).map(({ key, kind, required, options }) => [key, kind, required, options]),
     ).toEqual([

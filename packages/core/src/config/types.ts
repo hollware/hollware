@@ -1,3 +1,4 @@
+import type { AutomaticField, AutomaticKind } from './automatic.ts'
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec'
 import type { Contract } from '../contracts/types.ts'
 
@@ -50,6 +51,11 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
    * newest first. Without it, they follow the date of their first publication.
    */
   readonly sortBy?: string
+  /**
+   * The fields Hollware fills itself, and how (`automatic.ts`): `{ dateModified: 'lastModified' }`.
+   * Nobody has to write them, and a site reads them filled.
+   */
+  readonly automatic?: Readonly<Record<string, AutomaticKind>>
   /** The components the body may use. Any other component is an error (ADR-020). */
   readonly components?: Readonly<Record<string, ComponentDefinition>>
   /**
@@ -146,6 +152,8 @@ export interface ResolvedCollection {
   readonly translationGroupField: string | null
   readonly tagsField: string | null
   readonly sortByField: string | null
+  /** The fields Hollware fills itself, with the shape of each value. */
+  readonly automaticFields: Readonly<Record<string, AutomaticField>>
   readonly components: ReadonlyMap<string, ComponentDefinition>
   /** The contracts of the collection; the built-in ones run besides them. */
   readonly contracts: readonly Contract<unknown>[]

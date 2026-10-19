@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import { en } from '../app/i18n/en.ts'
 
 import {
+  automaticChoices,
+  automaticOf,
   fieldsFromSchema,
   newField,
   problemsOf,
@@ -12,7 +14,8 @@ import {
 // of a JSON Schema with its kind, bounds, choices, description and whether it is required; stops
 // writing back the same schema when nothing changed, keeping what the form does not edit (a
 // pattern, a format, the object's own keywords); stops starting a field over when its kind
-// changes; or stops naming a bad field name, a repeated one, inverted bounds or an empty choice.
+// changes; or stops naming a bad field name, a repeated one, inverted bounds or an empty choice;
+// or offers Hollware to fill a field of a kind it cannot, or keeps a filled field that is gone.
 
 /** The blog of the playground, as Zod converts it: the schema a 0.x config moves into D1. */
 const BLOG = {
@@ -100,5 +103,31 @@ describe('problemsOf', () => {
       '"a" is there twice.',
       '"a": a choice needs at least one value.',
     ])
+  })
+})
+
+describe('the fields Hollware fills', () => {
+  it('offers dates for a date and counts for a number, and keeps only what still fits', () => {
+    const fields = [
+      newField('date', 'date'),
+      newField('updated', 'datetime'),
+      newField('minutes', 'integer'),
+      newField('title', 'text'),
+    ]
+
+    expect(fields.map((field) => automaticChoices(field.kind))).toEqual([
+      ['firstPublished', 'lastModified'],
+      ['firstPublished', 'lastModified'],
+      ['readingTime', 'wordCount'],
+      [],
+    ])
+    expect(
+      automaticOf(fields, {
+        date: 'firstPublished',
+        updated: 'readingTime',
+        minutes: 'wordCount',
+        gone: 'lastModified',
+      }),
+    ).toEqual({ date: 'firstPublished', minutes: 'wordCount' })
   })
 })

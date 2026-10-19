@@ -35,6 +35,7 @@ describe('the config module', () => {
     expect(Object.keys(config).sort()).toEqual([
       'AUDIT_RETENTION_MAX_DAYS',
       'AUDIT_RETENTION_MIN_DAYS',
+      'AUTOMATIC_KINDS',
       'BACKUP_RETENTION_MAX_DAYS',
       'BACKUP_RETENTION_MIN_DAYS',
       'ConfigError',
@@ -50,6 +51,7 @@ describe('the config module', () => {
       'MEDIA_MIN_WIDTH',
       'SITE_KEY_MAX_LENGTH',
       'SITE_KEY_PATTERN',
+      'WORDS_PER_MINUTE',
       'defineCollection',
       'defineComponent',
       'defineConfig',
@@ -57,6 +59,7 @@ describe('the config module', () => {
       'describeResolvedSite',
       'isSiteKey',
       'resolveConfig',
+      'withAutomaticFields',
     ])
   })
 

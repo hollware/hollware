@@ -17,6 +17,7 @@ import { printable } from '../format.ts'
 import { openSession, ToolFailure, type Session } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
+import { withFrontmatterValues } from '../import/frontmatter-values.ts'
 import { mcpEndpoint, readToken, redact, withoutToken } from './import.ts'
 
 export const EXPORT_USAGE = [
@@ -412,7 +413,15 @@ async function readAll(
         `${printable(item.path)} is gone: it was ${published ? 'unpublished' : 'moved to the trash or renamed'} while the export ran. Nothing was written: run the export again.`,
       )
     }
-    files.push({ ...item, markdown })
+    // What a site reads: the fields Hollware fills, filled (automaticFields of the collection).
+    const automatic = published ? answer.entry?.automatic : undefined
+    files.push({
+      ...item,
+      markdown:
+        automatic === undefined
+          ? markdown
+          : withFrontmatterValues(markdown, automatic, answer.entry?.frontmatter ?? {}),
+    })
   }
   return files
 }

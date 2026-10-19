@@ -1,3 +1,4 @@
+import { readAutomaticFields } from './automatic.ts'
 import { BUILT_IN_CONTRACT_IDS, isBuiltInContract } from '../contracts/index.ts'
 import type { Contract, Phase, Severity } from '../contracts/types.ts'
 import type { Problems } from './config-error.ts'
@@ -568,6 +569,12 @@ export function readCollection(
     raw['sortBy'] === undefined
       ? null
       : readField(keyPath(path, 'sortBy'), raw['sortBy'], schema, SORT_BY, problems)
+  const automaticFields = readAutomaticFields(
+    keyPath(path, 'automatic'),
+    raw['automatic'],
+    schema,
+    problems,
+  )
   const components = readComponents(keyPath(path, 'components'), raw['components'], problems)
   const contracts = readContracts(keyPath(path, 'contracts'), raw['contracts'], problems)
   const maxMarkdownBytes = readMaxMarkdownBytes(
@@ -589,6 +596,7 @@ export function readCollection(
     translationGroupField,
     tagsField,
     sortByField,
+    automaticFields,
     components,
     contracts,
     maxMarkdownBytes,

@@ -26,6 +26,14 @@ export {
   MEDIA_MAX_WIDTHS,
   MEDIA_MIN_WIDTH,
 } from './media.ts'
+export {
+  AUTOMATIC_KINDS,
+  WORDS_PER_MINUTE,
+  withAutomaticFields,
+  type AutomaticFacts,
+  type AutomaticField,
+  type AutomaticKind,
+} from './automatic.ts'
 export { DEFAULT_MAX_MARKDOWN_BYTES, MAX_MARKDOWN_BYTES_CEILING } from './constants.ts'
 export { describeResolvedSite, type SiteDescription } from './describe.ts'
 export { resolveConfig } from './resolve.ts'
