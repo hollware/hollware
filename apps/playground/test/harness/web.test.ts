@@ -123,7 +123,7 @@ describe('hollware.com', () => {
     expect(text).not.toContain('unfinished')
   })
 
-  it('generates the reference of the MCP tools, and shows the install command at home', async () => {
+  it('generates the reference of the MCP tools, and shows the install command and every use case at home', async () => {
     const tools = await (await webFetch(server, '/reference/mcp-tools/')).text()
     const home = await (await webFetch(server, '/')).text()
 
@@ -136,6 +136,10 @@ describe('hollware.com', () => {
     expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
+    // Every use case is in the page, not only the one picked: a crawler reads them all.
+    expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
+    expect(home).toContain('Docs that follow the code')
+    expect(home).toContain('MCP is the main door, not a plugin: 37 tools')
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {

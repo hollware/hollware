@@ -41,6 +41,19 @@ body {
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
 }
 
+/* The orange of Cloudflare, for the section that names its products and nothing else. */
+@theme {
+  --color-cloudflare: #f6821f;
+}
+
+.backdrop-glow-cloudflare {
+  background: radial-gradient(
+    ellipse 45% 60% at 50% 0%,
+    color-mix(in oklab, var(--color-cloudflare) 12%, transparent),
+    transparent 70%
+  );
+}
+
 /* A soft light behind a headline, in the accent. */
 .backdrop-glow {
   background: radial-gradient(
