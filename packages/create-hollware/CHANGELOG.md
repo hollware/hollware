@@ -1,5 +1,17 @@
 # create-hollware
 
+## 1.0.0-rc.3
+
+### Patch Changes
+
+- [`20f1fe3`](https://github.com/hollware/hollware/commit/20f1fe3d065d6b8484f1264ea23c41dcf061005b) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy` of a project deployed before applies the new migrations to the remote database first, while its Worker still serves, and then deploys the new Worker, which so never serves a database without its tables. The starter's README and AGENTS.md say how to upgrade: one version for every package, a project of the new release to compare with, then deploy.
+
+- [`d8e7306`](https://github.com/hollware/hollware/commit/d8e730611739d6fb335702ae01f4f4e38cdedaba) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project's local server has a `HOLLWARE_SECRET` of its own, for development only, so preview links and the secrets of webhooks work before the first deploy; a `.dev.vars` with `HOLLWARE_SECRET` takes its place.
+
+- [`f1c5806`](https://github.com/hollware/hollware/commit/f1c5806937109e52a1cd2b9d468bc3b583179a95) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project's own test of its database no longer breaks when Hollware adds a migration: it checks that every migration of `@hollware/server` is applied and that the tables of content are there, instead of listing every table of one release.
+
+- [`0783887`](https://github.com/hollware/hollware/commit/0783887e0ca06684143ddd0de531a137ba6f0950) Thanks [@sergioazoc](https://github.com/sergioazoc)! - New projects pin Vite+ 1.3.0, Vitest 5.0.5, wrangler 4.151.1 and @cloudflare/vitest-plugin 1.4.4.
+
 ## 1.0.0-rc.2
 
 ### Minor Changes
