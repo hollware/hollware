@@ -22,9 +22,41 @@ const host = ref<HTMLElement | null>(null)
 const m = useMessages()
 let view: MergeView | null = null
 
+/**
+ * The unchanged lines between two changes, collapsed: a flat band of the admin's colors, never the
+ * merge view's own gradient, which is made for a light editor and glares on a dark one.
+ */
+const band = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '6px 12px',
+  background: 'var(--ui-bg-elevated)',
+  color: 'var(--ui-text-muted)',
+  borderBlock: '1px solid var(--ui-border)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '12px',
+  transition: 'background-color 120ms, color 120ms',
+}
+// `&.cm-editor` outweighs the light and dark rules of the merge view's base theme.
+const collapsed = EditorView.theme({
+  '&.cm-editor .cm-collapsedLines': band,
+  '&.cm-editor .cm-collapsedLines:hover': {
+    background: 'var(--ui-bg-accented)',
+    color: 'var(--ui-text-highlighted)',
+  },
+  '&.cm-editor .cm-collapsedLines:before': {
+    content: '"↕"',
+    marginInlineEnd: '0',
+    color: 'var(--ui-text-dimmed)',
+  },
+  '&.cm-editor .cm-collapsedLines:after': { content: 'none' },
+})
+
 const readOnly = [
   markdown(),
   theme,
+  collapsed,
   EditorView.lineWrapping,
   EditorView.editable.of(false),
   EditorState.readOnly.of(true),
@@ -38,6 +70,7 @@ function mount() {
       doc: props.original,
       extensions: [
         readOnly,
+        EditorState.phrases.of({ '$ unchanged lines': m.value.editor.unchangedLines }),
         EditorView.contentAttributes.of({
           'aria-label': props.originalLabel ?? m.value.editor.live,
         }),
@@ -47,6 +80,7 @@ function mount() {
       doc: props.modified,
       extensions: [
         readOnly,
+        EditorState.phrases.of({ '$ unchanged lines': m.value.editor.unchangedLines }),
         EditorView.contentAttributes.of({
           'aria-label': props.modifiedLabel ?? m.value.editor.asked,
         }),

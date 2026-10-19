@@ -88,6 +88,37 @@ test('the owner reads the history of an entry and goes back to an earlier versio
   await expect(history.getByRole('button', { name: /Hello again/ })).toHaveCount(1)
 })
 
+test('a diff folds the lines that did not change into a flat band of the admin', async () => {
+  const paragraphs = Array.from({ length: 20 }, (_, n) => `Paragraph ${n + 1} stays as it is.`)
+  const long = (last: string) =>
+    `${post('A long post', 'a-long-post')}\n${paragraphs.join('\n\n')}\n\n${last}\n`
+  await owner.goto('/admin/entries/new')
+  await owner.getByRole('combobox', { name: 'Locale' }).click()
+  await owner.getByRole('option', { name: 'en' }).click()
+  await owner.getByLabel('Title').fill('A long post')
+  await owner.getByLabel('Slug').fill('a-long-post')
+  await owner.getByRole('button', { name: 'Create the draft' }).click()
+  await expect(owner.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
+  await writeMarkdown(owner, long('The last paragraph, first.'))
+  await owner.getByRole('button', { name: 'Save' }).click()
+  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await writeMarkdown(owner, long('The last paragraph, changed.'))
+  await owner.getByRole('button', { name: 'Save' }).click()
+  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+
+  await owner.getByRole('tab', { name: 'History' }).click()
+  await owner.getByRole('list', { name: 'History of the entry' }).getByRole('button').nth(1).click()
+  const band = owner.getByRole('dialog').locator('.cm-collapsedLines').first()
+  await expect(band).toBeVisible()
+  await expect(band).toHaveText(/^\d+ unchanged lines: show them$/)
+  // Flat, in the colors of the admin: the merge view's gradient is made for a light editor.
+  await expect(band).toHaveCSS('background-image', 'none')
+  await shot(owner, 'diff-collapsed')
+  await band.click()
+  await expect(owner.getByRole('dialog').locator('.cm-collapsedLines')).toHaveCount(0)
+  await owner.keyboard.press('Escape')
+})
+
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({
   browser,
 }) => {

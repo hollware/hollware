@@ -785,6 +785,8 @@ export const en = {
     markdown: 'Markdown of the entry',
     live: 'The Markdown that is live',
     asked: 'The Markdown asked for',
+    /** `$` is the number of lines, as CodeMirror's merge view phrases it. */
+    unchangedLines: '$ unchanged lines: show them',
   },
   callback: {
     notSignedIn: 'You are not signed in',

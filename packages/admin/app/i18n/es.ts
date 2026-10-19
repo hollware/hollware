@@ -812,6 +812,8 @@ export const es: Messages = {
     markdown: 'Markdown de la entrada',
     live: 'El Markdown publicado',
     asked: 'El Markdown pedido',
+    /** `$` es el número de líneas, como lo formula la vista de diff de CodeMirror. */
+    unchangedLines: '$ líneas sin cambios: mostrarlas',
   },
   callback: {
     notSignedIn: 'No iniciaste sesión',
