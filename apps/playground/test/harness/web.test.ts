@@ -64,6 +64,12 @@ beforeAll(async () => {
     slug: 'first-steps',
     markdown: page('Primeros pasos', 'start', 1, '## Instalar\n\nUn comando.'),
   })
+  await publishNew(agent, {
+    collection: 'docs',
+    locale: 'en',
+    slug: 'a-framework',
+    markdown: page('A framework', 'frameworks', 1, 'How one framework reads Hollware.'),
+  })
   await createDraft(agent, {
     collection: 'docs',
     locale: 'en',
@@ -87,8 +93,10 @@ describe('hollware.com', () => {
     expect(html).toContain('Keep the token.')
     // The callout of the docs, as the site's DocsCallout draws it.
     expect(html).toMatch(/data-slot="title"[^>]*><!--\[-->Tip<!--\]-->/)
-    // Getting started comes before Concepts, whatever the order of publication.
-    expect(html.indexOf('>First steps<')).toBeLessThan(html.indexOf('>A concept<'))
+    // Getting started, then Frameworks, then Concepts, whatever the order of publication.
+    expect(html.indexOf('>First steps<')).toBeLessThan(html.indexOf('>A framework<'))
+    expect(html.indexOf('>A framework<')).toBeLessThan(html.indexOf('>A concept<'))
+    expect(html).toContain('>Frameworks<')
     expect(html).not.toContain('Unfinished')
   })
 
@@ -110,7 +118,7 @@ describe('hollware.com', () => {
     expect((llms.headers.get('cache-tag') ?? '').split(',')).toContain('list:docs:en')
 
     expect(text).toContain(
-      '- [First steps](https://hollware.com/docs/first-steps.md): The page First steps of the docs, written by a test.\n- [A concept](https://hollware.com/docs/a-concept.md)',
+      '- [First steps](https://hollware.com/docs/first-steps.md): The page First steps of the docs, written by a test.\n- [A framework](https://hollware.com/docs/a-framework.md): The page A framework of the docs, written by a test.\n- [A concept](https://hollware.com/docs/a-concept.md)',
     )
     expect(text).not.toContain('unfinished')
   })

@@ -104,6 +104,7 @@ export const en = {
     sections: {
       start: 'Getting started',
       guides: 'Guides',
+      frameworks: 'Frameworks',
       concepts: 'Concepts',
       reference: 'Reference',
     },

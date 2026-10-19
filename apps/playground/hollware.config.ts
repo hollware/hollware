@@ -69,7 +69,7 @@ const docs = defineCollection({
   schema: z.object({
     title: z.string().min(1).max(70),
     description: z.string().min(1).max(160),
-    section: z.enum(['start', 'guides', 'concepts', 'reference']),
+    section: z.enum(['start', 'guides', 'frameworks', 'concepts', 'reference']),
     order: z.number().int().min(0).max(999),
   }),
   routes: { en: '/docs/:slug/', es: '/es/docs/:slug/' },

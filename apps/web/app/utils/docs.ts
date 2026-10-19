@@ -1,7 +1,7 @@
 import type { PageEntry } from '@hollware/nuxt'
 
 /** The sections of the sidebar, in their order; their labels are words of each language. */
-export const SECTIONS = ['start', 'guides', 'concepts', 'reference'] as const
+export const SECTIONS = ['start', 'guides', 'frameworks', 'concepts', 'reference'] as const
 export type Section = (typeof SECTIONS)[number]
 
 export interface DocLink {

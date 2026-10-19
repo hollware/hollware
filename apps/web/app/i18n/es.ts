@@ -102,6 +102,7 @@ export const es: Messages = {
     sections: {
       start: 'Primeros pasos',
       guides: 'Guías',
+      frameworks: 'Frameworks',
       concepts: 'Conceptos',
       reference: 'Referencia',
     },

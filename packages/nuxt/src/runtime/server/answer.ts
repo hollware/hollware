@@ -38,6 +38,8 @@ const PUBLIC_FIELDS = [
   'publishedAt',
   'updatedAt',
   'document',
+  // The size, alt and srcset of the images of the frontmatter, for <HollwareImage>.
+  'images',
 ] as const
 
 /**
