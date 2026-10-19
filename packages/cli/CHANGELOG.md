@@ -1,5 +1,12 @@
 # hollware
 
+## 1.0.0-rc.5
+
+### Patch Changes
+
+- Updated dependencies [[`88965e8`](https://github.com/hollware/hollware/commit/88965e8b3431656e939056cc8cfb7ec0b4206072)]:
+  - @hollware/core@1.0.0-rc.5
+
 ## 1.0.0-rc.4
 
 ### Patch Changes
