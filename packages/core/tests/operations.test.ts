@@ -20,7 +20,7 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the thirty-five operations, sorted by name, as tools/list shows them', () => {
+  it('are the thirty-seven operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
@@ -45,6 +45,7 @@ describe('operation specs', () => {
       'make_webhook_secret',
       'move_entry',
       'publish',
+      'reject_review',
       'request_changes',
       'request_review',
       'restore_entry',
@@ -54,6 +55,7 @@ describe('operation specs', () => {
       'search',
       'set_collection',
       'unpublish',
+      'update_asset',
       'update_draft',
       'update_site',
       'upload_asset',
@@ -151,6 +153,12 @@ describe('operation specs', () => {
         outcomes: ['ok', 'not_found'],
         errors: ['not_found'],
       },
+      update_asset: {
+        effect: 'edit',
+        scopes: ['content:write'],
+        outcomes: ['updated', 'unchanged', 'not_found'],
+        errors: ['not_found'],
+      },
       schedule_unpublish: {
         effect: 'destructive',
         scopes: ['content:publish'],
@@ -212,6 +220,12 @@ describe('operation specs', () => {
         effect: 'edit',
         scopes: ['content:publish'],
         outcomes: ['changes_requested', 'not_pending', 'not_found'],
+        errors: ['not_pending', 'not_found'],
+      },
+      reject_review: {
+        effect: 'edit',
+        scopes: ['content:publish'],
+        outcomes: ['rejected', 'not_pending', 'not_found'],
         errors: ['not_pending', 'not_found'],
       },
       request_review: {

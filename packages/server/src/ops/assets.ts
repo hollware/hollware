@@ -261,6 +261,19 @@ export const getAsset: OperationHandler<'get_asset'> = async (input, context) =>
   return row === null ? { outcome: 'not_found' } : { outcome: 'ok', asset: assetView(row, media) }
 }
 
+/** Changes the alt of an image of the site; the same alt again answers unchanged. */
+export const updateAsset: OperationHandler<'update_asset'> = async (input, context) => {
+  const media = context.media ?? null
+  const row = media === null ? null : await media.catalog.byId(context.site.key, input.id)
+  if (media === null || row === null) return { outcome: 'not_found' }
+  const alt = input.alt.trim()
+  if (row.alt === alt) return { outcome: 'unchanged', asset: assetView(row, media) }
+  const updated = await media.catalog.updateAlt(context.site.key, input.id, alt)
+  return updated === null
+    ? { outcome: 'not_found' }
+    : { outcome: 'updated', asset: assetView(updated, media) }
+}
+
 /**
  * The URL an `asset:` reference of the site resolves to: where the Worker serves the image, or
  * the reference as it is when the Worker serves no media.

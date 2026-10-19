@@ -58,6 +58,7 @@ const OUTPUT_TOO_LARGE_FIX = {
   list_reviews: 'Ask for less: pass a smaller limit.',
   list_assets: 'Ask for less: pass a smaller limit.',
   get_asset: 'Nothing to ask for less of: the answer is one asset. Try again.',
+  update_asset: 'Nothing to ask for less of: the answer is one asset. Try again.',
   schedule_unpublish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   list_backups: 'Nothing to ask for less of: the answer is a list of dates. Try again.',
@@ -74,6 +75,8 @@ const OUTPUT_TOO_LARGE_FIX = {
   publish:
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   request_changes:
+    'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
+  reject_review:
     'The operation ran and its change may have been applied: read the review with list_reviews before you repeat it.',
   request_review:
     'The operation ran and its review may have been asked: read it with list_reviews before you repeat it.',

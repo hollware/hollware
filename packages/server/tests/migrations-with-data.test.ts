@@ -10,7 +10,8 @@ import { expect, it } from 'vite-plus/test'
 // rows must all still be there, every person with a token must be a member of its site with the
 // role they had, a passkey and a session of v0.3 must outlive the loss of their site (0006), an
 // event of the outbox and its delivery must outlive the rebuild of the outbox (0013), which then
-// takes an event about no entry, and no foreign key may point nowhere. This is what caught a rebuild of `users` in
+// takes an event about no entry, a review and its comment must outlive the rebuild of reviews
+// (0021), which then takes a rejected one, and no foreign key may point nowhere. This is what caught a rebuild of `users` in
 // the first 0004: with foreign keys on, as D1 always has them, dropping a table that other rows
 // point at fails the transaction (D1 answered it as "internal error").
 
@@ -67,6 +68,14 @@ const PEOPLE = [
     VALUES ('ses_1', 'demo', '${ID('usr')}', 'session-hash', '2099-01-01T00:00:00.000Z', '${T}', '${T}')`,
 ]
 
+/** A review asked for the entry, with a comment on it: what the rebuild of reviews (0021) keeps. */
+const REVIEWS = [
+  `INSERT INTO reviews (id, site_id, entry_id, revision_id, status, acknowledged, requested_by, created_at, updated_at)
+    VALUES ('rvw_1', 'demo', '${ID('ent')}', '${ID('rev')}', 'pending', '[]', '${ID('usr')}', '${T}', '${T}')`,
+  `INSERT INTO review_comments (id, site_id, review_id, author_id, body, created_at, updated_at)
+    VALUES ('rvc_1', 'demo', 'rvw_1', '${ID('usr')}', 'Looks good', '${T}', '${T}')`,
+]
+
 it('runs every migration after 0003 over the content of a deployment, and keeps all of it', () => {
   const db = new DatabaseSync(':memory:')
   db.exec('PRAGMA foreign_keys = ON')
@@ -93,6 +102,7 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     // their site.
     if (file.startsWith('0006')) for (const statement of PEOPLE) db.exec(statement)
     if (file.startsWith('0008')) for (const statement of PUBLISHED) db.exec(statement)
+    if (file.startsWith('0021')) for (const statement of REVIEWS) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')
@@ -132,5 +142,16 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     db.exec(`INSERT INTO outbox (id, site_id, kind, entry_id, payload, created_at, updated_at)
       VALUES ('evt_bad', 'demo', 'entry.published', NULL, '{}', '${T}', '${T}')`),
   ).toThrow(/CHECK constraint failed: outbox_entry/)
+  // 0021 kept the review and its comment, and takes a rejected one.
+  expect(
+    db
+      .prepare(
+        'SELECT r.id, r.status, c.body FROM reviews r JOIN review_comments c ON c.review_id = r.id',
+      )
+      .all(),
+  ).toEqual([{ id: 'rvw_1', status: 'pending', body: 'Looks good' }])
+  db.exec(
+    `UPDATE reviews SET status = 'rejected', decided_by = '${ID('usr')}', decided_at = '${T}' WHERE id = 'rvw_1'`,
+  )
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

@@ -16,7 +16,8 @@ import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from './support.
 // an app's grant is revoked that is another person's or the admin's, or a revoked grant's tokens
 // keep working; ending every session leaves a row of the person, ends another person's, or leaves
 // the admin's grants; or signing out of one browser leaves its session, ends another one, or
-// leaves the cookie.
+// leaves the cookie; or a passkey is renamed that is another person's, or to an empty label; or
+// the name of anyone but the person signed in changes, or a name longer than 100 characters is kept.
 
 const REDIRECT = 'https://agent.example.com/callback'
 const MCP = `${PUBLIC_URL}/mcp`
@@ -400,5 +401,71 @@ describe("a person's sessions (T-44)", () => {
     expect(await authorizeWith(worker, me.adminClient, me.cookie)).toBe('/signin')
     expect(forged.status).toBe(403)
     expect(await authorizeWith(worker, me.adminClient, elsewhere)).toBe('/admin/callback')
+  })
+})
+
+describe("a person's name and the labels of their passkeys", () => {
+  it('renames one of their passkeys, never another person’s, and refuses an empty label', async () => {
+    const worker = boot()
+    const me = await person(worker)
+    const other = await person(worker)
+    const laptop = await passkey(me.userId, 'Laptop', '2026-10-01T09:00:00.000Z')
+    const theirs = await passkey(other.userId, 'Theirs', '2026-10-01T09:00:00.000Z')
+
+    const renamed = await call(worker, me.access, '/v1/admin/account/passkeys/rename', {
+      id: laptop,
+      label: '  Work   laptop ',
+    })
+    const stolen = await call(worker, me.access, '/v1/admin/account/passkeys/rename', {
+      id: theirs,
+      label: 'Mine now',
+    })
+    const empty = await call(worker, me.access, '/v1/admin/account/passkeys/rename', {
+      id: laptop,
+      label: '   ',
+    })
+
+    expect([renamed.status, stolen.status, empty.status]).toEqual([200, 404, 400])
+    const labels = await env.DB.prepare('SELECT id, label FROM passkeys WHERE id IN (?1, ?2)')
+      .bind(laptop, theirs)
+      .all<{ id: string; label: string }>()
+    expect(Object.fromEntries(labels.results.map((row) => [row.id, row.label]))).toEqual({
+      [laptop]: 'Work laptop',
+      [theirs]: 'Theirs',
+    })
+    expect(await auditOf(me.userId, 'passkey.rename')).toEqual([
+      ['ok', null, laptop],
+      ['failed', 'not_found', theirs],
+    ])
+  })
+
+  it('changes the name of the person signed in, and only theirs', async () => {
+    const worker = boot()
+    const me = await person(worker)
+    const other = await person(worker)
+    const nameOf = async (userId: string) =>
+      (
+        await env.DB.prepare('SELECT name FROM users WHERE id = ?1')
+          .bind(userId)
+          .first<{ name: string | null }>()
+      )?.name
+
+    const before = await nameOf(other.userId)
+    const renamed = await call(worker, me.access, '/v1/admin/account/name', {
+      name: 'Ada Lovelace',
+    })
+    const tooLong = await call(worker, me.access, '/v1/admin/account/name', {
+      name: 'a'.repeat(101),
+    })
+    const me2 = await (
+      await call(worker, me.access, '/v1/admin/me')
+    ).json<{
+      user: { name: string }
+    }>()
+
+    expect([renamed.status, tooLong.status]).toEqual([200, 400])
+    expect(me2.user.name).toBe('Ada Lovelace')
+    expect(await nameOf(other.userId)).toBe(before)
+    expect(await auditOf(me.userId, 'account.rename')).toEqual([['ok', null, me.userId]])
   })
 })

@@ -145,6 +145,15 @@ export function d1Catalog(db: D1Database): AssetCatalog {
       }
       return rows
     },
+    async updateAlt(site, id, alt) {
+      const row = await db
+        .prepare(
+          'UPDATE assets SET alt = ?3, updated_at = ?4 WHERE site_id = ?1 AND id = ?2 RETURNING *',
+        )
+        .bind(site, id, alt, new Date().toISOString())
+        .first<Row>()
+      return row === null ? null : rowOf(row)
+    },
     async bySha256(site, sha256) {
       const row = await db
         .prepare('SELECT * FROM assets WHERE site_id = ? AND sha256 = ?')

@@ -63,6 +63,7 @@ const TOOLS = [
   { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
   { name: 'move_entry', title: 'Change the slug of an entry', annotations: CHANGE },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
+  { name: 'reject_review', title: 'Reject a review', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
   { name: 'request_review', title: 'Ask for a review', annotations: CHANGE },
   { name: 'restore_entry', title: 'Bring an entry back from the trash', annotations: CHANGE },
@@ -72,6 +73,7 @@ const TOOLS = [
   { name: 'search', title: 'Search entries', annotations: READ },
   { name: 'set_collection', title: 'Add, change or remove a collection', annotations: DESTROY },
   { name: 'unpublish', title: 'Unpublish an entry', annotations: DESTROY },
+  { name: 'update_asset', title: 'Change the alt of an image', annotations: CHANGE },
   { name: 'update_draft', title: 'Update a draft', annotations: CHANGE },
   { name: 'update_site', title: 'Change the structure of the site', annotations: DESTROY },
   { name: 'upload_asset', title: 'Upload an image', annotations: CHANGE },
@@ -112,6 +114,7 @@ const OUTCOMES: Record<string, string[]> = {
     'conflict',
     'not_found',
   ],
+  reject_review: ['rejected', 'not_pending', 'not_found'],
   request_changes: ['changes_requested', 'not_pending', 'not_found'],
   request_review: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
   restore_entry: ['restored', 'not_trashed', 'not_found'],
@@ -119,6 +122,7 @@ const OUTCOMES: Record<string, string[]> = {
   search: ['ok'],
   set_collection: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
   unpublish: ['unpublished', 'not_found'],
+  update_asset: ['updated', 'unchanged', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   update_site: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
   validate: ['ok'],
@@ -255,9 +259,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(70)
+    expect(converters).toHaveLength(74)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 70 }, () => 1),
+      Array.from({ length: 74 }, () => 1),
     )
   })
 })
@@ -289,6 +293,7 @@ describe('the tool table', () => {
       'make_webhook_secret',
       'move_entry',
       'publish',
+      'reject_review',
       'request_changes',
       'request_review',
       'restore_entry',
@@ -298,6 +303,7 @@ describe('the tool table', () => {
       'search',
       'set_collection',
       'unpublish',
+      'update_asset',
       'update_draft',
       'update_site',
       'upload_asset',

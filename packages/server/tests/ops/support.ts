@@ -20,6 +20,7 @@ import {
   processMarkdown,
   publish as publishSpec,
   requestChanges as requestChangesSpec,
+  rejectReview as rejectReviewSpec,
   requestReview as requestReviewSpec,
   restoreEntry as restoreEntrySpec,
   restoreRevision as restoreRevisionSpec,
@@ -271,6 +272,8 @@ export function agent(context: OperationContext) {
       call(listReviewsSpec, handlers.list_reviews, input, context),
     requestChanges: (input: z.input<typeof requestChangesSpec.input>) =>
       call(requestChangesSpec, handlers.request_changes, input, context),
+    rejectReview: (input: z.input<typeof rejectReviewSpec.input>) =>
+      call(rejectReviewSpec, handlers.reject_review, input, context),
     commentReview: (input: z.input<typeof commentReviewSpec.input>) =>
       call(commentReviewSpec, handlers.comment_review, input, context),
     contentStats: (input: z.input<typeof contentStatsSpec.input>) =>
@@ -388,6 +391,7 @@ export const UNTOUCHED: ContentStore = {
   findReview: () => touched('findReview'),
   listReviews: () => touched('listReviews'),
   requestChanges: () => touched('requestChanges'),
+  rejectReview: () => touched('rejectReview'),
   commentReview: () => touched('commentReview'),
   reviewComments: () => touched('reviewComments'),
 }

@@ -1,3 +1,4 @@
+import { assetIdIn } from '../media/index.ts'
 import { registerBuiltIn } from './registry.ts'
 import { bannedWords, fieldLength, fieldPattern, requiredToPublish } from './rules.ts'
 import { runtimeOf } from './runtime.ts'
@@ -157,7 +158,9 @@ function imagesHaveAlt(options: BuiltInOptions = {}): Contract<unknown> {
       description: 'Every image has alt text that describes it.',
       check: (context) =>
         context.markdown.extracted.images
-          .filter((image) => image.alt.trim() === '')
+          // An image of the site (`asset:`) has the alt it was uploaded with, which a reader
+          // gets when the Markdown gives none.
+          .filter((image) => image.alt.trim() === '' && assetIdIn(image.src) === null)
           .map((image) => ({
             path: '/body',
             message: `The image ${quote(image.src)} has no alt text.`,

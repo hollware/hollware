@@ -18,6 +18,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'request_review',
   'comment_review',
   'request_changes',
+  'reject_review',
   'update_site',
   'set_collection',
   'create_site',
@@ -25,6 +26,7 @@ export const OPERATION_AUDIT_ACTIONS = [
   'restore_site',
   'make_webhook_secret',
   'upload_asset',
+  'update_asset',
 ] as const
 
 /** What people do outside the operations: their tokens, members, passkeys, sessions and apps. */
@@ -41,6 +43,10 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'session.sign_out',
   'session.end_all',
   'passkey.remove',
+  /** A person called one of their passkeys something else. */
+  'passkey.rename',
+  /** A person changed the name they show, which only they may change. */
+  'account.rename',
   'app.allow',
   'app.revoke',
   /** A refresh token was used again after it was spent, so its grant was revoked (T-34). */

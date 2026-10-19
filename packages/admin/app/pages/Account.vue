@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { ApiError } from '../lib/api.ts'
 import { sortable } from '../lib/columns.ts'
+import { me } from '../lib/me.ts'
 import { api, auth } from '../lib/session.ts'
 
 /**
@@ -77,6 +78,60 @@ async function load() {
 }
 
 onMounted(load)
+
+/** The person's name as typed: it starts as the one the shell read. */
+const name = ref('')
+const savingName = ref(false)
+// The shell reads the person after a page that is opened first: the name comes when it does.
+watch(
+  () => me.value?.user?.name,
+  (known) => {
+    if (name.value === '' && typeof known === 'string') name.value = known
+  },
+  { immediate: true },
+)
+
+async function saveName() {
+  if (name.value.trim() === '') return
+  savingName.value = true
+  try {
+    const answer = await api.admin<{ name: string }>('account/name', { name: name.value })
+    name.value = answer.name
+    if (me.value?.user !== undefined) {
+      me.value = { ...me.value, user: { ...me.value.user, name: answer.name } }
+    }
+    toast.add({ title: m.value.account.nameSaved, color: 'success' })
+  } catch (error) {
+    toast.add({ title: m.value.account.notSaved, description: describe(error), color: 'error' })
+  } finally {
+    savingName.value = false
+  }
+}
+
+/** The passkey being renamed, and its label as typed. */
+const renaming = ref<Passkey | null>(null)
+const newLabel = ref('')
+
+function startRename(passkey: Passkey) {
+  renaming.value = passkey
+  newLabel.value = passkey.label
+}
+
+async function renamePasskey() {
+  const passkey = renaming.value
+  if (passkey === null || newLabel.value.trim() === '') return
+  try {
+    const answer = await api.admin<{ label: string }>('account/passkeys/rename', {
+      id: passkey.id,
+      label: newLabel.value,
+    })
+    renaming.value = null
+    toast.add({ title: m.value.account.passkeyRenamed(answer.label), color: 'success' })
+  } catch (error) {
+    toast.add({ title: m.value.account.notSaved, description: describe(error), color: 'error' })
+  }
+  await load()
+}
 
 /** The passkey about to be removed, while the person confirms. */
 const removing = ref<Passkey | null>(null)
@@ -150,6 +205,24 @@ async function endAll() {
         :description="failure"
       />
       <template v-else-if="data !== null">
+        <form
+          :aria-label="m.account.profile"
+          class="max-w-xl space-y-2"
+          novalidate
+          @submit.prevent="saveName"
+        >
+          <h2 class="font-medium">{{ m.account.profile }}</h2>
+          <UFormField :label="m.account.profile" :help="m.account.profileHelp">
+            <UInput v-model="name" maxlength="100" class="w-full" />
+          </UFormField>
+          <UButton
+            type="submit"
+            :label="m.account.saveName"
+            :loading="savingName"
+            :disabled="name.trim() === ''"
+          />
+        </form>
+
         <section :aria-label="m.account.passkeys" class="space-y-2">
           <h2 class="font-medium">{{ m.account.passkeys }}</h2>
           <p class="text-sm text-muted">{{ m.account.passkeysHelp }}</p>
@@ -170,6 +243,13 @@ async function endAll() {
                 <span v-if="lastPasskey" class="text-xs text-muted">{{
                   m.account.lastPasskey
                 }}</span>
+                <UButton
+                  icon="i-lucide-pencil"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="m.account.renamePasskey(row.original.label)"
+                  @click="startRename(row.original)"
+                />
                 <UButton
                   icon="i-lucide-trash-2"
                   color="error"
@@ -275,5 +355,27 @@ async function endAll() {
         </template>
       </UModal>
     </div>
+    <UModal
+      :open="renaming !== null"
+      :title="m.account.renamePasskeyTitle"
+      @update:open="(open) => (open ? null : (renaming = null))"
+    >
+      <template #body>
+        <form id="rename-passkey" @submit.prevent="renamePasskey">
+          <UFormField :label="m.account.passkeyLabel">
+            <UInput v-model="newLabel" maxlength="100" class="w-full" />
+          </UFormField>
+        </form>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="renaming = null" />
+        <UButton
+          type="submit"
+          form="rename-passkey"
+          :label="m.common.save"
+          :disabled="newLabel.trim() === ''"
+        />
+      </template>
+    </UModal>
   </Page>
 </template>

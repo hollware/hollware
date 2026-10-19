@@ -154,7 +154,13 @@ export const reviewId = z
   .regex(/^rvw_[0-9A-HJKMNP-TV-Z]{26}$/)
   .describe('The id of a review (rvw_…), as publish and list_reviews return it.')
 
-export const reviewStatus = z.enum(['pending', 'approved', 'changes_requested', 'cancelled'])
+export const reviewStatus = z.enum([
+  'pending',
+  'approved',
+  'changes_requested',
+  'rejected',
+  'cancelled',
+])
 
 /**
  * A request to publish a revision, made by someone who may write but not publish, and what a

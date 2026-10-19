@@ -14,6 +14,7 @@ import { createPost, entryColumns, newWorld, publicationsOf, type World } from '
 // publication approves it in its batch, in the name of whoever published; reviews.ts approves by
 // publishing the revision asked for in the approver's name, answers not_pending for a review that
 // is closed or whose revision is no longer the head, closes one with a note on request_changes,
+// rejects one with its reason on reject_review and lists it as rejected,
 // lists them newest first with their entry, and never shows a review of another site. D1 is real.
 
 vi.setConfig({ testTimeout: 60_000 })
@@ -209,6 +210,28 @@ describe('a pending review', () => {
     expect(again.outcome).toBe('not_pending')
     expect(await entryColumns(world.db, en.id)).toMatchObject({ status: 'draft' })
   })
+
+  it('is rejected with its reason, publishes nothing, and is listed as rejected', async () => {
+    const world = await newWorld(env.DB, 'review-rejected')
+    const { en, answer } = await asked(world)
+    const reviewer = agentFor(world.context({ principal: await editor(world) }))
+    world.time.set(T2)
+
+    const rejected = await reviewer.rejectReview({
+      id: answer.review?.id ?? '',
+      reason: 'Not for this site.',
+    })
+    const twice = await reviewer.rejectReview({ id: answer.review?.id ?? '', reason: 'No.' })
+    const listed = await world.agent.listReviews({ status: 'rejected' })
+
+    expect(rejected).toMatchObject({
+      outcome: 'rejected',
+      review: { status: 'rejected', note: 'Not for this site.', decidedAt: T2 },
+    })
+    expect(twice.outcome).toBe('not_pending')
+    expect(listed.reviews.map((review) => review.id)).toEqual([answer.review?.id])
+    expect(await entryColumns(world.db, en.id)).toMatchObject({ status: 'draft' })
+  })
 })
 
 describe('list_reviews', () => {
@@ -239,6 +262,9 @@ describe('list_reviews', () => {
     })
     expect(
       await stranger.agent.requestChanges({ id: answer.review?.id ?? '', note: 'No.' }),
+    ).toEqual({ outcome: 'not_found' })
+    expect(
+      await stranger.agent.rejectReview({ id: answer.review?.id ?? '', reason: 'No.' }),
     ).toEqual({ outcome: 'not_found' })
   })
 })

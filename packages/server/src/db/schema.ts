@@ -614,7 +614,7 @@ export const reviews = sqliteTable(
     foreignKey({ name: 'reviews_decider', columns: [t.decidedBy], foreignColumns: [users.id] }),
     check(
       'reviews_status',
-      sql`${t.status} IN ('pending', 'approved', 'changes_requested', 'cancelled')`,
+      sql`${t.status} IN ('pending', 'approved', 'changes_requested', 'rejected', 'cancelled')`,
     ),
     check(
       'reviews_decided',

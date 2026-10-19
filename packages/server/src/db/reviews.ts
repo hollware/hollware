@@ -22,7 +22,13 @@ import { valuesOf } from './statements.ts'
  * (`cancelPendingReview`), a publication approves it (`approvePendingReview`).
  */
 
-const STATUSES: readonly ReviewStatus[] = ['pending', 'approved', 'changes_requested', 'cancelled']
+const STATUSES: readonly ReviewStatus[] = [
+  'pending',
+  'approved',
+  'changes_requested',
+  'rejected',
+  'cancelled',
+]
 
 function statusOf(value: string): ReviewStatus {
   const status = STATUSES.find((known) => known === value)
@@ -202,20 +208,40 @@ export async function listReviews(
   return rows.map(toReview)
 }
 
-export async function requestChanges(
+export function requestChanges(
   db: Db,
   clock: Clock,
   site: string,
   write: { readonly id: string; readonly note: string; readonly userId: string },
+) {
+  return closeReview(db, clock, site, write, 'changes_requested')
+}
+
+export function rejectReview(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: { readonly id: string; readonly note: string; readonly userId: string },
+) {
+  return closeReview(db, clock, site, write, 'rejected')
+}
+
+/** Closes a pending review with a note and the status of the decision, in one statement. */
+async function closeReview<Status extends 'changes_requested' | 'rejected'>(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: { readonly id: string; readonly note: string; readonly userId: string },
+  status: Status,
 ): Promise<
-  | { readonly outcome: 'changes_requested' | 'not_pending'; readonly review: StoredReview }
+  | { readonly outcome: Status | 'not_pending'; readonly review: StoredReview }
   | { readonly outcome: 'not_found' }
 > {
   const now = clock.now().toISOString()
   const [row] = await db
     .update(reviews)
     .set({
-      status: 'changes_requested',
+      status,
       note: write.note,
       decidedBy: write.userId,
       decidedAt: now,
@@ -224,7 +250,7 @@ export async function requestChanges(
     .where(and(eq(reviews.siteId, site), eq(reviews.id, write.id), eq(reviews.status, 'pending')))
     .returning({ id: reviews.id })
   const review = await findReview(db, site, write.id)
-  if (row !== undefined && review !== null) return { outcome: 'changes_requested', review }
+  if (row !== undefined && review !== null) return { outcome: status, review }
   return review === null ? { outcome: 'not_found' } : { outcome: 'not_pending', review }
 }
 

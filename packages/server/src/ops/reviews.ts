@@ -101,6 +101,18 @@ export const requestChanges: OperationHandler<'request_changes'> = async (input,
   return { outcome: closed.outcome, review: reviewView(closed.review) }
 }
 
+/** Closes a pending review as rejected, with the reason, in the name of the caller. */
+export const rejectReview: OperationHandler<'reject_review'> = async (input, context) => {
+  const { userId } = actorOf(context)
+  const closed = await context.store.rejectReview(context.site.key, {
+    id: input.id,
+    note: input.reason,
+    userId,
+  })
+  if (closed.outcome === 'not_found') return { outcome: 'not_found' }
+  return { outcome: closed.outcome, review: reviewView(closed.review) }
+}
+
 /**
  * A comment on a pending review, in the name of the caller: for the person who decides and for
  * the author. It decides nothing; a review that is no longer pending takes none.

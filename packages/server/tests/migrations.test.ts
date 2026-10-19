@@ -88,6 +88,7 @@ describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
       '0018_unpublishes.sql',
       '0019_redirects.sql',
       '0020_asset_widths.sql',
+      '0021_review_rejected.sql',
       'meta/0000_snapshot.json',
       'meta/0001_snapshot.json',
       'meta/0002_snapshot.json',
@@ -109,6 +110,7 @@ describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
       'meta/0018_snapshot.json',
       'meta/0019_snapshot.json',
       'meta/0020_snapshot.json',
+      'meta/0021_snapshot.json',
       'meta/_journal.json',
     ])
     expect(run.stdout).toContain('No schema changes, nothing to migrate')
@@ -130,10 +132,10 @@ describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
     const run = generateOnCopy('drift', schemaFile, ['--name', 'drift'])
 
     expect(run.after.filter((file) => !run.before.includes(file))).toEqual([
-      '0021_drift.sql',
-      'meta/0021_snapshot.json',
+      '0022_drift.sql',
+      'meta/0022_snapshot.json',
     ])
-    expect(readFileSync(join(run.out, '0021_drift.sql'), 'utf8')).toBe(
+    expect(readFileSync(join(run.out, '0022_drift.sql'), 'utf8')).toBe(
       'ALTER TABLE `revisions` ADD `summary` text;',
     )
   })

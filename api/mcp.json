@@ -207,7 +207,7 @@
               },
               "status": {
                 "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
-                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
                 "type": "string"
               }
             },
@@ -3711,7 +3711,7 @@
           },
           "status": {
             "default": "pending",
-            "enum": ["pending", "approved", "changes_requested", "cancelled"],
+            "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
             "type": "string"
           }
         },
@@ -3924,7 +3924,7 @@
                 },
                 "status": {
                   "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
-                  "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                  "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
                   "type": "string"
                 }
               },
@@ -4613,7 +4613,7 @@
               },
               "status": {
                 "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
-                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
                 "type": "string"
               }
             },
@@ -4736,6 +4736,102 @@
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
           },
+          "reason": {
+            "description": "Why it is rejected, for the author.",
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["id", "reason"],
+        "type": "object"
+      },
+      "name": "reject_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["rejected", "not_pending", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "properties": {
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note"
+            ],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:publish"],
+      "title": "Reject a review"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "note": {
             "description": "What to change, for the author.",
             "maxLength": 4000,
@@ -4796,7 +4892,7 @@
               },
               "status": {
                 "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
-                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
                 "type": "string"
               }
             },
@@ -5052,7 +5148,7 @@
               },
               "status": {
                 "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
-                "enum": ["pending", "approved", "changes_requested", "cancelled"],
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
                 "type": "string"
               }
             },
@@ -6489,6 +6585,160 @@
       },
       "scopes": ["content:publish"],
       "title": "Unpublish an entry"
+    },
+    {
+      "effect": "edit",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "alt": {
+            "description": "What the image shows, for whoever cannot see it.",
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+            "pattern": "^ast_[0-9a-f]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id", "alt"],
+        "type": "object"
+      },
+      "name": "update_asset",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "additionalProperties": false,
+            "properties": {
+              "alt": {
+                "description": "What it shows, for whoever cannot see it.",
+                "type": "string"
+              },
+              "bytes": {
+                "description": "The size of the file served.",
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "filename": {
+                "description": "The name it was sent with.",
+                "type": "string"
+              },
+              "format": {
+                "description": "What it is served as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "height": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "id": {
+                "description": "The id of an asset, such as ast_3f1c… (26 hexadecimal characters).",
+                "pattern": "^ast_[0-9a-f]{26}$",
+                "type": "string"
+              },
+              "originalBytes": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "originalFormat": {
+                "description": "What it was sent as.",
+                "enum": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/avif",
+                  "image/gif",
+                  "image/svg+xml"
+                ],
+                "type": "string"
+              },
+              "reference": {
+                "description": "What content writes to show it: img: asset:ast_… or ![alt](asset:ast_…).",
+                "type": "string"
+              },
+              "srcset": {
+                "description": "Its copies and itself as the srcset of an img, such as \"<url>/640 640w, <url> 1600w\"; null when it has no copy.",
+                "type": ["string", "null"]
+              },
+              "url": {
+                "description": "Where the Worker serves it, to anyone, cached for a year.",
+                "type": "string"
+              },
+              "width": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In pixels; null for an SVG."
+              },
+              "widths": {
+                "description": "The widths of its narrower copies, smallest first, each served at <url>/<width>: the media widths of the site narrower than the image, made when it was uploaded. Absent from a Hollware before 1.0.0-rc.3.",
+                "items": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "id",
+              "reference",
+              "url",
+              "format",
+              "width",
+              "height",
+              "bytes",
+              "originalFormat",
+              "originalBytes",
+              "alt",
+              "filename",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "outcome": {
+            "enum": ["updated", "unchanged", "not_found"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:write"],
+      "title": "Change the alt of an image"
     },
     {
       "effect": "edit",

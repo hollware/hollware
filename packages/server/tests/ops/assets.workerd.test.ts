@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { MAX_ASSET_BYTES, makePreviewToken, type Conversion } from '@hollware/core'
 import { d1Catalog, r2Files } from '../../src/media/cloudflare.ts'
-import { getAsset, listAssets, uploadAsset } from '../../src/ops/assets.ts'
+import { getAsset, listAssets, updateAsset, uploadAsset } from '../../src/ops/assets.ts'
 import { handlers } from '../../src/ops/index.ts'
 import { createRpc } from '../../src/rpc/index.ts'
 import type { ImageConverter, ImageInfo, Media } from '../../src/ports.ts'
@@ -28,6 +28,9 @@ import { createPost, newWorld, publishPost, type World } from './world.ts'
 // - "refuses what is not an image": the name or the claimed type is trusted over the bytes.
 // - "says when it cannot": no bucket, or the converter's 9412, 9516 and 9422, are not refused or
 //   unavailable with a fix, or leave something behind; without the binding the file is not kept.
+// - "changes the alt …": update_asset keeps the old alt, changes another site's image, or the alt
+//   of an image of the site does not reach a reader where the Markdown gives none, or replaces one
+//   it gives; or images-have-alt refuses an image of the site written without an alt.
 // - "lists and gets …": a page is not newest first, the cursor does not continue it, or a site
 //   reads another's asset.
 // - "a read of the published site sees URLs …": get_entry, list_entries or get_translations of
@@ -477,6 +480,55 @@ describe('list_assets and get_asset', () => {
     expect((await getAsset({ id: ids[0] ?? '' }, withMedia(other.context(), media))).outcome).toBe(
       'not_found',
     )
+  })
+})
+
+describe('update_asset', () => {
+  it('changes the alt of an image of the site, which a reader gets where the Markdown gives none', async () => {
+    const world = await newWorld(env.DB, 'alt-edit')
+    const other = await newWorld(env.DB, 'alt-other')
+    const media = mediaWith(null)
+    const uploaded = await uploadAsset(
+      { filename: 'a.png', alt: 'A first alt', data: base64(new Uint8Array([...PNG, 61])) },
+      withMedia(world.context(), media),
+    )
+    const id = uploaded.asset?.id ?? ''
+    const created = await world.agent.createDraft({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'no-alt',
+      markdown: blogPost(
+        { title: 'No alt', date: '2026-10-01', tags: '[a]', translationGroup: 'no-alt' },
+        `\n# No alt\n\n![](asset:${id})\n\n![Its own](asset:${id})\n`,
+      ),
+    })
+
+    const updated = await updateAsset(
+      { id, alt: ' The new alt ' },
+      withMedia(world.context(), media),
+    )
+    const unchanged = await updateAsset(
+      { id, alt: 'The new alt' },
+      withMedia(world.context(), media),
+    )
+    const theirs = await updateAsset({ id, alt: 'Stolen' }, withMedia(other.context(), media))
+    const read = await agent({ ...withMedia(world.context(), media), reader: true }).getEntry({
+      collection: 'blog',
+      locale: 'en',
+      slug: 'no-alt',
+      formats: ['html'],
+    })
+
+    expect(created.verdict?.errors.filter((error) => error.contract === 'images-have-alt')).toEqual(
+      [],
+    )
+    expect([updated.outcome, updated.asset?.alt]).toEqual(['updated', 'The new alt'])
+    expect([unchanged.outcome, theirs.outcome]).toEqual(['unchanged', 'not_found'])
+    // The catalog itself changes the asset of the site it is given, never another's.
+    expect(await d1Catalog(env.DB).updateAlt(other.tenant.key, id, 'Stolen')).toBe(null)
+    expect((await d1Catalog(env.DB).byId(world.tenant.key, id))?.alt).toBe('The new alt')
+    expect(read.entry?.html).toContain('alt="The new alt"')
+    expect(read.entry?.html).toContain('alt="Its own"')
   })
 })
 

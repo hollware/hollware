@@ -86,6 +86,7 @@ export const STORE: ContentStore = {
   findReview: unused,
   listReviews: unused,
   requestChanges: unused,
+  rejectReview: unused,
   commentReview: unused,
   reviewComments: unused,
 }
@@ -430,6 +431,14 @@ export const CANNED: Canned = {
     not_pending: { outcome: 'not_pending', review: { ...REVIEW, status: 'approved' } },
     not_found: { outcome: 'not_found' },
   },
+  reject_review: {
+    rejected: {
+      outcome: 'rejected',
+      review: { ...REVIEW, status: 'rejected', note: 'Not for this site.' },
+    },
+    not_pending: { outcome: 'not_pending', review: { ...REVIEW, status: 'approved' } },
+    not_found: { outcome: 'not_found' },
+  },
   unpublish: {
     unpublished: { outcome: 'unpublished', entry: SUMMARY },
     not_found: { outcome: 'not_found' },
@@ -476,6 +485,11 @@ export const CANNED: Canned = {
   },
   list_assets: { ok: { outcome: 'ok', assets: [ASSET], nextCursor: null } },
   get_asset: { ok: { outcome: 'ok', asset: ASSET }, not_found: { outcome: 'not_found' } },
+  update_asset: {
+    updated: { outcome: 'updated', asset: ASSET },
+    unchanged: { outcome: 'unchanged', asset: ASSET },
+    not_found: { outcome: 'not_found' },
+  },
   list_backups: {
     ok: { outcome: 'ok', backups: [{ date: '2026-10-18', bytes: 2048 }] },
     unavailable: { outcome: 'unavailable' },
@@ -567,6 +581,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     list_reviews: {},
     publish: { id: ENTRY_ID, version: 1 },
     request_changes: { id: REVIEW_ID, note: 'Cite a source.' },
+    reject_review: { id: REVIEW_ID, reason: 'Not for this site.' },
     request_review: { id: ENTRY_ID, version: 1 },
     unpublish: { id: ENTRY_ID },
     update_draft: { id: ENTRY_ID, version: 1, markdown: MARKDOWN },
@@ -584,6 +599,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     },
     list_assets: {},
     get_asset: { id: 'ast_0123456789abcdef0123456789' },
+    update_asset: { id: 'ast_0123456789abcdef0123456789', alt: 'A diagram' },
     list_revisions: { id: ENTRY_ID },
     schedule_unpublish: { id: ENTRY_ID, unpublishAt: '2026-11-01T00:00:00.000Z' },
     move_entry: { id: ENTRY_ID, version: 1, slug: 'hello-again' },
@@ -692,6 +708,11 @@ export function fakeHandlers(
       overrides.request_changes ??
         (async () => pick(CANNED.request_changes, outcomes.request_changes ?? 'changes_requested')),
     ),
+    reject_review: record(
+      'reject_review',
+      overrides.reject_review ??
+        (async () => pick(CANNED.reject_review, outcomes.reject_review ?? 'rejected')),
+    ),
     publish: record(
       'publish',
       overrides.publish ?? (async () => pick(CANNED.publish, outcomes.publish ?? 'published')),
@@ -742,6 +763,11 @@ export function fakeHandlers(
     get_asset: record(
       'get_asset',
       overrides.get_asset ?? (async () => pick(CANNED.get_asset, outcomes.get_asset ?? 'ok')),
+    ),
+    update_asset: record(
+      'update_asset',
+      overrides.update_asset ??
+        (async () => pick(CANNED.update_asset, outcomes.update_asset ?? 'updated')),
     ),
     list_backups: record(
       'list_backups',

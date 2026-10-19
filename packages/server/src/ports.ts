@@ -178,7 +178,7 @@ export type WriteRefusal =
   | { readonly outcome: 'too_large'; readonly bytes: number; readonly limit: number }
 
 /** The status of a review (v0.3). */
-export type ReviewStatus = 'pending' | 'approved' | 'changes_requested' | 'cancelled'
+export type ReviewStatus = 'pending' | 'approved' | 'changes_requested' | 'rejected' | 'cancelled'
 
 /** A request to publish a revision, and what was decided about it. */
 export interface StoredReview {
@@ -490,6 +490,14 @@ export interface ContentStore {
     | { readonly outcome: 'changes_requested' | 'not_pending'; readonly review: StoredReview }
     | { readonly outcome: 'not_found' }
   >
+  /** Closes a pending review as rejected, with the reason, without publishing. */
+  rejectReview(
+    site: string,
+    write: { readonly id: string; readonly note: string; readonly userId: string },
+  ): Promise<
+    | { readonly outcome: 'rejected' | 'not_pending'; readonly review: StoredReview }
+    | { readonly outcome: 'not_found' }
+  >
   /** Takes the entry off the public site and appends the unpublish. */
   unpublish(
     site: string,
@@ -720,6 +728,8 @@ export interface AssetCatalog {
   byId(site: string, id: string): Promise<AssetRow | null>
   /** The assets of the site with these ids, in no order; an id it does not have is left out. */
   byIds(site: string, ids: readonly string[]): Promise<readonly AssetRow[]>
+  /** Changes the alt of an asset of the site: `null` when it has no such asset. */
+  updateAlt(site: string, id: string, alt: string): Promise<AssetRow | null>
   /** The asset of the site with these bytes, by their SHA-256. */
   bySha256(site: string, sha256: string): Promise<AssetRow | null>
   /** Writes the row, or answers the one of the same bytes that is there already. */

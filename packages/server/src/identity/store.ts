@@ -250,6 +250,41 @@ export async function passkeySummaries(db: Db, userId: string): Promise<PasskeyS
     .orderBy(passkeys.createdAt, passkeys.id)
 }
 
+/** The longest name of a person, and the longest label of a passkey. */
+export const MAX_NAME_LENGTH = 100
+
+/**
+ * A name or a label as a person types it: trimmed, its runs of spaces made one, and `null` when it
+ * is empty, longer than `MAX_NAME_LENGTH`, or holds a control character.
+ */
+export function cleanName(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const clean = value.trim().replace(/\s+/g, ' ')
+  // oxlint-disable-next-line no-control-regex -- control characters are what it refuses
+  if (clean === '' || clean.length > MAX_NAME_LENGTH || /[\u0000-\u001f\u007f]/.test(clean)) {
+    return null
+  }
+  return clean
+}
+
+/** Changes the name a person shows: theirs alone, which the route makes sure of. */
+export async function renameUser(db: Db, userId: string, name: string): Promise<void> {
+  await db.update(users).set({ name }).where(eq(users.id, userId))
+}
+
+/** Changes the label of one of a person's passkeys; `false` when they have no such passkey. */
+export async function renamePasskey(
+  db: Db,
+  input: { readonly userId: string; readonly id: string; readonly label: string },
+): Promise<boolean> {
+  const renamed = await db
+    .update(passkeys)
+    .set({ label: input.label })
+    .where(and(eq(passkeys.id, input.id), eq(passkeys.userId, input.userId)))
+    .returning({ id: passkeys.id })
+  return renamed.length === 1
+}
+
 export type PasskeyRemoval = 'removed' | 'not_found' | 'last'
 
 /**

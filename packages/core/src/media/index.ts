@@ -187,6 +187,8 @@ export interface ImageSizes {
   readonly height: number | null
   /** The widths of its narrower copies, smallest first: each is served at `<url>/<width>`. */
   readonly widths: readonly number[]
+  /** What it shows, for an `img` whose author gave no alt of its own. */
+  readonly alt?: string
 }
 
 /** The `srcset` of an image served at `url`: its copies and itself, or `null` when it has no copy. */
@@ -254,6 +256,10 @@ function imageProps(
   image: ImageSizes | undefined,
 ): Record<string, unknown> {
   const resolved: Record<string, unknown> = { ...props, src: url }
+  const own = props['alt']
+  if (image?.alt !== undefined && (typeof own !== 'string' || own.trim() === '')) {
+    resolved['alt'] = image.alt
+  }
   if (image === undefined || image.width === null) return resolved
   const srcset = srcsetOf(url, image)
   if (srcset !== null) {

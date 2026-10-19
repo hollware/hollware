@@ -210,6 +210,24 @@ async function addComment() {
   }
 }
 
+/** Closes the review for good, with the note as the reason: it is not to be published. */
+async function reject() {
+  if (chosen.value === null || note.value.trim() === '') return
+  busy.value = true
+  try {
+    const answer = await api.call('reject_review', { id: chosen.value.id, reason: note.value })
+    toast.add({
+      title: answer.outcome === 'rejected' ? m.value.reviews.rejected : m.value.reviews.closed,
+      color: answer.outcome === 'rejected' ? 'success' : 'warning',
+    })
+    await list()
+  } catch (error) {
+    report(error, m.value.reviews.notSent)
+  } finally {
+    busy.value = false
+  }
+}
+
 async function requestChanges() {
   if (chosen.value === null || note.value.trim() === '') return
   busy.value = true
@@ -339,7 +357,11 @@ async function requestChanges() {
         </section>
         <div class="flex flex-wrap items-end gap-3">
           <UButton :label="m.reviews.approve" color="success" :loading="busy" @click="approve()" />
-          <UFormField :label="m.reviews.whatToChange" class="min-w-64 flex-1">
+          <UFormField
+            :label="m.reviews.whatToChange"
+            :help="m.reviews.whatToChangeHelp"
+            class="min-w-64 flex-1"
+          >
             <UTextarea v-model="note" class="w-full" :rows="2" />
           </UFormField>
           <UButton
@@ -349,6 +371,14 @@ async function requestChanges() {
             :loading="busy"
             :disabled="note.trim() === ''"
             @click="requestChanges"
+          />
+          <UButton
+            :label="m.reviews.reject"
+            color="error"
+            variant="outline"
+            :loading="busy"
+            :disabled="note.trim() === ''"
+            @click="reject"
           />
         </div>
       </section>

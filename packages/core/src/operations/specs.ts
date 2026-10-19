@@ -682,6 +682,28 @@ export const requestChanges = defineOperation({
   },
 })
 
+export const rejectReview = defineOperation({
+  name: 'reject_review',
+  title: 'Reject a review',
+  description:
+    'Closes a pending review without publishing, saying why this change is not to be published at all: unlike request_changes, it does not ask the author for another try. The entry stays as it is, published or not.',
+  input: z.strictObject({
+    id: reviewId,
+    reason: z.string().trim().min(1).max(4000).describe('Why it is rejected, for the author.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['rejected', 'not_pending', 'not_found']),
+    review: review.optional(),
+  }),
+  scopes: ['content:publish'],
+  effect: 'edit',
+  outcomes: {
+    rejected: { isError: false },
+    not_pending: { isError: true },
+    not_found: { isError: true },
+  },
+})
+
 export const contentStats = defineOperation({
   name: 'content_stats',
   title: 'Read what readers read',
@@ -1025,6 +1047,33 @@ export const getAsset = defineOperation({
   outcomes: { ok: { isError: false }, not_found: { isError: true } },
 })
 
+export const updateAsset = defineOperation({
+  name: 'update_asset',
+  title: 'Change the alt of an image',
+  description:
+    'Changes what an image shows for whoever cannot see it, its alt: every entry that shows it with no alt of its own reads the new one. The file never changes: a new picture is a new upload.',
+  input: z.strictObject({
+    id: assetId,
+    alt: z
+      .string()
+      .trim()
+      .min(1)
+      .max(500)
+      .describe('What the image shows, for whoever cannot see it.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['updated', 'unchanged', 'not_found']),
+    asset: asset.optional(),
+  }),
+  scopes: ['content:write'],
+  effect: 'edit',
+  outcomes: {
+    updated: { isError: false },
+    unchanged: { isError: false },
+    not_found: { isError: true },
+  },
+})
+
 /** Every operation, sorted by name: the order of `tools/list`. */
 export const OPERATIONS = [
   approveReview,
@@ -1049,6 +1098,7 @@ export const OPERATIONS = [
   makeWebhookSecret,
   moveEntry,
   publish,
+  rejectReview,
   requestChanges,
   requestReview,
   restoreEntry,
@@ -1058,6 +1108,7 @@ export const OPERATIONS = [
   search,
   setCollection,
   unpublish,
+  updateAsset,
   updateDraft,
   updateSite,
   uploadAsset,

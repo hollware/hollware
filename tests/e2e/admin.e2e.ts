@@ -121,6 +121,30 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
 
   await expect(owner.getByText('Approved and published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
+
+  // Asked again, and rejected with its reason: nothing is published, and nothing waits.
+  await author.reload()
+  await writeMarkdown(author, post('Hola mundo, rechazado', 'hello-world'))
+  await author.getByRole('button', { name: 'Save' }).click()
+  await expect(author.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await author.getByRole('button', { name: 'Publish', exact: true }).click()
+  await expect(author.getByText('Sent for review').first()).toBeVisible()
+  await owner.goto('/admin/reviews')
+  await owner.getByRole('button', { name: /Hola mundo, rechazado.*asked by Ana/ }).click()
+  await owner.getByRole('textbox', { name: 'Note for the author' }).fill('Not this one.')
+  await owner.getByRole('button', { name: 'Reject', exact: true }).click()
+  await expect(owner.getByText('Rejected: it will not be published').first()).toBeVisible()
+  await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
+  // The rejected draft is the latest revision; the owner goes back to the one the site shows.
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await owner.getByRole('tab', { name: 'History' }).click()
+  await owner
+    .getByRole('list', { name: 'History of the entry' })
+    .getByRole('button', { name: /Hola mundo, otra vez/ })
+    .first()
+    .click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Restore this version' }).click()
+  await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
 })
 
 test('the owner schedules the end of an entry, unpublishes it, then schedules it', async () => {
@@ -279,6 +303,14 @@ test('the owner uploads an image, sees it in the library and copies its referenc
   )
   await expectAccessible(owner)
   await shot(owner, 'images')
+
+  // What it shows can change later: the card reads the new alt.
+  await card.getByRole('button', { name: 'Edit what it shows: pixel.png' }).click()
+  await owner.getByRole('dialog').getByRole('textbox').fill('A single red pixel')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
+  await expect(
+    owner.getByRole('listitem').getByRole('img', { name: 'A single red pixel' }),
+  ).toBeVisible()
 })
 
 test('the owner reads the activity log: what was done, by whom, and the detail of a line', async () => {
@@ -562,6 +594,19 @@ test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T
   await expect(apps.getByRole('button', { name: /^Revocar/ })).toHaveCount(0)
   await expectAccessible(owner)
   await shot(owner, 'account-es')
+
+  // The owner names the passkey, and changes the name only they may change.
+  await passkeys.getByRole('button', { name: 'Renombrar Passkey' }).click()
+  await owner.getByRole('dialog').getByRole('textbox').fill('Portátil')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click()
+  await expect(passkeys.getByText('Portátil', { exact: true })).toBeVisible()
+  const name = owner.getByRole('textbox', { name: 'Tu nombre' })
+  await expect(name).toHaveValue('Olga')
+  await name.fill('Olga Ruiz')
+  await owner.getByRole('button', { name: 'Guardar el nombre' }).click()
+  await expect(owner.getByText('Nombre guardado').first()).toBeVisible()
+  await owner.reload()
+  await expect(owner.getByRole('textbox', { name: 'Tu nombre' })).toHaveValue('Olga Ruiz')
 
   await owner.getByRole('button', { name: /^Olga/ }).click()
   await owner.getByRole('menuitem', { name: 'Cerrar sesión' }).click()

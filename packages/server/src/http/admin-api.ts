@@ -24,11 +24,15 @@ import { connect } from '../db/d1.ts'
 import { createD1Store } from '../db/index.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
 import {
+  cleanName,
   createInvitation,
   endSessions,
+  MAX_NAME_LENGTH,
   membershipsOf,
   passkeySummaries,
   removePasskey,
+  renamePasskey,
+  renameUser,
 } from '../identity/store.ts'
 import { adminClient } from '../oauth/admin.ts'
 import {
@@ -698,6 +702,57 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
               409,
             )
         }
+      },
+      { anyone: true, everySite: true },
+    ),
+  )
+
+  // One of the person's passkeys gets another label, such as "Phone": theirs only.
+  app.post(
+    '/v1/admin/account/passkeys/rename',
+    admin(
+      'passkey.rename',
+      async (c, person, note) => {
+        const sent = await body(c)
+        const id = sent['id']
+        const label = cleanName(sent['label'])
+        if (typeof id !== 'string' || label === null) {
+          return refused(
+            `Give the id of one of your passkeys, and a label of 1 to ${MAX_NAME_LENGTH} characters.`,
+            'Send { "id": "pky_…", "label": "Phone" }.',
+          )
+        }
+        note.target = { type: 'passkey', id }
+        if (!(await renamePasskey(connect(c.env.DB), { userId: person.userId, id, label }))) {
+          return refused(
+            'You have no such passkey.',
+            'List your passkeys and pick one of them.',
+            404,
+          )
+        }
+        return json({ outcome: 'renamed', id, label })
+      },
+      { anyone: true, everySite: true },
+    ),
+  )
+
+  // The name the person shows, on their revisions, reviews and comments: only they change it, so
+  // the route takes no user, only the person signed in.
+  app.post(
+    '/v1/admin/account/name',
+    admin(
+      'account.rename',
+      async (c, person, note) => {
+        const name = cleanName((await body(c))['name'])
+        if (name === null) {
+          return refused(
+            `Give a name of 1 to ${MAX_NAME_LENGTH} characters.`,
+            'Send { "name": "Ada Lovelace" }.',
+          )
+        }
+        note.target = { type: 'user', id: person.userId }
+        await renameUser(connect(c.env.DB), person.userId, name)
+        return json({ outcome: 'renamed', name })
       },
       { anyone: true, everySite: true },
     ),

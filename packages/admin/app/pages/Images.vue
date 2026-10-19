@@ -23,6 +23,9 @@ const file = ref<File | null>(null)
 const alt = ref('')
 const busy = ref(false)
 const input = ref<HTMLInputElement | null>(null)
+/** The image whose alt is being edited, and the alt as typed. */
+const editing = ref<Asset | null>(null)
+const editedAlt = ref('')
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
@@ -84,6 +87,30 @@ async function copy(asset: Asset) {
   toast.add({ title: m.value.images.copied, color: 'success' })
 }
 
+function edit(asset: Asset) {
+  editing.value = asset
+  editedAlt.value = asset.alt
+}
+
+async function saveAlt() {
+  const asset = editing.value
+  if (asset === null || editedAlt.value.trim() === '') return
+  busy.value = true
+  try {
+    const answer = await api.call('update_asset', { id: asset.id, alt: editedAlt.value.trim() })
+    if (answer.asset !== undefined) {
+      const saved = answer.asset
+      assets.value = assets.value.map((one) => (one.id === saved.id ? saved : one))
+    }
+    toast.add({ title: m.value.images.altSaved, color: 'success' })
+    editing.value = null
+  } catch (error) {
+    toast.add({ title: m.value.images.altNotSaved, description: describe(error), color: 'error' })
+  } finally {
+    busy.value = false
+  }
+}
+
 onMounted(() => load())
 </script>
 
@@ -137,12 +164,46 @@ onMounted(() => load())
           >
           · {{ formatDate(asset.createdAt) }}
         </p>
-        <UButton size="xs" variant="soft" icon="i-lucide-copy" @click="copy(asset)">
-          {{ m.images.copy }}
-        </UButton>
+        <div class="flex flex-wrap gap-2">
+          <UButton size="xs" variant="soft" icon="i-lucide-copy" @click="copy(asset)">
+            {{ m.images.copy }}
+          </UButton>
+          <UButton
+            size="xs"
+            variant="ghost"
+            icon="i-lucide-pencil"
+            :aria-label="m.images.editAltOf(asset.filename)"
+            @click="edit(asset)"
+          >
+            {{ m.images.editAlt }}
+          </UButton>
+        </div>
       </li>
     </ul>
 
     <UButton v-if="next !== null" variant="ghost" @click="load(next)">{{ m.images.more }}</UButton>
+    <UModal
+      :open="editing !== null"
+      :title="m.images.editAlt"
+      @update:open="(open) => (open ? null : (editing = null))"
+    >
+      <template #body>
+        <form id="edit-alt" @submit.prevent="saveAlt">
+          <UFormField :label="m.images.alt" :help="m.images.altHelp" required>
+            <UInput v-model="editedAlt" class="w-full" />
+          </UFormField>
+        </form>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="editing = null" />
+        <UButton
+          type="submit"
+          form="edit-alt"
+          :label="m.common.save"
+          :loading="busy"
+          :disabled="editedAlt.trim() === ''"
+        />
+      </template>
+    </UModal>
   </Page>
 </template>

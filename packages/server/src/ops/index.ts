@@ -1,4 +1,4 @@
-import { getAsset, listAssets, uploadAsset } from './assets.ts'
+import { getAsset, listAssets, updateAsset, uploadAsset } from './assets.ts'
 import { listBackups } from './backups.ts'
 import { contentStats } from './content-stats.ts'
 import { createDraft } from './create-draft.ts'
@@ -24,6 +24,7 @@ import {
   approveReview,
   commentReview,
   listReviews,
+  rejectReview,
   requestChanges,
   requestReview,
 } from './reviews.ts'
@@ -48,6 +49,7 @@ export const handlers = defineHandlers({
   delete_site: deleteSite,
   describe_site: describeSite,
   get_asset: getAsset,
+  update_asset: updateAsset,
   get_entry: getEntry,
   get_revision: getRevision,
   get_structure: getStructure,
@@ -64,6 +66,7 @@ export const handlers = defineHandlers({
   move_entry: moveEntry,
   publish,
   request_changes: requestChanges,
+  reject_review: rejectReview,
   request_review: requestReview,
   restore_entry: restoreEntry,
   restore_revision: restoreRevision,
