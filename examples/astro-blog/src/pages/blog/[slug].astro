@@ -1,6 +1,9 @@
 ---
 import { refusePreview } from '@hollware/astro'
-import { getLiveEntry, render } from 'astro:content'
+import HollwareContent from '@hollware/astro/HollwareContent.astro'
+import HollwareImage from '@hollware/astro/HollwareImage.astro'
+import { getLiveEntry } from 'astro:content'
+import Callout from '../../components/Callout.astro'
 import Page from '../../layouts/Page.astro'
 
 // src/middleware.ts exchanged the link of the admin's "Preview on the site" for a cookie: the token
@@ -14,12 +17,14 @@ if (error || !entry) {
   if (error) refusePreview(Astro.locals, error)
   return new Response('Not found', { status: 404 })
 }
-const { Content } = await render(entry)
 ---
 
 <Page title={String(entry.data['title'] ?? entry.id)}>
   <article>
     <h1>{String(entry.data['title'] ?? entry.id)}</h1>
-    <Content />
+    <HollwareImage entry={entry} field="cover" />
+    {/* The body from the entry's document, its components as the site's own: `render(entry)` and
+    <Content /> give the HTML Hollware made instead. */}
+    <HollwareContent entry={entry} components={{ callout: Callout }} />
   </article>
 </Page>

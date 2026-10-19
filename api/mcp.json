@@ -67,6 +67,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -450,6 +454,10 @@
                           "additionalProperties": {
                             "additionalProperties": false,
                             "properties": {
+                              "alt": {
+                                "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                                "type": "string"
+                              },
                               "height": {
                                 "anyOf": [
                                   {
@@ -641,6 +649,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -1334,6 +1346,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -1928,6 +1944,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -2290,6 +2310,10 @@
                     "additionalProperties": {
                       "additionalProperties": false,
                       "properties": {
+                        "alt": {
+                          "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                          "type": "string"
+                        },
                         "height": {
                           "anyOf": [
                             {
@@ -2425,6 +2449,10 @@
                   "additionalProperties": {
                     "additionalProperties": false,
                     "properties": {
+                      "alt": {
+                        "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                        "type": "string"
+                      },
                       "height": {
                         "anyOf": [
                           {
@@ -3156,6 +3184,10 @@
                   "additionalProperties": {
                     "additionalProperties": false,
                     "properties": {
+                      "alt": {
+                        "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                        "type": "string"
+                      },
                       "height": {
                         "anyOf": [
                           {
@@ -3544,6 +3576,10 @@
                   "additionalProperties": {
                     "additionalProperties": false,
                     "properties": {
+                      "alt": {
+                        "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                        "type": "string"
+                      },
                       "height": {
                         "anyOf": [
                           {
@@ -3841,6 +3877,10 @@
                       "additionalProperties": {
                         "additionalProperties": false,
                         "properties": {
+                          "alt": {
+                            "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                            "type": "string"
+                          },
                           "height": {
                             "anyOf": [
                               {
@@ -4242,6 +4282,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -4503,6 +4547,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -5051,6 +5099,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -5354,6 +5406,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -5538,6 +5594,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -5824,6 +5884,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -6030,6 +6094,10 @@
                       "additionalProperties": {
                         "additionalProperties": false,
                         "properties": {
+                          "alt": {
+                            "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                            "type": "string"
+                          },
                           "height": {
                             "anyOf": [
                               {
@@ -6536,6 +6604,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {
@@ -6873,6 +6945,10 @@
                 "additionalProperties": {
                   "additionalProperties": false,
                   "properties": {
+                    "alt": {
+                      "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                      "type": "string"
+                    },
                     "height": {
                       "anyOf": [
                         {

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { renderToString } from 'react-dom/server'
 
-import { HollwareContent } from '../src/index.ts'
+import { HollwareContent, HollwareImage } from '../src/index.ts'
 
 // Fails when: <HollwareContent> stops rendering the nodes of the entry's Comark document, stops
 // handing a component of the entry to the site's own mapping of that name (`Callout`, as the
 // entry's `::callout`) with its props and its children, renders something for an entry that has
-// no document, or drops the class the site gives the wrapper.
+// no document, or drops the class the site gives the wrapper, or the srcset, sizes and size of an
+// image; or <HollwareImage> stops rendering a frontmatter image with its alt, size and copies, or
+// lets them win over a prop the site gives.
 
 const document = {
   nodes: [
@@ -46,6 +48,36 @@ describe('<HollwareContent>', () => {
     )
   })
 
+  it('renders an image with its size and copies, as Hollware gives them to a site', () => {
+    const image = {
+      nodes: [
+        [
+          'img',
+          {
+            src: 'https://cms.test/assets/blog/ast_a',
+            alt: 'A diagram',
+            srcset:
+              'https://cms.test/assets/blog/ast_a/640 640w, https://cms.test/assets/blog/ast_a 1600w',
+            sizes: '(min-width: 1600px) 1600px, 100vw',
+            width: '1600',
+            height: '900',
+          },
+        ],
+      ],
+      frontmatter: {},
+      meta: {},
+    }
+
+    const html = renderToString(<HollwareContent entry={{ document: image }} />)
+
+    expect(html).toContain(
+      'srcset="https://cms.test/assets/blog/ast_a/640 640w, https://cms.test/assets/blog/ast_a 1600w"',
+    )
+    expect(html).toContain('sizes="(min-width: 1600px) 1600px, 100vw"')
+    expect(html).toContain('width="1600"')
+    expect(html).toContain('height="900"')
+  })
+
   it('renders nothing for an entry with no document, or no entry', () => {
     expect([
       renderToString(<HollwareContent entry={undefined} />),
@@ -53,5 +85,23 @@ describe('<HollwareContent>', () => {
       renderToString(<HollwareContent entry={{}} />),
       renderToString(<HollwareContent entry={{ document: 'not a document' }} />),
     ]).toEqual(['', '', '', ''])
+  })
+})
+
+describe('<HollwareImage>', () => {
+  const COVER = 'https://cms.test/assets/blog/ast_a'
+  const post = {
+    frontmatter: { img: COVER },
+    images: {
+      [COVER]: { width: 1600, height: 900, srcset: `${COVER}/640 640w`, alt: 'A diagram' },
+    },
+  }
+
+  it('renders the image of a frontmatter field with its alt, size and copies; a prop given wins', () => {
+    expect(renderToString(<HollwareImage entry={post} field="img" loading="lazy" />)).toBe(
+      `<img src="${COVER}" alt="A diagram" srcSet="${COVER}/640 640w" sizes="(min-width: 1600px) 1600px, 100vw" width="1600" height="900" loading="lazy"/>`,
+    )
+    expect(renderToString(<HollwareImage entry={post} field="img" alt="" />)).toContain('alt=""')
+    expect(renderToString(<HollwareImage entry={post} field="none" />)).toBe('')
   })
 })

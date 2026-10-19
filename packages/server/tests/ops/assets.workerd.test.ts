@@ -585,7 +585,9 @@ describe('asset references in reads', () => {
     }
     expect(JSON.stringify(reader.entry?.document)).toContain(`"srcset":"${srcset}"`)
     // The cover of the frontmatter, by its URL, for a site; nothing for an agent.
-    expect(reader.entry?.images).toEqual({ [url]: { width: 1600, height: 900, srcset } })
+    expect(reader.entry?.images).toEqual({
+      [url]: { width: 1600, height: 900, srcset, alt: 'Cover' },
+    })
     expect(head.entry?.images).toBe(undefined)
 
     expect([head.entry?.frontmatter['cover'], reader.entry?.frontmatter['cover']]).toEqual([

@@ -33,6 +33,50 @@ export interface PageImage {
   readonly width: number | null
   readonly height: number | null
   readonly srcset: string | null
+  /** What it shows, as it was uploaded: what an `<img>` with no alt of its own says. */
+  readonly alt?: string
+}
+
+/** The attributes of an `<img>` of an image of the frontmatter: what `<HollwareImage>` renders. */
+export interface ImageAttributes {
+  readonly src: string
+  readonly alt?: string
+  readonly srcset?: string
+  readonly sizes?: string
+  readonly width?: number
+  readonly height?: number
+}
+
+/**
+ * The `<img>` of the image a frontmatter field holds (a cover): its URL, and, from the `images`
+ * Hollware gives a site, its alt, its size and the `srcset` of its narrower copies, with a `sizes`
+ * that never shows it wider than it is. `null` when the field holds no URL. An image from
+ * elsewhere, which Hollware knows nothing of, is its URL alone.
+ */
+export function imageOf(
+  entry:
+    | {
+        readonly frontmatter?: Readonly<Record<string, unknown>>
+        readonly images?: Readonly<Record<string, PageImage>>
+      }
+    | null
+    | undefined,
+  field: string,
+): ImageAttributes | null {
+  const src = entry?.frontmatter?.[field]
+  if (typeof src !== 'string' || src === '') return null
+  const image = entry?.images?.[src]
+  if (image === undefined) return { src }
+  return {
+    src,
+    ...(image.alt === undefined ? {} : { alt: image.alt }),
+    ...(image.srcset === null || image.width === null
+      ? {}
+      : { srcset: image.srcset, sizes: `(min-width: ${image.width}px) ${image.width}px, 100vw` }),
+    ...(image.width === null || image.height === null
+      ? {}
+      : { width: image.width, height: image.height }),
+  }
 }
 
 export interface PageSummary {

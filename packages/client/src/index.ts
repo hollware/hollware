@@ -25,11 +25,13 @@ export {
 
 export {
   createHollware,
+  imageOf,
   type EntryAnswer,
   type EntryPage,
   type GetEntryOptions,
   type Hollware,
   type HollwareOptions,
+  type ImageAttributes,
   type ListEntriesOptions,
   type PageDocument,
   type PageEntry,

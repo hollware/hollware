@@ -1,4 +1,9 @@
-import { createClient, HollwareClientError, type HollwareReader } from '@hollware/client'
+import {
+  createClient,
+  HollwareClientError,
+  type HollwareReader,
+  type PageImage,
+} from '@hollware/client'
 
 /** What names the collection to read: one collection of a site, in one locale. */
 export interface SourceOptions {
@@ -37,6 +42,10 @@ export interface SourceEntry {
   readonly data: Record<string, unknown>
   /** The HTML Hollware renders from the Markdown: only an entry read alone has it. */
   readonly html?: string
+  /** The Comark document, for `HollwareContent.astro`: only an entry read alone has it. */
+  readonly document?: unknown
+  /** The images its frontmatter names, by URL, with their size, alt and `srcset`. */
+  readonly images?: Readonly<Record<string, PageImage>>
   /** When the entry last changed, as an ISO date. */
   readonly updatedAt: string
 }
@@ -97,7 +106,12 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
           cursor,
         })
         for (const entry of page.entries) {
-          found.push({ id: entry.slug, data: entry.frontmatter, updatedAt: entry.updatedAt })
+          found.push({
+            id: entry.slug,
+            data: entry.frontmatter,
+            updatedAt: entry.updatedAt,
+            ...(entry.images === undefined ? {} : { images: entry.images }),
+          })
         }
         cursor = page.nextCursor ?? undefined
       } while (cursor !== undefined)
@@ -105,7 +119,7 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
     },
     async get(slug, getOptions = {}) {
       const answer = await readerOf(options).getEntry(site, collection, slug, locale, {
-        formats: ['html'],
+        formats: ['html', 'document'],
         ...(getOptions.preview === undefined ? {} : { preview: getOptions.preview }),
       })
       if (answer.outcome === 'not_found' || answer.entry === undefined) return undefined
@@ -114,6 +128,8 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
         data: answer.entry.frontmatter,
         html: answer.entry.html ?? '',
         updatedAt: answer.entry.updatedAt,
+        ...(answer.entry.document === undefined ? {} : { document: answer.entry.document }),
+        ...(answer.entry.images === undefined ? {} : { images: answer.entry.images }),
       }
     },
     async translations(group) {

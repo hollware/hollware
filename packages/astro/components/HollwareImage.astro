@@ -1,0 +1,34 @@
+---
+/**
+ * The image a frontmatter field holds, such as the cover of a post: an `<img>` with its alt, its
+ * size and the `srcset` of the copies Hollware made of it. An attribute given wins, `alt` and
+ * `sizes` included. Nothing renders when the field holds no image.
+ *
+ *   <HollwareImage entry={entry} field="img" loading="lazy" />
+ */
+import type { HTMLAttributes } from 'astro/types'
+import { imageOf, type HollwareEntryLike } from '@hollware/astro'
+
+type Props = Omit<HTMLAttributes<'img'>, 'src'> & {
+  readonly entry?: HollwareEntryLike | null
+  /** The frontmatter field that holds the image, such as `img` or `cover`. */
+  readonly field: string
+}
+
+const { entry, field, ...rest } = Astro.props
+const image = imageOf(entry, field)
+---
+
+{
+  image && (
+    <img
+      src={image.src}
+      alt={image.alt ?? ''}
+      srcset={image.srcset}
+      sizes={image.sizes}
+      width={image.width}
+      height={image.height}
+      {...rest}
+    />
+  )
+}

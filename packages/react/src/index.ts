@@ -5,6 +5,7 @@ export const name = '@hollware/react'
 export {
   createHollware,
   hollwareBinding,
+  imageOf,
   isPreviewRequest,
   PREVIEW_COOKIE,
   previewCookieClear,
@@ -16,6 +17,7 @@ export {
   type Hollware,
   type HollwareOptions,
   type HollwareReader,
+  type ImageAttributes,
   type ListEntriesOptions,
   type PageDocument,
   type PageEntry,
@@ -25,3 +27,4 @@ export {
   type Translation,
 } from '@hollware/client'
 export { HollwareContent, type HollwareContentProps } from './content.tsx'
+export { HollwareImage, type HollwareImageProps } from './image.tsx'

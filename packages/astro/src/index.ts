@@ -6,6 +6,7 @@ import {
   type ReaderOptions,
   type Source,
   type SourceOptions,
+  type SourceEntry,
   type Translation,
 } from './source.ts'
 
@@ -21,8 +22,29 @@ export type {
 } from './source.ts'
 export type { HollwareReader } from '@hollware/client'
 export { createSource } from './source.ts'
+export {
+  contentNodes,
+  elementOf,
+  imageOf,
+  type ContentElement,
+  type ContentNode,
+  type HollwareEntryLike,
+  type HollwareMetadata,
+} from './content.ts'
 export { hollwareBinding } from '@hollware/client'
 export { hollwarePreview, refusePreview, type HollwarePreviewLocals } from './preview.ts'
+
+/**
+ * What an entry keeps besides its HTML, for the components of `@hollware/astro`
+ * (`HollwareContent.astro`, `HollwareImage.astro`): its document and its images.
+ */
+function withMetadata(html: string, entry: SourceEntry) {
+  const metadata = {
+    ...(entry.document === undefined ? {} : { document: entry.document }),
+    ...(entry.images === undefined ? {} : { images: entry.images }),
+  }
+  return Object.keys(metadata).length === 0 ? { html } : { html, metadata }
+}
 
 /** The options of `hollwareLoader`. */
 export type HollwareLoaderOptions = SourceOptions & ReaderOptions
@@ -66,7 +88,7 @@ export async function loadInto(source: Source, context: LoadContext): Promise<vo
     store.set({
       id: entry.id,
       data,
-      rendered: { html },
+      rendered: withMetadata(html, entry),
       digest: context.generateDigest({ data, html }),
     })
     seen.add(entry.id)
@@ -124,7 +146,7 @@ export function hollwareLiveLoader(
         return {
           id: entry.id,
           data: entry.data,
-          rendered: { html: entry.html ?? '' },
+          rendered: withMetadata(entry.html ?? '', entry),
           // A preview is the latest revision for one person: nothing may be told it can be kept.
           ...(preview === undefined
             ? { cacheHint: { lastModified: new Date(entry.updatedAt) } }
@@ -141,6 +163,10 @@ export function hollwareLiveLoader(
           entries: entries.map((entry) => ({
             id: entry.id,
             data: entry.data,
+            // The images of the frontmatter, for a cover in a list: no body, so no HTML.
+            ...(entry.images === undefined
+              ? {}
+              : { rendered: { html: '', metadata: { images: entry.images } } }),
             cacheHint: { lastModified: new Date(entry.updatedAt) },
           })),
         }

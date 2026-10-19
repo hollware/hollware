@@ -43,6 +43,19 @@ const UNSCOPED_NAMES: Readonly<Record<string, string>> = {
 const SHIPPED_EXTRA: Readonly<Record<string, readonly string[]>> = {
   server: ['migrations'],
   'create-hollware': ['template'],
+  // The Astro components, which ship as their source: Astro compiles them in the site.
+  astro: ['components'],
+}
+
+/**
+ * The entries a package exports as source files that ship as they are, by directory, the same
+ * inside the workspace and once published: only the Astro components, which no build compiles.
+ */
+const SOURCE_FILES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  astro: {
+    './HollwareContent.astro': './components/HollwareContent.astro',
+    './HollwareImage.astro': './components/HollwareImage.astro',
+  },
 }
 
 /** The executable a package installs, by directory. Only the two command-line packages have one. */
@@ -66,6 +79,7 @@ function sourceExports(name: string): Record<string, unknown> {
   return {
     '.': './src/index.ts',
     ...Object.fromEntries((SUBPATHS[name] ?? []).map((sub) => [`./${sub}`, `./src/${sub}.ts`])),
+    ...SOURCE_FILES[name],
     './package.json': './package.json',
   }
 }
@@ -79,6 +93,7 @@ function publishedExportsOf(name: string): Record<string, unknown> {
   return {
     '.': built('index'),
     ...Object.fromEntries((SUBPATHS[name] ?? []).map((sub) => [`./${sub}`, built(sub)])),
+    ...SOURCE_FILES[name],
     './package.json': './package.json',
   }
 }
@@ -169,7 +184,8 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
   const typesFirst =
     isRecord(publishedExports) &&
     Object.entries(publishedExports)
-      .filter(([key]) => key !== './package.json')
+      // The package.json, and a source file that ships as it is, have no types of their own.
+      .filter(([key]) => key !== './package.json' && !Object.hasOwn(SOURCE_FILES[name] ?? {}, key))
       .every(
         ([, entry]) =>
           isRecord(entry) && isDeepStrictEqual(Object.keys(entry), ['types', 'default']),

@@ -12,9 +12,9 @@ import {
 import { astroFetch, createAstroHarness } from './workers.ts'
 
 // Fails when: @hollware/astro (packages/astro) stops letting an Astro site on Cloudflare read
-// Hollware over its service binding at request time: the page of a published entry rendered with
-// Astro's own `<Content />` from the HTML Hollware made (`hollwareLiveLoader`, `rendered.html`),
-// the index from `getLiveCollection`; or it serves a draft, or an entry that does not exist, as
+// Hollware over its service binding at request time: the page of a published entry,
+// the index from `getLiveCollection`; or HollwareContent.astro stops rendering the body from the
+// entry's document, with the entry's `::callout` as the site's own component; or it serves a draft, or an entry that does not exist, as
 // anything but a 404 (but for a preview token of that entry, which serves its latest revision
 // with `no-store`, T-103; a token that is expired, forged or for another entry serves nothing), or lists a draft. The site is examples/astro-blog, built by Astro with
 // @astrojs/cloudflare and no Node.js compatibility; content is published through MCP, as an
@@ -56,16 +56,21 @@ afterAll(async () => {
 })
 
 describe('an Astro site with @hollware/astro', () => {
-  it('renders a published entry from the HTML Hollware made', async () => {
+  it('renders a published entry from its document, its callout as a component of the site', async () => {
     const page = await astroFetch(server, '/blog/from-draft-to-published/')
     const html = await page.text()
 
     expect(page.status).toBe(200)
     expect(html).toContain('<title>From draft to published</title>')
     expect(html).toContain('<meta name="generator" content="Hollware">')
-    // The body is the HTML of the entry, rendered by Astro's <Content />: its first heading.
+    // The body, rendered by HollwareContent.astro from the document: its headings with their ids,
+    // its marks, and `::callout{type="tip"}` as the site's Callout.astro.
     expect(html).toMatch(/<h1 id="from-draft-to-published"[^>]*>From draft to published<\/h1>/)
     expect(html).toContain('<h2 id="why-it-matters"')
+    expect(html).toContain('<strong>fast reads</strong>')
+    expect(html).toMatch(
+      /<aside class="callout" data-type="tip"[^>]*>\s*(<p>)?Keep the slug short: it becomes part of the public path\.(<\/p>)?\s*<\/aside>/,
+    )
   })
 
   it('lists the published entries, and not the draft', async () => {

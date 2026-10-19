@@ -5,6 +5,7 @@ export const name = '@hollware/vue'
 export {
   createHollware,
   hollwareBinding,
+  imageOf,
   isPreviewRequest,
   PREVIEW_COOKIE,
   previewCookieClear,
@@ -16,6 +17,7 @@ export {
   type Hollware,
   type HollwareOptions,
   type HollwareReader,
+  type ImageAttributes,
   type ListEntriesOptions,
   type PageDocument,
   type PageEntry,
@@ -25,6 +27,7 @@ export {
   type Translation,
 } from '@hollware/client'
 export { HollwareContent } from './content.ts'
+export { HollwareImage } from './image.ts'
 export {
   createHollwarePlugin,
   provideHollware,

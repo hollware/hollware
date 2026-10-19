@@ -10,10 +10,14 @@ export default defineConfig({
       devExports: true,
       // The published entry spells out the `types` condition, so resolving the types does not
       // depend on `index.d.mts` happening to sit next to `index.mjs`.
-      customExports: (exports, { isPublish }) =>
-        isPublish
-          ? { ...exports, '.': { types: './dist/index.d.mts', default: './dist/index.mjs' } }
-          : exports,
+      // The Astro components ship as their source, which Astro compiles in the site, both here
+      // and once published.
+      customExports: (exports, { isPublish }) => ({
+        ...exports,
+        ...(isPublish ? { '.': { types: './dist/index.d.mts', default: './dist/index.mjs' } } : {}),
+        './HollwareContent.astro': './components/HollwareContent.astro',
+        './HollwareImage.astro': './components/HollwareImage.astro',
+      }),
     },
   },
 })

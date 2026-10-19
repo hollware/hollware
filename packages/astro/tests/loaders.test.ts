@@ -10,7 +10,8 @@ import {
   type LoadContext,
 } from '../src/index.ts'
 
-// Fails when: the loaders of src/index.ts stop reading only the collection and locale they are
+// Fails when the loaders stop keeping the document and the images of an entry for the components;
+// or when: the loaders of src/index.ts stop reading only the collection and locale they are
 // given, or give an entry an id other than its slug, data other than its frontmatter, or a
 // `rendered.html` other than the HTML Hollware made (source.ts `get`); or a listing stops following
 // the cursor, stops at `limit`, or reads one page too many (source.ts `list`); or a live loader
@@ -114,7 +115,7 @@ describe('hollwareLiveLoader', () => {
       rendered: { html: '<h1>Hello</h1>' },
       cacheHint: { lastModified: new Date(AT) },
     })
-    expect(calls).toEqual(['get playground blog en hello html'])
+    expect(calls).toEqual(['get playground blog en hello html,document'])
   })
 
   it('reads the latest revision with the preview token of the filter, and lets nothing keep it', async () => {
@@ -237,7 +238,7 @@ describe('hollwareLiveLoader', () => {
 
     await loader.loadEntry({ collection: 'blog', filter: { id: 'hello' } })
 
-    expect(calls).toEqual(['get playground blog en hello html'])
+    expect(calls).toEqual(['get playground blog en hello html,document'])
   })
 })
 
@@ -311,7 +312,7 @@ describe('loadInto', () => {
         authorization: 'Bearer hw_read_abc',
       },
       {
-        url: 'https://cms.example.com/v1/blog/en/hello?formats=html',
+        url: 'https://cms.example.com/v1/blog/en/hello?formats=html%2Cdocument',
         authorization: 'Bearer hw_read_abc',
       },
     ])

@@ -327,7 +327,12 @@ export function summaryImages(
     const row = images.get(id)
     if (row === undefined) return []
     const url = urlOf(id)
-    return [[url, { width: row.width, height: row.height, srcset: srcsetOf(url, row) }] as const]
+    return [
+      [
+        url,
+        { width: row.width, height: row.height, srcset: srcsetOf(url, row), alt: row.alt },
+      ] as const,
+    ]
   })
   return named.length === 0 ? {} : { images: Object.fromEntries(named) }
 }

@@ -171,8 +171,12 @@ function sanitizeElement(
   return element
 }
 
-/** Copies a document through the rules of this file. */
-function sanitizeDocument(document: EntryDocument): MarkdownDocument {
+/**
+ * Copies a document through the rules of this file: what a renderer of a site's own (an Astro
+ * component, say) renders, so that it is as safe as the HTML Hollware makes. A raw HTML element
+ * the pipeline marked stays a `hollware-marker` element, which a renderer leaves out.
+ */
+export function safeDocument(document: EntryDocument): MarkdownDocument {
   const nodes: MarkdownDocument['nodes'] = []
   const data: DocumentData = { frontmatter: document.frontmatter, meta: document.meta }
   if (Array.isArray(document.nodes)) {
@@ -194,5 +198,5 @@ function sanitizeDocument(document: EntryDocument): MarkdownDocument {
  */
 export const renderHtml: RenderHtml = async (document) => {
   const { renderHtmlFromDocument } = await import('@comark/html')
-  return renderHtmlFromDocument(sanitizeDocument(document))
+  return renderHtmlFromDocument(safeDocument(document))
 }

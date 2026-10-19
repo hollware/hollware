@@ -28,7 +28,8 @@ import { workspaceManifests } from '../support/workspace.ts'
 // stop pointing at the source, or the published ones in publishConfig at dist; a published
 // package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
 // or a package's vite.config.ts stops building with `pack.exports.devExports: true`; or a package
-// exports an entry besides its root that SUBPATHS of tests/guards/manifests.ts does not declare.
+// exports an entry besides its root that SUBPATHS or SOURCE_FILES of tests/guards/manifests.ts does
+// not declare.
 
 /** The published exports of every package, as the guard expects them. */
 const PUBLISHED_EXPORTS = {

@@ -106,6 +106,10 @@ export default defineNuxtModule<ModuleOptions>({
       name: 'HollwareContent',
       filePath: resolve('./runtime/components/HollwareContent'),
     })
+    addComponent({
+      name: 'HollwareImage',
+      filePath: resolve('./runtime/components/HollwareImage'),
+    })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
     // Always: a page read with a preview token is never kept, whatever `cache` is, and the link
     // of "Preview on the site" is exchanged for the cookie that holds the token.

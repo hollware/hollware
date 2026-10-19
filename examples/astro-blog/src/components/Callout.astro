@@ -1,0 +1,10 @@
+---
+// The site's own callout: what `::callout{type="tip"}` of an entry renders as, through
+// `HollwareContent.astro` of @hollware/astro.
+interface Props {
+  readonly type?: string
+}
+const { type = 'note' } = Astro.props
+---
+
+<aside class="callout" data-type={type}><slot /></aside>

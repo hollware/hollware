@@ -115,6 +115,12 @@ export const entrySummary = z.object({
         width: z.number().int().nullable(),
         height: z.number().int().nullable(),
         srcset: z.string().nullable(),
+        alt: z
+          .string()
+          .optional()
+          .describe(
+            'What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.',
+          ),
       }),
     )
     .optional()
