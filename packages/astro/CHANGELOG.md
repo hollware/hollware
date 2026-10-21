@@ -1,5 +1,13 @@
 # @hollware/astro
 
+## 1.0.0-rc.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.0.0-rc.6
+  - @hollware/core@1.0.0-rc.6
+
 ## 1.0.0-rc.5
 
 ### Minor Changes

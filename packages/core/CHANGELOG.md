@@ -1,5 +1,9 @@
 # @hollware/core
 
+## 1.0.0-rc.6
+
+No changes in this release.
+
 ## 1.0.0-rc.5
 
 ### Minor Changes
