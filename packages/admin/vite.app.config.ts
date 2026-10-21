@@ -59,7 +59,7 @@ export default defineConfig({
       colorMode: false,
       // The theme of hollware.com (apps/web/app/app.config.ts; tests/conventions/brand.test.ts).
       ui: {
-        colors: { primary: 'neutral', secondary: 'emerald', neutral: 'neutral' },
+        colors: { primary: 'carbon', secondary: 'flame', neutral: 'carbon' },
         input: { defaultVariants: { variant: 'subtle' } },
         textarea: { defaultVariants: { variant: 'subtle' } },
         select: { defaultVariants: { variant: 'subtle' } },

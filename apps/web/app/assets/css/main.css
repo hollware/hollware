@@ -1,29 +1,55 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 /* The fonts travel with the site: no font is fetched from another origin. */
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/schibsted-grotesk';
 @import '@fontsource-variable/jetbrains-mono';
 
 /* theme:start
- * The theme of Hollware, the same in hollware.com and the admin (tests/conventions/brand.test.ts):
- * Nuxt UI with black as the primary color (white on the dark ground), emerald as the secondary,
- * neutral greys, Inter and JetBrains Mono. Dark only.
+ * The theme of Hollware, the same in hollware.com and the admin (ADR-039,
+ * tests/conventions/brand.test.ts): the Carbón greys of the brand book as Nuxt UI's neutral, the
+ * warm white of Carbón as the primary, its amber, flame, as the secondary (the main action of a
+ * page and the accents, used sparingly), Schibsted Grotesk and JetBrains Mono. Dark only.
  */
 @theme static {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans:
+    'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-carbon-50: #f7f4ef;
+  --color-carbon-100: #f2ede4;
+  --color-carbon-200: #e6dfd3;
+  --color-carbon-300: #c9c1b4;
+  --color-carbon-400: #9e968a;
+  --color-carbon-500: #7d766b;
+  --color-carbon-600: #5f5950;
+  --color-carbon-700: #433e37;
+  --color-carbon-800: #2a251d;
+  --color-carbon-900: #17140f;
+  --color-carbon-950: #0e0c0a;
+
+  --color-flame-50: #fef7ea;
+  --color-flame-100: #fcebc9;
+  --color-flame-200: #f9d693;
+  --color-flame-300: #f6c163;
+  --color-flame-400: #f0a93b;
+  --color-flame-500: #db8f22;
+  --color-flame-600: #b87513;
+  --color-flame-700: #8a560c;
+  --color-flame-800: #6b430d;
+  --color-flame-900: #4f320c;
+  --color-flame-950: #2e1c05;
 }
 
 .dark {
-  --ui-primary: white;
+  --ui-primary: var(--ui-color-primary-100);
   --ui-bg: var(--ui-color-neutral-950);
   --ui-bg-muted: var(--ui-color-neutral-900);
   --ui-bg-elevated: var(--ui-color-neutral-900);
   --ui-bg-accented: var(--ui-color-neutral-800);
-  --ui-text: var(--ui-color-neutral-100);
-  --ui-text-highlighted: var(--ui-color-neutral-50);
-  --ui-bg-inverted: var(--ui-color-neutral-50);
-  --ui-border-inverted: var(--ui-color-neutral-50);
+  --ui-text: var(--ui-color-neutral-200);
+  --ui-text-highlighted: var(--ui-color-neutral-100);
+  --ui-bg-inverted: var(--ui-color-neutral-100);
+  --ui-border-inverted: var(--ui-color-neutral-100);
 }
 /* theme:end */
 
@@ -58,7 +84,7 @@ body {
 .backdrop-glow {
   background: radial-gradient(
     ellipse 50% 40% at 50% 0%,
-    color-mix(in oklab, var(--color-emerald-400) 18%, transparent),
+    color-mix(in oklab, var(--color-flame-400) 16%, transparent),
     transparent 70%
   );
 }

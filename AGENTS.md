@@ -4,7 +4,8 @@ Hollware is an open-source headless CMS for the agent era, native to Cloudflare
 Workers. Agents write Markdown through MCP, contracts validate every write, D1 is
 the single source of truth, and sites read published content over Workers RPC.
 The design is in `docs/design.md` and every structural decision is an ADR in
-`docs/adr/`.
+`docs/adr/`. How Hollware looks and speaks (the mark, color, type, voice) is in
+`docs/brand.md`: read it before any change to the site, the docs, the admin or copy.
 
 This file orients. Rules live in tests, lint rules or types: if a test could hold
 a claim, the claim belongs in a test.

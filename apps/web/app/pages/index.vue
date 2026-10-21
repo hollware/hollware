@@ -166,7 +166,12 @@ const shaping = computed(() =>
         <div class="flex flex-col items-start gap-4">
           <CopyCommand command="npm create hollware my-cms" />
           <div class="flex flex-wrap gap-3">
-            <UButton :to="to('/docs/')" size="lg" trailing-icon="i-lucide-arrow-right">
+            <UButton
+              :to="to('/docs/')"
+              color="secondary"
+              size="lg"
+              trailing-icon="i-lucide-arrow-right"
+            >
               {{ m.home.readDocs }}
             </UButton>
             <UButton
@@ -305,7 +310,7 @@ const shaping = computed(() =>
             <div
               class="flex flex-1 flex-col gap-3 rounded-lg border bg-default p-4"
               :class="
-                node.main ? 'border-secondary/60 shadow-lg shadow-emerald-500/10' : 'border-default'
+                node.main ? 'border-secondary/60 shadow-lg shadow-flame-400/10' : 'border-default'
               "
             >
               <div class="flex items-center gap-2 text-sm font-medium text-highlighted">

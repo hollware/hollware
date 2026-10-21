@@ -78,6 +78,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-036](adr/0036-what-1-0-promises.md) | What 1.0 promises, and how the repository keeps it | Accepted |
 | [ADR-037](adr/0037-an-activity-log-of-who-did-what.md) | An activity log of who did what | Accepted |
 | [ADR-038](adr/0038-images-in-r2-converted-once.md) | Images in R2, converted once when they arrive | Accepted |
+| [ADR-039](adr/0039-the-look-of-hollware.md) | The look of Hollware | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

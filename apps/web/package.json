@@ -11,8 +11,8 @@
     "types:check": "wrangler types --check"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/jetbrains-mono": "catalog:",
+    "@fontsource-variable/schibsted-grotesk": "catalog:",
     "@hollware/core": "workspace:*",
     "@hollware/nuxt": "workspace:*",
     "@iconify-json/lucide": "catalog:",
