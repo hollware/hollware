@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 1.0.0-rc.6
+
+### Minor Changes
+
+- [`b8b1f62`](https://github.com/hollware/hollware/commit/b8b1f62576bfa753d8f54af8bf871281b4a23ece) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin and the sign-in pages take Hollware's own look (ADR-039): the flame pumpkin as the mark, Schibsted Grotesk and JetBrains Mono, a warm black ground and an amber accent. Publishing an entry is the amber button of its page.
+
 ## 1.0.0-rc.5
 
 ### Patch Changes
