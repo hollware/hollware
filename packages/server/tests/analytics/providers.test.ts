@@ -4,7 +4,14 @@ import { cloudflareSource } from '../../src/analytics/cloudflare.ts'
 import { ga4Source, signedAssertion, serviceAccountOf } from '../../src/analytics/ga4.ts'
 import { plausibleSource } from '../../src/analytics/plausible.ts'
 import { pagesHogql, posthogSource } from '../../src/analytics/posthog.ts'
-import { messageOf, ProviderError, type Fetch } from '../../src/analytics/request.ts'
+import { OPEN_WORLD_TIMEOUT_MS } from '../../src/limits.ts'
+import {
+  messageOf,
+  ProviderError,
+  request,
+  REQUEST_TIMEOUT_MS,
+  type Fetch,
+} from '../../src/analytics/request.ts'
 import type { SourceInput } from '../../src/analytics/source.ts'
 
 // Fails when: an adapter of ADR-040 stops asking its provider as its API wants it (the endpoint,
@@ -12,7 +19,8 @@ import type { SourceInput } from '../../src/analytics/source.ts'
 // answer into normalized paths and views, stops finding what the credential shows (Cloudflare's
 // one account, PostHog's region and project), stops turning a refusal into `refused` with the
 // permission to add or a bad setting into `invalid`, lets a provider's message repeat the
-// credential, or GA4 stops signing its JWT with the service account's key.
+// credential, GA4 stops signing its JWT with the service account's key, or a provider stops
+// getting 25 s, inside the 30 s of its operation, before it is `unreachable`.
 
 const NOW = () => new Date('2026-10-21T12:00:00.000Z')
 
@@ -354,5 +362,27 @@ describe('what a provider said', () => {
     ).toBe('Bad key [credential] here')
     expect(messageOf({ errors: [{ message: 'x'.repeat(400) }] }, [])).toHaveLength(300)
     expect(messageOf({}, [])).toBe('No reason given.')
+  })
+})
+
+describe('a provider that does not answer', () => {
+  it('is unreachable after 25 s, before the open-world operation times out', async () => {
+    const signals: (AbortSignal | null | undefined)[] = []
+    const silent: Fetch = async (_url, init) => {
+      signals.push(init?.signal)
+      throw new DOMException('The operation timed out.', 'TimeoutError')
+    }
+
+    const failure = await request(silent, 'posthog', 'https://us.posthog.com/', {}).catch(
+      (error: unknown) => error,
+    )
+
+    expect(failure).toBeInstanceOf(ProviderError)
+    expect(failure).toMatchObject({
+      kind: 'unreachable',
+      message: 'posthog did not answer in 25 s.',
+    })
+    expect(signals[0]).toBeInstanceOf(AbortSignal)
+    expect(REQUEST_TIMEOUT_MS).toBeLessThan(OPEN_WORLD_TIMEOUT_MS)
   })
 })

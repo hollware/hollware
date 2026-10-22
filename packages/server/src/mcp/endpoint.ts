@@ -9,9 +9,9 @@ import {
   type ServerContext,
 } from '@modelcontextprotocol/server'
 import type { Principal } from '../auth/types.ts'
-import { OPERATION_TIMEOUT_MS } from '../limits.ts'
+import { OPEN_WORLD_TIMEOUT_MS, OPERATION_TIMEOUT_MS } from '../limits.ts'
 import type { OperationContext } from '../ops/types.ts'
-import { annotationsOf } from './annotations.ts'
+import { annotationsOf, OPEN_WORLD } from './annotations.ts'
 import { askToAcknowledge, replyTo, warningsOf, withAcknowledged } from './acknowledge.ts'
 import { canElicitForm, declaredClient } from './envelope.ts'
 import { describeError, internalError, timeoutError } from './errors.ts'
@@ -66,8 +66,14 @@ function authInfoOf(principal: Principal, resourceMetadataUrl: string | null): A
  */
 export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
   const timeoutMs = options.timeoutMs ?? OPERATION_TIMEOUT_MS
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    throw new RangeError(`timeoutMs must be a positive number of milliseconds, got ${timeoutMs}`)
+  const openWorldTimeoutMs = options.openWorldTimeoutMs ?? OPEN_WORLD_TIMEOUT_MS
+  for (const [name, value] of [
+    ['timeoutMs', timeoutMs],
+    ['openWorldTimeoutMs', openWorldTimeoutMs],
+  ] as const) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError(`${name} must be a positive number of milliseconds, got ${value}`)
+    }
   }
   const tools = createToolTable()
   /** The call the gateway made for each request, found again by the factory through its authInfo. */
@@ -115,10 +121,11 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
 
     /** Runs the handler within the time limit and checks its answer. */
     const perform = async (operationInput: unknown): Promise<Answer> => {
+      const limit = OPEN_WORLD.has(spec.name) ? openWorldTimeoutMs : timeoutMs
       const value = await within(
         invoke(options.handlers, spec, operationInput, context),
-        timeoutMs,
-        () => timeoutError(spec, timeoutMs),
+        limit,
+        () => timeoutError(spec, limit),
       )
       return record(readAnswer(spec, value))
     }

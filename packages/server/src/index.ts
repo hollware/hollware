@@ -25,6 +25,7 @@ export type { Principal } from './auth/types.ts'
 export {
   MAX_BOUND_PARAMETERS,
   MAX_ROW_BYTES,
+  OPEN_WORLD_TIMEOUT_MS,
   OPERATION_TIMEOUT_MS,
   OUTPUT_CAP_BYTES,
 } from './limits.ts'

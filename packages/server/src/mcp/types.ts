@@ -81,6 +81,8 @@ export interface McpEndpointOptions {
   readonly log?: (entry: McpLogEntry) => void
   /** How long an operation may take; `OPERATION_TIMEOUT_MS` by default. Tests shorten it. */
   readonly timeoutMs?: number
+  /** How long an open-world operation may take; `OPEN_WORLD_TIMEOUT_MS` by default. */
+  readonly openWorldTimeoutMs?: number
 }
 
 /** The MCP endpoint, for the gateway to mount at `/mcp`. */

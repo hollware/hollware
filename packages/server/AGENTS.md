@@ -53,7 +53,8 @@ serve them (ADR-017). Boundary rules for this package:
 - `tests/support/sites.ts` seeds a whole site with SQL, with the same natural keys every
   time; the tests that check one site cannot reach another seed two.
 - `src/mcp/annotations.ts` maps each effect to its MCP hints, and `src/limits.ts` holds the output
-  cap, the timeout and the store's limits under D1's.
+  cap, the timeouts (10 s, and 30 s for the open-world tools of the same file) and the store's
+  limits under D1's.
 - `src/auth` is what the gateway runs before the MCP endpoint, in this order:
   `checkHostAndOrigin` (fails closed: no valid `HOLLWARE_PUBLIC_URL` is a 500; another Host or
   Origin, port and scheme included, is a 403; `X-Forwarded-Host` counts for nothing),

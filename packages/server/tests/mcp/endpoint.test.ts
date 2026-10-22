@@ -4,7 +4,8 @@ import { createMcpEndpoint } from '../../src/mcp/index.ts'
 import { callRaw, CANNED, endpointWith, fakeHandlers, INPUTS, textOf } from './support.ts'
 
 // Fails when: an endpoint is built with a time limit that is not a positive number of
-// milliseconds, or the default limit stops being the 10 seconds of the plan (`limits.ts`).
+// milliseconds, the default limit stops being the 10 seconds of the plan (`limits.ts`), or an
+// open-world operation stops getting its 30 seconds (ADR-040).
 
 afterEach(() => {
   vi.useRealTimers()
@@ -22,6 +23,12 @@ describe('createMcpEndpoint', () => {
       )
     },
   )
+
+  it.each([0, Number.NaN])('refuses %s as the time limit of open-world operations', (value) => {
+    expect(() => createMcpEndpoint({ handlers, serverInfo, openWorldTimeoutMs: value })).toThrow(
+      new RangeError(`openWorldTimeoutMs must be a positive number of milliseconds, got ${value}`),
+    )
+  })
 
   it('accepts any positive number of milliseconds', () => {
     expect(() => createMcpEndpoint({ handlers, serverInfo, timeoutMs: 1 })).not.toThrow()
@@ -43,6 +50,24 @@ describe('createMcpEndpoint', () => {
     expect(textOf(answer.result)).toMatchObject({
       code: 'timeout',
       message: 'create_draft did not finish within 10000 ms.',
+    })
+  })
+
+  it('gives an open-world operation thirty seconds by default, not a millisecond less', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { endpoint } = endpointWith({ content_stats: () => new Promise<never>(() => {}) })
+    let settled = false
+
+    const call = callRaw(endpoint, 'modern', 'content_stats', INPUTS.content_stats)
+    void call.then(() => (settled = true))
+    await vi.advanceTimersByTimeAsync(29_999)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    const answer = await call
+
+    expect(textOf(answer.result)).toMatchObject({
+      code: 'timeout',
+      message: 'content_stats did not finish within 30000 ms.',
     })
   })
 

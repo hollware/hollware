@@ -886,6 +886,7 @@ export function endpointWith(
   overrides: Overrides = {},
   options: {
     timeoutMs?: number
+    openWorldTimeoutMs?: number
     log?: (entry: McpLogEntry) => void
     outcomes?: { readonly [Name in OperationName]?: string }
   } = {},
@@ -897,6 +898,9 @@ export function endpointWith(
     serverInfo: { name: 'hollware', version: '0.0.0' },
     log: options.log ?? ((entry) => void logs.push(entry)),
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    ...(options.openWorldTimeoutMs === undefined
+      ? {}
+      : { openWorldTimeoutMs: options.openWorldTimeoutMs }),
   })
   return { endpoint, seen, logs }
 }

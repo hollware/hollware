@@ -61,6 +61,13 @@ Spikes on 2026-10-21, with real accounts:
   change, never the credential.
 - **Each provider is an adapter** in `packages/server/src/analytics/`, behind the `AnalyticsReader`
   port, so handlers stay free of network code; every request has a timeout.
+- **The open-world tools get more time** (amended on 2026-10-22). PostHog's query API answered in
+  5 to 15 s whatever the query, and `connect_analytics` of cms.sergioazocar.com was `unreachable`
+  under the 8 s of a provider and the 10 s of an operation. `content_stats` and
+  `connect_analytics` now get 30 s (`OPEN_WORLD_TIMEOUT_MS`) and a provider 25 s, so a slow
+  provider still answers `unreachable` with its fix before the operation times out. Every other
+  operation keeps its 10 s: the limit is for Hollware's own work, which a third party does not
+  slow down. The ten-minute cache keeps the wait to the first read.
 
 ## Consequences
 

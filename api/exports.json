@@ -459,6 +459,7 @@
       "MAX_ROW_BYTES": "value",
       "Media": "type",
       "NewRevision": "type",
+      "OPEN_WORLD_TIMEOUT_MS": "value",
       "OPERATION_TIMEOUT_MS": "value",
       "OUTPUT_CAP_BYTES": "value",
       "OperationContext": "type",

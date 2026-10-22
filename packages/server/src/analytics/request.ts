@@ -3,8 +3,11 @@
  * that says why a provider gave nothing, without ever repeating the credential (T-109).
  */
 
-/** How long a provider has to answer: content_stats runs inside the 10 s of an operation. */
-export const REQUEST_TIMEOUT_MS = 8_000
+/**
+ * How long a provider has to answer: content_stats and connect_analytics run inside the 30 s of an
+ * open-world operation (`OPEN_WORLD_TIMEOUT_MS`), and PostHog's query API takes up to 15 s.
+ */
+export const REQUEST_TIMEOUT_MS = 25_000
 
 /** `fetch`, injected so that tests answer for the provider. */
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>

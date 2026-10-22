@@ -564,6 +564,30 @@ describe('the time limit', () => {
     expect(answer.result.structuredContent).toEqual(LIST_OUTPUT)
   })
 
+  it('waits for an open-world operation past the limit of the others, up to its own', async () => {
+    const slow = async <T>(value: T): Promise<T> => {
+      await new Promise((resolve) => setTimeout(resolve, 60))
+      return value
+    }
+    const { endpoint } = endpointWith(
+      {
+        content_stats: () => slow(CANNED.content_stats.ok),
+        list_entries: () => slow(CANNED.list_entries.ok),
+      },
+      { timeoutMs: 15, openWorldTimeoutMs: 2000 },
+    )
+
+    const stats = await callRaw(endpoint, 'modern', 'content_stats', INPUTS.content_stats)
+    const list = await callRaw(endpoint, 'modern', 'list_entries', INPUTS.list_entries)
+
+    expect(stats.result.isError).toBe(false)
+    expect(stats.result.structuredContent).toEqual(CANNED.content_stats.ok)
+    expect(textOf(list.result)).toMatchObject({
+      code: 'timeout',
+      message: 'list_entries did not finish within 15 ms.',
+    })
+  })
+
   it('answers the timeout once, and a late failure of the operation changes nothing', async () => {
     const unhandled: unknown[] = []
     const onUnhandled = (reason: unknown) => unhandled.push(reason)
