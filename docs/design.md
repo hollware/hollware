@@ -70,7 +70,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-028](adr/0028-read-tokens-and-cors-for-the-read-api.md) | Read tokens, and CORS for the read API | Accepted |
 | [ADR-029](adr/0029-full-text-search-in-d1.md) | Full-text search in D1 | Accepted |
 | [ADR-030](adr/0030-vectors-as-derived-data.md) | Vectors as derived data | Accepted |
-| [ADR-031](adr/0031-page-views-without-personal-data.md) | Page views without personal data | Accepted |
+| [ADR-031](adr/0031-page-views-without-personal-data.md) | Page views without personal data | Superseded by ADR-040 |
 | [ADR-032](adr/0032-agents-that-never-publish.md) | Agents that never publish | Accepted |
 | [ADR-033](adr/0033-the-structure-lives-in-d1.md) | The structure lives in D1 | Accepted |
 | [ADR-034](adr/0034-our-deployments-run-from-ci.md) | Our deployments run from CI | Accepted |
@@ -79,6 +79,7 @@ The competitor columns summarize what was found on 2026-10-11 and can go out of 
 | [ADR-037](adr/0037-an-activity-log-of-who-did-what.md) | An activity log of who did what | Accepted |
 | [ADR-038](adr/0038-images-in-r2-converted-once.md) | Images in R2, converted once when they arrive | Accepted |
 | [ADR-039](adr/0039-the-look-of-hollware.md) | The look of Hollware | Accepted |
+| [ADR-040](adr/0040-hollware-reads-the-sites-analytics.md) | Hollware reads the site's analytics, it does not collect them | Accepted |
 
 ```text
 Clients        Agents (MCP) · Admin (v0.3) · Sites (RPC) · Integrations (HTTP, v0.2)

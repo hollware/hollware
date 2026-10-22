@@ -1,6 +1,6 @@
 # ADR-031: Page views without personal data
 
-Status: Accepted (2026-10-15)
+Status: Superseded by ADR-040 (2026-10-21)
 
 ## Context
 

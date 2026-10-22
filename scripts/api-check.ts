@@ -5,10 +5,12 @@
  *
  *   node scripts/api-check.ts --against @hollware/core@1.0.0
  *
- * It exits 1 when there is a break, and 0 when there is none or the ref has no `api/` yet.
+ * It exits 1 when there is a break, and 0 when there is none, when the ref has no `api/` yet, or
+ * when a changeset made since the ref asks for a major version: the break is then the release's.
  */
 import { execFileSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { breakingChanges } from './api-compat.ts'
 import { surfaceOf } from './api.ts'
@@ -63,6 +65,59 @@ export function promisedTag(tags: readonly string[]): string | null {
   return ranked.at(-1)?.tag ?? null
 }
 
+/** Whether the front matter of a changeset bumps any package by a major version. */
+export function asksForMajor(changeset: string): boolean {
+  const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(changeset)?.[1] ?? ''
+  return front.split(/\r?\n/).some((line) => /^\s*['"]?[^'":]+['"]?\s*:\s*major\s*$/.test(line))
+}
+
+/**
+ * The changesets that ask for a major version and were not released at the ref: the pending ones
+ * in `.changeset/`, and those that a version commit of pre mode moved to `.changeset/pre/` after
+ * the ref. `released` names the files `.changeset/pre/` held at the ref.
+ */
+export function majorsSince(
+  changesets: readonly { name: string; text: string }[],
+  released: ReadonlySet<string>,
+): string[] {
+  return changesets
+    .filter((changeset) => !released.has(changeset.name) && asksForMajor(changeset.text))
+    .map((changeset) => changeset.name)
+}
+
+/** The changesets of the working tree: pending, and those of pre mode, as name and text. */
+function changesetsOf(root: string): { name: string; text: string }[] {
+  const read = (directory: string) => {
+    try {
+      return readdirSync(directory)
+        .filter((file) => file.endsWith('.md') && file !== 'README.md')
+        .map((file) => ({ name: file, text: readFileSync(join(directory, file), 'utf8') }))
+    } catch {
+      return []
+    }
+  }
+  return [...read(join(root, '.changeset')), ...read(join(root, '.changeset', 'pre'))]
+}
+
+/** The changesets that `.changeset/pre/` held at a ref. */
+function releasedAt(root: string, ref: string): Set<string> {
+  try {
+    const list = execFileSync('git', ['ls-tree', '--name-only', `${ref}:.changeset/pre`], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return new Set(
+      list
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((path) => basename(path)),
+    )
+  } catch {
+    return new Set()
+  }
+}
+
 export async function main(root: string, argv: readonly string[]): Promise<number> {
   let ref: string | undefined
   if (argv.includes('--against-promise')) {
@@ -101,9 +156,15 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     console.log(`Nothing breaks since ${ref}: the change fits a minor version.`)
     return 0
   }
-  console.error(
-    `What breaks since ${ref}, which needs a major version:\n${breaks.map((line) => `  - ${line}`).join('\n')}`,
-  )
+  const list = breaks.map((line) => `  - ${line}`).join('\n')
+  const majors = majorsSince(changesetsOf(root), releasedAt(root, ref))
+  if (majors.length > 0) {
+    console.log(
+      `What breaks since ${ref}, carried by the major version of ${majors.join(', ')}:\n${list}`,
+    )
+    return 0
+  }
+  console.error(`What breaks since ${ref}, which needs a major version:\n${list}`)
   return 1
 }
 

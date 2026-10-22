@@ -54,7 +54,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/legacy-role.test.ts`: no package source reads `users.role`; the role of a person in a site is in `members`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
 - `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
-- `tests/conventions/public-api.test.ts`: `api/` is the code's public API (ADR-036).
+- `tests/conventions/public-api.test.ts`: `api/` is the code's public API (ADR-036); `scripts/api-check.test.ts`: a break needs a major changeset.
 - `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
 - `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.
 - `tests/meta/agents-commands.test.ts`: the `vp run`, `pnpm --filter` and `node` commands `AGENTS.md` cites exist.
