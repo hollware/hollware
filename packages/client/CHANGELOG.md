@@ -1,5 +1,12 @@
 # @hollware/client
 
+## 1.0.0-rc.7
+
+### Patch Changes
+
+- Updated dependencies [[`0647944`](https://github.com/hollware/hollware/commit/06479447b92e584277b0be96162888039e198adb)]:
+  - @hollware/core@1.0.0-rc.7
+
 ## 1.0.0-rc.6
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@hollware/client",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "Typed Hollware client over a service binding or HTTP.",
   "homepage": "https://hollware.com",
   "bugs": {
