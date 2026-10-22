@@ -136,7 +136,8 @@ export const en = {
     mostRead: 'Most read, last 30 days',
     views: (count: string) => `${count} views`,
     noAnalytics:
-      'This deployment has no analytics. Bind Analytics Engine and add the beacon to the site to see what readers read.',
+      'No analytics connected. Connect the analytics the site already has to see what readers read.',
+    connectAnalytics: 'Connect analytics',
     noViews: 'No page views yet.',
     waiting: 'Waiting for review',
     allReviews: 'All reviews',
@@ -453,6 +454,51 @@ export const en = {
     refused: (collection: string, entries: number, examples: string) =>
       `The new schema of "${collection}" refuses ${entries} of its entries (${examples}): they stay, and each is checked against it at its next save.`,
   },
+  analytics: {
+    title: 'Analytics',
+    help: 'Connect the analytics the site already has, so the home and the agents see what readers read. Hollware reads it with a read-only key and keeps nothing about readers.',
+    reading: (provider: string) => `Reading from ${provider}.`,
+    since: (date: string) => `Connected on ${date}.`,
+    replace: 'Connect another',
+    disconnect: 'Disconnect',
+    disconnected: 'Analytics disconnected',
+    provider: 'Provider',
+    providers: {
+      cloudflare: 'Cloudflare Web Analytics',
+      posthog: 'PostHog',
+      plausible: 'Plausible',
+      ga4: 'Google Analytics 4',
+    },
+    steps: {
+      cloudflare:
+        'Create an API token with the permission Account Analytics: Read, on the account of the site.',
+      posthog:
+        'Create a personal API key with the scopes Query: Read and Project: Read, limited to the project of the site.',
+      plausible: 'Create a key of type Stats API, in the settings of your account.',
+      ga4: 'Create a service account in Google Cloud with a JSON key, then add its email as a Viewer of the GA4 property.',
+    },
+    open: (provider: string) => `Open ${provider}`,
+    credential: 'Read-only key',
+    credentialGa4: 'JSON key of the service account',
+    credentialHelp: 'Hollware tests it now, keeps it sealed and never shows it again.',
+    hosts: 'Other hosts',
+    hostsHelp:
+      "Comma separated, such as www.example.com. The host of the site's URL always counts.",
+    accountId: 'Account id',
+    accountIdHelp: 'Only when the token can see several accounts.',
+    host: 'Address of the instance',
+    hostHelp: 'Only for a self-hosted instance, such as https://plausible.example.com.',
+    siteId: 'Site id',
+    siteIdHelp: "The domain of the site in Plausible, when it is not the host of the site's URL.",
+    propertyId: 'Property id',
+    propertyIdHelp: 'The digits under Admin, Property details.',
+    connect: 'Connect',
+    connected: (views: string, paths: string) =>
+      `Connected: ${views} views on ${paths} pages in the last 7 days.`,
+    failed: 'Could not connect',
+    unavailable:
+      'This deployment has no HOLLWARE_SECRET to keep the key sealed. hollware deploy makes one.',
+  },
   site: {
     title: 'Site',
     version: (version: number) =>
@@ -697,6 +743,8 @@ export const en = {
       delete_site: 'Moved a site to the trash',
       restore_site: 'Restored a site from the trash',
       make_webhook_secret: 'Made a webhook secret',
+      connect_analytics: 'Connected analytics',
+      disconnect_analytics: 'Disconnected analytics',
       upload_asset: 'Uploaded an image',
       update_asset: 'Changed the alt of an image',
       'token.create': 'Made a token',

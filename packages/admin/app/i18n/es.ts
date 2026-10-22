@@ -149,7 +149,8 @@ export const es: Messages = {
     mostRead: 'Lo más leído, últimos 30 días',
     views: (count: string) => `${count} visitas`,
     noAnalytics:
-      'Este despliegue no tiene analíticas. Vincula Analytics Engine y agrega la baliza al sitio para ver qué leen los lectores.',
+      'No hay analíticas conectadas. Conecta las que el sitio ya tiene para ver qué leen los lectores.',
+    connectAnalytics: 'Conectar analíticas',
     noViews: 'Todavía no hay visitas.',
     waiting: 'Esperan revisión',
     allReviews: 'Todas las revisiones',
@@ -470,6 +471,51 @@ export const es: Messages = {
     refused: (collection: string, entries: number, examples: string) =>
       `El nuevo esquema de "${collection}" rechaza ${entradas(entries)} de las suyas (${examples}): se conservan, y cada una se revisa contra él en su próximo guardado.`,
   },
+  analytics: {
+    title: 'Analíticas',
+    help: 'Conecta las analíticas que el sitio ya tiene, para que el inicio y los agentes vean qué leen los lectores. Hollware las lee con una clave de solo lectura y no guarda nada de los lectores.',
+    reading: (provider: string) => `Leyendo de ${provider}.`,
+    since: (date: string) => `Conectadas el ${date}.`,
+    replace: 'Conectar otras',
+    disconnect: 'Desconectar',
+    disconnected: 'Analíticas desconectadas',
+    provider: 'Proveedor',
+    providers: {
+      cloudflare: 'Cloudflare Web Analytics',
+      posthog: 'PostHog',
+      plausible: 'Plausible',
+      ga4: 'Google Analytics 4',
+    },
+    steps: {
+      cloudflare:
+        'Crea un API token con el permiso Account Analytics: Read, sobre la cuenta del sitio.',
+      posthog:
+        'Crea una personal API key con los permisos Query: Read y Project: Read, limitada al proyecto del sitio.',
+      plausible: 'Crea una clave de tipo Stats API, en la configuración de tu cuenta.',
+      ga4: 'Crea una cuenta de servicio en Google Cloud con una clave JSON y agrega su email como Viewer de la propiedad de GA4.',
+    },
+    open: (provider: string) => `Abrir ${provider}`,
+    credential: 'Clave de solo lectura',
+    credentialGa4: 'Clave JSON de la cuenta de servicio',
+    credentialHelp: 'Hollware la prueba ahora, la guarda sellada y no la vuelve a mostrar.',
+    hosts: 'Otros hosts',
+    hostsHelp:
+      'Separados por comas, como www.example.com. El host de la URL del sitio siempre cuenta.',
+    accountId: 'Id de la cuenta',
+    accountIdHelp: 'Solo si el token ve varias cuentas.',
+    host: 'Dirección de la instancia',
+    hostHelp: 'Solo para una instancia propia, como https://plausible.example.com.',
+    siteId: 'Id del sitio',
+    siteIdHelp: 'El dominio del sitio en Plausible, si no es el host de la URL del sitio.',
+    propertyId: 'Id de la propiedad',
+    propertyIdHelp: 'Los dígitos en Admin, Detalles de la propiedad.',
+    connect: 'Conectar',
+    connected: (views: string, paths: string) =>
+      `Conectadas: ${views} visitas en ${paths} páginas en los últimos 7 días.`,
+    failed: 'No se pudieron conectar',
+    unavailable:
+      'Este despliegue no tiene HOLLWARE_SECRET para guardar la clave sellada. hollware deploy crea uno.',
+  },
   site: {
     title: 'Sitio',
     version: (version: number) =>
@@ -718,6 +764,8 @@ export const es: Messages = {
       delete_site: 'Movió un sitio a la papelera',
       restore_site: 'Restauró un sitio de la papelera',
       make_webhook_secret: 'Creó un secreto de webhook',
+      connect_analytics: 'Conectó analíticas',
+      disconnect_analytics: 'Desconectó analíticas',
       upload_asset: 'Subió una imagen',
       update_asset: 'Cambió el texto alternativo de una imagen',
       'token.create': 'Creó un token',

@@ -2,6 +2,7 @@
 import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
+import AnalyticsSettings from '../components/AnalyticsSettings.vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
@@ -530,6 +531,8 @@ const PRESETS = computed(() => [
           />
         </form>
       </section>
+
+      <AnalyticsSettings />
 
       <section aria-labelledby="backups" class="max-w-2xl space-y-4">
         <h2 id="backups" class="font-semibold">{{ m.site.backupsTitle }}</h2>

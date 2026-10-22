@@ -11,6 +11,9 @@ import {
   getAsset,
   listBackups,
   listRedirects,
+  connectAnalytics,
+  disconnectAnalytics,
+  getAnalytics,
   uploadAsset,
 } from '@hollware/core'
 import {
@@ -125,6 +128,12 @@ export interface StubOptions {
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
   /** The backups list_backups answers; without it the stub has no such tool. */
   backups?: { date: string; bytes: number }[]
+  /**
+   * The analytics tools of 1.0.0-rc.7 (ADR-040): what connect_analytics answers for the call it
+   * gets; without it the stub has none of them, as a Hollware before had not. A `connected`
+   * answer makes get_analytics answer that connection, until disconnect_analytics.
+   */
+  analytics?: (args: Record<string, unknown>) => { outcome: string; [field: string]: unknown }
   /** Answers every `upload_asset` with `refused` and this problem, as Hollware refuses a file. */
   refuseUploads?: { message: string; fix: string }
 }
@@ -184,6 +193,8 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     createdAt: '2026-10-13T10:00:00.000Z',
   })
   const calls: RecordedCall[] = []
+  /** The analytics connection, kept across requests as the server keeps it in D1. */
+  let connection: { outcome: string; [field: string]: unknown } | null = null
   const authorizations: (string | null)[] = []
   const granted = options.scopes ?? [
     'content:read',
@@ -332,6 +343,57 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           outputSchema: listBackups.output,
         },
         guarded(listBackups.name, () => reply(listBackups.outcomes, { outcome: 'ok', backups })),
+      )
+    }
+
+    const analytics = options.analytics
+    if (analytics !== undefined) {
+      server.registerTool(
+        getAnalytics.name,
+        {
+          ...describe(getAnalytics),
+          inputSchema: getAnalytics.input,
+          outputSchema: getAnalytics.output,
+        },
+        guarded(getAnalytics.name, () =>
+          reply(
+            getAnalytics.outcomes,
+            connection === null ? { outcome: 'not_connected' } : connection,
+          ),
+        ),
+      )
+      server.registerTool(
+        connectAnalytics.name,
+        {
+          ...describe(connectAnalytics),
+          inputSchema: connectAnalytics.input,
+          outputSchema: connectAnalytics.output,
+        },
+        guarded(connectAnalytics.name, (args) => {
+          const answer = analytics(args)
+          if (answer['outcome'] === 'connected') {
+            connection = {
+              outcome: 'connected',
+              provider: args['provider'],
+              settings: answer['settings'] ?? {},
+              connectedAt: '2026-10-22T10:00:00.000Z',
+            }
+          }
+          return reply(connectAnalytics.outcomes, answer)
+        }),
+      )
+      server.registerTool(
+        disconnectAnalytics.name,
+        {
+          ...describe(disconnectAnalytics),
+          inputSchema: disconnectAnalytics.input,
+          outputSchema: disconnectAnalytics.output,
+        },
+        guarded(disconnectAnalytics.name, () => {
+          const outcome = connection === null ? 'not_connected' : 'disconnected'
+          connection = null
+          return reply(disconnectAnalytics.outcomes, { outcome })
+        }),
       )
     }
 

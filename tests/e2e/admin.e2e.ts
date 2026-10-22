@@ -276,6 +276,25 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expectAccessible(owner)
 })
 
+test('the owner connects analytics in Site, and the provider is asked before anything is kept (ADR-040)', async () => {
+  await owner.goto('/admin/')
+  await expect(owner.getByText('No analytics connected.')).toBeVisible()
+  await owner.getByRole('link', { name: 'Connect analytics' }).click()
+
+  await expect(owner.getByRole('heading', { name: 'Analytics' })).toBeVisible()
+  await owner.getByRole('combobox', { name: 'Provider' }).click()
+  await owner.getByRole('option', { name: 'Google Analytics 4' }).click()
+  // A key that is not a service account's JSON is refused before Google is asked.
+  await owner.getByLabel('JSON key of the service account').fill('not a json key')
+  await owner.getByLabel('Property id').fill('123456789')
+  await owner.getByRole('button', { name: 'Connect', exact: true }).click()
+
+  await expect(owner.getByText('Could not connect')).toBeVisible()
+  await expect(owner.getByText(/The credential is not JSON\./)).toBeVisible()
+  await expectAccessible(owner)
+  await shot(owner, 'analytics')
+})
+
 test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.goto('/admin/entries')
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toBeVisible()
