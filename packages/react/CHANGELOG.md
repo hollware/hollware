@@ -1,5 +1,13 @@
 # @hollware/react
 
+## 1.0.0-rc.8
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.0.0-rc.8
+  - @hollware/core@1.0.0-rc.8
+
 ## 1.0.0-rc.7
 
 ### Patch Changes
