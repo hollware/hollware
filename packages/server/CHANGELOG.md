@@ -1,5 +1,13 @@
 # @hollware/server
 
+## 1.0.0-rc.8
+
+### Patch Changes
+
+- [`0743a55`](https://github.com/hollware/hollware/commit/0743a5544e13678090b591348ed69a8ffaf83ec7) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `content_stats` and `connect_analytics` get 30 seconds instead of 10, and a provider of analytics 25 seconds instead of 8: PostHog's query API takes 5 to 15 seconds, so connecting it answered `unreachable`. Every other tool keeps its 10 seconds. The limit is exported as `OPEN_WORLD_TIMEOUT_MS`.
+- Updated dependencies []:
+  - @hollware/core@1.0.0-rc.8
+
 ## 1.0.0-rc.7
 
 ### Major Changes
