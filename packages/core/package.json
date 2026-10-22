@@ -1,6 +1,6 @@
 {
   "name": "@hollware/core",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "Contracts, operation specs, schemas and the Markdown pipeline of Hollware. No Cloudflare dependencies.",
   "homepage": "https://hollware.com",
   "bugs": {
