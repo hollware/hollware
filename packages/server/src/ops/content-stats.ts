@@ -26,16 +26,23 @@ export function entryRefOf(site: ResolvedSite, path: string): EntryRef | null {
 }
 
 /**
- * The most read pages of the site, from the counts of its beacons (ADR-031), each with the
- * published entry it shows. `unavailable` when the deployment cannot read the counts.
+ * The most read pages of the site, from the analytics it connected (ADR-040), each with the
+ * published entry it shows. `unavailable` with a fix when the site has connected none, or its
+ * provider did not answer.
  */
 export const contentStats: OperationHandler<'content_stats'> = async (input, context) => {
-  const analytics = context.analytics ?? null
-  if (analytics === null) return { outcome: 'unavailable' }
+  const sources = context.analytics ?? null
+  if (sources === null) {
+    return {
+      outcome: 'unavailable',
+      fix: 'Ask over MCP: the analytics of a site are read there, not over RPC.',
+    }
+  }
   const site = context.site
-  const counts = await analytics.topPages(site.key, { days: input.days, limit: input.limit })
+  const counts = await sources.topPages(site, { days: input.days, limit: input.limit })
+  if (counts.outcome === 'unavailable') return { outcome: 'unavailable', fix: counts.fix }
   const pages = await Promise.all(
-    counts.map(async (count) => {
+    counts.pages.map(async (count) => {
       const ref = entryRefOf(site, count.path)
       const found = ref === null ? null : await context.store.findEntry(site.key, ref, 'published')
       return {
@@ -46,5 +53,5 @@ export const contentStats: OperationHandler<'content_stats'> = async (input, con
     }),
   )
   const since = new Date(context.clock.now().getTime() - input.days * 86_400_000).toISOString()
-  return { outcome: 'ok', since, pages }
+  return { outcome: 'ok', since, source: counts.provider, pages }
 }

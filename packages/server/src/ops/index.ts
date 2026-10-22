@@ -1,3 +1,4 @@
+import { connectAnalytics, disconnectAnalytics, getAnalytics } from './analytics.ts'
 import { getAsset, listAssets, updateAsset, uploadAsset } from './assets.ts'
 import { listBackups } from './backups.ts'
 import { contentStats } from './content-stats.ts'
@@ -42,12 +43,15 @@ import { defineHandlers } from './types.ts'
 export const handlers = defineHandlers({
   approve_review: approveReview,
   comment_review: commentReview,
+  connect_analytics: connectAnalytics,
   content_stats: contentStats,
   create_draft: createDraft,
   create_site: createSite,
   delete_entry: deleteEntry,
   delete_site: deleteSite,
   describe_site: describeSite,
+  disconnect_analytics: disconnectAnalytics,
+  get_analytics: getAnalytics,
   get_asset: getAsset,
   update_asset: updateAsset,
   get_entry: getEntry,

@@ -2,7 +2,10 @@ import {
   contracts,
   approveReview as approveReviewSpec,
   commentReview as commentReviewSpec,
+  connectAnalytics as connectAnalyticsSpec,
   contentStats as contentStatsSpec,
+  disconnectAnalytics as disconnectAnalyticsSpec,
+  getAnalytics as getAnalyticsSpec,
   createDraft as createDraftSpec,
   deleteEntry as deleteEntrySpec,
   defineCollection,
@@ -278,6 +281,11 @@ export function agent(context: OperationContext) {
       call(commentReviewSpec, handlers.comment_review, input, context),
     contentStats: (input: z.input<typeof contentStatsSpec.input>) =>
       call(contentStatsSpec, handlers.content_stats, input, context),
+    getAnalytics: () => call(getAnalyticsSpec, handlers.get_analytics, {}, context),
+    connectAnalytics: (input: z.input<typeof connectAnalyticsSpec.input>) =>
+      call(connectAnalyticsSpec, handlers.connect_analytics, input, context),
+    disconnectAnalytics: () =>
+      call(disconnectAnalyticsSpec, handlers.disconnect_analytics, {}, context),
     createDraft: (input: z.input<typeof createDraftSpec.input>) =>
       call(createDraftSpec, handlers.create_draft, input, context),
     deleteEntry: (input: z.input<typeof deleteEntrySpec.input>) =>

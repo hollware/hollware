@@ -23,8 +23,8 @@ import { EVENT_ID_HEADER, SIGNATURE_HEADER, signWebhook, TIMESTAMP_HEADER } from
 // its stored Comark document (`<HollwareContent>`, the `/_hollware/entry` route and
 // `useHollwareEntry`), the index from `useHollwareEntries`, the generator meta of every page; or
 // it serves a draft, or an entry that does not exist, as anything but a 404 (but for a preview token of that entry, which serves its latest revision with `no-store` and no cache tag, T-103; one that is expired, forged or for another entry serves nothing); or a page sends the
-// browser the verdict and the last publication of an entry (`forPage`); or the page stops getting
-// the public config the beacon reads (`beacon`, ADR-031), or gets more of the server's; or a page
+// browser the verdict and the last publication of an entry (`forPage`); or a page gets the
+// server's config (its binding or its token); or a page
 // stops carrying the cache tags of what it showed for the edge to keep, or an error starts to;
 // or the webhook purges for an event whose signature does not hold, or of another site (S8). The site is
 // examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
@@ -88,13 +88,11 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     expect(html).not.toContain('markdown-as-source-of-truth')
   })
 
-  it('hands the browser where to count its views, and nothing more of the server', async () => {
+  it('hands the browser nothing of the server: no binding, no token, no Hollware config', async () => {
     const html = await (await nuxtFetch(server, '/en/')).text()
 
-    // The public config of the page, which the beacon plugin reads.
-    expect(html).toContain('hollware:{site:"playground",beacon:"http://localhost"}')
-    // The read token and the binding stay on the server.
     expect(html).not.toContain('binding:')
+    expect(html).not.toContain('hollware:{')
   })
 
   it('tags each page with what it showed for the edge to keep, and never an error', async () => {

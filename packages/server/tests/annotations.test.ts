@@ -1,13 +1,14 @@
 import { OPERATIONS } from '@hollware/core'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { EFFECT_ANNOTATIONS } from '../src/mcp/annotations.ts'
+import { annotationsOf, EFFECT_ANNOTATIONS } from '../src/mcp/annotations.ts'
 
-// Fails when: the MCP hints of an effect move away from the map of the v0.1 plan, or an
-// operation would reach MCP with hints that do not follow from its effect.
+// Fails when: the MCP hints of an effect move away from the map of the v0.1 plan, an operation
+// would reach MCP with hints that do not follow from its effect, or a tool other than the two that
+// ask a site's analytics provider (ADR-040) says it reaches outside the deployment.
 
 describe('MCP hints', () => {
-  it('follow from the effect, and every tool is closed-world', () => {
+  it('follow from the effect, closed-world', () => {
     expect(EFFECT_ANNOTATIONS).toEqual({
       read: {
         readOnlyHint: true,
@@ -50,12 +51,15 @@ describe('MCP hints', () => {
     expect(hints).toEqual({
       approve_review: 'changes',
       comment_review: 'changes',
+      connect_analytics: 'changes',
       content_stats: 'read-only',
       create_draft: 'changes',
       create_site: 'changes',
       delete_entry: 'destructive',
       delete_site: 'destructive',
       describe_site: 'read-only',
+      disconnect_analytics: 'changes',
+      get_analytics: 'read-only',
       get_asset: 'read-only',
       update_asset: 'changes',
       get_entry: 'read-only',
@@ -85,6 +89,18 @@ describe('MCP hints', () => {
       update_site: 'destructive',
       upload_asset: 'changes',
       validate: 'read-only',
+    })
+  })
+
+  it("are open-world for the tools that ask the site's analytics provider, and for no other", () => {
+    const open = OPERATIONS.filter(
+      (operation) => annotationsOf(operation.name, operation.effect).openWorldHint,
+    ).map((operation) => operation.name)
+
+    expect(open).toEqual(['connect_analytics', 'content_stats'])
+    expect(annotationsOf('content_stats', 'read')).toEqual({
+      ...EFFECT_ANNOTATIONS.read,
+      openWorldHint: true,
     })
   })
 })

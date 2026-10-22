@@ -26,8 +26,6 @@ export default function buildWorkers() {
     execFileSync(fileURLToPath(new URL('node_modules/.bin/nuxt', project)), ['build'], {
       cwd: fileURLToPath(project),
       stdio: 'pipe',
-      // The example counts its views at the harness's Hollware.
-      env: { ...process.env, HOLLWARE_BEACON: 'http://localhost' },
     })
   }
   // The Astro example builds with Astro, which runs Vite itself.

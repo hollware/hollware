@@ -40,15 +40,29 @@ const DESTROY = {
   openWorldHint: false,
 }
 
+const READ_ELSEWHERE = { ...READ, openWorldHint: true }
+const CHANGE_ELSEWHERE = { ...CHANGE, openWorldHint: true }
+
 const TOOLS = [
   { name: 'approve_review', title: 'Approve a review', annotations: CHANGE },
   { name: 'comment_review', title: 'Comment on a review', annotations: CHANGE },
-  { name: 'content_stats', title: 'Read what readers read', annotations: READ },
+  {
+    name: 'connect_analytics',
+    title: 'Connect the analytics of the site',
+    annotations: CHANGE_ELSEWHERE,
+  },
+  { name: 'content_stats', title: 'Read what readers read', annotations: READ_ELSEWHERE },
   { name: 'create_draft', title: 'Create a draft', annotations: CHANGE },
   { name: 'create_site', title: 'Create a site', annotations: CHANGE },
   { name: 'delete_entry', title: 'Move an entry to the trash', annotations: DESTROY },
   { name: 'delete_site', title: 'Put a site in the trash', annotations: DESTROY },
   { name: 'describe_site', title: 'Describe the site', annotations: READ },
+  {
+    name: 'disconnect_analytics',
+    title: 'Disconnect the analytics of the site',
+    annotations: CHANGE,
+  },
+  { name: 'get_analytics', title: 'Read the analytics connection', annotations: READ },
   { name: 'get_asset', title: 'Get an image', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
   { name: 'get_revision', title: 'Get a revision of an entry', annotations: READ },
@@ -83,7 +97,10 @@ const TOOLS = [
 const OUTCOMES: Record<string, string[]> = {
   approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
   comment_review: ['commented', 'not_pending', 'not_found'],
+  connect_analytics: ['connected', 'refused', 'unreachable', 'invalid', 'unavailable'],
   content_stats: ['ok', 'unavailable'],
+  disconnect_analytics: ['disconnected', 'not_connected'],
+  get_analytics: ['connected', 'not_connected'],
   create_draft: ['saved', 'refused', 'in_trash'],
   create_site: ['created', 'taken', 'invalid'],
   delete_entry: ['trashed', 'published', 'conflict', 'not_found'],
@@ -259,9 +276,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(74)
+    expect(converters).toHaveLength(80)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 74 }, () => 1),
+      Array.from({ length: 80 }, () => 1),
     )
   })
 })
@@ -273,12 +290,15 @@ describe('the tool table', () => {
     expect(names).toEqual([
       'approve_review',
       'comment_review',
+      'connect_analytics',
       'content_stats',
       'create_draft',
       'create_site',
       'delete_entry',
       'delete_site',
       'describe_site',
+      'disconnect_analytics',
+      'get_analytics',
       'get_asset',
       'get_entry',
       'get_revision',

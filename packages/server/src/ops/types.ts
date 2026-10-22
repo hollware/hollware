@@ -2,7 +2,7 @@ import type { OperationByName, OperationName, ResolvedSite } from '@hollware/cor
 import type * as z from 'zod'
 import type { Principal } from '../auth/types.ts'
 import type {
-  AnalyticsReader,
+  AnalyticsSources,
   Backups,
   Clock,
   ContentStore,
@@ -35,8 +35,11 @@ export interface OperationContext {
   readonly notify?: (eventIds: readonly string[]) => void
   /** The model and the vector index, when the Worker has both (ADR-030); absent or `null` without. */
   readonly semantic?: Semantic | null
-  /** The counts of page views, when the deployment can read them (ADR-031); absent or `null` without. */
-  readonly analytics?: AnalyticsReader | null
+  /**
+   * The analytics connections of the sites (ADR-040), where an operation may read or change them;
+   * absent or `null` over RPC.
+   */
+  readonly analytics?: AnalyticsSources | null
   /** The structure of the sites (ADR-033), where an operation may change it; absent over RPC. */
   readonly structure?: Structure
   /** The images of the site (ADR-038), when the Worker has their R2 bucket; absent or `null` without. */

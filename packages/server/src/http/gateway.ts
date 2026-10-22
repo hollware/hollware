@@ -34,8 +34,7 @@ import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../o
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
-import { analyticsReaderOf } from '../analytics/cloudflare.ts'
-import { installEvents } from './events.ts'
+import { analyticsSourcesOf } from '../analytics/env.ts'
 
 export interface GatewayOptions {
   /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
@@ -228,10 +227,6 @@ export function createGateway(options: GatewayOptions): Gateway {
    * read API then checks the origin against the site of the token.
    */
   const readsFromAnyCorsOrigin = (request: Request, origin: string): boolean => {
-    const { pathname } = new URL(request.url)
-    // The beacon of a site's pages (ADR-031): the route checks the origin against the site that
-    // the beacon names, which is the only check that knows which site that is.
-    if (request.method === 'POST' && pathname === '/events') return true
     return anyCorsOrigin(origin) && isCorsRead(request)
   }
 
@@ -284,8 +279,8 @@ export function createGateway(options: GatewayOptions): Gateway {
 
   app.use('*', async (c, next) => {
     // The guard answers a request it refuses without the database, except where it has to read
-    // the sites: a page of another origin that reads the read API, or sends the beacon. Those
-    // see the sites current with D1 (ADR-033).
+    // the sites: a page of another origin that reads the read API. Those see the sites current
+    // with D1 (ADR-033).
     const origin = c.req.header('origin')
     if (
       origin !== undefined &&
@@ -299,8 +294,8 @@ export function createGateway(options: GatewayOptions): Gateway {
   })
 
   // The routes anyone may call without a token, limited per address and route when the Worker
-  // has a rate limiting binding (T-10): a person or a site never comes near the limit, a script
-  // that hammers sign-in, the token endpoint or the beacon does.
+  // has a rate limiting binding (T-10): a person never comes near the limit, a script that
+  // hammers sign-in or the token endpoint does.
   app.use('*', async (c, next) => {
     const limiter = c.env.HOLLWARE_RATE_LIMIT
     const group = limitedRoute(c.req.method, new URL(c.req.url).pathname)
@@ -319,9 +314,9 @@ export function createGateway(options: GatewayOptions): Gateway {
     )
   })
 
-  // The routes that read the sites without a token to check first: the consent of OAuth, its
-  // token endpoint, and the beacon. A route behind a token reads them in `protect`.
-  for (const path of ['/authorize', '/oauth/*', '/events']) {
+  // The routes that read the sites without a token to check first: the consent of OAuth and its
+  // token endpoint. A route behind a token reads them in `protect`.
+  for (const path of ['/authorize', '/oauth/*']) {
     app.use(path, async (c, next) => {
       await options.refresh?.(c.env.DB)
       await next()
@@ -361,7 +356,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           clock,
           notify: notify(c, requestId, site.key),
           semantic: semanticOfEnv(c.env),
-          analytics: analyticsReaderOf(c.env),
+          analytics: analyticsSourcesOf(c.env, () => clock.now()),
           structure: structureOf(db, c.env.HOLLWARE_SECRET),
           media: mediaOfEnv(c.env),
           backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
@@ -591,8 +586,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     })
   }
 
-  installEvents(app, { sites })
-
   installErrorHandling(app, log)
 
   return async (request, env, ctx) => {
@@ -609,6 +602,5 @@ export function limitedRoute(method: string, pathname: string): string | null {
   if (method !== 'POST') return null
   if (pathname.startsWith('/auth/')) return 'auth'
   if (pathname === '/oauth/token' || pathname === '/oauth/register') return 'oauth'
-  if (pathname === '/events') return 'beacon'
   return null
 }

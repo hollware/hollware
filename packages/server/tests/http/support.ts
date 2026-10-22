@@ -231,7 +231,7 @@ export interface BootOptions {
   readonly config?: HollwareConfig
   /** The static assets of the Worker, which hold the admin; none by default. */
   readonly assets?: Fetcher
-  /** More bindings and variables of the Worker, such as `ANALYTICS`. */
+  /** More bindings and variables of the Worker, such as `HOLLWARE_RATE_LIMIT`. */
   readonly bindings?: Partial<HollwareEnv>
 }
 

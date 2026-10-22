@@ -127,7 +127,7 @@ describe('hollware.com', () => {
     const tools = await (await webFetch(server, '/reference/mcp-tools/')).text()
     const home = await (await webFetch(server, '/')).text()
 
-    expect(tools).toContain('The 37 tools of')
+    expect(tools).toContain('The 40 tools of')
     expect(tools).toContain('id="create_draft"')
     const markdown = await webFetch(server, '/reference/mcp-tools.md')
     const text = await markdown.text()

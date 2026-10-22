@@ -14,7 +14,7 @@ import type { ResolvedSite } from '@hollware/core'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
-import { analyticsReaderOf } from '../analytics/cloudflare.ts'
+import { analyticsSourcesOf } from '../analytics/env.ts'
 import { backupsIn } from '../backup/run.ts'
 import { invoke } from '../ops/invoke.ts'
 
@@ -113,7 +113,7 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         requestId,
         notify: options.notify(c, requestId, site.key),
         semantic: semanticOfEnv(c.env),
-        analytics: analyticsReaderOf(c.env),
+        analytics: analyticsSourcesOf(c.env, () => options.clock.now()),
         media: mediaOfEnv(c.env),
         backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
         ...(options.structure === undefined

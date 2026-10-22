@@ -6,8 +6,8 @@ import { isRecord, itemPath, keyPath, quote, wrongType } from './values.ts'
 const BINDING_NAME = /^[A-Z][A-Z0-9_]*$/
 
 /**
- * The Worker secrets a definition may not name: Hollware's own (its master secret, its analytics
- * token) and Cloudflare's. A site's definition is written by its owner or an agent with
+ * The Worker secrets a definition may not name: Hollware's own (its master secret) and
+ * Cloudflare's. A site's definition is written by its owner or an agent with
  * schema:admin, who need not hold the account, so it names only secrets made for its webhooks.
  */
 const RESERVED_SECRET = /^(HOLLWARE|CLOUDFLARE|CF)_/

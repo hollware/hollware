@@ -86,13 +86,10 @@
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com",
         "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
-        "HOLLWARE_ANALYTICS_ACCOUNT_ID": "2aca825b41485fe1e2b99d2dfadcad5a",
-        "HOLLWARE_ANALYTICS_DATASET": "hollware_page_views",
       },
-      // Semantic search and page views (v0.5); the secret HOLLWARE_ANALYTICS_TOKEN reads them.
+      // Semantic search (v0.5). The sites connect their own analytics in the admin (ADR-040).
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-demo-bge-m3" }],
-      "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "hollware_page_views" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
       // The images of the demo's sites (ADR-038), in the bucket hollware-demo-media (ENAM).
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-demo-media" }],
@@ -130,8 +127,8 @@
         ],
       },
     },
-    // Staging (v0.5): semantic search and analytics against the real Workers AI, Vectorize and
-    // Analytics Engine, with a synthetic corpus, before the demo gets them. `CLOUDFLARE_ENV=staging
+    // Staging (v0.5): semantic search against the real Workers AI and Vectorize, with a synthetic
+    // corpus, before the demo gets it. `CLOUDFLARE_ENV=staging
     // vp build`, then `wrangler deploy` of the build. A Vectorize index serves one model: another
     // model is another index here and in HOLLWARE_EMBEDDING_MODEL.
     "staging": {
@@ -143,8 +140,6 @@
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://hollware-staging.sergioazoc.workers.dev",
         "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
-        "HOLLWARE_ANALYTICS_ACCOUNT_ID": "2aca825b41485fe1e2b99d2dfadcad5a",
-        "HOLLWARE_ANALYTICS_DATASET": "hollware_staging_page_views",
       },
       "triggers": { "crons": ["* * * * *"] },
       // Hollware's cron wakes the agents of examples/agents-worker every ten minutes (v0.6).
@@ -160,9 +155,6 @@
       // The images (ADR-038), in the bucket hollware-staging-media (ENAM).
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-staging-media" }],
       "images": { "binding": "IMAGES" },
-      "analytics_engine_datasets": [
-        { "binding": "ANALYTICS", "dataset": "hollware_staging_page_views" },
-      ],
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e85a150e74794fd6a8d5d83625d6e0ed" }],
       "ratelimits": [
         {

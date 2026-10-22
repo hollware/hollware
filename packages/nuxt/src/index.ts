@@ -34,13 +34,6 @@ export interface ModuleOptions {
   /** Whether pages carry `<meta name="generator" content="Hollware">`. */
   generator: boolean
   /**
-   * The public URL of the Hollware that counts this site's page views (ADR-031), such as
-   * `https://cms.example.com`: each page the reader sees is sent to its `/events`, as the site and
-   * the path, with no cookie. The site's `url` in the Hollware config must be this site's origin.
-   * No views are counted when it is not set.
-   */
-  beacon?: string
-  /**
    * How the pages that read Hollware are kept (S8):
    *
    * - `'purge'`: in Cloudflare's Workers Cache, which serves them without running the Worker, each
@@ -135,11 +128,6 @@ export default defineNuxtModule<ModuleOptions>({
         '/_hollware/**': routes,
         ...nuxt.options.routeRules,
       }
-    }
-    if (options.beacon !== undefined && options.beacon !== '') {
-      // Public: the browser sends the views.
-      nuxt.options.runtimeConfig.public['hollware'] = { site: options.site, beacon: options.beacon }
-      addPlugin({ src: resolve('./runtime/beacon.client'), mode: 'client' })
     }
   },
 })

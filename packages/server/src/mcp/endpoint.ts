@@ -11,7 +11,7 @@ import {
 import type { Principal } from '../auth/types.ts'
 import { OPERATION_TIMEOUT_MS } from '../limits.ts'
 import type { OperationContext } from '../ops/types.ts'
-import { EFFECT_ANNOTATIONS } from './annotations.ts'
+import { annotationsOf } from './annotations.ts'
 import { askToAcknowledge, replyTo, warningsOf, withAcknowledged } from './acknowledge.ts'
 import { canElicitForm, declaredClient } from './envelope.ts'
 import { describeError, internalError, timeoutError } from './errors.ts'
@@ -199,7 +199,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
           description: tool.spec.description,
           inputSchema: tool.input,
           outputSchema: tool.output,
-          annotations: EFFECT_ANNOTATIONS[tool.spec.effect],
+          annotations: annotationsOf(tool.spec.name, tool.spec.effect),
           scopeChallenge: scopeChallenge(tool, () => {
             emit({
               kind: 'call',

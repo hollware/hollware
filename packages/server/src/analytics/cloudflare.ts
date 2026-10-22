@@ -1,140 +1,120 @@
-import { isSiteKey } from '@hollware/core'
-import type { AnalyticsReader, AnalyticsWriter, PageCount } from '../ports.ts'
+import type { AnalyticsSettings } from '@hollware/core'
+import { ranked, sinceOf } from './normalize.ts'
+import { isRecord, messageOf, ProviderError, request } from './request.ts'
+import { rowsFor, type Source, type SourceInput } from './source.ts'
 
-/** The dataset of Analytics Engine when the Worker names none. */
-export const DEFAULT_ANALYTICS_DATASET = 'hollware_page_views'
-
-/** How long an answer of the SQL API is kept: it is slow, rate limited and minutes behind anyway. */
-export const STATS_CACHE_SECONDS = 600
-
-/** Where the SQL API of Analytics Engine answers. */
-export function sqlApiUrl(accountId: string): string {
-  return `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`
-}
-
-interface AnalyticsBinding {
-  writeDataPoint(point: { indexes?: string[]; blobs?: string[]; doubles?: number[] }): void
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/**
- * Analytics Engine as the writer: one data point per view, indexed by the site (its sampling key),
- * with the path and the country as blobs and a count of 1.
+/*
+ * Cloudflare Web Analytics (ADR-040): the page loads of the account's sites, read from the GraphQL
+ * API with a token that has Account Analytics Read. Cloudflare samples them, so the counts are
+ * estimates, good enough to rank pages.
  */
-export function analyticsEngineWriter(binding: AnalyticsBinding): AnalyticsWriter {
+
+export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
+
+const REFUSED_FIX =
+  'Give the token Account Analytics Read on the account: in Cloudflare, My Profile, API Tokens, edit the token.'
+
+/** The GraphQL query of the most loaded paths of some hosts since a day. */
+export const PAGES_QUERY = `query ($account: String!, $since: Date!, $hosts: [String!]) {
+  viewer {
+    accounts(filter: { accountTag: $account }) {
+      pages: rumPageloadEventsAdaptiveGroups(
+        limit: %LIMIT%
+        filter: { date_geq: $since, requestHost_in: $hosts }
+        orderBy: [count_DESC]
+      ) {
+        count
+        dimensions { requestPath }
+      }
+    }
+  }
+}`
+
+export function cloudflareSource(input: SourceInput): Source {
+  const headers = { authorization: `Bearer ${input.credential}` }
+  const refusedOr = (status: number, body: unknown, what: string): never => {
+    const message = messageOf(body, [input.credential])
+    if (status === 401 || status === 403) throw new ProviderError('refused', message, REFUSED_FIX)
+    throw new ProviderError(
+      'unreachable',
+      `${what} answered ${status}: ${message}`,
+      'Try again in a minute.',
+    )
+  }
+
   return {
-    record(view) {
-      binding.writeDataPoint({
-        indexes: [view.site],
-        blobs: [view.path, view.country],
-        doubles: [1],
-      })
-    },
-  }
-}
-
-/**
- * The query of the most read paths. The SQL API takes no parameters, so every value in it is
- * checked first: a site key (`[a-z0-9-]`), a dataset name and two whole numbers.
- */
-export function topPagesSql(
-  dataset: string,
-  site: string,
-  query: { readonly days: number; readonly limit: number },
-): string {
-  if (!/^[a-z_][a-z0-9_]{0,63}$/i.test(dataset)) throw new Error(`No dataset is named ${dataset}`)
-  if (!isSiteKey(site)) throw new Error(`No site key is ${String(site)}`)
-  if (!Number.isInteger(query.days) || query.days < 1 || query.days > 90) {
-    throw new Error(`${query.days} days is not a whole number from 1 to 90`)
-  }
-  if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 50) {
-    throw new Error(`${query.limit} pages is not a whole number from 1 to 50`)
-  }
-  return [
-    'SELECT blob1 AS path, SUM(_sample_interval) AS views',
-    `FROM ${dataset}`,
-    `WHERE index1 = '${site}' AND timestamp > NOW() - INTERVAL '${query.days}' DAY`,
-    'GROUP BY path',
-    'ORDER BY views DESC',
-    `LIMIT ${query.limit}`,
-    'FORMAT JSON',
-  ].join(' ')
-}
-
-/** What the reader needs: where to ask, with what, and where to keep answers. */
-export interface SqlApiOptions {
-  readonly accountId: string
-  readonly token: string
-  readonly dataset: string
-  readonly fetch: (request: Request) => Promise<Response>
-  /** A cache of answers; the Worker's default cache in production. */
-  readonly cache: Pick<Cache, 'match' | 'put'> | null
-}
-
-/** The SQL API of Analytics Engine as the reader, its answers kept for ten minutes. */
-export function sqlApiReader(options: SqlApiOptions): AnalyticsReader {
-  return {
-    async topPages(site, query) {
-      const sql = topPagesSql(options.dataset, site, query)
-      // The cache key names the query, never the token.
-      const key = new Request(
-        `https://hollware.invalid/content-stats/${options.dataset}/${site}?days=${query.days}&limit=${query.limit}`,
+    async discover(): Promise<AnalyticsSettings> {
+      if (input.settings.accountId !== undefined) return input.settings
+      const { status, body } = await request(
+        input.fetch,
+        'Cloudflare',
+        `${CLOUDFLARE_API}/accounts?per_page=50`,
+        {
+          headers,
+        },
       )
-      const cached = await options.cache?.match(key)
-      const answer =
-        cached ??
-        (await options.fetch(
-          new Request(sqlApiUrl(options.accountId), {
-            method: 'POST',
-            headers: { authorization: `Bearer ${options.token}` },
-            body: sql,
-          }),
-        ))
-      if (!answer.ok) throw new Error(`The SQL API of Analytics Engine answered ${answer.status}`)
-      const text = await answer.text()
-      if (cached === undefined && options.cache !== null) {
-        await options.cache.put(
-          key,
-          new Response(text, { headers: { 'cache-control': `max-age=${STATS_CACHE_SECONDS}` } }),
+      if (status !== 200) refusedOr(status, body, 'Cloudflare')
+      const accounts = isRecord(body) && Array.isArray(body['result']) ? body['result'] : []
+      const ids = accounts
+        .map((account) => (isRecord(account) ? account['id'] : undefined))
+        .filter((id): id is string => typeof id === 'string')
+      if (ids.length === 0) {
+        throw new ProviderError('refused', 'The token can see no account.', REFUSED_FIX)
+      }
+      if (ids.length > 1) {
+        throw new ProviderError(
+          'invalid',
+          `The token can see ${ids.length} accounts.`,
+          'Pass settings.accountId: the id of the account the site is on, in the Cloudflare dashboard URL.',
         )
       }
-      const body: unknown = JSON.parse(text)
-      const data = isRecord(body) && Array.isArray(body['data']) ? body['data'] : []
-      return data.flatMap((row: unknown): PageCount[] => {
-        if (!isRecord(row) || typeof row['path'] !== 'string') return []
-        const views = Number(row['views'])
-        return Number.isFinite(views) ? [{ path: row['path'], views }] : []
-      })
+      return { ...input.settings, accountId: ids[0] }
+    },
+
+    async topPages(days, limit) {
+      const account = input.settings.accountId
+      if (account === undefined) {
+        throw new ProviderError('invalid', 'No Cloudflare account.', 'Connect the analytics again.')
+      }
+      const { status, body } = await request(
+        input.fetch,
+        'Cloudflare',
+        `${CLOUDFLARE_API}/graphql`,
+        {
+          method: 'POST',
+          headers: { ...headers, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            query: PAGES_QUERY.replace('%LIMIT%', String(rowsFor(limit))),
+            variables: { account, since: sinceOf(input.now(), days), hosts: input.hosts },
+          }),
+        },
+      )
+      if (status !== 200) refusedOr(status, body, 'Cloudflare')
+      const errors = isRecord(body) && Array.isArray(body['errors']) ? body['errors'] : []
+      if (errors.length > 0) {
+        const message = messageOf(body, [input.credential])
+        const refused = /authoriz|permission|access/i.test(message)
+        throw new ProviderError(
+          refused ? 'refused' : 'invalid',
+          message,
+          refused ? REFUSED_FIX : 'Check settings.accountId.',
+        )
+      }
+      const data = isRecord(body) ? body['data'] : undefined
+      const viewer = isRecord(data) ? data['viewer'] : undefined
+      const accounts =
+        isRecord(viewer) && Array.isArray(viewer['accounts']) ? viewer['accounts'] : []
+      const first: unknown = accounts[0]
+      const rows = isRecord(first) && Array.isArray(first['pages']) ? first['pages'] : []
+      return ranked(
+        rows.flatMap((row) => {
+          if (!isRecord(row) || !isRecord(row['dimensions'])) return []
+          const path = row['dimensions']['requestPath']
+          const views = row['count']
+          return typeof path === 'string' && typeof views === 'number' ? [{ path, views }] : []
+        }),
+        limit,
+      )
     },
   }
-}
-
-/** The writer over the Worker's `ANALYTICS` binding, or `null` without one. */
-export function analyticsWriterOf(env: object): AnalyticsWriter | null {
-  const binding: unknown = Reflect.get(env, 'ANALYTICS')
-  if (!isRecord(binding) || typeof binding['writeDataPoint'] !== 'function') return null
-  return analyticsEngineWriter(binding as unknown as AnalyticsBinding)
-}
-
-/**
- * The reader over the Worker's variables: `HOLLWARE_ANALYTICS_ACCOUNT_ID` and the secret
- * `HOLLWARE_ANALYTICS_TOKEN` (an API token with Account Analytics Read), and the dataset of
- * `HOLLWARE_ANALYTICS_DATASET` or the default one. `null` without the account or the token.
- */
-export function analyticsReaderOf(env: object): AnalyticsReader | null {
-  const accountId: unknown = Reflect.get(env, 'HOLLWARE_ANALYTICS_ACCOUNT_ID')
-  const token: unknown = Reflect.get(env, 'HOLLWARE_ANALYTICS_TOKEN')
-  const dataset: unknown = Reflect.get(env, 'HOLLWARE_ANALYTICS_DATASET')
-  if (typeof accountId !== 'string' || accountId === '') return null
-  if (typeof token !== 'string' || token === '') return null
-  return sqlApiReader({
-    accountId,
-    token,
-    dataset: typeof dataset === 'string' && dataset !== '' ? dataset : DEFAULT_ANALYTICS_DATASET,
-    fetch: (request) => fetch(request),
-    cache: typeof caches === 'undefined' ? null : caches.default,
-  })
 }

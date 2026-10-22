@@ -20,17 +20,20 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the thirty-seven operations, sorted by name, as tools/list shows them', () => {
+  it('are the forty operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
       'comment_review',
+      'connect_analytics',
       'content_stats',
       'create_draft',
       'create_site',
       'delete_entry',
       'delete_site',
       'describe_site',
+      'disconnect_analytics',
+      'get_analytics',
       'get_asset',
       'get_entry',
       'get_revision',
@@ -92,11 +95,29 @@ describe('operation specs', () => {
         outcomes: ['commented', 'not_pending', 'not_found'],
         errors: ['not_pending', 'not_found'],
       },
+      connect_analytics: {
+        effect: 'write',
+        scopes: ['schema:admin'],
+        outcomes: ['connected', 'refused', 'unreachable', 'invalid', 'unavailable'],
+        errors: ['refused', 'unreachable', 'invalid', 'unavailable'],
+      },
       content_stats: {
         effect: 'read',
         scopes: ['content:read'],
         outcomes: ['ok', 'unavailable'],
         errors: ['unavailable'],
+      },
+      disconnect_analytics: {
+        effect: 'write',
+        scopes: ['schema:admin'],
+        outcomes: ['disconnected', 'not_connected'],
+        errors: ['not_connected'],
+      },
+      get_analytics: {
+        effect: 'read',
+        scopes: ['schema:admin'],
+        outcomes: ['connected', 'not_connected'],
+        errors: [],
       },
       create_draft: {
         effect: 'write',

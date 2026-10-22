@@ -1,9 +1,12 @@
 import type { Conversion } from '@hollware/core'
 import type {
   AcknowledgedWarning,
+  AnalyticsProvider,
+  AnalyticsSettings,
   EntryDocument,
   EntryLookup,
   EntryRef,
+  ResolvedSite,
   Verdict,
 } from '@hollware/core'
 
@@ -584,24 +587,10 @@ export interface Semantic {
 }
 
 /*
- * Analytics (ADR-031): the sites of a deployment count their page views, and agents read which
- * pages are read. The count holds no person: a site, a path and a country, never a cookie, an IP
- * or a user agent.
+ * Analytics (ADR-040): a site connects the analytics it already has, and agents read which pages
+ * are read. Hollware counts nothing itself and keeps no reader's data, only a sealed read-only
+ * credential of the provider.
  */
-
-/** A page view, as a site's beacon reports it. */
-export interface PageView {
-  readonly site: string
-  /** The path of the page, such as `/blog/edge-caching/`. */
-  readonly path: string
-  /** The two letters of the reader's country, or `XX` when it is not known. */
-  readonly country: string
-}
-
-/** Where page views are counted. */
-export interface AnalyticsWriter {
-  record(view: PageView): void
-}
 
 /** A page and how often it was read. */
 export interface PageCount {
@@ -609,13 +598,63 @@ export interface PageCount {
   readonly views: number
 }
 
-/** Reads the counts back. */
+/** Reads the counts of one provider. */
 export interface AnalyticsReader {
   /** The `limit` most read paths of the site in the last `days`, most read first. */
   topPages(
     site: string,
     query: { readonly days: number; readonly limit: number },
   ): Promise<readonly PageCount[]>
+}
+
+/** A connection, as `get_analytics` answers it: never its credential. */
+export interface AnalyticsConnection {
+  readonly provider: AnalyticsProvider
+  readonly settings: AnalyticsSettings
+  readonly connectedAt: string
+  readonly checkedAt: string | null
+}
+
+/** What connecting answers: the provider was asked first, and nothing is saved unless it answered. */
+export type AnalyticsConnectResult =
+  | {
+      readonly outcome: 'connected'
+      readonly settings: AnalyticsSettings
+      readonly views: number
+      readonly paths: number
+    }
+  | {
+      readonly outcome: 'refused' | 'unreachable' | 'invalid'
+      readonly message: string
+      readonly fix: string
+    }
+  | { readonly outcome: 'unavailable' }
+
+/** The analytics connections of the sites, and the counts they read. */
+export interface AnalyticsSources {
+  connection(site: string): Promise<AnalyticsConnection | null>
+  /** The most read paths of the site from its connection, or why there are none. */
+  topPages(
+    site: ResolvedSite,
+    query: { readonly days: number; readonly limit: number },
+  ): Promise<
+    | {
+        readonly outcome: 'ok'
+        readonly provider: AnalyticsProvider
+        readonly pages: readonly PageCount[]
+      }
+    | { readonly outcome: 'unavailable'; readonly fix: string }
+  >
+  connect(
+    site: ResolvedSite,
+    input: {
+      readonly provider: AnalyticsProvider
+      readonly credential: string
+      readonly settings: AnalyticsSettings
+    },
+  ): Promise<AnalyticsConnectResult>
+  /** `false` when there was no connection to forget. */
+  disconnect(site: string): Promise<boolean>
 }
 
 /** The stored structure of a site (ADR-033), or `null` for no row or a row with no definition. */

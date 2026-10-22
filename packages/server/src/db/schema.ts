@@ -730,6 +730,34 @@ export const siteSecrets = sqliteTable(
   ],
 )
 
+/**
+ * The analytics a site reads its page views from (ADR-040): the provider, its settings (JSON,
+ * nothing secret in them) and one read-only credential, sealed as the secrets of `site_secrets`
+ * are, under the name `analytics`. One per site; `checked_at` is when the provider last answered.
+ */
+export const siteAnalytics = sqliteTable(
+  'site_analytics',
+  {
+    id: id('ana'),
+    siteId: siteId(),
+    provider: text('provider', { enum: ['cloudflare', 'ga4', 'plausible', 'posthog'] }).notNull(),
+    settings: text('settings').notNull(),
+    sealed: text('sealed').notNull(),
+    checkedAt: text('checked_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('site_analytics_id_site').on(t.id, t.siteId),
+    unique('site_analytics_site').on(t.siteId),
+    foreignKey({ name: 'site_analytics_site_fk', columns: [t.siteId], foreignColumns: [sites.id] }),
+    check('site_analytics_json', sql`json_valid(${t.settings})`),
+    check(
+      'site_analytics_provider',
+      sql`${t.provider} IN ('cloudflare', 'ga4', 'plausible', 'posthog')`,
+    ),
+  ],
+)
+
 export const reviewComments = sqliteTable(
   'review_comments',
   {

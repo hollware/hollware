@@ -95,6 +95,7 @@ describe('D1 schema', () => {
       'revisions',
       'schedules',
       'sessions',
+      'site_analytics',
       'site_changes',
       'site_secrets',
       'sites',

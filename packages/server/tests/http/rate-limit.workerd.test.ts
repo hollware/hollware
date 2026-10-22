@@ -41,13 +41,13 @@ describe('the rate limit of the routes without a token', () => {
       statuses.push((await worker.send('/auth/signin/options', from('203.0.113.7'))).status)
     }
     const other = await worker.send('/auth/signin/options', from('203.0.113.8'))
-    const beacon = await worker.send('/events', from('203.0.113.7'))
+    const oauth = await worker.send('/oauth/register', from('203.0.113.7'))
     const refused = await worker.send('/auth/signin/options', from('203.0.113.7'))
 
     expect(statuses.slice(0, 2).every((status) => status !== 429)).toBe(true)
     expect(statuses[2]).toBe(429)
     expect(other.status).not.toBe(429)
-    expect(beacon.status).not.toBe(429)
+    expect(oauth.status).not.toBe(429)
     expect(await wire(refused)).toEqual({
       status: 429,
       headers: expect.objectContaining({ 'retry-after': '60', 'cache-control': 'no-store' }),
@@ -60,7 +60,7 @@ describe('the rate limit of the routes without a token', () => {
     expect([...limit.keys.keys()].sort()).toEqual([
       'auth:203.0.113.7',
       'auth:203.0.113.8',
-      'beacon:203.0.113.7',
+      'oauth:203.0.113.7',
     ])
   })
 
@@ -85,7 +85,7 @@ describe('the rate limit of the routes without a token', () => {
           ['GET', '/v1/site'],
           ['POST', '/v1/ops/publish'],
         ].map(([method, path]) => limitedRoute(method ?? '', path ?? '')),
-      ).toEqual(['auth', 'oauth', 'oauth', 'beacon', null, null, null, null])
+      ).toEqual(['auth', 'oauth', 'oauth', null, null, null, null, null])
     },
   )
 })

@@ -137,9 +137,6 @@ function agents(env: 'staging' | 'demo'): Step[] {
   ]
 }
 
-/** The Hollware whose public URL counts the views of our sites (ADR-031). */
-const BEACON = 'https://cms.demo.hollware.com'
-
 /**
  * The packages, built first: the CMS takes the admin from the build of @hollware/admin, which a
  * fresh checkout does not have. Without it the CMS deploys with no admin, and /admin/ is a 404.
@@ -165,7 +162,6 @@ export function planOf(target: Target): Plan {
         name: 'build the demo blog',
         cwd: 'examples/nuxt-blog',
         command: [NUXT, 'build'],
-        env: { HOLLWARE_BEACON: BEACON },
       },
       keepStep('demo blog', {
         dir: 'examples/nuxt-blog/.output/public',
@@ -181,7 +177,6 @@ export function planOf(target: Target): Plan {
         name: 'build hollware.com',
         cwd: 'apps/web',
         command: [NUXT, 'build'],
-        env: { HOLLWARE_BEACON: BEACON },
       },
       keepStep('hollware.com', {
         dir: 'apps/web/.output/public',

@@ -704,11 +704,146 @@ export const rejectReview = defineOperation({
   },
 })
 
+/** The analytics a site can read its page views from (ADR-040): the site's own, never Hollware's. */
+export const ANALYTICS_PROVIDERS = ['cloudflare', 'ga4', 'plausible', 'posthog'] as const
+
+/** One of `ANALYTICS_PROVIDERS`. */
+export type AnalyticsProvider = (typeof ANALYTICS_PROVIDERS)[number]
+
+const analyticsProvider = z
+  .enum(ANALYTICS_PROVIDERS)
+  .describe(
+    'Where the site measures its readers: cloudflare (Web Analytics), posthog, plausible or ga4.',
+  )
+
+/** What a connection to analytics keeps besides its credential: nothing in it is a secret. */
+export const analyticsSettings = z.strictObject({
+  hosts: z
+    .array(
+      z
+        .string()
+        .max(253)
+        .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/, {
+          message: 'Not a host name, such as www.example.com.',
+        }),
+    )
+    .max(10)
+    .optional()
+    .describe(
+      "Hosts whose views count for the site, such as www.example.com. The host of the site's url always counts.",
+    ),
+  accountId: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/, { message: 'Not a Cloudflare account id: 32 hexadecimal digits.' })
+    .optional()
+    .describe('cloudflare: the account. Found from the token when not given.'),
+  host: z
+    .string()
+    .max(200)
+    .regex(/^https:\/\/[a-z0-9.-]+(:\d{1,5})?$/, {
+      message: 'Not an https origin, such as https://plausible.example.com.',
+    })
+    .optional()
+    .describe(
+      'posthog or plausible: the https origin of the instance. PostHog Cloud (US or EU) is found from the key; plausible.io when not given.',
+    ),
+  projectId: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('posthog: the project. Found from the key when not given.'),
+  siteId: z
+    .string()
+    .min(1)
+    .max(253)
+    .optional()
+    .describe("plausible: the site id, its domain. The host of the site's url when not given."),
+  propertyId: z
+    .string()
+    .regex(/^\d{1,20}$/, { message: 'Not a GA4 property id: digits only.' })
+    .optional()
+    .describe('ga4: the property id, digits only. Required for ga4.'),
+})
+
+/** The settings of a connection, as `analyticsSettings` parses them. */
+export type AnalyticsSettings = z.output<typeof analyticsSettings>
+
+export const getAnalytics = defineOperation({
+  name: 'get_analytics',
+  title: 'Read the analytics connection',
+  description:
+    'The analytics the site reads its page views from (ADR-040), without its credential: the provider, its settings and when it was last checked. not_connected when there is none.',
+  input: z.strictObject({}),
+  output: z.object({
+    outcome: z.enum(['connected', 'not_connected']),
+    provider: analyticsProvider.optional(),
+    settings: analyticsSettings.optional(),
+    connectedAt: z.string().optional().describe('When the connection was made, in ISO 8601.'),
+    checkedAt: z
+      .string()
+      .optional()
+      .describe('When the provider last answered with views, in ISO 8601.'),
+  }),
+  scopes: ['schema:admin'],
+  effect: 'read',
+  outcomes: { connected: { isError: false }, not_connected: { isError: false } },
+})
+
+export const connectAnalytics = defineOperation({
+  name: 'connect_analytics',
+  title: 'Connect the analytics of the site',
+  description:
+    'Connects the site to the analytics it already has, so content_stats can say what readers read: Cloudflare Web Analytics, PostHog, Plausible or GA4. It asks the provider for the last 7 days with the credential first, and saves nothing unless the provider answers; the credential is then kept sealed and never shown again. A new connection replaces the old one. Prefer the admin (Site, Analytics) or `hollware analytics connect`, so the credential does not pass through an agent. refused when the provider turned the credential down, with the permission to give it; unreachable when it did not answer; unavailable when the deployment has no HOLLWARE_SECRET to seal it with.',
+  input: z.strictObject({
+    provider: analyticsProvider,
+    credential: z
+      .string()
+      .min(1)
+      .max(16_384)
+      .describe(
+        'A read-only credential: cloudflare, an API token with Account Analytics Read; posthog, a personal API key with Query read; plausible, a Stats API key; ga4, the JSON key of a service account that can view the property.',
+      ),
+    settings: analyticsSettings.optional(),
+  }),
+  output: z.object({
+    outcome: z.enum(['connected', 'refused', 'unreachable', 'invalid', 'unavailable']),
+    settings: analyticsSettings
+      .optional()
+      .describe('With connected: the settings as saved, with what was found from the credential.'),
+    views: z.number().optional().describe('With connected: the views of the last 7 days.'),
+    paths: z.number().optional().describe('With connected: how many paths had views.'),
+    message: z.string().optional().describe('Without connected: what the provider said.'),
+    fix: z.string().optional().describe('Without connected: what to do next.'),
+  }),
+  scopes: ['schema:admin'],
+  effect: 'write',
+  outcomes: {
+    connected: { isError: false },
+    refused: { isError: true },
+    unreachable: { isError: true },
+    invalid: { isError: true },
+    unavailable: { isError: true },
+  },
+})
+
+export const disconnectAnalytics = defineOperation({
+  name: 'disconnect_analytics',
+  title: 'Disconnect the analytics of the site',
+  description:
+    'Forgets the analytics connection of the site and its credential. content_stats is unavailable until another is connected.',
+  input: z.strictObject({}),
+  output: z.object({ outcome: z.enum(['disconnected', 'not_connected']) }),
+  scopes: ['schema:admin'],
+  effect: 'write',
+  outcomes: { disconnected: { isError: false }, not_connected: { isError: true } },
+})
+
 export const contentStats = defineOperation({
   name: 'content_stats',
   title: 'Read what readers read',
   description:
-    'The most read pages of the sites that read this one, over the last days, most read first, each with the published entry it shows when it shows one. Use it to pick what to update. unavailable when the deployment has no analytics.',
+    'The most read pages of the sites that read this one, over the last days, most read first, each with the published entry it shows when it shows one, from the analytics the site connected (ADR-040). Use it to pick what to update. unavailable when the site has connected none.',
   input: z.strictObject({
     days: z.number().int().min(1).max(90).default(30).describe('How many days back to count.'),
     limit: z.number().int().min(1).max(50).default(10),
@@ -716,6 +851,9 @@ export const contentStats = defineOperation({
   output: z.object({
     outcome: z.enum(['ok', 'unavailable']),
     since: z.string().optional().describe('The start of the count, in ISO 8601.'),
+    source: analyticsProvider
+      .optional()
+      .describe('With ok: the analytics the views come from. cloudflare samples them.'),
     pages: z
       .array(
         z.object({
@@ -725,6 +863,7 @@ export const contentStats = defineOperation({
         }),
       )
       .optional(),
+    fix: z.string().optional().describe('With unavailable: what to do next.'),
   }),
   scopes: ['content:read'],
   effect: 'read',
@@ -1078,12 +1217,15 @@ export const updateAsset = defineOperation({
 export const OPERATIONS = [
   approveReview,
   commentReview,
+  connectAnalytics,
   contentStats,
   createDraft,
   createSite,
   deleteEntry,
   deleteSite,
   describeSite,
+  disconnectAnalytics,
+  getAnalytics,
   getAsset,
   getEntry,
   getRevision,

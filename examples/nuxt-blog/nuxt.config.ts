@@ -4,10 +4,9 @@ export default defineNuxtConfig({
   modules: ['@hollware/nuxt'],
   // The key of the site in the Hollware config. On Cloudflare the Worker reads it over the
   // service binding HOLLWARE of wrangler.jsonc; elsewhere set hollware.url and NUXT_HOLLWARE_TOKEN.
-  // HOLLWARE_BEACON, at build time, is the public URL of the Hollware that counts page views.
   // Pages are kept in Workers Cache until Hollware's webhook purges what changed (S8): most
   // requests run nothing, and a publish shows in seconds. NUXT_HOLLWARE_WEBHOOK_SECRET checks it.
-  hollware: { site: 'playground', beacon: process.env['HOLLWARE_BEACON'] ?? '', cache: 'purge' },
+  hollware: { site: 'playground', cache: 'purge' },
   nitro: {
     preset: 'cloudflare_module',
     // The Worker is built with the config of wrangler.jsonc, without Node.js compatibility.

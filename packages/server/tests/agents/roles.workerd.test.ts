@@ -17,7 +17,7 @@ import type { Principal } from '../../src/auth/types.ts'
 import { handlers } from '../../src/ops/index.ts'
 import { invoke } from '../../src/ops/invoke.ts'
 import type { OperationContext } from '../../src/ops/types.ts'
-import type { AnalyticsReader } from '../../src/ports.ts'
+import type { AnalyticsSources } from '../../src/ports.ts'
 import { VERDICT } from '../db/support.ts'
 import { blogPost, warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, type World } from '../ops/world.ts'
@@ -205,11 +205,18 @@ describe('the auditor', () => {
     await publishedAlone(world, 'edge-guide')
     world.time.set('2027-05-20T10:00:00.000Z')
     await publishedAlone(world, 'fresh-guide')
-    const analytics: AnalyticsReader = {
-      topPages: async () => [
-        { path: '/en/blog/edge-guide/', views: 120 },
-        { path: '/en/blog/fresh-guide/', views: 90 },
-      ],
+    const analytics: AnalyticsSources = {
+      connection: async () => null,
+      topPages: async () => ({
+        outcome: 'ok',
+        provider: 'cloudflare',
+        pages: [
+          { path: '/en/blog/edge-guide/', views: 120 },
+          { path: '/en/blog/fresh-guide/', views: 90 },
+        ],
+      }),
+      connect: async () => ({ outcome: 'unavailable' }),
+      disconnect: async () => false,
     }
     const posted: string[] = []
 

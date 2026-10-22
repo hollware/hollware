@@ -102,7 +102,7 @@ export default defineConfig({
     playground: {
       locales: ['es', 'en'],
       defaultLocale: 'es',
-      // The blog of the demo (examples/nuxt-blog): its pages count their views here (ADR-031).
+      // The blog of the demo (examples/nuxt-blog), served at this url.
       url: 'https://demo.hollware.com',
       collections: { blog, reports },
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',

@@ -176,7 +176,7 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
-  // Sign-in, OAuth's token endpoint and the beacon are limited per address.
+  // Sign-in and OAuth's token endpoint are limited per address.
   const limited = records(config['ratelimits']).some(
     (entry) => entry['name'] === 'HOLLWARE_RATE_LIMIT',
   )

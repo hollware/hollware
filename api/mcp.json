@@ -388,6 +388,148 @@
       "title": "Comment on a review"
     },
     {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "credential": {
+            "description": "A read-only credential: cloudflare, an API token with Account Analytics Read; posthog, a personal API key with Query read; plausible, a Stats API key; ga4, the JSON key of a service account that can view the property.",
+            "maxLength": 16384,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provider": {
+            "description": "Where the site measures its readers: cloudflare (Web Analytics), posthog, plausible or ga4.",
+            "enum": ["cloudflare", "ga4", "plausible", "posthog"],
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": false,
+            "properties": {
+              "accountId": {
+                "description": "cloudflare: the account. Found from the token when not given.",
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "host": {
+                "description": "posthog or plausible: the https origin of the instance. PostHog Cloud (US or EU) is found from the key; plausible.io when not given.",
+                "maxLength": 200,
+                "pattern": "^https:\\/\\/[a-z0-9.-]+(:\\d{1,5})?$",
+                "type": "string"
+              },
+              "hosts": {
+                "description": "Hosts whose views count for the site, such as www.example.com. The host of the site's url always counts.",
+                "items": {
+                  "maxLength": 253,
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              "projectId": {
+                "description": "posthog: the project. Found from the key when not given.",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              "propertyId": {
+                "description": "ga4: the property id, digits only. Required for ga4.",
+                "pattern": "^\\d{1,20}$",
+                "type": "string"
+              },
+              "siteId": {
+                "description": "plausible: the site id, its domain. The host of the site's url when not given.",
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": ["provider", "credential"],
+        "type": "object"
+      },
+      "name": "connect_analytics",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "fix": {
+            "description": "Without connected: what to do next.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Without connected: what the provider said.",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": ["connected", "refused", "unreachable", "invalid", "unavailable"],
+            "type": "string"
+          },
+          "paths": {
+            "description": "With connected: how many paths had views.",
+            "type": "number"
+          },
+          "settings": {
+            "additionalProperties": false,
+            "description": "With connected: the settings as saved, with what was found from the credential.",
+            "properties": {
+              "accountId": {
+                "description": "cloudflare: the account. Found from the token when not given.",
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "host": {
+                "description": "posthog or plausible: the https origin of the instance. PostHog Cloud (US or EU) is found from the key; plausible.io when not given.",
+                "maxLength": 200,
+                "pattern": "^https:\\/\\/[a-z0-9.-]+(:\\d{1,5})?$",
+                "type": "string"
+              },
+              "hosts": {
+                "description": "Hosts whose views count for the site, such as www.example.com. The host of the site's url always counts.",
+                "items": {
+                  "maxLength": 253,
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              "projectId": {
+                "description": "posthog: the project. Found from the key when not given.",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              "propertyId": {
+                "description": "ga4: the property id, digits only. Required for ga4.",
+                "pattern": "^\\d{1,20}$",
+                "type": "string"
+              },
+              "siteId": {
+                "description": "plausible: the site id, its domain. The host of the site's url when not given.",
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "views": {
+            "description": "With connected: the views of the last 7 days.",
+            "type": "number"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Connect the analytics of the site"
+    },
+    {
       "effect": "read",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -414,6 +556,10 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "fix": {
+            "description": "With unavailable: what to do next.",
+            "type": "string"
+          },
           "outcome": {
             "enum": ["ok", "unavailable"],
             "type": "string"
@@ -574,6 +720,11 @@
           },
           "since": {
             "description": "The start of the count, in ISO 8601.",
+            "type": "string"
+          },
+          "source": {
+            "description": "With ok: the analytics the views come from. cloudflare samples them.",
+            "enum": ["cloudflare", "ga4", "plausible", "posthog"],
             "type": "string"
           }
         },
@@ -1673,6 +1824,111 @@
       },
       "scopes": ["content:read"],
       "title": "Describe the site"
+    },
+    {
+      "effect": "write",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "disconnect_analytics",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": ["disconnected", "not_connected"],
+            "type": "string"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Disconnect the analytics of the site"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_analytics",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "checkedAt": {
+            "description": "When the provider last answered with views, in ISO 8601.",
+            "type": "string"
+          },
+          "connectedAt": {
+            "description": "When the connection was made, in ISO 8601.",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": ["connected", "not_connected"],
+            "type": "string"
+          },
+          "provider": {
+            "description": "Where the site measures its readers: cloudflare (Web Analytics), posthog, plausible or ga4.",
+            "enum": ["cloudflare", "ga4", "plausible", "posthog"],
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": false,
+            "properties": {
+              "accountId": {
+                "description": "cloudflare: the account. Found from the token when not given.",
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "host": {
+                "description": "posthog or plausible: the https origin of the instance. PostHog Cloud (US or EU) is found from the key; plausible.io when not given.",
+                "maxLength": 200,
+                "pattern": "^https:\\/\\/[a-z0-9.-]+(:\\d{1,5})?$",
+                "type": "string"
+              },
+              "hosts": {
+                "description": "Hosts whose views count for the site, such as www.example.com. The host of the site's url always counts.",
+                "items": {
+                  "maxLength": 253,
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              "projectId": {
+                "description": "posthog: the project. Found from the key when not given.",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              "propertyId": {
+                "description": "ga4: the property id, digits only. Required for ga4.",
+                "pattern": "^\\d{1,20}$",
+                "type": "string"
+              },
+              "siteId": {
+                "description": "plausible: the site id, its domain. The host of the site's url when not given.",
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["schema:admin"],
+      "title": "Read the analytics connection"
     },
     {
       "effect": "read",

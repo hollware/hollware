@@ -52,7 +52,7 @@ export interface HollwareEnv {
   readonly OAUTH_KV: KVNamespace
   /**
    * A Workers Rate Limiting binding (`ratelimits` in wrangler.jsonc): with it, the routes anyone
-   * may call without a token (sign-in and passkeys, OAuth's token and registration, the beacon)
+   * may call without a token (sign-in and passkeys, OAuth's token and registration)
    * answer 429 past its limit, per address and route (T-10 of docs/security/threat-model.md).
    * Without it, nothing is limited.
    */
@@ -70,15 +70,6 @@ export interface HollwareEnv {
   readonly VECTORIZE?: Vectorize | VectorizeIndex
   /** The embedding model of Workers AI, `@cf/baai/bge-m3` when not set; its index must match it. */
   readonly HOLLWARE_EMBEDDING_MODEL?: string
-  /**
-   * Analytics (ADR-031): the Analytics Engine dataset that the beacon of the sites writes to, and
-   * what `content_stats` reads it with: the account, an API token with Account Analytics Read
-   * (a secret), and the dataset's name when it is not `hollware_page_views`.
-   */
-  readonly ANALYTICS?: AnalyticsEngineDataset
-  readonly HOLLWARE_ANALYTICS_ACCOUNT_ID?: string
-  readonly HOLLWARE_ANALYTICS_TOKEN?: string
-  readonly HOLLWARE_ANALYTICS_DATASET?: string
   /**
    * The images of the sites (ADR-038): the R2 bucket that keeps them and, optionally, the Images
    * binding that converts each once when it arrives. Without the bucket, upload_asset answers

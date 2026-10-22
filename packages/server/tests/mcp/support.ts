@@ -350,6 +350,36 @@ export const CANNED: Canned = {
     },
     unavailable: { outcome: 'unavailable' },
   },
+  get_analytics: {
+    connected: {
+      outcome: 'connected',
+      provider: 'posthog',
+      settings: { host: 'https://us.posthog.com', projectId: 521024 },
+      connectedAt: '2026-10-21T10:00:00.000Z',
+      checkedAt: '2026-10-21T10:00:00.000Z',
+    },
+    not_connected: { outcome: 'not_connected' },
+  },
+  connect_analytics: {
+    connected: {
+      outcome: 'connected',
+      settings: { host: 'https://us.posthog.com', projectId: 521024 },
+      views: 380,
+      paths: 24,
+    },
+    refused: {
+      outcome: 'refused',
+      message: 'API key does not have the required scope.',
+      fix: 'Give the key the scope Query: read.',
+    },
+    unreachable: { outcome: 'unreachable', message: 'PostHog did not answer.', fix: 'Try again.' },
+    invalid: { outcome: 'invalid', message: 'GA4 needs the property.', fix: 'Pass it.' },
+    unavailable: { outcome: 'unavailable' },
+  },
+  disconnect_analytics: {
+    disconnected: { outcome: 'disconnected' },
+    not_connected: { outcome: 'not_connected' },
+  },
   get_entry: {
     ok: { outcome: 'ok', entry: ENTRY },
     not_found: { outcome: 'not_found' },
@@ -571,9 +601,12 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
   {
     approve_review: { id: REVIEW_ID },
     comment_review: { id: REVIEW_ID, body: 'Add an example.' },
+    connect_analytics: { provider: 'posthog', credential: 'phx_test_key' },
     content_stats: {},
     create_draft: { collection: 'blog', locale: 'en', slug: 'hello-world', markdown: MARKDOWN },
     describe_site: {},
+    disconnect_analytics: {},
+    get_analytics: {},
     get_entry: { collection: 'blog', locale: 'en', slug: 'hello-world' },
     get_translations: { collection: 'blog', translationGroup: 'hello' },
     list_entries: { collection: 'blog' },
@@ -659,6 +692,22 @@ export function fakeHandlers(
       'comment_review',
       overrides.comment_review ??
         (async () => pick(CANNED.comment_review, outcomes.comment_review ?? 'commented')),
+    ),
+    connect_analytics: record(
+      'connect_analytics',
+      overrides.connect_analytics ??
+        (async () => pick(CANNED.connect_analytics, outcomes.connect_analytics ?? 'connected')),
+    ),
+    disconnect_analytics: record(
+      'disconnect_analytics',
+      overrides.disconnect_analytics ??
+        (async () =>
+          pick(CANNED.disconnect_analytics, outcomes.disconnect_analytics ?? 'disconnected')),
+    ),
+    get_analytics: record(
+      'get_analytics',
+      overrides.get_analytics ??
+        (async () => pick(CANNED.get_analytics, outcomes.get_analytics ?? 'connected')),
     ),
     content_stats: record(
       'content_stats',

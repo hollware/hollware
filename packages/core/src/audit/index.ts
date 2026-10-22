@@ -25,6 +25,8 @@ export const OPERATION_AUDIT_ACTIONS = [
   'delete_site',
   'restore_site',
   'make_webhook_secret',
+  'connect_analytics',
+  'disconnect_analytics',
   'upload_asset',
   'update_asset',
 ] as const
