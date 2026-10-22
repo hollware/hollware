@@ -132,14 +132,14 @@ describe('hollware.com', () => {
     const markdown = await webFetch(server, '/reference/mcp-tools.md')
     const text = await markdown.text()
     expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
-    expect(text.match(/^## /gm)).toHaveLength(37)
+    expect(text.match(/^## /gm)).toHaveLength(40)
     expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
     // Every use case is in the page, not only the one picked: a crawler reads them all.
     expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
     expect(home).toContain('Docs that follow the code')
-    expect(home).toContain('MCP is the main door, not a plugin: 37 tools')
+    expect(home).toContain('MCP is the main door, not a plugin: 40 tools')
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {

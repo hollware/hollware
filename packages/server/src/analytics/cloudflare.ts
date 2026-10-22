@@ -11,6 +11,9 @@ import { rowsFor, type Source, type SourceInput } from './source.ts'
 
 export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
 
+const ACCOUNT_FIX =
+  'Pass settings.accountId: the 32 characters after dash.cloudflare.com/ in the address of the dashboard.'
+
 const REFUSED_FIX =
   'Give the token Account Analytics Read on the account: in Cloudflare, My Profile, API Tokens, edit the token.'
 
@@ -44,31 +47,11 @@ export function cloudflareSource(input: SourceInput): Source {
 
   return {
     async discover(): Promise<AnalyticsSettings> {
-      if (input.settings.accountId !== undefined) return input.settings
-      const { status, body } = await request(
-        input.fetch,
-        'Cloudflare',
-        `${CLOUDFLARE_API}/accounts?per_page=50`,
-        {
-          headers,
-        },
-      )
-      if (status !== 200) refusedOr(status, body, 'Cloudflare')
-      const accounts = isRecord(body) && Array.isArray(body['result']) ? body['result'] : []
-      const ids = accounts
-        .map((account) => (isRecord(account) ? account['id'] : undefined))
-        .filter((id): id is string => typeof id === 'string')
-      if (ids.length === 0) {
-        throw new ProviderError('refused', 'The token can see no account.', REFUSED_FIX)
+      // A token with Account Analytics Read alone cannot list its accounts: the account is given.
+      if (input.settings.accountId === undefined) {
+        throw new ProviderError('invalid', 'Cloudflare needs the account to read.', ACCOUNT_FIX)
       }
-      if (ids.length > 1) {
-        throw new ProviderError(
-          'invalid',
-          `The token can see ${ids.length} accounts.`,
-          'Pass settings.accountId: the id of the account the site is on, in the Cloudflare dashboard URL.',
-        )
-      }
-      return { ...input.settings, accountId: ids[0] }
+      return input.settings
     },
 
     async topPages(days, limit) {

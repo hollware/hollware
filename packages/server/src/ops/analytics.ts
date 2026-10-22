@@ -30,6 +30,13 @@ export const connectAnalytics: OperationHandler<'connect_analytics'> = async (in
       fix: 'Pass settings.propertyId: the digits of the property id, in GA4 under Admin, Property details.',
     }
   }
+  if (input.provider === 'cloudflare' && input.settings?.accountId === undefined) {
+    return {
+      outcome: 'invalid',
+      message: 'Cloudflare needs the account to read.',
+      fix: 'Pass settings.accountId: the 32 characters after dash.cloudflare.com/ in the address of the dashboard.',
+    }
+  }
   const result = await sources.connect(context.site, {
     provider: input.provider,
     credential: input.credential,

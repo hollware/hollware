@@ -43,7 +43,8 @@ const showForm = computed(() => editing.value || status.value?.outcome === 'not_
 const ready = computed(
   () =>
     credential.value.trim() !== '' &&
-    (provider.value !== 'ga4' || /^\d{1,20}$/.test(propertyId.value.trim())),
+    (provider.value !== 'ga4' || /^\d{1,20}$/.test(propertyId.value.trim())) &&
+    (provider.value !== 'cloudflare' || /^[0-9a-f]{32}$/.test(accountId.value.trim())),
 )
 
 /** The settings the form names; empty fields are left for Hollware to find. */

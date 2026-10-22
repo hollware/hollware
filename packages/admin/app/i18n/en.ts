@@ -485,7 +485,7 @@ export const en = {
     hostsHelp:
       "Comma separated, such as www.example.com. The host of the site's URL always counts.",
     accountId: 'Account id',
-    accountIdHelp: 'Only when the token can see several accounts.',
+    accountIdHelp: 'The 32 characters after dash.cloudflare.com/ in the address of the dashboard.',
     host: 'Address of the instance',
     hostHelp: 'Only for a self-hosted instance, such as https://plausible.example.com.',
     siteId: 'Site id',

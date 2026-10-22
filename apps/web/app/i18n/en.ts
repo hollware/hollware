@@ -150,7 +150,8 @@ export const en = {
         kv: 'Keeps the OAuth grants of the agents you connect.',
         assets: 'Serves the admin, built ahead, without waking the Worker.',
         ai: 'Semantic search and related entries, across languages.',
-        analytics: 'Counts views without personal data, so agents know what to refresh.',
+        analytics:
+          'Reads the views the site already measures, here or in PostHog, Plausible or GA4, so agents know what to refresh.',
       },
     },
     cases: {
@@ -211,7 +212,7 @@ export const en = {
           label: 'Content that improves',
           title: 'Refresh what readers read',
           description:
-            'Views are counted at the edge. An agent sees what is popular and out of date, finds the related pages and proposes an update.',
+            'Hollware reads the analytics the site already has. An agent sees what is popular and out of date, finds the related pages and proposes an update.',
           steps: [
             'content_stats shows the pages read the most',
             'An auditor agent flags the ones that are out of date',

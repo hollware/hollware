@@ -736,7 +736,9 @@ export const analyticsSettings = z.strictObject({
     .string()
     .regex(/^[0-9a-f]{32}$/, { message: 'Not a Cloudflare account id: 32 hexadecimal digits.' })
     .optional()
-    .describe('cloudflare: the account. Found from the token when not given.'),
+    .describe(
+      'cloudflare: the account, the 32 characters after dash.cloudflare.com/ in the address of the dashboard. Required for cloudflare.',
+    ),
   host: z
     .string()
     .max(200)

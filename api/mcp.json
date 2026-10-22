@@ -408,7 +408,7 @@
             "additionalProperties": false,
             "properties": {
               "accountId": {
-                "description": "cloudflare: the account. Found from the token when not given.",
+                "description": "cloudflare: the account, the 32 characters after dash.cloudflare.com/ in the address of the dashboard. Required for cloudflare.",
                 "pattern": "^[0-9a-f]{32}$",
                 "type": "string"
               },
@@ -478,7 +478,7 @@
             "description": "With connected: the settings as saved, with what was found from the credential.",
             "properties": {
               "accountId": {
-                "description": "cloudflare: the account. Found from the token when not given.",
+                "description": "cloudflare: the account, the 32 characters after dash.cloudflare.com/ in the address of the dashboard. Required for cloudflare.",
                 "pattern": "^[0-9a-f]{32}$",
                 "type": "string"
               },
@@ -1883,7 +1883,7 @@
             "additionalProperties": false,
             "properties": {
               "accountId": {
-                "description": "cloudflare: the account. Found from the token when not given.",
+                "description": "cloudflare: the account, the 32 characters after dash.cloudflare.com/ in the address of the dashboard. Required for cloudflare.",
                 "pattern": "^[0-9a-f]{32}$",
                 "type": "string"
               },

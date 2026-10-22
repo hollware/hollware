@@ -93,7 +93,7 @@ Data           D1 (source of truth) · KV (OAuth) · Edge cache (v0.2)
 Publishing     Publish batch + outbox (v0.2) · Events: Queues (v0.2) · Schedule and maintenance: Cron (v0.2) · Approval: Workflow (v0.3)
                                          ↓
 Assets and AI  Media: R2 + Images (v0.2) · Semantic: Vectorize + Workers AI (v0.5)
-               Metrics: Analytics Engine (v0.5) · Own agents: Agents SDK (v0.5)
+               Metrics: the site's own analytics (ADR-040) · Own agents: Agents SDK (v0.5)
 ```
 
 ### Clients
@@ -228,13 +228,13 @@ Phase: v0.5.
 - **Why this primitive:** An agent that looks up context before writing writes better.
 - **Cost:** Vectorize: 30M queried dimensions a month free.
 
-#### Metrics (Analytics Engine)
+#### Metrics (the site's own analytics)
 
-Phase: v0.5.
+Phase: v0.5, with Analytics Engine and a beacon; before 1.0, the site's own analytics (ADR-040).
 
-- **What it does:** Reads per entry, exposed to the agent through `content_stats`.
-- **Why this primitive:** It closes the loop: the agent can decide what to update based on what performs.
-- **Cost:** To verify.
+- **What it does:** `content_stats` reads the most read paths of a site from the analytics it already has (Cloudflare Web Analytics, PostHog, Plausible or GA4), connected with a sealed read-only key, and matches each path to its published entry.
+- **Why this primitive:** It closes the loop, so the agent can decide what to update from what readers read, without Hollware measuring a frontend it does not own.
+- **Cost:** Nothing on Cloudflare; the provider's API, within its own plan.
 
 #### Own agents (Agents SDK)
 
@@ -373,6 +373,7 @@ The table is the shape of the 28 tools of 1.0; `api/mcp-tools.json` and [the ref
 | `unpublish`, `approve_review`, `request_changes`                                                     | What only someone who publishes may do.                                                                        | `content:publish`               |
 | `upload_asset`, `list_assets`, `get_asset`                                                           | Images, converted once and kept in R2 (ADR-038).                                                               | `content:write`, `content:read` |
 | `create_site`, `update_site`, `set_collection`, `delete_site`, `restore_site`, `make_webhook_secret` | The structure of the sites, with no deploy (ADR-033).                                                          | `schema:admin`                  |
+| `get_analytics`, `connect_analytics`, `disconnect_analytics`                                         | The analytics the site reads its page views from, with a sealed read-only key (ADR-040).                       | `schema:admin`                  |
 
 The scopes are `content:read`, `content:write`, `content:publish` and `schema:admin`. The list of tools is the same for every client, and the scope is checked when a tool is called. v0.2 also adds a trash for entries, with the operations `delete_entry` and `restore_entry`.
 
@@ -729,7 +730,7 @@ Feb–Mar 2027 · 3 weeks.
 - Embeddings at publish time with Workers AI and Vectorize
 - Semantic `search` over MCP, RPC and HTTP
 - Automatic related entries
-- Analytics Engine and the `content_stats` tool
+- Analytics Engine and the `content_stats` tool (before 1.0, the site's own analytics instead, ADR-040)
 - Own agents with the Agents SDK, in their own Worker: an editorial reviewer, translation and audits. They never get `content:publish`.
 
 **Exit criterion.** An agent looks up context, proposes what to update based on the metrics and publishes it through the contracts.
@@ -774,16 +775,16 @@ The author's own site, sergioazocar.com, is not a validation target of this road
 
 **What it costs to run two sites.** For a couple of sites, everything should fit in the free tiers, Workflows included. Workers Paid ($5 a month) is only turned on if a site goes past 100,000 requests a day or needs more CPU per request. The verified figures come from Cloudflare's official documentation, checked in October 2026.
 
-| Primitive                              | Use in Hollware                         | Free tier                                                                                         | Status     |
-| -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- |
-| Workers                                | Gateway, MCP, RPC and HTTP              | 100,000 requests/day · 10 ms of CPU per request · 64 MiB uncompressed. Paid: $5/month.            | verified   |
-| D1                                     | Source of truth                         | 5M rows read/day · 100k rows written/day · 5 GB · 500 MB per database · 50 queries per invocation | verified   |
-| KV                                     | OAuth state                             | 100,000 reads/day · 1,000 writes/day · 1 GB                                                       | verified   |
-| Workflows                              | Publishing, scheduling and MCP Tasks    | 3,000 steps/day · 10 ms of CPU · state kept for 3 days · 1 GB-month                               | verified   |
-| Durable Objects (SQLite)               | Coordination only, if it is ever needed | 5M rows read/day · 100k rows written/day · 5 GB                                                   | verified   |
-| Vectorize                              | Semantic search (v0.5)                  | 30M queried dimensions/month · 5M stored dimensions                                               | verified   |
-| R2 · Images                            | Media and transformations               | R2 has no egress cost.                                                                            | unverified |
-| Queues · Workers AI · Analytics Engine | Events, embeddings and metrics          | To review when v0.2 and v0.5 arrive.                                                              | unverified |
+| Primitive                | Use in Hollware                         | Free tier                                                                                         | Status     |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- |
+| Workers                  | Gateway, MCP, RPC and HTTP              | 100,000 requests/day · 10 ms of CPU per request · 64 MiB uncompressed. Paid: $5/month.            | verified   |
+| D1                       | Source of truth                         | 5M rows read/day · 100k rows written/day · 5 GB · 500 MB per database · 50 queries per invocation | verified   |
+| KV                       | OAuth state                             | 100,000 reads/day · 1,000 writes/day · 1 GB                                                       | verified   |
+| Workflows                | Publishing, scheduling and MCP Tasks    | 3,000 steps/day · 10 ms of CPU · state kept for 3 days · 1 GB-month                               | verified   |
+| Durable Objects (SQLite) | Coordination only, if it is ever needed | 5M rows read/day · 100k rows written/day · 5 GB                                                   | verified   |
+| Vectorize                | Semantic search (v0.5)                  | 30M queried dimensions/month · 5M stored dimensions                                               | verified   |
+| R2 · Images              | Media and transformations               | R2 has no egress cost.                                                                            | unverified |
+| Queues · Workers AI      | Events and embeddings                   | To review when v0.2 and v0.5 arrive.                                                              | unverified |
 
 ## Risks and open questions
 

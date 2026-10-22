@@ -26,6 +26,8 @@ Spikes on 2026-10-21, with real accounts:
 - **Cloudflare Web Analytics.** A user API token with Account Analytics Read reads the GraphQL API
   (`rumPageloadEventsAdaptiveGroups`): visits by `requestHost` and `requestPath`, sampled (the
   counts come in steps of ten), for every site of the account, so a site filters by its hosts.
+  Such a token cannot list its own account (`/accounts` answers none, GraphQL refuses an account
+  it is not named), so the connection names the account.
 - **PostHog.** A personal API key with Query read, scoped to one project, runs HogQL on
   `/api/projects/<id>/query/`: exact page views and visitors by `$host` and `$pathname`. A
   project-scoped key cannot list projects (403) but finds its own at `/api/projects/@current/`, and

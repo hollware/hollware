@@ -60,7 +60,7 @@ const products = computed(() => {
     },
     { name: 'Workers AI · Vectorize', icon: 'i-lucide-sparkles', role: words.ai, optional: true },
     {
-      name: 'Analytics Engine',
+      name: 'Web Analytics',
       icon: 'i-lucide-chart-line',
       role: words.analytics,
       optional: true,

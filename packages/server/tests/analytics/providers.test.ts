@@ -61,61 +61,66 @@ async function failure(work: Promise<unknown>): Promise<ProviderError> {
 }
 
 describe('Cloudflare Web Analytics', () => {
-  it('finds the one account of the token, and asks GraphQL for the page loads of the hosts', async () => {
-    const cf = provider(
-      { status: 200, body: { result: [{ id: 'a'.repeat(32), name: 'Mine' }] } },
-      {
-        status: 200,
-        body: {
-          data: {
-            viewer: {
-              accounts: [
-                {
-                  pages: [
-                    { count: 150, dimensions: { requestPath: '/' } },
-                    { count: 30, dimensions: { requestPath: '/blog/edge/' } },
-                    { count: 10, dimensions: { requestPath: '/cdn-cgi/rum' } },
-                  ],
-                },
-              ],
-            },
+  it('asks GraphQL for the page loads of the hosts, in the account it is given', async () => {
+    const cf = provider({
+      status: 200,
+      body: {
+        data: {
+          viewer: {
+            accounts: [
+              {
+                pages: [
+                  { count: 150, dimensions: { requestPath: '/' } },
+                  { count: 30, dimensions: { requestPath: '/blog/edge/' } },
+                  { count: 10, dimensions: { requestPath: '/cdn-cgi/rum' } },
+                ],
+              },
+            ],
           },
         },
       },
-    )
+    })
+    const settings = { accountId: 'a'.repeat(32) }
 
-    const settings = await cloudflareSource(input(cf.fetch)).discover()
+    const found = await cloudflareSource(input(cf.fetch, { settings })).discover()
     const pages = await cloudflareSource(input(cf.fetch, { settings })).topPages(7, 5)
 
-    expect(settings).toEqual({ accountId: 'a'.repeat(32) })
+    expect(found).toEqual(settings)
+    expect(cf.asked).toHaveLength(1)
+    expect(cf.asked[0]?.url).toBe('https://api.cloudflare.com/client/v4/graphql')
     expect(cf.asked[0]?.headers['authorization']).toBe('Bearer secret-credential-value')
-    expect(cf.asked[1]?.url).toBe('https://api.cloudflare.com/client/v4/graphql')
-    expect(cf.asked[1]?.body).toMatchObject({
+    expect(cf.asked[0]?.body).toMatchObject({
       variables: {
         account: 'a'.repeat(32),
         since: '2026-10-14',
         hosts: ['example.com', 'www.example.com'],
       },
     })
-    expect(JSON.stringify(cf.asked[1]?.body)).toContain('limit: 15')
+    expect(JSON.stringify(cf.asked[0]?.body)).toContain('limit: 15')
     expect(pages).toEqual([
       { path: '/', views: 150 },
       { path: '/blog/edge', views: 30 },
     ])
   })
 
-  it('asks which account when the token sees several, and refuses a token without the permission', async () => {
-    const two = provider({
-      status: 200,
-      body: { result: [{ id: 'a'.repeat(32) }, { id: 'b'.repeat(32) }] },
-    })
+  it('needs the account, which its token cannot list, and refuses a token without the permission', async () => {
+    const none = provider()
     const denied = provider({
-      status: 403,
-      body: { errors: [{ message: 'Authentication error' }] },
+      status: 200,
+      body: { data: null, errors: [{ message: 'not authorized for that account' }] },
     })
 
-    expect((await failure(cloudflareSource(input(two.fetch)).discover())).kind).toBe('invalid')
-    const refused = await failure(cloudflareSource(input(denied.fetch)).discover())
+    const missing = await failure(cloudflareSource(input(none.fetch)).discover())
+    const refused = await failure(
+      cloudflareSource(input(denied.fetch, { settings: { accountId: 'b'.repeat(32) } })).topPages(
+        7,
+        5,
+      ),
+    )
+
+    expect(missing.kind).toBe('invalid')
+    expect(missing.fix).toContain('dash.cloudflare.com')
+    expect(none.asked).toEqual([])
     expect(refused.kind).toBe('refused')
     expect(refused.fix).toContain('Account Analytics Read')
   })

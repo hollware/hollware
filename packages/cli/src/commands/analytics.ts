@@ -36,7 +36,7 @@ export const ANALYTICS_USAGE = [
   '  --token-file <file>        A file with a personal token of an owner (schema:admin); without it, stdin',
   '  --credential-file <file>   A file with the key of the provider; never on the command line',
   '  --hosts <a,b>              Hosts of the site besides the host of its url, such as www.example.com',
-  '  --account <id>             cloudflare: the account, when the token sees several',
+  '  --account <id>             cloudflare: the account, in the address of the dashboard (required)',
   '  --host <https://...>       posthog or plausible: the address of a self-hosted instance',
   '  --project <number>         posthog: the project, when the key cannot read it',
   '  --site-id <domain>         plausible: the domain of the site in Plausible',

@@ -150,7 +150,7 @@ export const es: Messages = {
         assets: 'Sirve el admin, ya compilado, sin despertar al Worker.',
         ai: 'Búsqueda semántica y entradas relacionadas, entre idiomas.',
         analytics:
-          'Cuenta visitas sin datos personales, para que los agentes sepan qué actualizar.',
+          'Lee las visitas que el sitio ya mide, aquí o en PostHog, Plausible o GA4, para que los agentes sepan qué actualizar.',
       },
     },
     cases: {
@@ -211,7 +211,7 @@ export const es: Messages = {
           label: 'Contenido que mejora',
           title: 'Actualiza lo que más se lee',
           description:
-            'Las visitas se cuentan en el borde. Un agente ve lo popular que quedó desactualizado, encuentra las páginas relacionadas y propone una actualización.',
+            'Hollware lee las analíticas que el sitio ya tiene. Un agente ve lo popular que quedó desactualizado, encuentra las páginas relacionadas y propone una actualización.',
           steps: [
             'content_stats muestra las páginas más leídas',
             'Un agente auditor marca las que están desactualizadas',

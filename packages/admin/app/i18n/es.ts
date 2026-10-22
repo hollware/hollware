@@ -502,7 +502,8 @@ export const es: Messages = {
     hostsHelp:
       'Separados por comas, como www.example.com. El host de la URL del sitio siempre cuenta.',
     accountId: 'Id de la cuenta',
-    accountIdHelp: 'Solo si el token ve varias cuentas.',
+    accountIdHelp:
+      'Los 32 caracteres después de dash.cloudflare.com/ en la dirección del dashboard.',
     host: 'Dirección de la instancia',
     hostHelp: 'Solo para una instancia propia, como https://plausible.example.com.',
     siteId: 'Id del sitio',
