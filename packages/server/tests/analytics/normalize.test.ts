@@ -24,6 +24,12 @@ describe('the paths of an answer', () => {
     expect(pathOf('/blog//')).toBe('/blog')
   })
 
+  it('lose their trailing slashes in linear time, as a provider answers what visitors asked', () => {
+    const started = performance.now()
+    expect(pathOf(`/a${'/'.repeat(40_000)}a`)).toHaveLength(40_003)
+    expect(performance.now() - started).toBeLessThan(50)
+  })
+
   it('are not pages when they are Cloudflare paths, another host or not a path', () => {
     expect(pathOf('/cdn-cgi/rum')).toBeNull()
     expect(pathOf('/cdn-cgi')).toBeNull()

@@ -156,7 +156,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function httpReader(url: string, token: string, send: (request: Request) => Promise<Response>) {
-  const base = url.replace(/\/+$/, '')
+  const base = withoutTrailingSlashes(url)
   async function get(
     path: string,
     query: Record<string, string | undefined> = {},
@@ -290,4 +290,10 @@ export function hollwareBinding(binding: unknown, name = 'HOLLWARE'): HollwareRe
   throw new Error(
     `Hollware: the Worker has no service binding ${name} to the Hollware entrypoint: add it to services in wrangler.jsonc.`,
   )
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

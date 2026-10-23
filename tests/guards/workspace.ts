@@ -20,8 +20,13 @@ export function workspaceManifestPaths(
       unsupportedGlobs.push(glob)
       continue
     }
-    const pattern = new RegExp(`^${base.replace(/[.]/g, '\\.')}/[^/]+/package\\.json$`)
-    paths.push(...files.filter((file) => pattern.test(file)))
+    const prefix = `${base}/`
+    paths.push(
+      ...files.filter(
+        (file) =>
+          file.startsWith(prefix) && /^[^/]+\/package\.json$/.test(file.slice(prefix.length)),
+      ),
+    )
   }
   return { paths: paths.sort(), unsupportedGlobs }
 }

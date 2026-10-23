@@ -126,6 +126,8 @@ serve them. Boundary rules for this package:
 - An IP address is kept only as an HMAC under the site's key: a plain hash of one is reversible.
 - An SVG is refused, never rewritten. Hollware never instruments a site's frontend: it reads the
   analytics the site already has. Semantic search is optional: without its bindings, full text.
+- `HOLLWARE_EMBEDDING_MODEL` can change: the cron re-embeds what another model embedded. A model
+  of other dimensions needs a Vectorize index of its own.
 
 ## Accepted on purpose
 

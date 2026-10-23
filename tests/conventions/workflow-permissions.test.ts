@@ -9,6 +9,13 @@ const CHECKOUT = '      - uses: actions/checkout@' + 'a'.repeat(40) + ' # v7.0.1
 const check = (path: string, text: string) =>
   checkWorkflowPermissions({ workflows: [file(`.github/workflows/${path}`, text)] })
 
+const SCORECARD_STEP = '      - uses: ossf/scorecard-action@' + 'c'.repeat(40) + ' # v2.4.4'
+
+const asScorecard = (workflow: string) =>
+  workflow
+    .replace('  publish:', '  scorecard:')
+    .replace('      - run: echo published', SCORECARD_STEP)
+
 const goodRelease = [
   'permissions: {}',
   'jobs:',
@@ -103,7 +110,7 @@ describe('workflow permissions', () => {
       expect(check('ci.yml', goodRelease).map((violation) => violation.message)).toEqual([
         'job "publish" grants "id-token: write", which only release.yml#publish and security.yml#scorecard may: it lets a job mint OIDC tokens',
       ])
-      const scorecardInRelease = goodRelease.replace('  publish:', '  scorecard:')
+      const scorecardInRelease = asScorecard(goodRelease)
       expect(check('release.yml', scorecardInRelease)).toHaveLength(1)
       expect(check('security.yml', scorecardInRelease)).toEqual([])
     })
@@ -159,9 +166,7 @@ describe('workflow permissions', () => {
         'permissions: {}\nenv:\n  A: b\ndefaults:\n  run:\n    shell: bash\n',
       )
       expect(
-        check('security.yml', withEnv.replace('  publish:', '  scorecard:')).map(
-          (violation) => violation.message,
-        ),
+        check('security.yml', asScorecard(withEnv)).map((violation) => violation.message),
       ).toEqual([
         'security.yml must have no top-level "env": OpenSSF Scorecard rejects the results of a workflow that has it',
         'security.yml must have no top-level "defaults": OpenSSF Scorecard rejects the results of a workflow that has it',
@@ -169,6 +174,40 @@ describe('workflow permissions', () => {
       const minimal =
         'permissions: {}\nenv:\n  A: b\njobs:\n  build:\n    steps:\n      - run: echo'
       expect(check('ci.yml', minimal)).toEqual([])
+    })
+
+    it('reports a step of the Scorecard job that runs a command or an action Scorecard does not approve', () => {
+      const scorecard = (steps: string[]) =>
+        check(
+          'security.yml',
+          [
+            'permissions: {}',
+            'jobs:',
+            '  scorecard:',
+            '    permissions:',
+            '      contents: read',
+            '    steps:',
+            ...steps,
+          ].join('\n'),
+        ).map((violation) => violation.message)
+      const sha = 'b'.repeat(40)
+      const approved = [
+        `      - uses: ossf/scorecard-action@${sha} # v2.4.4`,
+        `      - uses: github/codeql-action/upload-sarif@${sha} # v4.38.3`,
+      ]
+      expect(scorecard(approved)).toEqual([])
+      const allowed =
+        'actions/checkout, actions/upload-artifact, github/codeql-action/upload-sarif, ossf/scorecard-action, step-security/harden-runner'
+      expect(
+        scorecard([
+          ...approved,
+          '      - run: echo hi',
+          `      - uses: actions/setup-node@${sha} # v6.0.0`,
+        ]),
+      ).toEqual([
+        `job "scorecard", step 3: the Scorecard job may only use ${allowed}, and run nothing: Scorecard refuses to publish results otherwise, found "echo hi"`,
+        `job "scorecard", step 4: the Scorecard job may only use ${allowed}, and run nothing: Scorecard refuses to publish results otherwise, found "actions/setup-node@${sha}"`,
+      ])
     })
 
     it('reports a workflow that is not valid YAML', () => {

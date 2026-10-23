@@ -55,8 +55,14 @@ export function packument(
   return { name, 'dist-tags': tags, versions, time }
 }
 
+export function upstreamUrl(path: string): URL {
+  const target = new URL(path, UPSTREAM)
+  if (target.origin !== UPSTREAM) throw new Error(`Not a path of the npm registry: ${path}`)
+  return target
+}
+
 async function forward(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const answer = await fetch(`${UPSTREAM}${request.url ?? '/'}`, {
+  const answer = await fetch(upstreamUrl(request.url ?? '/'), {
     headers: { accept: request.headers['accept'] ?? '*/*' },
     redirect: 'follow',
   })
@@ -88,10 +94,8 @@ export async function startRegistry(locals: readonly LocalPackage[]): Promise<Re
       const packages = byName.get(path.slice(1))
       if (packages !== undefined) {
         const upstream = await fetch(
-          `${UPSTREAM}/${encodeURIComponent(path.slice(1)).replace('%40', '@')}`,
-          {
-            headers: { accept: 'application/json' },
-          },
+          upstreamUrl(`/${encodeURIComponent(path.slice(1)).replace(/^%40/, '@')}`),
+          { headers: { accept: 'application/json' } },
         )
         const known: unknown = upstream.ok ? await upstream.json() : null
         response.writeHead(200, { 'content-type': 'application/json' })

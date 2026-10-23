@@ -184,6 +184,49 @@ describe('the cron trigger, site by site', () => {
   })
 })
 
+describe('the cron trigger, step by step', () => {
+  it('queues the event of a scheduled publication in the run that publishes it', async () => {
+    const site = await seedSite(env.DB, `cron-order-${crypto.randomUUID().slice(0, 8)}`)
+    const sent: unknown[] = []
+    const worker = boot({
+      handlers,
+      config: defineConfig({
+        sites: {
+          [site.site]: { locales: ['en', 'es'], defaultLocale: 'en', collections: { blog: BLOG } },
+        },
+      }),
+      bindings: {
+        EVENTS: {
+          sendBatch: async (messages: Iterable<{ readonly body: unknown }>) => {
+            for (const message of messages) sent.push(message.body)
+          },
+        },
+      },
+    })
+    await worker.ready()
+    const due = await scheduleDraft(worker.env.DB, site)
+
+    await worker.worker.scheduled(
+      {
+        scheduledTime: Date.parse('2026-10-13T12:00:00Z'),
+        cron: '* * * * *',
+        noRetry: () => undefined,
+      },
+      worker.env,
+      worker.ctx,
+    )
+    await worker.settle()
+
+    const event = await worker.env.DB.prepare(
+      "SELECT id, sent_at FROM outbox WHERE site_id = ?1 AND entry_id = ?2 AND kind = 'entry.published'",
+    )
+      .bind(site.site, due)
+      .first<{ id: string; sent_at: string | null }>()
+    expect(event?.sent_at).not.toBeNull()
+    expect(sent).toEqual([{ site: site.site, id: event?.id }])
+  })
+})
+
 describe('the consumer of the events Queue', () => {
   it('acks a message of a site the deployment does not serve, and throws nothing', async () => {
     const worker = boot()

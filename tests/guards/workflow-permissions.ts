@@ -14,6 +14,14 @@ export const WRITE_SCOPES: Readonly<Record<string, readonly string[]>> = {
   'security.yml#scorecard': ['security-events'],
 }
 
+export const SCORECARD_ACTIONS: readonly string[] = [
+  'actions/checkout',
+  'actions/upload-artifact',
+  'github/codeql-action/upload-sarif',
+  'ossf/scorecard-action',
+  'step-security/harden-runner',
+]
+
 export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Violation[] {
   const violations: Violation[] = []
   for (const file of input.workflows) {
@@ -33,6 +41,18 @@ export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Viola
             `security.yml must have no top-level "${key}": OpenSSF Scorecard rejects the results of a workflow that has it`,
           )
         }
+      }
+    }
+
+    for (const job of workflow.jobs) {
+      if (`${workflow.file}#${job.id}` !== 'security.yml#scorecard') continue
+      for (const step of job.steps) {
+        const action = step.uses?.value.split('@')[0]
+        if (action !== undefined && SCORECARD_ACTIONS.includes(action)) continue
+        report(
+          'scorecard',
+          `${describeStep(job.id, step)}: the Scorecard job may only use ${SCORECARD_ACTIONS.join(', ')}, and run nothing: Scorecard refuses to publish results otherwise, found ${JSON.stringify(step.uses?.value ?? step.run)}`,
+        )
       }
     }
 

@@ -3,7 +3,7 @@ import { entrySummary } from './answers.ts'
 import type { OperationHandler } from './types.ts'
 
 function trimmed(path: string): string {
-  return path.length > 1 ? path.replace(/\/+$/, '') : path
+  return path.length > 1 ? withoutTrailingSlashes(path) : path
 }
 
 export function entryRefOf(site: ResolvedSite, path: string): EntryRef | null {
@@ -44,4 +44,10 @@ export const contentStats: OperationHandler<'content_stats'> = async (input, con
   )
   const since = new Date(context.clock.now().getTime() - input.days * 86_400_000).toISOString()
   return { outcome: 'ok', since, source: counts.provider, pages }
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

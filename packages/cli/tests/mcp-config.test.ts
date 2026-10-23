@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import { run } from './support/io.ts'
-import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
+import { tempDirs, WRANGLER_JSONC, wranglerWithPublicUrl } from './support/project.ts'
 
 const temp = tempDirs()
 
 const cwd = () =>
   temp.make({
-    'wrangler.jsonc': WRANGLER_JSONC.replace(
-      '{',
-      '{ "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.example.com" },',
-    ),
+    'wrangler.jsonc': wranglerWithPublicUrl('https://cms.example.com'),
   })
 
 describe('hollware mcp-config', () => {

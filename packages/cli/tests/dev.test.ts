@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { DevChild, DevExit, DevHost } from '../src/dev-host.ts'
 import { createIo } from './support/io.ts'
 import { main } from '../src/index.ts'
-import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
+import { tempDirs, wranglerWithPublicUrl } from './support/project.ts'
 
 const temp = tempDirs()
 
@@ -100,10 +100,7 @@ async function printed(out: string[]): Promise<void> {
 
 function project(withVp = true, publicUrl = 'http://localhost:5199') {
   return temp.make({
-    'wrangler.jsonc': WRANGLER_JSONC.replace(
-      '{',
-      `{ "vars": { "HOLLWARE_PUBLIC_URL": "${publicUrl}" },`,
-    ),
+    'wrangler.jsonc': wranglerWithPublicUrl(publicUrl),
     ...(withVp ? { 'node_modules/.bin/vp': '#!/bin/sh\n' } : {}),
   })
 }

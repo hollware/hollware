@@ -247,7 +247,7 @@ export function mcpEndpoint(address: string): URL {
       '--url must start with https://, or the token would travel unencrypted. Plain http is accepted only for localhost.',
     )
   }
-  const path = url.pathname.replace(/\/+$/, '')
+  const path = withoutTrailingSlashes(url.pathname)
   url.pathname = path.endsWith('/mcp') ? path : `${path}/mcp`
   return url
 }
@@ -651,4 +651,10 @@ async function uploadImages(
   }
   out(`Images: ${created} uploaded, ${existing} already there.`)
   return moved
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

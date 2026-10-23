@@ -19,6 +19,10 @@ export const WRANGLER_JSONC = `{
 }
 `
 
+export function wranglerWithPublicUrl(url: string): string {
+  return `{ "vars": { "HOLLWARE_PUBLIC_URL": "${url}" },${WRANGLER_JSONC.slice(1)}`
+}
+
 export interface TempDirs {
   make: (files?: Record<string, string>) => string
 }

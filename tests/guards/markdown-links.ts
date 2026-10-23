@@ -7,12 +7,21 @@ export interface MarkdownLinksInput {
   anchorsOf: (path: string) => readonly string[] | undefined
 }
 
+function withoutTags(text: string): string {
+  let previous: string
+  let current = text
+  do {
+    previous = current
+    current = current.replace(/<[^>]+>/g, '')
+  } while (current !== previous)
+  return current
+}
+
 export function anchorsOf(markdown: string): string[] {
   const seen = new Map<string, number>()
   const anchors: string[] = []
   for (const { text } of headings(markdown)) {
-    const base = text
-      .replace(/<[^>]+>/g, '')
+    const base = withoutTags(text)
       .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
       .replace(/[`*]/g, '')
       .toLowerCase()

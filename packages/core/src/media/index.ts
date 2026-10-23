@@ -45,13 +45,21 @@ export function sniffImage(bytes: Uint8Array): ImageFormat | null {
     return 'image/gif'
   }
   const head = text(bytes.subarray(0, 512)).replace(BOM, '').trimStart()
-  if (
-    /^<svg[\s>/]/i.test(head) ||
-    /^<\?xml[^>]*\?>\s*(<!--[\s\S]*?-->\s*)*<svg[\s>/]/i.test(head)
-  ) {
-    return 'image/svg+xml'
+  return opensOnSvg(head) ? 'image/svg+xml' : null
+}
+
+function opensOnSvg(head: string): boolean {
+  if (/^<svg[\s>/]/i.test(head)) return true
+  if (!/^<\?xml/i.test(head)) return false
+  const declarationEnd = head.indexOf('?>')
+  if (declarationEnd < 0 || head.slice(0, declarationEnd).includes('>')) return false
+  let rest = head.slice(declarationEnd + 2).trimStart()
+  while (rest.startsWith('<!--')) {
+    const commentEnd = rest.indexOf('-->', 4)
+    if (commentEnd < 0) return false
+    rest = rest.slice(commentEnd + 3).trimStart()
   }
-  return null
+  return /^<svg[\s>/]/i.test(rest)
 }
 
 const BOM = new RegExp(`^${String.fromCodePoint(0xfeff)}`)

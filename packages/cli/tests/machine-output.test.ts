@@ -4,14 +4,11 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, fakeWrangler, ok } from './support/fake-wrangler.ts'
 import { run } from './support/io.ts'
-import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
+import { tempDirs, WRANGLER_JSONC, wranglerWithPublicUrl } from './support/project.ts'
 
 const temp = tempDirs()
 
-const WITH_URL = WRANGLER_JSONC.replace(
-  '{',
-  '{ "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.example.com" },',
-)
+const WITH_URL = wranglerWithPublicUrl('https://cms.example.com')
 const SECRET = `hw_pat_${'3'.repeat(52)}`
 const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
 

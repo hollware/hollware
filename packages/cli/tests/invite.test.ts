@@ -2,17 +2,14 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, fakeWrangler } from './support/fake-wrangler.ts'
 import { run } from './support/io.ts'
-import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
+import { tempDirs, WRANGLER_JSONC, wranglerWithPublicUrl } from './support/project.ts'
 
 const temp = tempDirs()
 const SITES = 'SELECT id FROM sites ORDER BY id;'
 
 function project() {
   const cwd = temp.make({
-    'wrangler.jsonc': WRANGLER_JSONC.replace(
-      '{',
-      '{ "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.example.com" },',
-    ),
+    'wrangler.jsonc': wranglerWithPublicUrl('https://cms.example.com'),
   })
   const wrangler = fakeWrangler(d1([{ id: 'blog' }]), d1([]))
   return { wrangler, run: (argv: string[]) => run(argv, { cwd, wrangler: wrangler.run }) }
@@ -43,10 +40,7 @@ describe('hollware invite', () => {
 
   it('makes a setup link for the owner of the site with --owner', async () => {
     const cwd = temp.make({
-      'wrangler.jsonc': WRANGLER_JSONC.replace(
-        '{',
-        '{ "vars": { "HOLLWARE_PUBLIC_URL": "https://cms.example.com" },',
-      ),
+      'wrangler.jsonc': wranglerWithPublicUrl('https://cms.example.com'),
     })
     const wrangler = fakeWrangler(d1([{ id: 'blog' }]), d1([{ id: 'usr_OWNER' }]), d1([]))
 

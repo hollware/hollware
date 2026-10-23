@@ -53,7 +53,7 @@ export interface McpOptions {
  * as JSON or as a server-sent event; the tool's output is its `structuredContent`.
  */
 export function mcpHollware(options: McpOptions): Hollware {
-  const endpoint = `${options.url.replace(/\/+$/, '')}/mcp`
+  const endpoint = `${withoutTrailingSlashes(options.url)}/mcp`
   return allowOnly(async (tool, input) => {
     const response = await options.fetch(
       new Request(endpoint, {
@@ -98,4 +98,10 @@ export function mcpHollware(options: McpOptions): Hollware {
     }
     return output
   })
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

@@ -34,6 +34,7 @@ import {
   renamePasskey,
   renameUser,
 } from '../identity/store.ts'
+import { withoutTrailingSlashes } from '../analytics/normalize.ts'
 import { adminClient } from '../oauth/admin.ts'
 import {
   ACTIVITY_CSV_COLUMNS,
@@ -83,7 +84,7 @@ function pageUrlOf(
 ): string | null {
   const route = site.collections.get(entry.collection)?.routes[entry.locale]
   if (site.url === null || route === undefined) return null
-  return `${site.url.replace(/\/+$/, '')}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
+  return `${withoutTrailingSlashes(site.url)}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
 }
 
 interface AuditNote {

@@ -18,7 +18,7 @@ export function pathOf(raw: string): string | null {
   const path = raw.split(/[?#]/)[0] ?? ''
   if (!path.startsWith('/') || path.startsWith('//')) return null
   if (path === '/cdn-cgi' || path.startsWith('/cdn-cgi/')) return null
-  return path.length > 1 ? path.replace(/\/+$/, '') : path
+  return path.length > 1 ? withoutTrailingSlashes(path) : path
 }
 
 export function ranked(
@@ -39,4 +39,10 @@ export function ranked(
 
 export function sinceOf(now: Date, days: number): string {
   return new Date(now.getTime() - days * 86_400_000).toISOString().slice(0, 10)
+}
+
+export function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

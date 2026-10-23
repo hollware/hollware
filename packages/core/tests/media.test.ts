@@ -57,6 +57,21 @@ describe('sniffImage', () => {
       null,
     ])
   })
+
+  it('reads an SVG only after an XML declaration and its comments, in linear time', () => {
+    expect(
+      [
+        '<?xml version="1.0"?><!-- a --> <!-- b --><svg/>',
+        '<!-- a --><svg/>',
+        '<?xml version="1.0"?><!-- never closed <svg/>',
+        '<?xml version="1.0"?><html><svg/></html>',
+        '<?xml version="1.0" > ?><svg/>',
+      ].map((head) => sniffImage(ascii(head))),
+    ).toEqual(['image/svg+xml', null, null, null, null])
+    const started = performance.now()
+    expect(sniffImage(ascii(`<?xml?>${'<!---->'.repeat(28)}<!--`))).toBeNull()
+    expect(performance.now() - started).toBeLessThan(50)
+  })
 })
 
 describe('checkSvg', () => {
