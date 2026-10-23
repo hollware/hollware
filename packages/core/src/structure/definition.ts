@@ -14,13 +14,6 @@ import {
   DEFAULT_BACKUPS,
 } from '../config/backups.ts'
 
-/**
- * The definition of a site as data: what D1 stores for it and what the operations that
- * change the structure take. Its shape is checked here; what only makes sense of the whole (a
- * route with `:slug`, a default locale among the locales, a rule's parameters) is checked when it
- * is compiled, with one problem for each thing wrong.
- */
-
 const jsonSchema = z
   .record(z.string(), z.unknown())
   .describe('A JSON Schema, draft 2020-12, of an object.')

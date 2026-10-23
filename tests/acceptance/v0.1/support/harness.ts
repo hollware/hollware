@@ -4,13 +4,6 @@ import { generatePersonalToken, hashPersonalToken } from '../../../../packages/c
 import { SITE_KEY } from '../../../../apps/playground/test/harness/support.ts'
 import { HOLLWARE_WORKER } from '../../../../apps/playground/test/harness/workers.ts'
 
-/**
- * The in-process rig: the built playground and the built example site under wrangler's test
- * harness, bound the way a deployment binds them (apps/playground/test/harness). What the
- * acceptance suite adds is what a test may write behind the Worker's back, because nothing else
- * can make it: tokens that are expired or revoked, and the rows of a second site.
- */
-
 export {
   createHarnessWithoutPublicUrl,
   createPlaygroundHarness,
@@ -31,7 +24,6 @@ export {
   type ToolAnswer,
 } from '../../../../apps/playground/test/harness/support.ts'
 
-/** The part of a D1 binding these seeds use. The binding a test gets is a proxy of the Worker's. */
 interface Statement {
   bind(...values: unknown[]): Statement
   first(): Promise<unknown>
@@ -53,16 +45,10 @@ async function database(server: TestHarness): Promise<Database> {
 
 export interface TokenOptions {
   readonly scopes: readonly string[]
-  /** When it expired or expires, as an ISO date; none when it never does. */
   readonly expiresAt?: string
-  /** When it was revoked, as an ISO date; none when it was not. */
   readonly revokedAt?: string
 }
 
-/**
- * A personal token of the site's owner, as `hollware token create` writes it, with the expiry and
- * the revocation a test asks for. The owner must exist (`seedOwnerToken`). Returns it in clear.
- */
 export async function seedToken(server: TestHarness, options: TokenOptions): Promise<string> {
   const db = await database(server)
   const owner = await db
@@ -94,7 +80,6 @@ export async function seedToken(server: TestHarness, options: TokenOptions): Pro
   return token
 }
 
-/** An entry of the second site. */
 export interface ForeignEntry {
   readonly id: string
   readonly locale: 'en' | 'es'
@@ -103,7 +88,6 @@ export interface ForeignEntry {
   readonly published: boolean
 }
 
-/** The entries of the second site: a published en/es pair and an English draft. */
 const FOREIGN = [
   { locale: 'en', slug: 'edge-caching-basics', group: 'edge-caching', published: true },
   { locale: 'es', slug: 'cache-en-el-borde', group: 'edge-caching', published: true },
@@ -118,12 +102,6 @@ const VERDICT = JSON.stringify({
   contractsHash: 'seed',
 })
 
-/**
- * The rows of a second site, written with SQL so that they do not depend on the code under test:
- * its owner and three entries with their revisions, tags and publications. Its entries have the
- * natural keys of the playground's corpus (collection, locale, slug and translation group), so a
- * query that forgets `site_id` finds them.
- */
 export async function seedForeignSite(server: TestHarness, site: string): Promise<ForeignEntry[]> {
   const db = await database(server)
   const now = new Date().toISOString()

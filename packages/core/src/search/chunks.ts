@@ -21,12 +21,10 @@ export const CHUNK_LIMITS = { summary: 1200, section: 2000 } as const
 
 type Node = EntryDocument['nodes'][number]
 
-/** The text a reader sees in a document, its blocks on lines of their own. */
 export function documentText(document: EntryDocument): string {
   return document.nodes.map((node) => textOf(node)).join('\n')
 }
 
-/** The text a reader sees in a node: its strings, never its tag, attributes or comments. */
 function textOf(node: Node): string {
   if (typeof node === 'string') return node
   if (!Array.isArray(node) || node[0] === null) return ''
@@ -40,7 +38,6 @@ function tagOf(node: Node): string | null {
   return Array.isArray(node) && typeof node[0] === 'string' ? node[0] : null
 }
 
-/** The words of a text in one line, cut at the last word that fits in `limit`. */
 function fit(text: string, limit: number): string {
   const flat = text.replace(/\s+/g, ' ').trim()
   if (flat.length <= limit) return flat

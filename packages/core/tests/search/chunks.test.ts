@@ -3,11 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { EntryDocument } from '../../src/markdown/types.ts'
 import { CHUNK_LIMITS, CHUNKER_VERSION, chunksOf } from '../../src/search/chunks.ts'
 
-// Fails when: chunksOf (src/search/chunks.ts) stops making one summary of the title, the
-// description and the text before the first h2, and one piece per h2 section of its heading and
-// text; takes an h1, a tag, an attribute or a comment for text; keeps an empty section; cuts a
-// piece other than at the last word within its limit; or CHUNKER_VERSION moves without a reason.
-
 const document = (nodes: EntryDocument['nodes']): EntryDocument => ({
   frontmatter: {},
   meta: {},

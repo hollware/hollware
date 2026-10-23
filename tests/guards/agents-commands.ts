@@ -2,36 +2,16 @@ import { fencedLines, inlineCodeSpans } from '../support/markdown.ts'
 import { vpRunTask } from '../support/vp.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `agents-commands`: the commands an `AGENTS.md` cites in backticks refer to things
- * that exist, so a renamed task or script breaks the doc's build and not just its readers.
- *
- * - `vp run <task>` (flags skipped, `package#task` allowed): the task is one of the root
- *   `vite.config.ts` `run.tasks`, or a script of some package; with `package#task`, of that
- *   package.
- * - `pnpm --filter <package> run <script>` (also `-F`): the package exists and has that script.
- * - `pnpm run <script>`: a script of the root `package.json`.
- * - `node <file>`: the file exists.
- *
- * Both the inline commands and the lines of fenced blocks are read. Placeholders (`<task>`)
- * are skipped. A `pnpm exec` prefix is ignored. Other commands are not checked.
- */
-
 export interface PackageScripts {
   name: string
-  /** `''` for the root package. */
   dir: string
   scripts: ReadonlySet<string>
 }
 
 export interface AgentsCommandsInput {
-  /** The `AGENTS.md` files, with their text. */
   docs: readonly TextFile[]
-  /** The names of the `run.tasks` of the root `vite.config.ts`. */
   tasks: ReadonlySet<string>
-  /** Every package of the workspace, root included, with its scripts. */
   packages: readonly PackageScripts[]
-  /** The repository files. */
   files: ReadonlySet<string>
 }
 
@@ -39,7 +19,6 @@ const PLACEHOLDER = /^[<$]|[<>$]/
 
 const PACKAGE_NAME = /^(?:@[\w.-]+\/)?[\w.-]+$/
 
-/** The commands of a document: its inline code spans and the lines of its fenced blocks. */
 export function commandsOf(text: string): { command: string; line: number }[] {
   const found = inlineCodeSpans(text).map((span) => ({ command: span.text, line: span.line }))
   for (const [index, { line, inFence }] of fencedLines(text).entries()) {
@@ -153,7 +132,6 @@ function checkPnpm(
     return
   }
   for (const filter of filters) {
-    // Only an exact package name is checked: patterns, paths and placeholders are skipped.
     if (!PACKAGE_NAME.test(filter) || filter.includes('...')) continue
     const target = input.packages.find((candidate) => candidate.name === filter)
     if (target === undefined) {

@@ -1,20 +1,12 @@
 import { isAuditAction } from '@hollware/core'
 import type { D1Like } from '../db/d1.ts'
 
-/**
- * Reading the activity log of a site (ADR-037), newest first: a page of lines with the names of
- * the people and the labels of the tokens they name, filtered by actor, action, target and time.
- * Only an owner reads it: the admin's route asks for `schema:admin`.
- */
-
 export interface ActivityFilters {
   readonly actor?: string
   readonly action?: string
   readonly targetType?: string
   readonly targetId?: string
-  /** Lines at or after this instant, ISO 8601. */
   readonly from?: string
-  /** Lines before this instant, ISO 8601. */
   readonly to?: string
 }
 
@@ -27,12 +19,10 @@ export interface ActivityLine {
   readonly actor: {
     readonly kind: string
     readonly userId: string | null
-    /** The person's name now, or `null` when they gave none or are gone. */
     readonly name: string | null
     readonly tokenId: string | null
     readonly tokenLabel: string | null
     readonly clientId: string | null
-    /** What the client said about itself: its claim, not what Hollware verified. */
     readonly declared: Readonly<Record<string, unknown>> | null
   }
   readonly target: { readonly type: string; readonly id: string } | null
@@ -43,11 +33,9 @@ export interface ActivityLine {
 
 export interface ActivityPage {
   readonly lines: readonly ActivityLine[]
-  /** Pass it back as `cursor` for the next page; `null` on the last one. */
   readonly nextCursor: string | null
 }
 
-/** A refusal of a filter or a cursor, with what to do instead. */
 export class ActivityInputError extends Error {
   readonly fix: string
   constructor(message: string, fix: string) {
@@ -68,9 +56,7 @@ function decodeCursor(cursor: string): { at: string; id: string } {
     const text = atob(cursor.replace(/-/g, '+').replace(/_/g, '/'))
     const [at = '', id = ''] = text.split('|')
     if (INSTANT.test(at) && ID.test(id)) return { at, id }
-  } catch {
-    // Not base64: refused below.
-  }
+  } catch {}
   throw new ActivityInputError(
     'The cursor is not valid for the activity log.',
     'Pass the nextCursor of the previous page unchanged, or leave it out for the first page.',
@@ -120,7 +106,6 @@ interface Row {
   ip_hash: string | null
 }
 
-/** One page of the log of `site`, newest first; at most `limit` lines, 1 to 500. */
 export async function readActivity(
   db: D1Like,
   site: string,
@@ -200,7 +185,6 @@ export async function readActivity(
   }
 }
 
-/** The columns of the CSV, in order. */
 export const ACTIVITY_CSV_COLUMNS = [
   'at',
   'action',
@@ -220,10 +204,6 @@ export const ACTIVITY_CSV_COLUMNS = [
   'ip_hash',
 ] as const
 
-/**
- * A field of CSV (RFC 4180), with a cell that a spreadsheet would run as a formula (`=`, `+`, `-`,
- * `@`, a tab or a return first) led by an apostrophe: a name or a label is anyone's text.
- */
 export function csvField(value: string | null): string {
   if (value === null) return ''
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value

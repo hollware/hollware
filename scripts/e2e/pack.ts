@@ -1,16 +1,9 @@
-/**
- * The published packages of this checkout as tarballs, at a version of the end-to-end test's own:
- * each is built and packed with `pnpm pack`, which turns `workspace:` and `catalog:` into versions,
- * and its package.json then says `version` and every Hollware dependency at that one version,
- * as a release would.
- */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LocalPackage } from './registry.ts'
 
-/** The directories of the published packages, under packages/. */
 export const PUBLISHED = ['core', 'server', 'client', 'admin', 'nuxt', 'cli', 'create-hollware']
 
 type Json = Record<string, unknown>
@@ -19,7 +12,6 @@ function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** A manifest with its version, and the versions of the given packages it depends on, set. */
 export function atVersion(manifest: Json, version: string, ours: ReadonlySet<string>): Json {
   const pin = (deps: unknown) =>
     isRecord(deps)
@@ -42,7 +34,6 @@ export function atVersion(manifest: Json, version: string, ours: ReadonlySet<str
   }
 }
 
-/** Builds, packs and re-versions the published packages; the tarballs land in `out`. */
 export function packAll(root: string, version: string, out: string): LocalPackage[] {
   mkdirSync(out, { recursive: true })
   const names = PUBLISHED.map((dir) => {
@@ -70,8 +61,6 @@ export function packAll(root: string, version: string, out: string): LocalPackag
       writeFileSync(manifestPath, `${JSON.stringify(versioned, null, 2)}\n`)
       const name = String(versioned['name'])
       const file = join(out, `${name.replace('@', '').replace('/', '-')}-${version}.tgz`)
-      // macOS's tar adds an AppleDouble file (._name) for each file with extended attributes, which
-      // npm's own pack never ships; COPYFILE_DISABLE keeps them out of the tarball.
       execFileSync('tar', ['czf', file, 'package'], {
         cwd: work,
         env: { ...process.env, COPYFILE_DISABLE: '1' },

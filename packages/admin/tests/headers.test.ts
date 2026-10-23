@@ -5,10 +5,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { assetHeaders } from '../headers.ts'
 
-// Fails when: the admin's build (headers.ts, vite.app.config.ts) stops writing `_headers` at the
-// root of its assets, where Workers Static Assets reads it, with no sniffing, no other origin and
-// HTTPS only for the files under /admin/assets/, which no Worker answers.
-
 describe('the headers of the admin assets', () => {
   it('are written to _headers at the root of the assets after a build', () => {
     const root = mkdtempSync(join(tmpdir(), 'admin-assets-'))

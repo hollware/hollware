@@ -12,14 +12,6 @@ import {
 import type { DescribedSchema } from '../../src/config/types.ts'
 import { brokenSchema, schemaOf, thrownBy } from './support.ts'
 
-// Fails when: toJsonSchema stops asking the input converter of the library for draft 2020-12,
-// hands back the library's own object or the hidden `~standard` that Zod hangs on it, or lets an
-// answer that is not an object through; when resolveSchema stops following the local `$ref`s of a
-// schema (`#`, `#/$defs/Name`, the `~0` and `~1` escapes of a JSON Pointer), follows a cycle
-// forever or invents a schema for a reference it cannot resolve; or when what the checks accept of
-// a property (a string, an array of strings, a string with the date or date-time format) or the
-// words a message uses for its type change.
-
 describe('toJsonSchema', () => {
   it('asks the library for the input JSON Schema of draft 2020-12', () => {
     const asked: unknown[] = []
@@ -154,7 +146,6 @@ describe('what a property is', () => {
     },
   }
 
-  /** Each row is a property and whether the check accepts it. */
   type Rows = readonly (readonly [unknown, boolean])[]
   const answers = (
     check: (root: Record<string, unknown>, property: unknown) => boolean,

@@ -4,15 +4,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, publishPost } from './world.ts'
 
-// Fails when: a handler that reads stops reading the view of its context. get-entry.ts,
-// list-entries.ts and get-translations.ts pass `context.view` to the store: with the head view
-// hard-wired, a site that reads over the RPC binding (the published view) would see drafts,
-// their latest unpublished revision, and entries that were unpublished.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/** Two published pairs' worth of content: one pair live, one half live, and a draft on its own. */
 async function site(label: string) {
   const world = await newWorld(env.DB, label)
   const alphaEn = await createPost(world, {
@@ -60,10 +54,6 @@ async function site(label: string) {
   return { world, live, drafts: { betaEs, gamma } }
 }
 
-/**
- * A summary as a listing answers it: a translation (not in es, the default locale of the test site)
- * says whether its source moved past it, and none of these did.
- */
 const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
   summary.locale === 'es' || summary.translationGroup === null
     ? summary
@@ -127,7 +117,6 @@ describe('list_entries in the published view', () => {
     const page = await world.reader.listEntries({ collection: 'blog' })
     const asAgent = await world.agent.listEntries({ collection: 'blog' })
 
-    // The sorting field of the blog is its date, so the order is not the order of publication.
     expect(page.entries.map((entry) => entry.slug)).toEqual(['beta', 'alfa', 'alpha'])
     expect(page.entries).toEqual([live.betaEn, live.alphaEs, live.alphaEn].map(listed))
     expect(page.nextCursor).toBeNull()

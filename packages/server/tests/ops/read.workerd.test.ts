@@ -4,22 +4,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, publicationsOf, publishPost } from './world.ts'
 
-// Fails when: the reading operations stop answering from the store the way their specs say.
-// describe-site.ts stops passing the built-in contracts or recomputes them on every call, so the
-// description is no longer made once; list-entries.ts drops a filter, the limit or the cursor, or
-// lets a bad cursor through as something else than the store's invalid_input; get-entry.ts answers
-// formats nobody asked for, leaves one out, shows the wrong revision or verdict (the live one when
-// asked for published, the latest otherwise), or shows a
-// publication that is not the last publish; get-translations.ts stops answering not_found for an
-// empty group; answers.ts entrySummary stops saying whether the latest revision is the live one.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/**
- * A summary as a listing answers it: a translation (not in es, the default locale of the test site)
- * says whether its source moved past it, and none of these did.
- */
 const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
   summary.locale === 'es' || summary.translationGroup === null
     ? summary
@@ -99,7 +86,6 @@ describe('describe_site', () => {
 })
 
 describe('list_entries', () => {
-  /** Three drafts, written ten minutes apart: the most recent change comes first. */
   async function threeDrafts(label: string) {
     const world = await newWorld(env.DB, label)
     const edge = await createPost(world, {
@@ -320,13 +306,11 @@ describe('get_entry', () => {
     const head = (await world.agent.getEntry(english)).entry
 
     expect(live?.hasUnpublishedChanges).toBe(false)
-    // Editing a live entry does not take it down: it stays published, with changes that are not.
     expect(edited.entry?.status).toBe('published')
     expect(edited.entry?.hasUnpublishedChanges).toBe(true)
     expect(head?.hasUnpublishedChanges).toBe(true)
     expect(head?.frontmatter['title']).toBe('A newer title')
     expect(head?.revision).not.toBe(live?.revision)
-    // What was published is still the revision that went live, and the entry says so.
     expect(head?.lastPublication?.revision).toBe(live?.revision)
   })
 
@@ -364,7 +348,6 @@ describe('get_entry', () => {
     world.time.set('2026-10-13T12:00:00.000Z')
     await world.agent.unpublish({ id: draft.id })
     expect(await lastPublication()).toBeNull()
-    // The unpublish is a row of its own, which is how the entry knows it is not live.
     expect((await publicationsOf(world.db, draft.id)).map((row) => row.action)).toEqual([
       'publish',
       'unpublish',

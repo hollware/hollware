@@ -1,24 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hollware-nuxt-blog",
-  // The latest compatibility date the workerd bundled with wrangler supports.
   "compatibility_date": "2026-10-06",
-  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
-  // A Nuxt site that reads Hollware needs no Node.js either.
   "compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"],
-  // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
-  // Workers Cache (S8): pages are kept at the edge, served without running the Worker, and purged
-  // by tag when Hollware's webhook says what changed (@hollware/nuxt, cache: 'purge').
   "cache": { "enabled": true },
   "services": [
-    // Hollware over a service binding: no network and no token. `service` is the name of the
-    // Hollware Worker, and `Hollware` its read-only entrypoint.
     { "binding": "HOLLWARE", "service": "hollware-playground", "entrypoint": "Hollware" },
   ],
-  // The blog of the demo (v0.4), at demo.hollware.com, reading the demo's Hollware. It takes the
-  // name of the Worker that served it before (examples/worker-site), which holds the domain: going
-  // back is a deploy of that example.
   "env": {
     "demo": {
       "name": "hollware-worker-site-demo",

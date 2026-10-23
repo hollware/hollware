@@ -23,13 +23,6 @@ import {
 import type { Handlers, OperationContext, OperationHandler } from '../../src/ops/types.ts'
 import type { Clock, ContentStore } from '../../src/ports.ts'
 
-/**
- * What the tests of the MCP endpoint stand on: a call as the gateway would make it, fake
- * handlers that record what they get and answer with a canned output for each outcome, and two
- * ways to talk to the endpoint in process: the SDK client in either protocol era, and raw
- * JSON-RPC. The handlers are fakes because the real ones belong to another work package.
- */
-
 export const ENTRY_ID = 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
 const REVISION_ID = 'rev_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
 
@@ -51,7 +44,6 @@ const unused = (): never => {
   throw new Error('a fake handler never reaches the store')
 }
 
-/** A store that no test touches: the fake handlers do not call it, but the context carries one. */
 export const STORE: ContentStore = {
   findEntry: unused,
   findEntryById: unused,
@@ -110,7 +102,6 @@ export function tokenPrincipal(scopes: readonly Scope[] = ALL_SCOPES): Principal
   }
 }
 
-/** A call as the gateway makes it for one request. */
 export function makeCall(overrides: { principal?: Principal; requestId?: string } = {}): McpCall {
   return {
     principal: overrides.principal ?? tokenPrincipal(),
@@ -118,8 +109,6 @@ export function makeCall(overrides: { principal?: Principal; requestId?: string 
     context: { site: SITE, store: STORE, clock: CLOCK },
   }
 }
-
-// ---- canned outputs ------------------------------------------------------------------------
 
 type Verdict = z.output<typeof schemas.verdict>
 type Violation = z.output<typeof schemas.violation>
@@ -197,7 +186,6 @@ export const ENTRY: Entry = {
 
 const CONFLICT = { currentVersion: 2, headRevision: REVISION_ID }
 
-/** A revision in the history of the entry, as list_revisions answers it. */
 const HISTORY_REVISION = {
   id: REVISION_ID,
   entryId: ENTRY_ID,
@@ -238,7 +226,6 @@ type Canned = {
   >
 }
 
-/** A site's definition as get_structure answers it: every default filled in. */
 const STRUCTURE = siteDefinitionData.parse({
   locales: ['en'],
   defaultLocale: 'en',
@@ -267,7 +254,6 @@ const STRUCTURE_CHANGES: Canned['update_site'] = {
   conflict: { outcome: 'conflict', currentVersion: 4 },
 }
 
-/** A valid output for every outcome of every operation. */
 const ASSET = {
   id: 'ast_0123456789abcdef0123456789',
   reference: 'asset:ast_0123456789abcdef0123456789',
@@ -589,14 +575,12 @@ export const CANNED: Canned = {
   update_site: STRUCTURE_CHANGES,
 }
 
-/** The canned output of one outcome, or undefined for an outcome the operation does not have. */
 export function cannedOutput(tool: OperationName, outcome: string): unknown {
   return Object.entries(CANNED[tool]).find(([name]) => name === outcome)?.[1]
 }
 
 const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
 
-/** A valid input for every operation. */
 export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName<Name>['input']> } =
   {
     approve_review: { id: REVIEW_ID },
@@ -645,9 +629,6 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     update_site: { version: 2, definition: STRUCTURE },
   }
 
-// ---- fake handlers -------------------------------------------------------------------------
-
-/** What a fake handler was called with. */
 export interface Seen {
   readonly tool: OperationName
   readonly input: unknown
@@ -656,18 +637,12 @@ export interface Seen {
 
 export type Overrides = { [Name in OperationName]?: Handlers[Name] }
 
-/** The canned output of an outcome, for a handler that answers it. */
 function pick<Output>(canned: Readonly<Record<string, Output>>, outcome: string): Output {
   const found = Object.entries(canned).find(([name]) => name === outcome)
   if (found === undefined) throw new Error(`no canned output for the outcome ${outcome}`)
   return found[1]
 }
 
-/**
- * One handler for every operation. Each records its call and answers with a canned output: the
- * one of the outcome the test names for the operation, or else of its first outcome. A test that
- * needs another behavior gives the handler of the operation itself.
- */
 export function fakeHandlers(
   overrides: Overrides = {},
   outcomes: { readonly [Name in OperationName]?: string } = {},
@@ -881,7 +856,6 @@ export function fakeHandlers(
   return { handlers, seen }
 }
 
-/** An endpoint over fake handlers, with the handler calls and the log lines it wrote. */
 export function endpointWith(
   overrides: Overrides = {},
   options: {
@@ -905,9 +879,6 @@ export function endpointWith(
   return { endpoint, seen, logs }
 }
 
-// ---- the SDK client, in process ------------------------------------------------------------
-
-/** One HTTP exchange between the client and the endpoint. */
 export interface Exchange {
   readonly method: string
   readonly body: { readonly method?: string; readonly params?: unknown } | null
@@ -917,19 +888,15 @@ export interface Exchange {
 }
 
 export interface ConnectOptions {
-  /** 2026 is a client that discovers and sends a `_meta` envelope; 2025 one that initializes. */
   readonly era: '2026' | '2025'
   readonly principal?: Principal
-  /** The capabilities the client declares. */
   readonly capabilities?: ClientCapabilities
-  /** Answers the questions of the server. Without it the client has no elicitation handler. */
   readonly elicit?: (message: string) => {
     action: 'accept' | 'decline' | 'cancel'
     content?: Record<string, boolean>
   }
 }
 
-/** An SDK client that talks to the endpoint without a network, and what went over the wire. */
 export async function connect(endpoint: McpEndpoint, options: ConnectOptions) {
   const exchanges: Exchange[] = []
   let requests = 0
@@ -971,15 +938,11 @@ export async function connect(endpoint: McpEndpoint, options: ConnectOptions) {
   return { client, exchanges }
 }
 
-// ---- raw JSON-RPC --------------------------------------------------------------------------
-
 export interface RawOptions {
   readonly call?: McpCall
   readonly headers?: Record<string, string>
-  /** What a 2026 client declares in its envelope. */
   readonly capabilities?: Record<string, unknown>
   readonly clientInfo?: Record<string, unknown>
-  /** `inputResponses` and `requestState` of a retry. */
   readonly inputResponses?: Record<string, unknown>
   readonly requestState?: string
 }
@@ -988,9 +951,7 @@ export interface Raw {
   readonly status: number
   readonly headers: Headers
   readonly text: string
-  /** The JSON-RPC message: the body, or the `data:` of the event of a 2025 answer. */
   readonly message: Record<string, unknown>
-  /** `result` of the message, when it is an object. */
   readonly result: Record<string, unknown>
 }
 
@@ -1000,7 +961,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {}
 }
 
-/** One JSON-RPC request, in the wire format of an era, without the SDK client. */
 export async function rpc(
   endpoint: McpEndpoint,
   era: 'modern' | 'legacy',
@@ -1065,7 +1025,6 @@ export async function rpc(
   }
 }
 
-/** `tools/call` in raw JSON-RPC. */
 export function callRaw(
   endpoint: McpEndpoint,
   era: 'modern' | 'legacy',
@@ -1076,7 +1035,6 @@ export function callRaw(
   return rpc(endpoint, era, 'tools/call', { name: tool, arguments: args }, options)
 }
 
-/** The text block of a result, parsed. */
 export function textOf(result: Record<string, unknown>): unknown {
   const content = result.content
   if (!Array.isArray(content)) throw new Error('the result has no content')

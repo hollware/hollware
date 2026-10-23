@@ -4,15 +4,7 @@ import { request } from 'node:http'
 import { createServer } from 'node:net'
 import { setTimeout as sleep } from 'node:timers/promises'
 
-/**
- * The processes of a conformance run: `wrangler dev`, the CLI of Hollware and the suite. Each
- * one leads a process group of its own, so that stopping it reaches what it started (wrangler
- * starts workerd), and nothing else. POSIX only, like `scripts/break-line.ts`.
- */
-
-/** How long a stopped process has to end after SIGTERM before it gets SIGKILL, by default. */
 const GRACE_MS = 5000
-/** How long to wait for a process group to disappear after SIGKILL. */
 const KILL_WAIT_MS = 5000
 const POLL_MS = 25
 
@@ -21,21 +13,15 @@ export interface ProcessOptions {
   readonly args: readonly string[]
   readonly cwd: string
   readonly env: NodeJS.ProcessEnv
-  /** Where stdout and stderr go. Without it they are kept in memory, for `output()`. */
   readonly logFile?: string
-  /** How long `stop()` waits after SIGTERM before it sends SIGKILL. */
   readonly graceMs?: number
 }
 
 export interface ManagedProcess {
   readonly pid: number
-  /** Resolves when the process has ended: its exit code, or `null` when a signal ended it. */
   readonly exited: Promise<number | null>
-  /** Whether it has ended. */
   hasExited(): boolean
-  /** What it wrote so far, when there is no log file. */
   output(): string
-  /** SIGTERM to its group, SIGKILL when something outlives the grace period. Safe to repeat. */
   stop(): Promise<void>
 }
 
@@ -45,7 +31,6 @@ function noSuchProcess(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ESRCH'
 }
 
-/** True while any process of the group is left, a zombie nobody reaped yet included. */
 export function groupExists(group: number): boolean {
   try {
     process.kill(-group, 0)
@@ -56,13 +41,10 @@ export function groupExists(group: number): boolean {
 }
 
 function signalGroup(group: number, signal: NodeJS.Signals): void {
-  // `group` is a child pid: 0 or 1 would reach this process group or every process.
   if (group <= 1) return
   try {
     process.kill(-group, signal)
-  } catch {
-    // A group that is gone is the goal; one we may not signal cannot be helped.
-  }
+  } catch {}
 }
 
 async function waitForGroupToEnd(group: number, limitMs: number): Promise<boolean> {
@@ -74,7 +56,6 @@ async function waitForGroupToEnd(group: number, limitMs: number): Promise<boolea
   return true
 }
 
-/** Starts a process that leads a group of its own. Throws when it cannot start. */
 export function startProcess(options: ProcessOptions): ManagedProcess {
   const logDescriptor = options.logFile === undefined ? undefined : openSync(options.logFile, 'a')
   const child = spawn(options.command, [...options.args], {
@@ -84,7 +65,6 @@ export function startProcess(options: ProcessOptions): ManagedProcess {
       logDescriptor === undefined
         ? ['ignore', 'pipe', 'pipe']
         : ['ignore', logDescriptor, logDescriptor],
-    // The child leads a new process group, so one signal reaches it and what it started.
     detached: true,
     shell: false,
   })
@@ -102,7 +82,6 @@ export function startProcess(options: ProcessOptions): ManagedProcess {
       resolve(code)
     })
   })
-  // A process that never started rejects `exited`; nobody else would handle it.
   exited.catch(() => {})
   const pid = child.pid
   if (pid === undefined) {
@@ -141,12 +120,10 @@ export function startProcess(options: ProcessOptions): ManagedProcess {
   return managed
 }
 
-/** Stops every process this module started that is still running. */
 export async function stopAll(): Promise<void> {
   await Promise.all([...running].map((managed) => managed.stop()))
 }
 
-/** Runs a command to the end, and gives its exit code and what it wrote. */
 export async function runProcess(
   options: Omit<ProcessOptions, 'logFile'>,
 ): Promise<{ code: number | null; output: string }> {
@@ -155,12 +132,10 @@ export async function runProcess(
     const code = await child.exited
     return { code, output: child.output() }
   } finally {
-    // The leader is gone; whatever it started must not outlive it.
     await child.stop()
   }
 }
 
-/** A port nobody listens on, on the loopback address. */
 export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer()
@@ -178,7 +153,6 @@ export function freePort(): Promise<number> {
   })
 }
 
-/** One `GET /health` of the Worker with the Host it answers, and the status it gives. */
 function probe(port: number, host: string): Promise<number | undefined> {
   return new Promise((resolve) => {
     const call = request(
@@ -198,10 +172,6 @@ function probe(port: number, host: string): Promise<number | undefined> {
   })
 }
 
-/**
- * Waits until the Worker answers `GET /health` with 200 to the Host of its public URL. It gives
- * up when the process ends first, or after `timeoutMs`.
- */
 export async function waitForWorker(options: {
   readonly port: number
   readonly host: string

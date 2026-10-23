@@ -7,12 +7,6 @@ import { createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from '../http/support.ts'
 
-// Fails when: the OAuth server (src/oauth) lets through what docs/security/threat-model.md holds
-// it to refuse: a redirect URI other than the one registered; PKCE `plain`, or no PKCE
-//; a consent posted without its own cookie, or by another person; a client name that
-// reaches the consent page as markup; or a person's session cookie standing for a token at
-// `/mcp` or `/v1`.
-
 const MCP = `${PUBLIC_URL}/mcp`
 const REDIRECT = 'https://agent.example.com/callback'
 const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistration: true } })
@@ -97,7 +91,6 @@ describe('the OAuth server refuses', () => {
     const none = await worker.send(authorize(clientId, {}), { headers: { cookie } })
 
     for (const answer of [plain, none]) {
-      // Refused before any consent: no page with a form, and no code.
       expect(answer.status === 200 && (await answer.clone().text()).includes('name="handle"')).toBe(
         false,
       )
@@ -140,10 +133,7 @@ describe('the OAuth server refuses', () => {
     const withoutBinding = await post(owner)
     const otherPerson = await post(`${second.cookie}; ${bound}`)
 
-    // A form posted from a browser that did not open it is refused: no code goes anywhere.
     expect([withoutBinding.status, withoutBinding.headers.get('location')]).toEqual([400, null])
-    // One with the binding of the page, from a browser signed in as someone else, grants that
-    // someone their own access, never the person who opened the page.
     const code =
       new URL(otherPerson.headers.get('location') ?? 'x:/').searchParams.get('code') ?? ''
     expect(code.startsWith(`${second.userId}:`)).toBe(true)

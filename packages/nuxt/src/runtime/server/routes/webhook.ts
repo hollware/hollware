@@ -2,13 +2,6 @@ import { verifyWebhook } from '@hollware/core'
 import { createError, defineEventHandler, getRequestHeaders, readRawBody } from 'h3'
 import { useRuntimeConfig } from 'nitropack/runtime'
 
-/**
- * `POST /_hollware/webhook` (S8): an event of Hollware, signed with the secret of the webhook
- * (`NUXT_HOLLWARE_WEBHOOK_SECRET`), purges from Workers Cache the pages that showed what changed,
- * by the tags the event carries. A request whose signature does not hold is refused, and purges
- * nothing.
- */
-
 interface WorkerCache {
   purge(options: { readonly tags: readonly string[] }): Promise<unknown>
 }
@@ -48,8 +41,6 @@ export default defineEventHandler(async (event) => {
     })
   }
   const payload: unknown = JSON.parse(body)
-  // An event of another site, even one signed with this secret, purges nothing here: a webhook of
-  // a site in the same deployment could have been pointed at this receiver with its secret.
   const site = String(Reflect.get(Reflect.get(config, 'hollware') ?? {}, 'site') ?? '')
   const eventSite: unknown =
     typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'site') : undefined

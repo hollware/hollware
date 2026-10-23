@@ -2,12 +2,6 @@ import type { MarkdownDocument } from 'comark'
 import type { Violation } from '../contracts/types.ts'
 
 /**
- * The shapes of the Markdown pipeline: Markdown in, the Comark document and what the contracts
- * need out (ADR-001, ADR-020). The Markdown is the source of truth; everything here is derived
- * from it and can be derived again by the reparse of the cron.
- */
-
-/**
  * The Comark document of a revision, as Hollware stores it and hands it to sites: a site renders
  * it with the Comark renderer of its framework, without parsing anything.
  */
@@ -16,7 +10,7 @@ export type EntryDocument = MarkdownDocument
 export interface Heading {
   readonly depth: 1 | 2 | 3 | 4 | 5 | 6
   readonly text: string
-  /** Hollware's own heading id, which keeps letters outside ASCII (ADR-020). */
+  /** Hollware's own heading id, which keeps letters outside ASCII. */
   readonly id: string
   readonly line?: number
 }
@@ -61,7 +55,7 @@ export interface ComponentUse {
 
 /**
  * Something the pipeline did not let through: the parser leaves a marker in its place, and the
- * content-safety contracts report it (ADR-020). Nothing is dropped silently.
+ * content-safety contracts report it. Nothing is dropped silently.
  */
 export interface DisallowedMarker {
   readonly kind: 'raw-html' | 'unknown-component' | 'disallowed-attribute' | 'unsafe-url'

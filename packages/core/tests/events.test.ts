@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { parseHollwareEvent } from '../src/events.ts'
 
-// Fails when: a receiver of webhooks (src/events.ts) stops reading the events Hollware sends, an
-// entry's and a site's, with every field; or starts taking a body that is no event, an event of a
-// kind it does not know, or an entry event without its entry, instead of answering null.
-
 const ENTRY = {
   id: 'evt_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
   kind: 'entry.published',

@@ -38,7 +38,6 @@ export const INVITE_USAGE = [
   '  --help             Show this help',
 ].join('\n')
 
-/** The role of `--role`: editor or author, and nothing else. */
 function roleOf(value: string | undefined): 'editor' | 'author' {
   if (value === 'editor' || value === 'author') return value
   throw new UsageError('--role is required, and it is editor or author.')

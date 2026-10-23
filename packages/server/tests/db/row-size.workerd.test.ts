@@ -16,26 +16,10 @@ import {
   VERDICT,
 } from './support.ts'
 
-// Fails when: src/db/size.ts stops counting a column of the row of a revision, counts characters
-// instead of UTF-8 bytes, or moves the limit (a row of exactly MAX_ROW_BYTES must be written, and
-// one byte more refused), or src/db/writes.ts createEntry or appendRevision stop checking the size
-// before they write (Miniflare does not enforce D1's 2 MB limit, so nothing else would), or write
-// something while refusing.
-
 const NOW = '2026-10-12T10:00:00.000Z'
 
-/** A string that is over the limit on its own. */
 const HUGE = 'a'.repeat(1_950_000)
 
-/**
- * The bytes of every column of a revision row written for `revision()` below, apart from the
- * Markdown: the revision id 30 (`rev_` and 26 characters), the site key 41 (`size-` and a UUID of
- * 36), the entry id 30, the frontmatter `{"title":"Hello"}` 17, the document 76, the versions
- * `0.7.0` and `1` 5 and 1, the word count and the words of code 8 each (an integer counts as 8),
- * the verdict 78, the actor
- * kind `token` 5, the ids of its user and its token 30 and 30, no meta 0, and `created_at` and
- * `updated_at` 24 each.
- */
 const OTHER_COLUMNS = 407
 
 const HELLO = { collection: 'blog', locale: 'en', slug: 'hello' }
@@ -95,7 +79,6 @@ describe('createEntry with a row over the limit', () => {
         .bind(written.view.revision.id)
         .first<number>('bytes'),
     ).toBe(room)
-    // The refused one wrote nothing: one entry and one revision, the written ones.
     expect(await countRows(env.DB, 'entries', owner.site)).toBe(1)
     expect(await countRows(env.DB, 'revisions', owner.site)).toBe(1)
   })
@@ -162,7 +145,6 @@ describe('appendRevision with a row over the limit', () => {
     await insertEntries(env.DB, owner, [
       { id: id('ent_a'), slug: 'a', updatedAt: NOW, revisions: [{ id: id('rev_a') }] },
     ])
-    // The entry id of this test is 14 characters (`ent_a_` and eight), 16 fewer than a real one.
     const room = MAX_ROW_BYTES - OTHER_COLUMNS - (id('ent_a').length - 30)
 
     const refused = await store.appendRevision(owner.site, {

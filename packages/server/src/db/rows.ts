@@ -10,13 +10,6 @@ import type {
 } from '../ports.ts'
 import { entries, publications, revisions, revisionTags } from './schema.ts'
 
-/**
- * The columns the store reads and how they become the types of `ports.ts`. The JSON columns come
- * back as the store wrote them: the `CHECK`s of the schema guarantee valid JSON, and only the
- * store writes the shapes.
- */
-
-/** The columns of `entries` that `StoredEntry` holds. */
 export const entryFields = {
   id: entries.id,
   collection: entries.collection,
@@ -33,7 +26,6 @@ export const entryFields = {
   updatedAt: entries.updatedAt,
 }
 
-/** The columns of `revisions` that `StoredRevision` holds, except its tags. */
 export const revisionFields = {
   id: revisions.id,
   entryId: revisions.entryId,
@@ -52,11 +44,6 @@ export const revisionFields = {
   createdAt: revisions.createdAt,
 }
 
-/**
- * The columns of `revisions` that a listing reads: the id and the frontmatter of the revision of
- * the view, and nothing else. The Markdown, the document and the verdict can weigh megabytes, so
- * a listing never selects them (`tests/db/list.workerd.test.ts` holds the statements to it).
- */
 export const revisionSummaryFields = {
   id: revisions.id,
   frontmatter: revisions.frontmatter,
@@ -65,7 +52,6 @@ export const revisionSummaryFields = {
   createdAt: revisions.createdAt,
 }
 
-/** The columns of `publications` that `StoredPublication` holds. */
 export const publicationFields = {
   id: publications.id,
   entryId: publications.entryId,
@@ -80,10 +66,6 @@ export const publicationFields = {
   createdAt: publications.createdAt,
 }
 
-/**
- * The tags of a revision as a JSON array, read in the same statement as the revision: one query
- * per page, and the same snapshot. `revision` is the revision table the statement joins.
- */
 export function tagsOf(revision: typeof revisions): SQL<string> {
   return sql<string>`(select json_group_array(${revisionTags.tag}) from ${revisionTags} where ${and(
     eq(revisionTags.revisionId, revision.id),
@@ -102,7 +84,6 @@ type PublicationRow = {
   [Field in keyof typeof publicationFields]: (typeof publications.$inferSelect)[Field]
 }
 
-/** The value of `candidates` that `value` is, or a failure: the schema's `CHECK`s forbid the rest. */
 function oneOf<const Candidates extends readonly string[]>(
   candidates: Candidates,
   value: string,
@@ -112,7 +93,6 @@ function oneOf<const Candidates extends readonly string[]>(
   throw new Error(`A row has ${what} ${JSON.stringify(value)}, which the schema does not allow`)
 }
 
-/** The status of an entry, which the schema's `CHECK` limits to these three. */
 export function entryStatus(value: string): StoredEntry['status'] {
   return oneOf(['draft', 'scheduled', 'published'], value, 'the status')
 }
@@ -151,7 +131,6 @@ function toActor(row: {
   }
 }
 
-/** The tags come back sorted, so that a revision reads the same however its tags were written. */
 function parseTags(tagsJson: string): string[] {
   const tags: string[] = JSON.parse(tagsJson)
   return tags.toSorted()

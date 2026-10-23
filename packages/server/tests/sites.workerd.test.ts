@@ -4,10 +4,6 @@ import { describe, expect, it } from 'vitest'
 
 import { seedSite } from './support/sites.ts'
 
-// Fails when: seedSite stops writing a whole site that the schema accepts (its checks, composite
-// foreign keys and append-only triggers), or two seeded sites stop sharing their natural keys, which
-// is what lets a stranger test catch a query that forgets `site_id`.
-
 const TABLES = ['entries', 'revisions', 'revision_tags', 'publications', 'tokens'] as const
 
 async function rowsPerTable(site: string): Promise<Record<string, number>> {
@@ -37,7 +33,6 @@ describe('seedSite', () => {
     expect(stranger.entries.map((entry) => entry.id)).not.toEqual(
       home.entries.map((entry) => entry.id),
     )
-    // Each published entry has its revision published and one publication; a draft has neither.
     const { results } = await env.DB.prepare(
       `SELECT e.slug, e.status, e.published_rev = e.head_rev AS live, count(p.id) AS publications
         FROM entries e LEFT JOIN publications p ON p.entry_id = e.id AND p.site_id = e.site_id

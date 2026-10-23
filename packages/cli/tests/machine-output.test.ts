@@ -1,17 +1,3 @@
-// Fails when:
-// - "writes the token of init to --token-file": `--token-file` stops writing the token and a
-//   newline to the file with mode 0600, or still prints the token, or stops printing the path.
-// - "refuses a token file that exists": `init` writes over a file that exists (without
-//   --force), or touches wrangler before it refuses, so a token is made that nobody saw.
-// - "replaces a file with --force": --force stops replacing the file, or leaves the mode of
-//   the old file, or --force without --token-file stops being a usage error.
-// - "init --json": the JSON of `init` stops being one object with exactly these keys, or prints
-//   anything else with it, or puts the token in it beside the file.
-// - "token create --token-file" and "token create --json": the same, for `token create`, whose
-//   `expiresAt` is null when the token never expires.
-// - "invite --json": the JSON of `invite` loses a key, or holds the link without the secret.
-// - "doctor --json": the JSON of `doctor` stops holding every check with its name, message and
-//   fix, `ok` stops following the checks, the exit code changes, or the human lines come with it.
 import { chmodSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'

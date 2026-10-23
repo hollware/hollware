@@ -15,16 +15,6 @@ import {
   siteWith,
 } from './support.ts'
 
-// Fails when: resolveConfig stops resolving a config like the playground's to the shape of
-// ResolvedConfig (names, locales, routes in the order of the site's locales, the three field
-// names, components, the contracts as given, the size limit and both style guides), fills a
-// default other than null, an empty map, an empty list or 524,288 bytes, keeps the collections or
-// components out of the order of the config, or hands back another schema than the one it was
-// given; when it stops letting through the contracts that Hollware made (`contracts.*`), or one of
-// its own next to them; when it stops accepting what its rules allow (63-character names, the language tags,
-// `$ref`s in schemas, optional fields, a route with :slug inside a segment, a size of 1 byte or of
-// 768 KiB, a schema that is a function); or when the same config resolves to two different results.
-
 const playgroundBlog = defineCollection({
   schema: z.object({
     title: z.string().min(1),

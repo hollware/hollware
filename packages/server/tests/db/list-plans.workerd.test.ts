@@ -8,19 +8,8 @@ import { listEntriesQuery, listTranslationsQuery } from '../../src/db/reads.ts'
 import type { ListQuery } from '../../src/ports.ts'
 import { recordStatements, seedOwner, siteKey } from './support.ts'
 
-// Fails when: src/db/reads.ts sends a listing in a shape that SQLite cannot serve from an index of
-// `entries`, so that a page sorts the whole collection or reads it from its first row: the head
-// view stops using `entries_head` (or `entries_head_locale` when it names a locale), the
-// published view of a locale stops using the partial `entries_published` (its status is not the
-// literal the index says, or it orders by another column), the cursor stops being a row value
-// that the index seeks to, a translation group stops being read in order of locale from
-// `entries_translation`, or `listEntries` or `listTranslations` stop sending the statement these
-// plans explain. Each plan is read on 1,080 entries, before and after ANALYZE, with the values a
-// listing is sent with and with values that nothing matches (the plan must not lean on them).
-
 const ENTRIES = 3 * 3 * 120
 
-/** Three collections of three locales of 120 entries each, half of them published, in one statement. */
 async function seedCollections(site: string): Promise<void> {
   await env.DB.prepare(
     `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 120)
@@ -45,7 +34,6 @@ interface Shape {
   readonly name: string
   readonly query: ListQuery
   readonly after?: CursorPosition
-  /** The one line of the plan that reads `entries`. */
   readonly access: string
 }
 
@@ -114,7 +102,6 @@ const SHAPES: readonly Shape[] = [
 const TRANSLATIONS_ACCESS =
   'SEARCH entries USING INDEX entries_translation (site_id=? AND collection=? AND translation_group=?)'
 
-/** The lines of the plan of a statement, with the values it binds. */
 async function plan(statement: string, params: readonly unknown[]): Promise<string[]> {
   const { results } = await env.DB.prepare(`EXPLAIN QUERY PLAN ${statement}`)
     .bind(...params)
@@ -124,11 +111,6 @@ async function plan(statement: string, params: readonly unknown[]): Promise<stri
 
 const readsEntries = (line: string) => /^(SEARCH|SCAN) entries\b/.test(line)
 
-/**
- * The values a statement binds, and the same with every text replaced by one that no row has.
- * SQLite may look at bound values when it plans, so a plan is read both ways: it has to hold for
- * the values a listing is sent with, and for values that nothing matches.
- */
 const boundValues = (params: readonly unknown[]): (readonly unknown[])[] => [
   params,
   params.map((value) => (typeof value === 'string' ? '~' : value)),

@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { resolveConfig } from '../../src/config/index.ts'
 import { configWith, problemsOf } from './support.ts'
 
-// Fails when: resolveConfig (src/config/events.ts) stops reading a site's url as its origin, or
-// its events (ADR-025) as webhooks with a name, an https URL and the name of the Worker secret that
-// signs them, and IndexNow with the name of the secret of its key; or stops reporting, at its path,
-// a url that is no origin, a webhook that breaks one of those rules or repeats a name, or IndexNow
-// on a site without a url; or stops reading `cors.origins` as a list of origins, each once.
-
 const site = (config: unknown) => resolveConfig(config).sites.get('demo')
 const paths = (config: unknown) => problemsOf(config).map((problem) => problem.path)
 
@@ -74,7 +68,6 @@ describe('the url and the events of a site', () => {
       ['sites.demo.events.indexNow'],
     ],
     [
-      // T-69: a name of a Worker secret is no key, so no value of the Worker reaches IndexNow.
       'an IndexNow key that names a secret instead of being the key',
       { url: 'https://example.com', events: { indexNow: { key: 'HOLLWARE_SECRET' } } },
       ['sites.demo.events.indexNow.key'],
@@ -122,7 +115,6 @@ describe('the origins of a site that may read it from a page', () => {
       ['sites.demo.cors.origins[0]', 'sites.demo.cors.origins[1]'],
     ],
     [
-      // T-69: a name of a Worker secret is no key, so no value of the Worker reaches IndexNow.
       'an IndexNow key that names a secret instead of being the key',
       { url: 'https://example.com', events: { indexNow: { key: 'HOLLWARE_SECRET' } } },
       ['sites.demo.events.indexNow.key'],

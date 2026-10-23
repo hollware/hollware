@@ -14,14 +14,6 @@ import { createInvitation, findSession, membershipsOf } from '../../src/identity
 import { seedOwner, siteKey } from '../db/support.ts'
 import { softAuthenticator } from '../support/authenticator.ts'
 
-// Fails when: the passkey ceremonies (src/identity) stop letting a person in the way ADR-026 says:
-// a setup link adds a passkey to the owner it names and an invitation makes a new person with its
-// role, each once and before it expires; sign-in with a registered passkey opens a session that
-// knows the person, whose role is that of each site they are a member of; and a registration or a sign-in from another origin, a
-// challenge used twice, an invitation redeemed by a second registration, a signature that does
-// not verify, a passkey of no one, a challenge older than five minutes, a counter that went
-// back or an assertion without user verification is refused.
-
 const ORIGIN = 'https://cms.example.com'
 const NOW = new Date('2026-10-14T10:00:00.000Z')
 
@@ -31,7 +23,6 @@ async function site() {
   return { owner, ceremony }
 }
 
-/** Registers a passkey through an invitation, and gives the authenticator and the answer. */
 async function register(ceremony: Ceremony, secret: string, from = ORIGIN) {
   const authenticator = await softAuthenticator(ORIGIN)
   const { challengeId, options } = await registrationOptions(ceremony, secret)
@@ -173,7 +164,6 @@ describe('sign-in', () => {
     const { authenticator } = await register(ceremony, link.secret)
     const { challengeId, options } = await authenticationOptions(ceremony)
     const response = await authenticator.authenticate(options)
-    // One bit of the integer r of the DER signature, so that it is still a well-formed signature.
     const signature = isoBase64URL.toBuffer(response.response.signature)
     signature[10] = (signature[10] ?? 0) ^ 1
     const forged = {
@@ -186,7 +176,6 @@ describe('sign-in', () => {
     )
   })
 
-  /** A site whose owner registered a passkey, ready to sign in. */
   async function registered() {
     const { owner, ceremony } = await site()
     const link = await createInvitation(ceremony.db, {

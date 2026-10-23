@@ -10,7 +10,6 @@ import type {
 
 const streamOf = (bytes: Uint8Array): ReadableStream<Uint8Array> => new Blob([bytes]).stream()
 
-/** R2 as the store of asset files. */
 export function r2Files(bucket: R2Bucket): AssetFiles {
   return {
     async put(key, bytes, contentType) {
@@ -27,8 +26,6 @@ export function r2Files(bucket: R2Bucket): AssetFiles {
   }
 }
 
-/** The Images binding as the converter: `quality` and `anim` are always passed (ADR-038). */
-/** The part of the Images binding Hollware uses; Cloudflare's `ImagesBinding` has it. */
 export interface ImagesLike {
   info(stream: ReadableStream<Uint8Array>): Promise<unknown>
   input(stream: ReadableStream<Uint8Array>): TransformerLike
@@ -90,7 +87,6 @@ interface Row {
   readonly created_at: string
 }
 
-/** The widths of a row: whole numbers of a JSON array, and none from anything else. */
 function widthsOf(text: string): number[] {
   try {
     const parsed: unknown = JSON.parse(text)
@@ -119,7 +115,6 @@ const rowOf = (row: Row): AssetRow => ({
   createdAt: row.created_at,
 })
 
-/** The rows of `assets` in D1, always of one site. */
 export function d1Catalog(db: D1Database): AssetCatalog {
   const byId = async (site: string, id: string) => {
     const row = await db
@@ -132,7 +127,6 @@ export function d1Catalog(db: D1Database): AssetCatalog {
     byId,
     async byIds(site, ids) {
       const rows: AssetRow[] = []
-      // D1 binds at most 100 values to a statement: the site and 90 ids at a time.
       for (let start = 0; start < ids.length; start += 90) {
         const slice = ids.slice(start, start + 90)
         const { results } = await db
@@ -216,7 +210,6 @@ export function d1Catalog(db: D1Database): AssetCatalog {
   }
 }
 
-/** The bindings media needs: an R2 bucket, and optionally the Images binding. */
 export interface MediaEnv {
   readonly DB: D1Database
   readonly HOLLWARE_PUBLIC_URL?: string
@@ -224,7 +217,6 @@ export interface MediaEnv {
   readonly IMAGES?: ImagesBinding
 }
 
-/** Media of a Worker: `null` without its R2 bucket, and without conversion when `IMAGES` is not bound. */
 export function mediaOfEnv(env: MediaEnv): Media | null {
   if (env.MEDIA === undefined || env.HOLLWARE_PUBLIC_URL === undefined) return null
   return {

@@ -14,16 +14,10 @@ export interface WranglerResult {
 /** Runs the project's wrangler with these arguments, from the project directory. */
 export type RunWrangler = (args: readonly string[]) => Promise<WranglerResult>
 
-/**
- * The `wrangler` of the project: the nearest `node_modules/.bin/wrangler` from `cwd` upwards,
- * so a workspace that hoists its dependencies finds it too. Never a global wrangler, never
- * `npx`: the CLI runs the version the project pinned.
- */
 export function findWrangler(cwd: string): string | undefined {
   return findBin(cwd, 'wrangler')
 }
 
-/** The nearest `node_modules/.bin/<name>` from `cwd` upwards, or `undefined`. */
 export function findBin(cwd: string, name: string): string | undefined {
   let directory = cwd
   for (;;) {
@@ -73,28 +67,19 @@ export function createWranglerRunner(cwd: string): RunWrangler {
   }
 }
 
-// The colors wrangler puts in its messages: removed before anything is shown or parsed.
 const ANSI = new RegExp(String.raw`\u001B\[[0-9;]*[A-Za-z]`, 'g')
 
-/** `text` without terminal escape sequences. */
 export function stripAnsi(text: string): string {
   return text.replace(ANSI, '')
 }
 
 const MAX_REASON = 400
 
-/**
- * Why a run of wrangler failed, in one line: the `error` of its `--json` answer, else the text
- * of its first `[ERROR]` message, else the last line it wrote to stderr or, failing that, to
- * stdout.
- */
 export function failureReason(result: WranglerResult): string {
   const stdout = stripAnsi(result.stdout)
   const stderr = stripAnsi(result.stderr)
   const fromJson = jsonError(stdout.trim())
   if (fromJson !== undefined) return oneLine(fromJson)
-  // An [ERROR] goes on over the lines after it, until a blank one or another marker: wrangler
-  // wraps a long message, and its first line alone can say the opposite of the whole.
   const raw = stderr.split('\n').map((line) => line.trim())
   for (const [index, line] of raw.entries()) {
     const message = /^\W*\[ERROR\]\s*(.+)$/.exec(line)?.[1]

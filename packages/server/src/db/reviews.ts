@@ -14,14 +14,6 @@ import { parseAcknowledged } from './schedules.ts'
 import { entries, reviewComments, reviews, users } from './schema.ts'
 import { valuesOf } from './statements.ts'
 
-/**
- * Reviews (v0.3). A person who may write but not publish asks for the head revision of an entry
- * to be published; a person who may publish approves it, which publishes it, or asks for changes.
- * The partial unique index `reviews_pending` keeps one pending review per entry. A write that
- * moves the entry closes the pending review in its own batch: a new revision cancels it
- * (`cancelPendingReview`), a publication approves it (`approvePendingReview`).
- */
-
 const STATUSES: readonly ReviewStatus[] = [
   'pending',
   'approved',
@@ -36,7 +28,6 @@ function statusOf(value: string): ReviewStatus {
   return status
 }
 
-/** The columns of a review, and the name of who asked for it. */
 const COLUMNS = { ...getTableColumns(reviews), requestedByName: users.name }
 
 function toReview(
@@ -57,10 +48,6 @@ function toReview(
   }
 }
 
-/**
- * The entry is still at `version`, and in the state `also` says: the condition of every statement
- * a write adds to its batch.
- */
 function entryAt(site: string, entryId: string, version: number, also: readonly SQL[] = []) {
   return sql`exists (select 1 from ${entries} where ${and(
     eq(entries.id, entryId),
@@ -70,10 +57,6 @@ function entryAt(site: string, entryId: string, version: number, also: readonly 
   )})`
 }
 
-/**
- * In the batch of a new revision: the pending review asked for another one, so it is cancelled.
- * In the batch of a trashing, too, where `also` holds what makes the entry one the trash takes.
- */
 export function cancelPendingReview(
   db: Db,
   site: string,
@@ -95,7 +78,6 @@ export function cancelPendingReview(
     )
 }
 
-/** In the batch of a publication: what the pending review asked for is published, by `userId`. */
 export function approvePendingReview(
   db: Db,
   site: string,
@@ -112,7 +94,6 @@ export function approvePendingReview(
         eq(reviews.siteId, site),
         eq(reviews.entryId, entryId),
         eq(reviews.status, 'pending'),
-        // The pending review is of the head: a new revision would have cancelled it.
         sql`${reviews.revisionId} = (select ${entries.headRev} from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), eq(entries.version, version))})`,
       ),
     )
@@ -147,7 +128,6 @@ export async function requestReview(
     id: newId('rvw'),
     siteId: site,
     entryId: write.entryId,
-    // The head of the entry as the statement runs, where the entry is at the version read.
     revisionId: entries.headRev,
     status: 'pending',
     acknowledged: JSON.stringify(write.acknowledged),
@@ -172,7 +152,6 @@ export async function requestReview(
       )
       .returning({ id: reviews.id })
   } catch (error) {
-    // The entry has a pending review already, of its head: asking again answers it.
     const pending = isUniqueViolation(error) ? await pendingOf(db, site, write.entryId) : null
     if (pending === null) throw error
     return { outcome: 'pending_review', review: pending }
@@ -226,7 +205,6 @@ export function rejectReview(
   return closeReview(db, clock, site, write, 'rejected')
 }
 
-/** Closes a pending review with a note and the status of the decision, in one statement. */
 async function closeReview<Status extends 'changes_requested' | 'rejected'>(
   db: Db,
   clock: Clock,
@@ -278,10 +256,6 @@ function toComment(
   }
 }
 
-/**
- * Adds a comment to a review in one statement that inserts only while the review is pending, so a
- * decision that lands first leaves no comment behind it.
- */
 export async function commentReview(
   db: Db,
   clock: Clock,

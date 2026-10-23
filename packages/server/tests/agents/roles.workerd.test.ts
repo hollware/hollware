@@ -22,18 +22,9 @@ import { VERDICT } from '../db/support.ts'
 import { blogPost, warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, type World } from '../ops/world.ts'
 
-// Fails when: the roles of @hollware/agents stop doing their work against the real Hollware: the
-// reviewer stops commenting once on each pending review, in the agents' name, or comments twice;
-// the translator stops drafting the missing translation of a published entry, fixing what the
-// contracts refuse, and asking for its review, or drafts it twice; the auditor stops reporting an
-// entry read a lot and updated long ago and a published entry the contracts now refuse, as a
-// draft of the report's collection and to the webhook, or stops going round the entries a few at a
-// time and reporting what every step found; or any of them publishes.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/** The agents' token: it reads and writes, and may not publish. */
 function agentsPrincipal(world: World): Principal {
   return {
     kind: 'token',
@@ -44,7 +35,6 @@ function agentsPrincipal(world: World): Principal {
   }
 }
 
-/** Hollware as the agents reach it, through the handlers instead of MCP, with their allowlist. */
 function agentsHollware(world: World, extra: Partial<OperationContext> = {}): Hollware {
   const context: OperationContext = {
     ...world.context({ principal: agentsPrincipal(world) }),
@@ -59,7 +49,6 @@ function agentsHollware(world: World, extra: Partial<OperationContext> = {}): Ho
   })
 }
 
-/** A model that answers from a script by what it is asked, and keeps what it was asked. */
 function scripted(script: { review?: string; translate?: string; fix?: string }) {
   const asked: string[] = []
   const model = async (messages: readonly Message[]) => {
@@ -78,7 +67,6 @@ function scripted(script: { review?: string; translate?: string; fix?: string })
   return { model, asked }
 }
 
-/** An English post, published without its Spanish translation (the store, past the contracts). */
 async function publishedAlone(world: World, slug: string) {
   const created = await world.agent.createDraft({
     collection: 'blog',
@@ -114,7 +102,6 @@ describe('the reviewer', () => {
     const { model, asked } = scripted({ review: '- How it works: add an example.' })
 
     const first = await reviewPending({ hollware, model, memory: mapMemory() })
-    // A memory that forgot: the comment itself says the review was read.
     const second = await reviewPending({ hollware, model, memory: mapMemory() })
     const listed = await world.agent.listReviews({})
 
@@ -134,7 +121,6 @@ describe('the translator', () => {
     await publishedAlone(world, 'edge-guide')
     const spanish = (description: string | null) =>
       blogPost(
-        // Over 60 characters: a warning of the blog, which asking for the review acknowledges.
         { title: TITLE, description, translationGroup: 'edge-guide' },
         '\n# Caché en el borde\n\nLo que guarda una caché del borde.\n',
       )
@@ -241,9 +227,7 @@ describe('the auditor', () => {
     expect(posted[0]).toContain(
       '- /en/blog/edge-guide/ (blog/en/edge-guide): 120 views in 30 days, last updated 2026-10-13',
     )
-    // Read a lot too, but updated twelve days before the audit.
     expect(posted[0]).not.toContain('/en/blog/fresh-guide/ (')
-    // Published without its translation, which the blog's contracts refuse now.
     expect(posted[0]).toContain('- blog/en/edge-guide: error translation-pair:')
   })
 })

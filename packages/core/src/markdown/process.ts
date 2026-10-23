@@ -17,7 +17,6 @@ import { COMARK_VERSION, PIPELINE_VERSION } from './versions.ts'
 
 const BYTE_ORDER_MARK = 0xfeff
 
-/** The size of a string in UTF-8, which is what D1 stores: a lone surrogate is written as U+FFFD, three bytes. */
 function utf8ByteLength(text: string): number {
   let bytes = 0
   for (let at = 0; at < text.length; at++) {
@@ -57,12 +56,6 @@ function isYamlError(error: unknown): error is Error {
   return error instanceof Error && error.name === 'YAMLException'
 }
 
-/**
- * How many lines of the file come before the body: the frontmatter and its two fences. The
- * first line of the body is then `lines + 1`. A carriage return that is followed by a line feed is
- * one break, even when Comark cut it in two, with the carriage return in the frontmatter and the
- * line feed in the body.
- */
 function linesBeforeBody(source: string, body: string): number {
   if (!source.endsWith(body)) return 0
   const end = source.length - body.length
@@ -74,13 +67,11 @@ function linesBeforeBody(source: string, body: string): number {
   return lines
 }
 
-/** The line of the file that a YAML error is on: the parser counts from the first line after the opening fence. */
 function yamlViolation(error: Error, source: string) {
   const reason: unknown = Reflect.get(error, 'reason')
   const mark: unknown = Reflect.get(error, 'mark')
   const markLine = isRecord(mark) ? mark.line : undefined
   const markColumn = isRecord(mark) ? mark.column : undefined
-  // Comark hands the parser the text from the fifth character, which starts with a line feed when the fence ends in CRLF.
   const firstLine = source.startsWith('---\r\n') ? 1 : 2
   return yamlSyntax(
     typeof reason === 'string' ? reason : (error.message.split('\n')[0] ?? 'it does not parse'),
@@ -92,7 +83,6 @@ function yamlViolation(error: Error, source: string) {
 async function run(markdown: unknown, options: ProcessMarkdownOptions): Promise<ProcessResult> {
   if (typeof markdown !== 'string') return { ok: false, violations: [notAString()] }
 
-  // Written so that a limit that is not a number refuses the file instead of letting it through.
   const bytes = utf8ByteLength(markdown)
   if (!(bytes <= options.maxMarkdownBytes)) {
     return { ok: false, violations: [sizeLimit(bytes, options.maxMarkdownBytes)] }
@@ -138,7 +128,7 @@ async function run(markdown: unknown, options: ProcessMarkdownOptions): Promise<
 }
 
 /**
- * Processes a Markdown file for a collection (ADR-001, ADR-020): the frontmatter and the body
+ * Processes a Markdown file for a collection: the frontmatter and the body
  * are parsed once and the contracts get what they need from the result. It answers for any
  * string and never throws: a file it cannot store comes back as violations.
  */

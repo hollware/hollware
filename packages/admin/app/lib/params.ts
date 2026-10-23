@@ -1,9 +1,3 @@
-/**
- * The parameters of a rule of the catalog as form inputs, from the JSON Schema the catalog gives
- * for them (ADR-033): a field of the frontmatter (picked from the collection's), a list of
- * fields, a text, a number or a list of texts.
- */
-
 type Json = Record<string, unknown>
 
 export type ParamKind = 'field' | 'fields' | 'text' | 'number' | 'texts'
@@ -19,7 +13,6 @@ function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** The parameters that name fields of the frontmatter, as the catalog calls them. */
 const FIELD_PARAMS: ReadonlySet<string> = new Set(['field', 'unless'])
 const FIELDS_PARAMS: ReadonlySet<string> = new Set(['fields'])
 
@@ -44,7 +37,6 @@ export function paramInputs(schema: Json): ParamInput[] {
   })
 }
 
-/** The parameters with what the person left empty taken out, as the server expects them. */
 export function cleanParams(params: Readonly<Json>): Json {
   return Object.fromEntries(
     Object.entries(params).filter(

@@ -10,7 +10,6 @@ useSeoMeta({
   ogLocale: () => (locale.value === 'es' ? 'es' : 'en'),
   twitterCard: 'summary_large_image',
 })
-// The page in each language, for readers and search engines; English is the default.
 useHead({
   htmlAttrs: { lang: locale },
   link: () => {

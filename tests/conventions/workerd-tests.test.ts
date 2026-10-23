@@ -5,10 +5,6 @@ import { checkWorkerdTests, isTestConfig } from '../guards/workerd-tests.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a test that imports `vitest` or `cloudflare:*` is not named *.workerd.test.ts, a
-// *.workerd.test.ts imports `vite-plus/test`, or a config that uses @cloudflare/vitest-plugin sets
-// `fsModuleCache: true`.
-
 const tests = (...entries: [string, string][]) => entries.map(([path, text]) => file(path, text))
 
 describe('workerd tests', () => {

@@ -5,10 +5,6 @@ import { allUses, parseWorkflow } from '../guards/workflow-model.ts'
 import { file } from '../support/fixtures.ts'
 import { isWorkflowPath, readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a `uses:` in .github/workflows is not owner/repo[/subpath]@<40 hex> # vX.Y.Z (a
-// tag, a branch, a short SHA, a missing or malformed version comment, a local action or an
-// image), or one action is pinned to two different commits across the workflows.
-
 const SHA_A = 'a'.repeat(40)
 const SHA_B = 'b'.repeat(40)
 

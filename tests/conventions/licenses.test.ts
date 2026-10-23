@@ -4,10 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { readBytesIfExists } from '../support/repo.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: any byte of a packages/*/LICENSE differs from the root LICENSE (the text, a
-// trailing newline, line endings), a package has no LICENSE, the root is not the MIT License, or
-// its copyright line changes.
-
 const COPYRIGHT = 'Copyright (c) 2026-present Somebody'
 const MIT = Buffer.from(`MIT License\n\n${COPYRIGHT}\n`)
 

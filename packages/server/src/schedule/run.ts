@@ -4,11 +4,6 @@ import type { Handlers } from '../ops/types.ts'
 import type { Principal } from '../auth/types.ts'
 import type { Actor, Clock, ContentStore } from '../ports.ts'
 
-/**
- * The principal a schedule publishes as: the token, or the OAuth client, that scheduled it, with
- * the scopes it holds now (`scopesNow`). An OAuth client is known by the id its actor kept
- * (ADR-026).
- */
 function principalOf(actor: Actor, site: string, scopes: readonly Scope[]): Principal {
   if (actor.kind === 'oauth_client') {
     const client = actor.meta?.['oauthClient']
@@ -37,28 +32,13 @@ export interface ScheduleRun {
   readonly cancelled: number
 }
 
-/**
- * Publishes the scheduled entries whose time has come (ADR-025), one by one, through the same
- * handler as `publish`, in the name of who scheduled each one and with the warnings acknowledged
- * then. An entry that cannot be published (it changed after it was scheduled, or the contracts now
- * block it or warn about something new) goes back to a draft, and the log says why. A failure of
- * the database leaves the schedule for the next run.
- */
 export async function runDueSchedules(input: {
   readonly site: ResolvedSite
   readonly store: ContentStore
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: object) => void
-  /**
-   * What who scheduled an entry may do now: a revoked token, a revoked grant, a member removed or
-   * a role that no longer publishes cancels the publication instead (T-108).
-   */
   readonly scopesOf: (actor: Actor) => Promise<readonly Scope[]>
-  /**
-   * The activity log (ADR-037), for the deployment acting for the person who scheduled each
-   * entry; without it, no line is written.
-   */
   readonly audit?: (actor: AuditActor, requestId: string) => AuditLog
 }): Promise<ScheduleRun> {
   const { site, store, handlers, clock, log } = input
@@ -134,11 +114,6 @@ export async function runDueSchedules(input: {
   return { published, cancelled }
 }
 
-/**
- * Unpublishes the entries whose time has come (`schedule_unpublish`), one by one, through the same
- * handler as `unpublish`, in the name of who scheduled each one, and only while they may still
- * publish (T-108): otherwise the unpublication is dropped and the log says denied.
- */
 export async function runDueUnpublishes(input: {
   readonly site: ResolvedSite
   readonly store: ContentStore
@@ -173,7 +148,6 @@ export async function runDueUnpublishes(input: {
     } else {
       cancelled += 1
     }
-    // The unpublish dropped it; one that was not allowed, or of an entry gone meanwhile, goes too.
     await store.cancelUnpublish(site.key, unpublication.entryId)
     await input.audit?.(systemActor(unpublication.actor.userId), requestId).write(site, {
       action: 'schedule.unpublish',

@@ -7,16 +7,6 @@ import { countRows } from '../db/support.ts'
 import { agent as agentFor, blogPost, warmUpComark } from './support.ts'
 import { createPost, entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 
-// Fails when: the reviews of v0.3 stop working the way the specs say. publish.ts asks for a review
-// instead of publishing for a principal without content:publish, after the same checks (blocked
-// asks for nothing), answers the pending review again when asked twice, and refuses a group or a
-// time for it; a new revision cancels the pending review (writes.ts, reviews.ts), and a
-// publication approves it in its batch, in the name of whoever published; reviews.ts approves by
-// publishing the revision asked for in the approver's name, answers not_pending for a review that
-// is closed or whose revision is no longer the head, closes one with a note on request_changes,
-// rejects one with its reason on reject_review and lists it as rejected,
-// lists them newest first with their entry, and never shows a review of another site. D1 is real.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -24,7 +14,6 @@ const T1 = '2026-10-13T11:00:00.000Z'
 const T2 = '2026-10-13T12:00:00.000Z'
 const REVIEW_ID = expect.stringMatching(/^rvw_[0-9A-HJKMNP-TV-Z]{26}$/)
 
-/** Someone who writes and may not publish, over a token of the tenant's user. */
 function author(world: World): Principal {
   return {
     kind: 'token',
@@ -35,7 +24,6 @@ function author(world: World): Principal {
   }
 }
 
-/** Another person, who may publish, signed in to the admin through OAuth. */
 async function editor(world: World): Promise<Principal> {
   const userId = newId('usr')
   await world.db
@@ -53,7 +41,6 @@ async function editor(world: World): Promise<Principal> {
   }
 }
 
-/** The English post of a translation pair, which the blog needs to publish, asked for review. */
 async function asked(world: World) {
   const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
   await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })

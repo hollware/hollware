@@ -6,9 +6,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: a route of the server takes a segment of /v1/ that RESERVED_COLLECTION_NAMES
-// (packages/core/src/config/constants.ts) does not hold, or the list holds one no route takes.
-
 const CONSTANTS = 'packages/core/src/config/constants.ts'
 const ROUTES = [
   'packages/server/src/http/read-api.ts',

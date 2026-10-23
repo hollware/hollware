@@ -57,7 +57,6 @@ const keepOriginals = ref(true)
 const imageWidthsError = ref<string | null>(null)
 const hookName = ref('')
 const hookUrl = ref('')
-/** The secret just made for a webhook: shown this once. */
 const madeSecret = ref<{ webhook: string; secret: string } | null>(null)
 
 const webhooks = computed(() => structure.value?.definition.events.webhooks ?? [])
@@ -119,7 +118,6 @@ const redirectList = ref<Redirect[]>([])
 type BackupList = Output<'list_backups'>
 const backupList = ref<BackupList | null>(null)
 
-/** A backup, fetched with the token and saved as a file. */
 async function downloadBackup(date: string) {
   try {
     const blob = await api.backup(date)
@@ -246,7 +244,6 @@ async function saveImages() {
     return
   }
   imageWidthsError.value = null
-  // A quality or a width out of range is the server's to refuse, with what to change.
   const definition = {
     ...current.definition,
     media: {
@@ -316,7 +313,6 @@ async function deleteSite() {
     await api.call('delete_site', { key: current.site, confirm: true })
     const other = current.sites.find((membership) => membership.site !== current.site)
     toast.add({ title: m.value.site.trashed(current.site), color: 'success' })
-    // Its tokens work no more: the admin signs in to another site, or to none.
     await auth.switchSite(other?.site ?? current.site, '/admin/')
   } catch (error) {
     toast.add({ title: m.value.site.notDeleted, description: describe(error), color: 'error' })

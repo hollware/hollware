@@ -1,11 +1,3 @@
-// Fails when:
-// - "leaves no process behind after SIGTERM": the real host (`processDevHost` of src/index.ts)
-//   stops starting the server as the leader of a group of its own, or signals only its leader, so
-//   what the server started (here a `sleep`) outlives `hollware dev`, or the exit code is not 0.
-// - "--detach leaves the server up, and --stop leaves nothing": the detached server dies with the
-//   command, or --stop leaves the server, what it started or the state file.
-// Real processes, a real HTTP server and real signals: a fake `vp` of the project, which is the
-// one thing that is not ours (the real one starts Vite and workerd, which this test does not need).
 import { spawn } from 'node:child_process'
 import { chmodSync, existsSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -26,7 +18,6 @@ createServer((request, response) => {
 }).listen(Number(process.env.PORT), '127.0.0.1')
 `
 
-/** A project whose vp starts a server on PORT and, beside it, a long `sleep`. */
 function project() {
   const cwd = temp.make({
     'node_modules/.bin/vp': `#!/bin/sh
@@ -123,7 +114,6 @@ describe('hollware dev, with real processes', () => {
     expect(alive(state.pid)).toBe(true)
     expect(await healthy(port)).toBe(true)
 
-    // --stop goes alone: it takes no --url, so it does not go through cli().
     const bare = spawn(process.execPath, ['--no-warnings', ENTRY, 'dev', '--stop'], { cwd })
     const bareCode = await new Promise((resolve) => bare.on('close', resolve))
 

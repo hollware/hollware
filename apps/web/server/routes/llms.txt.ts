@@ -1,10 +1,6 @@
 import { defineEventHandler, setResponseHeader } from 'h3'
 import { readingOrder } from '../../app/utils/docs'
 
-/**
- * The docs for a language model (llmstxt.org): what Hollware is, and every page with its
- * description and a link to its Markdown.
- */
 export default defineEventHandler(async (event) => {
   const { site, reader } = useHollware(event)
   const page = await reader.listEntries(site, 'docs', { locale: 'en', limit: 100 })

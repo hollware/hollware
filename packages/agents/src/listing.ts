@@ -1,10 +1,8 @@
 import type { Hollware } from './hollware.ts'
 import { list, text, type Json } from './read.ts'
 
-/** The most pages of a listing a run reads: a call each, out of the fifty a free run has. */
 export const MAX_PAGES = 3
 
-/** The entries of a collection, in a locale and status when given, a page of 100 at a time. */
 export async function entriesOf(
   hollware: Hollware,
   query: { readonly collection: string; readonly locale?: string; readonly status?: string },

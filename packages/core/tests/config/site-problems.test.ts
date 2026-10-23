@@ -3,16 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { ConfigProblem } from '../../src/config/config-error.ts'
 import { collectionWith, configWith, problemsOf, siteWith } from './support.ts'
 
-// Fails when: resolveConfig stops reporting, with its path, its message and its fix, that the
-// config is no object, that it has no site, or not exactly one (zero, two, three), that a site is
-// no object or its key breaks the site key rule (lowercase letters and digits joined by single
-// hyphens, 1 to 64 characters), that its locales are missing, empty, not language tags or
-// repeated, that its defaultLocale is not one of them, that it has no collection, that a
-// collection is no object or its name breaks the rule (letters, digits, hyphens, a letter first,
-// at most 63 characters), or that a style guide is no string; when a default locale that is
-// listed but is no language tag is reported as missing from the locales; or when the problems of a
-// site come out in another order than locales, defaultLocale, collections, styleGuide.
-
 const CONFIG_FIX = 'Export the result of defineConfig({ sites: { … } }) from hollware.config.ts.'
 const SITE_FIX =
   'Declare one site: sites: { "my-site": { locales: ["en"], defaultLocale: "en", collections: { … } } }.'

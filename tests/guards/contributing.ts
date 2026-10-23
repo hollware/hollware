@@ -1,27 +1,13 @@
 import { inlineCodeSpans, sectionLines, tableCells } from '../support/markdown.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `contributing`: `CONTRIBUTING.md`, the first file a contributor reads, agrees with the
- * repository on what it can check.
- *
- * - The Node.js version of "Prerequisites" is the one in `.node-version`.
- * - The pnpm major version of "Prerequisites" is the one of the `packageManager` field.
- * - The commands table lists the same commands as the one of `AGENTS.md`. `CONTRIBUTING.md`
- *   writes `pnpm exec vp ...` where `AGENTS.md` writes `vp ...`; the two are the same command.
- */
-
 export interface ContributingInput {
   contributing: TextFile
-  /** The root `AGENTS.md`. */
   agents: TextFile
-  /** The text of `.node-version`. */
   nodeVersion: string
-  /** The `packageManager` field of the root `package.json`, e.g. `pnpm@12.11.2+sha512...`. */
   packageManager: string
 }
 
-/** The commands in the first column of the `## Commands` table, `pnpm exec vp` written as `vp`. */
 export function commandTable(markdown: string): string[] {
   const commands: string[] = []
   for (const { line } of sectionLines(markdown, 'Commands')) {

@@ -2,46 +2,28 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "my-hollware",
   "main": "src/worker.ts",
-  // The latest compatibility date the workerd bundled with wrangler supports.
   "compatibility_date": "2026-10-06",
-  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
-  // Hollware runs and is tested without it. Remove both flags only if your own code needs
-  // Node.js APIs.
-  // global_fetch_strictly_public: the OAuth server fetches the metadata documents of clients
-  // (CIMD) over the public internet only, never through the zone (ADR-026).
   "compatibility_flags": [
     "no_nodejs_compat",
     "no_nodejs_compat_v2",
     "global_fetch_strictly_public",
   ],
-  // Every minute: publishes the scheduled entries whose time has come.
   "triggers": { "crons": ["* * * * *"] },
-  // The publication events (ADR-025): the Worker sends them, consumes them, and keeps the ones it
-  // could not deliver after five tries in the dead-letter queue.
   "queues": {
     "producers": [{ "binding": "EVENTS", "queue": "hollware-events" }],
     "consumers": [
       { "queue": "hollware-events", "max_retries": 5, "dead_letter_queue": "hollware-events-dlq" },
     ],
   },
-  // The admin, at /admin/: its hashed files go straight to the browser, and every other request
-  // reaches the Worker first, which serves the admin's page with its security policy.
   "assets": {
     "directory": "node_modules/@hollware/admin/dist/client",
     "binding": "ASSETS",
     "run_worker_first": ["/*", "!/admin/assets/*"],
   },
   "vars": {
-    // The only Host and Origin your Hollware answers; any other request is refused. This is the
-    // URL `pnpm dev` serves. `hollware deploy` sets it to the workers.dev URL of the Worker, or to
-    // the one its --url names, such as https://cms.example.com.
     "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
-  // The OAuth server's clients, grants and tokens (ADR-026). No id: the first `hollware deploy`
-  // creates the namespace and writes its id here.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
-  // Sign-in and OAuth's token endpoint take at most 60 requests a minute from one address each:
-  // what a person sends never comes near it.
   "ratelimits": [
     {
       "name": "HOLLWARE_RATE_LIMIT",
@@ -52,16 +34,10 @@
   "d1_databases": [
     {
       "binding": "DB",
-      // No id: the first `hollware deploy` creates the database by this name and writes its id
-      // here. Local development needs none.
       "database_name": "my-hollware",
-      // The server package ships its migrations; the project applies them as they are.
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
-  // The images of the sites (ADR-038): the bucket that keeps them, which the first deploy creates,
-  // and the Images binding that converts each once when it arrives (to WebP by default). Without
-  // the binding, images are kept as they come; without the bucket, upload_asset is unavailable.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
   "images": { "binding": "IMAGES" },
 }

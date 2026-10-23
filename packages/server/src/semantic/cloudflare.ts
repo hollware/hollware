@@ -1,6 +1,5 @@
 import type { Embedder, Semantic, VectorIndex, VectorMetadata } from '../ports.ts'
 
-/** The embedding model when the config names none: multilingual, so Spanish finds English. */
 export const DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-m3'
 
 interface AiBinding {
@@ -31,7 +30,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** Workers AI as an embedder: `{ data: number[][] }` for a batch of texts. */
 export function workersAiEmbedder(ai: AiBinding, model: string): Embedder {
   return {
     model,
@@ -66,7 +64,6 @@ function metadataOf(raw: Record<string, unknown> | undefined): VectorMetadata | 
   return { site, entry, collection, locale, piece, excerpt }
 }
 
-/** Vectorize as the index. Its metadata indexes on site, collection, locale and piece filter. */
 export function vectorizeIndex(binding: VectorizeBinding): VectorIndex {
   return {
     async upsert(vectors) {
@@ -106,7 +103,6 @@ export function vectorizeIndex(binding: VectorizeBinding): VectorIndex {
   }
 }
 
-/** Semantic search over the Worker's bindings, or `null` when it does not have both. */
 export function semanticOf(env: object, model: string): Semantic | null {
   const ai: unknown = Reflect.get(env, 'AI')
   const vectorize: unknown = Reflect.get(env, 'VECTORIZE')
@@ -118,11 +114,6 @@ export function semanticOf(env: object, model: string): Semantic | null {
   }
 }
 
-/**
- * Semantic search over the Worker's bindings, or `null` without them. The model is the variable
- * `HOLLWARE_EMBEDDING_MODEL`, or `DEFAULT_EMBEDDING_MODEL`; the Vectorize index must have been
- * made for its dimensions, so a new model needs a new index.
- */
 export function semanticOfEnv(env: object): Semantic | null {
   const model: unknown = Reflect.get(env, 'HOLLWARE_EMBEDDING_MODEL')
   return semanticOf(

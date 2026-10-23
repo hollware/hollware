@@ -12,13 +12,6 @@ import {
   siteKey,
 } from './support.ts'
 
-// Fails when: src/db/reads.ts lookup stops answering in the order of the refs it was given, with
-// null for an entry that is not there, and once for each time a ref was asked; cuts its refs into
-// chunks that bind more than MAX_BOUND_PARAMETERS values (the site, and three per ref: 29 refs
-// to a statement) or sends the chunks in separate calls instead of one batch; drops a part of the
-// natural key (collection, locale, slug) or the site; or `translations` stops listing every entry
-// of the group of that collection, one per locale in order of locale, with its facts.
-
 const NOW = '2026-10-12T10:00:00.000Z'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -27,7 +20,6 @@ describe('lookup(site).lookupMany', () => {
   it('answers 60 refs in the order asked, with null where there is no entry, in chunks under the limit', async () => {
     const owner = await seedOwner(env.DB, siteKey('lookup-many'))
     const id = idFactory()
-    // Posts 1 to 60 are asked for; every third one (3, 6, 9, …) has no entry.
     const asked = Array.from({ length: 60 }, (_, i) => i + 1)
     await insertEntries(
       env.DB,
@@ -59,7 +51,6 @@ describe('lookup(site).lookupMany', () => {
             },
       ),
     )
-    // 60 refs are 29 + 29 + 2: the site and three values per ref are 88, 88 and 7 bound values.
     expect(prepared.map(placeholders)).toEqual([88, 88, 7])
     expect(Math.max(...prepared.map(placeholders))).toBeLessThanOrEqual(MAX_BOUND_PARAMETERS)
     expect(batches).toEqual([3])
@@ -88,7 +79,6 @@ describe('lookup(site).lookupMany', () => {
       id('ent_b'),
       null,
     ])
-    // The site and three values for each of the four different refs.
     expect(prepared.map(placeholders)).toEqual([13])
   })
 

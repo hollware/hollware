@@ -10,16 +10,13 @@ import {
 } from '@hollware/core'
 import type { OutboxEvent } from '../ports.ts'
 
-/** The events about an entry. */
 export type EntryEventKind = EntryEvent['kind']
 export type EventKind = HollwareEvent['kind']
 
-/** What a subscriber gets: the events of `@hollware/core`, which webhooks receive as they are. */
 export type EventPayload = HollwareEvent
 export type EntryEventPayload = EntryEvent
 export type SiteEventPayload = SiteEvent
 
-/** The path of an entry: the route of its locale, with its slug in place of `:slug`. */
 export function entryPath(
   collection: ResolvedCollection,
   locale: string,
@@ -29,7 +26,6 @@ export function entryPath(
   return route === undefined ? null : route.replace(/:slug(?![A-Za-z0-9_])/, slug)
 }
 
-/** The event of a publish or an unpublish, ready for the outbox. */
 export function eventFor(input: {
   readonly kind: EntryEventKind
   readonly site: ResolvedSite
@@ -52,10 +48,6 @@ export function eventFor(input: {
   return { id, payload: JSON.stringify(payload) }
 }
 
-/**
- * The event of a change of a site's structure, ready for the outbox: the tags of the site and of
- * every list of the collections and locales of its definition before and after the change.
- */
 export function siteEventFor(input: {
   readonly site: string
   readonly at: string

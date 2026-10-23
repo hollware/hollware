@@ -1,22 +1,9 @@
 import * as z from 'zod'
 
-/**
- * What Hollware sends to a site's webhooks (ADR-025), signed as `signWebhook` signs it: an event
- * about an entry that was published or unpublished, or about a change of the site's structure
- * (ADR-033). Every event carries the cache tags it invalidates (`@hollware/core`'s cache tags), so
- * a site that caches its pages purges them with no lookup. A receiver checks the signature with
- * `verifyWebhook`, then reads the body with `parseHollwareEvent`. Fields may be added in a minor
- * version, and kinds too: a receiver ignores a kind it does not know.
- */
-
 const base = {
-  /** The id of the event: the same on every retry of its delivery. */
   id: z.string(),
-  /** The key of the site. */
   site: z.string(),
-  /** When the change was written, in ISO 8601. */
   at: z.string(),
-  /** The cache tags the change invalidates. */
   cacheTags: z.array(z.string()),
 }
 

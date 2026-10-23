@@ -9,7 +9,6 @@ import type { OperationContext, OperationHandler } from './types.ts'
 
 type RedirectView = z.output<OperationByName<'list_redirects'>['output']>['redirects'][number]
 
-/** A redirect as the operations answer it: its slugs, and the paths on the site from its route. */
 function redirectView(context: OperationContext, redirect: StoredRedirect): RedirectView {
   const collection = context.site.collections.get(redirect.collection)
   const path = (slug: string) =>
@@ -25,11 +24,6 @@ function redirectView(context: OperationContext, redirect: StoredRedirect): Redi
   }
 }
 
-/**
- * Gives an entry another slug. A published entry changes a live URL, so moving it takes
- * content:publish; one that was ever published keeps its old slug as a redirect, and a published
- * one tells its subscribers, whose pages of it are purged by its tags.
- */
 export const moveEntry: OperationHandler<'move_entry'> = async (input, context) => {
   const site = context.site.key
   const found = await context.store.findEntryById(site, input.id, 'head')
@@ -102,7 +96,6 @@ export const moveEntry: OperationHandler<'move_entry'> = async (input, context) 
   }
 }
 
-/** The redirects of the site, newest first, a page at a time. */
 export const listRedirects: OperationHandler<'list_redirects'> = async (input, context) => {
   const rows = await context.store.listRedirects(context.site.key, {
     ...(input.collection === undefined ? {} : { collection: input.collection }),

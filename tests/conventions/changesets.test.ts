@@ -5,10 +5,6 @@ import { file, goodWorkspace, json, publishedNames } from '../support/fixtures.t
 import { readText } from '../support/repo.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: the `fixed` list of .changeset/config.json is not exactly one group holding the
-// non-private packages of packages/, or access is not public, baseBranch is not main, or
-// private packages would be versioned or tagged.
-
 describe('changeset config', () => {
   it('fixes the seven published packages as one group', () => {
     const violations = checkChangesets({

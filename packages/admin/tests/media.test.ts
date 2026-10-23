@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { parseWidths } from '../app/lib/media.ts'
 
-// Fails when parseWidths (app/lib/media.ts) takes a width that is no whole number of pixels from
-// 320 to 8192, takes more than four, keeps them out of order or twice, or refuses an empty field,
-// which is no copies at all.
-
 const refused = { ok: false, min: 320, max: 8192, most: 4 }
 
 describe('parseWidths', () => {

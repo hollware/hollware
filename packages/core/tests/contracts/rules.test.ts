@@ -4,12 +4,6 @@ import * as z from 'zod'
 import type { ProcessedMarkdown } from '../../src/markdown/types.ts'
 import { blogSchema, collectionOf, markdownOf, run, FRONTMATTER } from './support.ts'
 
-// Fails when: a generic rule of the catalog (src/contracts/rules.ts) stops finding what it is for,
-// at the path and with the fix it gives: field-length over its max or under its min, counted in
-// characters a reader sees and lifted by `unless`; field-pattern on a text that does not match as
-// a whole; required-to-publish on an empty field, only when publishing; banned-words in a text
-// field and in the body, as a whole word in any case.
-
 const titled = (title: string, extra: Record<string, unknown> = {}) =>
   markdownOf({ frontmatter: { ...FRONTMATTER, title, ...extra } })
 

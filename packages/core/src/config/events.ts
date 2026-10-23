@@ -2,26 +2,18 @@ import type { Problems } from './config-error.ts'
 import type { ResolvedEvents, ResolvedWebhook } from './types.ts'
 import { isRecord, itemPath, keyPath, quote, wrongType } from './values.ts'
 
-/** The name of a Worker secret or variable: what `wrangler secret put` takes. */
 const BINDING_NAME = /^[A-Z][A-Z0-9_]*$/
 
-/**
- * The Worker secrets a definition may not name: Hollware's own (its master secret) and
- * Cloudflare's. A site's definition is written by its owner or an agent with
- * schema:admin, who need not hold the account, so it names only secrets made for its webhooks.
- */
 const RESERVED_SECRET = /^(HOLLWARE|CLOUDFLARE|CF)_/
 
 /**
  * An IndexNow key, which is public by design (search engines fetch it at `/<key>.txt`): the
  * definition holds the key itself, never the name of a Worker secret, so no value of the Worker
- * can be sent to IndexNow (T-69 of docs/security/threat-model.md).
+ * can be sent to IndexNow.
  */
 export const INDEXNOW_KEY = /^[A-Za-z0-9-]{8,128}$/
-/** A subscriber's name: lowercase words joined by hyphens. */
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-/** The public URL of a site: an absolute http or https URL with no path, query or fragment. */
 export function readSiteUrl(path: string, raw: unknown, problems: Problems): string | null {
   if (raw === undefined) return null
   const fix = 'Write the public origin of the site, such as "https://example.com".'
@@ -42,7 +34,6 @@ export function readSiteUrl(path: string, raw: unknown, problems: Problems): str
   return url.origin
 }
 
-/** The origins of a site's pages that may read its published content from the browser. */
 export function readCors(
   path: string,
   raw: unknown,
@@ -109,7 +100,6 @@ function readWebhook(path: string, raw: unknown, problems: Problems): ResolvedWe
       'Give the https URL that receives the events.',
     )
   }
-  // Without one, the secret is Hollware's own, sealed in the database (ADR-033).
   const secret =
     raw['secret'] === undefined
       ? null
@@ -119,7 +109,6 @@ function readWebhook(path: string, raw: unknown, problems: Problems): ResolvedWe
   return { name, url: String(url), secret }
 }
 
-/** Who hears about publications (ADR-025): webhooks, and IndexNow when the site has a URL. */
 export function readEvents(
   path: string,
   raw: unknown,

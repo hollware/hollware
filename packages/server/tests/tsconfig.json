@@ -1,6 +1,4 @@
 {
-  // The tests: workerd tests see the runtime types and the vitest plugin's, Node tests and the
-  // configs of this package get Node's through Vite+.
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "types": ["../worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]

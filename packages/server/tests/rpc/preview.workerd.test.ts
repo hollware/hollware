@@ -7,20 +7,12 @@ import { handlers } from '../../src/ops/index.ts'
 import { SITE, SITE_KEY, testClock } from '../http/support.ts'
 import { seedSite } from '../support/sites.ts'
 
-// Fails when: getEntry of the RPC (`createRpc`, src/rpc/methods.ts) stops reading the latest
-// revision of the one entry a valid preview token names, or reads it for a token that is expired,
-// of another site, forged, of another entry or checked with no HOLLWARE_SECRET, or answers the
-// published version (or nothing) in place of an error for a token that does not hold, or lets a
-// preview widen any other read (listEntries stays published-only) (T-103).
-
 const SECRET = 'p'.repeat(32)
 const DRAFT = 'from-draft-to-published'
 
-/** The RPC surface over the real handlers and the real D1, with a site seeded: two published, one draft. */
 let seededOnce: ReturnType<typeof seedSite> | undefined
 
 async function world(secret: string | null = SECRET) {
-  // The tests only read, and the database is shared by the tests of the file: one seed for all.
   const seeded = await (seededOnce ??= seedSite(env.DB, SITE_KEY))
   const clock = testClock()
   const rpc = createRpc(
@@ -140,7 +132,6 @@ describe('getEntry with a preview token', () => {
       rpc.getEntry(SITE_KEY, 'blog', DRAFT, 'en', { preview: await tokenFor(idOf(DRAFT)) }),
     )
 
-    // invalid_preview, which a site takes for a refused link and shows the published page.
     expect([error.code, error.message]).toEqual([
       'invalid_preview',
       'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',

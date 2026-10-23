@@ -10,7 +10,6 @@ import {
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
-/** What a run of another program left behind. */
 export interface RunResult {
   readonly code: number
   readonly stdout: string
@@ -63,21 +62,16 @@ export const USAGE = [
   '  --version        Print the version',
 ].join('\n')
 
-/** A mistake in the arguments: the message, then the usage. */
 export class UsageError extends Error {
   override readonly name = 'UsageError'
 }
 
-/** Anything else that stops the run: one message, no usage. */
 export class CreateError extends Error {
   override readonly name = 'CreateError'
 }
 
-/** A Worker's name: lowercase letters, digits and hyphens, as Cloudflare takes it. */
 const WORKER_NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
-/** A site key, as a site's definition takes it (ADR-033). */
 const SITE_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-/** What `@hollware/*` and `hollware` say in the template's package.json. */
 const VERSION_PLACEHOLDER = 'HOLLWARE_VERSION'
 
 export interface Choices {
@@ -87,18 +81,11 @@ export interface Choices {
   readonly pm: 'npm' | 'pnpm'
   readonly install: boolean
   readonly git: boolean
-  /** `--token-file` as given; `hollware init` writes it. */
   readonly tokenFile: string | undefined
-  /** `--json`: one JSON object on stdout, and no other message. */
   readonly json: boolean
-  /**
-   * `--preset`, `--locales`, `--ip-addresses` and `--audit-retention-days` as given, for
-   * `hollware init`, which checks them.
-   */
   readonly initFlags: readonly string[]
 }
 
-/** The choices of a run, from its arguments. */
 export function readChoices(argv: readonly string[]): Choices {
   const { values, positionals } = (() => {
     try {
@@ -170,10 +157,8 @@ function replaceIn(path: string, replacements: readonly (readonly [string, strin
   writeFileSync(path, text)
 }
 
-/** Copies the template into `target` and makes it this project's. */
 export function writeProject(io: Io, target: string, choices: Choices): void {
   cpSync(io.templateDir, target, { recursive: true })
-  // npm leaves .gitignore out of a package, so the template holds it as gitignore.
   renameSync(join(target, 'gitignore'), join(target, '.gitignore'))
   replaceIn(join(target, 'package.json'), [
     ['"name": "my-hollware"', `"name": ${JSON.stringify(choices.name)}`],
@@ -183,7 +168,6 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
     ['"name": "my-hollware"', `"name": "${choices.name}"`],
     ['"database_name": "my-hollware"', `"database_name": "${choices.name}"`],
     ['"bucket_name": "my-hollware-media"', `"bucket_name": "${choices.name}-media"`],
-    // Queue names are unique in an account: each project has its own.
     ['hollware-events', `${choices.name}-events`],
   ])
   for (const file of ['README.md']) {
@@ -192,11 +176,6 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
   if (choices.pm === 'pnpm') writeFileSync(join(target, 'pnpm-workspace.yaml'), PNPM_WORKSPACE)
 }
 
-/**
- * pnpm runs no build script it was not told about, and fails the install on one. esbuild ships the
- * binary wrangler uses; workerd's binary arrives through optionalDependencies, so its script is
- * not needed.
- */
 export const PNPM_WORKSPACE = `allowBuilds:
   esbuild: true
   workerd: false
@@ -211,10 +190,8 @@ async function step(io: Io, what: string, command: string, args: string[], cwd: 
   return result
 }
 
-/** The environment variable that holds the token in an MCP client's configuration. */
 const TOKEN_VARIABLE = 'HOLLWARE_TOKEN'
 
-/** The `.mcp.json` block of a Hollware: the URL of /mcp, and a header that names HOLLWARE_TOKEN. */
 export function mcpJson(url: string): string {
   return JSON.stringify(
     {
@@ -231,25 +208,20 @@ export function mcpJson(url: string): string {
   )
 }
 
-/** The `claude mcp add` line that names HOLLWARE_TOKEN instead of the token. */
 export function claudeAddLine(url: string): string {
   return `claude mcp add --transport http hollware ${url}/mcp --header 'Authorization: Bearer \${${TOKEN_VARIABLE}}'`
 }
 
-/** What `hollware init --json` prints, as far as this package reads it. */
 function readInitJson(stdout: string): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(stdout)
     if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
       return Object.fromEntries(Object.entries(parsed))
     }
-  } catch {
-    // Reported below.
-  }
+  } catch {}
   throw new CreateError(`"hollware init --json" did not answer with a JSON object:\n${stdout}`)
 }
 
-/** Makes the project, and everything it needs to run locally. */
 export async function create(argv: readonly string[], io: Io): Promise<number> {
   const choices = readChoices(argv)
   const target = resolve(io.cwd, choices.dir)
@@ -262,7 +234,6 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
       `${tokenFile} exists already, and a token is never written over a file: choose another --token-file.`,
     )
   }
-  // The messages of a run that is not --json; with --json the one object is the only output.
   const say = (message: string) => {
     if (!choices.json) io.out(message)
   }
@@ -303,8 +274,6 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
 
   say(`Installing with ${choices.pm} ...`)
   await step(io, 'The install', choices.pm, ['install'], target)
-  // The project's names replace the starter's, and a longer one can push a line past the width
-  // the formatter keeps: the project leaves here as its own `vp check` wants it.
   await step(io, 'The formatting', join(target, 'node_modules', '.bin', 'vp'), ['fmt'], target)
   const hollware = join(target, 'node_modules', '.bin', 'hollware')
   await step(io, 'The migrations', hollware, ['migrate', '--local'], target)
@@ -315,7 +284,6 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
     [...initArgs, '--local', ...(choices.json ? ['--json'] : [])],
     target,
   )
-  // hollware dev says when the server answers, and stops it and its children with Ctrl-C.
   const dev = `${choices.pm} exec hollware dev`
   if (choices.json) {
     const made = readInitJson(init.stdout.trim())
@@ -340,8 +308,6 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
     )
     return 0
   }
-  // init says how to connect an agent and what the setup link is for: this adds only how to
-  // start the project and deploy it.
   io.out(init.stdout.trim())
   io.out(
     [

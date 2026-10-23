@@ -7,11 +7,6 @@ import { ApiError, type Output } from '../lib/api.ts'
 import { base64OfFile, sizeOf } from '../lib/images.ts'
 import { api } from '../lib/session.ts'
 
-/*
- * The images of the site (ADR-038): upload one with what it shows, see them newest first, and
- * copy the reference that shows one in an entry.
- */
-
 type Asset = NonNullable<Output<'get_asset'>['asset']>
 
 const m = useMessages()
@@ -23,7 +18,6 @@ const file = ref<File | null>(null)
 const alt = ref('')
 const busy = ref(false)
 const input = ref<HTMLInputElement | null>(null)
-/** The image whose alt is being edited, and the alt as typed. */
 const editing = ref<Asset | null>(null)
 const editedAlt = ref('')
 

@@ -3,14 +3,14 @@
 What lives in `tests/`: the guards of what this repository claims about itself, the tests of its CI scripts, and the fixtures every package's tests share. A package's tests sit next to its code.
 
 - `tests/guards/` holds the guards. A guard is a pure function, `check...(input): Violation[]`, that gets the facts of the repository as arguments and holds no exception list of its own.
-- `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each runs its guard on this repository, which has no violation, and in a `describe('self-test: ...')` block on bad fixtures, asserting the exact violation.
+- `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each runs its guard on this repository, which has none, and in a `describe('self-test: ...')` block on bad fixtures, asserting the exact violation.
 - `tests/support/` holds what guards stand on: the repository's file list, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
-- `tests/acceptance/` holds each stage's acceptance suite (`vp run test:acceptance`), named after the criteria of `PLAN.md`. It runs the built playground and example site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` with the CLI (`tests/acceptance/v0.1/support/project.ts`).
+- `tests/acceptance/` holds each stage's acceptance suite (`vp run test:acceptance`), named after the criteria of `PLAN.md`. It runs the built playground and site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` (`tests/acceptance/v0.1/support/project.ts`).
 - `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker` (`vp run test:conformance`): runner, token proxy, probes, baselines and must-pass profile.
 - `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
 
-Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`; a failure for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each published bin (`publishConfig.bin`, the build) with `--version`.
+Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`; failing for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each built bin (`publishConfig.bin`) with `--version`.
 
 ## Guards
 
@@ -21,26 +21,26 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/build-order.test.ts`: `check:push` runs `vp check` and `vp test` before anything builds, so CI proves no package needs another built.
 - `tests/conventions/licenses.test.ts`: every package `LICENSE` is a byte copy of the root MIT one and its copyright line.
 - `tests/conventions/no-claude-md.test.ts`: no `CLAUDE.md`, tracked or not.
-- `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, global or dependency; its `src` type-checks against the web platform only, and each test runs in Node and in workerd.
+- `tests/conventions/core-purity.test.ts`: `packages/core` has no Cloudflare or Node import, global or dependency; `src` type-checks against the web platform only; each test runs in Node and workerd.
 - `tests/conventions/server-types.test.ts`: `packages/server/src` type-checks with the generated Workers runtime types only, so a Node global is a type error.
-- `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and its timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to site tables carry `site_id`.
+- `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to site tables carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration of a `@hollware/server@*` release tag is edited or removed, and the tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
 - `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), the sign-in pages its ground and accent, every logo one mark.
-- `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: the starter's files, the catalog's exact versions, Hollware's as `HOLLWARE_VERSION`, a standalone tsconfig.
+- `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: its files, the catalog's exact versions, `HOLLWARE_VERSION`, a standalone tsconfig.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
-- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in the workspace.
+- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
 - `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds, excludes, ignored advisories, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
-- `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` lists `no_nodejs_compat` and `no_nodejs_compat_v2`, no positive Node.js flag, and outside `templates/` `send_metrics: false`; a Hollware Worker (D1 `DB`) lists `global_fetch_strictly_public` and, in every environment with its own bindings, binds `OAUTH_KV` and has a cron and a queue consumer with `dead_letter_queue`, but `WORKERS_WITHOUT_EVENTS`.
+- `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` lists `no_nodejs_compat` and `no_nodejs_compat_v2`, no positive Node.js flag, and outside `templates/` `send_metrics: false`; a Hollware Worker (D1 `DB`) lists `global_fetch_strictly_public` and, per environment with its own bindings, binds `OAUTH_KV`, a cron and a queue consumer with `dead_letter_queue`, but `WORKERS_WITHOUT_EVENTS`.
 - `tests/conventions/worker-projects.test.ts`: every Wrangler config sits in a workspace package that defines `build` and `types:check`, and `types:check` names a config inside the package.
 - `tests/conventions/dev-port.test.ts`: the playground and the starter serve `vp dev` on a fixed port with `strictPort`, and their `HOLLWARE_PUBLIC_URL` names that port.
-- `tests/conventions/conformance-baselines.test.ts`: each revision's baseline (`tests/conformance/baselines/`) names single checks with a class and a reason, none of the must-pass profile, and keeps its recorded size; the profile keeps its claims.
+- `tests/conventions/conformance-baselines.test.ts`: each revision's baseline (`tests/conformance/baselines/`) names single checks with a class and reason, none of the must-pass profile, at its recorded size; the profile keeps its claims.
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), each job gated to this repository and its branch and chained by `needs`; `publish` is isolated; one run per ref, never cancelled, no job-level group; `promotion-check.sh` and `finalize-release.sh` get exactly their env and the full history; `finalize_only` only finalizes `RELEASE_SHA` or `release_sha`; `ci.yml` runs on `release` without the changeset gate, with `fetch-depth: 0`.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), jobs gated to this repository and branch, chained by `needs`; `publish` isolated; one run per ref, never cancelled; its scripts get exactly their env and full history; `finalize_only` finalizes only `RELEASE_SHA`/`release_sha`; `ci.yml` runs on `release` without the changeset gate, `fetch-depth: 0`.
 - `tests/conventions/deploy-workflow.test.ts`: `deploy.yml` deploys staging from `main`, production from `release` or either by hand, gated by `DEPLOY_ENABLED`, in `environment: deploy`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
@@ -57,6 +57,8 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
 - `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
 - `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major changeset.
+- `tests/conventions/comments.test.ts`: no comment but a bin's shebang, a top `/// <reference>`, a reasoned `@ts-expect-error` or `oxlint-disable-next-line`, theme markers, action pins, pnpm reasons, `ZIZMOR_IGNORES`, migration breakpoints, shipped migrations, TSDoc of public exports.
+- `tests/conventions/doc-refs.test.ts`: no file cites a removed document (ADR, threat id, design, brand book) but `DOC_REF_FILES` and shipped migrations.
 - `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
 - `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.
 - `tests/meta/agents-commands.test.ts`: the `vp run`, `pnpm --filter` and `node` commands `AGENTS.md` cites exist.
@@ -70,8 +72,8 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/meta/patches.test.ts`: a dependency patch starts with `PATCHED (reason)` and a test mentions it.
 - `tests/meta/guards-registry.test.ts`: every guard file is cited here, once, with what it binds, and the root `AGENTS.md` points here without repeating a line.
 - `tests/meta/self-tests.test.ts`: every exported `check...` of a guard is called, directly or through a helper, in a `self-test` block that asserts with `expect(`.
-- `tests/meta/scanners.test.ts`: the JSONC, Markdown, source, syntax-tree, Vite+ task and workspace readers the guards stand on.
-- `tests/ci/changeset-check.test.ts`: the changeset gate checks pull requests, pushes and manual runs, and skips only a branch creation, the Version Packages pull request of github-actions[bot] and its merge (squash or merge commit); it fails on a push whose previous tip is not an ancestor of the head.
-- `tests/ci/promotion-check.test.ts`: the promotion gate refuses a commit not on `main`, a push that is not a fast-forward or has no previous tip (a manual run may skip that check), and a pending changeset.
-- `tests/ci/verify-and-publish.test.ts`: the `publish` job's shell, run from `release.yml` with a stub `npm`, verifies the plan and every tarball before publishing, skips versions npm has, uses `--provenance`, refuses an answer for another version.
-- `tests/ci/finalize-release.test.ts`: `finalize-release.sh`, over a real history with stub `gh`, `npm` and `sleep`, waits until every version is live on npm with provenance, then tags and releases only the public packages the release commit bumped, with the right Latest and prerelease flags and its notes; it leaves what exists alone, and fails on a later bump under an unknown title rather than settle on an older release.
+- `tests/meta/scanners.test.ts`: the JSONC, Markdown, source, comment, syntax-tree, Vite+ task and workspace readers.
+- `tests/ci/changeset-check.test.ts`: the changeset gate checks pull requests, pushes and manual runs, skipping only a branch creation and the Version Packages pull request of github-actions[bot] and its merge; it fails on a push whose previous tip is no ancestor of the head.
+- `tests/ci/promotion-check.test.ts`: the promotion gate refuses a commit not on `main`, a push that is no fast-forward or has no previous tip (but a manual run), and a pending changeset.
+- `tests/ci/verify-and-publish.test.ts`: the `publish` job's shell, with a stub `npm`, verifies the plan and every tarball before publishing, skips versions npm has, uses `--provenance`, refuses an answer for another version.
+- `tests/ci/finalize-release.test.ts`: `finalize-release.sh`, with stub `gh`, `npm` and `sleep`, waits for every version live on npm with provenance, then tags and releases only the public packages the release commit bumped, with the right Latest, prerelease flags and notes; leaves what exists alone; fails on a later bump under an unknown title.

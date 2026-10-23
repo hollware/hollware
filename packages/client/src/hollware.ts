@@ -26,7 +26,6 @@ export type HollwareOptions = ReaderOptions & {
   readonly site: string
 }
 
-/** What a page shows of an entry in a listing: no verdict, no revision, no state of review. */
 /** What a page needs of an image to lay it out: `<img src={url} srcset={srcset} width height>`. */
 export interface PageImage {
   /** In pixels; `null` for an SVG. */
@@ -247,14 +246,9 @@ interface SummaryFields {
   readonly tags: readonly string[]
   readonly publishedAt: string | null
   readonly updatedAt: string
-  /**
-   * The images its frontmatter names (a cover), by the URL the frontmatter holds: their size, and
-   * the `srcset` of their narrower copies, or `null` when they have none.
-   */
   readonly images?: Readonly<Record<string, PageImage>>
 }
 
-/** The fields of a summary that a page may see, picked one by one so no other one travels. */
 function summaryOf(entry: SummaryFields): PageSummary {
   return {
     id: entry.id,
@@ -285,7 +279,6 @@ export function createHollware(options: HollwareOptions): Hollware {
   const { site } = options
   return {
     async getEntry(collection, locale, slug, getOptions = {}) {
-      // A value that is not shaped like a token is never kept, wherever it comes from.
       const preview = isPreviewToken(getOptions.preview)
         ? getOptions.preview
         : previewTokenFromCookie(getOptions.request?.headers.get('cookie'))

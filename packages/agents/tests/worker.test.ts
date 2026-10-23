@@ -8,11 +8,6 @@ import {
   type AgentsEnv,
 } from '../src/worker.ts'
 
-// Fails when: the Worker of the agents (src/worker.ts) stops running one role a run, in turn by
-// the ten minutes of the time (the reviewer, the translator, the auditor), writes the report more
-// than once in its days, stops remembering the day of the last one, or reaches Hollware other than
-// through the binding at its public URL with the token.
-
 describe('roleAt', () => {
   it('takes the roles in turn, ten minutes each', () => {
     expect(
@@ -31,7 +26,6 @@ describe('auditDue', () => {
   })
 })
 
-/** Hollware over MCP, answering each tool with a canned output, and what it was asked. */
 function fakeHollware() {
   const calls: { url: string; auth: string | null; tool: string }[] = []
   const outputs: Record<string, object> = {

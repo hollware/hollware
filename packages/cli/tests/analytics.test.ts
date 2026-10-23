@@ -1,14 +1,3 @@
-// Fails when:
-// - "connects a provider …": `analytics connect` stops sending the provider, the key of
-//   --credential-file and the settings of the flags to connect_analytics, or stops saying what the
-//   provider answered.
-// - "says what is connected …": `analytics status` and `disconnect` stop reading get_analytics and
-//   calling disconnect_analytics, or print the key.
-// - "never takes a key …": a key on the command line, a missing or empty file, an unknown provider
-//   or a bad project reach the server.
-// - "tells what the provider refused …": the refusal and its fix are not told, the exit code is not
-//   1, or the message repeats the key.
-// - "says when the Hollware is too old": a Hollware without the tools is not told.
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
@@ -31,7 +20,6 @@ async function serve(options: Partial<StubOptions> = {}): Promise<StubServer> {
   return stub
 }
 
-/** A directory with the provider's key in key.txt. */
 function withKey(key = KEY): string {
   const dir = temp.make()
   writeFileSync(join(dir, 'key.txt'), `${key}\n`)

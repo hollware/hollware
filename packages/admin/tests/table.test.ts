@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { pageRange } from '../app/lib/table.ts'
 
-// Fails when: the count under a table (src/components/DataTable.vue, lib/table.ts) stops naming the
-// first and the last row of the page, counted from 1, of the rows the filter leaves; or names a
-// row past the last one, or a page the filter emptied.
-
 describe('the range of a page', () => {
   it('names the first and the last row of each page', () => {
     expect([pageRange(0, 25, 120), pageRange(1, 25, 120), pageRange(4, 25, 120)]).toEqual([

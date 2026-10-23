@@ -20,7 +20,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** The text of an answer of Workers AI, in the shapes its text models answer with. */
 export function textOf(answer: unknown): string | null {
   if (typeof answer === 'string') return answer
   if (!isRecord(answer)) return null
@@ -68,7 +67,6 @@ export function capped(model: Model, memory: Memory, limit: number, today: () =>
     const key = `usage:${today()}`
     const used = Number((await memory.get(key)) ?? '0')
     if (used >= limit) throw new DailyLimitReached(limit)
-    // Two days, so that the count of a day outlives it a little.
     await memory.put(key, String(used + 1), 2 * 86_400)
     return model(messages)
   }

@@ -18,23 +18,15 @@ import { adminClient } from './admin.ts'
 import type { GrantProps, OAuth } from './server.ts'
 
 export interface AuthorizeOptions {
-  /** The sites of the deployment: a grant is for one of them. */
   readonly sites: ReadonlySet<string>
   readonly clock: Clock
   readonly oauth: (publicUrl: string) => OAuth
-  /** A site of the deployment as the activity log needs it, current with D1, or `undefined`. */
   readonly site?: (c: Context<GatewayEnv>, key: string) => Promise<AuditSite | undefined>
-  /** The activity log of a request, for the person who allows an app (ADR-037). */
   readonly audit?: (c: Context<GatewayEnv>, actor: AuditActor) => AuditLog
 }
 
-/** What a client gets when it asks for no scope: the baseline that `/mcp` and `/v1` name. */
 const BASELINE: readonly Scope[] = ['content:read']
 
-/**
- * The scopes a person may grant: those asked for that the person's role allows, in the order of
- * the role. Anything that is not a scope of Hollware is left out.
- */
 export function grantableScopes(role: string, asked: readonly string[]): Scope[] {
   if (!isRole(role)) return []
   const scopes = asked.filter(isScope)
@@ -44,17 +36,11 @@ export function grantableScopes(role: string, asked: readonly string[]): Scope[]
 function html(body: string, status = 200, extra?: Headers): Response {
   const headers = new Headers(plainPageHeaders())
   extra?.forEach((value, name) => {
-    // The consent helpers' cookies bind the form to this browser; their other headers are ours.
     if (name.toLowerCase() === 'set-cookie') headers.append(name, value)
   })
   return new Response(body, { status, headers })
 }
 
-/**
- * An error of the authorization endpoint, as the consent page guide says: a redirect back to the
- * client only when the library validated the client and its exact redirect URI, and a page of our
- * own otherwise. Anything else is a bug or an outage, and goes on to the error handler.
- */
 function answerError(error: unknown): Response {
   if (error instanceof AuthorizationError && error.redirectTo !== undefined) {
     return new Response(null, { status: 302, headers: { location: error.redirectTo } })
@@ -74,24 +60,6 @@ function answerError(error: unknown): Response {
   throw error
 }
 
-/**
- * The authorization endpoint of the OAuth server (ADR-026), which is Hollware's page and not the
- * library's: the library parses and validates the request, and this page signs the person in,
- * shows what the client asks for, and completes the authorization with what the person allowed.
- *
- * - A person without a session is sent to `/signin`, which comes back here once they are in. The
- *   session cookie is only sent to `/authorize`.
- * - The admin, Hollware's own client (`admin.ts`), gets what it asks for within the role, with no
- *   consent page.
- * - The page offers the scopes the client asked for that the person's role allows, each checked;
- *   the person may untick any. A request that would get no scope at all is refused with
- *   `access_denied`.
- * - The grant stores the person and the site. What its tokens may do is read again on each request
- *   against the person's role then (`server.ts`).
- * - The site is the one `?site=` names, if the person is a member of it; else the only site the
- *   person is a member of; else the consent page asks which (v0.4). The admin names its site, and
- *   takes the first one when it names none.
- */
 export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOptions): void {
   const person = async (c: Context<GatewayEnv>) => {
     const secret = getCookie(c, SESSION_COOKIE)
@@ -134,7 +102,6 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
         asked === undefined ? undefined : signedIn.memberships.find((m) => m.site === asked)
       if (asked !== undefined && named === undefined) return notMember(asked)
       if (request.clientId === (await adminClient(server, c.env)).clientId) {
-        // The admin is Hollware's own page: the person signed in to use it, and is not asked.
         const membership = named ?? first
         const props: GrantProps = { userId: signedIn.userId, site: membership.site }
         const { redirectTo } = await oauth.completeAuthorization({
@@ -149,8 +116,6 @@ export function installAuthorize(app: Hono<GatewayEnv>, options: AuthorizeOption
       const choices: readonly { site: string; role: Role }[] =
         named !== undefined ? [named] : signedIn.memberships
       const asking = request.scope.length === 0 ? BASELINE : request.scope
-      // What the page offers: the scopes any site the person may choose allows; the site they
-      // choose cuts them to its role when they approve.
       const scopes = [...new Set(choices.flatMap((m) => grantableScopes(m.role, asking)))]
       if (scopes.length === 0) {
         const location = authorizationErrorRedirect(

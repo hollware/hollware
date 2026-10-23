@@ -2,12 +2,6 @@ import { ref } from 'vue'
 import type { Messages } from '../i18n/en.ts'
 import { ApiError, type Output } from './api.ts'
 
-/**
- * Saving a change of the structure (ADR-033) as the admin does it: send it, and if the server
- * answers that it touches existing entries, show what and send it again once the person agrees;
- * show every problem of an invalid one, and a conflict with whoever changed it first.
- */
-
 type Change = Output<'update_site'>
 export type Impact = NonNullable<Change['impact']>
 export type Problem = NonNullable<Change['problems']>[number]
@@ -65,7 +59,6 @@ export function useStructureChange(onDone: (answer: Change) => Promise<void> | v
   return { busy, impact, problems, conflict, failure, run, confirmPending, cancel }
 }
 
-/** The lines of an impact, as a person reads them. */
 export function impactLines(impact: Impact, text: Messages['structure']): string[] {
   return [
     ...impact.removedCollections.map((removed) =>

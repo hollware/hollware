@@ -6,17 +6,8 @@ import type { Actor } from '../../src/ports.ts'
 import { seedSite, type SeededEntry, type SeededSite } from '../support/sites.ts'
 import { fixedClock, newRevision } from './support.ts'
 
-// Fails when: any method of the store stops carrying `site_id` in a query of its own (the reads
-// by key and by id, listing, translations, lookups, the last publication, the holder of a slug or
-// a translation, and the reads that tell `conflict` from `not_found`), or in a write (the revision,
-// the publication and the entry's update): with the rows of a second site in the database, which
-// has the same natural keys, a call for one site then sees, changes or counts the other's rows.
-// Each test runs for both sites as the caller, so that whichever site was written first cannot
-// hide a query that forgets the site.
-
 const NOW = '2026-10-12T10:00:00.000Z'
 
-/** The seeded entries of a site: two published (en, es) in one translation group, and a draft. */
 interface Entries {
   readonly english: SeededEntry
   readonly spanish: SeededEntry
@@ -44,7 +35,6 @@ const actorOf = (site: SeededSite): Actor => ({
   meta: null,
 })
 
-/** Two seeded sites with the same natural keys; the `caller` is the one the calls are made for. */
 async function seedPair(callerIs: 'home' | 'stranger') {
   const suffix = crypto.randomUUID()
   const home = await seedSite(env.DB, `home-${suffix}`)
@@ -59,7 +49,6 @@ async function seedPair(callerIs: 'home' | 'stranger') {
   }
 }
 
-/** Everything a site has in the database that a write could change. */
 async function snapshot(site: string) {
   const { results: entries } = await env.DB.prepare(
     `SELECT id, status, version, head_rev, published_rev, published_at, published_sort_key,
@@ -115,7 +104,6 @@ describe.each(['home', 'stranger'] as const)(
 
     it('never shows a revision of another site, even to an entry that points at one', async () => {
       const { caller, mine, theirs, store } = await seedPair(callerIs)
-      // `head_rev` and `published_rev` have no foreign key, so a bug could point one at another site.
       await env.DB.prepare('UPDATE entries SET head_rev = ?, published_rev = ? WHERE id = ?')
         .bind(theirs.english.revisionId, theirs.english.revisionId, mine.english.id)
         .run()
@@ -167,7 +155,6 @@ describe.each(['home', 'stranger'] as const)(
       const head = await list({ view: 'head', limit: 100 })
       const published = await list({ view: 'published', limit: 100 })
       const tagged = await list({ view: 'head', limit: 100, tag: 'cms' })
-      // A page of exactly two published entries is the last: the other site's two do not make a next one.
       const exact = await list({ view: 'published', limit: 2 })
 
       expect(head.entries.map((view) => view.entry.id).toSorted()).toEqual(
@@ -184,7 +171,6 @@ describe.each(['home', 'stranger'] as const)(
         null,
       ])
       expect(exact.entries).toHaveLength(2)
-      // One at a time, the second page is the other published entry of this site, and the last.
       const first = await list({ view: 'published', limit: 1 })
       const second = await list({ view: 'published', limit: 1, cursor: first.nextCursor ?? '' })
       expect([first.entries.length, second.entries.length, second.nextCursor]).toEqual([1, 1, null])
@@ -209,7 +195,6 @@ describe.each(['home', 'stranger'] as const)(
 
     it('looks up entries and translations in its own site, and finds nothing for a key only the other has', async () => {
       const { caller, other, mine, store } = await seedPair(callerIs)
-      // An entry that exists in the other site only.
       const onlyThere = { collection: 'blog', locale: 'en', slug: 'only-in-the-other-site' }
       const made = await store.createEntry(other.site, {
         ...onlyThere,
@@ -316,7 +301,6 @@ describe.each(['home', 'stranger'] as const)(
         { outcome: 'not_found' },
       ])
       expect(await snapshot(other.site)).toEqual(before)
-      // The same write for its own entry lands, and still touches nothing of the other site.
       expect((await write(mine.draft.id)).outcome).toBe('saved')
       expect(await snapshot(other.site)).toEqual(before)
     })
@@ -324,7 +308,6 @@ describe.each(['home', 'stranger'] as const)(
     it('answers taken by an entry of its own site when a revision asks for a translation both sites have', async () => {
       const { caller, mine, store } = await seedPair(callerIs)
 
-      // The draft is an English entry; `edge-caching` already has an English one, here and there.
       const answer = await store.appendRevision(caller.site, {
         entryId: mine.draft.id,
         expectedVersion: 1,
@@ -374,7 +357,6 @@ describe.each(['home', 'stranger'] as const)(
         { outcome: 'not_found' },
       ])
       expect(await snapshot(other.site)).toEqual(before)
-      // Its own published entry does come off, and the other site's stay published.
       expect((await unpublish(mine.english.id)).outcome).toBe('unpublished')
       expect(await snapshot(other.site)).toEqual(before)
       expect(

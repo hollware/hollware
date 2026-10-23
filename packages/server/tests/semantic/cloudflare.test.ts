@@ -7,12 +7,6 @@ import {
   workersAiEmbedder,
 } from '../../src/semantic/cloudflare.ts'
 
-// Fails when: the adapters over Workers AI and Vectorize (src/semantic/cloudflare.ts) stop asking
-// the model for a batch of texts and reading `data` back, stop refusing an answer without a vector
-// per text, stop narrowing a query by site (and by collection, locale and summary when asked),
-// stop dropping a match whose metadata is not Hollware's, or semanticOf takes a Worker with only
-// one of the two bindings as having semantic search.
-
 function fakeAi(answer: unknown) {
   const runs: { model: string; input: unknown }[] = []
   return {

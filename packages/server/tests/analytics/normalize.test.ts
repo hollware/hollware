@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { hostsOf, pathOf, ranked, sinceOf } from '../../src/analytics/normalize.ts'
 
-// Fails when: what a provider answers stops reaching content_stats as ADR-040 says: the site's
-// hosts are not the host of its url plus the connection's, lower case and once each, or a name that
-// could break a query gets through; a path keeps its query or fragment, `/a` and `/a/` stop being
-// one page, Cloudflare's own paths or a foreign `//host` path get through; counts of one page stop
-// adding up, zero or broken counts are kept, the order is not most read first, or the limit is not
-// kept after merging; or the first day of a count is not `days` before now, in UTC.
-
 describe('the hosts of a site', () => {
   it('are the host of its url, then the ones the connection adds, lower case and once each', () => {
     expect(hostsOf('https://Example.com/blog/', ['www.example.com', 'example.com'])).toEqual([

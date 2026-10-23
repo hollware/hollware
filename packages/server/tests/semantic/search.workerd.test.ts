@@ -8,31 +8,13 @@ import { agent, BINDING, blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 import { fakeSemantic } from './fakes.ts'
 
-// Fails when: the operation `search` (src/ops/search.ts, src/ops/semantic-search.ts) stops finding
-// by meaning what full text cannot, answering the excerpt of an entry's closest piece, leaving out
-// an entry unpublished since its vectors were made, or narrowing the index to a locale; stops
-// merging both in hybrid, where the words found by full text keep their snippet; or stops saying
-// in `mode` that the search was full text when the deployment has no semantic search; or get_entry
-// (src/ops/get-entry.ts) stops answering, only when asked, the published entries the vectors found
-// closest when the entry was indexed (src/semantic/index-entry.ts), closest first and never itself;
-// or the cron's refreshRelated stops finding them again for an entry whose list is empty after ten
-// minutes, or a day old, or touches one whose list is fresh; or search with passages stops answering
-// the section a match found (by meaning, its piece; by words, the one that holds them) with its
-// heading, or minScore stops leaving out what matches by meaning less.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/**
- * The fake model counts letters, so posts are written for their letters: "jazz" and "buzz" are
- * near each other and far from "moon". A post's summary is its title, its description (the title
- * again) and its text.
- */
 const POSTS = {
   jazz: { title: 'Jazz', body: '\nJazz quizzes, a jazzy prize.\n' },
   buzz: { title: 'Buzz', body: '\nBuzz, fuzz and a quiz.\n' },
   moon: { title: 'Moon', body: '\nMoon on the moor, a moody noon.\n' },
-  // A summary far from "jazz", and a section near it.
   notes: {
     title: 'Notes',
     body: '\nMoon on the moor.\n\n## Jazz\n\nJazz quizzes, a jazzy prize.\n',
@@ -50,7 +32,6 @@ async function publish(world: World, slug: keyof typeof POSTS): Promise<string> 
     markdown: markdown(slug),
   })
   if (created.entry === undefined) throw new Error(JSON.stringify(created))
-  // The blog publishes a post only with its translation.
   await world.agent.createDraft({
     collection: 'blog',
     locale: 'es',
@@ -62,7 +43,6 @@ async function publish(world: World, slug: keyof typeof POSTS): Promise<string> 
   return created.entry.id
 }
 
-/** Publishes the posts and indexes them in this order, and gives a site's reader of them. */
 async function indexed(label: string, slugs: readonly (keyof typeof POSTS)[]) {
   const world = await newWorld(env.DB, label)
   const { semantic } = fakeSemantic()
@@ -159,7 +139,6 @@ describe('related entries', () => {
 
 describe('the refresh of related entries', () => {
   it('finds them again when they were empty for ten minutes, or are a day old', async () => {
-    // jazz is indexed alone, so it finds no related entries; the others come after it.
     const { world, reader, semantic } = await indexed('related-refresh', ['jazz', 'buzz', 'moon'])
     const site = reader(semantic)
     const db = connect(world.db)
@@ -192,7 +171,6 @@ describe('passages', () => {
     const { reader, semantic } = await indexed('passages', ['moon', 'notes'])
     const site = reader(semantic)
 
-    // No word of this query is in the text: only the piece the vectors found can name the section.
     const meaning = await site.search({ query: 'zazz quiz', mode: 'semantic', passages: true })
     const words = await site.search({ query: 'quizzes', mode: 'fulltext', passages: true })
     const plain = await site.search({ query: 'quizzes', mode: 'fulltext' })

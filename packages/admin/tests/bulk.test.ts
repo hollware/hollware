@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { countOutcomes, runAll } from '../app/lib/bulk.ts'
 
-// Fails when: a bulk action of the admin (app/lib/bulk.ts) runs more calls at once than it says,
-// or one at a time; loses the order of the rows; lets one row that throws stop the others or lose
-// its error; or counts the outcomes wrong.
-
 describe('runAll', () => {
   it('runs every item, at most so many at once, and keeps their order', async () => {
     let running = 0

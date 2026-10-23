@@ -3,24 +3,14 @@ import { plain, readYaml } from '../support/yaml.ts'
 import { arrayAt, isRecord, isStringArray } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `principles`: the five principles named in the README are the options of the "Related
- * principle" dropdown of the feature request form, in the same words and order, followed by
- * the option for a proposal that fits none of them. A principle renamed in one place and not
- * in the other would send contributors to a name that no longer exists.
- */
-
 export interface PrinciplesInput {
-  /** `README.md`. */
   readme: TextFile
-  /** `.github/ISSUE_TEMPLATE/feature_request.yml`. */
   featureRequest: TextFile
 }
 
 export const NO_PRINCIPLE_OPTION = 'None of them, or I am not sure'
 export const PRINCIPLE_COUNT = 5
 
-/** The names of the numbered principles of the README, without their final period. */
 export function principlesOf(readme: string): string[] {
   const names: string[] = []
   for (const { line } of sectionLines(readme, 'Principles')) {

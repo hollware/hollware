@@ -44,7 +44,6 @@ export const ANALYTICS_USAGE = [
   '  --help                     Show this help',
 ].join('\n')
 
-/** The key of a provider, from its file, trimmed; a missing or empty file is refused. */
 function readCredential(io: Io, file: string | undefined): string {
   if (file === undefined) {
     throw new UsageError(

@@ -6,11 +6,6 @@ import type { PublishWrite } from '../../src/ports.ts'
 import { seedSite, type SeededEntry, type SeededSite } from '../support/sites.ts'
 import { fixedClock, VERDICT } from './support.ts'
 
-// Fails when: src/db/writes.ts publishGroup stops publishing every entry of a group in one batch,
-// all or none (ADR-024): a member that moved past its version, or that does not exist, must leave
-// every other member as it was, with no publication appended, and the refusal must name that
-// member; or a group that is in order stops ending with each entry published at the next version.
-
 const NOW = '2026-10-14T10:00:00.000Z'
 
 async function seeded() {

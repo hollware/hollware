@@ -2,37 +2,15 @@ import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { parseManifests, type Manifest } from './workspace.ts'
 
-/**
- * Guard `worker-projects`: a Worker is built and type-checked with the rest of the repository.
- * `vp run -r build` and `vp run -r types:check` run the script of that name in every workspace
- * package, so a Worker that sits in a package without those scripts is built and checked by
- * nothing, and a change to its bindings leaves its generated types out of date.
- *
- * For every Wrangler config of the repository (`wrangler.json`, `wrangler.jsonc`,
- * `wrangler.toml`):
- *
- * - it belongs to a workspace package: the nearest `package.json` above it that the workspace
- *   lists, the root one included;
- * - that package defines both a `build` and a `types:check` script;
- * - when the config is not in the package's own directory (`apps/playground/site/wrangler.jsonc`
- *   in `apps/playground`), the `types:check` script names its path relative to the package
- *   (`-c site/wrangler.jsonc`), because Wrangler reads only the config of the working directory
- *   unless it is told another.
- */
-
 export interface WorkerProjectsInput {
-  /** Every Wrangler config of the repository, repository-relative. */
   configs: readonly string[]
-  /** The `package.json` of the root and of every workspace package. */
   manifests: readonly TextFile[]
 }
 
-/** Whether a repository path is a Wrangler config. */
 export function isWorkerConfig(path: string): boolean {
   return /(?:^|\/)wrangler\.(?:json|jsonc|toml)$/.test(path)
 }
 
-/** The workspace package a config belongs to: the closest one whose directory holds it. */
 function ownerOf(config: string, manifests: readonly Manifest[]): Manifest | undefined {
   let best: Manifest | undefined
   for (const candidate of manifests) {
@@ -42,7 +20,6 @@ function ownerOf(config: string, manifests: readonly Manifest[]): Manifest | und
   return best
 }
 
-/** The scripts of a manifest, by name. A script that is not a non-empty string is no script. */
 function scriptsOf(manifest: Manifest): Record<string, string> {
   const found: Record<string, string> = {}
   const scripts: unknown = manifest.json.scripts
@@ -53,7 +30,6 @@ function scriptsOf(manifest: Manifest): Record<string, string> {
   return found
 }
 
-/** Whether a script names a path as a word of its own: `-c site/wrangler.jsonc`, `--config=./a`. */
 function namesPath(script: string, path: string): boolean {
   const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`(?:^|[\\s"'=])(?:\\./)?${escaped}(?=$|[\\s"';&|)])`).test(script)

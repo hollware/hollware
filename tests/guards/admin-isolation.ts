@@ -2,17 +2,7 @@ import { analyzeSource } from '../support/source.ts'
 import { packageOf } from './declared-imports.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `admin-isolation`: `@hollware/admin` is a prebuilt single-page app that the Worker
- * serves as static assets. It never enters the Worker bundle, so no code outside
- * `packages/admin` imports it (`packages/admin/AGENTS.md`). A project may still depend on the
- * package to get its built files; what is forbidden is an `import` of it. The one exception is a
- * project's `vite.config.ts`, which runs in Node before anything is bundled and imports the root
- * of the package for `adminAssets()`, the directory of those files.
- */
-
 export interface AdminIsolationInput {
-  /** The source files of the repository, with their text. */
   sources: readonly TextFile[]
 }
 

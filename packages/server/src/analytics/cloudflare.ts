@@ -3,12 +3,6 @@ import { ranked, sinceOf } from './normalize.ts'
 import { isRecord, messageOf, ProviderError, request } from './request.ts'
 import { rowsFor, type Source, type SourceInput } from './source.ts'
 
-/*
- * Cloudflare Web Analytics (ADR-040): the page loads of the account's sites, read from the GraphQL
- * API with a token that has Account Analytics Read. Cloudflare samples them, so the counts are
- * estimates, good enough to rank pages.
- */
-
 export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4'
 
 const ACCOUNT_FIX =
@@ -17,7 +11,6 @@ const ACCOUNT_FIX =
 const REFUSED_FIX =
   'Give the token Account Analytics Read on the account: in Cloudflare, My Profile, API Tokens, edit the token.'
 
-/** The GraphQL query of the most loaded paths of some hosts since a day. */
 export const PAGES_QUERY = `query ($account: String!, $since: Date!, $hosts: [String!]) {
   viewer {
     accounts(filter: { accountTag: $account }) {
@@ -47,7 +40,6 @@ export function cloudflareSource(input: SourceInput): Source {
 
   return {
     async discover(): Promise<AnalyticsSettings> {
-      // A token with Account Analytics Read alone cannot list its accounts: the account is given.
       if (input.settings.accountId === undefined) {
         throw new ProviderError('invalid', 'Cloudflare needs the account to read.', ACCOUNT_FIX)
       }

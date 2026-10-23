@@ -2,13 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { within } from '../../src/mcp/timeout.ts'
 
-// Fails when: `within` stops giving up on work that takes longer than its limit, with the error
-// `onTimeout` makes and no earlier than the limit; stops passing on the value or the failure of
-// work that finishes first; leaves its timer running, whichever way it ends; or lets a failure of
-// the work after the timeout through as an unhandled rejection.
-
 beforeEach(() => {
-  // Only the timers: the runtime still has its own turns, which the promises of the test need.
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 })
 

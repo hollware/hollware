@@ -15,15 +15,6 @@ import {
 import { RAW_HTML } from '../../src/contracts/safety.ts'
 import * as schemas from '../../src/operations/schemas.ts'
 
-// Fails when: `BUILT_IN_CONTRACT_IDS` stops being the list of ids the config reserves;
-// `REFUSAL_CONTRACT_IDS` stops being exactly the three violations that make a write refused, or stops
-// being the ids no verdict holds (the last three built-in ids, the ones the pipeline and the store make);
-// `describeBuiltInContracts` stops listing the always-on contracts in order with the severity,
-// phases and wording agents read in `describe_site`, or stops fitting `contractDescription`;
-// `describeContract` stops giving a contract with no phases both, or stops putting them in order;
-// `isBuiltInContract` stops telling the contracts Hollware makes from a site's own; `sizeLimitViolation`
-// stops saying the same for every size; or the module stops exporting what the package entry wires up.
-
 const BOTH = ['write', 'publish']
 
 describe('BUILT_IN_CONTRACT_IDS', () => {

@@ -1,14 +1,3 @@
-/**
- * The public API of Hollware, as what 1.0 promises (ADR-036) reads it from the code: every MCP tool
- * with its scopes, effect and schemas, the read API's OpenAPI document, the methods of the RPC
- * entrypoint, the events webhooks get, the commands and flags of the CLI, the names each published
- * package exports, and the hash of every migration. `api/` holds it as JSON, one file per part;
- * the guard `public-api` fails when the code and `api/` differ, so a change of the public API is
- * always in the diff of the change that makes it.
- *
- *   node scripts/api.ts           says whether api/ is current
- *   node scripts/api.ts --write   writes api/ from the code
- */
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -17,10 +6,8 @@ import { pathToFileURL } from 'node:url'
 import { isDeepStrictEqual } from 'node:util'
 import { parseSync } from 'vite-plus'
 
-/** One part of the public API: the file of `api/` and what it holds. */
 export type Surface = Readonly<Record<string, unknown>>
 
-/** A node of the tree oxc parses: only the fields read here. */
 interface Node {
   readonly type: string
   readonly [key: string]: unknown
@@ -52,7 +39,6 @@ const nameOf = (node: unknown): string | undefined => {
   return typeof name === 'string' ? name : undefined
 }
 
-/** Keys sorted all the way down, so the JSON of a part depends on nothing but its content. */
 function sorted(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sorted)
   if (typeof value !== 'object' || value === null) return value
@@ -63,10 +49,6 @@ function sorted(value: unknown): unknown {
   )
 }
 
-/**
- * The names a module exports, each `value` or `type`, following `export *` and `export … from`
- * into the modules of the same package. A name exported both ways (a const and its type) is a value.
- */
 export function exportsOf(
   file: string,
   read: (path: string) => string,
@@ -116,7 +98,6 @@ export function exportsOf(
   return names
 }
 
-/** The published packages: their name, their directory, and the source of each entry. */
 function packagesOf(root: string) {
   return readdirSync(join(root, 'packages'))
     .map((dir) => join(root, 'packages', dir))
@@ -140,7 +121,6 @@ function exportsSurface(root: string): Surface {
   return out
 }
 
-/** Every method of the RPC entrypoint, with its signature as the source writes it. */
 function rpcSurface(root: string): Surface {
   const file = join(root, 'packages/server/src/index.ts')
   const text = readFileSync(file, 'utf8')
@@ -164,7 +144,6 @@ function rpcSurface(root: string): Surface {
   return methods
 }
 
-/** The commands of the CLI, and the flags each of its option parsers takes, file by file. */
 function cliSurface(root: string): Surface {
   const index = join(root, 'packages/cli/src/index.ts')
   const commands: string[] = []
@@ -235,10 +214,8 @@ function migrationsSurface(root: string): Surface {
   )
 }
 
-/** Every part of the public API, by the name of its file in `api/`. */
 export async function surfaceOf(root: string): Promise<Record<string, Surface>> {
   const core = await import(pathToFileURL(join(root, 'packages/core/src/index.ts')).href)
-  // The zod of @hollware/core, which made its schemas: the root of the repository declares none.
   const z: { toJSONSchema(schema: unknown, options: { io: 'input' | 'output' }): Surface } =
     await import(
       pathToFileURL(createRequire(join(root, 'packages/core/package.json')).resolve('zod')).href
@@ -270,16 +247,13 @@ export async function surfaceOf(root: string): Promise<Record<string, Surface>> 
   )
 }
 
-/** The text of a part, as `api/` holds it. */
 export const textOf = (part: Surface): string => `${JSON.stringify(part, null, 2)}\n`
 
-/** The files of `api/` that differ from the code, or are missing. */
 export async function staleParts(root: string): Promise<string[]> {
   const parts = await surfaceOf(root)
   return Object.entries(parts)
     .filter(([file, part]) => {
       const path = join(root, 'api', file)
-      // Compared as JSON, not as text: the formatter of the repository lays api/ out its own way.
       return !existsSync(path) || !isDeepStrictEqual(JSON.parse(readFileSync(path, 'utf8')), part)
     })
     .map(([file]) => file)

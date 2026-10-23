@@ -2,11 +2,6 @@ import { newId } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
-// Fails when: a CHECK of the `entries` table in src/db/schema.ts (and so migrations/0001_core.sql)
-// stops refusing an incoherent row: a draft with a published revision, a sort key or a
-// schedule; a published entry without its revision, its first publication time or its sort key;
-// a scheduled entry without its time; an unknown status; a version under 1.
-
 const NOW = '2026-10-13T00:00:00.000Z'
 
 interface Row {
@@ -27,7 +22,6 @@ const DRAFT: Row = {
   scheduled_at: null,
 }
 
-/** Inserts one entry with the given columns into a site of its own: `ok` or the constraint that stopped it. */
 async function insert(row: Row): Promise<string> {
   const site = `site-${crypto.randomUUID()}`
   const revision = newId('rev')

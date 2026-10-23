@@ -9,15 +9,10 @@ export interface EventMessage {
   readonly id: string
 }
 
-/** The part of a Queue binding that sends. */
 export interface EventQueue {
   sendBatch(messages: Iterable<{ readonly body: EventMessage }>): Promise<unknown>
 }
 
-/**
- * Puts events on the Queue and marks them sent. Without a Queue binding nothing is sent: the
- * sweep of the cron trigger delivers them instead, within a minute.
- */
 export async function enqueue(input: {
   readonly queue: EventQueue | undefined
   readonly db: Db
@@ -30,11 +25,6 @@ export async function enqueue(input: {
   await markSent(input.db, input.site, input.ids, input.clock.now().toISOString())
 }
 
-/**
- * What the cron trigger does with the outbox: an event that was never put on the Queue (its
- * request ended before, or the project has no Queue) is put on it, or, without a Queue, delivered
- * here. An event delivered here is marked sent only when every subscriber has it.
- */
 export async function sweepOutbox(input: {
   readonly queue: EventQueue | undefined
   readonly deps: DeliveryDeps
@@ -53,7 +43,6 @@ export async function sweepOutbox(input: {
   return { swept: ids.length }
 }
 
-/** The part of a Queue message the consumer uses; its body is checked before use. */
 export interface EventDelivery {
   readonly body: unknown
   ack(): void
@@ -71,12 +60,6 @@ function isEventMessage(body: unknown): body is EventMessage {
   )
 }
 
-/**
- * The Queue consumer: delivers each event, acknowledges it once every subscriber has it, and asks
- * for a retry otherwise; after the Queue's retries it lands in the dead-letter queue. A message of
- * a site this deployment does not serve (`depsOf` has none for it), or that is no event, is
- * acknowledged and dropped.
- */
 export async function consumeEvents(
   messages: readonly EventDelivery[],
   depsOf: (site: string) => DeliveryDeps | undefined,

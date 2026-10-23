@@ -14,13 +14,6 @@ import {
   tokenPrincipal,
 } from './support.ts'
 
-// Fails when: the tools stop being one for each operation, sorted by name, with the title, the
-// description, the annotations of the effect and the schemas of their spec; `tools/list` differs
-// between calls, endpoints, principals or eras (apart from the cache hint, which is 2026 only);
-// the list says it can change, or that it may be cached for any time but five minutes, by anyone;
-// the schemas are converted to JSON Schema again on each request; or an operation that asks for
-// no scope becomes a tool.
-
 const READ = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -197,7 +190,6 @@ describe('tools/list', () => {
       additionalProperties: false,
     })
     expect(Object.keys(unpublish?.outputSchema?.properties ?? {})).toEqual(['outcome', 'entry'])
-    // The defaults are the SDK's own words for "optional": a client may leave them out.
     const publishTool = tools.find((tool) => tool.name === 'publish')
     expect(publishTool?.inputSchema.required).toEqual(['id', 'version'])
     for (const operation of OPERATIONS) {
@@ -362,7 +354,6 @@ describe('the cached schemas', () => {
     expect(input).toEqual(zod.input(draft))
     expect(output).toEqual(zod.output(draft))
     expect(olderInput).toEqual(zod.input(older))
-    // A field with a default is optional in what a client sends and always there in what it reads.
     expect(input.required).toEqual(['id', 'version'])
     expect(output.required).toEqual(['id', 'version', 'acknowledgeWarnings', 'group'])
     expect(olderInput).not.toEqual(input)

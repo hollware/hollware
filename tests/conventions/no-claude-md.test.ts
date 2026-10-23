@@ -6,9 +6,6 @@ import { checkNoClaudeMd } from '../guards/claude-md.ts'
 import { describeViolations } from '../guards/types.ts'
 import { repoFiles, workingTreeFiles } from '../support/repo.ts'
 
-// Fails when: a file named CLAUDE.md (in any case, a symlink included) exists anywhere in the
-// repository or in its working tree outside node_modules, tracked or not.
-
 describe('no CLAUDE.md', () => {
   it('there is none in the repository or in the working tree', () => {
     const violations = checkNoClaudeMd({ paths: [...repoFiles(), ...workingTreeFiles()] })

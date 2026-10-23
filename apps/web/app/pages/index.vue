@@ -39,7 +39,6 @@ const different = computed(() => {
   ]
 })
 
-// The names are Cloudflare's, the same in every language; what each one does is the reader's.
 const products = computed(() => {
   const words = m.value.home.cloudflare.products
   return [
@@ -68,7 +67,6 @@ const products = computed(() => {
   ]
 })
 
-// What runs where, left to right, and what joins each part to the next.
 const diagram = computed(() => {
   const words = m.value.home.cloudflare.diagram
   return [
@@ -115,7 +113,6 @@ const steps = computed(() => {
   ]
 })
 
-// The code is the same in every language; its comments are the reader's.
 const shaping = computed(() =>
   [
     m.value.home.shaping.comment,

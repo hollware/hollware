@@ -1,8 +1,3 @@
-// Fails when: `@hollware/client/webhooks` (src/webhooks.ts) imports anything but
-// `@hollware/core/webhooks`, or that module (core's src/webhooks.ts) imports anything at all. A
-// site whose own zod is another major (Nuxt Content's is zod 3) checks a delivery through this
-// entry; one import of the root of core would evaluate every zod schema of Hollware with the
-// site's zod, and fail at load.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vite-plus/test'
 

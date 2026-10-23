@@ -9,12 +9,6 @@ import {
   seedToken,
 } from './support/harness.ts'
 
-// Fails when: the built playground stops guarding its MCP endpoint the way AC-0.1-6 describes:
-// a request without a token, or with one that nobody issued, that expired or that was revoked,
-// stops getting 401 with its challenge; a token without the scope of a tool stops getting 403 with
-// the challenge that names the scope; a request for another Host or with another Origin stops
-// getting 403; or a deployment without HOLLWARE_PUBLIC_URL starts answering anything but 500.
-
 const server = createPlaygroundHarness()
 const tokens = { owner: '', reader: '', expired: '', revoked: '' }
 
@@ -39,7 +33,6 @@ afterAll(async () => {
   await server.close()
 })
 
-/** A `tools/call` of the 2026 era, sent to Hollware with the headers a test chooses. */
 function call(tool: string, args: object, headers: Record<string, string> = {}) {
   return server.fetch(`${HOLLWARE_URL}/mcp`, {
     method: 'POST',

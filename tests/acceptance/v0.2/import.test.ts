@@ -4,10 +4,6 @@ import { afterAll, beforeAll, expect, it } from 'vite-plus/test'
 
 import { createProject, setUpProject, type Project } from '../v0.1/support/project.ts'
 
-// Fails when: `hollware import --publish` (packages/cli) stops publishing the imported entries as
-// one group (ADR-024), on the built playground under `wrangler dev`: the corpus links its ten
-// entries in a cycle, so published one by one each would wait for the others.
-
 const CORPUS = join(import.meta.dirname, '..', '..', 'fixtures', 'content', 'blog')
 
 let project: Project

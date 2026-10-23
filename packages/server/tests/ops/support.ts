@@ -44,14 +44,6 @@ import type { OperationContext } from '../../src/ops/types.ts'
 import type { Clock, ContentStore, View } from '../../src/ports.ts'
 import { seedOwner, siteKey } from '../db/support.ts'
 
-/**
- * What the tests of the handlers stand on: the bilingual blog of the playground with the built-in
- * contracts a site opts into, a second collection with no translations, the context an adapter
- * builds for a call, and a way to call a handler the way an adapter does. It imports no test
- * framework, so that the tests that run in Node and those that run in workerd can share it.
- */
-
-/** The 26 characters of an id after its prefix; no entry has this one. */
 export const NO_ENTRY = 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -104,18 +96,12 @@ const blog = defineCollection({
   styleGuide: 'Short paragraphs, one idea per section, and an example for every claim.',
 })
 
-/**
- * A collection with no translations, no tags and no sorting field, so that entries are ordered
- * by when they were published. It accepts any frontmatter besides its title and takes the largest
- * file a collection may, which is what a row over the limit of D1 needs.
- */
 function notesWith(maxMarkdownBytes: number) {
   return defineCollection({
     schema: z.looseObject({ title: z.string().min(1) }),
     routes: { es: '/notas/:slug/', en: '/en/notes/:slug/' },
     contracts: [
       {
-        // Tells the test which entry the contracts were run for: `null` while it is being created.
         id: 'entry-id',
         severity: 'warning',
         description: 'Reports the id of the entry it was run for, when the frontmatter says probe.',
@@ -131,8 +117,6 @@ function notesWith(maxMarkdownBytes: number) {
             : [],
       },
       {
-        // Warnings by the thousand, which only a publish asks for, so that a draft stays small and
-        // its publication does not: the verdict of a publish is what makes that row large.
         id: 'many-warnings',
         severity: 'warning',
         phases: ['publish'],
@@ -153,10 +137,6 @@ function notesWith(maxMarkdownBytes: number) {
   })
 }
 
-/**
- * The site `key` with a blog and its notes, resolved the way the Worker resolves its config. The
- * notes take files of up to 768 KiB, the largest a collection may, unless the test says less.
- */
 export function blogSite(
   key: string,
   options: { readonly notesMaxBytes?: number } = {},
@@ -177,7 +157,6 @@ export function blogSite(
   return site
 }
 
-/** A site, its owner and the token of the owner, as the database holds them. */
 export interface Tenant {
   readonly key: string
   readonly site: ResolvedSite
@@ -185,13 +164,11 @@ export interface Tenant {
   readonly tokenId: string
 }
 
-/** Writes a site with its owner and a token, and gives the config that serves it. */
 export async function newTenant(db: D1Database, label: string): Promise<Tenant> {
   const owner = await seedOwner(db, siteKey(label))
   return tenantOf(owner.site, owner.actor.userId, owner.actor.tokenId)
 }
 
-/** The tenant of rows that exist already, such as the ones `seedSite` writes. */
 export function tenantOf(key: string, userId: string, tokenId: string | null): Tenant {
   if (tokenId === null) throw new Error(`the site ${key} has no token to write with`)
   return { key, site: blogSite(key), userId, tokenId }
@@ -206,14 +183,12 @@ export const ALL_SCOPES: readonly Scope[] = [
 
 export interface ContextOptions {
   readonly clock: Clock
-  /** `head` over MCP, which is the default, or `published` over RPC. */
   readonly view?: View
   readonly principal?: Principal
   readonly client?: Readonly<Record<string, unknown>> | null
   readonly requestId?: string
 }
 
-/** The context an adapter builds for one call of the tenant, over the given store. */
 export function contextFor(
   tenant: Tenant,
   store: ContentStore,
@@ -236,7 +211,6 @@ export function contextFor(
   }
 }
 
-/** The principal of the RPC binding, which reads published content and nothing else. */
 export const BINDING: Principal = { kind: 'binding', scopes: ['content:read'] }
 
 type SpecOf<Input extends z.ZodType, Output extends z.ZodType> = {
@@ -245,11 +219,6 @@ type SpecOf<Input extends z.ZodType, Output extends z.ZodType> = {
   readonly output: Output
 }
 
-/**
- * Calls a handler the way the MCP adapter does: the input goes through the input schema of the
- * spec, which applies its defaults and refuses what the spec refuses, and the answer must be one
- * the output schema accepts, or the adapter would turn it into an error.
- */
 async function call<Input extends z.ZodType, Output extends z.ZodType>(
   spec: SpecOf<Input, Output>,
   handler: (input: z.output<Input>, context: OperationContext) => Promise<z.output<Output>>,
@@ -266,7 +235,6 @@ async function call<Input extends z.ZodType, Output extends z.ZodType>(
   return answer
 }
 
-/** The nine operations as one caller makes them, in the context it is given. */
 export function agent(context: OperationContext) {
   return {
     approveReview: (input: z.input<typeof approveReviewSpec.input>) =>
@@ -326,17 +294,11 @@ export function agent(context: OperationContext) {
   }
 }
 
-/**
- * Loads the Markdown pipeline and the HTML renderer before the first test of a file: inside
- * workerd that takes seconds, because Vite fetches and transforms the modules of Comark one by
- * one, and the first test would otherwise run into the five seconds a test has.
- */
 export async function warmUpComark(): Promise<void> {
   await processMarkdown('warm up', { components: [], maxMarkdownBytes: 1024, routes: {} })
   await renderHtml({ frontmatter: {}, meta: {}, nodes: [] })
 }
 
-/** The frontmatter of a post of the blog, as a YAML block, with anything overridden. */
 export function blogFrontmatter(overrides: Readonly<Record<string, string | null>> = {}): string {
   const fields: Record<string, string | null> = {
     title: 'Edge caching guide',
@@ -352,7 +314,6 @@ export function blogFrontmatter(overrides: Readonly<Record<string, string | null
   return `---\n${lines.join('\n')}\n---\n`
 }
 
-/** A post of the blog: its frontmatter, and a body that is a heading and a sentence by default. */
 export function blogPost(
   overrides: Readonly<Record<string, string | null>> = {},
   body = '\n# Edge caching guide\n\nWhat an edge cache keeps.\n',
@@ -364,7 +325,6 @@ function touched(method: string): never {
   throw new Error(`the store was touched: ${method}`)
 }
 
-/** A store that fails any call, for the tests that say a handler must not reach the store. */
 export const UNTOUCHED: ContentStore = {
   findEntry: () => touched('findEntry'),
   findEntryById: () => touched('findEntryById'),

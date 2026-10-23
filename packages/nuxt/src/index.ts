@@ -73,13 +73,11 @@ export default defineNuxtModule<ModuleOptions>({
     }
     const resolver = createResolver(import.meta.url)
     const resolve = (path: string) => resolver.resolve(path)
-    // Server only: runtimeConfig outside `public` never reaches the browser.
     nuxt.options.runtimeConfig['hollware'] = {
       site: options.site,
       binding: options.binding,
       url: options.url ?? '',
       token: options.token ?? '',
-      // Of Hollware's webhook, for `cache: 'purge'`: NUXT_HOLLWARE_WEBHOOK_SECRET sets it at runtime.
       webhookSecret: options.webhookSecret ?? '',
     }
     addServerImports([{ name: 'useHollware', from: resolve('./runtime/server/reader') }])
@@ -104,8 +102,6 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareImage'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
-    // Always: a page read with a preview token is never kept, whatever `cache` is, and the link
-    // of "Preview on the site" is exchanged for the cookie that holds the token.
     addServerPlugin(resolve('./runtime/server/preview'))
     addServerHandler({ middleware: true, handler: resolve('./runtime/server/preview-exchange') })
     if (options.cache === 'purge') {
@@ -117,12 +113,10 @@ export default defineNuxtModule<ModuleOptions>({
       })
     }
     if (typeof options.cache === 'number' && options.cache > 0) {
-      // `swr` with a number, spelled out so that the cache can vary on the preview header.
       const pages: NitroRouteConfig = {
         cache: { swr: true, maxAge: options.cache, varies: [PREVIEW_HEADER] },
       }
       const routes: NitroRouteConfig = { swr: false, cache: false }
-      // The page routes of the site; a rule the site sets itself for a path still wins there.
       nuxt.options.routeRules = {
         '/**': pages,
         '/_hollware/**': routes,

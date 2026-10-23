@@ -1,8 +1,3 @@
-/**
- * What the gateway composes to authenticate a request (ADR-019): the Host and Origin guard, the
- * bearer token, the token check, the scope check and the answers to a request that fails any of
- * them. `types.ts` holds the `Principal` that the check produces.
- */
 export { readBearerToken } from './bearer.ts'
 export { checkHostAndOrigin } from './guard.ts'
 export {

@@ -8,18 +8,6 @@ import { createAuditLog, type AuditActor } from '../../src/audit/log.ts'
 import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
 import { createPost, entryColumns, newWorld, publicationsOf, type World } from './world.ts'
 
-// Fails when: a publish with publishAt stops scheduling the entry (status scheduled at the next
-// version, no publication yet) after the same checks as a publish; the cron run (src/schedule/
-// run.ts) publishes before the time, stops publishing at the time in the name of who scheduled it
-// and with the warnings acknowledged then, or keeps a schedule whose entry changed since (the entry
-// must go back to a draft), or publishes for an OAuth client as anything but that client;
-// unpublish stops cancelling a schedule; or publishAt is taken with a
-// group, or for an entry that is published; or the cron publishes for a token since revoked, a
-// person no longer a member or whose role no longer publishes, or an OAuth client whose grant is
-// gone (T-108: src/schedule/standing.ts); or schedule_unpublish stops taking a published entry off
-// the site at its time (and only a published one), or cancelling, or unpublishing now for a time
-// that passed, or the cron unpublishes for someone who may no longer publish.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -27,7 +15,6 @@ const LATER = '2026-10-13T12:00:00.000Z'
 const TITLE = 'A guide to caching at the edge of the network with Workers and D1 tonight'
 const TITLE_ACK = { contract: 'seo-title-length', path: '/frontmatter/title' }
 
-/** An English post with its Spanish translation, a long title, and no links: one warning. */
 async function post(world: World) {
   const frontmatter = blogFrontmatter({ title: JSON.stringify(TITLE) })
   const created = await world.agent.createDraft({
@@ -74,7 +61,6 @@ function run(world: World, audited = false) {
 
 const CLIENT = 'https://claude.ai/oauth/mcp-client.json'
 
-/** A grant of the OAuth client for the tenant's site, as the OAuth library keeps it in KV. */
 async function grant(world: World, id: string) {
   await env.OAUTH_KV.put(
     `grant:${world.tenant.userId}:${id}`,
@@ -88,10 +74,6 @@ async function grant(world: World, id: string) {
   )
 }
 
-/**
- * The seeded token writes only; the cron reads it again at the time, so a token that
- * schedules a publication must hold content:publish in the database too.
- */
 async function mayPublish(world: World) {
   await env.DB.prepare('UPDATE tokens SET scopes = ?1 WHERE id = ?2')
     .bind(
@@ -101,7 +83,6 @@ async function mayPublish(world: World) {
     .run()
 }
 
-/** The entry scheduled by the tenant's token, for LATER, with the warning acknowledged. */
 async function scheduled(world: World) {
   await mayPublish(world)
   const id = await post(world)
@@ -275,7 +256,6 @@ describe('publishAt', () => {
 
     world.time.set(LATER)
 
-    // The person revoked its grant for this site in the admin; one for another site stays.
     await env.OAUTH_KV.put(
       `grant:${world.tenant.userId}:grant-elsewhere`,
       JSON.stringify({

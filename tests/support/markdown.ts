@@ -1,23 +1,11 @@
-/**
- * Just enough Markdown for the guards: fenced code blocks, ATX headings, inline code spans
- * and pipe tables. It is not a CommonMark parser. Limits: indented code blocks and HTML
- * blocks are not recognized, and a fence is any line that starts with three or more
- * backticks or tildes.
- */
-
 const FENCE = /^\s*(`{3,}|~{3,})/
 
-/**
- * The text with the fenced code blocks emptied, fences included. The line count stays the
- * same, so line numbers computed on the result are the real ones.
- */
 export function stripFencedBlocks(text: string): string {
   return fencedLines(text)
     .map(({ line, inFence }) => (inFence ? '' : line))
     .join('\n')
 }
 
-/** Every line of the text, with whether it belongs to a fenced block (fence lines included). */
 export function fencedLines(text: string): { line: string; inFence: boolean }[] {
   const lines = text.split('\n')
   const result: { line: string; inFence: boolean }[] = []
@@ -51,7 +39,6 @@ export interface Heading {
   line: number
 }
 
-/** The ATX headings (`# Title`) outside fenced blocks. */
 export function headings(text: string): Heading[] {
   const found: Heading[] = []
   for (const [index, line] of stripFencedBlocks(text).split('\n').entries()) {
@@ -70,10 +57,6 @@ export interface CodeSpan {
   line: number
 }
 
-/**
- * The inline code spans (`like this`) outside fenced blocks. A span opens with a run of N
- * backticks and closes with the next run of exactly N, as in CommonMark.
- */
 export function inlineCodeSpans(text: string): CodeSpan[] {
   const source = stripFencedBlocks(text)
   const spans: CodeSpan[] = []
@@ -89,7 +72,6 @@ export function inlineCodeSpans(text: string): CodeSpan[] {
       closing = search.exec(source)
     } while (closing !== null && closing[0].length !== length)
     if (closing === null) {
-      // No closing run: the backticks are literal text.
       run.lastIndex = contentStart
     } else {
       const content = source.slice(contentStart, closing.index).replace(/\s+/g, ' ').trim()
@@ -102,7 +84,6 @@ export function inlineCodeSpans(text: string): CodeSpan[] {
   return spans
 }
 
-/** The lines of a `## <title>` section, up to the next heading of level 1 or 2. */
 export function sectionLines(text: string, title: string): { line: string; number: number }[] {
   const lines = text.split('\n')
   const fenced = fencedLines(text)
@@ -120,7 +101,6 @@ export function sectionLines(text: string, title: string): { line: string; numbe
   return found
 }
 
-/** The cells of a pipe-table row (`| a | b |`), or `undefined` when the line is not a row. */
 export function tableCells(line: string): string[] | undefined {
   const trimmed = line.trim()
   if (!trimmed.startsWith('|') || !trimmed.endsWith('|') || trimmed.length < 2) return undefined

@@ -4,17 +4,6 @@ import { isPersonalToken } from '../../packages/core/src/tokens.ts'
 import { probeClaims, type Era } from './claims.ts'
 import { freePort } from './processes.ts'
 
-// Fails when: a probe stops passing against a Worker that keeps the claim, or stops failing when its
-// own claim breaks: the public Host refused, the Host check or the Origin check gone alone, a
-// refusal with the wrong status or the wrong code, the 401 for a missing token or for an unknown
-// token gone, with the wrong status or the wrong realm, the 403 for a missing scope gone, with the
-// wrong status or a challenge that names no scope, any of the three without the protected resource
-// metadata of `/mcp`, a granted scope refused, served with the wrong
-// status, with an error or with no result; the answers of the Worker stop being read, as JSON and
-// as a server-sent event; the requests of an era stop carrying what the era requires (the
-// `Mcp-Method` and `Mcp-Name` headers and the `_meta` envelope of 2026-07-28, the protocol header of
-// 2025-11-25); a probe throws, instead of failing, when the Worker is not there.
-
 const PUBLIC_HOST = '127.0.0.1:4242'
 const READ_ONLY = 'hw_pat_0123456789abcdefghjkmnpqrstvwxyz0123456789abcdefghjk'
 
@@ -28,39 +17,22 @@ const IDS = [
   'granted-scope-is-served',
 ]
 
-/** The ways a Worker can break the claims. Each one turns the probes it names red, and no other. */
 interface Faults {
-  /** The Host check is gone. */
   skipHostCheck?: boolean
-  /** The Origin check is gone. */
   skipOriginCheck?: boolean
-  /** A request to the public Host is refused. */
   refuseHealth?: boolean
-  /** The refusals of the Host, the Origin and the scope are 400, with the right bodies. */
   refusalsAre400?: boolean
-  /** The refusals of the Host and the Origin are 403, with a code of no one's. */
   wrongRefusalCodes?: boolean
-  /** A request without a token goes through. */
   skipTokenCheck?: boolean
-  /** A token nobody issued is accepted. */
   acceptAnyToken?: boolean
-  /** The 401s are 403, with the right challenge. */
   unauthorizedIs403?: boolean
-  /** The challenge of a 401 names another realm. */
   wrongRealm?: boolean
-  /** No challenge names the protected resource metadata. */
   noResourceMetadata?: boolean
-  /** The scope of a tool is not checked. */
   skipScopeCheck?: boolean
-  /** The 403 for a missing scope names no scope. */
   challengeWithoutScope?: boolean
-  /** Every call of a tool is refused with 403, the granted ones too. */
   refuseEveryCall?: boolean
-  /** A granted call is served with 200 and a result that is an error. */
   grantedCallIsAnError?: boolean
-  /** A granted call is served with 200 and no result. */
   grantedCallHasNoResult?: boolean
-  /** A granted call is served with 202 and a result that is not an error. */
   grantedStatusIs202?: boolean
 }
 
@@ -71,7 +43,6 @@ interface Seen {
   readonly body: unknown
 }
 
-/** A Worker that answers as `packages/server` documents, but for the faults it is given. */
 async function fakeWorker(faults: Faults = {}) {
   const seen: Seen[] = []
   const json = (
@@ -169,8 +140,6 @@ async function fakeWorker(faults: Faults = {}) {
               result: { isError: faults.grantedCallIsAnError === true, content: [] },
             }
       const status = faults.grantedStatusIs202 === true ? 202 : 200
-      // The answer comes as JSON to a request of 2026-07-28, which carries `Mcp-Method`, and as a
-      // server-sent event to one of 2025-11-25, so that the probes read both forms.
       if (incoming.headers['mcp-method'] !== undefined) {
         json(response, status, message)
         return
@@ -193,7 +162,6 @@ async function fakeWorker(faults: Faults = {}) {
   return { port, seen }
 }
 
-/** A Worker that takes every request and never answers it. */
 async function silentWorker(): Promise<number> {
   const server = createServer(() => {})
   const port = await freePort()
@@ -225,7 +193,6 @@ async function probe(port: number, era: Era = 'modern') {
   return Object.fromEntries(results.map((result) => [result.id, result]))
 }
 
-/** The ids of the probes that failed. */
 async function failed(faults: Faults, era: Era = 'modern'): Promise<string[]> {
   const { port } = await fakeWorker(faults)
   const results = await probe(port, era)
@@ -322,8 +289,6 @@ describe('the probes of what the suite cannot see', () => {
     })
 
     it('fail the control of the granted scope when the Worker refuses every call', async () => {
-      // The 403 probe passes too, which is why the control exists: a Worker that refuses
-      // everything must not look as if it checks scopes.
       expect(await failed({ refuseEveryCall: true })).toEqual(['granted-scope-is-served'])
     })
 

@@ -7,7 +7,7 @@ export const COMARK_VERSION = '0.7.0'
 
 /**
  * The version of Hollware's own pipeline settings: the plugins, the allowlists, the heading ids,
- * the markers and the line numbers (ADR-020). Bump it whenever the same Markdown would give another
+ * the markers and the line numbers. Bump it whenever the same Markdown would give another
  * document or other extracted data, so that the reparse of the cron knows which revisions to rebuild.
  * `tests/markdown/versions.test.ts` pins the output for the shared fixtures, so a change that
  * forgets the bump fails there.

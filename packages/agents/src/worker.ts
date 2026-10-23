@@ -132,7 +132,6 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
     }
   }
 
-  /** One role a run, by the ten minutes of the time: the reviewer, the translator, the auditor. */
   const runOnce = async (env: AgentsEnv): Promise<void> => {
     const deps = depsOf(env)
     const now = clock()
@@ -184,7 +183,6 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
     async scheduled(_controller, env, ctx) {
       ctx.waitUntil(runOnce(env))
     },
-    // The agents answer no request but this one: whether they are there.
     async fetch(request) {
       const { pathname } = new URL(request.url)
       return pathname === '/health'

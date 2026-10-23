@@ -1,8 +1,4 @@
 <script setup lang="ts">
-/**
- * The ways of working with Hollware, one at a time: a list to pick from and the workflow of the
- * one picked. Every panel is in the page, so a reader without JavaScript and a crawler see them all.
- */
 const { m } = useLocale()
 const active = ref(0)
 const cases = computed(() => m.value.home.cases.items)

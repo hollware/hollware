@@ -1,18 +1,7 @@
-/*
- * What every provider of analytics shares (ADR-040): one request with a timeout, and the error
- * that says why a provider gave nothing, without ever repeating the credential (T-109).
- */
-
-/**
- * How long a provider has to answer: content_stats and connect_analytics run inside the 30 s of an
- * open-world operation (`OPEN_WORLD_TIMEOUT_MS`), and PostHog's query API takes up to 15 s.
- */
 export const REQUEST_TIMEOUT_MS = 25_000
 
-/** `fetch`, injected so that tests answer for the provider. */
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
-/** Why a provider gave nothing: what it said, and what to do about it. */
 export class ProviderError extends Error {
   readonly kind: 'refused' | 'unreachable' | 'invalid'
   readonly fix: string
@@ -29,10 +18,6 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * What a provider said in an answer that failed, at most 300 characters, with every secret of
- * the request taken out: some providers repeat the key they were sent.
- */
 export function messageOf(body: unknown, secrets: readonly string[]): string {
   const candidates: unknown[] = []
   if (typeof body === 'string') candidates.push(body)
@@ -51,10 +36,6 @@ export function messageOf(body: unknown, secrets: readonly string[]): string {
   return text.length > 300 ? `${text.slice(0, 297)}...` : text
 }
 
-/**
- * A request to a provider: its status and its body, parsed as JSON when it is. A network failure
- * or no answer within `REQUEST_TIMEOUT_MS` is `unreachable`.
- */
 export async function request(
   fetcher: Fetch,
   provider: string,
@@ -78,8 +59,6 @@ export async function request(
   let body: unknown = text
   try {
     body = JSON.parse(text)
-  } catch {
-    // A body that is not JSON stays text: its message is read as it is.
-  }
+  } catch {}
   return { status: response.status, body }
 }

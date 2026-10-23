@@ -14,7 +14,6 @@ afterEach(() => {
   installed.remove()
 })
 
-// `--no-warnings` keeps Node's own notices out of the streams under test.
 function node(args: string[]) {
   return spawnSync(process.execPath, ['--no-warnings', ...args], { encoding: 'utf8' })
 }

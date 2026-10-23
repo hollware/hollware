@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { sortKeyOf, tagsOf, translationGroupOf } from '../../src/ops/draft.ts'
 import { blogSite } from './support.ts'
 
-// Fails when: draft.ts reads the translation group, the tags or the sort key from anything else
-// than the field that the collection names, takes a value that is not a string (or a list of
-// strings) for one, or takes the empty string for a translation group. The Markdown pipeline
-// returns the frontmatter as YAML gave it, before the schema looked at it, so these have to
-// survive any value.
-
 const site = blogSite('fields-site')
 const blog = site.collections.get('blog')
 const notes = site.collections.get('notes')

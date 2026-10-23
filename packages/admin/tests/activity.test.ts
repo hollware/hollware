@@ -8,12 +8,6 @@ import {
   type ActivityLine,
 } from '../app/lib/activity.ts'
 
-// Fails when: the Activity page (app/lib/activity.ts) asks the server for another range than the
-// days the person chose (`from` at 00:00 UTC of its day, `to` at 00:00 UTC of the day after, as the
-// server takes it as exclusive), leaves a filter or the cursor out of the request, names the wrong
-// one as who acted (a person's name, a token's label, an app's id), shows what a client declared as
-// verified, or lets a retention through that the server refuses (30 to 3650 whole days).
-
 function line(actor: Partial<ActivityLine['actor']>): ActivityLine {
   return {
     id: 'aud_01',

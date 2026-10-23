@@ -1,40 +1,3 @@
-// Fails when:
-// - "writes each entry at <collection>/<locale>/<slug>.md …": the path in `exportEntries`
-//   (src/commands/export.ts) changes its order or its extension, the Markdown is re-serialized,
-//   trimmed or re-encoded (the byte order mark, the line ends), the entries are not sorted, the
-//   summary per collection and locale changes, `list_entries` is asked for the trash or a status,
-//   or `get_entry` for the published revision without --published.
-// - "--published exports the published revision of the published entries only": `list_entries`
-//   is not asked for `status: 'published'`, or `get_entry` is not asked for `published: true`.
-// - "--published writes the fields Hollware fills …": the `automatic` values of get_entry are not
-//   written into the frontmatter of a published export, a line whose value is the one written is
-//   rewritten, or an export of the latest revisions (a backup) changes a byte.
-// - "--collection and --locale narrow …" / "refuses a collection or a locale …": `chosen` stops
-//   narrowing to what was asked, or the locale stops reaching `list_entries`, or a name the site
-//   does not have is let through to the server.
-// - "--site stops when the token is of another site": the key of `describe_site` is not compared.
-// - "… an import into another site uploads, with the ids of that site": import keeps the ids the
-//   export wrote when the other site gives its images other ids (withAssetIds of import.ts).
-// - "refuses a manifest …", "stops before any entry …", "counts the images of a dry run": import
-//   reads a file the manifest names outside _assets, goes on to the entries after an image was
-//   not taken, or uploads in a dry run.
-// - "names an image by its bytes …": an image of _assets is named by the format it was uploaded as
-//   when the file Hollware gave is another (a site that keeps no originals gives the one served).
-// - "writes the 301s …": a published export leaves out redirects.json when the site has redirects,
-//   writes one without both paths, or fails on a Hollware that has no list_redirects.
-// - "pages through list_entries": `nextCursor` is not followed, or is sent wrong.
-// - "--dry-run lists what it would write …": `--dry-run` writes a file or a directory.
-// - "refuses a directory that is not empty …" / "refuses a file": `checkTarget` lets a directory
-//   that holds anything through, or reads the token or connects before it checks.
-// - "writes into an empty directory …" (the round trip with import): what export writes differs
-//   from what import reads, or an import of an export into the same site changes something.
-// - "stops with a clear error and writes nothing when a call fails" rows: a `get_entry` that
-//   fails in words, an entry gone between the list and the read, or a token the server rejects
-//   leaves files behind, or is not told.
-// - "refuses an entry that cannot be a file below the directory": `SAFE_SEGMENT` or the slug
-//   check is dropped, so a locale like `..` writes outside the directory.
-// - "asks for what it needs" rows: a missing directory or `--url` is accepted, or the token is
-//   read first.
 import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
@@ -82,7 +45,6 @@ interface Seed {
   deletedAt?: string
 }
 
-/** Puts entries in the stub, by `<collection>/<locale>/<slug>`, in this order (oldest first). */
 function seed(stub: StubServer, rows: Record<string, Seed>): void {
   let n = 900
   for (const [key, row] of Object.entries(rows)) {
@@ -102,7 +64,6 @@ function seed(stub: StubServer, rows: Record<string, Seed>): void {
   }
 }
 
-/** Runs `hollware export <dir> --url <url> …` from `cwd`, with the token on stdin. */
 function runExport(cwd: string, dir: string, url: string, args: string[] = []) {
   return run(['export', dir, '--url', url, ...args], {
     cwd,
@@ -110,7 +71,6 @@ function runExport(cwd: string, dir: string, url: string, args: string[] = []) {
   })
 }
 
-/** The files below a directory, as `a/b/c.md`, sorted. */
 function filesOf(root: string): string[] {
   if (!existsSync(root)) return []
   return readdirSync(root, { recursive: true, encoding: 'utf8' })
@@ -124,7 +84,6 @@ const calls = (stub: StubServer, tool: string): RecordedCall['args'][] =>
 
 const CRLF_WITH_BOM = `${BOM}---\r\ntitle: Bom\r\n---\r\n\r\nbody  \r\n\r\n\r\n`
 
-/** A site with two collections: a published entry edited since, a draft, one in the trash, a doc. */
 async function sampleSite(): Promise<StubServer> {
   const stub = await serve({
     site: { key: 'blog', locales: ['en', 'es'], collections: ['blog', 'docs'] },
@@ -554,7 +513,6 @@ describe('hollware export stops with a clear error and writes nothing when a cal
 describe('hollware export and its images', () => {
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
-  /** A site with a post that shows one image, uploaded the way an agent uploads it. */
   async function siteWithAnImage(): Promise<{ stub: StubServer; id: string }> {
     const stub = await serve()
     const id = 'ast_' + createHash('sha256').update(PNG).digest('hex').slice(0, 26)
@@ -640,8 +598,6 @@ describe('hollware export and its images', () => {
     expect(calls(other, 'upload_asset')).toEqual([
       { filename: 'stage.png', alt: 'The stage', data: Buffer.from(PNG).toString('base64') },
     ])
-    // In the site docs the same bytes are another asset (its key and the bytes name it), and the
-    // entry shows that one: both references are written with its id.
     const moved = 'ast_d77cb4e3ded5aebde6b153c416'
     expect([...other.assets.keys()]).toEqual([moved])
     expect(calls(other, 'create_draft').map((call) => call['markdown'])).toEqual([
@@ -654,7 +610,6 @@ describe('hollware export and its images', () => {
     const missing = await siteWithAnImage()
     missing.stub.assets.clear()
     const base = temp.make()
-    // The original answers 404, as when its row is there and R2 lost the file.
     const original = await serve({
       respond: (request) =>
         new URL(request.url).pathname.startsWith('/v1/assets/')
@@ -677,7 +632,6 @@ describe('hollware export and its images', () => {
     expect([existsSync(join(base, 'lost')), existsSync(join(base, 'gone'))]).toEqual([false, false])
   })
 
-  /** The export of the site with an image, by default: _assets with the original and its manifest. */
   async function exportedBackup() {
     const { stub, id } = await siteWithAnImage()
     const base = temp.make()
@@ -749,7 +703,6 @@ describe('hollware export and its images', () => {
           fromPath: '/en/talks/old-talk/',
           toPath: '/en/talks/talk/',
         },
-        // No route for the locale: no path to answer, so not in the file.
         { from: 'gone', to: 'here', fromPath: null, toPath: null },
       ],
     })
@@ -765,7 +718,6 @@ describe('hollware export and its images', () => {
       { from: '/en/talks/old-talk/', to: '/en/talks/talk/', status: 301 },
     ])
     expect(exported.out).toContain('Wrote 1 redirect to site/redirects.json.')
-    // A Hollware without list_redirects: no file, and no error.
     expect(existsSync(join(base, 'older/redirects.json'))).toBe(false)
   })
 

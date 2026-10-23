@@ -4,14 +4,6 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { cliCommand, localState, readToken, resetLocalState } from './seed.ts'
 
-// Fails when: the token stops being read from the line of the output of `hollware init` that holds
-// only a token (the CLI prints it once, among the ids of the owner and of the token, which have
-// other prefixes), or an output with no token or with two is accepted; the run stops starting the
-// bin that packages/cli/package.json names, or accepts a manifest without one; or a run stops
-// clearing the local state of the Worker, which makes `hollware init` refuse the second run, and
-// clears more than that state.
-
-/** The output of `hollware init --local --site conformance`, as the CLI of this repository prints it. */
 const INIT_OUTPUT = [
   'Hollware is ready on the local database "DB".',
   '',

@@ -6,17 +6,9 @@ import { createAnalyticsSources } from '../../src/analytics/sources.ts'
 import { agent } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 
-// Fails when: the analytics connection of a site (src/analytics/sources.ts, ADR-040) saves a
-// connection the provider did not answer, stops sealing the credential (it reaches D1 in clear, an
-// answer of get_analytics or connect_analytics), seals it so that it opens at another site (T-71),
-// stops keeping the counts ten minutes or keeps serving them after the connection changed, stops
-// answering unavailable with the way to connect when there is no connection or no HOLLWARE_SECRET,
-// or disconnect stops forgetting the row.
-
 const MASTER = 'm'.repeat(48)
 const CREDENTIAL = 'phx_the_personal_key_of_the_test_0123456789'
 
-/** PostHog in the US, with the project 7 and two pages, counting how often it was asked. */
 function posthog() {
   const calls: string[] = []
   let views = 40

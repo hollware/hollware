@@ -2,11 +2,6 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'vite-plus'
 import { describe, expect, it } from 'vite-plus/test'
 
-// Fails when: an app that imports only the composables and the component bundles more than
-// they need: `sideEffects: false` leaves @hollware/vue, @hollware/client or @hollware/core, so
-// zod and the Markdown pipeline of core reach a browser bundle (150 KB instead of a few), or a
-// Markdown parser reaches it through the component.
-
 describe('the bundle of a browser-only app', () => {
   it('holds the composables and the component, and no schema library or parser', async () => {
     const entry = fileURLToPath(new URL('./spa-entry.ts', import.meta.url))

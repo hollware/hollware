@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { connect, endpointWith, INPUTS } from './support.ts'
 
-// Fails when: the endpoint stops serving a 2026-07-28 client, which discovers and sends the
-// envelope in every request, or a 2025-11-25 client, which initializes and then lists and calls,
-// from the same endpoint; or either starts needing a session: nothing is kept between requests,
-// so no answer may carry a session id.
-
 const methods = (exchanges: { body: { method?: string } | null; method: string }[]) =>
   exchanges.map((exchange) => exchange.body?.method ?? exchange.method)
 
@@ -38,7 +33,6 @@ describe('the two protocol eras', () => {
       'tools/call',
     ])
     expect(modern.exchanges.map((exchange) => exchange.status)).toEqual([200, 200, 200])
-    // The 2025 client's own request for a stream is refused: nothing is kept to send on it.
     expect(legacy.exchanges.map((exchange) => exchange.status)).toEqual([200, 202, 405, 200, 200])
     expect(fromModern.structuredContent).toEqual(fromLegacy.structuredContent)
     expect(seen.map((call) => call.context.client)).toEqual([

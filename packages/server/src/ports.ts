@@ -10,12 +10,6 @@ import type {
   Verdict,
 } from '@hollware/core'
 
-/**
- * The ports of the operation handlers: what they need from the world, as interfaces. The D1
- * store implements `ContentStore` (`db/`); the handlers (`ops/`) only see this file, so their
- * tests run on fakes. Every method takes the site first and never sees another site's rows.
- */
-
 /** Which revision a read returns: the latest one (MCP) or the published one (RPC). */
 export type View = 'head' | 'published'
 
@@ -53,7 +47,7 @@ export interface StoredEntry {
 export interface StoredRevision {
   readonly id: string
   readonly entryId: string
-  /** The whole file, frontmatter included: the source of truth (ADR-001). */
+  /** The whole file, frontmatter included: the source of truth. */
   readonly markdown: string
   readonly frontmatter: Readonly<Record<string, unknown>>
   readonly document: EntryDocument
@@ -111,7 +105,7 @@ export interface EntrySummaryView {
   readonly revision: RevisionSummary
 }
 
-/** A publish or an unpublish, as `publications` keeps it (ADR-021). */
+/** A publish or an unpublish, as `publications` keeps it. */
 export interface StoredPublication {
   readonly id: string
   readonly entryId: string
@@ -182,9 +176,7 @@ export interface RelatedEntry {
 export type WriteRefusal =
   | { readonly outcome: 'conflict'; readonly currentVersion: number; readonly headRevision: string }
   | { readonly outcome: 'not_found' }
-  /** Another entry already has this slug, or this translation, in the collection and locale. */
   | { readonly outcome: 'taken'; readonly field: 'slug' | 'translationGroup'; readonly by: string }
-  /** The row would be over `MAX_ROW_BYTES` (`limits.ts`); nothing was written. */
   | { readonly outcome: 'too_large'; readonly bytes: number; readonly limit: number }
 
 /** The status of a review (v0.3). */
@@ -262,7 +254,7 @@ export interface PublishWrite {
   readonly actor: Actor
   /** What orders the entry in published listings. */
   readonly sortKey: string
-  /** The event of the publication, written to the outbox in the same batch (ADR-025). */
+  /** The event of the publication, written to the outbox in the same batch. */
   readonly event?: OutboxEvent | null
 }
 
@@ -306,7 +298,7 @@ export interface ContentStore {
     ids: readonly string[],
     view: View,
   ): Promise<readonly EntrySummaryView[]>
-  /** The entries closest to one by meaning, closest first (ADR-030); `[]` when it has no vectors. */
+  /** The entries closest to one by meaning, closest first; `[]` when it has no vectors. */
   relatedOf(site: string, entryId: string): Promise<readonly RelatedEntry[]>
   /** The entries of a translation group, one per locale, in the given view. */
   listTranslations(
@@ -319,7 +311,7 @@ export interface ContentStore {
   lookup(site: string): EntryLookup
   /** The latest publish or unpublish of an entry, or `null`. */
   lastPublication(site: string, entryId: string): Promise<StoredPublication | null>
-  /** The revisions of an entry, newest first, a page after `cursor` (ADR-021). */
+  /** The revisions of an entry, newest first, a page after `cursor`. */
   listRevisions(
     site: string,
     entryId: string,
@@ -395,7 +387,7 @@ export interface ContentStore {
     write: PublishWrite,
   ): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal>
   /**
-   * Publishes the head revisions of a group of entries in one batch, all or none (ADR-024): every
+   * Publishes the head revisions of a group of entries in one batch, all or none: every
    * entry must still be at its `expectedVersion`. A refusal names the entry that caused it.
    */
   publishGroup(
@@ -408,7 +400,7 @@ export interface ContentStore {
   /**
    * Schedules the publication of an entry that is not published, if it is still at
    * `expectedVersion`: the entry becomes `scheduled` at the next version, and its schedule keeps
-   * the acknowledged warnings and the actor for the cron trigger (ADR-025).
+   * the acknowledged warnings and the actor for the cron trigger.
    */
   schedule(
     site: string,
@@ -520,12 +512,6 @@ export interface Clock {
   now(): Date
 }
 
-/*
- * Semantic search (ADR-030) stands on two services that have no local emulation: a model that
- * turns text into vectors, and an index that finds the nearest ones. Both are ports, so that tests
- * use deterministic fakes and a deployment without them has no semantic search at all.
- */
-
 /** Turns texts into vectors, all of the same length. */
 export interface Embedder {
   /** The model, which the stored vectors name: another model makes them stale. */
@@ -585,12 +571,6 @@ export interface Semantic {
   readonly embedder: Embedder
   readonly index: VectorIndex
 }
-
-/*
- * Analytics (ADR-040): a site connects the analytics it already has, and agents read which pages
- * are read. Hollware counts nothing itself and keeps no reader's data, only a sealed read-only
- * credential of the provider.
- */
 
 /** A page and how often it was read. */
 export interface PageCount {
@@ -657,7 +637,7 @@ export interface AnalyticsSources {
   disconnect(site: string): Promise<boolean>
 }
 
-/** The stored structure of a site (ADR-033), or `null` for no row or a row with no definition. */
+/** The stored structure of a site, or `null` for no row or a row with no definition. */
 export interface StoredStructure {
   readonly version: number
   readonly definition: unknown
@@ -672,7 +652,7 @@ export interface StructureActor {
 }
 
 /**
- * The structure of the sites in D1 (ADR-033): read, written with the version it was read at, and
+ * The structure of the sites in D1: read, written with the version it was read at, and
  * appended to `site_changes` in the same batch. A write never deletes an entry.
  */
 export interface StructureStore {
@@ -718,17 +698,12 @@ export interface Structure {
   /** Brings this isolate's sites in line with D1 now, after a change. */
   readonly changed: () => Promise<void>
   /**
-   * The secrets Hollware makes and keeps sealed (ADR-033): a new one for `name`, which replaces
+   * The secrets Hollware makes and keeps sealed: a new one for `name`, which replaces
    * the one before and is answered in clear this once; `null` where the deployment has no
    * `HOLLWARE_SECRET` to seal it with.
    */
   readonly secrets?: { make(site: string, name: string): Promise<string | null> }
 }
-
-/*
- * The images of a site (ADR-038): files in R2, converted once by the Images binding when one is
- * bound, and described by a row of `assets` in D1.
- */
 
 /** Where the files of the assets live: R2. */
 export interface AssetFiles {

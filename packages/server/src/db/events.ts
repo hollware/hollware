@@ -3,7 +3,6 @@ import { and, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import type { Db } from './d1.ts'
 import { deliveries, outbox } from './schema.ts'
 
-/** An event of the outbox, as the consumer reads it. */
 export interface StoredEvent {
   readonly id: string
   readonly kind: string
@@ -19,7 +18,6 @@ export async function findEvent(db: Db, site: string, id: string): Promise<Store
   return row ?? null
 }
 
-/** The events that were never put on the Queue and are older than `before`, oldest first. */
 export async function unsentEvents(db: Db, site: string, before: string, limit = 100) {
   const rows = await db
     .select({ id: outbox.id })
@@ -38,7 +36,6 @@ export async function markSent(db: Db, site: string, ids: readonly string[], now
     .where(and(eq(outbox.siteId, site), inArray(outbox.id, [...ids])))
 }
 
-/** The subscribers that already have an event, so that a retry never delivers it twice. */
 export async function deliveredTo(db: Db, site: string, eventId: string): Promise<Set<string>> {
   const rows = await db
     .select({ subscriber: deliveries.subscriber, deliveredAt: deliveries.deliveredAt })
@@ -47,7 +44,6 @@ export async function deliveredTo(db: Db, site: string, eventId: string): Promis
   return new Set(rows.filter((row) => row.deliveredAt !== null).map((row) => row.subscriber))
 }
 
-/** Records one attempt to deliver an event to a subscriber, and its result. */
 export async function recordAttempt(
   db: Db,
   input: {

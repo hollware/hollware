@@ -1,5 +1,5 @@
 /**
- * The preview token (T-103 of docs/security/threat-model.md): a signed, stateless proof that a person of a site may read the
+ * The preview token: a signed, stateless proof that a person of a site may read the
  * latest revision of one entry, for one hour. A site that reads published content only (the
  * binding of RPC, the read API) reads that entry's head instead when it presents one.
  *

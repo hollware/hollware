@@ -3,18 +3,8 @@ import { isRecord, isStringArray, parseJson } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { isPublishable, parseManifests } from './workspace.ts'
 
-/**
- * Guard `changesets`: the six published packages share one version because
- * `.changeset/config.json` fixes them as one group (ADR-015, which keeps ADR-013's decision). The `fixed` list holds exactly
- * one group, and the group is exactly the set of non-private packages of `packages/`. The
- * config also publishes with public access from `main`, and never versions or tags the
- * private apps and templates.
- */
-
 export interface ChangesetsInput {
-  /** `.changeset/config.json`. */
   config: TextFile
-  /** The `package.json` of the root and of every workspace package. */
   manifests: readonly TextFile[]
 }
 

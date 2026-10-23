@@ -17,21 +17,10 @@ import {
 } from './definition.ts'
 import { describedSchemaOf } from './json-schema.ts'
 
-/**
- * The sites of a deployment from their definitions in D1 (ADR-033), resolved as a config is: the
- * same checks, the same defaults, the same `ResolvedSite` the rest of the server reads. It throws
- * one `ConfigError` with every problem, each at its path (`sites.blog.collections.posts.rules[0]`)
- * and with its fix, so that an operation that changes the structure answers what to change.
- */
-
 function isObjectSchema(schema: Readonly<Record<string, unknown>>): boolean {
   return schema['type'] === 'object'
 }
 
-/**
- * The schema of a frontmatter with the fields Hollware fills marked `readOnly` and never required:
- * nobody writes them, and a draft without them is complete. What else the schema says is kept.
- */
 function withAutomatic(
   schema: Readonly<Record<string, unknown>>,
   automatic: Readonly<Record<string, string>>,
@@ -174,7 +163,6 @@ export function compileSites(definitions: Readonly<Record<string, unknown>>): Re
     sites[key] = compileSite(path, parsed.data, problems)
   }
   if (problems.list.length > 0) throw new ConfigError(problems.list)
-  // A deployment starts with no site: its owner makes the first one (ADR-033).
   if (Object.keys(sites).length === 0) {
     return { sites: new Map(), auth: { dynamicClientRegistration: false } }
   }

@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Astro declares its types for bundlers, as the sites that use this package resolve them.
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": ["node"]

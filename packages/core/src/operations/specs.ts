@@ -900,7 +900,6 @@ const problem = z.object({
   fix: z.string(),
 })
 
-/** What a change of the structure would do to the entries a site already has. */
 const impact = z.object({
   removedCollections: z
     .array(z.object({ name: z.string(), entries: z.number().int() }))
@@ -1078,17 +1077,11 @@ export const makeWebhookSecret = defineOperation({
   },
 })
 
-/*
- * The images of a site: sent once, converted by the site's `media` setting, kept in R2,
- * and named in content as `asset:ast_…`.
- */
-
 const assetId = z
   .string()
   .regex(/^ast_[0-9a-f]{26}$/)
   .describe('The id of an asset, such as ast_3f1c… (26 hexadecimal characters).')
 
-/** An asset as the operations answer it. */
 const asset = z.object({
   id: assetId,
   reference: z
@@ -1119,7 +1112,6 @@ const asset = z.object({
   createdAt: z.string(),
 })
 
-/** Base64 of at most MAX_ASSET_BYTES, with its padding: four characters for every three bytes. */
 const MAX_BASE64 = Math.ceil(MAX_ASSET_BYTES / 3) * 4
 
 export const uploadAsset = defineOperation({

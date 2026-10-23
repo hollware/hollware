@@ -3,20 +3,14 @@ import { computed, ref } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { auth } from './session.ts'
 
-/** What `/v1/admin/me` says: the person, the site of the token and the sites they may switch to. */
 export interface Me {
   readonly user: { readonly id: string; readonly name: string | null } | undefined
   readonly site: string
   readonly sites: readonly { readonly site: string; readonly role: string }[]
 }
 
-/** The person signed in, once the shell has asked: every page reads the site it works in here. */
 export const me = ref<Me | null>(null)
 
-/**
- * The sites of the person, to switch to, and a new one: a token is for one site, so the admin
- * signs in again on the one chosen. The sidebar and the bar of every page show the same menu.
- */
 export function useSiteMenu() {
   const m = useMessages()
   return computed<DropdownMenuItem[][]>(() => [

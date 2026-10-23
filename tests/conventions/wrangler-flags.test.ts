@@ -5,12 +5,6 @@ import { checkWranglerFlags } from '../guards/wrangler-flags.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a wrangler.jsonc stops listing both no_nodejs_compat and no_nodejs_compat_v2, lists
-// nodejs_compat or nodejs_compat_v2, or, outside templates/, stops setting send_metrics to false;
-// or a Worker of Hollware (one with the D1 binding DB) stops listing global_fetch_strictly_public
-// or binding OAUTH_KV, or, outside WORKERS_WITHOUT_EVENTS, declaring a cron trigger and a queue
-// consumer with a dead_letter_queue, at the top or in an environment with bindings of its own.
-
 const isWranglerConfig = (path: string) => /(^|\/)wrangler\.jsonc$/.test(path)
 
 describe('wrangler flags', () => {

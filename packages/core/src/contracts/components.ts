@@ -5,11 +5,6 @@ import { schemaSnapshot } from './schema.ts'
 import { quote } from './text.ts'
 import type { Contract, ContractFinding } from './types.ts'
 
-/**
- * `components`: the props of every component the body uses, checked with the schema of that
- * component. A component the collection does not allow is `unknown-component`'s business: the
- * parser leaves a marker for it instead of a use.
- */
 export const COMPONENTS: Contract<unknown> = registerBuiltIn(
   {
     id: 'components',

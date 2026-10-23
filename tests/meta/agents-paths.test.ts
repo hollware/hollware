@@ -7,11 +7,6 @@ import { existsInRepository, ignoredByGit, readRepoFiles, repoFiles } from '../s
 import { isRecord } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: an AGENTS.md or a README.md puts in backticks a path that is neither a file nor a
-// directory of the repository (relative to the document or to the root), and that no allowlisted
-// exception or .gitignore rule explains; or an allowed missing path starts to exist; or a route
-// such as `/mcp` is taken for a path of the repository.
-
 function knownPackages(): Set<string> {
   const names = new Set<string>()
   for (const manifest of workspaceManifests()) {
@@ -40,7 +35,7 @@ const TREE = fakeTree(
   'AGENTS.md',
   'README.md',
   'LICENSE',
-  'docs/design.md',
+  'docs/guide.md',
   'packages/core/AGENTS.md',
   'packages/core/src/index.ts',
   '.github/workflows/release.yml',
@@ -57,7 +52,7 @@ const check = (
     ignored: (candidates) =>
       new Set(candidates.filter((path) => overrides.ignored?.includes(path))),
     packages: new Set(['vite-plus', '@hollware/core', 'hollware']),
-    basenames: new Set(['release.yml', 'index.ts', 'design.md']),
+    basenames: new Set(['release.yml', 'index.ts', 'guide.md']),
     missingAllowed: overrides.missingAllowed ?? [],
   })
 
@@ -88,7 +83,7 @@ describe('paths in AGENTS.md and README.md', () => {
     it('accepts paths that exist, relative to the document or to the root', () => {
       const doc = file(
         'packages/core/AGENTS.md',
-        'See `src/index.ts`, `src`, `docs/design.md`, `./docs/`, `LICENSE`, `.node-version`, `release.yml`.',
+        'See `src/index.ts`, `src`, `docs/guide.md`, `./docs/`, `LICENSE`, `.node-version`, `release.yml`.',
       )
       expect(check([doc])).toEqual([])
     })
@@ -155,8 +150,8 @@ describe('paths in AGENTS.md and README.md', () => {
         },
       ])
       expect(
-        check([file('AGENTS.md', 'Read `docs/design.md`.')], {
-          missingAllowed: ['docs/design.md'],
+        check([file('AGENTS.md', 'Read `docs/guide.md`.')], {
+          missingAllowed: ['docs/guide.md'],
         }).map((violation) => violation.rule),
       ).toEqual(['agents-paths/stale-exception'])
     })
@@ -164,7 +159,7 @@ describe('paths in AGENTS.md and README.md', () => {
     it('decides what a token claims', () => {
       const packages = new Set(['vite-plus'])
       expect(claimedPath('packages/core', packages)).toBe('packages/core')
-      expect(claimedPath('./docs/adr/', packages)).toBe('docs/adr')
+      expect(claimedPath('./docs/notes/', packages)).toBe('docs/notes')
       expect(claimedPath('PLAN.md', packages)).toBe('PLAN.md')
       expect(claimedPath('vp', packages)).toBeUndefined()
       expect(claimedPath('vite-plus/test', packages)).toBeUndefined()

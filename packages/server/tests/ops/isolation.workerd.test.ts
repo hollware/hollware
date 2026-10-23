@@ -26,18 +26,9 @@ import { seedSite, type SeededEntry, type SeededSite } from '../support/sites.ts
 import { agent, BINDING, blogPost, contextFor, tenantOf, warmUpComark } from './support.ts'
 import { snapshotOf, START } from './world.ts'
 
-// Fails when: a handler stops asking the store for the site of its context, in any call it makes
-// (AC-0.1-13). With the rows of a second site in the database, which has the same natural keys
-// as the first, an operation run as one site then finds, lists, changes, publishes, takes down or
-// counts the other's rows: list-entries.ts, get-entry.ts, get-translations.ts, create-draft.ts,
-// update-draft.ts, publish.ts, unpublish.ts and validate.ts pass `context.site.key` to the store,
-// and draft.ts passes it to the lookup that the contracts read other entries through. Each test
-// runs as both sites, so that whichever one was written first cannot hide a call that forgets it.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/** The seeded entries of a site: two published (en, es) in one translation group, and a draft. */
 interface Entries {
   readonly english: SeededEntry
   readonly spanish: SeededEntry
@@ -52,15 +43,8 @@ function entriesOf(site: SeededSite): Entries {
   return { english, spanish, draft }
 }
 
-/** The key of an entry that only the other site has. */
 const ONLY_THERE = { collection: 'blog', locale: 'en', slug: 'only-in-the-other-site' }
 
-/**
- * Writes the rows that only a site has, straight into D1, so that what the operations answer for
- * the caller does not depend on the handlers that the test is about to break: an English entry
- * of a translation group and a tag that the caller's site does not have, published, and its
- * Spanish translation, a draft. Gives the id of the English one.
- */
 async function seedForeign(site: SeededSite): Promise<string> {
   const actor: Actor = { kind: 'token', userId: site.userId, tokenId: site.tokenId, meta: null }
   const english = { entry: newId('ent'), revision: newId('rev') }
@@ -182,10 +166,6 @@ async function run<Input extends z.ZodType, Output extends z.ZodType>(
   return spec.output.parse(await invoke(handlers, operation, spec.input.parse(raw), context))
 }
 
-/**
- * Two seeded sites with the same natural keys, and the calls of the one that is the `caller`.
- * The other site also has the rows of `seedForeign`.
- */
 async function seedPair(callerIs: 'home' | 'stranger') {
   const suffix = crypto.randomUUID()
   const home = await seedSite(env.DB, `home-${suffix}`)
@@ -695,9 +675,7 @@ describe.each(['home', 'stranger'] as const)(
       const published = await reader.listEntries({ collection: 'blog' })
       const tagged = await caller.listEntries({ collection: 'blog', tag: 'cms' })
       const spanish = await reader.listEntries({ collection: 'blog', locale: 'es' })
-      // A page of exactly the two published entries is the last: the other site's do not make a next one.
       const exact = await reader.listEntries({ collection: 'blog', limit: 2 })
-      // A tag that only the other site has lists nothing here, and does list its entry there.
       const foreignTag = await caller.listEntries({ collection: 'blog', tag: 'only-there-tag' })
       const foreignTagLive = await reader.listEntries({ collection: 'blog', tag: 'only-there-tag' })
       const theirTag = await otherAgent.listEntries({ collection: 'blog', tag: 'only-there-tag' })
@@ -730,7 +708,6 @@ describe.each(['home', 'stranger'] as const)(
 
       expect(own.entry?.id).toBe(mine.english.id)
       expect(ownLive.entry?.id).toBe(mine.english.id)
-      // The entry has a publication in its own site, and none here.
       expect(own.entry?.lastPublication?.revision).toBe(mine.english.revisionId)
       expect(foreign).toEqual({ outcome: 'not_found' })
       expect(foreignLive).toEqual({ outcome: 'not_found' })
@@ -768,10 +745,8 @@ describe.each(['home', 'stranger'] as const)(
           markdown: blogPost({ translationGroup: group }),
         })
 
-      // The slug and the translation of the other site's entry are free here.
       const sameSlug = await create(ONLY_THERE.slug, 'en', 'a-group-of-its-own')
       const sameGroup = await create('another-slug', 'en', 'only-there')
-      // The ones its own entries hold are not.
       const slugTaken = await create(mine.english.slug, 'en', 'a-group-of-its-own')
       const groupTaken = await create('a-third-slug', 'en', 'edge-caching')
 
@@ -811,7 +786,6 @@ describe.each(['home', 'stranger'] as const)(
       }
 
       expect(await snapshotOf(env.DB, otherSite)).toEqual(before)
-      // The same calls for its own entries do answer.
       expect((await caller.updateDraft({ id: mine.draft.id, version: 1, markdown })).outcome).toBe(
         'unchanged',
       )
@@ -824,7 +798,6 @@ describe.each(['home', 'stranger'] as const)(
       const before = await snapshotOf(env.DB, otherSite)
       const english = contentFixture('blog/en/from-draft-to-published.md')
 
-      // Its draft gets its Spanish translation and a change, and is published.
       const sibling = await caller.createDraft({
         collection: 'blog',
         locale: 'es',
@@ -879,14 +852,12 @@ describe.each(['home', 'stranger'] as const)(
           })
         ).verdict.errors.map((error) => [error.contract, error.message])
 
-      // A link to its own published entry resolves; one to an entry that only the other site has does not.
       const own = await checks('guide', 'en', '\nSee [a post](/en/blog/edge-caching-basics/).\n')
       const foreign = await checks(
         'guide',
         'en',
         '\nSee [a post](/en/blog/only-in-the-other-site/).\n',
       )
-      // A group whose pair is in its own site is complete; one whose pair is only in the other site is not.
       const pairOwn = await checks('edge-caching', 'es', '\nText.\n')
       const pairForeign = await checks('only-there', 'es', '\nText.\n')
 

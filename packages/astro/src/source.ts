@@ -74,7 +74,6 @@ export interface Source {
   translations(group: string): Promise<Translation[]>
 }
 
-/** The largest page the read API gives. */
 const PAGE = 100
 
 function readerOf(options: ReaderOptions): HollwareReader {
@@ -139,7 +138,6 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
   }
 }
 
-/** The error to hand Astro: a refusal of the read API keeps its status in the message. */
 export function asError(error: unknown): Error {
   if (error instanceof HollwareClientError) {
     return new Error(`Hollware answered ${error.status} (${error.code}): ${error.message}`, {

@@ -1,31 +1,3 @@
-// Fails when:
-// - "deploys, sets the workers.dev URL, deploys again and migrates": a project whose public URL is
-//   localhost keeps it (no rewrite of wrangler.jsonc, no second deploy), the rewrite touches more
-//   than the one value (comments, other keys), the remote migrations are not applied, or the
-//   next step for a database without an owner is not said.
-// - "hands wrangler the master secret …": HOLLWARE_SECRET is not 32 random bytes, its file can be
-//   read by others, or stays on disk after wrangler took it.
-// - "keeps a public URL that is not localhost, and deploys once": a configured public URL is
-//   replaced by the workers.dev one, or the Worker is deployed twice for nothing.
-// - "migrates a database it deployed before, before the new Worker": an upgrade deploys the new
-//   Worker first, on a database without its tables, or migrates twice.
-// - "migrates after the deploy when wrangler finds no database yet": a project with a public URL
-//   and no remote database stops instead of deploying, or is never migrated.
-// - "serves a domain of its own …": `--url` is ignored or written as given and not as its origin,
-//   the custom domain gets no route (or another host, or a line more than its route), or the Worker
-//   is deployed twice.
-// - "writes the types again …": deploy rewrites wrangler.jsonc and leaves worker-configuration.d.ts
-//   with the old HOLLWARE_PUBLIC_URL (`types:check` fails), or runs `wrangler types` after the
-//   deploy instead of before it, or with no such file.
-// - "leaves routes of its own …": a config with routes gets a second "routes", or no word on the
-//   missing route.
-// - "tells a domain of its own …": `customDomainOf` routes localhost or workers.dev, or misses a
-//   custom host.
-// - "stops when wrangler cannot deploy …": a failed deploy goes on to migrate.
-// - "stops when it can tell no public URL": a deploy that prints no workers.dev URL, with a
-//   localhost URL, goes on without one.
-// - "reads the workers.dev URL …": `workersDevUrlOf` misses the URL among wrangler's colors, or
-//   takes another host for it.
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -42,7 +14,6 @@ import { tempDirs } from './support/project.ts'
 
 const temp = tempDirs()
 
-/** A `wrangler.jsonc` like the starter's, with its public URL. */
 function wranglerJsonc(url: string): string {
   return `{
   "name": "my-hollware",
@@ -56,7 +27,6 @@ function wranglerJsonc(url: string): string {
 `
 }
 
-/** The same `wrangler.jsonc`, served at `host` as a custom domain: what deploy writes. */
 function routedJsonc(url: string, host: string): string {
   return `{
   "name": "my-hollware",
@@ -82,7 +52,6 @@ const DEPLOYED = [
 const LIST_ALL_PENDING =
   'Migrations to be applied:\n┌───────────────┐\n│ Name          │\n├───────────────┤\n│ 0000_init.sql │\n└───────────────┘\n'
 const APPLIED = '🚣 10 commands executed successfully.\n'
-/** What `wrangler secret list` prints: none, or the master secret of Hollware. */
 const NO_SECRETS = '[]'
 const HAS_MASTER = '[{"name":"HOLLWARE_SECRET","type":"secret_text"}]'
 
@@ -172,7 +141,6 @@ describe('hollware deploy', () => {
     const { code } = await project.run(['deploy'])
 
     expect(code).toBe(0)
-    // The first 32 random bytes of the test's source are all 1: 64 hex digits of 01.
     expect(handed).toEqual({
       content: JSON.stringify({ HOLLWARE_SECRET: '01'.repeat(32) }),
       mode: 0o600,

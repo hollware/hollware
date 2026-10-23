@@ -1,10 +1,6 @@
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 import { UsageError } from './errors.ts'
 
-/**
- * `parseArgs` in strict mode: an unknown option, a missing value or a stray argument is a
- * `UsageError` with one short sentence, instead of Node's error with its advice about `--`.
- */
 export function parseFlags<const Config extends ParseArgsConfig>(
   config: Config,
 ): ReturnType<typeof parseArgs<Config>> {

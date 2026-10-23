@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { effectiveScopes, isRole, ROLE_SCOPES, ROLES } from '../../src/auth/roles.ts'
 
-// Fails when: ROLE_SCOPES (src/auth/roles.ts) gives a role other scopes than the v0.1 plan says,
-// or the owner stops having every scope of the catalog; effectiveScopes stops intersecting the
-// scopes of the token with those of the role (it returns the token's, or the role's, or loses the
-// role's order) or grants anything to a role it does not know; isRole accepts a string that is no
-// role (`constructor`, for one).
-
 describe('ROLE_SCOPES', () => {
   it('gives the owner every scope, an editor the content, and an author all but publishing', () => {
     expect(ROLES).toEqual(['owner', 'editor', 'author'])

@@ -10,12 +10,6 @@ import {
   type Agent,
 } from './support/harness.ts'
 
-// Fails when: content safety stops working the way AC-0.1-14 describes, on the built playground:
-// a draft with raw HTML, an unknown component, a disallowed attribute and a javascript: link stops
-// being saved, or its verdict stops reporting each with an error and a fix; publishing it stops
-// being blocked; the stored Markdown is changed; or the HTML of a published entry, from get_entry
-// or from the example site, lets HTML that the Markdown only quotes through as markup.
-
 const server = createPlaygroundHarness()
 let agent: Agent
 
@@ -32,7 +26,6 @@ afterAll(async () => {
 const FRONTMATTER = (slug: string) =>
   `---\ntitle: A post about ${slug}\ndescription: A post that tests what content safety lets through.\ndate: 2026-10-13\ntags:\n  - cms\ntranslationGroup: ${slug}\n---\n\n`
 
-/** Raw HTML, a misspelled component, an event handler and a javascript: link. */
 const HOSTILE = `${FRONTMATTER('four-problems')}Inline HTML: <span>raw</span>.
 
 ::youtub{id="dQw4w9WgXcQ"}
@@ -43,7 +36,6 @@ A [link](/en/blog/edge-caching-basics/){onclick="alert(1)"}.
 A [script link](javascript:alert(1)).
 `
 
-/** HTML that the Markdown only quotes, in inline code and in a code block. */
 const QUOTED = `${FRONTMATTER('quoted-html')}Never write \`<script>alert(1)</script>\` in a post.
 
 \`\`\`html
@@ -55,7 +47,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** The contract of each error of a verdict, by name, and whether it carries a fix. */
 function errorsOf(verdict: unknown): [string, boolean][] {
   const errors = isRecord(verdict) ? verdict['errors'] : undefined
   if (!Array.isArray(errors)) throw new Error(`no errors: ${JSON.stringify(verdict)}`)

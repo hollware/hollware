@@ -1,24 +1,12 @@
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `invisible-characters`: no text file of the repository holds a character that changes how
- * text reads without being seen. That is the Unicode categories Cf, Zl and Zp: the bidirectional
- * controls that make a line display in another order than it runs (Trojan Source,
- * CVE-2021-42574), zero-width marks, a byte order mark, and the line and paragraph separators.
- * Code writes such a character as an escape or with `String.fromCodePoint`. A file that holds one
- * on purpose is listed, with its reason, in `tests/guards/exceptions.ts`, and arrives here as
- * `allowed`.
- */
-
 const INVISIBLE = /[\p{Cf}\p{Zl}\p{Zp}]/u
 
 export interface InvisibleCharactersInput {
   files: readonly TextFile[]
-  /** The files that hold such a character on purpose. */
   allowed: readonly string[]
 }
 
-/** The first invisible character of a text: its line, from 1, and its code point as `U+XXXX`. */
 function firstInvisible(text: string): { line: number; codePoint: string } | undefined {
   let line = 1
   for (const character of text) {

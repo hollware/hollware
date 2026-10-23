@@ -23,15 +23,8 @@ import type {
   ProcessedMarkdown,
 } from '../../src/markdown/types.ts'
 
-/**
- * What the tests of the contracts stand on: a collection and a site as the config resolves them,
- * the Markdown pipeline's answer written by hand (the pipeline is another package of the work),
- * and an in-memory `EntryLookup`, the port the server implements on D1, that records its calls.
- */
-
 export const ENTRY_ID = 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
 
-/** A frontmatter that the default schema accepts. */
 export const FRONTMATTER = {
   title: 'Edge caching guide',
   description: 'How to cache at the edge.',
@@ -39,7 +32,6 @@ export const FRONTMATTER = {
   translationGroup: 'edge-caching-guide',
 }
 
-/** The default schema of the tests' collection: a blog whose translation group is optional. */
 export const blogSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1).max(160),
@@ -47,11 +39,8 @@ export const blogSchema = z.object({
   translationGroup: z.string().min(1).optional(),
 })
 
-/** What a hand-made schema was asked for. */
 export interface ConversionLog {
-  /** The targets of the calls to its input JSON Schema. */
   readonly inputTargets: string[]
-  /** The targets of the calls to its output JSON Schema. */
   readonly outputTargets: string[]
 }
 
@@ -59,11 +48,6 @@ export function conversionLog(): ConversionLog {
   return { inputTargets: [], outputTargets: [] }
 }
 
-/**
- * A Standard Schema with JSON Schema made by hand: it accepts any value and says it is `json` as
- * an input and `json` with a description of `output` as an output, so that a test can tell which of
- * the two a caller asked for. `log` records how it was asked.
- */
 export function described(
   json: Readonly<Record<string, unknown>>,
   log: ConversionLog = conversionLog(),
@@ -91,7 +75,6 @@ export interface CollectionParts {
   readonly schema?: DescribedSchema
   readonly components?: Readonly<Record<string, ComponentDefinition>>
   readonly contracts?: readonly Contract<unknown>[]
-  /** The frontmatter field of the translation group; the collection has no translations by default. */
   readonly translationGroupField?: string
 }
 
@@ -144,7 +127,6 @@ export interface MarkdownParts {
   readonly disallowed?: readonly DisallowedMarker[]
 }
 
-/** What the pipeline would answer for a file, with only the parts a test cares about. */
 export function markdownOf(parts: MarkdownParts = {}): ProcessedMarkdown {
   return {
     frontmatter: parts.frontmatter ?? FRONTMATTER,
@@ -163,7 +145,6 @@ export function markdownOf(parts: MarkdownParts = {}): ProcessedMarkdown {
   }
 }
 
-/** A lookup that a test does not expect to be called: it throws. */
 export const NO_LOOKUPS: EntryLookup = {
   lookupMany: () => Promise.reject(new Error('this test expects no lookupMany')),
   translations: () => Promise.reject(new Error('this test expects no translations lookup')),
@@ -180,7 +161,6 @@ export interface RunParts {
   readonly entries?: EntryLookup
 }
 
-/** Runs the contracts of a collection on an `es` entry of the blog, in the `write` phase by default. */
 export function run(parts: RunParts = {}): Promise<Verdict> {
   const collection = parts.collection ?? collectionOf()
   return runContracts({
@@ -197,7 +177,6 @@ export function run(parts: RunParts = {}): Promise<Verdict> {
 
 export interface StoredEntry extends EntryRef, EntryFacts {}
 
-/** An entry of the blog as the store holds it. */
 export function stored(
   locale: string,
   slug: string,
@@ -222,7 +201,6 @@ export type LookupCall =
       readonly translationGroup: string
     }
 
-/** An in-memory `EntryLookup` over the given entries that records every call it gets. */
 export function fakeEntries(entries: readonly StoredEntry[] = []): {
   readonly lookup: EntryLookup
   readonly calls: LookupCall[]

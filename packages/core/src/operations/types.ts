@@ -2,12 +2,6 @@ import type * as z from 'zod'
 import type { Scope } from '../scopes.ts'
 
 /**
- * The shape of an operation spec (ADR-017): its name, its input and output schemas, the scopes
- * it requires, its effect and its outcomes. A spec holds no handler and no MCP, HTTP or
- * Cloudflare vocabulary; the adapters of `packages/server` derive their protocol from it.
- */
-
-/**
  * What an operation does to the content. The MCP hints, the HTTP method and whether an answer
  * may be cached derive from it:
  * - `read` changes nothing;

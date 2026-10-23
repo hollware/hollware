@@ -1,27 +1,3 @@
-/**
- * Mutation probe. Replaces one exact snippet in a file, runs a command on the untouched file
- * and again on the mutated one, and restores the file byte for byte, whatever happens.
- *
- *   node scripts/break-line.ts --file <path> --find <text> --replace <text> [--timeout <seconds>] -- <command> [args...]
- *
- * The first run (the baseline) proves that the command passes by itself. Without it a command
- * that always fails, or one started in the wrong directory, would read as CAUGHT. Each run is
- * bounded by the timeout and starts in its own process group, so a timeout or a signal kills the
- * command and everything it spawned (test runners spawn workers) before the file is restored.
- *
- * Prints one verdict line, which says which run produced it, and exits with:
- *   0  CAUGHT      the command passed without the mutation and failed with it
- *   1  NOT CAUGHT  the command passed both ways: no test guards that snippet
- *   2  ERROR       no verdict: the arguments were wrong, the file could not be read, the snippet
- *                  was missing or ambiguous, the command fails without the mutation, could not
- *                  start, was killed by a signal or timed out, or the file could not be restored
- *   128 + N        the probe was interrupted by signal N (SIGINT 130, SIGTERM 143, SIGHUP 129);
- *                  the command's process group is killed and the file restored first
- *
- * POSIX only: it needs process groups. The command gets no stdin. Only a SIGKILL of the probe
- * itself, which no process can catch, can leave the file mutated (and the command running):
- * restore the file from version control.
- */
 import { type ChildProcess, spawn } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { constants } from 'node:os'
@@ -32,21 +8,13 @@ import { parseArgs } from 'node:util'
 
 export type Verdict = 'CAUGHT' | 'NOT CAUGHT' | 'ERROR'
 
-/**
- * Seconds each of the two runs may take. The tests of one project take seconds (the whole suite of
- * this repository about 12 s), so a minute is generous, and a hung command costs two at most.
- */
 export const DEFAULT_TIMEOUT_SECONDS = 60
 
-/** The longest delay a timer accepts is 2^31 - 1 ms; a larger one fires after 1 ms. */
 export const MAX_TIMEOUT_SECONDS = 2_147_483
 
-/** Signals that make the probe stop its command and restore the file. */
 const INTERRUPT_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP']
 
-/** How long a killed run has to exit after SIGTERM before it gets SIGKILL. */
 const KILL_GRACE_MS = 3000
-/** How long to wait for a process group to disappear after SIGKILL. */
 const KILL_WAIT_MS = 5000
 const POLL_MS = 20
 
@@ -56,14 +24,10 @@ export interface BreakLineOptions {
   replace: string
   command: string
   args: string[]
-  /** How long each of the two runs may take. Past it the run is killed and the result is ERROR. */
   timeoutSeconds: number
   cwd?: string
-  /** Show the command's output and a header per run. The CLI does; tests keep it quiet. */
   inheritOutput?: boolean
-  /** Aborting kills the command's process group, restores the file and gives ERROR. */
   abort?: AbortSignal
-  /** Milliseconds a killed run has to exit after SIGTERM before it gets SIGKILL. */
   killGraceMs?: number
 }
 
@@ -101,7 +65,6 @@ function failure(reason: string): BreakLineResult {
   return { verdict: 'ERROR', reason }
 }
 
-/** True while any process of the group is left, a zombie that nobody reaped yet included. */
 function groupExists(group: number): boolean {
   try {
     process.kill(-group, 0)
@@ -112,14 +75,10 @@ function groupExists(group: number): boolean {
 }
 
 function signalGroup(group: number, signal: NodeJS.Signals): void {
-  // A group that is already gone (ESRCH) is the goal; a group we may not signal (EPERM) cannot
-  // be helped. `group` is a child pid: 0 or 1 would reach this process group or every process.
   if (group <= 1) return
   try {
     process.kill(-group, signal)
-  } catch {
-    // Nothing left to do for this group.
-  }
+  } catch {}
 }
 
 async function waitForGroupToEnd(group: number, limitMs: number): Promise<boolean> {
@@ -131,7 +90,6 @@ async function waitForGroupToEnd(group: number, limitMs: number): Promise<boolea
   return true
 }
 
-/** SIGTERM to the whole group, SIGKILL if something is still there after the grace period. */
 async function terminateGroup(group: number, graceMs: number): Promise<void> {
   signalGroup(group, 'SIGTERM')
   if (await waitForGroupToEnd(group, graceMs)) return
@@ -139,17 +97,14 @@ async function terminateGroup(group: number, graceMs: number): Promise<void> {
   await waitForGroupToEnd(group, KILL_WAIT_MS)
 }
 
-/** Runs the command once, bounded by the timeout and the abort signal. Never rejects. */
 async function run(spec: RunSpec): Promise<Outcome> {
   if (spec.abort?.aborted === true) return { kind: 'aborted' }
-  // No stdin: the command runs in its own session, so it must not read the terminal.
   const output = spec.inheritOutput ? 'inherit' : 'ignore'
   let child: ChildProcess
   try {
     child = spawn(spec.command, spec.args, {
       cwd: spec.cwd,
       stdio: ['ignore', output, output],
-      // The child leads a new process group, so one signal reaches it and what it spawned.
       detached: true,
       shell: false,
     })
@@ -169,7 +124,7 @@ async function run(spec: RunSpec): Promise<Outcome> {
     })
   })
   const group = child.pid
-  if (group === undefined) return ended // the spawn failed and 'error' follows
+  if (group === undefined) return ended
 
   let timer: NodeJS.Timeout | undefined
   let onAbort: (() => void) | undefined
@@ -191,7 +146,6 @@ async function run(spec: RunSpec): Promise<Outcome> {
   return outcome
 }
 
-/** Puts the original bytes back. Returns the problem, or undefined when the file is as it was. */
 function restore(file: string, original: Buffer): string | undefined {
   try {
     writeFileSync(file, original)
@@ -203,10 +157,6 @@ function restore(file: string, original: Buffer): string | undefined {
   }
 }
 
-/**
- * One line on stderr naming the run that follows. Never written while the mutation is in place:
- * a broken pipe must not be able to crash the probe between the mutation and the restore.
- */
 function announce(inheritOutput: boolean, label: string): void {
   if (inheritOutput) console.error(`break-line: ${label}`)
 }
@@ -236,13 +186,11 @@ async function probe(options: BreakLineOptions): Promise<BreakLineResult> {
     abort: options.abort,
   }
   const limit = `${options.timeoutSeconds} s`
-  // Read when it is needed: the abort happens after the runs have started.
   const interruption = (): string => {
     const reason = options.abort?.reason
     return typeof reason === 'string' ? reason : 'an abort signal'
   }
 
-  // The baseline: the command must pass on the file as it is. The file is not touched yet.
   announce(inheritOutput, 'baseline run, without the mutation')
   const baseline = await run(spec)
   switch (baseline.kind) {
@@ -267,7 +215,6 @@ async function probe(options: BreakLineOptions): Promise<BreakLineResult> {
     writeFileSync(options.file, mutated)
     outcome = await run(spec)
   } catch (error) {
-    // Not even the write worked (or run() broke its promise): put the file back and say so.
     const problem = restore(options.file, original)
     return failure(
       problem === undefined ? errorMessage(error) : `${errorMessage(error)}; ${problem}`,
@@ -297,7 +244,6 @@ async function probe(options: BreakLineOptions): Promise<BreakLineResult> {
   }
 }
 
-/** Never rejects: whatever goes wrong is an ERROR, which exits 2 and not the 1 of a crash. */
 export async function breakLine(options: BreakLineOptions): Promise<BreakLineResult> {
   try {
     return await probe(options)
@@ -312,7 +258,6 @@ const EXIT_CODES: Record<Verdict, number> = {
   ERROR: 2,
 }
 
-/** The seconds `--timeout` asks for, or the default. Throws when the value is not usable. */
 export function parseTimeout(text: string | undefined): number {
   if (text === undefined) return DEFAULT_TIMEOUT_SECONDS
   const seconds = /^\d+(?:\.\d+)?$/.test(text) ? Number(text) : Number.NaN
@@ -360,7 +305,6 @@ export async function main(argv: string[]): Promise<number> {
   try {
     return await cli(argv)
   } catch (error) {
-    // A crash would exit with 1, which reads as NOT CAUGHT.
     console.error(`ERROR: ${errorMessage(error)}`)
     return EXIT_CODES.ERROR
   }
@@ -387,7 +331,6 @@ async function cli(argv: string[]): Promise<number> {
       strict: true,
     }))
   } catch (error) {
-    // A value that starts with "-" must be written as --find=<value>.
     return usageError(errorMessage(error))
   }
   if (values.help === true) {
@@ -410,7 +353,6 @@ async function cli(argv: string[]): Promise<number> {
     return usageError(errorMessage(error))
   }
 
-  // The command runs in its own process group, so a Ctrl-C does not reach it: the probe stops it.
   const abort = new AbortController()
   let received: NodeJS.Signals | undefined
   const listeners = INTERRUPT_SIGNALS.map((name) => {

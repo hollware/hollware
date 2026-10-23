@@ -13,14 +13,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: a baseline of the MCP conformance suite has an entry without a class (not-offered,
-// fixture or upstream) or without a reason, or with a class outside the three, or an upstream entry
-// without a link to its issue, or an entry for a whole scenario, or a duplicate; an entry matches a
-// check of the must-pass profile; a baseline holds more entries than its recordedSize, or fewer
-// without the size following; a revision has no baseline, or a baseline names another revision; the
-// profile is malformed, or a revision loses its last check of a claim.
-
-/** The claims that each revision keeps in the must-pass profile (ADR-022). */
 const REQUIRED_CLAIMS = {
   '2026-07-28': [
     'lifecycle',
@@ -65,8 +57,6 @@ describe('conformance baselines', () => {
       ),
     ).toEqual([])
 
-    // The guard must have read real data: these are the revisions the suite is run for, a
-    // baseline of the size it records, and the claims of the profile.
     expect(REVISIONS).toEqual(['2026-07-28', '2025-11-25'])
     for (const baselineFile of baselines) {
       const { baseline } = parseBaseline(baselineFile)
@@ -274,7 +264,6 @@ describe('conformance baselines', () => {
     })
 
     it('judges an entry against the profile of its own revision only', () => {
-      // server-stateless is in the profile for 2026-07-28 only.
       const other = baseline('2025-11-25', [
         entry('server-stateless:sep-2575-server-implements-discover'),
       ])

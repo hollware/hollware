@@ -3,11 +3,6 @@ import { ranked, sinceOf } from './normalize.ts'
 import { isRecord, messageOf, ProviderError, request } from './request.ts'
 import { rowsFor, type Source, type SourceInput } from './source.ts'
 
-/*
- * Plausible (ADR-040): the page views of a site by `event:page`, from the Stats API v2 with a
- * Stats API key. The site is its domain in Plausible, the host of the site's url unless named.
- */
-
 export const PLAUSIBLE_CLOUD = 'https://plausible.io'
 
 const KEY_FIX =

@@ -2,11 +2,6 @@
 import { useMessages } from '../i18n/index.ts'
 import { me, useSiteMenu } from '../lib/me.ts'
 
-/**
- * A page of the admin: a panel of Nuxt UI's dashboard beside the sidebar, its title and its
- * actions in the bar at the top, its content below, as Linear lays out a view. The bar names the
- * site the page is of, with the menu to switch to another: what a page shows is that site's.
- */
 defineProps<{ title: string; description?: string }>()
 const m = useMessages()
 const siteMenu = useSiteMenu()

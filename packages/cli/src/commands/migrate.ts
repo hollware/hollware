@@ -24,10 +24,8 @@ export const MIGRATE_USAGE = [
   '  --help             Show this help',
 ].join('\n')
 
-/** The first migration of the server: a database that lacks it has no Hollware tables yet. */
 export const FIRST_MIGRATION = '0000_init.sql'
 
-/** Where the backups before a remote migration go, below the project: wrangler's own, git-ignored folder. */
 export const BACKUP_DIRECTORY = join('.wrangler', 'hollware-backups')
 
 export async function migrate(argv: readonly string[], io: Io): Promise<number> {
@@ -65,7 +63,6 @@ export async function migrate(argv: readonly string[], io: Io): Promise<number> 
     throw new CliError(`${count} pending. Run "hollware migrate --${target}" to apply them.`)
   }
 
-  // A database that has none of the migrations yet holds nothing to back up.
   const fresh = pending.includes(FIRST_MIGRATION)
   const backup = target === 'remote' && !fresh ? await takeBackup(io, database) : undefined
   const applied = await io.wrangler(['d1', 'migrations', 'apply', database, `--${target}`])
@@ -85,11 +82,6 @@ export async function migrate(argv: readonly string[], io: Io): Promise<number> 
   return 0
 }
 
-/**
- * The migrations that `wrangler d1 migrations list` says are pending. It only knows two
- * answers, "No migrations to apply!" and a table headed "Migrations to be applied:"; anything
- * else is an error, so that a wrangler that words it differently never reads as "up to date".
- */
 export function parsePendingMigrations(stdout: string): string[] {
   const text = stripAnsi(stdout)
   if (text.includes('No migrations to apply!')) return []
@@ -100,7 +92,6 @@ export function parsePendingMigrations(stdout: string): string[] {
       .split('\n')
       .map((line) => /^[│|]\s*(.+?)\s*[│|]$/.exec(line.trim())?.[1])
       .filter((cell): cell is string => cell !== undefined)
-    // The first row of the table is its header.
     const names = rows.slice(1)
     if (names.length > 0) return names
   }
@@ -125,7 +116,6 @@ async function takeBackup(io: Io, database: string): Promise<string> {
   ])
   if (exported.code !== 0) {
     const reason = failureReason(exported)
-    // D1 exports no database with a virtual table, such as the full-text index of 0008.
     if (/virtual tables?/i.test(reason)) return takeBookmark(io, database)
     throw new CliError(`the backup of ${where} failed, so no migration was applied: ${reason}`)
   }
@@ -137,10 +127,6 @@ async function takeBackup(io: Io, database: string): Promise<string> {
   return file
 }
 
-/**
- * The backup of a database D1 cannot export: a Time Travel bookmark of now, and the command that
- * restores the database to it.
- */
 async function takeBookmark(io: Io, database: string): Promise<string> {
   const where = describeDatabase('remote', database)
   io.out(
@@ -163,7 +149,6 @@ async function takeBookmark(io: Io, database: string): Promise<string> {
   return `the Time Travel bookmark ${bookmark}; restore it with "npx wrangler d1 time-travel restore ${database} --bookmark=${bookmark}"`
 }
 
-/** `20261012T120000Z`: a moment, in UTC, that is safe in a file name. */
 function timestamp(date: Date): string {
   return date
     .toISOString()

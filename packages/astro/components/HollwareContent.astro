@@ -1,19 +1,9 @@
 ---
-/**
- * The body of an entry, rendered by Astro from the document Hollware stored, through the same
- * rules as the HTML Hollware makes. `components` maps the components of the entry (`::callout` is
- * `callout` or `Callout`) to the site's own Astro components, which get its props and its children
- * in their default slot; an element with no mapping renders as its plain tag.
- *
- *   <HollwareContent entry={entry} components={{ callout: Callout }} />
- */
 import { contentNodes, elementOf, type ContentNode, type HollwareEntryLike } from '@hollware/astro'
 
 interface Props {
-  /** An entry as `getEntry` or `getLiveEntry` gives it, read by a loader of `@hollware/astro`. */
   readonly entry?: HollwareEntryLike | null
   readonly components?: Readonly<Record<string, unknown>>
-  /** The nodes to render instead of the entry's: what the component hands itself, to recurse. */
   readonly nodes?: readonly ContentNode[]
 }
 

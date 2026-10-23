@@ -7,8 +7,6 @@ import { create, CreateError, USAGE, UsageError, type Io, type RunResult } from 
 export { USAGE } from './scaffold.ts'
 export type { Io } from './scaffold.ts'
 
-// Read at runtime, next to this module: `../package.json` is the package manifest
-// both from `src/index.ts` and from the built `dist/index.mjs`.
 function readVersion(): string {
   const manifest: { version?: unknown } = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -57,7 +55,6 @@ export async function main(
   }
 }
 
-/** Runs a program with its output captured, and its stdin closed: nothing waits for an answer. */
 function runProgram(command: string, args: readonly string[], cwd: string): Promise<RunResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, [...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -80,9 +77,6 @@ function runProgram(command: string, args: readonly string[], cwd: string): Prom
   })
 }
 
-// True when this module is the process entry point. The path goes through
-// `realpathSync` because npm links a bin as a symlink, while `import.meta.url` is
-// always the real path.
 function isEntryPoint(): boolean {
   const entry = process.argv[1]
   if (entry === undefined) return false

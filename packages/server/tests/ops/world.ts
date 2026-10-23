@@ -14,22 +14,13 @@ import {
   type Tenant,
 } from './support.ts'
 
-/**
- * A tenant with the real D1 store, a clock the test moves, and the callers of the handlers:
- * one that writes over MCP (the `head` view) and one that reads the way an RPC binding does (the
- * `published` view). Only for tests that run in workerd, where `db` comes from.
- */
-
 export interface World {
   readonly db: D1Database
   readonly tenant: Tenant
   readonly store: ContentStore
   readonly time: { readonly clock: ContextOptions['clock']; set(time: string): void }
-  /** The context of a call of the tenant; the options override what an MCP call would have. */
   context(options?: Partial<ContextOptions>, store?: ContentStore): OperationContext
-  /** An agent that calls the operations over MCP: the `head` view, with every scope. */
   readonly agent: ReturnType<typeof agent>
-  /** A site that reads over the RPC binding: the `published` view, and a principal that reads only. */
   readonly reader: ReturnType<typeof agent>
 }
 
@@ -52,7 +43,6 @@ export async function newWorld(db: D1Database, label: string): Promise<World> {
   }
 }
 
-/** What a revision holds in the database, with the names of its columns. */
 export interface RevisionRow {
   readonly id: string
   readonly markdown: string
@@ -68,7 +58,6 @@ export interface RevisionRow {
   readonly created_at: string
 }
 
-/** The revisions of an entry, oldest first. */
 export async function revisionsOf(db: D1Database, entryId: string): Promise<RevisionRow[]> {
   const { results } = await db
     .prepare(
@@ -81,7 +70,6 @@ export async function revisionsOf(db: D1Database, entryId: string): Promise<Revi
   return results
 }
 
-/** What a publication holds in the database. */
 export interface PublicationRow {
   readonly action: string
   readonly revision_id: string | null
@@ -94,7 +82,6 @@ export interface PublicationRow {
   readonly created_at: string
 }
 
-/** The publications of an entry, oldest first. */
 export async function publicationsOf(db: D1Database, entryId: string): Promise<PublicationRow[]> {
   const { results } = await db
     .prepare(
@@ -107,7 +94,6 @@ export async function publicationsOf(db: D1Database, entryId: string): Promise<P
   return results
 }
 
-/** The columns of an entry that a write moves. */
 export interface EntryColumns {
   readonly status: string
   readonly version: number
@@ -129,7 +115,6 @@ export async function entryColumns(db: D1Database, entryId: string): Promise<Ent
     .first<EntryColumns>()
 }
 
-/** Everything of a site that a write could change: its entries, and how many rows of each child table. */
 export async function snapshotOf(db: D1Database, site: string) {
   const { results: entries } = await db
     .prepare(
@@ -153,17 +138,13 @@ type Summary = z.output<typeof schemas.entrySummary>
 export interface PostOptions {
   readonly slug: string
   readonly locale?: 'en' | 'es'
-  /** The translation group; the slug when absent. */
   readonly group?: string
-  /** The tags as YAML, such as `[cloudflare, cms]`. */
   readonly tags?: string
   readonly title?: string
   readonly date?: string
-  /** The time of the write, when the test sets one. */
   readonly at?: string
 }
 
-/** Writes a valid post of the blog as a draft and gives its summary. */
 export async function createPost(world: World, options: PostOptions): Promise<Summary> {
   if (options.at !== undefined) world.time.set(options.at)
   const created = await world.agent.createDraft({
@@ -183,7 +164,6 @@ export async function createPost(world: World, options: PostOptions): Promise<Su
   return created.entry
 }
 
-/** Publishes an entry at the version it is at, and gives its summary. */
 export async function publishPost(world: World, entry: Summary, at?: string): Promise<Summary> {
   if (at !== undefined) world.time.set(at)
   const published = await world.agent.publish({ id: entry.id, version: entry.version })
@@ -193,11 +173,6 @@ export async function publishPost(world: World, entry: Summary, at?: string): Pr
   return published.entry
 }
 
-/**
- * The store with another write let in just before the write of an operation, which is what a
- * second agent does between the read of the first and its write: the competing write goes through
- * the real store, so the answer to the operation is the store's own `conflict`.
- */
 export function interleaved(
   store: ContentStore,
   before: 'appendRevision' | 'publish',

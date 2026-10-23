@@ -1,10 +1,5 @@
 import type { CollectionDefinitionData, SiteDefinitionData } from './definition.ts'
 
-/**
- * Where a new collection or site starts (ADR-033), in the admin and in `hollware init`: a blog, docs, or nothing. Each is a definition
- * the person then changes, with a route per locale that the collection's name begins.
- */
-
 type Definition = SiteDefinitionData
 type CollectionDefinition = CollectionDefinitionData
 
@@ -71,7 +66,6 @@ export function collectionPreset(
         translationGroupField: translated ? 'translationGroup' : null,
         tagsField: 'tags',
         sortByField: 'date',
-        // The date a post first went out, filled when it is published; one written wins.
         automaticFields: { date: 'firstPublished' },
         rules: [
           { rule: 'images-have-alt', severity: 'error', params: {} },
@@ -107,7 +101,6 @@ export function sitePreset(
   locales: readonly string[],
   defaultLocale: string,
 ): Definition {
-  // A site has at least one collection: an empty one starts with pages of a title alone.
   const name = preset === 'empty' ? 'pages' : preset
   const collections = { [name]: collectionPreset(preset, name, locales, defaultLocale) }
   return {

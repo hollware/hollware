@@ -1,19 +1,3 @@
-// Fails when:
-// - "runs the wrangler of the project, in the project, with the arguments as they are": the
-//   runner stops using `<project>/node_modules/.bin/wrangler`, stops running it in the project
-//   directory, or passes the arguments through a shell (so a quote or a `;` in the SQL would
-//   change what runs).
-// - "returns what wrangler printed and its exit code": the exit code or a stream is not
-//   returned.
-// - "never leaves stdin open …": the child keeps a stdin that nobody closes, so a wrangler that
-//   reads it would wait for ever.
-// - "uses the nearest wrangler …": the search of `findWrangler` stops at the project, or takes
-//   the farthest wrangler instead of the nearest.
-// - "says how to install wrangler …": a missing wrangler is not an error that says what to do.
-// - "failureReason" rows: the reason of a failure is no longer taken from the JSON error, the
-//   first [ERROR] message, or the last line of stderr (without wrangler's log notice); colors are
-//   not removed; the reason is not cut at 400 characters.
-// - "stripAnsi": the color codes of wrangler are not removed.
 import { chmodSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -24,7 +8,6 @@ import { tempDirs } from './support/project.ts'
 
 const temp = tempDirs()
 
-/** Puts a `wrangler` that is this shell script in `<directory>/node_modules/.bin`. */
 function withWrangler(directory: string, script: string): string {
   const bin = join(directory, 'node_modules', '.bin', 'wrangler')
   mkdirSync(dirname(bin), { recursive: true })

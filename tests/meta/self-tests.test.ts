@@ -5,11 +5,6 @@ import { exportedNames } from '../support/ast.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a module of tests/guards/ exports a `check...` (a function, an async function, a
-// const, an `export { ... }`) that no test of tests/conventions/ or tests/meta/ imports; or that no
-// `describe('self-test: ...')` block of such a test calls, directly or through a function of the test
-// file, and asserts with `expect(`; or when one export of a module is proved and its sibling is not.
-
 const guardModule = (...lines: string[]) => file('tests/guards/new.ts', lines.join('\n'))
 
 const GUARD = guardModule('export function checkNew(input: string) { return [] }')
@@ -18,7 +13,6 @@ const testFile = (...lines: string[]) => file('tests/meta/new.test.ts', lines.jo
 
 const IMPORT = "import { checkNew } from '../guards/new.ts'"
 
-/** A test that runs the guard on the repository and, in a self-test block, on a bad fixture. */
 const PROVED = testFile(
   IMPORT,
   "it('holds', () => { expect(checkNew('real')).toEqual([]) })",
@@ -41,7 +35,6 @@ describe('guard self-tests', () => {
     const checks = guards.flatMap((guard) =>
       exportedNames(guard.path, guard.text).filter((name) => name.startsWith('check')),
     )
-    // Both sides must be real: modules with two checks, and this very guard, are among them.
     expect(checks.length).toBeGreaterThan(30)
     expect(checks).toEqual(
       expect.arrayContaining(['checkExceptionLists', 'checkNoStrayExceptions', 'checkSelfTests']),
@@ -131,7 +124,6 @@ describe('guard self-tests', () => {
         '})',
       )
       expect(rules([GUARD], unrelated)).toEqual(['self-tests/no-self-test'])
-      // Mentioning the name is not calling it.
       const mentioned = testFile(
         IMPORT,
         "describe('self-test: the guard fails on a bad fixture', () => {",
@@ -243,7 +235,6 @@ describe('guard self-tests', () => {
     })
 
     it('needs the proof in a test that imports the check from that module', () => {
-      // A function of the same name that the test defines itself is not the guard.
       const local = testFile(
         'const checkNew = (text: string) => [text]',
         "describe('self-test: the guard fails on a bad fixture', () => {",
@@ -278,7 +269,6 @@ describe('guard self-tests', () => {
           `  it('reports it', () => { expect(${name}('bad')).toEqual([1]) })`,
           '})',
         ].join('\n')
-      // Only one of the two is imported.
       const importsOne = testFile("import { checkOne } from '../guards/new.ts'", proof('checkOne'))
       expect(check([two], importsOne)).toEqual([
         {
@@ -288,7 +278,6 @@ describe('guard self-tests', () => {
             'checkTwo is not imported by any test of tests/conventions/ or tests/meta/: a guard runs in a test, on the repository and on a bad fixture',
         },
       ])
-      // Both are imported, and the self-test block calls only one.
       const callsOne = testFile(
         "import { checkOne, checkTwo } from '../guards/new.ts'",
         "const real = [checkOne('a'), checkTwo('a')]",
@@ -302,7 +291,6 @@ describe('guard self-tests', () => {
             "tests/meta/new.test.ts imports checkTwo but has no describe('self-test: ...') block that calls it, directly or through a function of the test file: feed it a bad fixture there and assert the exact violation",
         },
       ])
-      // The proofs may sit in different tests.
       const importsTwo = file(
         'tests/meta/two.test.ts',
         ["import { checkTwo } from '../guards/new.ts'", proof('checkTwo')].join('\n'),

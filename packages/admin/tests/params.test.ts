@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { cleanParams, paramInputs } from '../app/lib/params.ts'
 
-// Fails when: the form of a rule's parameters (app/lib/params.ts) stops reading, from the JSON
-// Schema the catalog of the server gives, a field to pick, a list of fields, a number, a text and
-// a list of texts, with what is required; or stops leaving out what the person left empty.
-
 const params = (name: string) => {
   const rule = describeCatalog().find((entry) => entry.name === name)
   if (rule === undefined) throw new Error(`no rule ${name}`)

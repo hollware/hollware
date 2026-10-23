@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { readSettings, settingsDrift, type RepoSettings } from './repo-settings.ts'
 
-// Fails when: scripts/repo-settings.ts stops reading a ruleset's refs, rules, bypass actors and
-// required checks, or an environment's branches, from the answers of the GitHub API; or stops
-// reporting a ruleset that is gone, loosened (a rule fewer, a bypass actor, another ref) or added,
-// or an environment that takes another branch or every branch (T-91).
-
-/** The GitHub API as it answers for this repository, by path. */
 const ANSWERS: Record<string, unknown> = {
   'repos/o/r/rulesets': [{ id: 1 }],
   'repos/o/r/rulesets/1': {

@@ -103,7 +103,6 @@ export async function main(argv: string[], io: Io): Promise<number> {
   }
 }
 
-// Each command loads when it runs, so that `--help` and `--version` do not pay for the MCP client.
 async function run(command: string, args: string[], io: Io): Promise<number> {
   switch (command) {
     case 'init':
@@ -133,13 +132,6 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
   }
 }
 
-// ---------------------------------------------------------------------------------------------
-// The entry point. Everything above uses only its arguments; this is the one place that touches
-// `process` (argv, the streams, the working directory, the exit code).
-
-// True when this module is the process entry point. The path goes through
-// `realpathSync` because npm links a bin as a symlink, while `import.meta.url` is
-// always the real path.
 function isEntryPoint(): boolean {
   const entry = process.argv[1]
   if (entry === undefined) return false
@@ -172,7 +164,6 @@ function processIo(): Io {
   }
 }
 
-/** The local server as real processes: each in a group of its own, which a signal reaches whole. */
 function processDevHost(): DevHost {
   const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const
   return {
@@ -196,7 +187,6 @@ function processDevHost(): DevHost {
         child.on('close', (code, signal) => resolve({ code, signal }))
       })
       if (child.pid === undefined) {
-        // It could not start (no such file, no permission): the error event says why.
         throw new CliError(`could not run ${bin}: is it executable?`)
       }
       if (detached) child.unref()
@@ -207,13 +197,10 @@ function processDevHost(): DevHost {
       }
     },
     killGroup: (pid, signal) => {
-      // A group of 0 or 1 is this process's own, or everybody's: never.
       if (!Number.isInteger(pid) || pid <= 1) return
       try {
         process.kill(-pid, signal)
-      } catch {
-        // The group is gone.
-      }
+      } catch {}
     },
     isAlive: (pid) => {
       try {

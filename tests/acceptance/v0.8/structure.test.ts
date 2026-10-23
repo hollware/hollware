@@ -8,11 +8,6 @@ import {
   seedToken,
 } from '../v0.1/support/harness.ts'
 
-// Fails when: the built playground stops letting an agent shape its site over MCP with no deploy
-// (AC-0.8-3, ADR-033): a token with schema:admin reads the structure, adds a required field to the
-// blog with set_collection, and the next create_draft is checked against it at once; a token
-// without schema:admin is refused before anything changes.
-
 const server = createPlaygroundHarness()
 let owner = ''
 let writer = ''
@@ -36,7 +31,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** The blog of a definition as get_structure answers it, with its schema's fields. */
 function blogOf(definition: unknown): Blog & Record<string, unknown> {
   const collections = isRecord(definition) ? definition['collections'] : undefined
   const blog = isRecord(collections) ? collections['blog'] : undefined
@@ -100,7 +94,6 @@ describe('AC-0.8-3: an agent shapes its site over MCP', () => {
 
   it('refuses a token without schema:admin, and changes nothing', async () => {
     const before = await agentWith(server, owner).call('get_structure', {})
-    // The gateway answers 403 with the scope it lacks, before any handler runs.
     const refused = agentWith(server, writer).call('update_site', {
       version: before.output['version'],
       definition: before.output['definition'],

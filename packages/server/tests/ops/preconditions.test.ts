@@ -11,15 +11,6 @@ import {
   type Tenant,
 } from './support.ts'
 
-// Fails when: a handler checks the collection or the locale of its input after it reads the
-// store or runs the Markdown pipeline instead of before (collections.ts requireCollection and
-// requireLocale, and the order of the calls in list-entries.ts, get-entry.ts,
-// get-translations.ts, create-draft.ts and validate.ts), stops naming what the site has in the
-// fix, repeats a long name whole, asks for a locale that list_entries leaves out, lets
-// get_translations through for a collection that has no translations, or lets a write through
-// for a principal that is not a token, or reads the store before it refuses one (actor.ts and
-// the first lines of create-draft.ts, update-draft.ts, publish.ts and unpublish.ts).
-
 const CLOCK = { now: () => new Date('2026-10-13T10:00:00.000Z') }
 
 function callerOf(tenant: Tenant) {
@@ -34,12 +25,10 @@ const tenant = tenantOf(
 const caller = callerOf(tenant)
 
 const MARKDOWN = blogPost()
-/** What a file the pipeline would refuse looks like: if it were run, the answer would not be an error. */
 const BROKEN = '---\ntitle: [an unclosed list\n---\n'
 
 type Caller = ReturnType<typeof callerOf>
 
-/** Every operation that takes a collection, called with the one given. */
 const WITH_COLLECTION: readonly (readonly [
   string,
   (caller: Caller, collection: string) => Promise<unknown>,
@@ -61,7 +50,6 @@ const WITH_COLLECTION: readonly (readonly [
   ],
 ]
 
-/** Every operation that takes a locale, called with the one given. */
 const WITH_LOCALE: readonly (readonly [
   string,
   (caller: Caller, locale: string) => Promise<unknown>,

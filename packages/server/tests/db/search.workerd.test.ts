@@ -6,14 +6,6 @@ import { ftsQuery } from '../../src/db/reads.ts'
 import type { ContentStore, NewRevision } from '../../src/ports.ts'
 import { fixedClock, newRevision, seedOwner, siteKey, VERDICT, type Owner } from './support.ts'
 
-// Fails when: the full-text index (migrations/0008_search.sql) stops following what is published:
-// a published entry is not found by a word of its title, its tags or its text (the text taken from
-// the document's text nodes, never from its Markdown marks or attributes), a word without its
-// accent does not find it, a draft or an unpublished entry is found, or an entry of another site
-// is; or searchEntries (src/db/reads.ts) stops ranking a match in the title over one in the text,
-// narrowing to a collection and a locale, keeping to its limit, answering the entry's summary with
-// a snippet that marks the match, or keeping FTS5's own syntax out of what someone typed (ftsQuery).
-
 interface Page {
   readonly slug: string
   readonly title: string
@@ -30,7 +22,6 @@ async function world(label: string) {
   return { owner, store }
 }
 
-/** Creates a page and, unless `draft`, publishes it. */
 async function page(
   store: ContentStore,
   owner: Owner,
@@ -48,7 +39,6 @@ async function page(
     revision: newRevision(owner.actor, {
       markdown: `---\ntitle: ${spec.title}\n---\n\n${spec.text}\n`,
       frontmatter,
-      // An attribute and a link target: words that are no text of the page.
       document: {
         frontmatter,
         meta: {},
@@ -90,7 +80,6 @@ describe('full-text search', () => {
     expect(await search('caching')).toEqual(['edge'])
     expect(await search('reader')).toEqual(['edge'])
     expect(await search('performance')).toEqual(['edge'])
-    // An attribute and a link target are not text of the page.
     expect(await search('attribute')).toEqual([])
     expect(await search('hidden')).toEqual([])
   })
@@ -174,7 +163,6 @@ describe('full-text search', () => {
     await page(store, owner, {
       slug: 'in-text',
       title: 'Other things',
-      // Three times in the text, against once in the title: only the weights put the title first.
       text: 'A word about passkeys, passkeys and passkeys.',
     })
     await page(store, owner, { slug: 'in-title', title: 'Passkeys', text: 'Nothing else.' })

@@ -1,22 +1,8 @@
 import { analyzeSource } from '../support/source.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `workerd-tests`: the two kinds of test do not get mixed up, and the module cache stays
- * off where it breaks (`AGENTS.md`, "Workers in this repo").
- *
- * - A test that imports `vitest` or a `cloudflare:*` module runs inside workerd through
- *   `@cloudflare/vitest-plugin`, and is named `*.workerd.test.ts`. Tests with that name import
- *   the real `vitest`, never `vite-plus/test`, which the plugin cannot drive. (The lint
- *   override for `*.workerd.test.ts` exists for the same reason.)
- * - No Vitest config that uses `cloudflareTest` sets `fsModuleCache: true`: with it, Vitest 5
- *   and `@cloudflare/vitest-plugin` fail to read their module cache (workers-sdk#15618).
- */
-
 export interface WorkerdTestsInput {
-  /** Every test file of the repository (`*.test.*`, `*.spec.*`), with its text. */
   tests: readonly TextFile[]
-  /** Every Vitest or Vite config of the repository, with its text. */
   configs: readonly TextFile[]
 }
 
@@ -66,7 +52,6 @@ export function checkWorkerdTests(input: WorkerdTestsInput): Violation[] {
   return violations
 }
 
-/** Whether a repository file configures Vitest or Vite. */
 export function isTestConfig(path: string): boolean {
   return /(?:^|\/)(?:vitest(?:\.[\w-]+)?|vite)\.config\.[cm]?[jt]s$/.test(path)
 }

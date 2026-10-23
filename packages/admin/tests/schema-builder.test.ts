@@ -10,14 +10,6 @@ import {
   schemaFromFields,
 } from '../app/lib/schema-builder.ts'
 
-// Fails when: the field list of a collection (app/lib/schema-builder.ts) stops reading each field
-// of a JSON Schema with its kind, bounds, choices, description and whether it is required; stops
-// writing back the same schema when nothing changed, keeping what the form does not edit (a
-// pattern, a format, the object's own keywords); stops starting a field over when its kind
-// changes; or stops naming a bad field name, a repeated one, inverted bounds or an empty choice;
-// or offers Hollware to fill a field of a kind it cannot, or keeps a filled field that is gone.
-
-/** The blog of the playground, as Zod converts it: the schema a 0.x config moves into D1. */
 const BLOG = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',

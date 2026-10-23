@@ -3,20 +3,8 @@ import type { SiteEnv } from './env.ts'
 import { entryPage, listingPage, messagePage, type Alternate, type Summary } from './pages.ts'
 import { blogPath, entryPath, isLocale, LOCALES, matchRoute, type Locale } from './routes.ts'
 
-/**
- * A blog that reads Hollware over a service binding (Workers RPC): no network in between and no
- * token. The binding offers six read-only methods, and they answer with published content only,
- * so a draft is not here to leak: asking for one is asking for an entry that does not exist.
- *
- *   /blog/                    the Spanish index, newest first; ?tag=… filters and ?cursor=… pages
- *   /en/blog/                 the English index
- *   /blog/<slug>/             a published entry, rendered from its stored document
- *   /en/blog/<slug>/          the same in English; each page links its translations
- */
-
 const COLLECTION = 'blog'
 
-/** What an answer carries besides its body: the page is HTML and may load nothing but itself. */
 const HEADERS = {
   'content-type': 'text/html; charset=utf-8',
   'content-security-policy':
@@ -32,7 +20,6 @@ function notFound(locale: Locale = 'es'): Response {
   return html(404, messagePage(locale, 'Not found', 'There is nothing at this address.'))
 }
 
-/** The text field of an entry's frontmatter, which Hollware hands over as untyped JSON. */
 function field(frontmatter: Record<string, unknown>, key: string): string {
   const value = frontmatter[key]
   return typeof value === 'string' ? value : ''
@@ -51,7 +38,6 @@ function summaryOf(
   }
 }
 
-/** The index of every locale but this one. */
 function otherIndexes(locale: Locale): Alternate[] {
   return LOCALES.filter((other) => other !== locale).map((other) => ({
     locale: other,
@@ -88,11 +74,8 @@ async function blogEntry(env: SiteEnv, locale: Locale, slug: string): Promise<Re
   const found = await env.HOLLWARE.getEntry(env.HOLLWARE_SITE, COLLECTION, slug, locale, {
     formats: ['document'],
   })
-  // A draft, an unpublished entry and a slug that never existed are the same answer.
   if (found.outcome !== 'ok' || found.entry?.document === undefined) return notFound(locale)
   const { entry } = found
-  // Over RPC the document is plain JSON, typed as such. `renderHtml` takes Comark's own type and
-  // checks every node it prints, whatever its type says, so this cast is the only one of the site.
   const body = await renderHtml(entry.document as EntryDocument)
   const translations: Alternate[] = []
   if (entry.translationGroup !== null) {
@@ -119,10 +102,6 @@ async function blogEntry(env: SiteEnv, locale: Locale, slug: string): Promise<Re
   )
 }
 
-/**
- * What an error says, for the log: Hollware's errors cross the binding with their `name`,
- * `message`, `code` and `fix`, and without their `cause`.
- */
 function describeError(error: unknown) {
   if (!(error instanceof Error)) {
     return { name: 'unknown', message: String(error), code: null, fix: null, hasCause: false }
@@ -136,11 +115,6 @@ function describeError(error: unknown) {
   }
 }
 
-/**
- * A call to Hollware failed. `invalid_input` is the visitor's: a cursor that no page of this
- * listing ever had. Anything else is the site's problem, and the visitor gets no detail of it.
- * Either way the operator finds what Hollware said, with its `fix`, in the log.
- */
 function failed(locale: Locale, error: unknown): Response {
   const detail = describeError(error)
   console.log(JSON.stringify({ kind: 'hollware_error', ...detail }))
@@ -171,5 +145,4 @@ export default {
   },
 } satisfies ExportedHandler<SiteEnv>
 
-// Not part of a site: a probe for the tests of this repository (see probe.ts).
 export { Probe } from './probe.ts'

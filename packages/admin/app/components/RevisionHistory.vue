@@ -6,17 +6,10 @@ import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 
-/**
- * The history of an entry: every revision, newest first, with who wrote it, when, what the
- * contracts said and which is live; each one compared with the latest, and restored as a new
- * revision (`list_revisions`, `get_revision`, `restore_revision`: what an agent does over MCP).
- */
 const props = defineProps<{
   entryId: string
   version: number
-  /** The Markdown of the latest revision, which a revision is compared with. */
   latest: string
-  /** Whether the editor holds changes not saved yet: restoring would leave them behind. */
   dirty: boolean
 }>()
 const emit = defineEmits<{ restored: []; conflict: [] }>()
@@ -49,7 +42,6 @@ async function load(cursor?: string) {
   }
 }
 
-// A new version of the entry (a save, a publish, a restore) is a new head: read the history again.
 watch(
   () => [props.entryId, props.version],
   () => void load(),

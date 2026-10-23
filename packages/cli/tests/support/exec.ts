@@ -6,17 +6,11 @@ export interface Exec {
   stderr: string
 }
 
-/**
- * Runs `node` with `args` as a child process, with `input` on its stdin, and waits for it. It is
- * asynchronous on purpose: a test that serves HTTP in its own process (the stub of Hollware)
- * would deadlock if it blocked on the child.
- */
 export function exec(
   args: string[],
   options: { cwd?: string; input?: string } = {},
 ): Promise<Exec> {
   return new Promise((resolve, reject) => {
-    // `--no-warnings` keeps Node's own notices out of the streams under test.
     const child = spawn(process.execPath, ['--no-warnings', ...args], {
       cwd: options.cwd,
       stdio: ['pipe', 'pipe', 'pipe'],

@@ -7,12 +7,6 @@ import { handlers } from '../../src/ops/index.ts'
 import { seedSite, type SeededSite } from '../support/sites.ts'
 import { boot, captureLogs, restoreLogs, SITE_KEY } from './support.ts'
 
-// Fails when: the cron trigger of Hollware (src/compose.ts, `dropExpired` of
-// src/identity/store.ts) stops dropping the WebAuthn challenges that nobody took and the sessions
-// that expired, which anyone could make grow by a row a request (T-11 of
-// docs/security/threat-model.md), or drops a challenge or a session that is still good; or stops
-// rebuilding the revisions an older pipeline parsed (src/derived/reparse.ts, ADR-021).
-
 afterEach(() => {
   restoreLogs()
 })
@@ -77,7 +71,6 @@ describe('the cron trigger and what of sign-in expired', () => {
     const worker = boot()
     const db = worker.env.DB
     const seeded = await seedSite(db, SITE_KEY)
-    // A first request writes the structure of the test's site into D1, as a deployment has it.
     await worker.send('/health')
     const entry = seeded.entries[0]?.id ?? ''
     await db

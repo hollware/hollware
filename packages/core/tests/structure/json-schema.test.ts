@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { describedSchemaOf } from '../../src/structure/json-schema.ts'
 
-// Fails when: a JSON Schema of D1 (src/structure/json-schema.ts) stops validating as a Standard
-// Schema with one issue per failing part at the path of the value: a missing required field at
-// its own name, an item of a list at its index, a key no schema allows as unrecognized, and a
-// declared key that failed only once; or stops returning the value it accepted, or its schema.
-
 const SCHEMA = {
   type: 'object',
   properties: {

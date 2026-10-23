@@ -17,13 +17,6 @@ import {
   reviewsOf,
 } from './support/people.ts'
 
-// Fails when: the built playground stops doing what v0.3 promises. AC-0.3-2, the exit flow: the
-// owner sets up a passkey with the link of `hollware init` and reaches the admin, invites an author,
-// the author sets up a passkey with that invitation, an agent of the author writes a post and
-// publishes it, which asks for a review, and the owner approves it in the admin, which publishes it
-// in the owner's name, and the site serves it. AC-0.3-3: a person alone writes and publishes from
-// the admin, with no personal token.
-
 const server = createPlaygroundHarness()
 
 const POST = (title: string, group: string) =>
@@ -63,7 +56,6 @@ describe('AC-0.3-2: an author writes through an agent, and the owner approves in
       role: 'author',
     })
     const link = new URL(String(invited.body['link']))
-    // The secret is in the fragment of the link (T-55).
     const invitation = new URLSearchParams(link.hash.slice(1)).get('invitation') ?? ''
     const author = await register(server, invitation, 'Ana')
     const agent = agentWith(server, await accessToken(server, author, 'mcp'))

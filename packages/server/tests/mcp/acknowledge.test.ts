@@ -21,15 +21,6 @@ import {
   type Overrides,
 } from './support.ts'
 
-// Fails when: `publish` stops asking, through a multi round-trip request, a client of the 2026
-// era that declared it can show a form; the question stops listing every warning with its fix;
-// an acceptance stops publishing with exactly the warnings that were shown, or a refusal
-// (decline, cancel, a box left empty) stops answering what was shown without running the handler
-// again, or the question is asked twice, or a retry whose state names another entry counts as a
-// reply; or a client that cannot be asked (a 2025 client, a 2026
-// client without the form capability) stops getting `needs_acknowledgement` and acknowledging
-// itself with `acknowledgeWarnings`.
-
 const TITLE = { contract: 'seo-title-length', path: '/frontmatter/title' }
 const ALT = { contract: 'image-alt', path: '/body' }
 
@@ -38,7 +29,6 @@ const QUESTION =
   '1. seo-title-length at /frontmatter/title: The title has 72 characters. Fix: Shorten it to 60 characters or fewer.\n' +
   '2. image-alt at /body, line 12: An image has no alternative text. Fix: Describe the image between the brackets.'
 
-/** Publishes only once both warnings are acknowledged; until then it asks for them. */
 const strict: Overrides = {
   publish: async (input) =>
     input.acknowledgeWarnings.length >= 2
@@ -48,7 +38,6 @@ const strict: Overrides = {
 
 const FORM = { elicitation: { form: {} } }
 
-/** What a client's person answers to a question of the server. */
 type Reply = ReturnType<NonNullable<ConnectOptions['elicit']>>
 
 const tick = (): Reply => ({ action: 'accept', content: { acknowledge: true } })
@@ -143,7 +132,6 @@ describe('a 2026 client that can show a form', () => {
       requestState: JSON.stringify(forged),
     })
 
-    // Asked again about its own entry, by the handler, never answered with the forged one.
     expect(seen).toHaveLength(1)
     expect(answered.result?.['requestState']).toBe(
       JSON.stringify(CANNED.publish.needs_acknowledgement),
@@ -159,7 +147,6 @@ describe('a 2026 client that can show a form', () => {
   it.each(REFUSALS)(
     'that %s is answered what it was shown, without the handler running again, and never asked twice',
     async (_label, reply) => {
-      // A handler that would publish on any call after the first: a refusal must not reach it.
       let calls = 0
       const publishesAfterAsking: Overrides = {
         publish: async () =>

@@ -8,14 +8,6 @@ import {
 } from './preview.ts'
 
 /**
- * Previews of drafts (T-103 of docs/security/threat-model.md) for any code that handles a
- * `Request`: the link of the admin's "Preview on the site" carries `?hollware-preview=<token>`,
- * and the site exchanges it once for an `HttpOnly` cookie, so the token does not stay in the
- * address bar, the history or a `Referer`. The shape of the token, the cookie and the URL without
- * the parameter are pure functions of `@hollware/client`.
- */
-
-/**
  * The answer to the link of a preview: a `303` to the same URL without the parameter, with the
  * token in the `hollware_preview` cookie (an hour, `HttpOnly`, `SameSite=Lax`, `Secure` but on
  * `http://localhost`), `no-store` and `Referrer-Policy: no-referrer`. `null` when the request is

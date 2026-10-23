@@ -3,13 +3,6 @@ import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 import { createSiteRegistry } from '../../src/structure/registry.ts'
 
-// Fails when: the registry of sites (src/structure/registry.ts) stops serving exactly the sites of
-// D1 with a definition and not in the trash; stops compiling a site again when its version moves,
-// and only then, and only once its poll is stale or forced; stops keeping the last good copy of a
-// site whose new definition does not compile, and logging it; or stops moving a 0.x config into
-// D1 once, as version 1 with a change of no actor, without touching a site that has a definition;
-// or stops serving a site stored before 0.10 whose IndexNow names a secret, with IndexNow off (T-69).
-
 const BLOG: SiteDefinitionInput = {
   locales: ['en'],
   defaultLocale: 'en',
@@ -127,7 +120,6 @@ describe('the registry of sites', () => {
 
     expect(registry.sites.get(site)?.events.indexNow).toBe(null)
     expect(registry.sites.get(kept)?.events.indexNow).toEqual({ key: 'a1b2c3d4e5f60718' })
-    // The database is shared by the tests of this file: only the lines of these two sites count.
     const ours = logs.filter((entry) => [site, kept].includes(String(Reflect.get(entry, 'site'))))
     expect(ours).toEqual([expect.objectContaining({ kind: 'indexnow_off', site })])
   })

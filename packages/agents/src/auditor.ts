@@ -13,7 +13,6 @@ export interface ReportOptions {
 
 export interface AuditorDeps {
   readonly hollware: Hollware
-  /** Posts the report as `{ "text": "<markdown>" }`, as Slack's incoming webhooks take it. */
   readonly webhook?: ((report: string) => Promise<void>) | undefined
 }
 
@@ -77,7 +76,6 @@ function problemsOf(verdict: Json): string[] {
 /** The memory's key of what the auditor has checked: where it is, and what it found by entry. */
 export const AUDIT_STATE = 'audit:state'
 
-/** What the auditor remembers between runs. */
 export interface AuditState {
   readonly offset: number
   readonly found: Readonly<

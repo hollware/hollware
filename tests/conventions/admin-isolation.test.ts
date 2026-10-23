@@ -5,9 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: any source file outside packages/admin imports @hollware/admin (or a subpath of it),
-// but for a project's vite.config.ts, which may import the root of the package.
-
 describe('admin isolation', () => {
   it('no source file outside packages/admin imports the admin', () => {
     const sources = readRepoFiles(isScannedSource)

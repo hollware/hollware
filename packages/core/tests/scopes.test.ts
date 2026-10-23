@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { isScope, SCOPES } from '../src/scopes.ts'
 
-// Fails when: a scope is added, removed or renamed without this list following, or isScope()
-// accepts a string that is not one of them.
-
 describe('scopes', () => {
   it('are the four scopes of the design', () => {
     expect(SCOPES).toEqual(['content:read', 'content:write', 'content:publish', 'schema:admin'])

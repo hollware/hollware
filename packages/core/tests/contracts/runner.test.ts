@@ -25,17 +25,6 @@ import {
   stored,
 } from './support.ts'
 
-// Fails when: the write phase runs a contract that is not declared for it, or the publish phase
-// skips one (`contractsFor` in run.ts); a contract that reads the frontmatter runs after the schema
-// failed, or one that does not stops running then (`readsFrontmatter` and the gate in
-// `runContracts`); a contract gets the raw frontmatter instead of what the schema returned, or a
-// context without the coordinates of the entry, or one that is not frozen; errors and warnings stop
-// being split by severity, or `ok` stops meaning no errors; the violations stop coming built-ins
-// first, then the collection's in order, each by line then path, or stop being the same for the same
-// input; a contract that throws or rejects stops being an error of that contract with a fix for
-// whoever maintains the config, or stops letting the others run; a finding with an empty fix stops
-// getting the description of its rule; or a built-in called outside the runner stops throwing.
-
 function finding(path: string, line?: number, message = `Problem at ${path}`): ContractFinding {
   return { path, message, fix: `Fix ${path}`, ...(line === undefined ? {} : { line }) }
 }
@@ -653,7 +642,6 @@ describe('every built-in contract', () => {
       entries: lookup,
     })
 
-    // The schema fails, so translation-pair, which reads the frontmatter, did not run; run it on its own.
     const pair = await run({
       phase: 'publish',
       collection: collectionOf({

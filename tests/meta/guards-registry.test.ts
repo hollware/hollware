@@ -4,10 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText, repoFiles } from '../support/repo.ts'
 
-// Fails when: a file under tests/conventions/ or tests/meta/ is not cited, once, in the "## Guards"
-// section of tests/AGENTS.md with a line that says what it binds, or a line cites a missing file; or
-// the root AGENTS.md has no "## Guards" section that cites tests/AGENTS.md, or lists guard files again.
-
 const GUARD_FILES = ['tests/conventions/a.test.ts', 'tests/meta/b.test.ts']
 
 const registryFile = (section: string) =>
@@ -98,7 +94,6 @@ describe('guards registry', () => {
     })
 
     it('does not count a citation outside the Guards section', () => {
-      // The fixture cites tests/conventions/not-here.test.ts after the section: it is not a registry line.
       expect(check(GOOD)).toEqual([])
     })
 
@@ -119,7 +114,6 @@ describe('guards registry', () => {
       expect(check(GOOD, GUARD_FILES, withoutSection)).toEqual([
         { rule: 'guards-registry/no-pointer', file: 'AGENTS.md', message: pointer },
       ])
-      // A code span in the section is not enough: it has to be the registry.
       const withoutCitation = file(
         'AGENTS.md',
         '# Title\n\n## Guards\n\nSee `tests/guards/` and `AGENTS.md`.\n',
@@ -127,7 +121,6 @@ describe('guards registry', () => {
       expect(check(GOOD, GUARD_FILES, withoutCitation)).toEqual([
         { rule: 'guards-registry/no-pointer', file: 'AGENTS.md', message: pointer },
       ])
-      // The pointer has to be in that section, not elsewhere in the file.
       const elsewhere = file(
         'AGENTS.md',
         '# Title\n\n## Guards\n\nSee the tests.\n\n## Other\n\n`tests/AGENTS.md`\n',
@@ -150,7 +143,6 @@ describe('guards registry', () => {
             'line 7 cites tests/meta/b.test.ts: the registry lives in tests/AGENTS.md, so this line belongs there',
         },
       ])
-      // The tests of the CI scripts are listed in the registry too, and no more at home in the root.
       const ci = file(
         'AGENTS.md',
         '# Title\n\n## Guards\n\nSee `tests/AGENTS.md`.\n\n- `tests/ci/promotion-check.test.ts`: the promotion gate refuses what is not on main.\n',
@@ -158,7 +150,6 @@ describe('guards registry', () => {
       expect(check(GOOD, GUARD_FILES, ci).map((violation) => violation.message)).toEqual([
         'line 7 cites tests/ci/promotion-check.test.ts: the registry lives in tests/AGENTS.md, so this line belongs there',
       ])
-      // A list that merely points to the registry is not a registry line.
       const pointer = file(
         'AGENTS.md',
         '# Title\n\n## Guards\n\n- The registry is `tests/AGENTS.md`.\n',

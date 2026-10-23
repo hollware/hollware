@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { csvField } from '../../src/audit/read.ts'
 
-// Fails when: csvField (src/audit/read.ts) stops leading with an apostrophe a cell that a
-// spreadsheet would run as a formula (=, +, -, @, a tab, a return), or stops quoting a cell with a
-// comma, a quote or a line break as RFC 4180 does, or writes null as anything but an empty cell.
-
 describe('a field of the CSV of the activity log', () => {
   it.each([
     ['plain text as it is', 'Ana', 'Ana'],

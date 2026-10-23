@@ -1,28 +1,10 @@
 import type { ESTree } from 'vite-plus'
 import { parseSync, Visitor } from 'vite-plus'
 
-/**
- * Reads what a module exports and imports, and which functions a file calls, on the Oxc syntax
- * tree that `source.ts` also uses. Comments, strings and template literals are never taken for
- * code.
- *
- * Limits:
- * - Only value exports with a name are read: `export function`, `export const`, `export { a }`
- *   and `export { a } from '...'`. `export default`, `export * from '...'`, destructuring
- *   exports and everything declared with `export type` or `export interface` are not.
- * - A call is named only when its callee is a plain name (`check(x)`) or a member of one
- *   (`guard.check(x)`). `a.b.c(x)`, `a[b](x)` and `(await f())(x)` have no name.
- * - Names are resolved by scope, without hoisting or shadowing by parameters: a call to `f` is a
- *   call to the closest `function f` or `const f = () => ...` whose enclosing function contains
- *   the call. A function that is passed around and not called is not followed.
- */
-
-/** A name a module exports. */
 function moduleExportName(node: ESTree.ModuleExportName): string {
   return node.type === 'Literal' ? node.value : node.name
 }
 
-/** The names a module exports as values, in the order the file declares them. */
 export function exportedNames(path: string, text: string): string[] {
   const names: string[] = []
   new Visitor({
@@ -44,17 +26,12 @@ export function exportedNames(path: string, text: string): string[] {
   return names
 }
 
-/** One name that an `import` declaration brings into a file. */
 export interface ImportBinding {
-  /** The module specifier, as written: `../guards/new.ts`. */
   specifier: string
-  /** What it takes from the module: an export name, `default`, or `*` for the whole namespace. */
   imported: string
-  /** The name it has in this file. */
   local: string
 }
 
-/** The value bindings of the `import` declarations of a file. Type-only ones are left out. */
 export function importBindings(path: string, text: string): ImportBinding[] {
   const bindings: ImportBinding[] = []
   new Visitor({
@@ -80,7 +57,6 @@ export function importBindings(path: string, text: string): ImportBinding[] {
   return bindings
 }
 
-/** Strips the wrappers that do not change what an expression is: parentheses, `!`, `as`. */
 function unwrap(node: ESTree.Expression): ESTree.Expression {
   switch (node.type) {
     case 'ParenthesizedExpression':
@@ -93,7 +69,6 @@ function unwrap(node: ESTree.Expression): ESTree.Expression {
   }
 }
 
-/** `check` for `check(x)`, `guard.check` for `guard.check(x)` and `guard['check'](x)`. */
 function calleeName(callee: ESTree.Expression): string | undefined {
   const node = unwrap(callee)
   if (node.type === 'Identifier') return node.name
@@ -114,23 +89,14 @@ interface Span {
   end: number
 }
 
-/** A function the file defines under a name, and where that name can be used. */
 interface Definition {
   name: string
-  /** The function the declaration sits in, or the whole file. */
   scope: Span
-  /** The function itself. */
   body: Span
 }
 
-/** The calls of a file, and what the functions it defines call in turn. */
 export interface CallIndex {
-  /** The names called between the offsets `start` and `end` of the file, and nowhere else. */
   directCalls: (start: number, end: number) => Set<string>
-  /**
-   * The same, plus what the functions called there call, as far as the file defines them: a call
-   * to `check` adds the calls of the `check` the file defines, and theirs, and so on.
-   */
   reachableCalls: (start: number, end: number) => Set<string>
 }
 
@@ -179,7 +145,6 @@ export function indexCalls(path: string, text: string): CallIndex {
     },
   }).visit(parseSync(path, text).program)
 
-  /** The definition a call to `name` at `offset` reaches: the one in the closest scope around it. */
   const resolve = (name: string, offset: number): Definition | undefined => {
     let best: Definition | undefined
     for (const definition of definitions) {

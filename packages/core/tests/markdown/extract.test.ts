@@ -10,15 +10,6 @@ import {
   warmUpComark,
 } from './support.ts'
 
-// Fails when: `slugify` or `HeadingIds` (src/markdown/slug.ts) drop a letter outside ASCII, repeat
-// an id or take time in proportion to the square of the headings; `classifyLink` or
-// `compileRoutes` (src/markdown/routes.ts) call a link by the wrong kind, name the wrong entry
-// (trailing slash, query, fragment, locale, percent-encoding, which collection wins a tie); the
-// analysis (src/markdown/analyze.ts) reads an image's alt, a component's props (`decodeProps`),
-// the words or a line differently from what the Markdown says: a word that spans two inline
-// elements, the text of a code block, an image alt, a line after a soft or a hard break, the
-// line of a component whose single paragraph Comark unwraps.
-
 warmUpComark()
 
 const heading = async (text: string) => (await accepted(`# ${text}`)).extracted.headings[0]
@@ -311,28 +302,28 @@ describe('lines', () => {
   it('are the lines of the file, for every block and for what is inside a wrapped paragraph', async () => {
     const markdown = file(
       [
-        '# Title', // 5
-        '', // 6
-        'First line [a](/en/blog/a/)', // 7
-        'second ![i](/i.png) line', // 8
-        'third :badge[x] line  ', // 9
-        'after a hard break [b](/en/blog/b/)', // 10
-        '', // 11
-        '- item [c](/en/blog/c/)', // 12
-        '- item d', // 13
-        '', // 14
-        '> quote', // 15
-        '> [d](/en/blog/d/)', // 16
-        '', // 17
-        '| h | [e](/en/blog/e/) |', // 18
-        '|---|---|', // 19
-        '| [f](/en/blog/f/) | x |', // 20
-        '', // 21
-        '::callout{type="tip"}', // 22
-        'Inside a [g](/en/blog/g/)', // 23
-        '::', // 24
-        '', // 25
-        '## Second', // 26
+        '# Title',
+        '',
+        'First line [a](/en/blog/a/)',
+        'second ![i](/i.png) line',
+        'third :badge[x] line  ',
+        'after a hard break [b](/en/blog/b/)',
+        '',
+        '- item [c](/en/blog/c/)',
+        '- item d',
+        '',
+        '> quote',
+        '> [d](/en/blog/d/)',
+        '',
+        '| h | [e](/en/blog/e/) |',
+        '|---|---|',
+        '| [f](/en/blog/f/) | x |',
+        '',
+        '::callout{type="tip"}',
+        'Inside a [g](/en/blog/g/)',
+        '::',
+        '',
+        '## Second',
       ].join('\n'),
     )
     const { extracted } = await accepted(markdown, {

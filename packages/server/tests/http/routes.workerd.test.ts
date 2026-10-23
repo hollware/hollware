@@ -3,22 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { boot, brokenDb, captureLogs, restoreLogs, wire } from './support.ts'
 
-// Fails when: `GET /v1` or `GET /v1/` (src/http/read-api.ts) stops answering 200 with the URLs of
-// the OpenAPI document and of /v1/site, built from HOLLWARE_PUBLIC_URL, without a token or a query;
-// `GET /health` stops answering 200 `{ "ok": true }` without a token and without
-// touching the database; a path with no route (or a known path with another method, or with a
-// trailing slash) stops being the JSON 404; or a route that throws stops ending in the JSON 500:
-// the status, the body (a fixed message, and the id of the request in the fix), the headers, and,
-// above all, that nothing of the cause reaches the caller, where it stays in the log under the
-// same id. A D1 failure while a token is checked is that 500, never a 401. `GET /robots.txt`
-// stops keeping every crawler out, or an answer stops carrying `x-robots-tag: noindex, nofollow`
-// (HEADERS): a CMS is never a public site, the sites it feeds are. Each request has an id
-// of its own. The gateway is the Hono 5 app of `src/http/gateway.ts`, whose error handling is the
-// Hono 5 form of `src/http/errors.ts`; this runs it in workerd over the real D1.
-
 const REQUEST_ID = '0f3a8c52-7b1d-4e6a-9c04-5d2e8a1f6b37'
 
-/** What every answer of the Worker carries (src/http/gateway.ts), its public URL being https. */
 const HEADERS = {
   'cache-control': 'no-store',
   'content-type': 'application/json',
@@ -125,7 +111,6 @@ describe('a path with no route', () => {
 })
 
 describe('a route that throws', () => {
-  /** A database that is down: the token check is where the request meets it. */
   const down = () => brokenDb(new Error('D1_ERROR: D1 is overloaded (secret detail)'))
 
   it('is the JSON 500 with the id of the request, and a D1 failure is no 401', async () => {

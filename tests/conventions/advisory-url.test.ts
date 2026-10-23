@@ -5,9 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: SECURITY.md, .github/ISSUE_TEMPLATE/config.yml or bug_report.yml stops holding the
-// private vulnerability reporting address of the project, or holds a different advisory address.
-
 const PATHS = [
   'SECURITY.md',
   '.github/ISSUE_TEMPLATE/config.yml',

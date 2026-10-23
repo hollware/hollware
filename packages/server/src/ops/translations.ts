@@ -1,13 +1,6 @@
 import type { EntrySummaryView } from '../ports.ts'
 import type { OperationContext } from './types.ts'
 
-/**
- * Which of these entries are translations that their source has moved past: the entry of their
- * translation group in the default locale of the site existed when they were last saved, and has
- * a revision written after that. A translation written before its source is not behind it. A translator (a person or the agent of `@hollware/agents`) saves the translation
- * again, and it is up to date. Only entries in another locale than the default, with a group,
- * have an answer; the others are left out of the map.
- */
 export async function translationOutdated(
   context: OperationContext,
   views: readonly EntrySummaryView[],

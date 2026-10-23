@@ -1,8 +1,4 @@
 /**
- * The limits every operation runs under, pinned for the adapters and the store (the v0.1 plan).
- */
-
-/**
  * The largest answer of an operation, in UTF-8 bytes of its JSON. A larger one is the error
  * `output_too_large`, with a fix that says how to ask for less; content is never truncated.
  */
@@ -12,8 +8,8 @@ export const OUTPUT_CAP_BYTES = 1024 * 1024
 export const OPERATION_TIMEOUT_MS = 10_000
 
 /**
- * How long an open-world operation may take: one that asks a third party the site's owner chose
- * (ADR-040), whose answer can take longer than Hollware's own work. PostHog's query API answers
+ * How long an open-world operation may take: one that asks a third party the site's owner chose,
+ * whose answer can take longer than Hollware's own work. PostHog's query API answers
  * in 5 to 15 s.
  */
 export const OPEN_WORLD_TIMEOUT_MS = 30_000

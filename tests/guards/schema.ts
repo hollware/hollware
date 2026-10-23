@@ -1,19 +1,5 @@
 import type { Violation } from './types.ts'
 
-/**
- * Guard `schema`: the D1 schema of `packages/server/src/db/schema.ts` keeps its shape.
- *
- * - Every table has an `id` primary key and `created_at`/`updated_at`, both not null.
- * - Every table belongs to a site: `site_id` not null, a foreign key to `sites(id)`, and a unique
- *   key on `(id, site_id)`, so that other tables can point at it together with its site.
- * - A foreign key to another site's table is composite and carries `site_id` onto `site_id`, so
- *   a row can only point at rows of its own site. A foreign key to a table without sites
- *   (`users`, `sites`) is a plain one.
- *
- * The tables that are exempt arrive as arguments, from `tests/guards/exceptions.ts`; an
- * exemption that names no table, or a table that no longer needs it, is reported.
- */
-
 export interface SchemaColumn {
   name: string
   notNull: boolean
@@ -29,16 +15,13 @@ export interface SchemaForeignKey {
 export interface SchemaTable {
   name: string
   columns: readonly SchemaColumn[]
-  /** Every unique constraint and unique index, as the names of its columns. */
   uniques: readonly (readonly string[])[]
   foreignKeys: readonly SchemaForeignKey[]
 }
 
 export interface SchemaInput {
   tables: readonly SchemaTable[]
-  /** Tables without `site_id`. */
   withoutSite: readonly string[]
-  /** Tables without `id`, `created_at` and `updated_at`. */
   withoutSharedColumns: readonly string[]
 }
 

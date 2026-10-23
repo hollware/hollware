@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { boot } from './support.ts'
 
-// Fails when: the cron trigger of Hollware (src/compose.ts) stops waking the agents over their
-// AGENTS binding on the minutes that divide by ten, wakes them on another minute, or lets their
-// failure reach the cron's own work.
-
 function controller(time: string): ScheduledController {
   return { scheduledTime: Date.parse(time), cron: '* * * * *', noRetry: () => undefined }
 }

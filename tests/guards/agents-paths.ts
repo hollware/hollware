@@ -1,40 +1,12 @@
 import { inlineCodeSpans } from '../support/markdown.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `agents-paths`: a path that an `AGENTS.md` or a `README.md` puts in backticks exists.
- * Docs that point at files that moved send the next reader, human or agent, in the wrong
- * direction.
- *
- * A backticked token is taken for a path when it has no space and holds only path characters
- * (letters, digits, `_ . - / + @`) and either has a `/`, ends with a known file extension, or
- * is a known extensionless name (`LICENSE`, `.node-version`). It is not checked when it is:
- * a command (it has a space), a glob or a placeholder (`*`, `<name>`), a URL or a module
- * specifier (`:`), an npm scope (`@scope/name`), or a subpath of a package (`vite-plus/test`,
- * the first segment is a package the workspace knows). Fenced blocks are skipped.
- *
- * A path exists when it resolves relative to the directory of the file that mentions it, or
- * relative to the repository root, as a file or a directory. A bare file name (`release.yml`)
- * also resolves when some file of the repository has that name. A path that `.gitignore`
- * ignores (`dist/`, `node_modules/...`) is build output and exists only after a build, so it
- * is not checked.
- *
- * Paths that cannot exist yet, or that name something outside the repository, are allowed by
- * name. The list may only shrink, and an entry whose path now resolves is reported as stale.
- */
-
 export interface AgentsPathsInput {
-  /** The `AGENTS.md` and `README.md` files, with their text. */
   docs: readonly TextFile[]
-  /** Whether a repository-relative path is a file or a directory of the repository. */
   exists: (path: string) => boolean
-  /** The paths, among the candidates, that `.gitignore` ignores. */
   ignored: (candidates: readonly string[]) => ReadonlySet<string>
-  /** Package names (the workspace's and its dependencies'), whose subpaths are not paths. */
   packages: ReadonlySet<string>
-  /** The names of the files of the repository, for bare file names. */
   basenames: ReadonlySet<string>
-  /** Allowed paths that do not exist, as the text between the backticks. */
   missingAllowed: readonly string[]
 }
 
@@ -49,11 +21,9 @@ const KNOWN_NAMES: ReadonlySet<string> = new Set([
 ])
 const PATH_CHARACTERS = /^[\w.@+/-]+$/
 
-/** The repository path a backticked token claims, or `undefined` when it claims none. */
 export function claimedPath(token: string, packages: ReadonlySet<string>): string | undefined {
   if (!PATH_CHARACTERS.test(token)) return undefined
   if (token.startsWith('@') || token.startsWith('-')) return undefined
-  // A route of a Worker (`/mcp`, `/health`) or an absolute path: never a path of the repository.
   if (token.startsWith('/')) return undefined
   const looksLikePath =
     token.includes('/') || KNOWN_EXTENSIONS.test(token) || KNOWN_NAMES.has(token)

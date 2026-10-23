@@ -1,12 +1,3 @@
-// Fails when:
-// - "prints the claude mcp add line": the line stops naming the URL of /mcp, or names the
-//   token and not ${HOLLWARE_TOKEN}, or the default client stops being claude-code.
-// - "prints the JSON block of each client": a client's block changes its keys, or its way to
-//   name the variable (${HOLLWARE_TOKEN}, ${env:HOLLWARE_TOKEN}), or puts anything but the JSON
-//   on stdout, or the token of the file is read into it.
-// - "says how to set the variable": the note on stderr stops naming the token file, or the file
-//   it is saved in.
-// - "needs a URL": a project with no public URL and no --url prints a URL that is no URL.
 import { describe, expect, it } from 'vite-plus/test'
 
 import { run } from './support/io.ts'

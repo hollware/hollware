@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { diagnosticsOf } from '../app/lib/diagnostics.ts'
 
-// Fails when: the verdict stops landing in the editor where it belongs (app/lib/diagnostics.ts): a
-// violation at its line, a frontmatter field at the line of that field, anything else at the first
-// line; errors before warnings; the message with its fix, and the contract as the source.
-
 const TEXT = '---\ntitle: Hi\ndescription: x\n---\n\n# Hi\n\n![](a.png)\n'
 
 const violation = (overrides: Record<string, unknown>) => ({

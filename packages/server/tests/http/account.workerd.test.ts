@@ -8,21 +8,9 @@ import { seedToken } from '../auth/support.ts'
 import { callRaw, INPUTS } from '../mcp/support.ts'
 import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from './support.ts'
 
-// Fails when: the routes of a person's own sign-in (src/http/admin-api.ts `/v1/admin/account`,
-// src/identity/store.ts, and the sign-out of src/identity/routes.ts) stop doing what T-44, T-45
-// and T-54 of docs/security/threat-model.md say: the list of passkeys shows their key or credential
-// id, or misses one; a passkey is removed that is the person's last, or another person's; the list
-// of apps misses a grant, its client's name, its scopes or its site, or does not mark the admin's;
-// an app's grant is revoked that is another person's or the admin's, or a revoked grant's tokens
-// keep working; ending every session leaves a row of the person, ends another person's, or leaves
-// the admin's grants; or signing out of one browser leaves its session, ends another one, or
-// leaves the cookie; or a passkey is renamed that is another person's, or to an empty label; or
-// the name of anyone but the person signed in changes, or a name longer than 100 characters is kept.
-
 const REDIRECT = 'https://agent.example.com/callback'
 const MCP = `${PUBLIC_URL}/mcp`
 
-/** The test config, with dynamic client registration on, so that a test can make a client. */
 const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistration: true } })
 
 function base64url(bytes: Uint8Array): string {
@@ -38,13 +26,11 @@ async function pkce() {
   return { verifier, challenge: base64url(new Uint8Array(digest)) }
 }
 
-/** A session of the person: the cookie a browser that signed in holds. */
 async function sessionOf(userId: string): Promise<string> {
   const session = await createSession(connect(env.DB), { userId, now: new Date(NOW), hours: 12 })
   return `hollware_session=${session.secret}`
 }
 
-/** A person of the site, an owner, signed in to the admin: their id, cookie and access token. */
 async function person(worker: Booted) {
   const { userId } = await seedToken(env.DB, SITE_KEY, { role: 'owner' })
   const cookie = await sessionOf(userId)
@@ -80,7 +66,6 @@ async function person(worker: Booted) {
   return { userId, cookie, access, adminClient: admin.clientId }
 }
 
-/** An app the person connects through the consent page, as an agent does: its client and tokens. */
 async function connectApp(worker: Booted, cookie: string, name: string) {
   const registered = await worker.send('/oauth/register', {
     method: 'POST',
@@ -136,13 +121,11 @@ async function connectApp(worker: Booted, cookie: string, name: string) {
   return { clientId, access: tokens.access_token, refresh: tokens.refresh_token }
 }
 
-/** Whether a token of an app still reaches /mcp: the status of a call. */
 async function mcpStatus(worker: Booted, token: string): Promise<number> {
   return (await callRaw(worker.endpoint(token), 'modern', 'list_entries', INPUTS.list_entries))
     .status
 }
 
-/** The status of a refresh of an app's grant, at the token endpoint. */
 async function refreshStatus(worker: Booted, clientId: string, refresh: string): Promise<number> {
   const response = await worker.send('/oauth/token', {
     method: 'POST',
@@ -199,7 +182,6 @@ async function sessionCount(userId: string): Promise<number> {
   return row?.n ?? -1
 }
 
-/** Where `/authorize` sends a browser with this cookie: back to sign in, or on with a code. */
 async function authorizeWith(worker: Booted, adminClient: string, cookie: string) {
   const { challenge } = await pkce()
   const query = new URLSearchParams({
@@ -216,7 +198,6 @@ async function authorizeWith(worker: Booted, adminClient: string, cookie: string
   return new URL(response.headers.get('location') ?? '', PUBLIC_URL).pathname
 }
 
-/** The lines of the activity log of a person's own action: outcome, code and target. */
 async function auditOf(userId: string, action: string) {
   const { results } = await env.DB.prepare(
     'SELECT outcome, error_code, target_id FROM audit_log WHERE actor_user_id = ?1 AND action = ?2 ORDER BY created_at, id',
@@ -372,7 +353,6 @@ describe("a person's sessions", () => {
     expect(await sessionCount(me.userId)).toBe(0)
     expect(await authorizeWith(worker, me.adminClient, elsewhere)).toBe('/signin')
     expect(await authorizeWith(worker, me.adminClient, me.cookie)).toBe('/signin')
-    // The admin's token is gone with its grant; the app the person connected keeps working.
     expect((await call(worker, me.access, '/v1/admin/account')).status).toBe(401)
     expect(await mcpStatus(worker, app.access)).toBe(200)
     expect(await sessionCount(other.userId)).toBe(1)

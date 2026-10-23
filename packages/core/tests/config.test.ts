@@ -9,10 +9,6 @@ import {
 } from '../src/config/define.ts'
 import type { Contract } from '../src/contracts/types.ts'
 
-// Fails when: the define helpers stop returning what they are given, or the frontmatter type of
-// a collection stops reaching the contracts written inside it, or a shared contract stops fitting
-// a collection whose frontmatter has what it reads (type errors under `vp check`).
-
 const hasDescription = defineContract<{ description: string }>({
   id: 'has-description',
   severity: 'error',

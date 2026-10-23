@@ -1,8 +1,3 @@
-/**
- * The words of hollware.com in English, the source of every language: a language is a value of
- * `Messages`, so the type check refuses one that misses a key, adds one or changes a function.
- * The documents of the docs come from Hollware in each locale; these are the site's own words.
- */
 export const en = {
   language: { name: 'English', switch: 'Leer en español', switchTo: 'Español' },
   seo: {

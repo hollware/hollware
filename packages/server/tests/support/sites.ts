@@ -2,13 +2,6 @@ import { generatePersonalToken, hashPersonalToken, newId } from '@hollware/core'
 
 import { contentFixture } from '../../../../tests/fixtures/content.ts'
 
-/**
- * Rows of a whole site, written straight into D1 with SQL, so that a test can seed two sites and
- * try to reach one from the other (AC-0.1-13). It never goes through the store, so it does not
- * depend on the code under test. Both sites get the same natural keys (collection, locale and
- * slug, and the translation group): a query that forgets `site_id` finds the other site's rows.
- */
-
 export interface SeededEntry {
   readonly id: string
   readonly collection: 'blog'
@@ -23,7 +16,6 @@ export interface SeededSite {
   readonly site: string
   readonly userId: string
   readonly tokenId: string
-  /** The token in clear, to present it to the Worker. */
   readonly token: string
   readonly entries: readonly SeededEntry[]
 }
@@ -42,11 +34,6 @@ const VERDICT = JSON.stringify({
   contractsHash: 'seed',
 })
 
-/**
- * Writes a site with its owner, a personal token with every scope and three blog entries: an
- * en/es pair published in one translation group, and an en draft, each with one revision, its
- * tags, and a publication for the published ones.
- */
 export async function seedSite(db: D1Database, site: string): Promise<SeededSite> {
   const now = new Date().toISOString()
   const userId = newId('usr')

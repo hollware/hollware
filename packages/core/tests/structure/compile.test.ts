@@ -8,14 +8,6 @@ import { compileSites } from '../../src/structure/compile.ts'
 import { definitionsFromConfig } from '../../src/structure/from-config.ts'
 import { markdownOf, NO_LOOKUPS } from '../contracts/support.ts'
 
-// Fails when: a site's definition (src/structure/compile.ts) stops compiling into the same
-// resolved site its 0.x config resolves to (src/structure/from-config.ts): the same rules, with
-// their parameters, the same verdict on an entry and the same hash of the rules, so that moving a
-// deployment keeps every stored verdict current, and the backup setting of the site; or stops refusing, with each problem at its
-// path, a rule the catalog lacks, parameters the rule does not take, a schema that is not of an
-// object, a definition of the wrong shape, or a contract of the config's own code; or a
-// deployment with no site stops compiling to none.
-
 const CONFIG: HollwareConfig = {
   sites: {
     blog: {

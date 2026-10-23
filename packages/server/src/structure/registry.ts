@@ -8,18 +8,6 @@ import {
 } from '@hollware/core'
 import type { D1Like } from '../db/d1.ts'
 
-/**
- * The sites a Worker serves, read from D1 (ADR-033). It is the `ReadonlyMap` of sites the rest of
- * the server has always read, kept current by `refresh`: each request, call and cron run starts
- * with it, and it asks D1 for the version of every site (one small query, at most once a second
- * per isolate), then reads and compiles again only a site whose version moved. A site whose
- * definition no longer compiles keeps its last good copy, and the problem is logged.
- *
- * A Worker given the config of 0.x moves it, once: a site of the config whose row has no
- * definition gets the config's as its first (version 1), with a change of no actor.
- */
-
-/** How long a poll of the versions holds, in milliseconds. */
 export const POLL_MS = 1_000
 
 interface Compiled {
@@ -34,7 +22,6 @@ interface VersionRow {
 }
 
 export interface SiteRegistryOptions {
-  /** The sites of a 0.x config, as definitions, to move into D1 on the first refresh. */
   readonly seed?: Readonly<Record<string, SiteDefinitionInput>>
   readonly now: () => Date
   readonly log: (entry: object) => void
@@ -42,11 +29,8 @@ export interface SiteRegistryOptions {
 }
 
 export interface SiteRegistry {
-  /** The served sites, by key: one map that `refresh` keeps current, in place. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
-  /** Their keys, kept current with them. */
   readonly keys: ReadonlySet<string>
-  /** Brings the sites in line with D1: at once with `force`, else when the last poll is stale. */
   refresh(db: D1Like, options?: { readonly force?: boolean }): Promise<void>
 }
 
@@ -65,7 +49,6 @@ async function moveConfig(
            WHERE sites.definition IS NULL`,
         )
         .bind(key, json, now),
-      // The change that made version 1, unless another isolate wrote it first.
       db
         .prepare(
           `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at)
@@ -111,8 +94,6 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
               .bind(...stale.map((row) => row.id))
               .all<{ id: string; version: number; definition: string | null }>()
           ).results
-    // What another request of this isolate made current while this one waited is kept: a copy
-    // only ever moves to a newer version.
     const next = new Map<string, Compiled>()
     for (const row of versions) {
       const current = compiled.get(row.id)
@@ -137,7 +118,6 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
         if (previous !== undefined) next.set(row.id, previous)
       }
     }
-    // In place and at once: every holder of the map and the set sees the same sites.
     compiled = next
     sites.clear()
     keys.clear()
@@ -151,12 +131,6 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
   return { sites, keys, refresh }
 }
 
-/**
- * A definition stored before 0.10 named the Worker secret of its IndexNow key; since then it holds
- * the key itself (T-69 of docs/security/threat-model.md). A stored one of the old form is served
- * with IndexNow off, and says so, instead of failing to compile and leaving its site unserved: its
- * owner sets the key itself in the admin or with update_site, which refuses the old form.
- */
 export function withoutStaleIndexNow(
   site: string,
   definition: unknown,

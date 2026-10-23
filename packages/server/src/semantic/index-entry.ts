@@ -4,17 +4,14 @@ import type { Db } from '../db/d1.ts'
 import { entries, entryEmbeddings, revisions } from '../db/schema.ts'
 import type { RelatedEntry, Semantic } from '../ports.ts'
 
-/** The id of a piece's vector. */
 export function vectorId(entryId: string, piece: number): string {
   return `${entryId}:${piece}`
 }
 
 export type IndexOutcome = 'indexed' | 'current' | 'removed' | 'absent'
 
-/** How many entries an entry keeps as its related ones. */
 export const RELATED_LIMIT = 5
 
-/** How long the excerpt of a piece is, in characters, cut at a word. */
 export const EXCERPT_LENGTH = 200
 
 function excerptOf(text: string): string {
@@ -28,14 +25,12 @@ function stringOf(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
 }
 
-/** The ids of the vectors of `pieces` pieces of an entry, from `from` on. */
 function idsOf(entryId: string, from: number, pieces: number): string[] {
   return Array.from({ length: Math.max(0, pieces - from) }, (_, offset) =>
     vectorId(entryId, from + offset),
   )
 }
 
-/** The entries nearest to an entry's summary, in its collection and locale; itself left out. */
 async function nearestTo(
   semantic: Semantic,
   input: {
@@ -59,13 +54,6 @@ async function nearestTo(
     .map((match) => ({ id: match.metadata.entry, score: match.score }))
 }
 
-/**
- * Brings the vectors of one entry in line with what it has published: the pieces of its published
- * revision, embedded with the model of `semantic`. It reads the entry as it is now, so it is right
- * whichever event called it and however late: an entry whose vectors already are of its published
- * revision, model and chunker is `current` and costs no embedding; an entry with nothing published
- * (unpublished, deleted, gone) loses its vectors and its row.
- */
 export async function syncEntryVectors(
   db: Db,
   semantic: Semantic,
@@ -138,7 +126,6 @@ export async function syncEntryVectors(
       },
     })),
   )
-  // A revision with fewer sections than the one before leaves vectors that no piece has now.
   if (stored !== undefined)
     await semantic.index.remove(idsOf(entryId, chunks.length, stored.pieces))
   const related = await nearestTo(semantic, {
@@ -163,11 +150,6 @@ export async function syncEntryVectors(
   return 'indexed'
 }
 
-/**
- * The entries whose vectors are not those of what they publish: published with no vectors (before
- * the Worker had semantic search, or an event that never reached the subscriber), of another
- * revision, model or chunker; and entries with vectors and nothing published. At most `limit`.
- */
 export async function staleEntries(
   db: Db,
   input: { readonly site: string; readonly model: string; readonly limit: number },
@@ -212,11 +194,6 @@ export async function staleEntries(
   return [...published, ...orphans].map((row) => row.id)
 }
 
-/**
- * What the cron trigger does for the vectors of a site: brings at most `limit` stale entries in
- * line, so that a site that turns semantic search on, or changes its model, is indexed a few
- * entries a minute without a command. An entry that fails is left for the next run.
- */
 export async function healVectors(
   db: Db,
   semantic: Semantic,
@@ -238,19 +215,10 @@ export async function healVectors(
   return { synced: ids.length - failed, failed }
 }
 
-/** How long an entry with no related entries waits before they are looked for again. */
 export const RELATED_RETRY_MS = 10 * 60_000
 
-/** How old the related entries of an entry may grow before they are looked for again. */
 export const RELATED_REFRESH_MS = 24 * 60 * 60_000
 
-/**
- * What the cron trigger does for related entries: it finds them again for at most `limit`
- * entries of the site, oldest first, whose related entries are a day old, or empty for ten
- * minutes. Vectorize shows a vector seconds after it was written, so entries indexed together
- * miss each other at first; and an entry published later belongs among the related entries of
- * those before it. Each keeps its vectors: only its summary is read back and compared.
- */
 export async function refreshRelated(
   db: Db,
   semantic: Semantic,
@@ -292,7 +260,6 @@ export async function refreshRelated(
   let refreshed = 0
   for (const row of rows) {
     const summary = summaries.get(vectorId(row.entryId, 0))
-    // No summary in the index: the sweep of the vectors makes it again.
     if (summary === undefined) continue
     const related = await nearestTo(semantic, { site: input.site, ...row, summary })
     await db

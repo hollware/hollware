@@ -5,10 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: an exception list of tests/guards/exceptions.ts has more entries than its `max`
-// (an exception was added) or fewer (one was removed and `max` was not lowered), has a
-// duplicate or an entry without a reason; or a guard declares an exception list of its own.
-
 const list = (max: number, ...values: string[]): ExceptionList => ({
   max,
   entries: values.map((value) => ({ value, reason: `Because ${value} cannot be fixed yet.` })),
@@ -18,6 +14,7 @@ describe('exception lists', () => {
   it('every list is exactly as long as its recorded size, and each entry has a reason', () => {
     expect(Object.keys(EXCEPTION_LISTS).sort()).toEqual([
       'ADMIN_TEXT_LITERALS',
+      'DOC_REF_FILES',
       'INVISIBLE_CHARACTER_FILES',
       'MISSING_DOC_PATHS',
       'OPERATIONS_WITHOUT_ADMIN',

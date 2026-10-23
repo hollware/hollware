@@ -6,15 +6,6 @@ import { afterEach, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { starterTemplate } from '../../../scripts/sync-starter.ts'
 import { create, type Io, type RunResult } from '../src/scaffold.ts'
 
-// Fails when: create-hollware stops making the project its own (the name of the Worker, its
-// database and its queues, the key of the site, Hollware's exact version for every Hollware
-// dependency, a .gitignore), writes into a directory that is not empty, stops running git init,
-// pnpm's allowed build scripts when pnpm installs, the install, the migrations and init in that order and in the project, stops printing init's
-// answer and the `claude mcp add` line, stops handing --preset, --locales, --ip-addresses and --audit-retention-days to init, with the token, or goes on after a step failed. The
-// the `claude mcp add` line stops having the JSON block (.mcp.json, naming HOLLWARE_TOKEN) beside it, or the passkey stops reading as optional for an agent, or --token-file is not handed to init as an absolute path, or an existing token file is not refused before anything is made, or one inside the project is not ignored by git, or --json prints anything but one object. The
-// programs it runs are not ours, so they are the one thing faked; the template is the real one,
-// made from templates/starter.
-
 const REPO = resolve(import.meta.dirname, '../../..')
 const TOKEN = `hw_pat_${'a'.repeat(52)}`
 const INIT_ANSWER = `Hollware is ready on the local database "DB".\n\n${TOKEN}\n`
@@ -81,13 +72,11 @@ describe('create-hollware <dir>', () => {
     expect(read('wrangler.jsonc')).toContain('"database_name": "blog-cms"')
     expect(read('wrangler.jsonc')).toContain('"dead_letter_queue": "blog-cms-events-dlq"')
     expect(read('wrangler.jsonc')).not.toContain('my-hollware')
-    // No config: the structure lives in the database (ADR-033); the README names the site.
     expect(existsSync(join(cwd, 'blog-cms', 'hollware.config.ts'))).toBe(false)
     expect(read('README.md')).toContain('hollware init --site blog --local')
     expect(read('README.md')).not.toContain('my-site')
     expect(existsSync(join(cwd, 'blog-cms', '.gitignore'))).toBe(true)
     expect(existsSync(join(cwd, 'blog-cms', 'gitignore'))).toBe(false)
-    // npm needs no pnpm settings.
     expect(existsSync(join(cwd, 'blog-cms', 'pnpm-workspace.yaml'))).toBe(false)
   })
 
@@ -117,7 +106,6 @@ describe('create-hollware <dir>', () => {
       { command: hollware, args: ['init', '--site', 'blog', '--local'], cwd: project },
     ])
     expect(out).toContain(INIT_ANSWER.trim())
-    // How to start and deploy it; how to connect an agent is init's to say, once.
     expect(out.at(-1)).toBe(
       [
         '',
@@ -131,7 +119,6 @@ describe('create-hollware <dir>', () => {
         'The README says the rest.',
       ].join('\n'),
     )
-    // The token is init's to print, once: nothing here repeats it.
     expect(out.join('\n').split(TOKEN)).toHaveLength(2)
   })
 

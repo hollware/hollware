@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { isStaleFile, loadAgainOnce } from '../app/lib/stale.ts'
 
-// Fails when: the admin (app/lib/stale.ts) stops telling a file of its code that failed to load,
-// as Chrome, Firefox and Safari word it, from any other error; or loads again more than once in
-// ten seconds (a loop when a file is truly missing), or not at all after them.
-
 describe('a file of the code that failed to load', () => {
   it('is told from other errors, in the words of each browser', () => {
     expect(

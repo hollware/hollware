@@ -40,8 +40,9 @@ export type BuiltInContractId = (typeof BUILT_IN_CONTRACT_IDS)[number]
 /**
  * The ids of the violations that make a write `refused` instead of saving it: a file that cannot
  * be stored, because it is over a size limit, its frontmatter is not YAML or its Markdown does not
- * parse, or whose slug or translation group another entry holds. Every other violation is saved with the draft and only blocks publishing (ADR-004,
- * ADR-020). Plain strings, so that a violation's `contract` can be looked up in the list.
+ * parse, or whose slug or translation group another entry holds. Every other violation is saved
+ * with the draft and only blocks publishing. Plain strings, so that a violation's `contract` can be
+ * looked up in the list.
  */
 export const REFUSAL_CONTRACT_IDS: readonly string[] = [
   'size-limit',
@@ -51,7 +52,6 @@ export const REFUSAL_CONTRACT_IDS: readonly string[] = [
   'unique-translation',
 ]
 
-/** The built-in contract that the schema of the collection stands for. It runs before the others. */
 export const SCHEMA_CONTRACT: Omit<Contract<unknown>, 'check'> = {
   id: 'schema',
   severity: 'error',
@@ -59,7 +59,6 @@ export const SCHEMA_CONTRACT: Omit<Contract<unknown>, 'check'> = {
     'The frontmatter matches the schema of the collection, which describe_site shows as JSON Schema.',
 }
 
-/** The always-on contracts after `schema`, in the order they run. */
 export const ALWAYS_ON_CONTRACTS: readonly Contract<unknown>[] = [
   COMPONENTS,
   RAW_HTML,
@@ -68,7 +67,6 @@ export const ALWAYS_ON_CONTRACTS: readonly Contract<unknown>[] = [
   UNSAFE_URL,
 ]
 
-/** The always-on contracts that are checked before any of these runs. */
 const PIPELINE_CONTRACTS: readonly Omit<Contract<unknown>, 'check'>[] = [
   {
     id: 'size-limit',

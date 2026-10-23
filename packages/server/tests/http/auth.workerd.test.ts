@@ -6,20 +6,8 @@ import { readUse, seedToken } from '../auth/support.ts'
 import { rpc } from '../mcp/support.ts'
 import { boot, captureLogs, restoreLogs, OTHER_SITE_KEY, SITE_KEY, wire } from './support.ts'
 
-// Fails when: the token check stops standing in front of the MCP endpoint: a request to `/mcp`
-// with no token (any method but the preflight), or with a token that is unknown, malformed, expired
-// (a second ago or at this very instant of the clock), revoked or of another site, stops being 401
-// with the challenge of its case (the realm, the protected resource metadata of `/mcp` and the
-// baseline scope, plus `error="invalid_token"` with a refused one) and the body of `unauthorized`; the reason a token was refused reaches the
-// answer instead of only the log; a handler runs for a request that was refused; the lookup
-// leaves the primary database for a replica session or is skipped for a request with no token;
-// the token is looked up for any site but the one of this deployment; `last_used_at` stops being
-// written through `ctx.waitUntil`, at most once an hour, from the clock of each request and not
-// from the system's or the startup's. D1 is the real one, migrated.
-
 const REQUEST_ID = '5c1f6a52-0f67-4c4e-9d3a-2f6a8e1b7c90'
 
-/** Where a client reads how to get a token for `/mcp` (RFC 9728), which every 401 names. */
 const METADATA = 'https://hollware.test/.well-known/oauth-protected-resource/mcp'
 
 const NO_TOKEN = {
@@ -58,7 +46,6 @@ const REFUSED = {
   },
 }
 
-/** After the time the tests start at, which is 2026-10-13T12:00:00.000Z. */
 const LATER = '2026-11-11T12:00:00.000Z'
 
 afterEach(() => {
@@ -117,7 +104,6 @@ describe('a request to /mcp with no token', () => {
 })
 
 describe('a request to /mcp with a token that is refused', () => {
-  /** Each way a token fails, as a token the test makes, and the reason the log must give. */
   const CASES = [
     ['unknown', 'unknown', async () => generatePersonalToken()],
     ['malformed', 'unknown', async () => 'not-a-personal-token'],
@@ -176,7 +162,6 @@ describe('a request to /mcp with a token that is refused', () => {
 
     await worker.send('/mcp', { method: 'POST', body: '{}', token: seeded.token })
 
-    // The registry reads the versions of the sites first (ADR-033); then the one lookup.
     const lookups = worker.queries.filter((query) => !query.sql.includes('FROM sites'))
     expect(worker.sessions).toEqual([])
     expect(lookups).toHaveLength(1)
@@ -196,7 +181,6 @@ describe('a request to /mcp with a token that is refused', () => {
 })
 
 describe('the last use of a token', () => {
-  /** The cheapest request a token can make that the endpoint serves. */
   const list = (worker: ReturnType<typeof boot>, token: string) =>
     rpc(worker.endpoint(token), 'modern', 'tools/list')
 

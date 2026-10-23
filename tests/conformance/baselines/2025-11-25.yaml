@@ -1,15 +1,3 @@
-# Expected failures of the MCP conformance suite against Hollware, for the 2025-11-25 revision
-# (ADR-022). Every entry is one failing check, <scenario>:<check id>, with its class and why it
-# fails. The suite reads the list (tests/conformance/run.ts turns this file into its format) and
-# exits non-zero for a failure that is not here, and for an entry that now passes.
-#
-# Classes: not-offered is a capability Hollware does not offer in v0.1, fixture is a test_* tool or
-# prompt the suite expects that is not an operation of Hollware, and upstream is a defect of the
-# suite and links its issue. A check of the must-pass profile (../must-pass.yaml) can never be
-# listed: the guard conformance-baselines fails on it.
-#
-# The list only shrinks. Implementing a capability removes its entries in the same change and
-# lowers recordedSize; adding an entry is a reviewed change that raises it and states why.
 revision: '2025-11-25'
 recordedSize: 25
 entries:

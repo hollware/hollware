@@ -15,22 +15,10 @@ import { judge, processFor, sortKeyOf } from './draft.ts'
 import { unexpectedAnswer } from './errors.ts'
 import type { OperationHandler } from './types.ts'
 
-/** A warning by what an acknowledgement names: its contract and its path, never its line. */
 function warningKey(warning: { readonly contract: string; readonly path: string }): string {
   return JSON.stringify([warning.contract, warning.path])
 }
 
-/**
- * Publishes the latest revision of an entry, if it is still at the version the caller read. The
- * contracts run again, in the publish phase, because the rules and the other entries may have
- * changed since the draft was saved: an error blocks, and a warning has to be acknowledged, by
- * contract and path, before the publication is made. The publication records every warning of its
- * verdict as acknowledged (ADR-021).
- *
- * A caller without `content:publish` goes through the same checks, and then asks for a review
- * instead of publishing (v0.3): the answer is `pending_review`, and a person who may publish
- * decides. A review is for one entry, now.
- */
 export const publish: OperationHandler<'publish'> = async (input, context) => {
   const granted: readonly Scope[] = context.principal.scopes
   const mayPublish = granted.includes('content:publish')
@@ -51,8 +39,6 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
     return { outcome: 'conflict', conflict: conflictAt(entry.version, entry.headRevision) }
   }
   const summary = entrySummary(found)
-  // The rules may have changed since the draft was saved, and so may the other entries it points
-  // at: check the latest revision again, in the publish phase.
   const processed = await processFor(context.site, collection, revision.markdown)
   if (!processed.ok) {
     return {
@@ -154,7 +140,6 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
     entryId: entry.id,
     expectedVersion: input.version,
     verdict,
-    // Every warning of the verdict was acknowledged, and the publication records which.
     acknowledged: verdict.warnings.map(({ contract, path }) => ({ contract, path })),
     actor,
     sortKey:
@@ -178,7 +163,6 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
     case 'not_found':
       return { outcome: 'not_found' }
     case 'too_large':
-      // The verdict is what made the publication too large to store.
       return {
         outcome: 'blocked',
         entry: summary,
@@ -189,7 +173,6 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
   }
 }
 
-/** The lookup of the contracts, with the entries of a group seen as published (ADR-024). */
 function asPublished(lookup: EntryLookup, ids: ReadonlySet<string>): EntryLookup {
   return {
     lookupMany: async (refs) =>
@@ -203,13 +186,6 @@ function asPublished(lookup: EntryLookup, ids: ReadonlySet<string>): EntryLookup
 type PublishInput = Parameters<typeof publish>[0]
 type PublishContext = Parameters<typeof publish>[1]
 
-/**
- * Publishes an entry and the entries of its group in one step, all or none (ADR-024). Each entry
- * is checked as `publish` checks one, except that the contracts see every entry of the group as
- * published, so links between them resolve. The first entry that stops the group is named in
- * `failedEntry`. An acknowledgement, by contract and path, holds for every entry that reports
- * that warning, and each publication records its own warnings.
- */
 async function publishGroup(input: PublishInput, context: PublishContext) {
   if (input.publishAt !== undefined) {
     throw new HollwareError(
@@ -302,8 +278,6 @@ async function publishGroup(input: PublishInput, context: PublishContext) {
   }
   const [main] = checked
   if (main === undefined) throw unexpectedAnswer(context, 'publish', { outcome: 'empty group' })
-  // An acknowledgement holds for every member; the first member with a warning that nobody
-  // acknowledged is named, with its own verdict, so that a client can deal with it and go on.
   const acknowledged = new Set(input.acknowledgeWarnings.map(warningKey))
   const pending = checked.find(({ verdict }) =>
     verdict.warnings.some((warning) => !acknowledged.has(warningKey(warning))),

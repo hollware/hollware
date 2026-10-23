@@ -1,9 +1,5 @@
 import type { Embedder, Semantic, StoredVector, VectorIndex, VectorMatch } from '../../src/ports.ts'
 
-/**
- * A model that needs no network: the vector of a text counts its letters a to z, so two texts
- * with the same letters are the same point. `calls` holds every batch it was asked to embed.
- */
 export function fakeEmbedder(model = 'fake-model'): Embedder & { readonly calls: string[][] } {
   const calls: string[][] = []
   return {
@@ -35,7 +31,6 @@ function cosine(a: readonly number[], b: readonly number[]): number {
   return normA === 0 || normB === 0 ? 0 : dot / Math.sqrt(normA * normB)
 }
 
-/** A vector index in memory, with the filters of Vectorize's metadata indexes. */
 export function fakeIndex(): VectorIndex & { readonly vectors: Map<string, StoredVector> } {
   const vectors = new Map<string, StoredVector>()
   return {

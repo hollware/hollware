@@ -4,13 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, snapshotOf } from './world.ts'
 
-// Fails when: validate stops answering as publish would, or writes. validate.ts runs the contracts
-// in the write phase, or without the other entries of the site (the translation pair and the
-// links read them), or without the routes of every collection of the site (a link to an entry of
-// another collection stops counting as a link to an entry), answers a file the pipeline cannot
-// store with something else than an ok answer whose verdict is the refusal, runs the contracts
-// without the id of the entry when it exists, or saves, changes or publishes anything.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 

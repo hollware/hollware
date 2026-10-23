@@ -7,7 +7,6 @@ import { useMessages } from '../i18n/index.ts'
 type Rule = Output<'get_structure'>['definition']['collections'][string]['rules'][number]
 type CatalogRule = Output<'get_structure'>['catalog'][number]
 
-/** One rule of a collection: which one of the catalog, how severe, and its parameters. */
 const props = defineProps<{
   rule: Rule
   catalog: readonly CatalogRule[]
@@ -18,7 +17,6 @@ const emit = defineEmits<{ remove: [] }>()
 const entry = computed(() => props.catalog.find((candidate) => candidate.name === props.rule.rule))
 const inputs = computed(() => (entry.value === undefined ? [] : paramInputs(entry.value.params)))
 const m = useMessages()
-/** No field, for a parameter that may name none. */
 const NONE = computed(() => m.value.common.none)
 const severities = computed(() => [
   { label: m.value.severity.error, value: 'error' },

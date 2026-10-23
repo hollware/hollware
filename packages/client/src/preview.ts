@@ -1,19 +1,11 @@
 import { PREVIEW_QUERY_PARAM } from '@hollware/core'
 
-/**
- * What a site does with a preview link (T-103 of docs/security/threat-model.md): the token travels
- * in a URL once, and in a cookie after that, so it does not stay in the address bar, the history,
- * a `Referer` or a copied link. These are the pure parts, shared by `@hollware/nuxt` and
- * `@hollware/astro`: the integrations only wire them to their framework's requests.
- */
-
 /** The cookie that holds the token of a preview, on the site's own origin. */
 export const PREVIEW_COOKIE = 'hollware_preview'
 
 /** How long the cookie lives, in seconds: the hour of the token. */
 export const PREVIEW_COOKIE_MAX_AGE = 3600
 
-/** The shape of a token, `hw_prv_<base64url>.<base64url>`. The site cannot check more: Hollware does. */
 const TOKEN_SHAPE = /^hw_prv_[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
 
 /** Whether a value is shaped like a preview token. A value that is not is never kept. */
@@ -54,8 +46,6 @@ export function exchangePreviewLink(
   makeNonce: () => string = nonce,
 ): PreviewExchange | undefined {
   const { pathname: asked, search } = typeof url === 'string' ? new URL(url) : url
-  // A path that starts with `//` or `/\` is read by a browser as another host (`//evil.example`):
-  // the redirect stays on this site, with one leading slash.
   const pathname = `/${asked.replace(/^[/\\]+/, '')}`
   const kept: string[] = []
   let found: string | undefined
@@ -73,9 +63,6 @@ export function exchangePreviewLink(
     found = at === -1 ? '' : safeDecode(pair.slice(at + 1))
   }
   if (!seen) return undefined
-  // A parameter of no secret, new each time, so that the URL the page is read at is in no cache:
-  // a cache in front of the site (Workers Cache) would otherwise answer the published page there
-  // before the site sees the cookie.
   if (isPreviewToken(found)) kept.push(`${PREVIEW_VIEW_PARAM}=${makeNonce()}`)
   return {
     location: kept.length === 0 ? pathname : `${pathname}?${kept.join('&')}`,
@@ -83,7 +70,6 @@ export function exchangePreviewLink(
   }
 }
 
-/** The parameter that keeps a previewed page out of every cache: a random value, no secret. */
 export const PREVIEW_VIEW_PARAM = 'hollware-view'
 
 function nonce(): string {

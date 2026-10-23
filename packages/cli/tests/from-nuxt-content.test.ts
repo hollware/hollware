@@ -5,13 +5,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { corpusFromNuxtContent } from '../src/import/from-nuxt-content.ts'
 
-// Fails when: an import from Nuxt Content (src/import/from-nuxt-content.ts) stops making each
-// page the file Hollware imports: its slug as Nuxt Content routes it (numeric prefixes gone, an
-// index its folder, folders joined), its Markdown byte for byte, its locale from its first folder
-// with its translation group added where the page has none, its title from its first heading or
-// its slug where the frontmatter has none; or reads a partial or a hidden file,
-// takes a data file as a page, or lets two pages share a slug.
-
 function content(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'nuxt-content-'))
   for (const [path, text] of Object.entries(files)) {
@@ -98,7 +91,6 @@ describe('a Nuxt Content directory', () => {
     expect(corpus.files.map((file) => file.slug)).toEqual(['a-b-c'])
     expect(corpus.problems).toEqual([
       { path: 'Guide.md', reason: 'its route makes "Guide", which is not a slug' },
-      // In name order `a` comes before `a-b`, so a/b-c.md keeps the slug.
       { path: 'a-b/c.md', reason: 'its slug "a-b-c" is the slug of a/b-c.md too' },
     ])
   })

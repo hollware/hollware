@@ -3,10 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createMcpEndpoint } from '../../src/mcp/index.ts'
 import { callRaw, CANNED, endpointWith, fakeHandlers, INPUTS, textOf } from './support.ts'
 
-// Fails when: an endpoint is built with a time limit that is not a positive number of
-// milliseconds, the default limit stops being the 10 seconds of the plan (`limits.ts`), or an
-// open-world operation stops getting its 30 seconds (ADR-040).
-
 afterEach(() => {
   vi.useRealTimers()
 })

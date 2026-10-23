@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-// Fails when: a module of src/markdown imports Comark or `@comark/html` at the top, instead of
-// when the first file is processed or the first document is rendered: an isolate that only reads
-// would then load the parser at startup, and the budget of the Worker (`vp pack`, the check of
-// WP11) counts on it not doing so. The test reads the source, which is the only place a static
-// import can be seen from.
-
 const sources = import.meta.glob<string>('../../src/markdown/*.ts', {
   query: '?raw',
   import: 'default',
   eager: true,
 })
 
-/** An import that is not `import type` and is not a dynamic `import(...)`. */
 const STATIC_VALUE_IMPORT =
   /^import\s+(?!type\b)[^;]*?from\s+['"](?:comark|@comark\/html)(?:\/[^'"]*)?['"]/m
 const STATIC_BARE_IMPORT = /^import\s+['"](?:comark|@comark\/html)(?:\/[^'"]*)?['"]/m

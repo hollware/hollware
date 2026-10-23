@@ -1,15 +1,7 @@
 import type { Violation } from './types.ts'
 
-/**
- * Guard `licenses`: the MIT license is the same everywhere. The root `LICENSE` is the MIT
- * text, and the `LICENSE` of every package is a byte-for-byte copy of it, because npm packs
- * the file that sits in the package directory and nothing else.
- */
-
 export interface LicensesInput {
-  /** The root `LICENSE`, or `undefined` when it does not exist. */
   root: Uint8Array | undefined
-  /** The `LICENSE` of each package directory (`packages/core`), or `undefined` when missing. */
   packages: readonly { dir: string; license: Uint8Array | undefined }[]
   copyright: string
 }

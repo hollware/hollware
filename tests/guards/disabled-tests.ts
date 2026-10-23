@@ -5,49 +5,18 @@ import { lineAt } from '../support/source.ts'
 import { isTestFile } from './test-projects.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `disabled-tests`: no test is switched off or focused. A test that is skipped, left as a
- * todo or run only sometimes proves nothing while the suite stays green, and `.only` makes the
- * runner skip every other test of its file. Neither belongs in the repository: delete the test,
- * or make it run.
- *
- * Rejected on `it`, `test`, `describe`, `suite` and `bench` (and on any name they are imported
- * as, or that is made from one: `const custom = test.extend(...)`): `.skip`, `.todo`, `.only`,
- * `.skipIf(...)` and `.runIf(...)`, however many members come before them (`it.concurrent.skip`,
- * `it.skip.each(rows)`, `it['skip']`), and the Jest-style `xit`, `xtest` and `xdescribe`.
- *
- * The files are read as syntax trees, so a comment, a string or a regular expression that
- * mentions `it.skip` is not a violation, and neither is `options.skip` or `{ only: true }` on
- * something that is not a test function. A file that does not parse is a violation too: nobody
- * can tell what it disables.
- *
- * There is no exception list: a test that cannot run yet is not written yet.
- */
-
 export interface DisabledTestsInput {
-  /**
-   * Every test file: those the test projects run, and those of the directories with a runner of
-   * their own (`tests/acceptance/`, `tests/conformance/`), with their text.
-   */
   tests: readonly TextFile[]
 }
 
 export interface TestFileSelection {
-  /** Every file of the repository, repository-relative. */
   files: readonly string[]
-  /** The test files Vitest lists across all of its projects, repository-relative. */
   listed: readonly string[]
-  /** Directories with a runner of their own, with a trailing `/`. */
   runnerDirectories: readonly string[]
 }
 
 const SOURCE_FILE = /\.[cm]?[jt]sx?$/
 
-/**
- * The files the guard reads: those a test project lists, those named like a test (a test that no
- * project lists is reported by `test-projects`, and is no less disabled), and every source file
- * of a directory with a runner of its own, which `vp test` does not list.
- */
 export function testFilesToCheck(selection: TestFileSelection): string[] {
   const listed = new Set(selection.listed)
   return selection.files.filter(
@@ -59,16 +28,12 @@ export function testFilesToCheck(selection: TestFileSelection): string[] {
   )
 }
 
-/** The functions that declare a test, a suite or a benchmark. */
 const TEST_FUNCTIONS: ReadonlySet<string> = new Set(['it', 'test', 'describe', 'suite', 'bench'])
 
-/** The members that turn a test off, or turn the rest of its file off. */
 const DISABLING_MEMBERS: ReadonlySet<string> = new Set(['skip', 'todo', 'only', 'skipIf', 'runIf'])
 
-/** The Jest-style names of a skipped test, which are not members of anything. */
 const X_PREFIXED_FUNCTIONS: ReadonlySet<string> = new Set(['xit', 'xtest', 'xdescribe'])
 
-/** The name at the start of a chain of members and calls: `it` in `it.each(rows).skip`. */
 function chainRoot(node: ESTree.Expression): ESTree.IdentifierReference | undefined {
   switch (node.type) {
     case 'Identifier':
@@ -88,7 +53,6 @@ function chainRoot(node: ESTree.Expression): ESTree.IdentifierReference | undefi
   }
 }
 
-/** The member a property access names: `skip` in `it.skip` and in `it['skip']`. */
 function memberName(node: ESTree.MemberExpression): string | undefined {
   if (!node.computed) return node.property.type === 'Identifier' ? node.property.name : undefined
   const { property } = node
@@ -108,8 +72,6 @@ export function checkDisabledTests(input: DisabledTestsInput): Violation[] {
         message: `the file does not parse (${error.message}), so nobody can tell whether it disables a test`,
       })
     }
-    // `import { it as spec }` makes `spec.skip` as bad as `it.skip`, and so does
-    // `const custom = test.extend({ ... })` for `custom.skip`.
     const testFunctions = new Set(TEST_FUNCTIONS)
     for (const binding of importBindings(test.path, test.text)) {
       if (TEST_FUNCTIONS.has(binding.imported)) testFunctions.add(binding.local)

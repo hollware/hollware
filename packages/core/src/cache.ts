@@ -16,7 +16,6 @@ export const SITE_TAG = 'site'
 
 const MAX = 1024
 
-/** A part of a tag in the characters a tag may hold: percent-encoded, commas and all. */
 function part(value: string): string {
   return encodeURIComponent(value).replaceAll(',', '%2C').replaceAll("'", '%27')
 }
@@ -69,7 +68,7 @@ export function tagsOfChange(entry: TaggedEntry): string[] {
 }
 
 /**
- * The tags a change of a site's structure invalidates (ADR-033): the pages that show the structure
+ * The tags a change of a site's structure invalidates: the pages that show the structure
  * (`site`, such as a navigation), and every list of its collections in each locale and in every
  * locale, as a list may change with a schema, a route or a collection that goes. `collections` and
  * `locales` are those of the definition before and after the change, together.

@@ -1,33 +1,19 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import { count, isRecord, type JsonObject, quote } from './text.ts'
 
-/**
- * The fix of a schema violation. A Standard Schema issue says where (`path`) and what (`message`),
- * and nothing else is the same across libraries, so the fix comes from the JSON Schema of the same
- * schema: it names the field and what the schema accepts there ("a string of 1 to 160
- * characters", "one of "info", "tip""), which is what an agent needs to write the next attempt.
- * Where the JSON Schema cannot say, the fix falls back to the library's own message.
- */
-
-/** The most values of an enum that a fix lists. */
 const MAX_LISTED_VALUES = 20
 
-/** What a schema validates, so that a fix can name it. */
 export interface FixSubject {
-  /** As a noun phrase: `the frontmatter`, `the component "callout"`. */
   readonly container: string
-  /** What the keys of its objects are called: `field` or `prop`. */
   readonly noun: 'field' | 'prop'
 }
 
-/** The path of an issue as plain strings; a number or a symbol becomes its text. */
 export function issueSegments(issue: StandardSchemaV1.Issue): string[] {
   return (issue.path ?? []).map((segment) =>
     String(typeof segment === 'object' ? segment.key : segment),
   )
 }
 
-/** A path as a person writes it: `author.links[2]`. */
 export function label(segments: readonly string[]): string {
   return segments.reduce((text, segment) => {
     if (/^\d+$/.test(segment)) return `${text}[${segment}]`
@@ -35,7 +21,6 @@ export function label(segments: readonly string[]): string {
   }, '')
 }
 
-/** The part of a JSON Schema that describes the value at `segments`, when the schema says. */
 export function fragmentAt(
   schema: JsonObject,
   segments: readonly string[],
@@ -75,7 +60,6 @@ function listValues(values: readonly unknown[]): string {
   return more > 0 ? `${shown} and ${more} more` : shown
 }
 
-/** `1 to 160 characters`, `at least 1 item`, `at most 3 items`, or nothing. */
 function range(min: unknown, max: unknown, noun: string): string | undefined {
   const low = typeof min === 'number' ? min : undefined
   const high = typeof max === 'number' ? max : undefined
@@ -141,10 +125,6 @@ function typeExpectation(type: unknown, schema: JsonObject): string | undefined 
   }
 }
 
-/**
- * What a JSON Schema accepts, as the end of a sentence ("a string of at most 160 characters"), or
- * `undefined` when it uses something this does not put into words, such as `$ref` or `allOf`.
- */
 export function expectation(schema: JsonObject): string | undefined {
   if ('const' in schema) return `exactly ${JSON.stringify(schema.const)}`
   if (Array.isArray(schema.enum)) return `one of ${listValues(schema.enum)}`
@@ -157,7 +137,6 @@ export function expectation(schema: JsonObject): string | undefined {
   return parts.every((part) => part !== undefined) ? parts.join(' or ') : undefined
 }
 
-/** The keys of `value` that an object schema closed to other keys does not list. */
 function unknownKeys(fragment: JsonObject, value: unknown): string[] {
   const { additionalProperties, properties } = fragment
   if (additionalProperties !== false || !isRecord(properties) || !isRecord(value)) return []
@@ -166,17 +145,12 @@ function unknownKeys(fragment: JsonObject, value: unknown): string[] {
 
 export interface FixInput {
   readonly subject: FixSubject
-  /** The input JSON Schema of the validated schema, or `null` when it does not convert. */
   readonly schema: JsonObject | null
-  /** What was validated, to find the keys the schema does not accept. */
   readonly input: unknown
-  /** Where in `input` the issue is. */
   readonly segments: readonly string[]
-  /** The library's message for the issue. */
   readonly message: string
 }
 
-/** The fix for one issue: imperative, naming the field and what the schema accepts there. */
 export function fixForIssue({ subject, schema, input, segments, message }: FixInput): string {
   const target =
     segments.length === 0 ? subject.container : `the ${subject.noun} ${quote(label(segments))}`

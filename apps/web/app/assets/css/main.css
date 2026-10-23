@@ -1,15 +1,9 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
-/* The fonts travel with the site: no font is fetched from another origin. */
 @import '@fontsource-variable/schibsted-grotesk';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* theme:start
- * The theme of Hollware, the same in hollware.com and the admin (ADR-039,
- * tests/conventions/brand.test.ts): the Carbón greys of the brand book as Nuxt UI's neutral, the
- * warm white of Carbón as the primary, its amber, flame, as the secondary (the main action of a
- * page and the accents, used sparingly), Schibsted Grotesk and JetBrains Mono. Dark only.
- */
+/* theme:start */
 @theme static {
   --font-sans:
     'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -58,7 +52,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* A grid that fades out from the top: the backdrop of a hero. */
 .backdrop-grid {
   background-image:
     linear-gradient(to right, var(--ui-border) 1px, transparent 1px),
@@ -67,7 +60,6 @@ body {
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
 }
 
-/* The orange of Cloudflare, for the section that names its products and nothing else. */
 @theme {
   --color-cloudflare: #f6821f;
 }
@@ -80,7 +72,6 @@ body {
   );
 }
 
-/* A soft light behind a headline, in the accent. */
 .backdrop-glow {
   background: radial-gradient(
     ellipse 50% 40% at 50% 0%,
@@ -89,9 +80,6 @@ body {
   );
 }
 
-/*
- * The body of a documentation page, as @comark/vue renders it: plain elements, styled here.
- */
 .prose {
   color: var(--ui-text);
   font-size: 0.975rem;
@@ -102,7 +90,7 @@ body {
     margin-top: 1.1em;
   }
   & h1 {
-    display: none; /* The page shows its title above the body. */
+    display: none;
   }
   & h2 {
     color: var(--ui-text-highlighted);

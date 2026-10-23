@@ -5,12 +5,6 @@ import type { HistoryRevision } from '../ports.ts'
 import type { Db } from './d1.ts'
 import { entries, publications, revisions, users } from './schema.ts'
 
-/**
- * The history of an entry (`list_revisions`, `get_revision`): its revisions, newest first, with
- * the name of who wrote each and whether one was ever published. Revisions are append-only
- * (ADR-021), so the history is every one there is.
- */
-
 const COLUMNS = {
   id: revisions.id,
   entryId: revisions.entryId,
@@ -22,7 +16,6 @@ const COLUMNS = {
   wordCount: revisions.wordCount,
   verdict: revisions.verdict,
   authorName: users.name,
-  // Whether a publication ever published this revision: one row of `publications` names it.
   published: sql<number>`exists (select 1 from ${publications} where ${and(
     eq(publications.revisionId, revisions.id),
     eq(publications.siteId, revisions.siteId),
@@ -65,7 +58,6 @@ function toHistory(row: Row): HistoryRevision {
   }
 }
 
-/** A page of the revisions of an entry, newest first, after `cursor` when one is given. */
 export async function listRevisions(
   db: Db,
   site: string,
@@ -94,7 +86,6 @@ export async function listRevisions(
   return rows.map(toHistory)
 }
 
-/** One revision of the site, with its Markdown, or `null`. */
 export async function findRevision(
   db: Db,
   site: string,
@@ -109,10 +100,6 @@ export async function findRevision(
   return row === undefined ? null : { ...toHistory(row), markdown: row.markdown }
 }
 
-/**
- * When the source of each translation group (its entry in `sourceLocale`, out of the trash) was
- * first written and when its head revision was. Keyed by `collection` and `group` joined with a NUL.
- */
 export async function sourceHeadTimes(
   db: Db,
   site: string,
@@ -149,7 +136,6 @@ export async function sourceHeadTimes(
   return times
 }
 
-/** When each revision of the site among `ids` was written. */
 export async function revisionTimes(
   db: Db,
   site: string,

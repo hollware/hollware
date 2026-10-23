@@ -5,12 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a template of packages/admin/app shows a text with a letter in it, as a text node or
-// as a static label, placeholder, title, aria-label, description, help, hint, empty, filter-label
-// or alt, that does not come from the messages of packages/admin/app/i18n, and is not in
-// ADMIN_TEXT_LITERALS; or when an entry of that list is shown by no template. The same for the
-// templates of hollware.com (apps/web/app), its messages (apps/web/app/i18n) and WEB_TEXT_LITERALS.
-
 const isAdminTemplate = (path: string) => /^packages\/admin\/app\/.+\.vue$/.test(path)
 const isWebTemplate = (path: string) => /^apps\/web\/app\/.+\.vue$/.test(path)
 

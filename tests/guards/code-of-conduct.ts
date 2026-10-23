@@ -1,14 +1,7 @@
 import { CONDUCT_EMAIL } from './project.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `code-of-conduct`: the Code of Conduct is finished. It keeps no template placeholder
- * (`[INSERT CONTACT METHOD]` of the Contributor Covenant), and the only address it holds is
- * the one reports go to, `conduct@hollware.com`.
- */
-
 export interface CodeOfConductInput {
-  /** `CODE_OF_CONDUCT.md`. */
   conduct: TextFile
 }
 

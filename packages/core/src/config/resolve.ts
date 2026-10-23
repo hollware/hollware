@@ -17,7 +17,6 @@ const SITE_KEY_FIX = `Use lowercase letters and digits joined by single hyphens,
 const LOCALE_FIX =
   'Write a language, then a region if you need one: "es", "en" or "pt-BR" (lowercase language, uppercase region).'
 
-/** The locales of a site, and whether they are fit to check the routes against. */
 function readLocales(
   path: string,
   raw: unknown,
@@ -119,7 +118,6 @@ function readCollections(
   return collections
 }
 
-/** Checks one site; `null` when it is no object, which is a problem already. */
 function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite | null {
   const path = keyPath('sites', key)
   if (!isSiteKey(key)) {
@@ -180,7 +178,6 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
     return sites
   }
   const keys = Object.keys(raw)
-  // A deployment serves one site or several (v0.4): each token, grant and member belongs to one.
   if (keys.length === 0) {
     problems.add('sites', 'has no site, and a deployment serves at least one', SITE_FIX)
   }
@@ -191,7 +188,6 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
   return sites
 }
 
-/** `auth` of the config: absent, or an object whose `dynamicClientRegistration` is a boolean. */
 function readAuth(raw: unknown, problems: Problems): ResolvedAuth {
   if (raw === undefined) return { dynamicClientRegistration: false }
   if (!isRecord(raw)) {

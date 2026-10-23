@@ -2,38 +2,15 @@ import { parseJsonc } from '../support/jsonc.ts'
 import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `wrangler-flags`: every Worker of the repository runs without Node.js compatibility,
- * which Workers turn on by default from the 2026-08-04 compatibility date. Each
- * `wrangler.jsonc` lists both `no_nodejs_compat` and `no_nodejs_compat_v2` (one alone leaves
- * `process` and `Buffer` in place) and neither positive flag. The starter, which becomes the
- * user's project, opts out too.
- *
- * Hollware's own configs also set `"send_metrics": false`, so no command run in this
- * repository sends wrangler's telemetry. A template is the user's project: its telemetry is the
- * user's choice.
- *
- * A Worker of Hollware, which is one with the D1 binding `DB`, holds the OAuth server (ADR-026):
- * it lists `global_fetch_strictly_public`, without which the server would fetch a client's
- * metadata document through the zone and refuses to take such documents, and it binds `OAUTH_KV`,
- * at the top and in every environment that names its own bindings (bindings do not inherit).
- * There it also declares a cron trigger and consumes a queue with a `dead_letter_queue`, unless
- * `WORKERS_WITHOUT_EVENTS` names the config.
- */
-
 export interface WranglerFlagsInput {
-  /** Every `wrangler.jsonc` of the repository. */
   configs: readonly TextFile[]
   workersWithoutEvents: readonly string[]
 }
 
-/** The flags that turn Node.js compatibility off; both are needed. */
 const OPT_OUTS = ['no_nodejs_compat', 'no_nodejs_compat_v2']
 
-/** The flags that would turn it back on. */
 const OPT_INS = ['nodejs_compat', 'nodejs_compat_v2']
 
-/** Whether a set of bindings (the top of a config, or one environment) has the D1 binding `DB`. */
 function bindsHollware(bindings: Record<string, unknown>): boolean {
   const databases = bindings.d1_databases
   return (

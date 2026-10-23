@@ -1,20 +1,3 @@
-// Fails when:
-// - "quote doubles every single quote …": `quote` stops doubling `'`, doubles only the first
-//   one, or stops wrapping the value in quotes.
-// - "quote refuses a NUL …": the NUL guard of `quote` is removed.
-// - "a label …" (accepted and rejected rows): `parseLabel` changes the length limit, stops
-//   trimming, stops refusing control characters, invisible formatting characters, lone
-//   surrogates or line separators, or counts UTF-16 units instead of characters; its message
-//   stops showing the value escaped.
-// - "shows an invisible character of the value as ? …": a message echoes a value with its
-//   bidirectional controls or zero-width marks, which can act on the terminal.
-// - "has the same rules for the name of an owner …": `parseOwnerName` changes its 100 characters
-//   or stops sharing the rules of a label.
-// - "a hostile label never changes the statement …": `insertToken` puts a value in the SQL
-//   without `quote`, so what a label holds becomes part of the statement.
-// - "parseSiteKey / parseScopes / parseExpiresInDays / parseTokenId / parseDatabase …": a rule
-//   of the validators changes: the site key pattern or its length, an unknown scope, a repeated
-//   scope, the 1 to 365 days, the id prefix, or a database name that starts with a hyphen.
 import { describe, expect, it } from 'vite-plus/test'
 
 import { UsageError } from '../src/errors.ts'
@@ -48,7 +31,6 @@ describe('quote', () => {
   })
 })
 
-/** A statement with its string literals taken out: what is left is the template. */
 function skeleton(sql: string): string {
   return sql.replace(/'(?:[^']|'')*'/g, '?')
 }

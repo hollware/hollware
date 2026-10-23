@@ -7,14 +7,6 @@ import { processMarkdown } from '../../src/markdown/process.ts'
 import { COMARK_VERSION, PIPELINE_VERSION } from '../../src/markdown/versions.ts'
 import { accepted, BLOG_OPTIONS, warmUpComark } from './support.ts'
 
-// Fails when: COMARK_VERSION no longer names the version of `comark` that is installed (Comark
-// exports no version, so this constant is all `comark_version` has), or `@comark/html` stops
-// pinning that same version, which would put two copies of Comark in a Worker; or the output of the
-// pipeline for the shared fixtures changes without PIPELINE_VERSION changing with it: a settings
-// change (an allowlist, a plugin, the heading ids, the marker, a line number) that forgets to
-// bump the version leaves the revisions written before it with a document the pipeline would no
-// longer make, and `reparse` never knows to rebuild them.
-
 warmUpComark()
 
 describe('the version of Comark', () => {
@@ -36,12 +28,6 @@ describe('the version of Comark', () => {
 })
 
 describe('the version of the pipeline', () => {
-  /**
-   * The first sixteen hexadecimal digits of the SHA-256 of the JSON of what `processMarkdown`
-   * answers for each shared fixture, with the options of the playground's blog, by the version of
-   * Comark and of the pipeline. When this fails, the pipeline makes another document than it did:
-   * bump PIPELINE_VERSION (or COMARK_VERSION, with the package) and pin the new output here.
-   */
   const PINNED: Record<string, Record<string, string>> = {
     '0.7.0/3': {
       'bench/long-post.md': '423a9a836a51e0f6',

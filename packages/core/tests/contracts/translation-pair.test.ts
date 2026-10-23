@@ -12,13 +12,6 @@ import {
   type StoredEntry,
 } from './support.ts'
 
-// Fails when: `translation-pair` runs outside the publish phase, runs for a collection without
-// translations, or stops asking the store for the translation group of the entry (one call);
-// stops counting an entry of any status or the entry being checked as part of its group; stops
-// naming the missing locale and the group in the message and the fix; reports the locales in
-// another order than the site's; stops pointing at the group field of the collection; stops
-// reporting an entry without a group; or ignores the severity it is given.
-
 const GROUP = 'edge-caching-guide'
 
 function violation(locale: string, field = 'translationGroup', group = GROUP) {
@@ -57,7 +50,6 @@ describe('the translation-pair contract', () => {
     ])
     expect(verdict.errors).toStrictEqual([])
     expect(verdict.ok).toBe(true)
-    // One question to the store, for the group of the entry in this collection.
     expect(calls).toStrictEqual([
       { method: 'translations', collection: 'blog', translationGroup: GROUP },
     ])
@@ -70,7 +62,6 @@ describe('the translation-pair contract', () => {
   })
 
   it('counts the entry being checked even when the store has no row for it yet', async () => {
-    // `validate` can check a file whose entry does not exist: it is the es entry, so only en is missing.
     const { verdict } = await runPair([])
     expect(verdict.errors).toStrictEqual([violation('en')])
   })
@@ -88,7 +79,6 @@ describe('the translation-pair contract', () => {
     const verdict = await run({
       phase: 'publish',
       collection: collectionOf({
-        // The field has to be in the schema: it reads what the schema returned.
         schema: z.object({ title: z.string(), key: z.string() }),
         translationGroupField: 'key',
         contracts: [contracts.translationPair()],

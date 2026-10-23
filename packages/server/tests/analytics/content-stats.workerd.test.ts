@@ -5,13 +5,6 @@ import type { AnalyticsSources, PageCount } from '../../src/ports.ts'
 import { agent, blogPost, warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, publishPost, type World } from '../ops/world.ts'
 
-// Fails when: content_stats (src/ops/content-stats.ts) stops asking the site's analytics (ADR-040)
-// for the days and the limit of its input, stops answering each page with its views and the
-// published entry that the routes of the site put at its path (with or without its trailing slash),
-// answers an entry that is not published or a path that no route has, stops saying since when it
-// counts and which provider counted, or stops answering unavailable with the fix of the source when
-// the site has no connection, or with its own when it has no sources at all.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 

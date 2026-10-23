@@ -2,25 +2,10 @@ import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { describeStep, parseWorkflow } from './workflow-model.ts'
 
-/**
- * Guard `workflow-permissions`: least privilege, bound to the files.
- *
- * - Every workflow starts with `permissions: {}`: nothing is granted unless a job asks.
- * - A job's `permissions` is a mapping, never `write-all`.
- * - `id-token: write` (the OIDC token that npm trusted publishing and Scorecard use) is
- *   granted to exactly two jobs: `publish` of release.yml and `scorecard` of security.yml.
- * - Every `actions/checkout` step sets `persist-credentials: false`, so no later step can push
- *   with the workflow's token.
- * - `security.yml` has no top-level `env` or `defaults`: OpenSSF Scorecard rejects the results
- *   of a workflow that has them.
- */
-
 export interface WorkflowPermissionsInput {
-  /** The `.github/workflows/*.yml` files. */
   workflows: readonly TextFile[]
 }
 
-/** The only jobs allowed to request an OIDC token, as `file#job`. */
 export const ID_TOKEN_JOBS: readonly string[] = ['release.yml#publish', 'security.yml#scorecard']
 
 export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Violation[] {

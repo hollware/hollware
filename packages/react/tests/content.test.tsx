@@ -3,13 +3,6 @@ import { renderToString } from 'react-dom/server'
 
 import { HollwareContent, HollwareImage } from '../src/index.ts'
 
-// Fails when: <HollwareContent> stops rendering the nodes of the entry's Comark document, stops
-// handing a component of the entry to the site's own mapping of that name (`Callout`, as the
-// entry's `::callout`) with its props and its children, renders something for an entry that has
-// no document, or drops the class the site gives the wrapper, or the srcset, sizes and size of an
-// image; or <HollwareImage> stops rendering a frontmatter image with its alt, size and copies, or
-// lets them win over a prop the site gives.
-
 const document = {
   nodes: [
     ['h1', { id: 'hello' }, 'Hello'],

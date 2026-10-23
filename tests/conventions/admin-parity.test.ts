@@ -7,10 +7,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: an operation of MCP (OPERATIONS of @hollware/core) is called by no page of the admin
-// and OPERATIONS_WITHOUT_ADMIN does not say how a person does it there, or that list names an
-// operation the admin calls, or one that does not exist.
-
 describe('admin parity', () => {
   it('every operation an agent has over MCP, a person has in the admin', () => {
     const violations = checkAdminParity({

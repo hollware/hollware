@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// The `callout` component of the docs collection, as the docs show it.
 const props = withDefaults(defineProps<{ type?: 'note' | 'tip' | 'warning' }>(), { type: 'note' })
 const { m } = useLocale()
 

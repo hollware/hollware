@@ -9,22 +9,6 @@ import {
 } from '../guards/conformance-baselines.ts'
 import { isRecord } from '../support/values.ts'
 
-/**
- * What the suite wrote (`checks.json`, one per scenario) and the judgments the runner makes of
- * it. The suite judges the baseline on its own and exits non-zero for what it finds; this module
- * adds what the suite does not do:
- *
- * - the must-pass profile, which also covers scenarios that the requirement set does not score
- *   (it runs them and cannot fail on them), and fails on a check that is missing, not only on one
- *   that fails, since the suite tolerates a baselined check that it never reports;
- * - a baseline entry that excuses nothing: a check the suite does not report, one that passes,
- *   one in a scenario that is not scored.
- *
- * Everything but `readScenarioResults` and `readScoredScenarios` is a pure function of its
- * arguments.
- */
-
-/** The statuses the suite gives a check. */
 export type Status = 'SUCCESS' | 'FAILURE' | 'WARNING' | 'SKIPPED' | 'INFO'
 
 export interface CheckResult {
@@ -44,10 +28,8 @@ function isStatus(value: unknown): value is Status {
   return typeof value === 'string' && STATUSES.includes(value)
 }
 
-/** `server-tools-list-2026-10-13T07-52-46-368Z`: the scenario is between the two. */
 const RESULT_DIRECTORY = /^server-(.+)-\d{4}-\d{2}-\d{2}T[\d-]+Z$/
 
-/** The results of every scenario the suite saved under `directory`, in the order they ran. */
 export function readScenarioResults(directory: string): ScenarioResult[] {
   const scenarios: ScenarioResult[] = []
   for (const name of readdirSync(directory).sort()) {
@@ -72,7 +54,6 @@ export function readScenarioResults(directory: string): ScenarioResult[] {
   return scenarios
 }
 
-/** The scenarios that a revision requires of a server: the `server` list of its requirement set. */
 export function readScoredScenarios(requirementsFile: string): ReadonlySet<string> {
   const document: unknown = parse(readFileSync(requirementsFile, 'utf8'))
   const server: unknown = isRecord(document) ? document.server : undefined
@@ -95,11 +76,6 @@ const SEVERITY: Readonly<Record<Status, number>> = {
   INFO: 0,
 }
 
-/**
- * One verdict for each check id of a scenario. Ids repeat within a run (a loop, a retried flow),
- * and the suite collapses the occurrences to the most severe, so does this. `INFO` is never a
- * verdict.
- */
 export function verdicts(checks: readonly CheckResult[]): Map<string, CheckResult> {
   const found = new Map<string, CheckResult>()
   for (const check of checks) {
@@ -112,7 +88,6 @@ export function verdicts(checks: readonly CheckResult[]): Map<string, CheckResul
   return found
 }
 
-/** In baseline mode the suite counts a warning as a failure. */
 export function isFailing(status: Status): boolean {
   return status === 'FAILURE' || status === 'WARNING'
 }
@@ -123,11 +98,6 @@ function why(check: CheckResult): string {
     : `: ${check.errorMessage.replace(/\s+/g, ' ').slice(0, 160)}`
 }
 
-/**
- * What stops the run in the must-pass profile: a check that does not pass, that the suite no
- * longer reports, or a scenario that did not run. `entries` are those of one revision. `passed`
- * counts the checks that were held to the profile and passed.
- */
 export function evaluateProfile(
   entries: readonly ProfileEntry[],
   scenarios: readonly ScenarioResult[],
@@ -191,12 +161,6 @@ export function evaluateProfile(
   return { problems, passed }
 }
 
-/**
- * The entries of a baseline that excuse nothing, and the failures of the scored scenarios that
- * no entry excuses. The suite finds most of these itself (it exits 1 for both); this finds the
- * ones it tolerates, and gives the same answer for the rest, so the runner never depends on a
- * single judge.
- */
 export function evaluateBaseline(
   baseline: Baseline,
   scenarios: readonly ScenarioResult[],
@@ -236,11 +200,8 @@ export function evaluateBaseline(
 }
 
 export interface Summary {
-  /** Scenarios the requirement set scores, and the checks they gave. */
   readonly scored: { readonly scenarios: number; readonly passed: number; readonly failing: number }
-  /** What the failing scored checks are excused by, by class. */
   readonly baselined: Readonly<Record<string, number>>
-  /** Scenarios that ran for visibility and are not judged. */
   readonly notScored: {
     readonly scenarios: number
     readonly passed: number
@@ -248,7 +209,6 @@ export interface Summary {
   }
 }
 
-/** Counts of a run, for the report: the verdict is not a function of them. */
 export function summarize(
   baseline: Baseline,
   scenarios: readonly ScenarioResult[],

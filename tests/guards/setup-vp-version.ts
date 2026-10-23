@@ -1,22 +1,9 @@
 import type { TextFile, Violation } from './types.ts'
 import { describeStep, parseWorkflow } from './workflow-model.ts'
 
-/**
- * Guard `setup-vp-version`: CI runs the same toolchain as a clone.
- *
- * Every `voidzero-dev/setup-vp` step pins `version:` to the exact `vite-plus` version of the
- * catalog (the action would install the latest otherwise), and takes Node from
- * `.node-version` with `node-version-file`. Every other `actions/setup-node` step does the
- * same, unless it pins the exact version of `.node-version` itself (`release.yml` does where
- * nothing is checked out).
- */
-
 export interface SetupVpInput {
-  /** The `.github/workflows/*.yml` files. */
   workflows: readonly TextFile[]
-  /** The `vite-plus` entry of the catalog in `pnpm-workspace.yaml`, or `undefined`. */
   viteVersion: string | undefined
-  /** The text of `.node-version`. */
   nodeVersion: string
 }
 

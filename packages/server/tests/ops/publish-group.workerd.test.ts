@@ -4,15 +4,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogFrontmatter, warmUpComark } from './support.ts'
 import { entryColumns, newWorld, type World } from './world.ts'
 
-// Fails when: publish.ts stops publishing a group in one step (ADR-024): the contracts must see the
-// members of the group as published, so two drafts that link to each other publish together while
-// either alone is blocked; one member that is blocked, missing or stale must stop the whole group,
-// be named in failedEntry, and leave every member as it was.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/** A post in English that links to another, and its Spanish translation, as drafts. */
 async function linked(world: World, slug: string, linksTo: string, description = 'A post.') {
   const frontmatter = blogFrontmatter({ translationGroup: slug, description })
   const en = await world.agent.createDraft({

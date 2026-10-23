@@ -10,12 +10,6 @@ import { sortable } from '../lib/columns.ts'
 import { me } from '../lib/me.ts'
 import { api, auth } from '../lib/session.ts'
 
-/**
- * The person's own sign-in, for every role: the passkeys they sign in with (never the last one
- * out), the apps they let in (any of them out, but the admin, which ends by signing out), and
- * every session at once (T-44, T-45, T-54 of the threat model).
- */
-
 type Passkey = { id: string; label: string; createdAt: string; lastUsedAt: string | null }
 type App = {
   id: string
@@ -50,10 +44,6 @@ const appColumns = computed<TableColumn<App>[]>(() => [
   { id: 'actions', header: '' },
 ])
 
-/**
- * The apps, the admin once: every sign-in to the admin is a grant of its own, which ends by
- * signing out, so the list shows the latest of them and no way to revoke it here.
- */
 const apps = computed<App[]>(() => {
   const all = data.value?.apps ?? []
   const admin = all.find((app) => app.admin)
@@ -79,10 +69,8 @@ async function load() {
 
 onMounted(load)
 
-/** The person's name as typed: it starts as the one the shell read. */
 const name = ref('')
 const savingName = ref(false)
-// The shell reads the person after a page that is opened first: the name comes when it does.
 watch(
   () => me.value?.user?.name,
   (known) => {
@@ -108,7 +96,6 @@ async function saveName() {
   }
 }
 
-/** The passkey being renamed, and its label as typed. */
 const renaming = ref<Passkey | null>(null)
 const newLabel = ref('')
 
@@ -133,7 +120,6 @@ async function renamePasskey() {
   await load()
 }
 
-/** The passkey about to be removed, while the person confirms. */
 const removing = ref<Passkey | null>(null)
 const removeOpen = computed({
   get: () => removing.value !== null,
@@ -155,7 +141,6 @@ async function removePasskey() {
   await load()
 }
 
-/** The app about to be revoked, while the person confirms. */
 const revoking = ref<App | null>(null)
 const revokeOpen = computed({
   get: () => revoking.value !== null,
@@ -180,7 +165,6 @@ async function revokeApp() {
 const endOpen = ref(false)
 const ending = ref(false)
 
-/** Ends every session of the person, this one too: the admin then signs this browser out. */
 async function endAll() {
   ending.value = true
   try {

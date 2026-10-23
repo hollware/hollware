@@ -15,15 +15,6 @@ import {
   type ModuleSize,
 } from './check-budgets.ts'
 
-// Fails when: check-budgets stops failing a build over a ceiling of budgets.json (the main module with
-// what it imports at startup, or all modules together, each exactly at its ceiling passes and one
-// byte over fails); stops reading the size of a module as its gzipped bytes; counts a chunk that the
-// main module only imports dynamically as startup, or one it imports statically as lazy; stops
-// reading the packages of a module from its source map, or lets Comark or @comark/html sit in the
-// startup modules, or in no lazy chunk; or when budgets.json itself changes: its two ceilings were
-// fixed before the first measurement (250 and 400 KiB gzipped) and raising one needs a note in an
-// ADR, so a change of the numbers has to change this test with it.
-
 let directory: string
 
 beforeEach(() => {
@@ -50,7 +41,6 @@ const BUDGETS: Budgets = {
 
 const KIB = 1024
 
-/** A module of a measurement, with the fields a test does not care about filled in. */
 function module(file: string, startup: boolean, packages: string[] = []): ModuleSize {
   return { file, bytes: 0, gzipBytes: 0, startup, packages }
 }
@@ -187,7 +177,6 @@ describe('checkBudgets', () => {
   })
 })
 
-/** A built Worker: a main module that imports one chunk statically and another dynamically. */
 function buildFixture(): void {
   write('wrangler.json', JSON.stringify({ main: 'index.js', no_bundle: true }))
   write(
@@ -227,7 +216,6 @@ function buildFixture(): void {
       ],
     }),
   )
-  // Not modules of the Worker: a map, the manifest and a dependency's own files.
   write('node_modules/left-pad/index.js', 'module.exports = 1')
 }
 
@@ -237,8 +225,6 @@ describe('measureBuild', () => {
 
     const built = measureBuild(directory)
 
-    // An empty module gzips to 20 bytes: a 10-byte header, an empty deflate block, an 8-byte
-    // trailer. A thousand times "x" gzips to 29.
     expect(built.modules.map((m) => [m.file, m.bytes, m.gzipBytes])).toEqual([
       ['assets/lazy.js', 1000, 29],
       ['assets/leaf.js', 0, 20],
@@ -294,8 +280,6 @@ describe('gzipBytes', () => {
   })
 
   it('shrinks what repeats, and cannot shrink what does not', () => {
-    // Bytes of a fixed pseudo-random sequence (a linear congruential generator), so that the same
-    // bytes come out every run and gzip has no repetition to find.
     const noise = new Uint8Array(4096)
     let state = 12345
     for (let at = 0; at < noise.length; at++) {

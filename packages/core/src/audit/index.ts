@@ -1,8 +1,3 @@
-/**
- * The actions of the activity log (ADR-037). A line names one of these, and nothing else: a new
- * operation or route that changes something is not logged until it is named here.
- */
-
 /** Every operation that is not a read: each call of one is a line, whatever its outcome. */
 export const OPERATION_AUDIT_ACTIONS = [
   'create_draft',
@@ -34,7 +29,6 @@ export const OPERATION_AUDIT_ACTIONS = [
 /** What people do outside the operations: their tokens, members, passkeys, sessions and apps. */
 export const IDENTITY_AUDIT_ACTIONS = [
   'token.create',
-  /** A person asked for a link that shows an entry's latest revision on the site (T-103). */
   'preview.create',
   'token.revoke',
   'member.role',
@@ -45,17 +39,12 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'session.sign_out',
   'session.end_all',
   'passkey.remove',
-  /** A person called one of their passkeys something else. */
   'passkey.rename',
-  /** A person changed the name they show, which only they may change. */
   'account.rename',
   'app.allow',
   'app.revoke',
-  /** A refresh token was used again after it was spent, so its grant was revoked (T-34). */
   'app.refresh_reused',
-  /** The cron published an entry whose time had come, for the person who scheduled it. */
   'schedule.publish',
-  /** The cron unpublished an entry whose time had come, for the person who scheduled it. */
   'schedule.unpublish',
 ] as const
 

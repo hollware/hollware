@@ -4,14 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { agent, warmUpComark } from './support.ts'
 import { createPost, newWorld, publishPost, type World } from './world.ts'
 
-// Fails when: move_entry (src/ops/move.ts, moveEntry of src/db/writes.ts) stops giving an entry its
-// new slug with the next version, keeping its revisions; stops keeping the old slug as a redirect
-// for an entry that was ever published (and keeps one for a draft never published); lets a slug
-// another entry holds be taken; moves at a version that is not the entry's; lets a published entry
-// move without content:publish; leaves a redirect from a slug an entry takes again; or
-// list_redirects stops answering the old and the new path of each, newest first, a page at a
-// time, of its own site only.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -50,7 +42,6 @@ describe('move_entry', () => {
       },
     ])
     expect(moved.redirect?.fromPath).toBe('/en/blog/edge-caching/')
-    // The subscribers hear of it at its new path, and purge the pages that showed it by its tags.
     const { results } = await env.DB.prepare(
       "SELECT payload FROM outbox WHERE site_id = ?1 AND entry_id = ?2 AND kind = 'entry.published' ORDER BY created_at DESC, rowid DESC LIMIT 1",
     )
@@ -129,7 +120,6 @@ describe('move_entry', () => {
       ['two', 'three'],
       ['one', 'three'],
     ])
-    // Back at one: no redirect from it any more, and the one from two leads to one.
     expect(
       (await world.agent.listRedirects()).redirects.map((redirect) => [redirect.from, redirect.to]),
     ).toEqual([

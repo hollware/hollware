@@ -2,18 +2,10 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { signWebhook, verifyWebhook } from '../src/webhooks.ts'
 
-// Fails when: src/webhooks.ts stops signing `<timestamp>.<body>` with HMAC-SHA256 of the secret as
-// `v1=<hex>`, or verifyWebhook accepts a body, a secret or a timestamp that do not match, or a
-// timestamp outside the tolerance, before or after now, or a request without its signature or its
-// timestamp, or any request with an empty secret (a site that never set one), or refuses a webhook
-// that is in order; or, given `isNew`, stops
-// refusing an event it was given before, by the id of its signed body and never of the header.
-
 const SECRET = 'whsec_test'
 const BODY = '{"kind":"entry.published"}'
 const AT = 1_760_000_000
 
-/** HMAC-SHA256("whsec_test", "1760000000.{"kind":"entry.published"}"), worked out with openssl. */
 const EXPECTED = 'v1=6e72d4ff1ad2c8840d8df404118422ed9178bf8dac32c33477b59728f94b55b7'
 
 function headers(signature: string, timestamp = AT): Headers {
@@ -51,7 +43,6 @@ describe('webhook signatures', () => {
   })
 
   it('refuse every webhook when the secret is empty, instead of failing on the empty key', async () => {
-    // A receiver whose secret was never set: WebCrypto takes no empty HMAC key, and throws.
     expect(
       await verifyWebhook({ secret: '', body: BODY, headers: headers(EXPECTED), now: AT }),
     ).toBe(false)
@@ -71,7 +62,6 @@ describe('webhook signatures', () => {
 
 describe('webhook replays', () => {
   const body = '{"id":"evt_1","kind":"entry.published"}'
-  /** A receiver's record of the events it has had, as a Set. */
   function receiver() {
     const seen = new Set<string>()
     const isNew = (id: string) => {

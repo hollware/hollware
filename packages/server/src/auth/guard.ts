@@ -1,21 +1,11 @@
 import { authErrorResponse } from './responses.ts'
 
-/** The host (with its port, unless it is the scheme's default) and the origin of a public URL. */
 interface PublicUrl {
   readonly host: string
-  /**
-   * The same host with the default port of its scheme written out (`cms.example.com:443`), which
-   * names the same server; `null` when the URL has a port of its own.
-   */
   readonly hostWithDefaultPort: string | null
   readonly origin: string
 }
 
-/**
- * What the Host and Origin of a request are compared with: the host and the origin that `new URL`
- * makes of the variable (lowercase, no default port). Path, query and fragment play no part.
- * `null` when the variable is not an absolute `http` or `https` URL, or is not a string at all.
- */
 function readPublicUrl(value: unknown): PublicUrl | null {
   if (typeof value !== 'string') return null
   let url: URL
@@ -33,32 +23,6 @@ function readPublicUrl(value: unknown): PublicUrl | null {
   }
 }
 
-/**
- * The guard that runs in front of every route, against DNS rebinding and cross-site requests
- * from a browser (ADR-019). It fails closed: every request it does not recognize is refused.
- *
- * - `HOLLWARE_PUBLIC_URL` missing or not an `http` or `https` URL: 500. Without it nothing can
- *   be compared, and skipping the check would leave the Worker open.
- * - A `Host` header that is missing, or is not the host of the public URL, port included: 403.
- *   The comparison ignores case, and takes the default port of the scheme written out
- *   (`cms.example.com:443` for an `https` URL), which some clients send for the same server.
- *   Any other port is another host.
- * - An `Origin` header that is present and is not the origin of the public URL, scheme and port
- *   included: 403. That covers the opaque `null` origin and an empty value. A request without
- *   `Origin` passes: only browsers send it, and they are what the check is for. The one exception
- *   is `crossOrigin`: an origin it accepts passes too (the read API, for the origins a site's
- *   config lists; the read API then checks the origin against the site of the token).
- *
- * It returns the response to send, or `null` when the request may go on. No answer repeats the
- * request: the 403s say what to send instead, and the 500 only says what is missing.
- *
- * The helpers of the MCP SDK (`hostHeaderValidationResponse`, `originValidationResponse`) do not
- * fit: they compare hostnames only, so they accept any port and, for `Origin`, any scheme, and
- * they accept a `Host` such as `user@cms.example.com` or `cms.example.com/x`.
- *
- * @param publicUrl The `HOLLWARE_PUBLIC_URL` variable as the environment holds it.
- * @param crossOrigin Whether a request may come from a page of another origin; never, by default.
- */
 export function checkHostAndOrigin(
   request: Request,
   publicUrl: unknown,

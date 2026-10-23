@@ -4,12 +4,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { starterTemplate, templateManifest, templateTsconfig } from '../../scripts/sync-starter.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: the template that create-hollware copies (packages/create-hollware/template) stops
-// being made from templates/starter when create-hollware builds or is packed, stops being shipped
-// in it, or is committed; it takes the starter's built or installed files; or the script stops pinning the
-// catalog's exact versions and Hollware's own placeholder, or stops making a tsconfig that stands
-// alone with the starter's options over the repository's, or drops the starter's npm overrides.
-
 const root = resolve(import.meta.dirname, '../..')
 
 describe('the template of create-hollware', () => {
@@ -25,7 +19,6 @@ describe('the template of create-hollware', () => {
       },
     })
     expect(readText('.gitignore').split('\n')).toContain('packages/create-hollware/template/')
-    // What the starter has that a user's project must not get.
     expect(
       [...template.keys()].filter((path) => /^(node_modules|dist|\.wrangler)\//.test(path)),
     ).toEqual([])

@@ -7,9 +7,6 @@ import {
   OUTPUT_CAP_BYTES,
 } from '../src/limits.ts'
 
-// Fails when: a limit of the operations moves away from the v0.1 plan, or the store's limits stop
-// leaving room under D1's own (2 MB per row, 100 bound parameters per statement).
-
 describe('operation limits', () => {
   it('are the ones of the v0.1 plan, under the limits of D1', () => {
     expect({ OUTPUT_CAP_BYTES, OPERATION_TIMEOUT_MS, MAX_ROW_BYTES, MAX_BOUND_PARAMETERS }).toEqual(

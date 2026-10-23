@@ -11,12 +11,6 @@ import {
   READ_TOKEN_PREFIX,
 } from '../src/tokens.ts'
 
-// Fails when: a personal token stops being `hw_pat_` and 52 characters of lowercase Crockford
-// base 32 (one per random byte, from its low 5 bits), the shape check accepts something else, the
-// hash stops being the hex SHA-256 of the whole token, or the default lifetime moves from 90 days;
-// or a read token stops being `hw_read_` and the same 52 characters, or either shape check takes a
-// token of the other kind.
-
 const ZERO_TOKEN = `hw_pat_${'0'.repeat(52)}`
 
 describe('personal tokens', () => {
@@ -24,7 +18,6 @@ describe('personal tokens', () => {
     expect(PERSONAL_TOKEN_PREFIX).toBe('hw_pat_')
     expect(generatePersonalToken(new Uint8Array(52))).toBe(ZERO_TOKEN)
     expect(generatePersonalToken(new Uint8Array(52).fill(255))).toBe(`hw_pat_${'z'.repeat(52)}`)
-    // 32 is 0b100000: its low 5 bits are zero, so the high bits never leak into the character.
     expect(generatePersonalToken(new Uint8Array(52).fill(32))).toBe(ZERO_TOKEN)
     const counting = Uint8Array.from({ length: 52 }, (_, index) => index)
     expect(generatePersonalToken(counting)).toBe(
@@ -50,7 +43,6 @@ describe('personal tokens', () => {
     expect(isPersonalToken(`hw_pat_${'0'.repeat(53)}`)).toBe(false)
     expect(isPersonalToken(`hw_tok_${'0'.repeat(52)}`)).toBe(false)
     expect(isPersonalToken(`HW_PAT_${'0'.repeat(52)}`)).toBe(false)
-    // Crockford leaves out i, l, o and u; the alphabet is lowercase.
     for (const letter of ['i', 'l', 'o', 'u', 'A']) {
       expect(isPersonalToken(`hw_pat_${letter}${'0'.repeat(51)}`)).toBe(false)
     }

@@ -5,10 +5,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { pageHeaders, plainPageHeaders, STYLE_HASH } from '../../src/identity/pages.ts'
 
-// Fails when: the pages of the Worker (src/identity/pages.ts) allow inline styles other than their
-// own stylesheet, whose hash STYLE_HASH must be, or stop saying that no other origin may hold,
-// embed or ask a device of them.
-
 const SOURCE = readFileSync(join(import.meta.dirname, '../../src/identity/pages.ts'), 'utf8')
 
 describe('the headers of the sign-in, setup and consent pages', () => {

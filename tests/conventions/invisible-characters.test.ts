@@ -6,11 +6,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readTextUnlessBinary, repoFiles } from '../support/repo.ts'
 
-// Fails when: a text file of the repository holds a bidirectional control, a zero-width mark, a
-// byte order mark or a line or paragraph separator outside INVISIBLE_CHARACTER_FILES; or a file
-// of that list stops holding one. The characters are built here with String.fromCodePoint, so
-// that this file holds none of them itself.
-
 const RIGHT_TO_LEFT_OVERRIDE = String.fromCodePoint(0x202e)
 const ZERO_WIDTH_SPACE = String.fromCodePoint(0x200b)
 const BYTE_ORDER_MARK = String.fromCodePoint(0xfeff)

@@ -2,16 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { boot, PUBLIC_URL } from './support.ts'
 
-// Fails when: the admin at /admin/ (src/http/admin.ts) stops being served the way ADR-026 says:
-// its page, and every path of the single-page app, goes out with the policy that frames nothing
-// and runs only its own scripts; a file of the build is passed on as the assets serve it; a
-// Worker without static assets says the admin is not installed; and /admin/config.json stops
-// naming the admin's client, the same one on every request, its redirect URI and the resource it
-// asks for, which is /v1.
-
 const PAGE = '<!doctype html><title>Hollware</title><div id="app"></div>'
 
-/** Static assets that hold the admin's page and one file, and record what was asked. */
 function assets() {
   const asked: string[] = []
   const fetcher = {
@@ -61,7 +53,6 @@ describe('the admin', () => {
 
   it('says nothing of HTTPS when the public URL is http, as in local development', async () => {
     const { fetcher } = assets()
-    // The OAuth server takes http on a loopback host only.
     const worker = boot({ assets: fetcher, publicUrl: 'http://localhost' })
 
     const page = await worker.send('/admin/', { host: 'localhost' })

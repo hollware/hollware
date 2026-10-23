@@ -13,16 +13,6 @@ import {
   warmUpComark,
 } from './support.ts'
 
-// Fails when: the markdown-it rule in src/markdown/parser.ts lets raw HTML, an unsafe link or
-// the YAML block of a component props through to Comark (`html: true` no longer tokenizes raw HTML,
-// an html token is not turned into a `hollware-raw:` element, `validateLink` rejects again and
-// leaves the link as text, `comark_block_yaml` is no longer disabled); or `visit` and
-// `cleanProps` in src/markdown/analyze.ts stop turning a disallowed element into a marker, stop
-// taking off an attribute outside the allowlist or a URL with a scheme the policy does not allow
-// (src/markdown/policy.ts: `urlScheme` and its character references, `isSafeUrl`,
-// `isAllowedAttribute`, `isForbiddenAttribute`), stop reporting what they change, or let the
-// document grow deeper than MAX_DEPTH; or `renderHtml` prints what the document no longer holds.
-
 warmUpComark()
 
 const marker = (kind: DisallowedMarker['kind'], name: string, line: number): DisallowedMarker => ({
@@ -154,7 +144,6 @@ describe('what the pipeline does with the spike table of attacks', () => {
   interface Attack {
     readonly name: string
     readonly markdown: string
-    /** The components of the collection, when the case needs more than `callout` and `youtube`. */
     readonly components?: readonly string[]
     readonly disallowed: readonly DisallowedMarker[]
   }
@@ -427,8 +416,6 @@ describe('what the document is when a URL is not allowed', () => {
 
 describe('the YAML block of a component', () => {
   it('is not read: the lines stay in the body and give the component no props', async () => {
-    // With the block on, an anchor bomb of seven levels takes Comark about ten seconds to write
-    // out, and the five here take 90 ms and put `a` and `b` in the props.
     const { document, extracted } = await accepted(
       [
         '::callout{type="tip"}',
@@ -452,7 +439,6 @@ describe('the YAML block of a component', () => {
 })
 
 describe('a document that is too deep to store', () => {
-  /** `*a *a … a* a*`: each pair is one more level of emphasis. */
   const nested = (pairs: number) => '*a '.repeat(pairs) + 'a* '.repeat(pairs)
 
   it('is accepted down to 100 levels, with the paragraph that holds them', async () => {

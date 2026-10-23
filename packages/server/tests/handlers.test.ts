@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { defineHandlers, type Handlers, type OperationHandler } from '../src/ops/types.ts'
 
-// Fails when: the handler table stops pairing one handler with each operation spec (a type error
-// under `vp check`), or defineHandlers stops returning the table it is given.
-
 const notYet = (): Promise<never> => Promise.reject(new Error('implemented in WP7'))
 
 const handlers: Handlers = {

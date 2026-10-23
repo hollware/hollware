@@ -5,7 +5,6 @@ import { requireCollection } from './collections.ts'
 import { translationOutdated } from './translations.ts'
 import type { OperationHandler } from './types.ts'
 
-/** Reads the entries of a translation group in the view of the call, one per locale. */
 export const getTranslations: OperationHandler<'get_translations'> = async (input, context) => {
   const collection = requireCollection(context.site, input.collection)
   if (collection.translationGroupField === null) {

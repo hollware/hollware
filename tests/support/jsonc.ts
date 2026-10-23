@@ -1,14 +1,7 @@
 import { parseJson, type JsonResult } from './values.ts'
 
-/**
- * Turns JSONC (JSON with `//` and block comments and trailing commas, the format of
- * `wrangler.jsonc`) into plain JSON. Comments become spaces, so offsets and line numbers
- * stay put. String contents are never touched, so a URL such as "https://example.com" keeps
- * its `//`. The text is not validated: `JSON.parse` does that afterwards.
- */
 export function stripJsonc(text: string): string {
   const out: string[] = []
-  // Index in `out` of a comma that only whitespace and comments have followed so far.
   let pendingComma = -1
   let i = 0
   while (i < text.length) {
@@ -54,7 +47,6 @@ export function stripJsonc(text: string): string {
   return out.join('')
 }
 
-/** Parses JSONC. A syntax error is reported in the result, never thrown. */
 export function parseJsonc(text: string): JsonResult {
   return parseJson(stripJsonc(text))
 }

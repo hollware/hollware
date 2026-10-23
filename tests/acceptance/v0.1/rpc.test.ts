@@ -14,18 +14,10 @@ import {
   type Agent,
 } from './support/harness.ts'
 
-// Fails when: a site stops reading what an agent published the way AC-0.1-5 describes, through
-// the built example site and its service binding to the built playground: a published entry stops
-// being served as the HTML of its stored document (the HTML that get_entry gives an agent); a draft
-// or an unpublished entry becomes reachable; listEntries stops filtering by tag or stops taking a
-// cursor to the next page; getTranslations stops giving the pair of a translation group; or the
-// binding gains a method that writes.
-
 const server = createPlaygroundHarness()
 let agent: Agent
 let edgeCachingId: string
 
-/** The binding as the example site holds it, called from the test. */
 interface Reader {
   listEntries(site: string, collection: string, options?: object): Promise<unknown>
   getEntry(site: string, collection: string, slug: string, locale: string): Promise<unknown>
@@ -41,7 +33,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** `[locale, slug]` of each entry of a listing or a translation group. */
 function keys(answer: unknown): [unknown, unknown][] {
   const entries = isRecord(answer) ? answer['entries'] : undefined
   if (!Array.isArray(entries)) throw new Error(`no entries: ${JSON.stringify(answer)}`)
@@ -64,7 +55,6 @@ beforeAll(async () => {
   await server.listen()
   await migrate(server)
   agent = agentWith(server, await seedOwnerToken(server))
-  // Three English entries tagged cms, one of them with its Spanish translation; one more draft.
   edgeCachingId = await publishNew(agent, corpus('en', 'edge-caching-basics'))
   await publishNew(agent, corpus('es', 'cache-en-el-borde'))
   await publishNew(agent, corpus('en', 'agents-write-with-contracts'))
@@ -156,7 +146,6 @@ describe('AC-0.1-5: a site reads Hollware over a service binding', () => {
         )
         .getEnv()
 
-      // The stub throws as it is called, so the call goes inside a promise.
       const call = async () => HOLLWARE[name]?.(SITE_KEY)
 
       await expect(call()).rejects.toThrow(

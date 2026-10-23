@@ -4,12 +4,6 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 import { exportsOf, staleParts } from '../../scripts/api.ts'
 
-// Fails when: the public API the code has (scripts/api.ts: the MCP tools with their scopes and
-// schemas, the OpenAPI document, the RPC signatures, the events of webhooks, the CLI's commands
-// and flags, the exports of each published package, the hashes of the migrations) differs from
-// what api/ holds, so a change of it is not in the diff of the change that makes it (ADR-036); or
-// the reading of a package's exports misses a name, a type, a re-export or an `export *`.
-
 const ROOT = resolve(import.meta.dirname, '../..')
 
 describe('public API', () => {

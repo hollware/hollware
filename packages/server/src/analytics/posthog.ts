@@ -3,12 +3,6 @@ import { ranked } from './normalize.ts'
 import { isRecord, messageOf, ProviderError, request } from './request.ts'
 import { rowsFor, type Source, type SourceInput } from './source.ts'
 
-/*
- * PostHog (ADR-040): the `$pageview` events of a project, counted by `$pathname` with HogQL on
- * the query API, with a personal API key that has Query read. A key scoped to one project cannot
- * list projects but finds its own at `@current`, and only the host of its region accepts it.
- */
-
 export const POSTHOG_CLOUD = ['https://us.posthog.com', 'https://eu.posthog.com'] as const
 
 const KEY_FIX =
@@ -16,7 +10,6 @@ const KEY_FIX =
 const QUERY_FIX =
   'Give the key the scope Query: read, in PostHog under Settings, User, Personal API keys.'
 
-/** The HogQL of the most viewed paths of some hosts in the last days. Hosts are checked names. */
 export function pagesHogql(hosts: readonly string[], days: number, limit: number): string {
   if (!Number.isInteger(days) || days < 1 || days > 90)
     throw new Error(`Not a number of days: ${days}`)

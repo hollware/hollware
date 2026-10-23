@@ -4,14 +4,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { analyzeDocument } from '../../src/markdown/analyze.ts'
 import { compileRoutes } from '../../src/markdown/routes.ts'
 
-// Fails when: the analysis (src/markdown/analyze.ts) trusts a document more than the Markdown it
-// came from can make it: it lets through a node that is not an element or text (a comment), a
-// forged `hollware-raw:` or `hollware-marker` element, a line that is not a number of the file, a
-// prop that is not an object, a tree deeper than MAX_DEPTH or a prop value deeper than that, or
-// an own `__proto__` key; or it forgets what it takes off a node (the line keys, the attributes
-// outside the allowlist) or what it gives back (the brackets of a span, the id of a heading).
-
-/** A document with these nodes, which no Markdown wrote: the analysis has to judge it all the same. */
 function documentOf(...nodes: unknown[]): MarkdownDocument {
   return JSON.parse(JSON.stringify({ frontmatter: {}, meta: {}, nodes }))
 }
@@ -93,7 +85,6 @@ describe('a document that no Markdown wrote', () => {
       ['b', 12],
       ['c', 12],
       ['d', 12],
-      // `1.5` is read as `1`, which is a line; the others are not lines at all.
       ['e', 6],
       ['f', 6],
     ])
@@ -144,7 +135,6 @@ describe('a document that no Markdown wrote', () => {
 })
 
 describe('the list of what Comark left out, which the markdown-it rule adds to the document', () => {
-  /** One entry, as the rule writes it: the line (from 0), the block, whether it was attributes, the text. */
   const entry = (line: string, tag: string, given: string, text: string) =>
     [line, tag, given, text].join('\u0000')
 
@@ -169,7 +159,6 @@ describe('the list of what Comark left out, which the markdown-it rule adds to t
       ['p', {}, 'taken'],
       ['p', {}, 'x'],
     ])
-    // `{a}` was taken by the first paragraph, so that is judged with it; `{b}` was not.
     expect(extracted.disallowed).toStrictEqual([
       { kind: 'disallowed-attribute', name: 'p[{b}]', line: 13 },
       { kind: 'disallowed-attribute', name: 'li[{"c": 1}]', line: 14 },

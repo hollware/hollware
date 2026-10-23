@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { entryPage, escapeHtml, listingPage, messagePage, type Summary } from '../src/pages.ts'
 
-// Fails when: src/pages.ts stops escaping what an author wrote on its way into a page (text,
-// attribute values, the title, the tag and the cursor of a link), prints an entry's body other than
-// as it is (it is HTML that `renderHtml` made), or changes what a page holds: the index with its
-// heading, entries, tag links, dates and "Older posts" link, an entry with its description and the
-// links to its translations, the navigation between the locales, and the message pages.
-
 const ENTRY: Summary = {
   href: '/blog/edge-caching/',
   title: 'Edge caching',

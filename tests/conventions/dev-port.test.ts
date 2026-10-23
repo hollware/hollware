@@ -4,9 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: the playground or the starter stops serving `vp dev` on a fixed port with
-// strictPort, or its HOLLWARE_PUBLIC_URL names another port than vite.config.ts.
-
 const PROJECTS = ['apps/playground', 'templates/starter']
 
 const read = (path: string) => file(path, readText(path))

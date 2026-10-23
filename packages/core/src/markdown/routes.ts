@@ -1,29 +1,21 @@
 import { trimLeadingControls, urlScheme } from './policy.ts'
 import type { LinkRef, LinkTarget } from './types.ts'
 
-/** A route of a collection, such as `/en/blog/:slug/`, split into its segments. */
 export interface CompiledRoute {
   readonly collection: string
   readonly locale: string
   readonly segments: readonly string[]
-  /** Which segment is `:slug`. */
   readonly slugAt: number
 }
 
 const SLUG = ':slug'
 
-/** The segments of a path: `/en/blog/x/` and `/en/blog/x` are both `en`, `blog`, `x`. */
 function segmentsOf(path: string): string[] {
   const segments = path.slice(1).split('/')
   if (segments[segments.length - 1] === '') segments.pop()
   return segments
 }
 
-/**
- * Compiles the routes of the site's collections, which hold `:slug` once. They are sorted by
- * collection and locale, so that the order of the config never changes which entry a link
- * names when two routes could match the same path.
- */
 export function compileRoutes(
   routes: Readonly<Record<string, Readonly<Record<string, string>>>>,
 ): CompiledRoute[] {
@@ -74,13 +66,6 @@ export interface Classification {
   readonly target?: LinkTarget
 }
 
-/**
- * Tells what a link points to. Links with a scheme (`http:`, `https:`, `mailto:`: the policy
- * has already removed any other) and `//host/path` are `external`, `#section` is an `anchor`, and
- * a path that starts with one `/` and matches a route is `internal`. The query and the fragment
- * do not count, and nor does a trailing slash, so `/en/blog/x?utm=1#top` names the entry that
- * `/en/blog/x/` does. Any other path, absolute or relative, is `site`.
- */
 export function classifyLink(href: string, routes: readonly CompiledRoute[]): Classification {
   const value = trimLeadingControls(href)
   if (value.startsWith('#')) return { kind: 'anchor' }

@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { canElicitForm, declaredClient } from '../../src/mcp/envelope.ts'
 
-// Fails when: a client the server may ask a question stops being exactly one of the 2026 era that
-// declared the elicitation capability for forms (a bare declaration counts as forms, `url` alone
-// does not, and a 2025 client never does); or what a client says about itself stops being its
-// name, version and title, each cut short, and nothing else.
-
 const CAPABILITIES = 'io.modelcontextprotocol/clientCapabilities'
 const INFO = 'io.modelcontextprotocol/clientInfo'
 

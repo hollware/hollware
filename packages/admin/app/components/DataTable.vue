@@ -10,28 +10,16 @@ import { computed, h, ref, useTemplateRef, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { pageRange } from '../lib/table.ts'
 
-/**
- * Every table of the admin: Nuxt UI's table with a filter over every column, columns that sort,
- * and pages. A cell is a slot of the page that uses it (`#title-cell="{ row }"`), and the filters
- * of its own go in `#filters`, beside the text filter.
- *
- * A table whose rows can be acted on together is `selectable`: a column of checkboxes (the one of
- * its header takes the rows of the page), and, once a row is chosen, a bar with how many and the
- * actions of the page, its `#bulk="{ selected, clear }"` slot.
- */
 const props = withDefaults(
   defineProps<{
     data: readonly Row[]
     columns: TableColumn<Row>[]
-    /** What the text filter is for, as its placeholder and its label. */
     filterLabel?: string
     pageSize?: number
     loading?: boolean
     empty?: string
     selectable?: boolean
-    /** The key of a row, which a selection is kept by: its `id` unless said otherwise. */
     rowKey?: (row: Row) => string
-    /** What a row is called, for the label of its checkbox. */
     rowLabel?: (row: Row) => string
   }>(),
   {
@@ -55,11 +43,6 @@ const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
 
 const api = computed(() => table.value?.tableApi)
 const rows = computed(() => [...props.data])
-/**
- * How many rows the filter leaves. The table's row model is not reactive to Vue, so this reads the
- * state it is made of first (the rows, the filter): a count that read the table alone kept what it
- * found when the table mounted, before its rows arrived, and said "0 of 120".
- */
 const filtered = computed(() => {
   const all = rows.value.length
   const text = filter.value
@@ -68,18 +51,15 @@ const filtered = computed(() => {
 const range = computed(() =>
   pageRange(pagination.value.pageIndex, pagination.value.pageSize, filtered.value),
 )
-// A new filter starts from the first page: the one it was on may hold none of its rows.
 watch(filter, () => {
   pagination.value = { ...pagination.value, pageIndex: 0 }
 })
 
 const selection = ref<RowSelectionState>({})
-/** The chosen rows, in the order of the data. */
 const selected = computed(() => props.data.filter((row) => selection.value[props.rowKey(row)]))
 function clear() {
   selection.value = {}
 }
-// A row that leaves the data leaves the selection: what is chosen is always on the table.
 watch(
   () => props.data,
   (data) => {

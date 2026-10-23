@@ -2,27 +2,9 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `admin-messages`: every text a person reads in the admin comes from its messages
- * (`packages/admin/app/i18n/en.ts` and `es.ts`), so the admin reads the same in English and in
- * Spanish. It parses the template of each `.vue` file of `packages/admin/app` with Vue's own
- * compiler and reports a text node with a letter in it, and a static attribute that a person reads
- * (a label, a placeholder, a title, an aria-label, a description, a help, an empty state, a filter
- * label) with a letter in it. A bound attribute (`:label="m.nav.home"`) and an interpolation
- * (`{{ m.home.title }}`) are what the messages look like, so they pass. What may stay literal is
- * the allowlist it is given (`ADMIN_TEXT_LITERALS`), and an entry no template holds any more is
- * reported, so a fixed literal cannot leave its exception behind.
- */
-
 export interface AdminMessagesInput {
-  /** The `.vue` files of the admin, with their text. */
   sources: readonly TextFile[]
-  /** The texts that may stay literal, exactly as they stand in a template (trimmed). */
   allowed: readonly string[]
-  /**
-   * The app the templates are of, for the messages that name its words and its list: the admin
-   * by default; hollware.com (`apps/web`) is held to the same rule.
-   */
   app?: { name: string; messages: string; read: string; list: string }
 }
 
@@ -33,7 +15,6 @@ const ADMIN = {
   list: 'ADMIN_TEXT_LITERALS',
 }
 
-/** The attributes whose text a person reads or hears. */
 export const READ_ATTRIBUTES: ReadonlySet<string> = new Set([
   'label',
   'placeholder',
@@ -47,7 +28,6 @@ export const READ_ATTRIBUTES: ReadonlySet<string> = new Set([
   'alt',
 ])
 
-/** The few nodes of `@vue/compiler-sfc`'s template tree that the guard reads. */
 interface TemplateNode {
   readonly type: number
   readonly content?: string
@@ -72,8 +52,6 @@ interface CompilerSfc {
   }
 }
 
-// The compiler is the one the admin builds with: `vue/compiler-sfc`, resolved from the admin
-// package, which declares `vue`. The root of the repository does not depend on Vue.
 const fromAdmin = createRequire(
   join(import.meta.dirname, '..', '..', 'packages', 'admin', 'package.json'),
 )

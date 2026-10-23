@@ -6,7 +6,6 @@ const [own, pages] = await Promise.all([
   useHollwareEntry('docs', locale.value, slug),
   useDocsPages(locale.value),
 ])
-// A page not translated yet is read in English, and says so.
 const english =
   own.error.value && locale.value !== 'en' ? await useHollwareEntry('docs', 'en', slug) : null
 const found = english ?? own
@@ -25,7 +24,6 @@ const section = computed(() => {
   const key = SECTIONS.find((candidate) => candidate === page.value?.section)
   return key === undefined ? m.value.docs.label : m.value.docs.sections[key]
 })
-/** The Markdown of the page as it is written, in the language it is written in. */
 const markdown = computed(
   () => `${entry.value?.locale === 'es' ? '/es' : ''}/docs/${slug.value}.md`,
 )

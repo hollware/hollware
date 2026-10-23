@@ -4,7 +4,6 @@ import type { TextFile } from '../guards/types.ts'
 import { isRecord, isStringArray } from './values.ts'
 import { readText, repoFiles } from './repo.ts'
 
-/** The `packages:` globs of `pnpm-workspace.yaml`. */
 export function workspaceGlobs(): string[] {
   const workspace: unknown = parse(readText('pnpm-workspace.yaml'))
   const packages = isRecord(workspace) ? workspace.packages : undefined
@@ -14,7 +13,6 @@ export function workspaceGlobs(): string[] {
   return packages
 }
 
-/** The `package.json` of the root and of every workspace package, with their text. */
 export function workspaceManifests(): TextFile[] {
   const { paths, unsupportedGlobs } = workspaceManifestPaths(workspaceGlobs(), repoFiles())
   if (unsupportedGlobs.length > 0) {

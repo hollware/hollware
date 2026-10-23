@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { readBearerToken } from '../../src/auth/bearer.ts'
 
-// Fails when: readBearerToken (src/auth/bearer.ts) stops reading the token of an `Authorization:
-// Bearer <token>` header (BEARER's `i` flag, its ` +` or its `\S+`), matches a scheme that only
-// ends in "bearer" (its `^`), accepts anything after the token (its `$`) or a separator other
-// than spaces, judges or rewrites the token it returns, or looks for a token anywhere but the
-// header (the URL).
-
 const TOKEN = `hw_pat_${'0'.repeat(52)}`
 
 function requestWith(
@@ -23,7 +17,6 @@ describe('readBearerToken', () => {
     ['a lowercase scheme', `bearer ${TOKEN}`],
     ['an uppercase scheme', `BEARER ${TOKEN}`],
     ['several spaces after the scheme', `Bearer    ${TOKEN}`],
-    // The runtime trims the value before the code sees it; the whitespace is not the code's to handle.
     ['spaces around the whole value', `  Bearer ${TOKEN}  `],
   ])('reads the token: %s', (_label, header) => {
     expect(readBearerToken(requestWith({ authorization: header }))).toBe(TOKEN)

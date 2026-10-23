@@ -3,15 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createAuth, SignInError } from '../app/lib/auth.ts'
 import { challengeOf } from '../app/lib/pkce.ts'
 
-// Fails when: the admin's sign-in (app/lib/auth.ts) stops being the OAuth flow of ADR-026: it
-// sends the person to /authorize with the admin's client, its redirect URI, the resource /v1, the
-// scopes, a state and an S256 challenge; on the callback it refuses a state that is not the one it
-// sent and uses a pending sign-in once; it trades the code with the verifier for tokens it keeps in
-// memory only; it renews the access token with the refresh token a minute before it expires; and
-// it forgets tokens the server no longer takes; or a switch of site stops forgetting the tokens of
-// the last site and naming the new one at every sign-in; or a sign-out stops revoking the refresh
-// token, ending the session of the cookie, forgetting the tokens or landing on the sign-in page.
-
 const CONFIG = {
   issuer: 'https://cms.example.com',
   clientId: 'admin-client-id1',
@@ -64,7 +55,6 @@ function world(tokenAnswers: Response[] = []) {
 const tokens = (access: string, refresh = 'refresh-1') =>
   Response.json({ access_token: access, refresh_token: refresh, expires_in: 3600 })
 
-/** Signs in, and answers the callback the server would send back. */
 async function signedIn(w: ReturnType<typeof world>) {
   await w.auth.signIn('/admin/reviews')
   const sent = new URL(w.visited.at(-1) ?? '', CONFIG.issuer)

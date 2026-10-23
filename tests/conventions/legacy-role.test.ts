@@ -4,9 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a source file of a package reads users.role, which keeps the names of v0.2, instead
-// of the role of a member of a site.
-
 const isPackageSource = (path: string) => /^packages\/[^/]+\/src\/.+\.ts$/.test(path)
 
 describe('legacy role', () => {

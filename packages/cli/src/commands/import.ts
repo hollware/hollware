@@ -115,10 +115,6 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
   }
 }
 
-/**
- * What a command that holds the token throws: its own `CliError` without the token, not even in a
- * message of the server, and anything else as one line that says it is a bug.
- */
 export function withoutToken(error: unknown, token: string): CliError {
   if (error instanceof CliError) return new CliError(redact(error.message, token))
   const reason = (error instanceof Error ? error.message : String(error)).replace(/\s+/g, ' ')
@@ -127,7 +123,6 @@ export function withoutToken(error: unknown, token: string): CliError {
   )
 }
 
-/** The files of a directory of Markdown, or of the content/ of a Nuxt Content site. */
 function sourceOf(
   from: 'markdown' | 'nuxt-content',
   root: string,
@@ -140,9 +135,7 @@ interface Plan {
   io: Io
   token: string
   endpoint: URL
-  /** The directory as the person wrote it, for the messages. */
   directory: string
-  /** The directory, resolved: where `_assets/` of an export is. */
   root: string
   corpus: Corpus
   publish: boolean
@@ -232,7 +225,6 @@ async function importFiles({
   }
 }
 
-/** The MCP endpoint of a Hollware, from the address a person gives: `<url>/mcp`. */
 export function mcpEndpoint(address: string): URL {
   let url: URL
   try {
@@ -277,10 +269,6 @@ function isDirectory(path: string): boolean {
   }
 }
 
-/**
- * The personal token, from `--token-file` (relative to the working directory) or else from stdin,
- * trimmed. Something that is not a personal token is refused, and never printed.
- */
 export async function readToken(io: Io, tokenFile: string | undefined): Promise<string> {
   let raw: string | undefined
   let source: string
@@ -311,7 +299,6 @@ export async function readToken(io: Io, tokenFile: string | undefined): Promise<
 
 const TOKEN_SHAPE = /hw_pat_[0-9a-hjkmnp-tv-z]{52}/g
 
-/** `text` without `secret`, and without anything else that has the shape of a personal token. */
 export function redact(text: string, secret: string): string {
   return text.split(secret).join('hw_pat_[redacted]').replace(TOKEN_SHAPE, 'hw_pat_[redacted]')
 }
@@ -319,9 +306,7 @@ export function redact(text: string, secret: string): string {
 interface Check {
   file: ContentFile
   verdict: Verdict | undefined
-  /** The violations that make Hollware refuse the file. */
   refusals: Violation[]
-  /** Set when the call itself failed, for this file. */
   failure: string | undefined
 }
 
@@ -386,7 +371,6 @@ function violationLine(violation: Violation): string {
 
 interface Imported {
   file: ContentFile
-  /** The entry as Hollware has it after the write. */
   summary: EntrySummary
 }
 
@@ -395,15 +379,9 @@ interface Drafts {
   updated: number
   unchanged: number
   failed: number
-  /** The entries that are in Hollware now, in the order of the files. */
   entries: Imported[]
 }
 
-/**
- * Phase one: every file becomes a draft. An entry that does not exist is created; one that
- * does is updated at the version just read, which Hollware answers with `unchanged` when the
- * Markdown is the same. A failure of one file does not stop the others.
- */
 async function writeDrafts(
   session: Session,
   files: readonly ContentFile[],
@@ -411,8 +389,6 @@ async function writeDrafts(
   checks: readonly Check[] = [],
 ): Promise<Drafts> {
   const drafts: Drafts = { created: 0, updated: 0, unchanged: 0, failed: 0, entries: [] }
-  // An unchanged entry keeps the verdict of when it was written, which a change of the site's
-  // definition since can have made stale: the validation of this run is the current one.
   const fresh = new Map(checks.map((check) => [check.file, check.verdict]))
   for (const file of files) {
     const label = printable(file.path.replace(/\.md$/, ''))
@@ -496,22 +472,12 @@ interface Published {
   published: number
   needsAcknowledgement: number
   blocked: number
-  /** Entries a token without content:publish asked a review for (v0.3). */
   reviews: number
   other: number
 }
 
-/** The most entries one publish takes: the entry and a group of 99 (ADR-024). */
 const GROUP_SIZE = 100
 
-/**
- * Phase two: publishes the imported entries that have unpublished changes, at the version phase
- * one left them, as one group (in groups of 100), so that entries that link to each other are
- * published together (ADR-024). When an entry stops its group, it is reported and taken out, and
- * the rest is published again without it. It acknowledges no warning: an entry with warnings is
- * reported, not published. A token without content:publish may only ask for a review of a lone
- * entry (`pending_review`): its group is refused, and then every entry asks on its own.
- */
 async function publishAll(
   session: Session,
   entries: readonly Imported[],
@@ -530,10 +496,6 @@ async function publishAll(
       `${outcome.padEnd(21)}  ${labelOf(imported)}  ${imported.summary.id}`,
       ...details.map((detail) => `    ${detail}`),
     ].join('\n')
-  /**
-   * Whether entries go one by one, once a group was refused: a token without content:publish may
-   * only ask for a review of a lone entry.
-   */
   let alone = false
   for (let start = 0; start < entries.length; start += GROUP_SIZE) {
     let pending = entries.slice(start, start + GROUP_SIZE)
@@ -552,8 +514,6 @@ async function publishAll(
         })
       } catch (error) {
         if (!(error instanceof ToolFailure)) throw error
-        // A group refused as a whole: each entry goes on its own, and says what stops it, if
-        // anything does. A token without content:publish can only ask so.
         if (!alone && batch.length > 1) {
           alone = true
           continue
@@ -570,7 +530,6 @@ async function publishAll(
         continue
       }
       if (answer.outcome === 'pending_review') {
-        // Only one entry is ever asked for review, so the batch is that entry.
         for (const imported of batch) out(line(imported, 'pending_review'))
         result.reviews += batch.length
         pending = pending.filter((imported) => !batch.includes(imported))
@@ -624,12 +583,6 @@ function listSome(paths: readonly string[]): string {
     : shown.join(', ')
 }
 
-/**
- * The files with every `asset:` reference to an id that `moved` maps written with its new id: an
- * image gets another id in another site (ids are of a site and the bytes), so an export of one
- * site imported into another shows its images still. Files without such a reference stay as they
- * are, byte for byte.
- */
 export function withAssetIds(
   files: readonly ContentFile[],
   moved: ReadonlyMap<string, string>,
@@ -647,12 +600,6 @@ export function withAssetIds(
   }))
 }
 
-/**
- * The images an export kept in `_assets/` (ADR-038), uploaded before the entries that show them:
- * each is the file as it was uploaded, so in the same site it gets its id again and every `asset:`
- * reference of the entries still names it; in another site it gets another id, which the answer
- * maps. An image the site has already is `exists`, and nothing changes.
- */
 async function uploadImages(
   session: Session,
   root: string,

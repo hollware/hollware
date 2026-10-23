@@ -2,24 +2,7 @@ import { Buffer } from 'node:buffer'
 import { expect, test, type Page } from '@playwright/test'
 import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './support.ts'
 
-// Fails when: the admin (packages/admin) stops letting people publish the way v0.3 says, in a
-// browser with a passkey. AC-0.3-3: the owner sets up a passkey from the link of `hollware init`,
-// writes a post and its translation in the editor, saves them and publishes. AC-0.3-2: the owner
-// invites an author, who sets up a passkey from the invitation, edits the post and publishes it,
-// which asks for a review; the owner reads the review, comments on it and approves it, which
-// publishes it. Before v1.0: the owner unpublishes an entry and schedules it again, from the
-// editor, and sees what waits for review on the home page.
-// The owner reads the history of an entry and restores an earlier version as a new revision.
-// The owner moves a draft to the trash from the editor, finds it under the trash filter of the
-// entries and restores it.
-// AC-0.8-2: the owner makes a collection with a rule in the admin, an entry the rule refuses is
-// blocked, and once fixed it is published, with no deploy between.
-// AC-0.3-4: axe finds nothing serious or critical on any page of the admin or of the sign-in.
-
 test.describe.configure({ mode: 'serial' })
-
-// A toast's text is on the page twice for a moment: in the toast, and in the live region that
-// announces it. Each check of a toast takes the first.
 
 let owner: Page
 
@@ -83,7 +66,6 @@ test('the owner reads the history of an entry and goes back to an earlier versio
 
   await expect(owner.getByText('Restored as a new revision', { exact: true }).first()).toBeVisible()
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
-  // The restored version is the latest, and the one it replaced is still in the history.
   await expect(history.getByRole('button').first()).toContainText('Hello world')
   await expect(history.getByRole('button', { name: /Hello again/ })).toHaveCount(1)
 })
@@ -111,7 +93,6 @@ test('a diff folds the lines that did not change into a flat band of the admin',
   const band = owner.getByRole('dialog').locator('.cm-collapsedLines').first()
   await expect(band).toBeVisible()
   await expect(band).toHaveText(/^\d+ unchanged lines: show them$/)
-  // Flat, in the colors of the admin: the merge view's gradient is made for a light editor.
   await expect(band).toHaveCSS('background-image', 'none')
   await shot(owner, 'diff-collapsed')
   await band.click()
@@ -153,7 +134,6 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByText('Approved and published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
 
-  // Asked again, and rejected with its reason: nothing is published, and nothing waits.
   await author.reload()
   await writeMarkdown(author, post('Hola mundo, rechazado', 'hello-world'))
   await author.getByRole('button', { name: 'Save' }).click()
@@ -166,7 +146,6 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await owner.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(owner.getByText('Rejected: it will not be published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
-  // The rejected draft is the latest revision; the owner goes back to the one the site shows.
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await owner.getByRole('tab', { name: 'History' }).click()
   await owner
@@ -182,7 +161,6 @@ test('the owner schedules the end of an entry, unpublishes it, then schedules it
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
   await expect(owner.getByRole('navigation', { name: 'Translations' })).toContainText('en')
-  // It leaves the site at a time, then stays after all.
   await owner.getByRole('button', { name: 'Unpublish later' }).click()
   await expect(owner.getByRole('dialog')).toContainText('Take it off the site at a time')
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish later' }).click()
@@ -221,7 +199,6 @@ test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no d
   await expect(owner.getByRole('heading', { name: 'talks', level: 1 })).toBeVisible()
   await expectAccessible(owner)
 
-  // A rule: a title of at most 10 characters, or no publishing.
   await owner.getByRole('button', { name: 'Add a rule' }).click()
   await owner.getByRole('combobox', { name: 'field*', exact: true }).click()
   await owner.getByRole('option', { name: 'title', exact: true }).click()
@@ -284,7 +261,6 @@ test('the owner connects analytics in Site, and the provider is asked before any
   await expect(owner.getByRole('heading', { name: 'Analytics' })).toBeVisible()
   await owner.getByRole('combobox', { name: 'Provider' }).click()
   await owner.getByRole('option', { name: 'Google Analytics 4' }).click()
-  // A key that is not a service account's JSON is refused before Google is asked.
   await owner.getByLabel('JSON key of the service account').fill('not a json key')
   await owner.getByLabel('Property id').fill('123456789')
   await owner.getByRole('button', { name: 'Connect', exact: true }).click()
@@ -298,13 +274,11 @@ test('the owner connects analytics in Site, and the provider is asked before any
 test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.goto('/admin/entries')
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toBeVisible()
-  // The count names the rows of the page once they arrive: it once kept the 0 it read at mount.
   await expect(owner.getByText(/^1–\d+ of \d+$/)).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('hello')
   await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
   await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toBeVisible()
   await expect(owner.getByText(/^1–1 of 1, filtered from \d+$/)).toBeVisible()
-  // The author changed Hola mundo, the source in es, after Hello world was saved.
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('')
   await owner.getByRole('combobox', { name: 'Status' }).click()
   await owner.getByRole('option', { name: 'Translations behind their source' }).click()
@@ -315,7 +289,6 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.getByRole('combobox', { name: 'Status' }).click()
   await owner.getByRole('option', { name: 'Any status' }).click()
 
-  // ⌘K waits while a field has the focus, as it should: the button of the sidebar opens it here.
   await owner.getByRole('button', { name: /^Search/ }).click()
   await owner.getByPlaceholder('Search entries, or go anywhere…').fill('hello')
   await owner
@@ -335,7 +308,6 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
   ] as const) {
     await owner.goto(path)
     await expect(owner.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
-    // The log loads after the page: axe reads it with its lines in.
     if (heading === 'Activity') {
       await expect(owner.getByRole('row', { name: /Published an entry/ }).first()).toBeVisible()
     }
@@ -345,7 +317,6 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
 })
 
 test('the owner uploads an image, sees it in the library and copies its reference', async () => {
-  // A PNG of one red pixel: the local Images binding converts it to WebP.
   const pixel = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
     'base64',
@@ -369,7 +340,6 @@ test('the owner uploads an image, sees it in the library and copies its referenc
   await expectAccessible(owner)
   await shot(owner, 'images')
 
-  // What it shows can change later: the card reads the new alt.
   await card.getByRole('button', { name: 'Edit what it shows: pixel.png' }).click()
   await owner.getByRole('dialog').getByRole('textbox').fill('A single red pixel')
   await owner.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
@@ -391,7 +361,6 @@ test('the owner reads the activity log: what was done, by whom, and the detail o
   await expectAccessible(owner)
   await owner.keyboard.press('Escape')
 
-  // A filter by action asks the server again: only the lines of that action stay.
   await owner.getByRole('combobox', { name: 'Action' }).click()
   await owner.getByRole('option', { name: 'Approved a review' }).click()
   await expect(owner.getByRole('row', { name: /Approved a review/ }).first()).toBeVisible()
@@ -429,7 +398,6 @@ test('the owner switches the admin to Spanish from the person menu, and it stays
 })
 
 test('the owner publishes and unpublishes several entries at once, from the table', async () => {
-  // The admin is in Spanish since the test before: the bulk actions speak it too.
   await owner.goto('/admin/entries')
   await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
   await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
@@ -447,7 +415,6 @@ test('the owner publishes and unpublishes several entries at once, from the tabl
   )
   await shot(owner, 'bulk-es')
 
-  // The selection stays on the rows, now published: unpublishing asks first.
   await bar.getByRole('button', { name: 'Despublicar 2' }).click()
   await expectAccessible(owner)
   await owner.getByRole('dialog').getByRole('button', { name: 'Despublicar 2' }).click()
@@ -463,7 +430,6 @@ test('the owner publishes and unpublishes several entries at once, from the tabl
 test('a page loaded before a deploy loads the new version when a file of its own is gone', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
-  // As a deploy leaves it: the file of a page of the version loaded answers 404, once.
   const file = /\/admin\/assets\/Tokens-[\w-]+\.js$/
   let asked = 0
   await owner.route(file, async (route) => {
@@ -479,7 +445,6 @@ test('a page loaded before a deploy loads the new version when a file of its own
 })
 
 test('the owner moves a draft to the trash from the editor, finds it there and restores it', async () => {
-  // The admin is in Spanish since the tests before; Hello world is a draft again.
   await owner.goto('/admin/entries/blog/en/hello-world')
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
   await owner.getByRole('button', { name: 'Mover a la papelera' }).click()
@@ -509,7 +474,6 @@ test('the owner moves a draft to the trash from the editor, finds it there and r
     'borrador',
   )
 
-  // Both drafts go to the trash at once, after a confirmation, and come back at once.
   await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
   await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
   const bar = owner.getByRole('toolbar', { name: 'Acciones sobre las filas seleccionadas' })
@@ -529,11 +493,9 @@ test('the owner moves a draft to the trash from the editor, finds it there and r
 })
 
 test('the bar of every page names the site it is of, with the menu to switch to another', async () => {
-  // The admin is in Spanish since the tests before.
   await owner.goto('/admin/collections')
   const site = owner.getByRole('button', { name: 'Sitio playground: cambiar a otro' })
   await expect(site).toBeVisible()
-  // Axe reads the page with no menu open: an open menu hides the rest of the page, as it should.
   await expectAccessible(owner)
   await site.click()
   await expect(owner.getByRole('menuitemcheckbox', { name: /playground/ })).toBeChecked()
@@ -541,11 +503,9 @@ test('the bar of every page names the site it is of, with the menu to switch to 
 })
 
 test('signing in goes back to a page of this Hollware, and never to another host', async () => {
-  // The owner's page holds the virtual passkey since the first test.
   await owner.goto('/signin?return_to=%2Fadmin%2Ftokens')
   await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
   await expect(owner).toHaveURL(/\/admin\/tokens$/)
-  // The admin goes on loading (its session, then the page): the next visit waits for it to settle.
   await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
 
   await owner.goto('/signin?return_to=%2F%5Cevil.example')
@@ -571,7 +531,6 @@ test('the owner changes the URL of a published entry, and the site keeps the old
   await expect(owner.getByText(/hola-mundo/).first()).toBeVisible()
   await expect(owner.getByText(/hola-de-nuevo/).first()).toBeVisible()
 
-  // Back to its slug: the redirect from it goes, and the one from hola-de-nuevo leads home.
   await owner.goto('/admin/entries/blog/es/hola-de-nuevo')
   await owner.getByRole('button', { name: /^(Change URL|Cambiar URL)$/ }).click()
   await owner.getByRole('dialog').getByRole('textbox').fill('hola-mundo')
@@ -611,11 +570,9 @@ test('the owner sets the narrower copies the images of the site get, in Site', a
 test('the owner finds the daily backups of the site in Site, keeps them a week, then turns them off', async () => {
   await owner.goto('/admin/site')
   await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()
-  // The playground has its bucket, so list_backups answers ok, with no backup yet.
   await expect(
     owner.getByText(/^(No backup yet: the first comes after 03:00 UTC\.|Todavía no hay respaldos)/),
   ).toBeVisible()
-  // An owner keeps them a week, then turns them off; the setting stays after a reload.
   const days = owner.getByRole('spinbutton', {
     name: /^(Days each backup is kept|Días que se guarda)/,
   })
@@ -641,8 +598,6 @@ test('the owner finds the daily backups of the site in Site, keeps them a week, 
 })
 
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out', async () => {
-  // The admin is in Spanish since the tests before; the owner has the one passkey of setup. The
-  // last test: signing out ends the session the tests before signed in with.
   await owner.goto('/admin/')
   await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()
   await owner.getByRole('button', { name: /^Olga/ }).click()
@@ -660,7 +615,6 @@ test('the owner sees their passkey and the admin in Tu cuenta, then signs out', 
   await expectAccessible(owner)
   await shot(owner, 'account-es')
 
-  // The owner names the passkey, and changes the name only they may change.
   await passkeys.getByRole('button', { name: 'Renombrar Passkey' }).click()
   await owner.getByRole('dialog').getByRole('textbox').fill('Portátil')
   await owner.getByRole('dialog').getByRole('button', { name: 'Guardar' }).click()
@@ -677,7 +631,6 @@ test('the owner sees their passkey and the admin in Tu cuenta, then signs out', 
   await owner.getByRole('menuitem', { name: 'Cerrar sesión' }).click()
   await expect(owner.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible()
   await expect(owner).toHaveURL(/\/signin\?return_to=%2Fadmin%2F$/)
-  // The session is gone: the admin sends the browser to sign in again, not back in.
   await owner.goto('/admin/')
   await expect(owner).toHaveURL(/\/signin\?return_to=/)
 })

@@ -4,11 +4,6 @@ import { resolveConfig } from '../../src/config/index.ts'
 import { siteDefinitionData } from '../../src/structure/definition.ts'
 import { configWith, problemsOf } from './support.ts'
 
-// Fails when: readAudit (src/config/audit.ts) stops defaulting a site to no addresses and a log
-// kept forever (ADR-037), stops reading "hashed" and a retention of 30 to 3650 whole days, or stops
-// reporting at its path anything else; or when the definition as data (src/structure/definition.ts)
-// stops taking the same bounds.
-
 const audit = (overrides?: Record<string, unknown>) =>
   resolveConfig(configWith(overrides)).sites.get('demo')?.audit
 const paths = (config: unknown) => problemsOf(config).map((problem) => problem.path)

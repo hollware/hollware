@@ -1,8 +1,4 @@
 <script setup lang="ts">
-/**
- * What an agent sees when it writes to Hollware: a draft that breaks a contract is saved anyway,
- * with the fix; the fixed draft passes; publishing makes it live. The words are Hollware's own.
- */
 const lines = [
   { kind: 'call', text: 'create_draft', arg: 'blog / en / hello-world' },
   { kind: 'out', text: 'saved · version 1 · verdict: 1 error' },

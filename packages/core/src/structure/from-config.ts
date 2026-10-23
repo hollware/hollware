@@ -3,14 +3,6 @@ import { ConfigError, Problems } from '../config/config-error.ts'
 import { itemPath, keyPath } from '../config/values.ts'
 import type { SiteDefinitionInput } from './definition.ts'
 
-/**
- * The definitions of the sites of a 0.x config (ADR-033): what a deployment writes to D1 on its
- * first start after the move, and then never reads again. Every schema becomes the JSON Schema it
- * converts to, and every contract the rule of the catalog it was made by; a contract of the
- * config's own code has no rule, and the move stops with one problem for each, so that it is
- * replaced by a rule of the catalog first.
- */
-
 type Collection = SiteDefinitionInput['collections'][string]
 
 function toJsonSchema(schema: CollectionDefinition['schema']): Record<string, unknown> {

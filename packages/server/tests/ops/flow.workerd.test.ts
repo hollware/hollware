@@ -4,15 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { entryColumns, newWorld, revisionsOf } from './world.ts'
 
-// Fails when: the handlers stop walking an agent through AC-0.1-3 at the handler level. A draft
-// whose contracts fail is no longer saved at version 1 with a verdict whose errors carry a fix
-// (create-draft.ts, draft.ts, answers.ts); publish stops being blocked by those errors or by the
-// rules that look at other entries (publish.ts); a write against a version the entry has left no
-// longer answers conflict with the current version and head, or moves the head (update-draft.ts);
-// validate moves the version (validate.ts); a publish with a warning no longer asks for its
-// acknowledgement, or publishes without the acknowledgement being recorded, or get_entry no longer
-// shows it in lastPublication (publish.ts, get-entry.ts, answers.ts).
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -29,17 +20,14 @@ const TITLE_WARNING = {
   fix: 'Shorten the title to 60 characters or fewer, or add a seoTitle of at most 60.',
 }
 
-/** The first draft of the agent: no description, an image without alt text, and a long title. */
 const FIRST_DRAFT = blogPost(
   { title: TITLE, description: null },
   '\n# Edge caching guide\n\n![](/images/edge.png)\n',
 )
-/** The fix: a description and alt text. The long title stays, and is a warning. */
 const FIXED_DRAFT = blogPost(
   { title: TITLE },
   '\n# Edge caching guide\n\n![A diagram](/images/edge.png)\n',
 )
-/** The Spanish translation, which the English entry needs before it can be published. */
 const SPANISH_DRAFT = blogPost({ title: 'Guia de cache en el borde' }, '\n# Guia de cache\n')
 
 describe('an agent writes and publishes a post, from an invalid draft to a published entry', () => {
@@ -47,7 +35,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     const { agent, db } = await newWorld(env.DB, 'flow')
     const english = { collection: 'blog', locale: 'en', slug: 'edge-caching-guide' }
 
-    // 1. The agent reads what the site wants before it writes.
     const described = await agent.describeSite()
     expect(described.site.collections.map((collection) => collection.name)).toEqual([
       'blog',
@@ -55,7 +42,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     ])
     expect(described.site.collections[0]?.translationGroupField).toBe('translationGroup')
 
-    // 2. An invalid draft is saved at version 1, and the verdict says what to fix.
     const created = await agent.createDraft({ ...english, markdown: FIRST_DRAFT })
     expect(created).toEqual({
       outcome: 'saved',
@@ -86,7 +72,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     })
     const id = created.entry?.id ?? ''
 
-    // 3. Publishing it is blocked by the same errors, in the publish phase.
     const blocked = await agent.publish({ id, version: 1 })
     expect(blocked.outcome).toBe('blocked')
     expect(blocked.verdict?.phase).toBe('publish')
@@ -96,7 +81,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     ])
     expect((await entryColumns(db, id))?.status).toBe('draft')
 
-    // 4. The agent writes the Spanish version, which the English one needs to be published.
     const spanish = await agent.createDraft({
       collection: 'blog',
       locale: 'es',
@@ -106,7 +90,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     expect(spanish.outcome).toBe('saved')
     expect(spanish.verdict?.ok).toBe(true)
 
-    // 5. The fixed draft is saved at version 2: no errors, and a warning about the long title.
     const fixed = await agent.updateDraft({ id, version: 1, markdown: FIXED_DRAFT })
     expect(fixed).toEqual({
       outcome: 'saved',
@@ -122,8 +105,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     const head = (await agent.getEntry({ ...english })).entry?.revision
     expect(head).toEqual(REVISION_ID)
 
-    // 6. Writing against version 1 again is a conflict that names version 2 and the head, and
-    // the head stays where it was.
     const stale = await agent.updateDraft({
       id,
       version: 1,
@@ -136,7 +117,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     expect((await entryColumns(db, id))?.head_rev).toBe(head)
     expect(await revisionsOf(db, id)).toHaveLength(2)
 
-    // 7. Validating writes nothing: the version is still 2.
     const validated = await agent.validate({ ...english, markdown: FIXED_DRAFT })
     expect(validated).toEqual({
       outcome: 'ok',
@@ -150,7 +130,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     })
     expect((await entryColumns(db, id))?.version).toBe(2)
 
-    // 8. Publishing with a warning asks for it to be acknowledged.
     const asked = await agent.publish({ id, version: 2 })
     expect(asked).toEqual({
       outcome: 'needs_acknowledgement',
@@ -165,7 +144,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     })
     expect((await entryColumns(db, id))?.status).toBe('draft')
 
-    // 9. Acknowledging the warning publishes.
     const published = await agent.publish({
       id,
       version: 2,
@@ -189,7 +167,6 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
       },
     })
 
-    // 10. The entry shows the warning that was acknowledged.
     const read = await agent.getEntry({ ...english })
     expect(read.entry?.lastPublication).toEqual({
       revision: head,

@@ -12,24 +12,10 @@ import { connect as connectDb } from '../../src/db/d1.ts'
 import { createInvitation, createSession } from '../../src/identity/store.ts'
 import { softAuthenticator } from '../support/authenticator.ts'
 
-// Fails when: the activity log (ADR-037, src/audit) stops writing a line for every call of an
-// operation that is not a read (MCP and the ops API), with who made it as Hollware verified it and
-// what the client declared apart; writes one for a read; stops writing a refusal of a missing scope
-// as `denied`; stops writing the admin's changes of identity (`token.create` with what was made, a
-// refused change as `failed` with its code); keeps an address when the site keeps none, or keeps
-// anything but the keyed hash of it when the site keeps them; stops deleting, in the cron, only the
-// lines past the retention of their site; or when the admin's activity route stops answering
-// owners alone, newest first, filtered, a page at a time, and as CSV.
-
-// A passkey ceremony signs and verifies in workerd: past 5 s when the machine is busy, never wrong.
 vi.setConfig({ testTimeout: 60_000 })
 
 const MASTER = '0123456789abcdef0123456789abcdef'
 const ADDRESS = '203.0.113.7'
-/**
- * HMAC-SHA256 of ADDRESS under HKDF-SHA256(MASTER, salt empty, info "hollware audit address\n" +
- * SITE_KEY): worked out apart from the code with Python's hmac and hashlib (RFC 5869 by hand).
- */
 const ADDRESS_HASH = '3adb6bc012ba02c32d9137824abd625ca89d1e621f4bf62c2065685c563e01b8'
 
 function never(): never {
@@ -40,7 +26,6 @@ afterEach(() => {
   restoreLogs()
 })
 
-/** The test site, keeping addresses or not. */
 function configKeeping(ipAddresses: 'off' | 'hashed', retentionDays: number | null = null) {
   return defineConfig({
     sites: {
@@ -74,7 +59,6 @@ interface LineRow {
   ip_hash: string | null
 }
 
-/** The lines of the site written since `since`, oldest first. */
 async function linesSince(since: string): Promise<LineRow[]> {
   const { results } = await env.DB.prepare(
     `SELECT action, outcome, error_code, actor_kind, actor_user_id, actor_token_id, actor_client_id,
@@ -86,10 +70,6 @@ async function linesSince(since: string): Promise<LineRow[]> {
   return results
 }
 
-/**
- * A moment of its own for each test, ten minutes apart, so that each reads only its lines; all
- * within the twelve hours of the admin's session, which opens at NOW.
- */
 let step = 0
 function moment(): string {
   step += 1
@@ -127,7 +107,6 @@ describe('the activity log of the operations', () => {
         ip_hash: null,
       },
     ])
-    // The client's claim, kept apart from what let it in.
     expect(JSON.parse(lines[0]?.actor_meta ?? 'null')).toMatchObject({ name: 'probe' })
   })
 
@@ -212,7 +191,6 @@ describe("the admin's changes of identity", () => {
         ip_hash: null,
       },
     ])
-    // The admin's own client: who made it is the person, through the admin.
     const admin = await (await worker.send('/admin/config.json')).json<{ clientId: string }>()
     expect(lines[0]?.actor_client_id).toBe(admin.clientId)
     expect(JSON.stringify(lines)).not.toContain(made.secret)
@@ -264,7 +242,6 @@ describe("the admin's changes of identity", () => {
     const at = moment()
     const worker = boot({ now: at })
     const owner = await adminPerson(worker, 'owner')
-    // The only owner of a fresh site cannot be demoted: the site keeps one.
     await env.DB.prepare(
       "DELETE FROM members WHERE site_id = ?1 AND role = 'owner' AND user_id != ?2",
     )
@@ -488,7 +465,6 @@ describe('the activity route of the admin', () => {
       'at,action,outcome,error_code,actor_kind,actor_user_id,actor_name,actor_token_id,actor_token_label,actor_client_id,actor_declared,target_type,target_id,detail,request_id,ip_hash',
       '',
     ])
-    // The detail is JSON, so it opens with a brace and is quoted for its commas and quotes.
     expect(row).toContain(
       `"{""kind"":""personal"",""label"":""=HYPERLINK(\\""https://evil.example\\"")""`,
     )

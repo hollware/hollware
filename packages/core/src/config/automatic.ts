@@ -6,7 +6,7 @@ import { isRecord, keyPath, type JsonObject, wrongType } from './values.ts'
  * The fields of a frontmatter that Hollware fills itself, so that nobody writes them by hand: the
  * dates a reader sees and the length of an entry. A collection names them in `automaticFields`.
  * They are filled where a site reads (RPC, the read API, `hollware export --published`), never
- * in the Markdown that was written, which stays byte for byte what its author sent (ADR-001).
+ * in the Markdown that was written, which stays byte for byte what its author sent.
  *
  * - `firstPublished`: the date the entry was first published. A date written in the Markdown
  *   wins, so content moved from elsewhere keeps its history.
@@ -39,7 +39,6 @@ function isAutomaticKind(value: unknown): value is AutomaticKind {
   return AUTOMATIC_KINDS.some((kind) => kind === value)
 }
 
-/** The fields a collection names, each checked against its schema: a date for a date, a number for a count. */
 export function readAutomaticFields(
   path: string,
   raw: unknown,

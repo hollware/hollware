@@ -3,10 +3,6 @@ import { entrySummary } from './answers.ts'
 import type { OperationHandler } from './types.ts'
 import { unpublish } from './unpublish.ts'
 
-/**
- * Unpublishes a published entry at a time, or moves or cancels the time it has. A time that has
- * passed unpublishes it now, through `unpublish`; the cron does the rest (`schedule/run.ts`).
- */
 export const scheduleUnpublish: OperationHandler<'schedule_unpublish'> = async (input, context) => {
   const site = context.site.key
   const found = await context.store.findEntryById(site, input.id, 'head')

@@ -10,15 +10,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { freePort } from './processes.ts'
 import { forwardable, startProxy, type Proxy } from './proxy.ts'
 
-// Fails when: the proxy listens on another address than the loopback one; stops adding `Authorization: Bearer <token>` to a request that has no
-// credentials, or replaces the credentials a request has; sends the Worker its own host instead of
-// the Host and the Origin the client sent (the DNS rebinding checks would then see nothing); changes
-// the order, the case or the value of another header, or the bytes of a body; forwards a header of
-// the connection (`Connection`, `Keep-Alive`, `TE`, or one that `Connection` names); changes the
-// status, the headers or the body of what the Worker answered; buffers a streamed answer until the
-// Worker ends it; answers anything but 502 when the Worker is not there; or leaves the call to the
-// Worker open when the client goes away before the Worker has answered.
-
 const TOKEN = 'hw_pat_0123456789abcdefghjkmnpqrstvwxyz0123456789abcdefghjk'
 
 interface Seen {
@@ -29,7 +20,6 @@ interface Seen {
   readonly body: Buffer
 }
 
-/** A Worker stand-in: it records what reaches it and answers with `answer`. */
 async function stubWorker(
   answer: (request: IncomingMessage, response: ServerResponse, seen: Seen) => void,
 ): Promise<{ port: number; seen: Seen[]; close: () => Promise<void> }> {
@@ -70,7 +60,6 @@ interface Answer {
   readonly body: Buffer
 }
 
-/** Sends a request with exactly these headers, in this order, and reads the whole answer. */
 function send(
   proxy: Proxy,
   options: { method?: string; path?: string; headers: readonly string[]; body?: Buffer },
@@ -101,7 +90,6 @@ function send(
   })
 }
 
-/** The pairs of raw headers, as `[name, value]`. */
 function pairs(raw: readonly string[]): [string, string][] {
   const found: [string, string][] = []
   for (let index = 0; index < raw.length; index += 2) {
@@ -268,7 +256,6 @@ describe('the proxy of the conformance run', () => {
         },
       )
       call.once('error', (error) => {
-        // The client hangs up on purpose once it has the first event.
         if (!('code' in error) || error.code !== 'ECONNRESET') reject(error)
       })
       call.end()
@@ -297,7 +284,6 @@ describe('the proxy of the conformance run', () => {
   })
 
   describe('when the client goes away', () => {
-    /** A client that sends a request, waits until the Worker has it, and hangs up. */
     async function hangUp(answer: (incoming: IncomingMessage, response: ServerResponse) => void) {
       let reached: () => void = () => {}
       const arrived = new Promise<void>((resolve) => {
@@ -327,7 +313,6 @@ describe('the proxy of the conformance run', () => {
     }
 
     it('closes its call to the Worker before the Worker has answered, and logs no failure for it', async () => {
-      // The Worker holds the request and says nothing: only the proxy can close the call.
       const lines = await hangUp(() => {})
       expect(lines.filter((line) => line.includes('502'))).toEqual([])
     })

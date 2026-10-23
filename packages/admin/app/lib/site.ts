@@ -1,4 +1,3 @@
-/** The public URL of an entry: the site's origin and its collection's route with the slug. */
 export function pageUrl(
   siteUrl: string | null,
   routes: Readonly<Record<string, string>>,

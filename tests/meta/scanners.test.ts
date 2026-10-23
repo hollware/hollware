@@ -10,12 +10,9 @@ import {
   stripFencedBlocks,
   tableCells,
 } from '../support/markdown.ts'
-import { analyzeSource } from '../support/source.ts'
+import { analyzeSource, commentsOf } from '../support/source.ts'
+import { commentsIn, commentSyntaxOf, jsoncComments, shellComments } from '../support/comments.ts'
 import { taskGraph, vpRunTask, vpRunTasks } from '../support/vp.ts'
-
-// Fails when: the JSONC reader, the Markdown helpers, the source analyzer, the syntax-tree readers
-// (exports, imports, calls), the Vite+ task readers or the workspace glob expander that the guards are
-// built on stop reading what their documented limits promise.
 
 describe('JSONC', () => {
   it('removes comments and trailing commas, and keeps strings untouched', () => {
@@ -85,7 +82,6 @@ describe('Markdown helpers', () => {
   it('knows which lines are fenced, an unclosed fence running to the end', () => {
     const lines = fencedLines('a\n```\nb\nc').map((line) => line.inFence)
     expect(lines).toEqual([false, true, true, true])
-    // A longer fence is not closed by a shorter one.
     expect(fencedLines('````\n```\nx\n````\ny').map((line) => line.inFence)).toEqual([
       true,
       true,
@@ -125,6 +121,78 @@ describe('Markdown helpers', () => {
     expect(tableCells('| a | b \\| c |')).toEqual(['a', 'b \\| c'])
     expect(tableCells('| --- | --- |')).toEqual(['---', '---'])
     expect(tableCells('not a row')).toBeUndefined()
+  })
+})
+
+describe('comment readers', () => {
+  it('reads the hashbang and every comment of a script, with offsets into the text', () => {
+    const text = "#!/usr/bin/env node\nconst a = `//${'/*'}` // b\n/** c */\n"
+    expect(commentsOf('a.ts', text)).toEqual([
+      { text: '#!/usr/bin/env node', start: 0, end: 19 },
+      { text: '// b', start: 42, end: 46 },
+      { text: '/** c */', start: 47, end: 55 },
+    ])
+  })
+
+  it('names the syntax of each kind of file, and none for prose or licenses', () => {
+    expect(
+      [
+        'a.mts',
+        'a.tsx',
+        'A.vue',
+        'a.astro',
+        'index.html',
+        'a.css',
+        'tsconfig.json',
+        'wrangler.jsonc',
+        'ci.yml',
+        'a.sh',
+        '.vite-hooks/pre-push',
+        'a.sql',
+        'templates/starter/gitignore',
+        '.github/CODEOWNERS',
+        'rules.tsv',
+        'README.md',
+        'LICENSE',
+      ].map(commentSyntaxOf),
+    ).toEqual([
+      'script',
+      'script',
+      'vue',
+      'astro',
+      'markup',
+      'css',
+      'jsonc',
+      'jsonc',
+      'yaml',
+      'shell',
+      'shell',
+      'sql',
+      'hash-lines',
+      'hash-lines',
+      'hash-lines',
+      undefined,
+      undefined,
+    ])
+  })
+
+  it('never takes the inside of a JSON string for a comment, and reads an unclosed one to the end', () => {
+    expect(jsoncComments('{ "a": "//x\\" /*" } /* open')).toEqual([
+      { text: '/* open', start: 20, end: 27 },
+    ])
+  })
+
+  it('reads shell comments only at the start of a word, outside quotes and heredocs', () => {
+    const text = "a=$'#x' # one\ncat <<-'END'\n# body\n\tEND\nb|#two\n"
+    expect(shellComments(text, 0, text.length).map((comment) => comment.text)).toEqual([
+      '# one',
+      '#two',
+    ])
+  })
+
+  it('reads the comments of YAML and of the shell in its run blocks, not of other block scalars', () => {
+    const text = 'a: 1 # one\nrun: |\n  x # two\nbody: |\n  y # not\n'
+    expect(commentsIn('ci.yml', text).map((comment) => comment.text)).toEqual(['# one', '# two'])
   })
 })
 
@@ -316,7 +384,6 @@ describe('syntax-tree readers', () => {
         'const unrelated = () => never()',
         'outer()',
       ].join('\n')
-      // Only the last line calls anything that is defined here.
       const start = text.indexOf('outer()')
       expect([...index(text).directCalls(start, text.length)]).toEqual(['outer'])
       expect([...index(text).reachableCalls(start, text.length)].sort()).toEqual([
@@ -339,8 +406,6 @@ describe('syntax-tree readers', () => {
     })
 
     it('resolves a name in the closest scope around the call, not in a neighbour', () => {
-      // Four scopes, each with a `check` of its own: a function declaration, an arrow function, a
-      // function expression and the file.
       const text = [
         'function first() {',
         '  const check = () => fromDeclaration()',
@@ -357,7 +422,6 @@ describe('syntax-tree readers', () => {
         'const check = () => fromFile()',
         'check()',
       ].join('\n')
-      /** What the `check()` that follows `marker` reaches. */
       const reachedFrom = (marker: string) => {
         const start = text.indexOf('check()', text.indexOf(marker))
         return [...index(text).reachableCalls(start, start + 'check()'.length)].sort()
@@ -403,7 +467,6 @@ describe('Vite+ task readers', () => {
     it('does not take a mention, a comment or another vp command for a run', () => {
       expect(vpRunTasks('echo vp run nope')).toEqual([])
       expect(vpRunTasks('# vp run commented\nvp run real # vp run trailing')).toEqual(['real'])
-      // A separator inside a comment does not begin another command.
       expect(vpRunTasks('# first; vp run hidden\nvp run real # and then; vp run hidden')).toEqual([
         'real',
       ])

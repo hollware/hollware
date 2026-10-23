@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { describeError, internalError, timeoutError } from '../../src/mcp/errors.ts'
 
-// Fails when: the error of anything that is not a HollwareError stops being `internal` with a
-// message that is always the same and the request id in its fix, or stops keeping its cause for
-// the log; the timeout error stops saying which operation and how long; or the description for
-// the log stops following the causes, loops on a cause that points back at itself, or cannot
-// print what is not an Error.
-
 describe('internalError', () => {
   it('is a HollwareError with a fixed message, the request id in the fix, and the cause kept', () => {
     const cause = new Error('D1_ERROR: no such table: entries')

@@ -5,45 +5,18 @@ import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { Proceed } from '../oauth/server.ts'
 import type { GatewayEnv } from './types.ts'
 
-/**
- * The HTTP read API (v0.2): the six read methods of the RPC binding, for a site that is not a
- * Worker of the same account. It serves published content only (but for `get_entry` with a valid
- * preview token, whose answer is never cached), to a personal token, a read token
- * (`hw_read_`) or an OAuth access token with `content:read` (ADR-026), of one site, and answers
- * with an ETag, so that a client revalidates instead of reading the body again (304). Its
- * responses are private: they are behind a token, so no shared cache keeps them. A page of an
- * origin that the site's config lists (`cors.origins`) may call it from the browser; any other
- * origin is refused. The OpenAPI document is at `/v1/openapi.json`.
- *
- *   GET /v1                                        the index: the URLs of the OpenAPI document and of /v1/site (no token)
- *   GET /v1/site                                   describe_site
- *   GET /v1/{collection}?locale&tag&limit&cursor   list_entries
- *   GET /v1/search?q&collection&locale&limit&mode  search
- *   GET /v1/{collection}/translations/{group}      get_translations
- *   GET /v1/{collection}/{locale}/{slug}?formats=&preview=  get_entry (formats: markdown,document,html;
- *                                                  preview: a preview token, which reads the latest revision of its entry, no-store)
- */
-
 export interface ReadApiOptions {
-  /** The read methods over the bindings of a request: the RPC surface itself. */
   readonly read: (env: HollwareEnv) => HollwareRpc
-  /** The resource server of `/v1`, which turns a request without an accepted token away. */
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
-  /** The protected resource metadata of `/v1`, which a 403 names. */
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
-  /** The origins whose pages may read a site from the browser (`cors.origins` of its config). */
   readonly corsOrigins: (site: string) => readonly string[]
-  /** Whether any site lists the origin: a preflight carries no token to tell the site by. */
   readonly anyCorsOrigin: (origin: string) => boolean
 }
 
-/** The paths of the index of the read API, which answers with no token. */
 const INDEX_PATHS: ReadonlySet<string> = new Set(['/v1', '/v1/'])
 
-/** How long a browser keeps the answer of a preflight, in seconds. */
 const PREFLIGHT_MAX_AGE = 600
 
-/** The origin of a request from a page of another origin than Hollware's own, or `null`. */
 function crossOriginOf(c: Context<GatewayEnv>): string | null {
   const origin = c.req.header('origin')
   if (origin === undefined) return null
@@ -57,14 +30,6 @@ const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
   unknown_locale: 404,
 }
 
-/**
- * A route of the read API whose `HollwareError` (an unknown collection, a limit out of range) is
- * the caller's to read, with its status. It is caught here, in the route: Hono 5 hands an error
- * that a route throws to the app's error handler before any middleware around it sees it, and
- * that handler answers every error with the same 500. The answer says how long the read took on
- * the server, after the token was checked (`Server-Timing: read;dur=<ms>`), so that a client can
- * tell the server's time from the network's.
- */
 function readRoute<Path extends string>(
   handler: (c: Context<GatewayEnv, Path>) => Promise<Response>,
 ): (c: Context<GatewayEnv, Path>) => Promise<Response> {
@@ -79,14 +44,12 @@ function readRoute<Path extends string>(
       return c.json(
         { code: error.code, message: error.message, fix: error.fix },
         STATUS[error.code] ?? 500,
-        // What a preview token answers is never kept, a refusal of it included.
         c.req.query('preview') === undefined ? {} : { 'cache-control': 'no-store' },
       )
     }
   }
 }
 
-/** A weak ETag of a body: the first 128 bits of its SHA-256, in hex. */
 async function etagOf(body: string): Promise<string> {
   const digest = new Uint8Array(
     await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body)),
@@ -95,7 +58,6 @@ async function etagOf(body: string): Promise<string> {
   return `W/"${hex.join('')}"`
 }
 
-/** Whether `If-None-Match` names this ETag, or is `*`. */
 function matches(header: string | undefined, etag: string): boolean {
   if (header === undefined) return false
   return header
@@ -116,7 +78,6 @@ async function answer(
     value.outcome === 'not_found'
   const body = JSON.stringify(value)
   if (preview) {
-    // The latest revision of one entry, for one person: no cache keeps it and nothing revalidates it.
     return new Response(body, {
       status: notFound ? 404 : 200,
       headers: { 'cache-control': 'no-store', 'content-type': 'application/json' },
@@ -132,11 +93,9 @@ async function answer(
 
 export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): void {
   app.use('/v1/*', async (c, next) => {
-    // The operations over HTTP and the admin's own routes have routes of their own.
     if (c.req.path.startsWith('/v1/ops/') || c.req.path.startsWith('/v1/admin/')) return next()
     const crossOrigin = crossOriginOf(c)
     if (c.req.method === 'OPTIONS') {
-      // A preflight: the guard let it through only for an origin that some site lists.
       const headers = new Headers({ allow: 'GET, HEAD, OPTIONS', vary: 'Origin' })
       if (crossOrigin !== null && options.anyCorsOrigin(crossOrigin)) {
         headers.set('access-control-allow-origin', crossOrigin)
@@ -160,7 +119,6 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       if (!principal.scopes.includes('content:read')) {
         return insufficientScope(['content:read'], options.metadataUrl(c))
       }
-      // A token belongs to one site, and the read API reads that site.
       c.set('site', principal.site)
       if (crossOrigin !== null && !options.corsOrigins(principal.site).includes(crossOrigin)) {
         return c.json(
@@ -170,7 +128,6 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
             fix: `Add "${crossOrigin}" to the cors.origins of the site (in the admin, Site, or with update_site), or read from a server.`,
           },
           403,
-          // Hollware's own origin, so that the OAuth library reflects no other one onto it.
           {
             vary: 'Origin',
             'access-control-allow-origin': new URL(c.env.HOLLWARE_PUBLIC_URL).origin,
@@ -180,22 +137,17 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       await next()
       const answered = c.res
       if (crossOrigin === null) return answered
-      // The page may read the answer, and its ETag, to revalidate.
       const shared = new Response(answered.body, answered)
       shared.headers.set('access-control-allow-origin', crossOrigin)
       shared.headers.set('access-control-expose-headers', 'etag')
       shared.headers.append('vary', 'Origin')
       return shared
     })
-    // Once the route has answered, Hono keeps `c.res` and drops what a middleware returns: the
-    // answer, with the headers added around it, goes back through `c.res`.
     c.res = response
     return c.res
   })
 
   app.get('/v1/openapi.json', (c) => c.json(openApiDocument()))
-  // The index: where a client that was only told "/v1" finds the document and the first route.
-  // It names two URLs of this origin and reveals nothing, so it needs no token.
   for (const path of INDEX_PATHS) {
     app.get(path, (c) => {
       const origin = new URL(c.env.HOLLWARE_PUBLIC_URL).origin
@@ -222,7 +174,6 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       )
     }),
   )
-  // Before /v1/:collection, which would take "search" for the name of a collection.
   app.get(
     '/v1/search',
     readRoute(async (c) => {
@@ -306,7 +257,6 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
 
 const SEARCH_MODES = ['fulltext', 'semantic', 'hybrid'] as const
 
-/** The `mode` of a search from the query string, or the error that names the ones there are. */
 function searchModeOf(value: string): (typeof SEARCH_MODES)[number] {
   const mode = SEARCH_MODES.find((known) => known === value)
   if (mode === undefined) {
@@ -319,7 +269,6 @@ function searchModeOf(value: string): (typeof SEARCH_MODES)[number] {
   return mode
 }
 
-/** The OpenAPI 3.1 document of the read API. */
 export function openApiDocument(): object {
   const ok = (description: string) => ({
     description,
@@ -343,7 +292,6 @@ export function openApiDocument(): object {
   return {
     openapi: '3.1.0',
     info: { title: 'Hollware read API', version: '1' },
-    // A personal token, or an OAuth access token for this resource (ADR-026).
     components: { securitySchemes: { token: { type: 'http', scheme: 'bearer' } } },
     security: [{ token: [] }],
     paths: {

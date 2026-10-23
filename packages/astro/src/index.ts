@@ -34,10 +34,6 @@ export {
 export { hollwareBinding } from '@hollware/client'
 export { hollwarePreview, refusePreview, type HollwarePreviewLocals } from './preview.ts'
 
-/**
- * What an entry keeps besides its HTML, for the components of `@hollware/astro`
- * (`HollwareContent.astro`, `HollwareImage.astro`): its document and its images.
- */
 function withMetadata(html: string, entry: SourceEntry) {
   const metadata = {
     ...(entry.document === undefined ? {} : { document: entry.document }),
@@ -81,7 +77,6 @@ export async function loadInto(source: Source, context: LoadContext): Promise<vo
   const seen = new Set<string>()
   for (const summary of await source.list()) {
     const entry = await source.get(summary.id)
-    // Unpublished between the two reads.
     if (entry === undefined) continue
     const data = await context.parseData({ id: entry.id, data: entry.data })
     const html = entry.html ?? ''
@@ -93,7 +88,6 @@ export async function loadInto(source: Source, context: LoadContext): Promise<vo
     })
     seen.add(entry.id)
   }
-  // What was unpublished or trashed since the last load leaves the store.
   for (const id of store.keys()) {
     if (!seen.has(id)) store.delete(id)
   }
@@ -147,7 +141,6 @@ export function hollwareLiveLoader(
           id: entry.id,
           data: entry.data,
           rendered: withMetadata(entry.html ?? '', entry),
-          // A preview is the latest revision for one person: nothing may be told it can be kept.
           ...(preview === undefined
             ? { cacheHint: { lastModified: new Date(entry.updatedAt) } }
             : {}),
@@ -163,7 +156,6 @@ export function hollwareLiveLoader(
           entries: entries.map((entry) => ({
             id: entry.id,
             data: entry.data,
-            // The images of the frontmatter, for a cover in a list: no body, so no HTML.
             ...(entry.images === undefined
               ? {}
               : { rendered: { html: '', metadata: { images: entry.images } } }),

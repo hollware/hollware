@@ -4,7 +4,6 @@ import type { DocLink } from '~/utils/docs'
 const props = defineProps<{ pages: readonly DocLink[] }>()
 const { m, to } = useLocale()
 
-// The sections in their order; the reference ends with the tools, which the site generates.
 const groups = computed(() =>
   SECTIONS.map((section) => ({
     label: m.value.docs.sections[section],

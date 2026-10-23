@@ -1,4 +1,3 @@
-/** What an entry is called in the admin: its title, or its slug when it has none. */
 export function titleOf(entry: {
   readonly slug: string
   readonly frontmatter: Readonly<Record<string, unknown>>
@@ -7,7 +6,6 @@ export function titleOf(entry: {
   return typeof title === 'string' && title.trim() !== '' ? title : entry.slug
 }
 
-/** The admin's path of an entry. */
 export function entryPath(entry: {
   readonly collection: string
   readonly locale: string

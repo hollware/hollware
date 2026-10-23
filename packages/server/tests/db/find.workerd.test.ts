@@ -4,16 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { createD1Store } from '../../src/db/index.ts'
 import { idFactory, insertEntries, newRevision, seedOwner, siteKey } from './support.ts'
 
-// Fails when: findEntry, findEntryById or listTranslations stop reading the revision of the view
-// they are asked for (head_rev for `head`, published_rev for `published`), stop returning null (or
-// leaving out the entry) for an entry that is not published in the published view, drop a part of
-// the natural key (collection, locale or slug), the collection or the group, or the site from
-// their query, stop sorting the tags of a revision or the translations by locale, map a column
-// of an entry, a revision or its actor to the wrong field (including the JSON columns parsed back
-// to what was written), or listTranslations stops answering the summary of a revision (id,
-// frontmatter and tags) and nothing else.
-
-/** When the revisions of the groups were written: what their summaries answer. */
 const T = '2026-10-12T10:00:00.000Z'
 const BLOG = { collection: 'blog', locale: 'en', slug: 'edge-caching' }
 
@@ -200,8 +190,6 @@ describe('findEntry and findEntryById', () => {
         id: id('ent_a'),
         ...BLOG,
         updatedAt: '2026-10-12T10:00:00.000Z',
-        // U+FF20 is after U+1F680 in UTF-16 code units, and before it in the UTF-8 bytes that the
-        // database sorts by, so only the store's own sort gives this order.
         revisions: [{ id: id('rev_a'), tags: ['zeta', 'Alpha', '\uFF20', 'mid', '🚀', 'alpha'] }],
       },
       {
@@ -229,10 +217,6 @@ describe('findEntry and findEntryById', () => {
 })
 
 describe('listTranslations', () => {
-  /**
-   * The group `edge`: en (draft head, published at rev 1), es (published), pt (a draft), and
-   * fr, in no group. The group `other`, and an `edge` group in another collection, are not it.
-   */
   async function seedGroup() {
     const owner = await seedOwner(env.DB, siteKey('translations'))
     const id = idFactory()
@@ -327,7 +311,6 @@ describe('listTranslations', () => {
       ['es', id('ent_es')],
       ['pt', id('ent_pt')],
     ])
-    // A summary of each head revision: its id, frontmatter and tags, and nothing else.
     expect(group.map((view) => view.revision)).toEqual([
       {
         id: id('rev_en2'),

@@ -7,17 +7,11 @@ import * as schedules from './schedules.ts'
 import * as writes from './writes.ts'
 
 export interface StoreOptions {
-  /** The time of every write; the system clock when absent. */
   readonly clock?: Clock
 }
 
 const systemClock: Clock = { now: () => new Date() }
 
-/**
- * The content store on D1 (`ports.ts`). `db` is a D1 database, which the writes need, or a D1
- * session, which is enough for reads: `env.DB.withSession('first-unconstrained')` is what RPC
- * reads use. Every method takes the site first and only reads and writes that site's rows.
- */
 export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentStore {
   const database = connect(db)
   const clock = options.clock ?? systemClock

@@ -1,11 +1,6 @@
 import { parseJsonc } from '../support/jsonc.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * A Hollware project serves `vp dev` on one fixed port, and its `HOLLWARE_PUBLIC_URL` names that
- * port: the Worker refuses any other Host. `vite.config.ts` sets `server.port` with `strictPort`,
- * so a port in use fails instead of moving to one the Host check would refuse.
- */
 export function checkDevPort(input: {
   readonly viteConfig: TextFile
   readonly wranglerConfig: TextFile

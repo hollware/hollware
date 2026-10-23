@@ -23,26 +23,15 @@ import { readText, repoFiles } from '../support/repo.ts'
 import { recordAt } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: a packages/*/package.json drops or changes name, version, license, repository,
-// type, files, publishConfig, engines or the build and publint scripts; its `exports` or `bin`
-// stop pointing at the source, or the published ones in publishConfig at dist; a published
-// package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
-// or a package's vite.config.ts stops building with `pack.exports.devExports: true`; or a package
-// exports an entry besides its root that SUBPATHS or SOURCE_FILES of tests/guards/manifests.ts does
-// not declare; or tsconfig.base.json stops setting erasableSyntaxOnly to true.
-
-/** The published exports of every package, as the guard expects them. */
 const PUBLISHED_EXPORTS = {
   '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
   './package.json': './package.json',
 }
 
-/** `pack.exports.devExports` of a package's vite.config.ts: what `vp pack` writes the manifest from. */
 function devExportsOf(config: unknown): unknown {
   return recordAt(recordAt(config, 'pack'), 'exports')?.devExports
 }
 
-/** Every published package builds with `devExports: true`, as the self-tests assume. */
 const GOOD_DEV_EXPORTS = Object.fromEntries(PUBLISHED_DIRS.map((dir) => [dir, true]))
 
 describe('package manifests', () => {

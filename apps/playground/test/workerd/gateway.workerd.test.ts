@@ -1,17 +1,8 @@
 import { exports } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
-// Fails when: src/index.ts stops exporting `{ fetch: hollware.fetch }` of createHollware(config) as
-// the default export, so that GET /health for the public URL that wrangler.jsonc sets
-// (localhost:5199) stops answering 200 with {"ok":true}, a request for another Host stops being a
-// 403 with the forbidden_host code (the guard in front of every route), or POST /mcp without a
-// token stops being a 401 with the unauthorized code. The gateway's own cases are the server
-// package's tests; this pins that the playground is wired to it, with the public URL of `vp dev`.
-
 const PUBLIC_HOST = 'localhost:5199'
 
-// A request made inside workerd has no Host header of its own, so each test sends the one that a
-// browser or `curl` would.
 const asHost = (host: string) => ({ headers: { host } })
 
 describe('the playground Worker over HTTP', () => {

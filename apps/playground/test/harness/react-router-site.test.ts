@@ -13,21 +13,9 @@ import {
 } from './support.ts'
 import { createReactRouterHarness, reactRouterFetch } from './workers.ts'
 
-// Fails when: @hollware/react (packages/react) stops letting a React Router site on Cloudflare
-// read Hollware over its service binding at request time: the page of a published entry rendered
-// on the server by <HollwareContent> from its Comark document, a component of the entry
-// (`::callout`) drawn by the site's own React component, the index from `listEntries`; or it serves
-// a draft, or an entry that does not exist, as anything but a 404 (but for a preview token of that
-// entry, which serves its latest revision with `no-store`, T-103; a token that is expired, forged
-// or for another entry serves nothing), or lists a draft; or the browser's bundle takes in
-// Hollware's server helpers. The site is examples/react-router-blog, built by React Router with
-// @cloudflare/vite-plugin and no Node.js compatibility; content is published through MCP, as an
-// agent does.
-
 const MANUAL = { redirect: 'manual' } as const
 const CLEARED = 'hollware_preview=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
 
-/** A request of a visitor whose browser holds the preview cookie. */
 function cookie(token: string) {
   return { headers: { cookie: `hollware_preview=${token}` } }
 }
@@ -69,11 +57,9 @@ describe('a React Router site with @hollware/react', () => {
     expect(html).toContain('<meta name="generator" content="Hollware"/>')
     expect(html).toMatch(/<h1[^>]*>From draft to published<\/h1>/)
     expect(html).toMatch(/<h2[^>]*>Why it matters<\/h2>/)
-    // `::callout{type="tip"}` of the entry, as the site's Callout draws it.
     expect(html).toContain(
       '<aside class="callout callout-tip" data-callout="tip">Keep the slug short: it becomes part of the public path.</aside>',
     )
-    // The browser hydrates from the same document and the scripts of the build.
     expect(html).toContain('<script type="module"')
     expect(page.headers.get('cache-control')).not.toBe('no-store')
   })
@@ -160,16 +146,12 @@ describe('a React Router site with @hollware/react', () => {
 
     expect(answers.map((answer) => answer.status)).toEqual([404, 404, 404, 404])
     expect(bodies.some((body) => body.includes('Markdown as the source of truth'))).toBe(false)
-    // The expired and the forged token clear the cookie; the one of another entry, which Hollware
-    // answers as no entry, and a value that is no token at all, change nothing.
     expect(answers.map((answer) => answer.headers.get('set-cookie'))).toEqual([
       CLEARED,
       CLEARED,
       null,
       null,
     ])
-    // A token that is shaped like one is a preview, so nothing keeps the answer; a value that is
-    // not is no preview at all.
     expect(answers.slice(0, 3).map((answer) => answer.headers.get('cache-control'))).toEqual([
       'no-store',
       'no-store',
@@ -195,7 +177,6 @@ describe('a React Router site with @hollware/react', () => {
     const bundle = files.map((file) => readFileSync(`${directory}${file}`, 'utf8')).join('\n')
 
     expect(files.length).toBeGreaterThan(0)
-    // The refusal code and the cookie of a preview, and zod, live in the server's helpers only.
     expect(
       ['invalid_preview', 'hollware_preview', 'ZodError'].filter((s) => bundle.includes(s)),
     ).toEqual([])

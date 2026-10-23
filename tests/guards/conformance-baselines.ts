@@ -2,53 +2,22 @@ import { parseDocument } from 'yaml'
 import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `conformance-baselines`: the baselines of the MCP conformance suite (ADR-022) can only
- * shrink, say why each check fails, and never excuse what Hollware claims.
- *
- * `@modelcontextprotocol/conformance` takes a file of expected failures and lets any regression
- * pass once it is listed. So each revision of the specification has one baseline,
- * `tests/conformance/baselines/<revision>.yaml`, and the guard holds it to these rules:
- *
- * - every entry names one check, `<scenario>:<check id>` (the suite's own syntax), never a whole
- *   scenario, which would excuse every check in it;
- * - every entry has a class, one of `not-offered` (a capability Hollware does not offer in this
- *   version), `fixture` (a `test_*` tool the suite expects, which is not an operation of
- *   Hollware) or `upstream` (a defect of the suite, with a link to its issue), and a reason;
- * - no entry matches the must-pass profile (`tests/conformance/must-pass.yaml`), the checks of
- *   what Hollware claims: a regression there must fail the run, so it is fixed, never excused;
- * - the file records its size (`recordedSize`) and the entries match it exactly: a baseline that
- *   grows needs the number raised on purpose, which a reviewer sees, and one that shrinks needs
- *   it lowered, or it leaves room for a silent addition. The exception lists do the same.
- *
- * The profile is held to its own shape, and to a list of claims that every revision must keep,
- * so that deleting the last check of a claim is as visible as adding to a baseline.
- *
- * Everything the guard reads arrives as text, and it holds no exception of its own.
- */
-
-/** The revisions of the MCP specification that Hollware serves (ADR-012). */
 export const CONFORMANCE_REVISIONS = ['2026-07-28', '2025-11-25'] as const
 
-/** What makes a check fail in a baseline. A check that fails for another reason is a defect. */
 export const BASELINE_CLASSES = ['not-offered', 'fixture', 'upstream'] as const
 
 export type BaselineClass = (typeof BASELINE_CLASSES)[number]
 
-/** The scenario of a profile entry that covers its checks in every scenario that reports them. */
 export const ANY_SCENARIO = '*'
 
-/** The shortest reason that says anything: a sentence. */
 export const MIN_REASON_LENGTH = 20
 
-/** Where the issues of the suite live: an `upstream` entry links one of them. */
 const UPSTREAM_ISSUE =
   /https:\/\/github\.com\/modelcontextprotocol\/conformance\/(?:issues|pull)\/\d+/
 
 const BASELINE_PATH = /^tests\/conformance\/baselines\/(\d{4}-\d{2}-\d{2})\.yaml$/
 
 export interface BaselineEntry {
-  /** `<scenario>:<check id>`. */
   readonly check: string
   readonly class: BaselineClass
   readonly reason: string
@@ -56,40 +25,30 @@ export interface BaselineEntry {
 
 export interface Baseline {
   readonly revision: string
-  /** How many entries the baseline holds, recorded on purpose. */
   readonly recordedSize: number
   readonly entries: readonly BaselineEntry[]
 }
 
 export interface ProfileEntry {
-  /** What Hollware claims, such as `lifecycle` or `dns-rebinding`. */
   readonly claim: string
   readonly revisions: readonly string[]
-  /** A scenario of the suite, or {@link ANY_SCENARIO}. */
   readonly scenario: string
-  /** The check ids that must pass; absent when every check of the scenario must. */
   readonly checks: readonly string[] | undefined
 }
 
 export interface ConformanceBaselinesInput {
-  /** The baseline files, `tests/conformance/baselines/<revision>.yaml`, with their text. */
   baselines: readonly TextFile[]
-  /** The must-pass profile, `tests/conformance/must-pass.yaml`. */
   profile: TextFile
-  /** The revisions that need a baseline. */
   revisions: readonly string[]
-  /** The claims that the profile must cover for each revision, by revision. */
   requiredClaims: Readonly<Record<string, readonly string[]>>
 }
 
-/** The scenario and the check id of an entry: the suite splits at the first colon. */
 export function splitCheck(check: string): { scenario: string; id: string | undefined } {
   const colon = check.indexOf(':')
   if (colon === -1) return { scenario: check, id: undefined }
   return { scenario: check.slice(0, colon), id: check.slice(colon + 1) }
 }
 
-/** Whether a profile entry covers a check, or a whole scenario when `id` is undefined. */
 export function profileCovers(
   entry: ProfileEntry,
   revision: string,
@@ -110,14 +69,12 @@ function isList(value: unknown): value is readonly unknown[] {
   return Array.isArray(value)
 }
 
-/** Keeps the violations of one file, which all carry its path and the rule's prefix. */
 function reporter(file: TextFile, violations: Violation[]) {
   return (rule: string, message: string): void => {
     violations.push({ rule: `conformance-baselines/${rule}`, file: file.path, message })
   }
 }
 
-/** The mapping a YAML file holds. A file that is not one is reported, and gives `undefined`. */
 function readMapping(
   file: TextFile,
   rule: string,
@@ -155,16 +112,13 @@ function reportUnknownKeys(
 }
 
 interface BaselineReading {
-  /** The revision the file says, and the entries it holds, valid or not. */
   readonly revision: string | undefined
   readonly recordedSize: number | undefined
   readonly checks: readonly string[]
-  /** The entries that have a class and a reason. */
   readonly entries: readonly BaselineEntry[]
   readonly violations: Violation[]
 }
 
-/** Reads a baseline and holds each entry to the rules that need nothing outside the file. */
 function readBaseline(file: TextFile): BaselineReading {
   const violations: Violation[] = []
   const report = reporter(file, violations)
@@ -262,10 +216,6 @@ function readBaseline(file: TextFile): BaselineReading {
   return { revision, recordedSize, checks, entries, violations }
 }
 
-/**
- * Reads one baseline, with every rule of the guard that needs nothing outside the file. `baseline`
- * is there only when none is broken, and the runner refuses to run without it.
- */
 export function parseBaseline(file: TextFile): {
   baseline: Baseline | undefined
   violations: Violation[]
@@ -281,7 +231,6 @@ export function parseBaseline(file: TextFile): {
   }
 }
 
-/** Reads and validates the profile. `entries` holds whatever could be read. */
 export function parseProfile(file: TextFile): { entries: ProfileEntry[]; violations: Violation[] } {
   const violations: Violation[] = []
   const report = reporter(file, violations)

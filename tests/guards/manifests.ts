@@ -5,53 +5,23 @@ import { HOMEPAGE_URL, ISSUES_URL, REPOSITORY_URL } from './project.ts'
 import type { TextFile, Violation } from './types.ts'
 import { parseManifests, type Manifest } from './workspace.ts'
 
-/**
- * Guard `manifests`: every package of the workspace says what it is.
- *
- * A published package (`packages/*`) has the same shape as the five others: a name that
- * follows its directory, one shared version, MIT, the repository with its directory,
- * ESM, the files that ship, public provenance publishing, an engine range and the `build`
- * and `publint` scripts. Its `exports` (and `bin`) point at its source, so inside the
- * workspace no package needs another one built; the published entry, `types` first, sits
- * in `publishConfig`, which `pnpm pack` moves into `exports` and `bin`. The apps,
- * templates and examples are private. Each published package also has a README and an
- * AGENTS.md next to its manifest.
- */
-
 export interface ManifestsInput {
-  /** The `package.json` of the root and of every workspace package. */
   manifests: readonly TextFile[]
-  /** The repository files, to check what sits next to each manifest. */
   files: readonly string[]
-  /**
-   * `pack.exports.devExports` of the `vite.config.ts` of each published package, by directory
-   * (`packages/core`). `vp pack` writes the manifest from it, so a manifest can only stay on
-   * the source if its config says `true`.
-   */
   devExports: Readonly<Record<string, unknown>>
 }
 
-/** Published packages whose name is not `@hollware/<directory>`. */
 const UNSCOPED_NAMES: Readonly<Record<string, string>> = {
   cli: 'hollware',
   'create-hollware': 'create-hollware',
 }
 
-/**
- * What `files` ships. Everything ships `dist`; the server also ships its D1 migrations, and
- * create-hollware the project template it copies (made from templates/starter when it packs).
- */
 const SHIPPED_EXTRA: Readonly<Record<string, readonly string[]>> = {
   server: ['migrations'],
   'create-hollware': ['template'],
-  // The Astro components, which ship as their source: Astro compiles them in the site.
   astro: ['components'],
 }
 
-/**
- * The entries a package exports as source files that ship as they are, by directory, the same
- * inside the workspace and once published: only the Astro components, which no build compiles.
- */
 const SOURCE_FILES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   astro: {
     './HollwareContent.astro': './components/HollwareContent.astro',
@@ -59,23 +29,16 @@ const SOURCE_FILES: Readonly<Record<string, Readonly<Record<string, string>>>> =
   },
 }
 
-/** The executable a package installs, by directory. Only the two command-line packages have one. */
 const BIN_NAMES: Readonly<Record<string, string>> = {
   cli: 'hollware',
   'create-hollware': 'create-hollware',
 }
 
-/**
- * The entries a package exports besides its root, by directory: each one a file of src/ with its
- * own build. Only these exist, so a new one is a decision written here, never a slip.
- */
 const SUBPATHS: Readonly<Record<string, readonly string[]>> = {
-  // The signature of webhooks with no zod, for a site whose zod is another major.
   client: ['webhooks'],
   core: ['webhooks'],
 }
 
-/** `exports` inside the workspace: the source. */
 function sourceExports(name: string): Record<string, unknown> {
   return {
     '.': './src/index.ts',
@@ -85,7 +48,6 @@ function sourceExports(name: string): Record<string, unknown> {
   }
 }
 
-/** `publishConfig.exports`, which `pnpm pack` moves into `exports`: the build, `types` first. */
 function publishedExportsOf(name: string): Record<string, unknown> {
   const built = (entry: string) => ({
     types: `./dist/${entry}.d.mts`,
@@ -185,7 +147,6 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
   const typesFirst =
     isRecord(publishedExports) &&
     Object.entries(publishedExports)
-      // The package.json, and a source file that ships as it is, have no types of their own.
       .filter(([key]) => key !== './package.json' && !Object.hasOwn(SOURCE_FILES[name] ?? {}, key))
       .every(
         ([, entry]) =>
@@ -252,7 +213,6 @@ export function checkManifests(input: ManifestsInput): Violation[] {
     }
   }
 
-  // One version for the whole fixed group (ADR-015, which keeps ADR-013's decision).
   const versions = new Set(published.map((manifest) => show(manifest.json.version)))
   if (versions.size > 1) {
     for (const manifest of published) {
@@ -264,7 +224,6 @@ export function checkManifests(input: ManifestsInput): Violation[] {
     }
   }
 
-  // Everything else in the workspace, and the root, is never published.
   for (const manifest of manifests) {
     if (/^packages\/[^/]+$/.test(manifest.dir)) continue
     if (manifest.json.private !== true) {

@@ -1,68 +1,3 @@
-// Fails when:
-// - "validates every file first and writes nothing when one would be refused" rows: `import`
-//   writes (get_entry, create_draft, update_draft, publish) before every file is validated, or
-//   goes on after a refusal-level violation (`size-limit`, `frontmatter-syntax`,
-//   `comark-parse`) or a failed `validate`, or stops listing each refused file with its reason.
-// - "does not tell what is not refusal-level …": an error that is saved with a draft (a schema
-//   error, a broken link) stops the import as if it were a refusal.
-// - "--dry-run only validates …": `--dry-run` writes or publishes, or `--publish` together with
-//   it is not ignored.
-// - "reports what validate found …" / "says that a real import would write nothing …": the
-//   dry run stops reporting the errors and warnings of `validate`, stops saying which files
-//   would be refused, or exits 0 when one would.
-// - "writes the drafts in phase one, then publishes in phase two": a publish is made before the
-//   last draft is written, `get_entry` is skipped, or the entries are not sent in order.
-// - "stops after the drafts without --publish …": entries are published without `--publish`.
-// - "creates what is not there and updates what changed, at the version it read": an existing
-//   entry is created again, an update is sent without the version read, or an unchanged file
-//   bumps the version.
-// - "a second run of the fixture corpus answers unchanged for every entry" (AC-0.1-9): the CLI
-//   creates an entry that exists, changes the Markdown it sends, or moves a version.
-// - "reports the Markdown of the fixtures that is not an entry …" / "reports the files it
-//   skips …" / "names at most five skipped files …": the skipped Markdown files are sent, or
-//   are not reported, or the list is not cut at five.
-// - "keeps the bytes of a file …": the Markdown is trimmed, re-encoded or its line ends or
-//   byte order mark are changed before it is sent.
-// - "publishes only what has unpublished changes" / "publishes an entry that was published and
-//   then changed": `--publish` publishes an entry that is already published, or skips one
-//   that was published and then changed.
-// - "acknowledges no warning and reports what blocks": `publish` is sent with warnings
-//   acknowledged, or `needs_acknowledgement` / `blocked` entries are not reported, or the exit
-//   code is 0 with entries left.
-// - "publishes nothing when a draft failed": phase two runs after a failure of phase one.
-// - "reports a draft that is refused … / an update that finds the entry changed / a publish
-//   that finds the entry changed": one failing entry stops the others, or is not reported, or
-//   the exit code is 0.
-// - "stops with what to do …" rows (401, 403 for write and for publish, no connection, 404, a
-//   server that is not MCP, another status, a redirect): a transport failure is not turned
-//   into a message that says what to do.
-// - "when the server refuses with a plain 403 …" / "when the server does not have a tool it
-//   needs …": a 403 without a scope challenge, or a protocol error, is not turned into a
-//   message that says what to do.
-// - "prints a path with a control character in its folders without it": the paths of the files
-//   are printed raw, so a folder named with an escape sequence can act on the terminal.
-// - "never sends the token to another origin": `redirectPolicy` stops being `same-origin`.
-// - "turns an error it does not know into one message": an unexpected error escapes with a
-//   stack, or is not cut to one line.
-// - "keeps the token out of every message …": the redaction is removed, a server's own words
-//   are printed with the token in them, or a token of the wrong shape is printed.
-// - "reads the token from …" rows: `--token-file` (relative to the working directory, trimmed),
-//   stdin, the file winning over stdin, a missing file, or what is piped not being a token is
-//   handled differently.
-// - "reports the files it skips, and stops before it connects when a file cannot be imported":
-//   a file with a bad slug reaches the server, or the connection is made before the directory
-//   is read.
-// - "says what it expects when the directory holds no entry" / "says when the directory is not
-//   one": an empty or wrong directory is not reported.
-// - "asks for what it needs" rows: a missing directory or `--url`, a bad `--url`, or plain http
-//   to another host is accepted, or the token is read before the arguments are checked.
-// - "mcpEndpoint" rows: `/mcp` is added twice or not at all, `http` is accepted for a host that
-//   is not loopback.
-// - "redact" rows: a token, something with the shape of one, or a secret that does not look
-//   like a token is let through.
-// - "--from nuxt-content …": a Nuxt Content directory is not read as its converter reads it
-//   (src/import/from-nuxt-content.ts), its pages are not sent byte for byte, or a source is taken
-//   without what it needs (`--collection`) or with a name it does not know.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -82,7 +17,6 @@ import {
 const TOKEN = `hw_pat_${'a'.repeat(52)}`
 const OTHER_TOKEN = `hw_pat_${'b'.repeat(52)}`
 const FIXTURES = fileURLToPath(new URL('../../../tests/fixtures/content', import.meta.url))
-// The blog corpus of the fixtures, as `blog/<locale>/<slug>.md`, read from disk.
 const BLOG_FILES = ['en', 'es'].flatMap((locale) =>
   readdirSync(join(FIXTURES, 'blog', locale))
     .filter((name) => name.endsWith('.md'))
@@ -108,7 +42,6 @@ function post(title: string, extra = ''): string {
 
 const id = (n: number): string => `ent_${String(n).padStart(26, '0')}`
 
-/** Runs `hollware import <dir> --url <url> …` with the token on stdin. */
 function runImport(dir: string, url: string, args: string[] = [], token = TOKEN) {
   return run(['import', dir, '--url', url, ...args], {
     cwd: dir,
@@ -307,7 +240,6 @@ describe('hollware import writes the drafts in phase one, then publishes in phas
       'create_draft',
       'publish',
     ])
-    // One publish for the import: the first entry, and the others as its group.
     expect(stub.calls.at(-1)?.args).toEqual({
       id: id(1),
       version: 1,
@@ -366,7 +298,6 @@ describe('hollware import writes the drafts in phase one, then publishes in phas
   })
 
   it('shows an unchanged entry with the verdict of this run, not the one kept since it was written', async () => {
-    // The definition of the site changed since: what was an error when written is none now.
     let required = true
     const stub = await serve({
       findings: () =>
@@ -441,7 +372,6 @@ describe('a second run of the fixture corpus', () => {
         expect(entry.version).toBe(1)
         expect(entry.revisions).toHaveLength(1)
       }
-      // What Hollware holds is the file, as the fixtures hold it.
       expect(BLOG_FILES).toHaveLength(10)
       for (const path of BLOG_FILES) {
         const entry = stub.entries.get(path.replace(/\.md$/, ''))
@@ -593,7 +523,6 @@ describe('hollware import --publish', () => {
   it('reports a draft that is refused when it is written, and goes on', async () => {
     const stub = await serve({
       before: (call, entries) => {
-        // Another writer takes the slug between the read and the write.
         if (call.tool === 'create_draft' && call.args.slug === 'a') {
           entries.set('blog/en/a', {
             id: id(99),
@@ -733,7 +662,6 @@ describe('hollware import stops with what to do', () => {
       'pending_review         blog/en/b  ent_00000000000000000000000002',
       'Publishing: 0 published, 0 need acknowledgement, 0 blocked, 2 asked for review.',
     ])
-    // The group first, which the server refuses; then each entry on its own, without a group.
     expect(
       stub.calls
         .filter((call) => call.tool === 'publish')
@@ -849,7 +777,6 @@ describe('hollware import stops with what to do', () => {
       /^hollware import: unexpected error: \[ \{ "code": "invalid_union", .*\. This is a bug in hollware: please report it at https:\/\/github\.com\/hollware\/hollware\/issues\.$/,
     )
     expect(err[0]).not.toContain('\n')
-    // The reason is cut at 300 characters: the schema error behind it is several times longer.
     expect(err[0]?.length).toBeLessThan(450)
   })
 })

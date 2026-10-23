@@ -2,23 +2,9 @@ import { parseJsonc } from '../support/jsonc.ts'
 import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `wrangler-dates`: a Worker's `compatibility_date` is never newer than the latest date
- * the workerd bundled with the installed wrangler supports
- * (`unstable_getDevCompatibilityDate()`). A newer date makes `wrangler dev` and the Vite
- * plugin fall back to an older one with a warning, and tests run on something else than what
- * the file says.
- *
- * Only `wrangler.jsonc` is accepted, so the guard can read every Worker config. A
- * `wrangler.toml` or `wrangler.json` would escape it, and is reported.
- */
-
 export interface WranglerDatesInput {
-  /** Every `wrangler.jsonc` of the repository. */
   configs: readonly TextFile[]
-  /** Every other file named `wrangler.toml` or `wrangler.json`. */
   otherFormats: readonly string[]
-  /** The newest compatibility date the installed workerd supports, `YYYY-MM-DD`. */
   latestSupported: string
 }
 

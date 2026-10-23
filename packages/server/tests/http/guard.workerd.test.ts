@@ -5,15 +5,6 @@ import { describe, expect, it } from 'vitest'
 import { seedToken } from '../auth/support.ts'
 import { boot, SITE_KEY, wire, type SendOptions } from './support.ts'
 
-// Fails when: the Host and Origin guard stops running before a route of the gateway, in front of
-// any one of them: `/health`, `/mcp` (it must come before the token check, so that a request for
-// another host never has its token looked up) or a path that has no route and would be a 404. Or
-// when an answer of the guard changes on its way out: no usable `HOLLWARE_PUBLIC_URL` is a 500,
-// another Host (a missing one, another port) or another Origin (another scheme, the opaque `null`)
-// is a 403, each with its body and its headers, and a refused request reaches no handler and no
-// database. The guard itself is `src/auth/guard.ts`; this is where it is wired in.
-
-/** What every answer of the Worker carries (src/http/gateway.ts): HSTS when the public URL is https. */
 const HEADERS = {
   'cache-control': 'no-store',
   'content-type': 'application/json',
@@ -22,7 +13,6 @@ const HEADERS = {
   'x-robots-tag': 'noindex, nofollow',
 }
 
-/** With no usable public URL, nothing says the Worker is reached over https. */
 const MISCONFIGURED_HEADERS = {
   'cache-control': 'no-store',
   'content-type': 'application/json',
@@ -60,17 +50,14 @@ const FORBIDDEN_ORIGIN = {
   },
 }
 
-/** What a route of the gateway is asked: `/health`, `/mcp` and a path no route has. */
 const ROUTES: readonly (readonly [string, string, string])[] = [
   ['/health', 'GET', 'health'],
   ['/mcp', 'POST', 'the MCP endpoint'],
   ['/nowhere', 'GET', 'a path with no route'],
 ]
 
-/** The ways a request, or the deployment, can be wrong for the guard, and what it answers. */
 const REFUSALS: readonly {
   readonly name: string
-  /** The `HOLLWARE_PUBLIC_URL` of the environment: `null` for none, and the right one if absent. */
   readonly publicUrl?: string | null
   readonly send: SendOptions
   readonly answer: typeof MISCONFIGURED
@@ -108,7 +95,6 @@ const REFUSALS: readonly {
   { name: 'the opaque Origin', send: { headers: { origin: 'null' } }, answer: FORBIDDEN_ORIGIN },
 ]
 
-/** A Worker whose environment has this `HOLLWARE_PUBLIC_URL`: none for `null`, the right one if absent. */
 function bootWith(publicUrl: string | null | undefined) {
   if (publicUrl === undefined) return boot()
   return boot({ publicUrl: publicUrl === null ? undefined : publicUrl })

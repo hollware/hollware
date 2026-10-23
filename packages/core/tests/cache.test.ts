@@ -9,11 +9,6 @@ import {
   tagsOfSiteChange,
 } from '../src/cache.ts'
 
-// Fails when: a cache tag of Hollware's (src/cache.ts) stops being what the contract says (the
-// entry, the list of a collection in a locale or in every locale, the translations of a group); holds a character a
-// cache refuses (a space, a comma, an apostrophe) or more than 1,024; or the tags of a change stop
-// being the entry, its list and its group, or a page's stop naming each entry it shows once.
-
 const ENTRY = {
   id: 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
   collection: 'blog',

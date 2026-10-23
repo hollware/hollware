@@ -4,12 +4,8 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { existsInRepository, readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a relative link, image or reference definition in a Markdown file points at a file or
-// directory that does not exist, or at an #anchor that is not a heading of the Markdown file it names.
-
 describe('Markdown links', () => {
   it('every relative link of every Markdown file leads to a file and an anchor that exist', () => {
-    // Test fixtures hold content that is wrong on purpose (broken links included).
     const docs = readRepoFiles(
       (path) => path.endsWith('.md') && !path.startsWith('tests/fixtures/'),
     )
@@ -28,13 +24,13 @@ describe('Markdown links', () => {
   describe('self-test: the guard fails on a bad fixture', () => {
     const TREE = new Set([
       'README.md',
-      'docs/design.md',
-      'docs/adr',
-      'docs/adr/0001-a.md',
+      'docs/guide.md',
+      'docs/notes',
+      'docs/notes/0001-a.md',
       'LICENSE',
     ])
     const ANCHORS: Record<string, string[]> = {
-      'docs/design.md': ['overview', 'decisions', 'decisions-1'],
+      'docs/guide.md': ['overview', 'decisions', 'decisions-1'],
       'README.md': ['readme'],
     }
     const check = (path: string, text: string) =>
@@ -46,19 +42,19 @@ describe('Markdown links', () => {
 
     it('accepts links to files, directories, anchors and the web', () => {
       const text = [
-        '[license](LICENSE) [design](docs/design.md#overview) [dir](docs/adr/) [self](#readme)',
-        '[web](https://example.com/a.md#x) [mail](mailto:a@b.co) ![image](docs/adr/0001-a.md)',
-        '[root](/LICENSE) [titled](docs/design.md "Design") [angle](<docs/design.md>)',
-        '[ref]: docs/design.md#decisions-1',
+        '[license](LICENSE) [design](docs/guide.md#overview) [dir](docs/notes/) [self](#readme)',
+        '[web](https://example.com/a.md#x) [mail](mailto:a@b.co) ![image](docs/notes/0001-a.md)',
+        '[root](/LICENSE) [titled](docs/guide.md "Design") [angle](<docs/guide.md>)',
+        '[ref]: docs/guide.md#decisions-1',
       ].join('\n')
       expect(check('README.md', text)).toEqual([])
     })
 
     it('resolves links relative to the directory of the document', () => {
-      expect(check('docs/adr/0001-a.md', '[up](../design.md#overview) [sibling](../adr)')).toEqual(
-        [],
-      )
-      expect(check('docs/adr/0001-a.md', '[wrong](design.md)')).toHaveLength(1)
+      expect(
+        check('docs/notes/0001-a.md', '[up](../guide.md#overview) [sibling](../notes)'),
+      ).toEqual([])
+      expect(check('docs/notes/0001-a.md', '[wrong](guide.md)')).toHaveLength(1)
     })
 
     it('reports a link to a file that does not exist, with its line', () => {
@@ -73,12 +69,12 @@ describe('Markdown links', () => {
     })
 
     it('reports an anchor that is not a heading, in another file and in the same one', () => {
-      expect(check('README.md', '[x](docs/design.md#nope) [y](#missing)')).toEqual([
+      expect(check('README.md', '[x](docs/guide.md#nope) [y](#missing)')).toEqual([
         {
           rule: 'markdown-links/missing-anchor',
           file: 'README.md',
           message:
-            'line 1: the link to docs/design.md#nope points at #nope, which is not a heading of docs/design.md',
+            'line 1: the link to docs/guide.md#nope points at #nope, which is not a heading of docs/guide.md',
         },
         {
           rule: 'markdown-links/missing-anchor',

@@ -4,12 +4,6 @@ import { createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { NOW, SITE_KEY, type Booted } from './support.ts'
 
-/**
- * A person signed in to the admin, as the tests of the admin's routes need one: a member of the
- * site with a role, a session, and an access token of the admin's own client, got through
- * `/authorize` and `/oauth/token` with PKCE as the admin gets it.
- */
-
 function base64url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
@@ -17,10 +11,6 @@ function base64url(bytes: Uint8Array): string {
     .replace(/=+$/, '')
 }
 
-/**
- * An access token of the admin's own client, for a person of the site with this role, who is an
- * editor of each site of `alsoEditorOf` too.
- */
 export async function adminToken(
   worker: Booted,
   role: 'owner' | 'editor' | 'author',
@@ -29,7 +19,6 @@ export async function adminToken(
   return (await adminPerson(worker, role, alsoEditorOf)).access
 }
 
-/** The same, with the person's id and their personal token. */
 export async function adminPerson(
   worker: Booted,
   role: 'owner' | 'editor' | 'author',

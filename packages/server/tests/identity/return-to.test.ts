@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { sameOriginTarget, signInPage } from '../../src/identity/pages.ts'
 
-// Fails when: the sign-in page (src/identity/pages.ts) sends a person, after their passkey, to a
-// `return_to` on another host, however it is written (T-43 of docs/security/threat-model.md:
-// `//host`, `/\host`, a tab, a scheme, a full URL), or stops sending them to a page of its own
-// origin with its query and fragment; or the page stops running that very function.
-
 const ORIGIN = 'https://cms.example.com'
 
 describe('sameOriginTarget', () => {

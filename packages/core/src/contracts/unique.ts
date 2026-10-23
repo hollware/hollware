@@ -1,13 +1,6 @@
 import { pointer, quote } from './text.ts'
 import type { Violation } from './types.ts'
 
-/**
- * The violations of a write that the store refuses because another entry of the same collection
- * and locale holds what has to be unique there: the slug, or the translation group. `holder` is
- * the id of that entry. Like `sizeLimitViolation`, they make the write `refused`, and every such
- * refusal reads the same.
- */
-
 /** Another entry of the collection and locale has the slug. The slug is no field of the file. */
 export function uniqueSlugViolation(holder: string): Violation {
   return {

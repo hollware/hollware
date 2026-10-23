@@ -1,8 +1,6 @@
 <script setup lang="ts">
 const route = useRoute()
 const { locale, m, to } = useLocale()
-// On a page of the docs, the menu of a small screen holds their sidebar too.
-// The header outlives a change of language, so it reads the locale of the moment.
 const { data } = useHollwareEntries('docs', () => ({ locale: locale.value, limit: 100 }), {
   lazy: true,
 })
@@ -26,7 +24,6 @@ const links = computed(() => [
   },
 ])
 
-/** The same page in the other language. */
 const other = computed(() => pathIn(locale.value === 'en' ? 'es' : 'en', basePath(route.path)))
 const inDocs = computed(() => /^\/(es\/)?(docs|reference)/.test(route.path))
 </script>

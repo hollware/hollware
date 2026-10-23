@@ -1,11 +1,3 @@
-// Fails when:
-// - "passes a project like the starter, migrated and with an owner": a check fails on what the
-//   starter has, or the answer stops saying that everything is in place.
-// - "says each problem of the config with its fix": a missing flag, a public URL that is no URL,
-//   a missing D1 binding, KV binding, cron, events queue, rate limit or admin goes unreported, or
-//   comes without its fix.
-// - "says what the database lacks": pending migrations or a missing owner go unreported, or the
-//   owner is looked up before the migrations are known to be there.
 import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, fakeWrangler, ok } from './support/fake-wrangler.ts'
@@ -33,7 +25,6 @@ const STARTER = `{
 }
 `
 
-/** The files of an installed starter: the migrations and the built admin. */
 const INSTALLED = {
   'node_modules/@hollware/server/migrations/0000_init.sql': 'CREATE TABLE t (id TEXT);',
   'node_modules/@hollware/admin/dist/client/admin/index.html': '<!doctype html>',
@@ -72,7 +63,6 @@ describe('hollware doctor', () => {
   it('says each problem of the config with its fix', async () => {
     const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]))
     const cwd = temp.make({
-      // The admin's directory is named, but nothing is installed there.
       'wrangler.jsonc': `{ "compatibility_flags": ["no_nodejs_compat"], "vars": { "HOLLWARE_PUBLIC_URL": "cms" }, "assets": { "directory": "node_modules/@hollware/admin/dist/client" } }`,
     })
 

@@ -37,29 +37,17 @@ import { mediaOfEnv } from '../media/cloudflare.ts'
 import { analyticsSourcesOf } from '../analytics/env.ts'
 
 export interface GatewayOptions {
-  /** The sites this deployment serves, by key. A token belongs to one of them, and acts on it. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
-  /** Their keys. When `refresh` is given, both stay current with D1. */
   readonly siteKeys?: ReadonlySet<string>
-  /** Brings the sites in line with D1 (ADR-033): when stale, or at once with `force`. */
   readonly refresh?: (db: D1Database, options?: { readonly force?: boolean }) => Promise<void>
-  /** Built once for the isolate; the gateway mounts it at `/mcp`. */
   readonly mcp: McpEndpoint
-  /** The time of a request: the expiry of a token and every write are read from it. */
   readonly clock: Clock
   readonly log: (entry: GatewayLogEntry) => void
-  /** The read methods for the HTTP read API at `/v1`; without them there is no `/v1`. */
   readonly read?: (env: HollwareEnv) => HollwareRpc
-  /** The OAuth server of the config (ADR-026); dynamic client registration is off without it. */
   readonly auth?: ResolvedAuth
-  /** The handlers of the operations, for `POST /v1/ops/{name}`; without them there is no route. */
   readonly handlers?: Handlers
 }
 
-/**
- * A 401 of a resource server, with Hollware's body: the same JSON as every other refusal, and the
- * challenge of the resource server, which names its metadata (RFC 9728) and the baseline scope.
- */
 function withRefusalBody(response: Response, refused: boolean): Response {
   const ours = unauthorized(refused ? 'unknown' : undefined)
   const headers = new Headers(response.headers)
@@ -70,44 +58,16 @@ function withRefusalBody(response: Response, refused: boolean): Response {
   return new Response(ours.body, { status: 401, headers })
 }
 
-/** The `fetch` of the Worker. */
 export type Gateway = (
   request: Request,
   env: HollwareEnv,
   ctx: ExecutionContext,
 ) => Promise<Response>
 
-/**
- * The HTTP gateway of the Worker (ADR-019): a Hono 5 app, built once, that runs in this order for
- * every request:
- *
- * 1. an id for the request, which its errors and its log lines carry;
- * 2. the Host and Origin guard (`checkHostAndOrigin`), before any route, health and unknown
- *    paths included. It fails closed: no valid `HOLLWARE_PUBLIC_URL` is a 500;
- * 3. the routes: `GET /health` answers `{ "ok": true }`, and `/mcp` answers every method, after
- *    the token check below. Any other path is a JSON 404.
- *
- * The token check is the 401 that stands in front of the MCP endpoint, which never authenticates:
- * no token, or a token that `checkPersonalToken` refuses, is `unauthorized()` and the endpoint is
- * not called. It looks the token up on the `D1Database` binding and never on a replica session,
- * so a revoked token stops at once. Its reason goes to the log and never to the answer. The write
- * of `last_used_at` is handed to `ctx.waitUntil`: Workers cancel a promise nobody waits for.
- *
- * The endpoint then gets the request as it came, with its body and its `Mcp-*` headers untouched
- * (a 2026 client's headers must agree with its body), and the primary database: an agent reads
- * what it has just written.
- *
- * Whatever a route throws ends in the error middleware (`errors.ts`) as a JSON 500 that leaks
- * nothing. A failed D1 query while the token is checked is one of those: it is never a 401.
- */
 export function createGateway(options: GatewayOptions): Gateway {
   const { sites, mcp, clock, log } = options
   const siteKeys: ReadonlySet<string> = options.siteKeys ?? new Set(sites.keys())
   const app = new Hono<GatewayEnv>()
-  /**
-   * The Worker's own context of each request. Hono hands its routes the same object under a
-   * narrower type of its own, and the OAuth library wants the Worker's.
-   */
   const contexts = new WeakMap<Request, ExecutionContext>()
   const workerContext = (c: Context<GatewayEnv>): ExecutionContext => {
     const ctx = contexts.get(c.req.raw)
@@ -121,10 +81,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     log,
   })
 
-  /**
-   * What a write hands to the Queue: the events it committed, after the answer (ADR-025). The
-   * cron trigger's sweep catches any that this misses.
-   */
   const notify =
     (c: Context<GatewayEnv>, requestId: string, site: string) => (ids: readonly string[]) => {
       c.executionCtx.waitUntil(
@@ -136,7 +92,6 @@ export function createGateway(options: GatewayOptions): Gateway {
       )
     }
 
-  /** The structure of the sites in D1, and how this isolate sees a change of it at once. */
   const structureOf = (db: D1Database, master?: string): Structure => ({
     store: createStructureStore(db, () => clock.now()),
     changed: async () => {
@@ -153,10 +108,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     },
   })
 
-  /**
-   * The activity log of a request (ADR-037), for an actor known once the client has said what it
-   * is. A person in the admin is a `user`; any other OAuth client, an `oauth_client`.
-   */
   const auditOf =
     (
       c: Context<GatewayEnv>,
@@ -166,19 +117,13 @@ export function createGateway(options: GatewayOptions): Gateway {
     (meta) =>
       auditAs(c, actorOf(principal, meta, adminClientId))
 
-  /**
-   * A protected route: the resource server of `resource` answers a request without a token and a
-   * token it refuses (401, logged with the reason), and `proceed` gets the principal of the rest.
-   */
   const protect = async (
     c: Context<GatewayEnv>,
     resource: ResourceName,
     proceed: Proceed,
   ): Promise<Response> => {
     const requestId = c.get('requestId')
-    // A token is checked against the sites, current with D1; a request with none reads nothing.
     if (c.req.header('authorization') !== undefined) await options.refresh?.(c.env.DB)
-    /** What the check said besides the answer: why it refused, or what it threw. */
     const outcome: { refusal: Refusal | null; failure: { readonly error: unknown } | null } = {
       refusal: null,
       failure: null,
@@ -201,39 +146,27 @@ export function createGateway(options: GatewayOptions): Gateway {
         },
       },
     )
-    // A failure while the token was checked, such as D1's, is no 401: it is the error handler's.
     if (outcome.failure !== null) throw outcome.failure.error
     if (response.status !== 401) return response
     log({ kind: 'auth_refused', requestId, reason: outcome.refusal ?? 'no_token' })
     return withRefusalBody(response, outcome.refusal !== null)
   }
 
-  /** A read of the read API, the one kind of request a page of another origin may make. */
   const isCorsRead = (request: Request): boolean => {
     const { pathname } = new URL(request.url)
     return (
       ['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
       pathname.startsWith('/v1/') &&
-      // The admin's routes read too; the operations are POST, which the method already refuses.
       !pathname.startsWith('/v1/admin/')
     )
   }
 
-  /** Whether the definition of some site lets pages of `origin` read it. */
   const anyCorsOrigin = (origin: string): boolean =>
     [...sites.values()].some((site) => site.cors.origins.includes(origin))
-  /**
-   * The guard lets a page of such an origin through to the read API alone, and only to read: the
-   * read API then checks the origin against the site of the token.
-   */
   const readsFromAnyCorsOrigin = (request: Request, origin: string): boolean => {
     return anyCorsOrigin(origin) && isCorsRead(request)
   }
 
-  /**
-   * A route for a person or their personal token: a read token reads over the read API alone, so
-   * it is refused here, before anything runs (403, as a token that lacks a scope).
-   */
   const protectWrites = (
     c: Context<GatewayEnv>,
     resource: ResourceName,
@@ -255,9 +188,6 @@ export function createGateway(options: GatewayOptions): Gateway {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID())
     await next()
-    // Every answer of the Worker: no type sniffing, out of every search index (a CMS is never a
-    // public site: the sites it feeds are), and HTTPS only from the first visit on when the public
-    // URL is https. A route that set one keeps its own.
     const https = c.env.HOLLWARE_PUBLIC_URL?.startsWith('https://') === true
     const missing =
       !c.res.headers.has('x-content-type-options') ||
@@ -278,9 +208,6 @@ export function createGateway(options: GatewayOptions): Gateway {
   })
 
   app.use('*', async (c, next) => {
-    // The guard answers a request it refuses without the database, except where it has to read
-    // the sites: a page of another origin that reads the read API. Those see the sites current
-    // with D1 (ADR-033).
     const origin = c.req.header('origin')
     if (
       origin !== undefined &&
@@ -293,9 +220,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     await next()
   })
 
-  // The routes anyone may call without a token, limited per address and route when the Worker
-  // has a rate limiting binding (T-10): a person never comes near the limit, a script that
-  // hammers sign-in or the token endpoint does.
   app.use('*', async (c, next) => {
     const limiter = c.env.HOLLWARE_RATE_LIMIT
     const group = limitedRoute(c.req.method, new URL(c.req.url).pathname)
@@ -314,8 +238,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     )
   })
 
-  // The routes that read the sites without a token to check first: the consent of OAuth and its
-  // token endpoint. A route behind a token reads them in `protect`.
   for (const path of ['/authorize', '/oauth/*']) {
     app.use(path, async (c, next) => {
       await options.refresh?.(c.env.DB)
@@ -323,7 +245,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     })
   }
 
-  // What crawlers read first: nothing here is theirs.
   app.get(
     '/robots.txt',
     () =>
@@ -344,7 +265,6 @@ export function createGateway(options: GatewayOptions): Gateway {
       const requestId = c.get('requestId')
       const db = c.env.DB
       const site = sites.get(principal.site)
-      // The token check refuses a token of a site this deployment does not serve.
       if (site === undefined) throw new Error(`No site ${principal.site} for a checked token`)
       return await mcp.fetch(c.req.raw, {
         principal,
@@ -361,7 +281,6 @@ export function createGateway(options: GatewayOptions): Gateway {
           media: mediaOfEnv(c.env),
           backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
         },
-        // A read token never gets here; the admin's client never calls MCP.
         ...(principal.kind === 'read'
           ? {}
           : {
@@ -376,7 +295,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     }),
   )
 
-  // The metadata of each resource (RFC 9728) is its resource server's to answer.
   for (const resource of ['mcp', 'v1'] as const) {
     app.all(`/.well-known/oauth-protected-resource/${resource}`, async (c) =>
       oauth(c.env.HOLLWARE_PUBLIC_URL).protect(resource, c.req.raw, c.env, workerContext(c), {
@@ -387,9 +305,6 @@ export function createGateway(options: GatewayOptions): Gateway {
       }),
     )
   }
-  // The rest of the authorization server: its metadata (RFC 8414), the token endpoint, which
-  // revokes too, and registration when the config turns it on. `/authorize` is ours.
-  /** The activity log of a request for an actor the route knows itself (ADR-037). */
   const auditAs = (c: Context<GatewayEnv>, actor: AuditActor) =>
     createAuditLog({
       db: c.env.DB,
@@ -400,7 +315,6 @@ export function createGateway(options: GatewayOptions): Gateway {
       now: () => clock.now(),
       log,
     })
-  /** A site as the activity log needs it, current with D1: a route of no token refreshed nothing. */
   const auditSite = async (c: Context<GatewayEnv>, key: string) => {
     await options.refresh?.(c.env.DB)
     return sites.get(key)
@@ -409,8 +323,6 @@ export function createGateway(options: GatewayOptions): Gateway {
   const authorizationServer = (c: Context<GatewayEnv>) =>
     oauth(c.env.HOLLWARE_PUBLIC_URL).authorizationServer.fetch(c.req.raw, c.env, workerContext(c))
   app.all('/.well-known/oauth-authorization-server', authorizationServer)
-  // The token endpoint, with the reuse of a spent refresh token caught before the library sees it:
-  // that revokes the grant (T-34, src/oauth/refresh-reuse.ts).
   app.all('/oauth/*', async (c) => {
     const refresh = await refreshTokenOf(c.req.raw)
     if (refresh === null) return authorizationServer(c)
@@ -470,10 +382,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     })
   }
 
-  // The images of the sites (ADR-038): to anyone, and never different under the same URL, since
-  // an id is the hash of the file. A page of any origin may show one; an SVG runs nothing even
-  // when it is opened on its own, in the origin of the admin.
-  // A copy of one, narrower, for srcset (`<url>/<width>`), is served the same way.
   const serveAsset = async (
     c: Context<GatewayEnv>,
     keyOf: (site: string, id: string) => string | null,
@@ -513,7 +421,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     )
   })
 
-  // A daily backup of the site (backup/run.ts), for an owner: the whole content, so schema:admin.
   app.get('/v1/backups/:date', (c) =>
     protectWrites(c, 'v1', async (principal) => {
       if (missingScopes(principal, ['schema:admin']).length > 0) {
@@ -544,7 +451,6 @@ export function createGateway(options: GatewayOptions): Gateway {
     }),
   )
 
-  // The file of an image as it was uploaded, for an export (ADR-038): a person's token of the site.
   app.get('/v1/assets/:id/original', (c) =>
     protectWrites(c, 'v1', async (principal) => {
       if (missingScopes(principal, ['content:read']).length > 0) {
@@ -554,7 +460,6 @@ export function createGateway(options: GatewayOptions): Gateway {
       const media = mediaOfEnv(c.env)
       const row =
         media === null || !ASSET_ID.test(id) ? null : await media.catalog.byId(principal.site, id)
-      // A site that keeps no originals (media.keepOriginals) gives the file it serves instead.
       const file =
         media === null || row === null
           ? null
@@ -594,10 +499,8 @@ export function createGateway(options: GatewayOptions): Gateway {
   }
 }
 
-/** The id of an asset: `ast_` and 26 hexadecimal characters, from the hash of its file. */
 const ASSET_ID = /^ast_[0-9a-f]{26}$/
 
-/** The group of a route that is rate limited, or `null` for one that is not (T-10). */
 export function limitedRoute(method: string, pathname: string): string | null {
   if (method !== 'POST') return null
   if (pathname.startsWith('/auth/')) return 'auth'

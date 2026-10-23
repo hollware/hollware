@@ -4,19 +4,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vite-plus/test'
 
-// Runs .github/scripts/promotion-check.sh in a throwaway git repository whose `origin/main` is a
-// ref we move by hand, the way the checkout of the workflow (fetch-depth: 0) leaves it. Git is
-// real: the script's whole job is ancestry, and a stub would only restate what we assume of it.
-//
-// Fails when: the script stops refusing a commit that is not on main, a push that is not a
-// fast-forward or a commit that still holds a changeset; or it refuses what it should accept; or
-// it trusts the working tree instead of the commit, or an input that is not a commit hash; or it
-// skips the fast-forward check because BEFORE_SHA is empty on anything but a manual run.
 const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'promotion-check.sh')
 
 const ZEROS = '0000000000000000000000000000000000000000'
 
-// No global or system git configuration: a developer's signing or hooks setup must not leak in.
 const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 let root: string
@@ -31,7 +22,6 @@ function git(...args: string[]): string {
   return run.stdout.trim()
 }
 
-/** Commits a change (a file per call, plus `files`, minus `removed`) and returns the new commit. */
 function commit(
   subject: string,
   files: Record<string, string> = {},
@@ -57,19 +47,10 @@ function commit(
   return git('rev-parse', 'HEAD')
 }
 
-/** Where `origin/main` points: what the workflow's checkout fetched. */
 function mainIs(sha: string): void {
   git('update-ref', 'refs/remotes/origin/main', sha)
 }
 
-// One history for every test, so that a test costs one run of the script and not a repository:
-//
-//   main:  first - second - third - pending - versioned - later      origin/main = later
-//   side:  first - side                                              never merged
-//   ahead: later - unmerged                                          not fetched into origin/main
-//
-// `pending` adds two changesets, `versioned` consumes them and leaves the files that are not
-// changesets, and `later` adds one more changeset.
 interface History {
   first: string
   second: string
@@ -123,7 +104,6 @@ interface Outcome {
   status: number | null
   stdout: string
   stderr: string
-  /** The `::error::` annotations, which is what the maintainer reads. */
   errors: string[]
 }
 
@@ -193,9 +173,9 @@ describe('promotion-check.sh', () => {
       const { second, third, side } = history
       const gone = 'f'.repeat(40)
       const pushes: [string, string][] = [
-        [second, third], // release goes back to an older commit of main
-        [third, side], // release moves onto another line of history
-        [third, gone], // the previous tip is not in the clone at all
+        [second, third],
+        [third, side],
+        [third, gone],
       ]
       for (const [promoted, before] of pushes) {
         const result = promote({ PROMOTED_SHA: promoted, BEFORE_SHA: before })
@@ -222,9 +202,6 @@ describe('promotion-check.sh', () => {
 
     test('a push without a previous tip is refused: a missing input must not switch the check off', () => {
       const { third } = history
-      // Actions always sets `github.event.before` on a push, so an empty one is a workflow that
-      // stopped passing it. Only a manual run may go without one: any other event, an unknown or a
-      // missing one included, is refused.
       const events: [Record<string, string>, string][] = [
         [{ GITHUB_EVENT_NAME: 'push' }, 'push'],
         [{ GITHUB_EVENT_NAME: 'push', BEFORE_SHA: '' }, 'push'],
@@ -244,7 +221,6 @@ describe('promotion-check.sh', () => {
 
     test('a manual run that does name a previous tip is held to it', () => {
       const { second, third } = history
-      // The skip is for a run with nothing to compare with, not for the event.
       const result = promote({
         PROMOTED_SHA: second,
         BEFORE_SHA: third,
@@ -266,7 +242,6 @@ describe('promotion-check.sh', () => {
     })
 
     test('a commit that consumed them is promoted, whatever else the folder holds', () => {
-      // The README, the config, pre mode and a subfolder are not changesets.
       const { versioned } = history
       const result = promote({ PROMOTED_SHA: versioned, BEFORE_SHA: ZEROS })
       expect(result.status).toBe(0)
@@ -280,14 +255,12 @@ describe('promotion-check.sh', () => {
 
     test('they are read from the promoted commit, not from the working tree', () => {
       const { versioned, later } = history
-      // The working tree has no changeset, but the commit promoted holds one.
       git('checkout', '-q', versioned)
       const refused = promote({ PROMOTED_SHA: later, BEFORE_SHA: ZEROS })
       expect(refused.status).toBe(1)
       expect(refused.errors).toHaveLength(1)
       expect(refused.errors[0]).toContain('.changeset/tidy-foxes.md')
 
-      // The working tree holds one, but the commit promoted does not.
       git('checkout', '-q', later)
       expect(promote({ PROMOTED_SHA: versioned, BEFORE_SHA: ZEROS }).status).toBe(0)
     })

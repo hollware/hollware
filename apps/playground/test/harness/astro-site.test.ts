@@ -11,19 +11,9 @@ import {
 } from './support.ts'
 import { astroFetch, createAstroHarness } from './workers.ts'
 
-// Fails when: @hollware/astro (packages/astro) stops letting an Astro site on Cloudflare read
-// Hollware over its service binding at request time: the page of a published entry,
-// the index from `getLiveCollection`; or HollwareContent.astro stops rendering the body from the
-// entry's document, with the entry's `::callout` as the site's own component; or it serves a draft, or an entry that does not exist, as
-// anything but a 404 (but for a preview token of that entry, which serves its latest revision
-// with `no-store`, T-103; a token that is expired, forged or for another entry serves nothing), or lists a draft. The site is examples/astro-blog, built by Astro with
-// @astrojs/cloudflare and no Node.js compatibility; content is published through MCP, as an
-// agent does.
-
 const MANUAL = { redirect: 'manual' } as const
 const CLEARED = 'hollware_preview=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
 
-/** A request of a visitor whose browser holds the preview cookie. */
 function cookie(token: string) {
   return { headers: { cookie: `hollware_preview=${token}` } }
 }
@@ -63,8 +53,6 @@ describe('an Astro site with @hollware/astro', () => {
     expect(page.status).toBe(200)
     expect(html).toContain('<title>From draft to published</title>')
     expect(html).toContain('<meta name="generator" content="Hollware">')
-    // The body, rendered by HollwareContent.astro from the document: its headings with their ids,
-    // its marks, and `::callout{type="tip"}` as the site's Callout.astro.
     expect(html).toMatch(/<h1 id="from-draft-to-published"[^>]*>From draft to published<\/h1>/)
     expect(html).toContain('<h2 id="why-it-matters"')
     expect(html).toContain('<strong>fast reads</strong>')
@@ -95,7 +83,6 @@ describe('an Astro site with @hollware/astro', () => {
     const answer = await astroFetch(server, `${path}?a=1&hollware-preview=${token}&b=2`, MANUAL)
 
     expect(answer.status).toBe(303)
-    // The other parameters in order, then a value of no secret that keeps the page out of caches.
     expect(answer.headers.get('location')).toMatch(
       new RegExp(`^${path}\\?a=1&b=2&hollware-view=[A-Za-z0-9_-]{12}$`),
     )
@@ -149,16 +136,12 @@ describe('an Astro site with @hollware/astro', () => {
 
     expect(answers.map((answer) => answer.status)).toEqual([404, 404, 404, 404])
     expect(bodies.some((body) => body.includes('Markdown as the source of truth'))).toBe(false)
-    // The expired and the forged token clear the cookie; the one of another entry, which Hollware
-    // answers as no entry, and a value that is no token at all, change nothing.
     expect(answers.map((answer) => answer.headers.get('set-cookie'))).toEqual([
       CLEARED,
       CLEARED,
       null,
       null,
     ])
-    // A token that is shaped like one is a preview, so nothing keeps the answer; a value that is
-    // not is no preview at all.
     expect(answers.slice(0, 3).map((answer) => answer.headers.get('cache-control'))).toEqual([
       'no-store',
       'no-store',

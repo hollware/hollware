@@ -1,20 +1,3 @@
-/**
- * What of a change of the public API (scripts/api.ts) breaks those who use it (ADR-036): what a
- * client sends may not get stricter, and what it receives may not lose anything it relied on.
- *
- * - An input (a tool's arguments, a request's parameters) breaks when a field becomes required, a
- *   field it took is refused, a type changes, or a value of an enum goes.
- * - An output (a tool's answer, a response, an event) breaks when a field goes, a required field
- *   becomes optional, or a type changes. A new field is no break, and neither is a new value of an
- *   enum: an `outcome` or an event `kind` may be added in a minor version, and a client ignores one
- *   it does not know.
- * - A tool, a path, an RPC method, a command, a flag, an export or an event kind that goes breaks;
- *   so does a scope a tool starts to ask for, an RPC signature that changes, an export that turns
- *   from a value into a type, and any change to a migration that was published.
- *
- * Every break is a sentence that names where it is; none means the change fits a minor version.
- */
-
 type Json = Readonly<Record<string, unknown>>
 type Schema = Json
 
@@ -30,7 +13,6 @@ const stringsAt = (value: Json, key: string): string[] => {
     ? found.filter((item): item is string => typeof item === 'string')
     : []
 }
-/** A value of a schema as words: a string as it is, anything else as JSON. */
 const textOf = (value: unknown): string =>
   typeof value === 'string' ? value : JSON.stringify(value)
 const typesOf = (schema: Schema): string[] => {
@@ -42,13 +24,11 @@ const typesOf = (schema: Schema): string[] => {
       : [textOf(type)]
 }
 
-/** The variants of a union (`anyOf` or `oneOf`), or the schema itself. */
 const variantsOf = (schema: Schema): Schema[] => {
   const union = schema['anyOf'] ?? schema['oneOf']
   return Array.isArray(union) ? union.filter(isObject) : [schema]
 }
 
-/** A variant of a union keyed by what tells it apart: its constant `kind` or `outcome`, or its type. */
 function keyOf(schema: Schema): string {
   for (const field of ['kind', 'outcome']) {
     const property = objectAt(objectAt(schema, 'properties'), field)
@@ -76,7 +56,6 @@ function compareSchemas(
       const key = keyOf(variant)
       const match = afterByKey.get(key)
       if (match === undefined) {
-        // An output may lose a variant (a client handled one it no longer gets); an input may not.
         if (side === 'input') breaks.push(`${path}: the ${key} it took is refused`)
         else if (key.startsWith('kind=')) breaks.push(`${path}: ${key} is no longer sent`)
         continue
@@ -197,7 +176,6 @@ function compareHttp(before: Json, after: Json, breaks: string[]): void {
           breaks.push(`${where}: the ${key} parameter is now required`)
         }
       }
-      /** The JSON schema of a response, or nothing when it has none. */
       const schemaOf = (response: unknown) =>
         objectAt(
           objectAt(objectAt(isObject(response) ? response : {}, 'content'), 'application/json'),
@@ -214,14 +192,9 @@ function compareHttp(before: Json, after: Json, breaks: string[]): void {
   }
 }
 
-/**
- * Whether a signature of the RPC only gained optional members (`readonly name?: Type`) over
- * another: a caller written against the old one still type-checks, so it fits a minor version.
- */
 export function onlyAddsOptional(was: string, now: string): boolean {
   const flat = (text: string) => text.replace(/\s+/g, ' ').trim()
   const before = flat(was)
-  // Each optional member of the new signature that the old one does not have, taken out.
   const members = /readonly (\w+)\?: ((?:[^{}]|\{[^{}]*\})+?)(?= readonly |\s*\})/g
   const trimmed = flat(now).replace(members, (member, name: string) =>
     before.includes(`readonly ${name}?:`) ? member : '',
@@ -246,7 +219,6 @@ function compareNamed(
   }
 }
 
-/** The breaks between two versions of the public API, part by part, as `api/` holds them. */
 export function breakingChanges(
   before: Readonly<Record<string, Json>>,
   after: Readonly<Record<string, Json>>,

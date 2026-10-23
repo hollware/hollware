@@ -1,9 +1,5 @@
 name: Deploy
 
-# Our deployments (ADR-034): staging on every push to main, and the demo and hollware.com when a
-# release is pushed to `release`, each by scripts/deploy.ts, which migrates before it deploys and
-# probes after. A push to main has passed the hook pre-push, and one to `release` the check of CI
-# that its ruleset asks for. The Cloudflare token lives in the environment `deploy` alone.
 on:
   push:
     branches: [main, release]
@@ -27,7 +23,6 @@ concurrency:
 jobs:
   deploy:
     name: Deploy
-    # Off until the environment `deploy` holds its Cloudflare token, which turns DEPLOY_ENABLED on.
     if: github.repository == 'hollware/hollware' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30

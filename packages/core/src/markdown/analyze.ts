@@ -32,37 +32,14 @@ import type {
   LinkRef,
 } from './types.ts'
 
-/*
- * The analysis: one walk over the document Comark made, which judges it (ADR-020) and extracts
- * what the contracts need from it. It changes the document in place, so that what is stored
- * holds only what the policy lets through:
- * - an element that is raw HTML, or a component the collection does not declare, becomes a
- *   `hollware-marker`, which keeps the children of the component, so that a typo in a name is a
- *   marker and not a missing paragraph;
- * - an attribute outside the allowlist of its tag, and a URL with a scheme that is not allowed,
- *   are taken off their element;
- * - heading ids are Hollware's own, and the line each block starts on is taken off its props.
- * Everything it changes is also reported in `disallowed`, so that nothing is dropped silently,
- * and so is the text that Comark's syntax left out before this walk began (see `parser.ts`).
- *
- * Comark's `security` plugin is not used, although ADR-020 names it and its `tagFallback`. It is
- * a post hook of the parser, so it would run before this walk and take off the attributes it
- * dislikes without a word, and nothing could be reported; it compares tag names without regard to
- * case and needs the names of the alerts in its list, which lets `::tip` through as an element;
- * and once this walk is done there is nothing left for it to find.
- */
-
 type Props = Record<string, unknown>
 
 export interface AnalyzeOptions {
-  /** The components the collection declares. */
   readonly components: ReadonlySet<string>
   readonly routes: readonly CompiledRoute[]
-  /** How many lines the frontmatter took, so that the first line of the body is `lineOffset + 1`. */
   readonly lineOffset: number
 }
 
-/** Why a document cannot be stored: nested too deeply, or a prop that is not JSON. */
 export type Problem = 'nesting' | 'props'
 
 export interface Analysis {
@@ -70,21 +47,16 @@ export interface Analysis {
   readonly problem: Problem | undefined
 }
 
-/** Text that Comark's syntax took and left out of the document, which the markdown-it rule listed. */
 interface LeftOut {
   readonly line: number
-  /** The block it is in. */
   readonly tag: string
-  /** Whether Comark read it as attributes, which an element may have taken. */
   readonly given: boolean
   readonly text: string
 }
 
 interface State {
   readonly options: AnalyzeOptions
-  /** What was left out, by the number the attribute `$p<n>` gives it. */
   readonly leftOut: ReadonlyMap<number, LeftOut>
-  /** The numbers of the ones that an element took as its attributes. */
   readonly taken: Set<number>
   readonly headings: Heading[]
   readonly links: LinkRef[]
@@ -95,7 +67,6 @@ interface State {
   readonly ids: HeadingIds
   words: number
   inWord: boolean
-  /** The words inside code blocks, which a reader reads too: counted apart from `words`. */
   codeWords: number
   inCodeWord: boolean
   problem: Problem | undefined
@@ -114,7 +85,6 @@ function isProps(value: unknown): value is Props {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** What `\s` matches, which is what separates the words of a text. */
 function isSpace(code: number): boolean {
   return (
     code === 32 ||
@@ -141,7 +111,6 @@ function countNewlines(text: string): number {
   return count
 }
 
-/** The words of a code block, separated by whitespace as the words of the text are. */
 function addCode(state: State, text: string): void {
   for (let at = 0; at < text.length; at++) {
     if (isSpace(text.charCodeAt(at))) {
@@ -164,7 +133,6 @@ function addText(state: State, text: string): void {
   }
 }
 
-/** The text of a node, without its marks. */
 function plainText(node: readonly unknown[], depth: number): string {
   let text = ''
   for (let at = 2; at < node.length; at++) {
@@ -175,7 +143,6 @@ function plainText(node: readonly unknown[], depth: number): string {
   return text
 }
 
-/** Takes the line the markdown-it rule left in the props under `key`, as a line of the file, or `undefined`. */
 function takeLine(props: Props, key: string, lineOffset: number): number | undefined {
   if (!Object.hasOwn(props, key)) return undefined
   const value = props[key]
@@ -184,7 +151,6 @@ function takeLine(props: Props, key: string, lineOffset: number): number | undef
   return Number.isSafeInteger(line) && line >= 0 ? line + 1 + lineOffset : undefined
 }
 
-/** Reads and removes the node at the end of the document that lists what was left out. */
 function takeLeftOut(nodes: unknown[], lineOffset: number): Map<number, LeftOut> {
   const found = new Map<number, LeftOut>()
   const last: unknown = nodes[nodes.length - 1]
@@ -210,7 +176,6 @@ function takeLeftOut(nodes: unknown[], lineOffset: number): Map<number, LeftOut>
   return found
 }
 
-/** Removes the attributes that name the `{...}` an element took, and remembers which. */
 function takeProps(state: State, props: Props): void {
   for (const key of Object.keys(props)) {
     const id = PROPS_KEY.exec(key)?.[1]
@@ -238,7 +203,6 @@ function markerNode(
   return [MARKER_TAG, { kind, name: shorten(name), line }, ...children]
 }
 
-/** The props of a component as its schema should see them: Comark stores `{open}` as `":open": "true"`. */
 function decodeProps(props: Props): Props {
   const decoded: Props = {}
   for (const key of Object.keys(props)) {
@@ -252,26 +216,16 @@ function decodeProps(props: Props): Props {
   return decoded
 }
 
-/** What kind of URL an attribute holds, if it holds one. */
 function urlKind(tag: string, key: string, native: boolean): UrlKind | undefined {
   if (native) {
     if (tag === 'a' && key === 'href') return 'link'
     return tag === 'img' && key === 'src' ? 'image' : undefined
   }
   const name = attributeName(key)
-  // A component's prop that a site binds to a link or an image by its name: `href`, `to` (a
-  // router link), `url`, `link`, and any name that ends in href, url or src (`ctaUrl`,
-  // `imageSrc`). Its schema may take any string; `javascript:` is never one a site should get.
   if (name === 'to' || name === 'link' || /(?:href|url)$/.test(name)) return 'link'
   return name.endsWith('src') ? 'image' : undefined
 }
 
-/**
- * Takes off an element every attribute its tag may not carry and every URL it may not point
- * to. A native tag has an allowlist (`policy.ts`). A component takes the props its schema
- * declares, which only the contracts know, so here it loses only what is never safe: event
- * handlers, attributes that write HTML and unsafe `href` and `src`.
- */
 function cleanProps(state: State, tag: string, props: Props, native: boolean, line: number): void {
   for (const key of Object.keys(props)) {
     const value = props[key]
@@ -304,11 +258,6 @@ function cleanProps(state: State, tag: string, props: Props, native: boolean, li
   }
 }
 
-/**
- * Gives a span back the brackets Comark took off it. Comark reads `[text]` as a span, for
- * `[text]{.class}`, and prints the text without the brackets, so `array[0]` would read `array0`.
- * Hollware allows no attribute on a span, so a span is always text that had brackets.
- */
 function bracket(node: unknown[]): void {
   const last = node.length - 1
   const end: unknown = node[last]
@@ -333,11 +282,6 @@ function collectImage(state: State, props: Props, line: number): void {
   state.images.push({ src, alt: typeof alt === 'string' ? alt : '', line })
 }
 
-/**
- * Judges the children of a node, in order, and returns the line the next sibling starts on.
- * A line is counted from the block that carries it: every line break in the text (a soft break)
- * and every hard break moves it down one.
- */
 function walk(
   state: State,
   list: unknown[],
@@ -387,7 +331,6 @@ function visit(
   if (state.leftOut.size > 0) takeProps(state, props)
 
   if (typeof tag !== 'string') {
-    // A comment node. Only Comark's `html` plugin makes one, and it is not registered.
     list[at] = markerNode('raw-html', '!--', line, [])
     record(state, 'raw-html', '!--', line)
     state.inWord = false
@@ -436,12 +379,6 @@ function visit(
   return end
 }
 
-/**
- * Judges and extracts a document: see the comment at the top of this file. The `words` are
- * the whitespace-separated words of the text outside code blocks, with the headings, the list
- * items, the link text and the text inside components, and without URLs and the marks of Markdown.
- * The `codeWords` are those of the code blocks, apart, for a reading time that counts them too.
- */
 export function analyzeDocument(document: MarkdownDocument, options: AnalyzeOptions): Analysis {
   const state: State = {
     options,
@@ -462,12 +399,10 @@ export function analyzeDocument(document: MarkdownDocument, options: AnalyzeOpti
   }
   walk(state, document.nodes, 0, options.lineOffset + 1, 1, false)
   for (const [id, item] of state.leftOut) {
-    // Braces that an element took as attributes are judged with the element; the rest was lost.
     if (!item.given || !state.taken.has(id)) {
       record(state, 'disallowed-attribute', `${item.tag}[${item.text}]`, item.line)
     }
   }
-  // In the order of the file: the walk finds the elements first, and what was left out last.
   state.disallowed.sort((a, b) => (a.line ?? 0) - (b.line ?? 0))
   return {
     extracted: {

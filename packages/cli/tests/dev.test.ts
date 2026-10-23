@@ -1,23 +1,3 @@
-// Fails when:
-// - "prints the ready line once /health answers": `hollware dev` prints before /health answers,
-//   prints a line other than "Hollware is ready at <url>", or starts anything but the vp of the
-//   project with the argument dev, in the project directory.
-// - "stops the server and its group on SIGTERM, then exits 0": a signal no longer kills the
-//   whole group (SIGTERM, then SIGKILL for what is left), or the command returns before the
-//   server ended, or exits non-zero.
-// - "kills a server that ignores SIGTERM": the grace period ends and the group is not killed.
-// - "says what the server printed when it stops before it is ready" and "gives up after
-//   --timeout": a server that ends early or never answers hangs the command or hides why.
-// - "--detach writes the state file and leaves the server running": --detach stops the server,
-//   waits for a signal, or leaves out the pid or the URL of .wrangler/hollware-dev.json.
-// - "--stop stops what the file names": --stop does not signal the group of the pid of the
-//   file, leaves the file, or reports a server that was gone as stopped.
-// - "refuses a second detached server", "needs the vp of the project": a second --detach
-//   starts another server, or a project without vp reaches a global one.
-// - "--json": the ready object stops holding url, pid and detached, or is joined by other output.
-// - "stays on localhost once deployed": with a public URL in wrangler.jsonc, hollware dev waits on
-//   that URL (production) instead of localhost, or writes a file of the project (.dev.vars, which
-//   `wrangler types` would read into the types of the Worker).
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -36,11 +16,6 @@ interface Spawned {
   detached: boolean
 }
 
-/**
- * A fake of the machine: one child at pid 4242 that the test ends by hand, and a clock that only
- * moves when something sleeps. Nothing is started: the processes are the one thing this
- * repository does not own.
- */
 function fakeHost(
   options: {
     healthyAfter?: number
@@ -100,7 +75,6 @@ function fakeHost(
         alive.delete(4242)
         end({ code: 1, signal: null })
       }
-      // A turn of the event loop, so that the test can signal the process from outside.
       return new Promise((resolve) => setTimeout(resolve, 0))
     },
   }
@@ -117,7 +91,6 @@ function fakeHost(
   }
 }
 
-/** Waits until the command has printed its ready line. */
 async function printed(out: string[]): Promise<void> {
   for (let tries = 0; out.length === 0; tries += 1) {
     if (tries > 500) throw new Error('the command printed nothing')
@@ -181,7 +154,6 @@ describe('hollware dev', () => {
     const code = await running
 
     expect(code).toBe(0)
-    // SIGTERM to the group, and a SIGKILL after the leader ended for what ignored it.
     expect(machine.signals).toEqual([
       { pid: 4242, signal: 'SIGTERM' },
       { pid: 4242, signal: 'SIGKILL' },

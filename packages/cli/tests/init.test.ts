@@ -1,29 +1,3 @@
-// Fails when:
-// - "creates the site, the owner and the first token in one script and prints the token once":
-//   the SQL of `initScript` changes (a column, a value, the order of the three statements),
-//   the token is not the one whose SHA-256 is stored, the stored value is the token and not its
-//   hash, the scopes are not all four, the expiry is not 90 days, the wrangler arguments change,
-//   or the output stops saying the token once.
-// - "uses the target of the flag …" rows: `--remote` or the local default is not passed to
-//   wrangler in both calls, or the message names the wrong database.
-// - "refuses a second init of a site and writes nothing": the owner check is removed or ignored,
-//   so a second `init` goes on to write; or the refusal asks for a directory, or writes a file.
-// - "adds another site to the owner of the database …": `init` for a new site of a database with
-//   an owner makes a second owner, or writes a setup link, or gives the token another site.
-// - "says to migrate first when the tables are missing": a database without tables is reported
-//   with the raw error of SQLite.
-// - "takes the database from --database …": `--database` is not passed to wrangler as it is.
-// - "does not reach wrangler when the project has no binding DB …": a project without the
-//   binding DB reaches wrangler.
-// - "writes the owner name as a string literal": the name is put in the SQL without `quote`.
-// - "stores no name for the owner when none is given": the missing name becomes a string
-//   (such as `'undefined'`) instead of NULL.
-// - "rejects … before it touches wrangler" rows: a bad `--site`, `--owner-name`, a repeated
-//   target flag, an unknown option or a stray argument reaches wrangler.
-// - "writes the SQL file for its owner only and removes it": the file is created with the
-//   default permissions, or is left behind.
-// - "removes the SQL file and prints no token when wrangler fails": the `finally` that removes
-//   the directory is gone, or the token is printed before the script succeeded.
 import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -43,7 +17,6 @@ const HASH = 'b07c83868ce651218676f8ab9a47188f183db88ea929168941c3f8f20afa6a7a'
 const OWNER_QUERY =
   "SELECT user_id AS id, site_id AS site FROM members WHERE role = 'owner' ORDER BY created_at, user_id"
 
-/** A project with the starter's wrangler.jsonc, and a scratch directory for the SQL file. */
 function setup(
   wrangler: FakeWrangler,
   files: Record<string, string> = { 'wrangler.jsonc': WRANGLER_JSONC },
@@ -68,7 +41,6 @@ function setup(
   }
 }
 
-/** The definition of the preset blog in English, as the site's first. */
 const BLOG_DEFINITION =
   '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
 
@@ -82,7 +54,6 @@ const SCRIPT = [
   '',
 ].join('\n')
 
-/** The script of `init --site docs` on a database whose owner owns `blog`. */
 const ANOTHER_SITE = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('docs', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00C1G60R30C1G60R3', 'docs', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,

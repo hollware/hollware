@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { resolveConfig } from '../../src/config/resolve.ts'
 import { configWith, problemsOf } from './support.ts'
 
-// Fails when: `auth` of the config stops resolving as ADR-026 says: dynamic client registration
-// is off unless the config says true, and anything but an object with a boolean is a problem
-// that names its path and how to fix it.
-
 describe('auth of the config', () => {
   it('leaves dynamic client registration off unless the config turns it on', () => {
     expect(resolveConfig(configWith()).auth).toEqual({ dynamicClientRegistration: false })

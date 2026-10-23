@@ -17,22 +17,10 @@ import {
   VERDICT,
 } from './support.ts'
 
-// Fails when: src/db/writes.ts appendRevision or src/db/statements.ts lose the version predicate
-// of the optimistic write (`version = ?` on the revision's INSERT ... SELECT, or on the entry's
-// UPDATE ... RETURNING: a stale write then lands, or lands half), stop inserting the tags only
-// WHERE EXISTS their revision (a stale write with tags then fails a foreign key instead of
-// answering `conflict`), stop sending the revision, its tags and the entry's update as one batch
-// (a write that fails halfway then leaves the revision, or the tags, behind), stop bumping the
-// version by one, moving head_rev, updated_at and translation_group, touch what is published, stop
-// telling `conflict` (with the current version and head revision) from `not_found` after an empty
-// RETURNING, stop answering `taken` for a translation another entry holds (writing nothing), or
-// stop cutting the tags into statements under the limit of bound values (150 tags must work).
-
 const T1 = '2026-10-12T10:00:00.000Z'
 const T2 = '2026-10-12T11:00:00.000Z'
 const T3 = '2026-10-12T12:00:00.000Z'
 
-/** A draft at version 1 with one revision, `rev_a`, and one tag. */
 async function seedDraft(label: string) {
   const owner = await seedOwner(env.DB, siteKey(label))
   const id = idFactory()
@@ -55,7 +43,6 @@ async function seedDraft(label: string) {
   }
 }
 
-/** The view of an entry that was saved, or a failure that says what else the store answered. */
 async function saved(answer: ReturnType<ContentStore['appendRevision']>): Promise<EntryView> {
   const result = await answer
   if (result.outcome !== 'saved') throw new Error(`Not saved: ${JSON.stringify(result)}`)
@@ -112,9 +99,7 @@ describe('appendRevision', () => {
       },
     })
     expect(revision.id).not.toBe(id('rev_a'))
-    // Reading it back gives the same view.
     expect(await store.findEntryById(owner.site, entryId, 'head')).toEqual(result.view)
-    // The entry as the database holds it: created_at stays, the rest moved.
     expect(await entryRow(env.DB, entryId)).toEqual({
       id: entryId,
       site_id: owner.site,
@@ -133,7 +118,6 @@ describe('appendRevision', () => {
       created_at: T1,
       updated_at: T2,
     })
-    // The first revision and its tags are still there, as they were.
     expect(
       await env.DB.prepare(
         'SELECT id, markdown, created_at FROM revisions WHERE entry_id = ? ORDER BY created_at',
@@ -373,7 +357,6 @@ describe('appendRevision with writes at the same time', () => {
           headRevision: winner.view.revision.id,
         })
       }
-      // One revision was added, with the tags of the winner and no others.
       expect(await countRows(env.DB, 'revisions', owner.site)).toBe(2)
       expect(await countRows(env.DB, 'revision_tags', owner.site)).toBe(1 + 3)
       expect(await storedTags(env.DB, winner.view.revision.id)).toEqual(winner.view.revision.tags)
@@ -407,7 +390,6 @@ describe('appendRevision with many tags', () => {
 })
 
 describe('appendRevision to a translation group that another entry holds', () => {
-  /** `ent_a` (en, group g1), `ent_b` (en, no group), `ent_c` (es, group g2). */
   async function seedGroups() {
     const owner = await seedOwner(env.DB, siteKey('append-taken'))
     const id = idFactory()
@@ -439,7 +421,6 @@ describe('appendRevision to a translation group that another entry holds', () =>
   it('lets the entry join the group of an entry in another locale, or a group nobody holds', async () => {
     const { owner, id, store } = await seedGroups()
 
-    // The English entry joins the group of the Spanish one: they are translations of each other.
     await saved(
       store.appendRevision(owner.site, {
         entryId: id('ent_b'),

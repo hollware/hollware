@@ -4,11 +4,6 @@ import { checkWorkflowPermissions } from '../guards/workflow-permissions.ts'
 import { file } from '../support/fixtures.ts'
 import { isWorkflowPath, readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a workflow lacks a top-level `permissions: {}`, a job grants permissions as
-// write-all, `id-token: write` appears anywhere but release.yml `publish` and security.yml
-// `scorecard`, an actions/checkout step does not set persist-credentials: false, or security.yml
-// gets a top-level env or defaults.
-
 const CHECKOUT = '      - uses: actions/checkout@' + 'a'.repeat(40) + ' # v7.0.1'
 
 const check = (path: string, text: string) =>
@@ -155,7 +150,6 @@ describe('workflow permissions', () => {
         'security.yml must have no top-level "env": OpenSSF Scorecard rejects the results of a workflow that has it',
         'security.yml must have no top-level "defaults": OpenSSF Scorecard rejects the results of a workflow that has it',
       ])
-      // Other workflows may have them.
       const minimal =
         'permissions: {}\nenv:\n  A: b\njobs:\n  build:\n    steps:\n      - run: echo'
       expect(check('ci.yml', minimal)).toEqual([])

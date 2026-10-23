@@ -12,9 +12,6 @@ import {
   type MiddlewareFunction,
 } from 'react-router'
 
-// The link of the admin's "Preview on the site" is exchanged for a cookie on the first request:
-// a 303 to the same URL without the token, and every page after it reads the token from the
-// cookie (see routes/post.tsx).
 export const middleware: MiddlewareFunction<Response>[] = [
   ({ request }) => {
     const exchange = previewRedirect(request)
@@ -22,8 +19,6 @@ export const middleware: MiddlewareFunction<Response>[] = [
   },
 ]
 
-// The headers of a thrown 404, a refused preview's `no-store` and cleared cookie among them, reach
-// the document through the route whose ErrorBoundary renders it: this one.
 export function headers({ errorHeaders }: HeadersArgs) {
   return errorHeaders
 }

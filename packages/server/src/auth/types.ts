@@ -2,7 +2,7 @@ import type { Scope } from '@hollware/core'
 
 /**
  * Who calls an operation. The gateway turns each request into a principal before any handler
- * runs, and the handlers check their scopes against it at call time (ADR-019).
+ * runs, and the handlers check their scopes against it at call time.
  */
 export type Principal =
   | {
@@ -16,7 +16,7 @@ export type Principal =
       readonly scopes: readonly Scope[]
     }
   | {
-      /** An access token of the OAuth server (ADR-026): a person, through a client they allowed. */
+      /** An access token of the OAuth server: a person, through a client they allowed. */
       readonly kind: 'oauth'
       readonly userId: string
       /** The client the person allowed: a Client ID Metadata Document URL, or a registered id. */
@@ -43,5 +43,4 @@ export type Principal =
       readonly scopes: readonly ['content:read']
     }
 
-/** A principal of a request over HTTP: a person or their token, and always of one site. */
 export type RequestPrincipal = Exclude<Principal, { readonly kind: 'binding' }>

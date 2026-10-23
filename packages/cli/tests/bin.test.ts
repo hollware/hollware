@@ -1,16 +1,3 @@
-// Fails when:
-// - "runs through the symlink npm creates …": the entry point stops recognizing itself through
-//   a symlink (`isEntryPoint` without `realpathSync`), or `--version` stops printing on stdout.
-// - "sends errors to stderr and exits with the code main returns": the entry point stops
-//   writing `io.err` to stderr or stops setting `process.exitCode` from the result of `main`.
-// - "loads a command in a real process": a command stops loading from the unbuilt source (a
-//   dependency that is not declared, syntax Node cannot strip), or the usage error of a
-//   command stops reaching stderr with exit code 1.
-// - "imports with the token on stdin": the entry point stops giving `readStdin` the piped text,
-//   `main` is not awaited before the exit code is set, or the token stops being sent as a
-//   bearer token; the token appears in the output.
-// - "does not run when imported, even if argv[1] is not a file": the entry point runs on
-//   import.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,7 +8,6 @@ import { exec } from './support/exec.ts'
 import { install, type Install } from './support/install.ts'
 import { startStub } from './support/stub-hollware.ts'
 
-// Each test starts a Node process, which a busy machine can make slow.
 const SLOW = { timeout: 60_000 }
 
 let installed: Install

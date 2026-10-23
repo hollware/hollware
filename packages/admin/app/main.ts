@@ -7,7 +7,6 @@ import { auth } from './lib/session.ts'
 import { isStaleFile, loadAgainOnce, sessionStore } from './lib/stale.ts'
 import './app.css'
 
-// The icons travel in the bundle: the page may fetch nothing from another origin.
 if (__HOLLWARE_ICONS__ !== null) addCollection(__HOLLWARE_ICONS__)
 
 const BASE = '/admin'
@@ -40,7 +39,6 @@ const router = createRouter({
   ],
 })
 
-// Every page but the callback needs a token: without one, the person signs in and comes back.
 router.beforeEach(async (to) => {
   if (to.meta['open'] === true) return true
   if ((await auth.token()) !== null) return true
@@ -48,8 +46,6 @@ router.beforeEach(async (to) => {
   return false
 })
 
-// After a deploy, a page loaded before it may ask for a file the new version does not have: the
-// admin then loads the new version, at the page the person was going to, instead of staying broken.
 let going: string | null = null
 router.beforeEach((to) => {
   going = to.fullPath

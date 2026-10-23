@@ -3,36 +3,14 @@ import { analyzeSource } from '../support/source.ts'
 import type { TextFile, Violation } from './types.ts'
 import { dependencySpecs, parseManifests } from './workspace.ts'
 
-/**
- * Guard `declared-imports`: every bare import is declared in the `package.json` of the
- * package that imports it (`dependencies`, `devDependencies` or `peerDependencies`).
- *
- * The check matters because Node resolves a package by walking up the directory tree: code in
- * `packages/core` that imports `yaml` works on this machine because the root declares it,
- * and breaks for whoever installs `@hollware/core`. The type check cannot see that.
- *
- * A file belongs to the package whose directory is its closest ancestor, and files outside
- * every workspace package (`scripts/`, `tests/`, the root `vite.config.ts`) belong to the
- * root. Allowed without a declaration: relative imports, `node:*`, `cloudflare:*` and the
- * package's own name. Subpaths are normalized (`vite-plus/test` is `vite-plus`,
- * `@scope/pkg/x` is `@scope/pkg`). Anything else that is not a bare package name (`#alias`,
- * `~/x`, `https://...`, `virtual:x`) is reported, because nothing resolves it for a consumer,
- * but for the `<file>#<specifier>` entries of `allowedVirtualImports`: the module that a
- * framework's Vite plugin makes at build time. An entry that no import uses is reported too.
- */
-
 export interface DeclaredImportsInput {
-  /** The `package.json` of the root and of every workspace package. */
   manifests: readonly TextFile[]
-  /** The source files to scan, with their text. */
   sources: readonly TextFile[]
-  /** `<file>#<specifier>` of the imports of a module that a build plugin makes (`VIRTUAL_IMPORTS`). */
   allowedVirtualImports?: readonly string[]
 }
 
 const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/
 
-/** Whether the guard scans a repository file: source code, minus what a tool generates. */
 export function isScannedSource(path: string): boolean {
   return SOURCE_FILE.test(path) && !path.endsWith('/worker-configuration.d.ts')
 }
@@ -41,7 +19,6 @@ const BUILTINS: ReadonlySet<string> = new Set(builtinModules)
 
 const PACKAGE_NAME = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/
 
-/** The package a bare specifier names, or `undefined` when it is not a package name. */
 export function packageOf(specifier: string): string | undefined {
   const parts = specifier.split('/')
   const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : (parts[0] ?? '')

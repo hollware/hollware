@@ -6,10 +6,6 @@ import { file } from '../support/fixtures.ts'
 import { isWorkflowPath, readRepoFiles, readText } from '../support/repo.ts'
 import { isRecord } from '../support/values.ts'
 
-// Fails when: a voidzero-dev/setup-vp step pins a `version` that is not the vite-plus version of
-// the catalog, or does not take Node from .node-version; or a setup-node step uses neither
-// `node-version-file: .node-version` nor the exact version in .node-version.
-
 const SHA = 'a'.repeat(40)
 
 const step = (uses: string, inputs: string[]) =>

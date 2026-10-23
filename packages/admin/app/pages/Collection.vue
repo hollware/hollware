@@ -51,7 +51,6 @@ const KIND_ORDER: readonly BuilderKind[] = [
 const KINDS = computed(() =>
   KIND_ORDER.map((value) => ({ label: m.value.collection.kinds[value], value })),
 )
-/** The components of a collection, as the server checks them. */
 const componentsData = collectionDefinitionData.shape.components
 
 const BOUNDED: readonly BuilderKind[] = ['text', 'list', 'number', 'integer']
@@ -69,7 +68,6 @@ async function load() {
 watch(() => props.name, load, { immediate: true })
 
 const fieldKeys = computed(() => (builder.value?.fields ?? []).map((field) => field.key))
-/** A select of no field: Reka's selects take no empty value, so none has a name of its own. */
 const NONE = computed(() => m.value.common.none)
 const optionalFields = computed(() => [NONE.value, ...fieldKeys.value])
 const formProblems = computed(() => [
@@ -98,7 +96,6 @@ function move(index: number, by: -1 | 1) {
   const [field] = fields.splice(index, 1)
   if (field !== undefined) fields.splice(index + by, 0, field)
 }
-/** Hollware fills the field, or a person writes it again. */
 function setAutomatic(key: string, value: string) {
   const current = collection.value
   if (current === null) return
@@ -127,7 +124,6 @@ function edited(): Collection | null {
   const automaticFields = automaticOf(builder.value.fields, collection.value.automaticFields)
   return {
     ...collection.value,
-    // A field Hollware fills is never required: nobody writes it.
     schema: schemaFromFields({
       ...builder.value,
       fields: builder.value.fields.map((field) =>

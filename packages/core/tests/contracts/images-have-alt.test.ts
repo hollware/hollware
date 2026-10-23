@@ -4,12 +4,6 @@ import { contracts, type Phase } from '../../src/contracts/index.ts'
 import type { ImageRef } from '../../src/markdown/types.ts'
 import { collectionOf, markdownOf, run } from './support.ts'
 
-// Fails when: `images-have-alt` stops reporting an image whose alt is empty or only spaces, or
-// starts reporting one that has alt text; stops pointing at /body with the line of the image;
-// stops saying which image and how to fix it; runs in only one phase; runs for a collection that
-// did not list it; stops running when the frontmatter fails the schema (it does not read it); or
-// ignores the severity it is given.
-
 const PHASES: Phase[] = ['write', 'publish']
 
 function runImages(images: readonly ImageRef[], phase: Phase, severity?: 'warning') {

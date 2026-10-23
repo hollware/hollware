@@ -2,7 +2,7 @@ import type { Problems } from './config-error.ts'
 import type { ResolvedMedia } from './types.ts'
 import { isRecord, keyPath, wrongType } from './values.ts'
 
-/** The formats a site may convert its images to, or keep them as they came (ADR-038). */
+/** The formats a site may convert its images to, or keep them as they came. */
 export const MEDIA_FORMATS = ['webp', 'avif', 'original'] as const
 
 /** The narrowest an image may be scaled down to: smaller would blur on every screen. */
@@ -28,10 +28,6 @@ export const DEFAULT_MEDIA: ResolvedMedia = {
 const FIX =
   'Declare it as { format: "webp", quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true }, or remove it.'
 
-/**
- * The widths of the narrower copies, smallest first, or `null` when the value is not a list of
- * up to `MEDIA_MAX_WIDTHS` distinct whole numbers of pixels from `MEDIA_MIN_WIDTH` to `MEDIA_MAX_WIDTH`.
- */
 export function mediaWidths(value: unknown): number[] | null {
   if (!Array.isArray(value) || value.length > MEDIA_MAX_WIDTHS) return null
   const widths: number[] = []
@@ -43,7 +39,6 @@ export function mediaWidths(value: unknown): number[] | null {
   return widths.sort((a, b) => a - b)
 }
 
-/** How a site converts the images it receives (ADR-038). */
 export function readMedia(path: string, raw: unknown, problems: Problems): ResolvedMedia {
   if (raw === undefined || raw === null) return DEFAULT_MEDIA
   if (!isRecord(raw)) {

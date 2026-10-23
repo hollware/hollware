@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import * as vue from '../src/index.ts'
 
-// Fails when: @hollware/vue stops re-exporting one of the server helpers of @hollware/client
-// (or exports another function under its name), so a Vue server that imports it loses a name.
-
 describe('the server helpers of @hollware/vue', () => {
   it('are the ones of @hollware/client', () => {
     expect(vue.createHollware).toBe(client.createHollware)

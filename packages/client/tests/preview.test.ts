@@ -12,13 +12,6 @@ import {
 } from '../src/preview.ts'
 import { HollwareClientError } from '../src/index.ts'
 
-// Fails when: the exchange of a preview link (src/preview.ts) redirects to another host through a
-// path that starts with // or /\, or stops dropping `hollware-preview`
-// and keeping every other parameter in order, keeps a value that is not shaped like a token,
-// gives the cookie other flags than HttpOnly, Secure (off on http://localhost and 127.0.0.1),
-// SameSite=Lax, Path=/ and an hour, reads a cookie that is not its own, or clears the cookie for
-// anything but an expired or invalid token.
-
 const TOKEN = 'hw_prv_eyJzIjoicyJ9.c2ln-_9'
 
 describe('the exchange of a preview link', () => {
@@ -169,7 +162,6 @@ describe('a refusal of a preview token', () => {
           'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',
         ),
         'This preview link has expired.',
-        // The words alone are not a refusal: only the code is.
         Object.assign(new Error('This preview link has expired.'), { code: 'invalid_input' }),
         undefined,
       ].map((error) => isPreviewRefusal(error)),

@@ -2,15 +2,10 @@ import type { EntryRef, ResolvedSite } from '@hollware/core'
 import { entrySummary } from './answers.ts'
 import type { OperationHandler } from './types.ts'
 
-/** A path without its trailing slash, so that `/blog/a` and `/blog/a/` are one page. */
 function trimmed(path: string): string {
   return path.length > 1 ? path.replace(/\/+$/, '') : path
 }
 
-/**
- * The entry that a path of the site shows, by the routes of its collections: the slug is the part
- * of the path where the route has `:slug`. `null` for a path that no route has.
- */
 export function entryRefOf(site: ResolvedSite, path: string): EntryRef | null {
   const wanted = trimmed(path)
   for (const [collection, resolved] of site.collections) {
@@ -25,11 +20,6 @@ export function entryRefOf(site: ResolvedSite, path: string): EntryRef | null {
   return null
 }
 
-/**
- * The most read pages of the site, from the analytics it connected (ADR-040), each with the
- * published entry it shows. `unavailable` with a fix when the site has connected none, or its
- * provider did not answer.
- */
 export const contentStats: OperationHandler<'content_stats'> = async (input, context) => {
   const sources = context.analytics ?? null
   if (sources === null) {

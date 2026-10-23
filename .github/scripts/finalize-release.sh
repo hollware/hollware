@@ -1,41 +1,5 @@
 #!/usr/bin/env bash
-# Finalizes a release once its packages are live on npm.
-#
-# The release is what the release commit changed: the public packages whose
-# version differs from the one in its first parent. For each of them that still
-# has no git tag or no GitHub Release, the script
-#   1. waits until that version is live on npm with its provenance attestation,
-#   2. creates the tag `<name>@<version>` (Changesets style) on the release
-#      commit, and
-#   3. creates a GitHub Release from the package's CHANGELOG.md section.
-#
-# Everything is read from the release commit, never from the working tree, so a
-# run on a later commit tags the same thing. The script is idempotent: whatever
-# already exists is left alone, so it can be re-run (release.yml does it with its
-# `finalize_only` input). Run it from the repository root with the full history
-# checked out (fetch-depth: 0). It only reads package.json files and changelogs.
-# It never installs or runs repository code, and `gh` authenticates with the
-# token below, not with git credentials.
-#
-# Environment:
-#   GH_TOKEN           token for `gh`, needs contents: write (required)
-#   GITHUB_REPOSITORY  owner/repo (set by Actions)
-#   RELEASE_SHA        the commit this run published: the head of the release branch.
-#                      It is the release commit when it bumped a public package, which
-#                      is the case when the promoted commit is the Version Packages
-#                      merge, and it is then used as given. Otherwise, and when empty,
-#                      the release commit is the latest "Version Packages" commit on
-#                      the first-parent history of HEAD. The script then fails when HEAD
-#                      has other versions of a public package than that commit: a later
-#                      commit bumped them under a title the scan does not know (a merge
-#                      commit whose title was edited by hand), and finalizing the older
-#                      release would tag nothing and say so. Name the right commit in
-#                      RELEASE_SHA then.
-#   WAIT_SECONDS       how long to wait for npm before failing (default 1800)
-#   LATEST_PACKAGE     the package whose Release is marked Latest (default hollware)
-#   DRY_RUN            "true" prints what would be created and creates nothing
 set -euo pipefail
-# Let command substitutions fail the script too (bash 4.4 and later).
 shopt -s inherit_errexit 2>/dev/null || true
 
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
@@ -55,8 +19,6 @@ summary() {
   fi
 }
 
-# Prints `gh api <endpoint>` filtered with a jq expression. Prints nothing when
-# the endpoint answers 404 and fails on any other error.
 api_get() {
   local endpoint="$1" filter="$2" out
   if out="$(gh api "$endpoint" --jq "$filter" 2>"$work/api.err" </dev/null)"; then
@@ -69,7 +31,6 @@ api_get() {
   fi
 }
 
-# The commit a tag points at, resolving annotated tags. Nothing when it is absent.
 tag_commit() {
   local found type sha
   found="$(api_get "repos/${repo}/git/ref/tags/${1}" '.object | "\(.type) \(.sha)"')" || return 1
@@ -81,8 +42,6 @@ tag_commit() {
   printf '%s\n' "$sha"
 }
 
-# One line per public package at commit `$1`: manifest, name and version.
-# Apps, templates and examples are private and never released.
 public_versions() {
   local commit="$1" listing manifest line
   listing="$(git ls-tree -r --name-only "$commit" -- packages)" || return 1
@@ -94,8 +53,6 @@ public_versions() {
   done <<<"$listing"
 }
 
-# One line per public package whose version differs between the first parent of
-# commit `$1` and the commit itself: manifest, name and version at the commit.
 released_by() {
   local commit="$1" versions manifest name version before
   versions="$(public_versions "$commit")" || return 1
@@ -108,11 +65,6 @@ released_by() {
   done <<<"$versions"
 }
 
-# Fails when HEAD has other versions of a public package than commit `$1`, the one the scan
-# of the history found by its title (`$2`). A later commit bumped them under a title the scan
-# does not know, and finalizing the older release would tag nothing and say so. A package that
-# commit does not have is not compared. The error names the latest commit that changed a
-# public version, which is the one to give as RELEASE_SHA.
 scan_is_latest() {
   local release="$1" subject="$2" versions manifest name version at_release changed="" candidate latest=""
   versions="$(public_versions HEAD)" || return 1
@@ -134,8 +86,6 @@ scan_is_latest() {
   return 1
 }
 
-# The release commit: see RELEASE_SHA above. Nothing when there is none, and a failure when the
-# scan of the history settles on a release that is not the latest.
 release_commit() {
   local sha subject bumped
   if [[ -n "${RELEASE_SHA:-}" ]]; then
@@ -158,8 +108,6 @@ release_commit() {
   done < <(git log --first-parent --format='%H%x09%s')
 }
 
-# The body of the `## <version>` section of a Changesets CHANGELOG.md. Headings
-# inside code fences do not count; blank lines around the body are dropped.
 changelog_section() {
   awk -v heading="## $2" '
     /^(```|~~~)/ { fence = !fence }
@@ -178,7 +126,6 @@ changelog_section() {
   ' "$1"
 }
 
-# ready | not-live | no-provenance
 npm_state() {
   local out
   if ! out="$(npm view "${1}@${2}" dist.attestations --json --prefer-online --registry "$npm_registry" 2>/dev/null)"; then
@@ -203,8 +150,6 @@ if [[ -z "$sha" ]]; then
 fi
 echo "Release commit: ${sha}"
 
-# One line per package that still needs a tag or a Release:
-# manifest, name, version and "tagged" when the tag exists.
 releases="$(released_by "$sha")"
 pending=()
 while IFS=$'\t' read -r manifest name version; do
@@ -229,8 +174,6 @@ if ((${#pending[@]} == 0)); then
   exit 0
 fi
 
-# 1. Wait for npm. Every package is checked together: no tag is created until all
-#    of them are live with their provenance attestation.
 waited=0
 delay=10
 while true; do
@@ -254,7 +197,6 @@ while true; do
 done
 echo "Every version is live on npm with its provenance attestation."
 
-# 2. Tags and Releases.
 summary "## Release finalized"$'\n\n'"| Tag | Commit | Release |"$'\n'"| --- | --- | --- |"
 for entry in "${pending[@]}"; do
   IFS=$'\t' read -r manifest name version tagged <<<"$entry"

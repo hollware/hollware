@@ -5,16 +5,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { agent, warmUpComark } from './support.ts'
 import { newWorld, type World } from './world.ts'
 
-// Fails when: the rule `reference` of the catalog (src/contracts/rules.ts of @hollware/core) stops
-// refusing a slug that names no entry, or stops blocking the publication of an entry that names
-// one that is not published, or reads another locale than the one it is given; or get_entry with
-// references (src/ops/get-entry.ts) stops answering the published entries a field names, in its
-// order, leaving out one that is not published.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/** The world with a rule on notes: `author` names notes by their slug, in en. */
 function withReferences(world: World) {
   const site = world.tenant.site
   const notes = site.collections.get('notes')

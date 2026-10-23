@@ -33,7 +33,6 @@ const related = ref<Summary[]>([])
 const translations = ref<Summary[]>([])
 const missing = ref(false)
 const text = ref('')
-/** The Markdown as it was last loaded or saved: what tells an unsaved change. */
 const saved = ref('')
 const verdict = ref<Verdict | null>(null)
 const busy = ref(false)
@@ -46,10 +45,8 @@ const scheduleOpen = ref(false)
 const moveOpen = ref(false)
 const newSlug = ref('')
 const slugValid = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newSlug.value))
-/** What the dialog of a time schedules: the publication of a draft, or the end of a published one. */
 const scheduleMode = ref<'publish' | 'unpublish'>('publish')
 const publishAt = ref('')
-/** What publish waits for once the warnings are acknowledged: now, or a time. */
 let pendingAt: string | undefined
 
 const ref_ = computed(() => ({
@@ -69,13 +66,11 @@ const liveUrl = computed(() =>
     ? pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug)
     : null,
 )
-/** Whether the site has a page for this entry to preview on: its URL, and a route for the locale. */
 const canPreview = computed(
   () =>
     definition.value !== undefined &&
     pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug) !== null,
 )
-/** The locales of the site with no entry in this one's translation group yet. */
 const untranslated = computed(() =>
   entry.value?.translationGroup === null || entry.value === null
     ? []
@@ -117,10 +112,8 @@ async function load() {
         ).entries ?? [])
 }
 
-// Another entry of the same page (a translation, a related one) loads in place.
 watch(ref_, load, { immediate: true })
 
-// The contracts run again a moment after the person stops typing, without saving anything.
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(text, (markdown) => {
   clearTimeout(timer)
@@ -154,12 +147,9 @@ async function check() {
   }
 }
 
-/** Opens the entry's page on the site with a link that shows its latest revision, for an hour. */
 async function previewOnSite() {
   if (entry.value === null) return
   busy.value = true
-  // The tab is opened in the click itself, before the link is asked for: a browser (Safari) blocks
-  // a tab opened after an await. It leaves no hold on this page, and closes if there is no link.
   const tab = window.open('', '_blank')
   if (tab !== null) tab.opener = null
   try {
@@ -294,7 +284,6 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
 
 function openSchedule(mode: 'publish' | 'unpublish' = 'publish') {
   scheduleMode.value = mode
-  // An hour from now, to the minute, in the person's own zone: what a datetime-local input shows.
   const soon = new Date(Date.now() + 3_600_000)
   soon.setSeconds(0, 0)
   publishAt.value = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
@@ -309,7 +298,6 @@ const scheduleError = computed(() => {
   return at <= Date.now() ? m.value.entry.pickFuture : null
 })
 
-/** Gives the entry the slug of the dialog, and opens it at its new place. */
 async function move() {
   if (entry.value === null) return
   busy.value = true
@@ -348,7 +336,6 @@ async function move() {
   }
 }
 
-/** Takes a published entry off the site at the time of the dialog, or keeps it with `null`. */
 async function scheduleUnpublish(at: string | null) {
   if (entry.value === null) return
   busy.value = true
@@ -392,7 +379,6 @@ async function unpublish() {
   }
 }
 
-/** Moves the draft to the trash, and goes back to the entries of its collection. */
 async function trash() {
   if (entry.value === null) return
   busy.value = true
@@ -616,8 +602,6 @@ const tabs = computed(() => [
             </div>
           </template>
           <template #preview>
-            <!-- The HTML that Hollware renders, in a frame that runs nothing and reaches nothing of
-                 the admin (T-60): its styles cannot draw over the admin. -->
             <iframe
               sandbox=""
               referrerpolicy="no-referrer"

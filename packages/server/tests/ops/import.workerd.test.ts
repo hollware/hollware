@@ -6,18 +6,9 @@ import { countRows } from '../db/support.ts'
 import { warmUpComark } from './support.ts'
 import { newWorld, snapshotOf, type World } from './world.ts'
 
-// Fails when: importing the same files twice stops being a no-op (AC-0.1-9, which is what makes
-// the import of the CLI idempotent): update-draft.ts stops answering `unchanged` for the file
-// that the head already holds, and writes a revision or moves the version instead; or
-// create-draft.ts stops saving a whole corpus of translations and tags the first time.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-/**
- * What the import of the CLI does for each file: read the entry by its key, create it when there
- * is none, and otherwise write the file against the version that was read.
- */
 async function importCorpus(agent: World['agent'], corpus = BLOG_CORPUS) {
   const outcomes: string[] = []
   for (const file of corpus) {
@@ -59,7 +50,6 @@ describe('importing the files of a site', () => {
       })
       expect(translations.entries?.map((entry) => entry.locale)).toEqual(['en', 'es'])
     }
-    // Two tags for each entry but the two about Markdown as the source of truth, which have one.
     expect(await countRows(env.DB, 'revision_tags', world.tenant.key)).toBe(18)
   })
 
@@ -72,7 +62,6 @@ describe('importing the files of a site', () => {
     const outcomes = await importCorpus(world.agent)
 
     expect(outcomes).toEqual(Array.from({ length: 10 }, () => 'unchanged'))
-    // Not a revision, not a tag, not a version, not even the time of the last change.
     expect(await snapshotOf(env.DB, world.tenant.key)).toEqual(before)
     expect(before.counts).toEqual({ revisions: 10, revision_tags: 18, publications: 0 })
   })

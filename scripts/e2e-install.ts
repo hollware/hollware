@@ -1,21 +1,3 @@
-/**
- * The install, end to end, as a user does it (AC-0.4-1):
- *
- *   node scripts/e2e-install.ts [--pm npm|pnpm]
- *
- * It packs this checkout's published packages at a version of its own, serves them from a local
- * registry that sends everything else to npm (scripts/e2e/registry.ts), and in an empty directory
- * runs `create-hollware` from that registry. Then, in the project it made:
- *
- * 1. the dev server starts and answers `/health`;
- * 2. MCP lists every tool (`OPERATIONS` of @hollware/core) to the token that create-hollware printed;
- * 3. that token creates a draft and publishes it;
- * 4. a read token, made with the project's own `hollware`, reads the published entry over `/v1`,
- *    and is refused by MCP;
- * 5. `hollware doctor` finds nothing to fix.
- *
- * It needs the network (npm) and port 5199. Exits 0 when every step passed.
- */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -37,11 +19,9 @@ import { startRegistry } from './e2e/registry.ts'
 
 const ROOT = resolve(import.meta.dirname, '..')
 
-/** The environment of a user whose package manager reads from the local registry. */
 export function userEnv(registry: string, work: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    // npm reads npm_config_*, and pnpm 12 only pnpm_config_*.
     npm_config_registry: registry,
     pnpm_config_registry: registry,
     npm_config_cache: join(work, 'npm-cache'),
@@ -52,7 +32,6 @@ export function userEnv(registry: string, work: string): NodeJS.ProcessEnv {
   }
 }
 
-/** The version of this checkout's packages in a test: its own, so that npm has none like it. */
 export function e2eVersion(): string {
   const core: { version: string } = JSON.parse(
     readFileSync(join(ROOT, 'packages/core/package.json'), 'utf8'),
@@ -116,8 +95,6 @@ async function main(): Promise<void> {
       process.stdout.write(await run(pm, ['run', script], project, env))
     }
 
-    // `hollware deploy` writes the public URL into wrangler.jsonc: the project's tests still pass,
-    // and its dev server still answers at localhost (vite.config.ts), up to the read token below.
     step('Its tests pass once wrangler.jsonc names a public URL, as after a deploy')
     const config = join(project, 'wrangler.jsonc')
     const local = readFileSync(config, 'utf8')

@@ -1,12 +1,6 @@
 import type { Scope } from '@hollware/core'
 import type { TokenRejection } from './token.ts'
 
-/**
- * What the auth layer answers, as JSON in the shape of a `HollwareError` (`code`, `message`,
- * `fix`). These codes are the layer's own: `ERROR_CODES` of `@hollware/core` are the errors of an
- * operation, and a request refused here never reaches one. `insufficient_scope` is the one both
- * share, with the same meaning.
- */
 export type AuthErrorCode =
   | 'unauthorized'
   | 'insufficient_scope'
@@ -20,13 +14,8 @@ export interface AuthErrorBody {
   readonly fix: string
 }
 
-/** The challenge of every 401 and 403 (RFC 6750). */
 const REALM = 'Bearer realm="hollware"'
 
-/**
- * A JSON error response that no cache keeps. `challenge` is the `WWW-Authenticate` value of a
- * 401 or a 403 that answers a bearer token.
- */
 export function authErrorResponse(
   status: 401 | 403 | 500,
   body: AuthErrorBody,
@@ -37,13 +26,6 @@ export function authErrorResponse(
   return Response.json(body, { status, headers })
 }
 
-/**
- * 401. Without a `reason` the request presented no token, and the challenge only names the realm
- * (RFC 6750: a request without credentials gets no error code). With one, a token was presented
- * and refused, and the challenge says `invalid_token`. The answer is the same for every reason:
- * a caller that sends tokens at random never learns which of them exist, or ever did. The reason
- * is for the log; the fix says how to get a token that works.
- */
 export function unauthorized(reason?: TokenRejection): Response {
   if (reason === undefined) {
     return authErrorResponse(
@@ -67,11 +49,6 @@ export function unauthorized(reason?: TokenRejection): Response {
   )
 }
 
-/**
- * 403 for a token that authenticated but lacks scopes. It names every scope that is missing, in
- * the body and in the challenge (RFC 6750), so that a client asks for all of them at once, and,
- * when there is one, the protected resource metadata where it learns how (RFC 9728).
- */
 export function insufficientScope(
   missing: readonly Scope[],
   resourceMetadataUrl?: string,

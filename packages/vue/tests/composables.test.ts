@@ -9,15 +9,6 @@ import {
   useHollwareEntry,
 } from '../src/index.ts'
 
-// Fails when: useHollwareEntry stops reading the entry it is asked for through the provided
-// site, starts a read that nobody asked for, leaves `pending` set after an answer, drops the
-// error of a failed read or keeps the old data next to it, answers `undefined` for an entry that
-// is not published as anything else, reads again with the new value when a ref it was given
-// changes (or does not), lets a slow answer of an old read replace the answer of the newer one,
-// or exposes the entry with more than what a page sees; useHollwareEntries stops passing its
-// options through, or stops reading again when they change; or using one without
-// provideHollware stops naming the mistake.
-
 const AT = '2026-10-01T00:00:00.000Z'
 
 type Found = NonNullable<Awaited<ReturnType<HollwareReader['getEntry']>>['entry']>
@@ -46,7 +37,6 @@ function entry(slug: string): Found {
   }
 }
 
-/** A reader whose answers wait for the test: `release(key)` lets the read of that key finish. */
 function fakeReader(options: { missing?: string[]; failing?: string[] } = {}) {
   const calls: unknown[][] = []
   const waiting = new Map<string, () => void>()

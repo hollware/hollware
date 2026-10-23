@@ -8,21 +8,6 @@ import { failure, onlyCall, SITE, SITE_KEY, testClock, watchDb } from '../http/s
 import { CANNED, ENTRY_ID, fakeHandlers, type Overrides } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
 
-// Fails when: the six methods of the RPC surface (`createRpc`, `src/rpc/methods.ts`) stop doing
-// what the binding of a site relies on. Each method must check that its site is the one of this
-// deployment before anything else (a wrong site is `invalid_input` whose message and fix name the
-// site served, and no session is opened for it); build the input of its operation from its
-// arguments and parse it with the spec's schema (the defaults `limit` 20 and `formats` ['markdown']
-// apply, a bad value or an option that is not one of its own is `invalid_input` naming it, and
-// the handler does not run); run only the handler of its own operation, with `view: 'published'`
-// and the principal `{ kind: 'binding', scopes: ['content:read'] }`, a store over a D1 session
-// that starts at `first-unconstrained` (published content from the nearest replica, never the
-// primary), the clock of the Worker, `client: null` and an id of its own for each call; answer
-// what the handler answers; and show a caller no cause: a `HollwareError` goes as it is without
-// its cause, anything else becomes `internal` with the id of the call, and what is hidden goes to
-// the log under that id. D1 is the real one, migrated.
-
-/** The same four calls, each with the wrong site. */
 const STRANGER = 'a-stranger-site'
 const WRONG_SITE = [
   {
@@ -37,7 +22,6 @@ const WRONG_SITE = [
   { method: 'describeSite', call: (rpc: HollwareRpc) => rpc.describeSite(STRANGER) },
 ] as const
 
-/** The RPC surface over fake handlers and the real D1, with what the handlers and D1 saw. */
 function rpcOver(overrides: Overrides = {}) {
   const { handlers, seen } = fakeHandlers(overrides)
   const clock = testClock()
@@ -50,7 +34,6 @@ function rpcOver(overrides: Overrides = {}) {
   return { rpc, seen, clock, logs, ...watched }
 }
 
-/** The cause an error carries; a value that is no error has none to give, so it is not undefined. */
 function causeOf(error: unknown): unknown {
   return error instanceof Error ? error.cause : 'not an error'
 }

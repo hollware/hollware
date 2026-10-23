@@ -10,10 +10,6 @@ import {
 import { checkSchema, type SchemaTable } from '../guards/schema.ts'
 import { describeViolations } from '../guards/types.ts'
 
-// Fails when: a table of packages/server/src/db/schema.ts loses its id primary key, created_at
-// or updated_at; a table loses site_id, its foreign key to sites or its unique (id, site_id); or a
-// foreign key between two site tables stops carrying site_id onto site_id.
-
 function describeTable(table: SQLiteTable): SchemaTable {
   const config = getTableConfig(table)
   return {
@@ -53,7 +49,6 @@ const SITE_TABLE: SchemaTable = {
   foreignKeys: [],
 }
 
-/** A site table that follows every rule; the self-tests break one rule at a time. */
 function siteTable(name: string, overrides: Partial<SchemaTable> = {}): SchemaTable {
   return {
     name,

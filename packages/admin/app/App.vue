@@ -8,18 +8,11 @@ import { entryPath, titleOf } from './lib/entries.ts'
 import { me, useSiteMenu, type Me } from './lib/me.ts'
 import { api, auth } from './lib/session.ts'
 
-/**
- * The shell of the admin, as Linear lays one out with Nuxt UI's dashboard: the site to work in
- * at the top of a sidebar, search on ⌘K, the sections with their icons, and the person at the
- * foot; each page is a panel beside it.
- */
-
 const route = useRoute()
 const m = useMessages()
 const pending = ref(0)
 const collections = ref<string[]>([])
 
-// Once a page that needs a token is reached, never on the callback, which has none yet.
 watch(
   () => route.matched.length > 0 && route.meta['open'] !== true,
   async (signed) => {
@@ -57,7 +50,6 @@ const links = computed<NavigationMenuItem[][]>(() => [
   [
     { label: m.value.nav.structure, type: 'label' },
     {
-      // A trigger with no link of its own: one with both marks a span as expanded, which axe refuses.
       label: m.value.nav.collections,
       icon: 'i-lucide-layers',
       defaultOpen: true,
@@ -72,19 +64,12 @@ const links = computed<NavigationMenuItem[][]>(() => [
     { label: m.value.nav.settings, type: 'label' },
     { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
     { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
-    // The log names people and their tokens: only an owner reads it.
     ...(roleKey.value === 'owner'
       ? [{ label: m.value.nav.activity, icon: 'i-lucide-scroll-text', to: '/activity' }]
       : []),
   ],
 ])
 
-/**
- * What ⌘K finds: the sections and collections to go to, what to create, the sites to switch to,
- * and content. Published entries come from Hollware's own `search` (full text and meaning, with a
- * snippet), drafts by their title or slug (search sees only what is published), and the reviews
- * that wait; the server's answers are shown as they come, not filtered again.
- */
 const searchOpen = ref(false)
 const term = ref('')
 const searching = ref(false)

@@ -128,9 +128,7 @@ export interface HollwareReader {
 }
 
 export type ClientOptions =
-  /** A service binding to the `Hollware` entrypoint of a Hollware Worker. */
   | { readonly binding: HollwareReader }
-  /** The public URL of a Hollware, and a read token (`hw_read_`) or a personal token with `content:read`. */
   | {
       readonly url: string
       readonly token: string
@@ -187,7 +185,6 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     )
   }
   const segment = encodeURIComponent
-  // The read API answers with the outputs of the operations, which the types above describe.
   const reader = {
     getEntry: (
       _site: string,
@@ -275,7 +272,6 @@ export function createClient(options: ClientOptions): HollwareReader {
   }
 }
 
-/** The body of an answer, which the read API builds from the output schema of its operation. */
 function narrow<T>(body: unknown): T {
   return body as T
 }

@@ -15,11 +15,6 @@ import { isRecord, isStringArray, recordAt, stringAt } from '../support/values.t
 import { listedTestFiles } from '../support/vitest-list.ts'
 import { taskGraph, vpRunTasks } from '../support/vp.ts'
 
-// Fails when: a *.test.* or *.spec.* file exists that no test project of `vp test` lists; a test file
-// is added to a project's exclude; the directories with their own runner stop matching what the `repo`
-// project excludes in vite.config.ts; or a test file exists in such a directory and its task is not
-// defined in the root vite.config.ts, or neither check:push nor a `run:` step of ci.yml runs it.
-
 function repoProjectExcludes(): string[] {
   const config: unknown = rootConfig
   const projects = recordAt(config, 'test')?.projects
@@ -31,13 +26,11 @@ function repoProjectExcludes(): string[] {
   throw new Error('vite.config.ts has no inline project named "repo" with an exclude')
 }
 
-/** The name of the root package, which `vp run <name>#<task>` may qualify a task with. */
 function rootPackageName(): string | undefined {
   const manifest: unknown = JSON.parse(readText('package.json'))
   return stringAt(manifest, 'name')
 }
 
-/** The tasks that the `run:` steps of ci.yml run. */
 function ciTasks(): string[] {
   const path = '.github/workflows/ci.yml'
   const workflow = parseWorkflow(file(path, readText(path)))
@@ -51,7 +44,6 @@ describe('test projects', () => {
   it('every test file of the repository is listed by a project of `vp test`, or runs through a task CI runs', () => {
     const listed = listedTestFiles()
     const testFiles = repoFiles().filter(isTestFile)
-    // Both sides must be real: this suite and the playground's workerd tests are in them.
     expect(listed.map((entry) => entry.file)).toEqual(
       expect.arrayContaining([
         'scripts/break-line.test.ts',
@@ -62,7 +54,6 @@ describe('test projects', () => {
         'templates/starter/test/worker.workerd.test.ts',
       ]),
     )
-    // So must the tasks: CI runs check:push, which runs the build, the types and publint.
     const tasks = taskGraph(rootConfig, rootPackageName())
     expect(tasks['check:push']).toEqual(expect.arrayContaining(['build', 'publint', 'types:check']))
     expect(ciTasks()).toContain('check:push')
@@ -178,7 +169,6 @@ describe('test projects', () => {
             'the tests here run with `vp run test:acceptance`, which is not a task of the root vite.config.ts: define it in run.tasks, or `vp test` and CI never run these tests',
         },
       ])
-      // A name that every object inherits is not a task of the config.
       const inherited = check({
         testFiles: ACCEPTANCE_TESTS,
         separateRunners: [{ dir: 'tests/acceptance/', task: 'constructor' }],
@@ -242,7 +232,6 @@ describe('test projects', () => {
     })
 
     it('asks nothing of a runner directory without test files, and judges each runner on its own', () => {
-      // No test file yet: the task need not exist.
       expect(
         check({
           testFiles: ['a/x.test.ts'],

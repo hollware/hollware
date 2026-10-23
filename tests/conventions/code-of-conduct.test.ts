@@ -4,9 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: CODE_OF_CONDUCT.md keeps a "[INSERT ...]" template placeholder, loses the contact
-// conduct@hollware.com, or holds another email address.
-
 const check = (text: string) => checkCodeOfConduct({ conduct: file('CODE_OF_CONDUCT.md', text) })
 
 describe('code of conduct', () => {

@@ -25,12 +25,6 @@ export interface BuiltInOptions {
   readonly id?: string
 }
 
-/**
- * Every locale of the site has an entry in the translation group of this one. It reads the group
- * from the frontmatter field the collection names in `translations.groupBy`, and counts an entry
- * in any status, so the pair can be published one after the other. Checked when publishing, and
- * skipped when the collection has no translations.
- */
 function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
@@ -56,7 +50,6 @@ function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
           ]
         }
         const found = await context.entries.translations(collection.name, group)
-        // The entry being checked belongs to its group even when no row says so yet.
         const present = new Set([context.locale, ...found.map((entry) => entry.locale)])
         return site.locales
           .filter((locale) => !present.has(locale))
@@ -71,11 +64,6 @@ function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
   )
 }
 
-/**
- * Every link to another entry of the site points at an entry that is published, or at the entry
- * itself. All the targets are looked up in one call to `lookupMany`, and none when the body has no
- * link to another entry. Checked when publishing.
- */
 function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
@@ -95,7 +83,6 @@ function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
         )
         if (links.length === 0) return []
 
-        // Each target once, in the order its first link appears.
         const positions = new Map<string, number>()
         const refs: EntryRef[] = []
         for (const { target } of links) {
@@ -134,7 +121,6 @@ function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
 
 type Target = { readonly collection: string; readonly locale: string; readonly slug: string }
 
-/** A key that tells two targets apart, whatever characters their names hold. */
 function keyOf(target: Target): string {
   return JSON.stringify([target.collection, target.locale, target.slug])
 }
@@ -147,7 +133,6 @@ function isThisEntry(target: Target, context: ContractContext<unknown>): boolean
   )
 }
 
-/** Every image has alt text. An alt of only spaces counts as none. Checked on every write. */
 function imagesHaveAlt(options: BuiltInOptions = {}): Contract<unknown> {
   return registerBuiltIn(
     {
@@ -158,8 +143,6 @@ function imagesHaveAlt(options: BuiltInOptions = {}): Contract<unknown> {
       description: 'Every image has alt text that describes it.',
       check: (context) =>
         context.markdown.extracted.images
-          // An image of the site (`asset:`) has the alt it was uploaded with, which a reader
-          // gets when the Markdown gives none.
           .filter((image) => image.alt.trim() === '' && assetIdIn(image.src) === null)
           .map((image) => ({
             path: '/body',
@@ -193,14 +176,6 @@ export interface CustomContractOptions<Frontmatter> {
   readonly path?: string
 }
 
-/**
- * A contract of a site made of a yes or no question and the words to say when the answer is no.
- * One finding at most: a rule that reports several problems, or the line they are on, is a plain
- * `Contract` object, which can return as many findings as it wants.
- *
- * Inside `defineCollection`, TypeScript cannot infer the frontmatter type of a call like this one
- * (it can for a plain object): give it, as in `contracts.custom<{ title: string }>({ … })`.
- */
 function custom<Frontmatter = Record<string, unknown>>(
   options: CustomContractOptions<Frontmatter>,
 ): Contract<Frontmatter> {

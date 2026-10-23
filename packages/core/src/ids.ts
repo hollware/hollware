@@ -1,9 +1,3 @@
-/**
- * Identifiers: a prefix that names the kind of thing, an underscore, and a ULID (48 bits of
- * time in milliseconds, then 80 random bits, in Crockford's base 32), so that ids of one kind
- * sort by creation time. For example `ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW`.
- */
-
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
 /** The kinds of ids and their prefixes. A new kind adds its prefix here. */

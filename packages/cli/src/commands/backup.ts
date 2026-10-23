@@ -27,7 +27,6 @@ export const BACKUP_USAGE = [
   '  --help               Show this help',
 ].join('\n')
 
-/** An entry as a backup file holds it (`server/src/backup/run.ts`). */
 interface BackupEntry {
   readonly collection: string
   readonly locale: string

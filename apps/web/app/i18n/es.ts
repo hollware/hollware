@@ -1,6 +1,5 @@
 import type { Messages } from './en'
 
-/** The words of hollware.com in neutral Spanish: no regional idioms, the reader as tú. */
 export const es: Messages = {
   language: { name: 'Español', switch: 'Read in English', switchTo: 'English' },
   seo: {

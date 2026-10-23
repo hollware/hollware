@@ -6,50 +6,20 @@ import { isRecord, recordAt } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { dependencySpecs, parseManifests } from './workspace.ts'
 
-/**
- * Guard `core-purity`: `@hollware/core` runs anywhere (Workers, Node, browsers), so its
- * source never imports `cloudflare:*`, `@cloudflare/*`, `wrangler`, `node:*` or a Node
- * built-in by its bare name (`fs`, `path`), and never touches the Node globals `process`,
- * `Buffer`, `__dirname`, `__filename` and `require` (`globalThis.process` included).
- *
- * The files are parsed, so comments and strings never count. Limits are those of
- * `analyzeSource`: only literal specifiers are read, and a global is found by its name
- * without scope analysis, so a local variable called `process` is reported too (rename it).
- * A userland package that shares a name with a Node built-in (`buffer`, `events`) is reported
- * as well; import it with a trailing slash (`buffer/`) to tell Node and npm apart.
- *
- * The manifest of core may not depend on Cloudflare either: its `dependencies`,
- * `peerDependencies` and `optionalDependencies` hold no `@cloudflare/*` package and no
- * `wrangler` ("No Cloudflare dependencies", as its README says). Dev dependencies are tools.
- *
- * Two more facts keep the claim true beyond those names. `packages/core/tsconfig.json`
- * covers only `src`, with the web platform as its type environment (`lib` es2024 and webworker,
- * no `types`), so `vp check` rejects any other Node or browser global. And every test file of
- * `packages/core/tests` runs twice: in Node and inside workerd.
- */
-
 export interface CorePurityInput {
-  /** The files under `packages/core/src`. */
   files: readonly TextFile[]
-  /** `packages/core/package.json`. */
   manifest: TextFile
-  /** `packages/core/tsconfig.json`: the type environment of `src`. */
   tsconfig: TextFile
-  /** The test files under `packages/core/tests`. */
   testFiles: readonly string[]
-  /** Where Vitest runs each test file of the repository, as `vp test list` reports it. */
   testRuns: readonly { file: string; project: string }[]
 }
 
-/** The type environment of core's `src`: the web platform, no Node and no DOM. */
 const SOURCE_TYPES = { include: ['src'], lib: ['es2024', 'webworker'], types: [] }
 
-/** The projects each test of core runs in: Node, then workerd. */
 const CORE_TEST_PROJECTS = ['@hollware/core', 'core:workerd']
 
 const BARE_BUILTINS: ReadonlySet<string> = new Set(builtinModules)
 
-/** Why a module specifier is not allowed in core, or `undefined` when it is. */
 export function forbiddenSpecifierReason(specifier: string): string | undefined {
   if (specifier.startsWith('node:')) return 'a Node module'
   if (specifier.startsWith('cloudflare:')) return 'a Cloudflare runtime module'

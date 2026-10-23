@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import config from '../../hollware.config.ts'
 
-// Fails when: hollware.config.ts stops describing one site with a bilingual blog whose schema
-// takes the frontmatter of the corpus (tests/fixtures/content/blog) and refuses a description over
-// 160 characters, whose components refuse props they do not declare, whose opt-in contracts change
-// (a missing translation and an unresolved link warn, an image without alt text is an error), or
-// whose seo-title-length contract stops warning about a title over 60 characters.
-
 const site = config.sites?.['playground']
 const blog = site?.collections['blog']
 

@@ -3,15 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { connectAgent, type Agent, type Era, type Reply } from './support/agent.ts'
 import { createProject, setUpProject, type Project } from './support/project.ts'
 
-// Fails when: an agent stops being able to write and publish through MCP the way AC-0.1-3 and
-// AC-0.1-4 describe it, against the built playground under `wrangler dev`: describe_site stops
-// giving the schema and the style guides; an invalid draft stops being saved with its errors and
-// their fixes, or publishing it stops being blocked; a fix stops saving version 2; a write against
-// version 1 stops answering conflict, or saves a revision anyway; validate starts saving; publish
-// stops asking a 2026 client that can show a form about the warnings (MRTR), or stops answering
-// needs_acknowledgement to a 2025 client and to a 2026 client that cannot, or stops publishing
-// once they are acknowledged; or the publication stops recording what was acknowledged.
-
 let project: Project
 let url: string
 let token: string
@@ -32,7 +23,6 @@ const LONG_DESCRIPTION = 'An agent writes, the contracts check, and a person rev
   .trim()
 const DESCRIPTION = 'How an agent writes a post against the contracts of a site.'
 
-/** A post of the playground's blog, alone in its translation group, with a long title. */
 function post(group: string, description: string): string {
   return `---
 title: ${LONG_TITLE}
@@ -63,7 +53,6 @@ function list(value: unknown, what: string): unknown[] {
   return value
 }
 
-/** The id, the path and the severity of each problem of a verdict, which is what a test pins. */
 function problems(verdict: unknown, kind: 'errors' | 'warnings') {
   return list(record(verdict, 'the verdict')[kind], kind).map((item) => {
     const problem = record(item, 'a problem')
@@ -71,7 +60,6 @@ function problems(verdict: unknown, kind: 'errors' | 'warnings') {
   })
 }
 
-/** Every problem of a verdict says how to fix it, in words of its own. */
 function fixesOf(verdict: unknown): unknown[] {
   const { errors, warnings } = record(verdict, 'the verdict')
   return [...list(errors, 'errors'), ...list(warnings, 'warnings')].map((item) => {
@@ -84,19 +72,13 @@ function fixesOf(verdict: unknown): unknown[] {
   })
 }
 
-/** The two warnings publish asks about: the long title and the missing translation. */
 const WARNINGS = [
   { contract: 'translation-pair', path: '/frontmatter/translationGroup', severity: 'warning' },
   { contract: 'seo-title-length', path: '/frontmatter/title', severity: 'warning' },
 ]
 const ACKNOWLEDGED = WARNINGS.map(({ contract, path }) => ({ contract, path }))
 
-/**
- * Steps 1 to 6 of AC-0.1-3, the writes: from describe_site to validate. It returns the entry,
- * at version 2 with no errors, ready to publish.
- */
 async function writeAsAnAgent(agent: Agent, slug: string, group: string) {
-  // 1. describe_site gives the JSON Schema of the frontmatter and the style guides.
   const described = await agent.call('describe_site', {})
   expect(described.isError).toBe(false)
   const site = record(described.output['site'], 'the site')
@@ -118,7 +100,6 @@ async function writeAsAnAgent(agent: Agent, slug: string, group: string) {
     maxLength: 160,
   })
 
-  // 2. An invalid draft is saved at version 1, and its verdict lists the error with its fix.
   const created = await agent.call('create_draft', {
     collection: 'blog',
     locale: 'en',
@@ -133,24 +114,20 @@ async function writeAsAnAgent(agent: Agent, slug: string, group: string) {
   expect(problems(created.output['verdict'], 'errors')).toEqual([
     { contract: 'schema', path: '/frontmatter/description', severity: 'error' },
   ])
-  // The contracts that read the frontmatter, such as the title's warning, wait until it passes.
   expect(fixesOf(created.output['verdict'])).toEqual(['a fix'])
 
-  // 3. publish is blocked by the error.
   const blocked = await agent.call('publish', { id, version: 1 })
   expect([blocked.isError, blocked.output['outcome']]).toEqual([true, 'blocked'])
   expect(problems(blocked.output['verdict'], 'errors')).toEqual([
     { contract: 'schema', path: '/frontmatter/description', severity: 'error' },
   ])
 
-  // 4. The fix saves version 2, with no error left.
   const fixedMarkdown = post(group, DESCRIPTION)
   const fixed = await agent.call('update_draft', { id, version: 1, markdown: fixedMarkdown })
   expect([fixed.isError, fixed.output['outcome']]).toEqual([false, 'saved'])
   expect(record(fixed.output['entry'], 'the entry')['version']).toBe(2)
   expect(problems(fixed.output['verdict'], 'errors')).toEqual([])
 
-  // 5. A write against version 1 is a conflict that names version 2, and saves nothing.
   const read = async () => {
     const answer = await agent.call('get_entry', { collection: 'blog', locale: 'en', slug })
     return record(answer.output['entry'], 'the entry')
@@ -163,7 +140,6 @@ async function writeAsAnAgent(agent: Agent, slug: string, group: string) {
   })
   expect([stale.isError, stale.output['outcome']]).toEqual([true, 'conflict'])
   expect(stale.output['conflict']).toEqual({ currentVersion: 2, headRevision: head['revision'] })
-  // Whatever it says: a stale write of the very file that is saved is a conflict too, not unchanged.
   const sameFile = await agent.call('update_draft', { id, version: 1, markdown: fixedMarkdown })
   expect([sameFile.isError, sameFile.output['outcome']]).toEqual([true, 'conflict'])
   const afterConflict = await read()
@@ -172,13 +148,11 @@ async function writeAsAnAgent(agent: Agent, slug: string, group: string) {
     head['revision'],
     fixedMarkdown,
   ])
-  // Not even a revision that no entry points at: the entry has the two of versions 1 and 2.
   const [revisions] = await project.query(
     `SELECT count(*) AS n FROM revisions WHERE entry_id = '${String(id)}'`,
   )
   expect(revisions).toEqual([{ n: 2 }])
 
-  // 6. validate checks the file as publish would, and saves nothing.
   const validated = await agent.call('validate', {
     collection: 'blog',
     locale: 'en',

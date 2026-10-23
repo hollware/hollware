@@ -4,9 +4,6 @@ import { checkBuildOrder } from '../guards/build-order.ts'
 import { describeViolations } from '../guards/types.ts'
 import { isStringArray, recordAt } from '../support/values.ts'
 
-// Fails when: check:push in the root vite.config.ts builds (vp run -r build, vp pack, vp build)
-// before it type-checks or tests, or stops running vp check or vp test.
-
 function checkPushCommands(): string[] | undefined {
   const config: unknown = rootConfig
   const command = recordAt(recordAt(recordAt(config, 'run'), 'tasks'), 'check:push')?.command

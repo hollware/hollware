@@ -16,16 +16,12 @@ import { pageUrl } from '../lib/site.ts'
 type Site = Output<'describe_site'>['site']
 type Entry = Output<'list_entries'>['entries'][number]
 type Status = Entry['status']
-/** A row of the table: the entry, with its title for the filter and the sorting. */
 type Row = Entry & { title: string }
 type Warning = Output<'validate'>['verdict']['warnings'][number]
 
 const ALL = 'all'
-/** The status filter that lists the trash instead of a status. */
 const TRASH = 'trash'
-/** The status filter that lists the translations whose source changed after them. */
 const OUTDATED = 'outdated'
-/** Entries are read 100 at a time, up to this many: the table pages, sorts and filters them. */
 const MOST = 2000
 
 const m = useMessages()
@@ -36,7 +32,6 @@ const entries = ref<Entry[]>([])
 const loading = ref(false)
 const truncated = ref(false)
 
-// The filters of the server live in the query, so a filtered list can be linked to.
 function queried(name: string, fallback: string): string {
   const value = route.query[name]
   return typeof value === 'string' && value !== '' ? value : fallback
@@ -106,7 +101,6 @@ const rows = computed<Row[]>(() =>
     .map((entry) => ({ ...entry, title: titleOf(entry) })),
 )
 
-/** The other locales of each translation group among the loaded entries. */
 const siblings = computed(() => {
   const groups = new Map<string, Entry[]>()
   for (const entry of entries.value) {
@@ -133,17 +127,11 @@ const columns = computed<TableColumn<Row>[]>(() => [
   { id: 'site', header: '' },
 ])
 
-/**
- * Bulk actions on the chosen entries, each the operation of one entry: publish (or schedule) what
- * has something to publish, and unpublish what is published or scheduled. Entries whose warnings
- * have to be accepted come back together, to be accepted at once.
- */
 const reportBulk = useBulkReport()
 const busy = ref(false)
 const publishable = (entry: Row) =>
   entry.deletedAt === null && (entry.status !== 'published' || entry.hasUnpublishedChanges)
 const unpublishable = (entry: Row) => entry.deletedAt === null && entry.status !== 'draft'
-// Only a draft goes to the trash; what is published or scheduled is unpublished first.
 const trashable = (entry: Row) => entry.deletedAt === null && entry.status === 'draft'
 const restorable = (entry: Row) => entry.deletedAt !== null
 
@@ -208,7 +196,6 @@ async function acceptWarnings() {
 }
 
 function openSchedule(rows: readonly Row[]) {
-  // An hour from now, to the minute, in the person's own zone: what a datetime-local input shows.
   const soon = new Date(Date.now() + 3_600_000)
   soon.setSeconds(0, 0)
   publishAt.value = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
@@ -241,7 +228,6 @@ async function trashMany() {
   try {
     const results = await runAll(rows, async (row) => {
       const answer = await api.call('delete_entry', { id: row.id, version: row.version })
-      // `published` refuses the trash: the entry was published or scheduled meanwhile.
       return { outcome: answer.outcome === 'published' ? 'not_draft' : answer.outcome }
     })
     reportBulk(countOutcomes(results))
@@ -355,7 +341,6 @@ const locales = computed(() => [
         </template>
       </template>
       <template #title-cell="{ row }">
-        <!-- An entry in the trash has no page until it is restored. -->
         <span v-if="row.original.deletedAt !== null" class="block max-w-md truncate font-medium">
           {{ row.original.title }}
         </span>

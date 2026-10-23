@@ -4,17 +4,9 @@ import { chunk, rowsPerStatement } from '../../src/db/chunks.ts'
 import { MAX_ROW_BYTES } from '../../src/limits.ts'
 import { rowBytes, tooLarge, utf8Bytes } from '../../src/db/size.ts'
 
-// Fails when: src/db/chunks.ts stops fitting the rows of a statement under 90 bound values
-// (the room for the statement's own values and the values per row), loses or reorders an item
-// when it cuts a list into chunks, or src/db/size.ts stops counting a column of a row, counts
-// characters instead of UTF-8 bytes, counts an integer as anything but 8 bytes, or moves the
-// limit: a row of exactly MAX_ROW_BYTES fits and one byte more does not.
-
 describe('rowsPerStatement', () => {
   it('fits the rows of a lookup and of a tag insert under 90 bound values', () => {
-    // A lookup binds the site once and three values per ref: 1 + 29 * 3 = 88, and 30 would be 91.
     expect(rowsPerStatement(1, 3)).toBe(29)
-    // A tag insert binds six values of its own and two per tag: 6 + 42 * 2 = 90.
     expect(rowsPerStatement(6, 2)).toBe(42)
   })
 

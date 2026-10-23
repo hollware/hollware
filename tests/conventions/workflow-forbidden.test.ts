@@ -5,16 +5,9 @@ import { checkWorkflowForbidden } from '../guards/workflow-forbidden.ts'
 import { file } from '../support/fixtures.ts'
 import { isWorkflowPath, readRepoFiles, repoFiles } from '../support/repo.ts'
 
-// Fails when: a workflow or a script under .github/ mentions NPM_TOKEN, NODE_AUTH_TOKEN,
-// `pnpm publish` (or yarn, changeset), `npm stage`, `npm publish` anywhere but in the `publish` job
-// of release.yml or there without --provenance on its line, `git push`, `npx` (or pnpx, bunx) or
-// `dlx`; carries a `zizmor: ignore[...]` that the allowlist does not name; or a zizmor config file
-// exists.
-
 const ALLOWED = '.github/workflows/ci.yml#zizmor: ignore[use-trusted-publishing]'
 const RELEASE_YML = '.github/workflows/release.yml'
 
-/** A release.yml whose `pack` and `publish` jobs run the given commands (lines 5 and 8). */
 const releaseWith = (publishRun: string, packRun = 'echo pack') =>
   [
     'permissions: {}',
@@ -30,7 +23,6 @@ const releaseWith = (publishRun: string, packRun = 'echo pack') =>
     '      - run: echo finalize',
   ].join('\n')
 
-/** The same, with the publish job running a shell block: its first line is line 9. */
 const releaseWithBlock = (...lines: string[]) =>
   releaseWith('|').replace(
     '- run: |',
@@ -140,7 +132,6 @@ describe('forbidden workflow strings', () => {
             'line 5 has "npm publish": npm publish belongs in the "publish" job of .github/workflows/release.yml and nowhere else',
         },
       ])
-      // A mention in a comment above the job counts too: the scan reads raw text.
       const commented = `# npm publish runs below\n${releaseWith('echo publish')}`
       expect(check(commented, RELEASE_YML).map((violation) => violation.rule)).toEqual([
         'workflow-forbidden/publish',
@@ -162,7 +153,6 @@ describe('forbidden workflow strings', () => {
         const result = check(releaseWith(`npm publish "$file" ${flag}`), RELEASE_YML)
         expect(result.map((violation) => violation.rule)).toEqual(['workflow-forbidden/provenance'])
       }
-      // The flag on the next line does not count: the command and its flag stay together.
       const wrapped = releaseWithBlock('npm publish "$file" \\', '  --provenance')
       expect(check(wrapped, RELEASE_YML)).toEqual(expected('9', 'npm publish'))
     })
@@ -198,7 +188,6 @@ describe('forbidden workflow strings', () => {
       expect(check('run: bunx x').map((violation) => violation.rule)).toEqual([
         'workflow-forbidden/npx',
       ])
-      // The runner at the very end of a line, with nothing after it.
       expect(check('run: npx').map((violation) => violation.rule)).toEqual([
         'workflow-forbidden/npx',
       ])

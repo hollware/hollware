@@ -4,13 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, publishPost, revisionsOf } from './world.ts'
 
-// Fails when: the history of an entry (src/ops/history.ts, src/db/history.ts) stops listing every
-// revision newest first, a page at a time, with who wrote it, its title, and which is the latest,
-// which the site shows and which were ever published; get_revision stops answering the whole
-// Markdown of one, or answers one of another site; or restore_revision stops saving the Markdown
-// of an earlier revision as a new one (deleting or rewriting any), takes a revision of another
-// entry, or skips the check of the version.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -100,7 +93,6 @@ describe('the history of an entry', () => {
     const after = await revisionsOf(world.db, id)
     expect(after.length).toBe(before + 1)
     expect(after.at(-1)?.markdown).toBe(markdownOf('First'))
-    // Every revision there was is there, as it was.
     expect(after.slice(0, before).map((row) => row.markdown)).toEqual(kept)
   })
 

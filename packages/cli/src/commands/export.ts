@@ -51,13 +51,8 @@ export const EXPORT_USAGE = [
   'The token needs content:read.',
 ].join('\n')
 
-/** The most entries one `list_entries` answers. */
 const PAGE_SIZE = 100
 
-/**
- * A folder name that is safe to write under the directory: no separator, no dot first, nothing a
- * terminal or a file system acts on. Collection names and locales are narrower than this.
- */
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/
 
 export async function exportContent(argv: readonly string[], io: Io): Promise<number> {
@@ -127,7 +122,6 @@ export async function exportContent(argv: readonly string[], io: Io): Promise<nu
   }
 }
 
-/** The directory must be empty or not exist, so that the export overwrites nothing. */
 export function checkTarget(root: string, directory: string): void {
   let names: string[]
   try {
@@ -151,41 +145,31 @@ interface Plan {
   io: Io
   token: string
   endpoint: URL
-  /** The directory as the person wrote it, for the messages. */
   directory: string
   root: string
   site: string | undefined
   collections: readonly string[] | undefined
   locales: readonly string[] | undefined
   published: boolean
-  /** With --assets: where the images go, and the path the site serves them at. */
   assets: { root: string; directory: string; url: string } | undefined
   dryRun: boolean
 }
 
-/** An image to write: where, relative to its directory, and its bytes. */
 interface ExportImage {
   path: string
   bytes: Uint8Array
 }
 
-/** Every `asset:` reference in Markdown, by id (ADR-038). */
 const ASSET_REFERENCE = /asset:(ast_[0-9a-f]{26})/g
 
-/** An entry to write: where, and its Markdown. */
 interface ExportFile {
   collection: string
   locale: string
   slug: string
-  /** `<collection>/<locale>/<slug>.md`. */
   path: string
   markdown: string
 }
 
-/**
- * Reads everything first, then writes: a call that fails stops the export before any file is
- * written.
- */
 async function exportEntries(plan: Plan): Promise<number> {
   const { io, token, directory, root, published, dryRun } = plan
   const out = (message: string): void => io.out(redact(message, token))
@@ -212,7 +196,6 @@ async function exportEntries(plan: Plan): Promise<number> {
     const listed = await listAll(session, collections, locales, published)
     files = await readAll(session, listed, published)
     images = await readImages(session, plan, files)
-    // What a site that builds from the export answers with a 301: the paths of entries that moved.
     if (published && (await session.has(listRedirects.name))) moved = await readRedirects(session)
   } finally {
     await session.close()
@@ -242,7 +225,6 @@ async function exportEntries(plan: Plan): Promise<number> {
     const target = join(root, file.collection, file.locale, `${file.slug}.md`)
     try {
       mkdirSync(dirname(target), { recursive: true })
-      // `wx`: a file that is already there is never overwritten.
       writeFileSync(target, file.markdown, { flag: 'wx' })
     } catch (error) {
       throw new CliError(
@@ -281,7 +263,6 @@ async function exportEntries(plan: Plan): Promise<number> {
   return 0
 }
 
-/** Every redirect of the site with a path on each side, oldest last, as `redirects.json` holds them. */
 async function readRedirects(
   session: Session,
 ): Promise<{ from: string; to: string; status: 301 }[]> {
@@ -302,7 +283,6 @@ async function readRedirects(
   return all
 }
 
-/** The names asked for, each checked against what the site has; all of them when none is. */
 function chosen(
   kind: 'collection' | 'locale',
   available: readonly string[],
@@ -325,11 +305,6 @@ interface Listed {
   path: string
 }
 
-/**
- * Every entry of the collections, in the locales (`undefined`: every locale), page by page.
- * The head view leaves out the trash; `published` lists only published entries. An entry whose
- * collection, locale or slug cannot be a file name below the directory stops the export.
- */
 async function listAll(
   session: Session,
   collections: readonly string[],
@@ -384,7 +359,6 @@ async function listAll(
   )
 }
 
-/** The Markdown of each entry: its latest revision, or the published one. */
 async function readAll(
   session: Session,
   listed: readonly Listed[],
@@ -413,7 +387,6 @@ async function readAll(
         `${printable(item.path)} is gone: it was ${published ? 'unpublished' : 'moved to the trash or renamed'} while the export ran. Nothing was written: run the export again.`,
       )
     }
-    // What a site reads: the fields Hollware fills, filled (automaticFields of the collection).
     const automatic = published ? answer.entry?.automatic : undefined
     files.push({
       ...item,
@@ -426,13 +399,6 @@ async function readAll(
   return files
 }
 
-/**
- * The images the entries show (ADR-038). With --assets: each as the site serves it, at
- * `<id>.<ext>`, and every `asset:` reference of the files pointed at `<assets-url><id>.<ext>`.
- * Without it: each as it was uploaded, at `_assets/<id>.<ext>`, and `assets.json` with what
- * `hollware import` needs to upload it again under the same id. Reads everything before it
- * writes, as the entries are read.
- */
 async function readImages(
   session: Session,
   plan: Plan,
@@ -464,7 +430,6 @@ async function readImages(
     } else {
       const original = new URL(`/v1/assets/${id}/original`, plan.endpoint)
       const bytes = await download(original, plan.token, id)
-      // A site that keeps no originals answers the file it serves: named by what its bytes are.
       const format: ImageFormat = sniffImage(bytes) ?? asset.originalFormat
       const name = `${id}.${EXTENSIONS[format]}`
       images.push({ path: name, bytes })
@@ -512,7 +477,6 @@ function count(n: number, singular: string, plural = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : plural}`
 }
 
-/** One line per collection and locale, with how many entries: `  blog/en: 3`. */
 function groupSummary(files: readonly ExportFile[]): string {
   const sizes = new Map<string, number>()
   for (const file of files) {

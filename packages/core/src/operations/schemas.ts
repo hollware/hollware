@@ -1,11 +1,6 @@
 import { AUTOMATIC_KINDS } from '../config/automatic.ts'
 import * as z from 'zod'
 
-/**
- * The pieces the operation schemas share. Their descriptions become the JSON Schema that agents
- * read over MCP, so they are written for the agent.
- */
-
 export const collectionName = z
   .string()
   .min(1)
@@ -136,7 +131,6 @@ export const publication = z.object({
   at: z.string(),
 })
 
-/** The Comark document of a revision: what a site's renderer takes. */
 export const document = z.object({
   nodes: z.array(z.unknown()),
   frontmatter: z.record(z.string(), z.unknown()),
@@ -175,10 +169,6 @@ export const reviewStatus = z.enum([
   'cancelled',
 ])
 
-/**
- * A request to publish a revision, made by someone who may write but not publish, and what a
- * person who may publish decided about it.
- */
 export const review = z.object({
   id: reviewId,
   entryId,
@@ -197,10 +187,6 @@ export const review = z.object({
   note: z.string().nullable().describe('What the reviewer asked to change, or null.'),
 })
 
-/**
- * A revision of an entry in its history: who wrote it, when, what the contracts said, and whether
- * it was published. Its Markdown is read with get_revision.
- */
 export const revisionSummary = z.object({
   id: revisionId,
   entryId,
@@ -223,7 +209,6 @@ export const revisionSummary = z.object({
   published: z.boolean().describe('Whether it was ever published.'),
 })
 
-/** A comment on a review (v0.6), by a person or by the agent of one. */
 export const reviewComment = z.object({
   id: z.string(),
   author: z.string().describe('The user who wrote it, or whose token their agent used.'),
@@ -243,7 +228,6 @@ export const conflict = z.object({
 
 export const format = z.enum(['markdown', 'document', 'html'])
 
-/** How a search is made: by its words, by meaning, or both merged (ADR-030). */
 export const searchMode = z.enum(['fulltext', 'semantic', 'hybrid'])
 
 export const componentDescription = z.object({

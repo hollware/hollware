@@ -6,15 +6,6 @@ import {
 } from '@hollware/core'
 import type { AuditLine } from './log.ts'
 
-/**
- * The line of a call of an operation (ADR-037): every operation that is not a read gets one,
- * whether it changed something, was refused or failed. Of the input, only the fields that name
- * what was acted on are kept, each shortened; of the output, its outcome and the id of the entry,
- * review or comment it answers with. Never the Markdown, the frontmatter, or a secret that
- * `make_webhook_secret` shows once.
- */
-
-/** The fields of an input that name what an operation acts on. */
 const NAMING_FIELDS = [
   'site',
   'collection',
@@ -44,7 +35,6 @@ function idOf(value: unknown): string | null {
   return typeof id === 'string' ? id : null
 }
 
-/** What the call acted on: the entry, review, comment or asset of its answer, else its site. */
 function targetOf(
   output: Readonly<Record<string, unknown>>,
   site: string,
@@ -60,15 +50,10 @@ function targetOf(
   return { type: 'site', id: site }
 }
 
-/** `denied` when a scope was missing; `failed` for any other error the caller got. */
 export function outcomeOfError(code: string): AuditOutcome {
   return code === 'insufficient_scope' ? 'denied' : 'failed'
 }
 
-/**
- * The line of a call, or `null` for a read. `result` is the output the caller got, or the code of
- * the error it got instead.
- */
 export function operationLine(
   spec: Operation,
   input: unknown,

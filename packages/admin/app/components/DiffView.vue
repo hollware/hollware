@@ -7,10 +7,6 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
-/**
- * Two Markdown files side by side, read-only, with what changed marked: by default what is live
- * beside the revision asked for; the history names its own sides.
- */
 const props = defineProps<{
   original: string
   modified: string
@@ -22,10 +18,6 @@ const host = ref<HTMLElement | null>(null)
 const m = useMessages()
 let view: MergeView | null = null
 
-/**
- * The unchanged lines between two changes, collapsed: a flat band of the admin's colors, never the
- * merge view's own gradient, which is made for a light editor and glares on a dark one.
- */
 const band = {
   display: 'flex',
   alignItems: 'center',
@@ -38,7 +30,6 @@ const band = {
   fontSize: '12px',
   transition: 'background-color 120ms, color 120ms',
 }
-// `&.cm-editor` outweighs the light and dark rules of the merge view's base theme.
 const collapsed = EditorView.theme({
   '&.cm-editor .cm-collapsedLines': band,
   '&.cm-editor .cm-collapsedLines:hover': {

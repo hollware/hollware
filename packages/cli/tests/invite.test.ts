@@ -4,11 +4,6 @@ import { d1, fakeWrangler } from './support/fake-wrangler.ts'
 import { run } from './support/io.ts'
 import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 
-// Fails when: `hollware invite` (src/commands/invite.ts) stops inserting one invitation with the
-// role asked, no person, the hash of its secret and its expiry, stops printing the link once with
-// the URL of the project, or takes a role other than editor and author; or, with --owner, stops
-// making the link for the owner of the site, or makes one for a site with no owner.
-
 const temp = tempDirs()
 const SITES = 'SELECT id FROM sites ORDER BY id;'
 

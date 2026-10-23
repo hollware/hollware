@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { retryingLostConnection } from './workers.ts'
 
-// Fails when: retryingLostConnection (workers.ts) sends a request again for anything but
-// miniflare's own lost connection, sends it more than once more, or stops saying that it did.
-
 const lost = () => new Response('Error: Network connection lost.\n    at fetch', { status: 500 })
 
 function sender(...answers: Response[]) {

@@ -12,10 +12,6 @@ export const DEFAULT_BACKUPS: ResolvedBackups = { enabled: true, retentionDays: 
 
 const FIX = 'Declare it as { enabled: true, retentionDays: 30 }, or remove it.'
 
-/**
- * Whether the cron backs the site up each day to the deployment's R2 bucket, and how many days it
- * keeps each backup.
- */
 export function readBackups(path: string, raw: unknown, problems: Problems): ResolvedBackups {
   if (raw === undefined || raw === null) return DEFAULT_BACKUPS
   if (!isRecord(raw)) {

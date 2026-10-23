@@ -4,10 +4,6 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { binsOf, checkBins, expectedVersionLine, main } from './check-bins.ts'
 
-// Fails when: check-bins accepts a bin that prints another name or version, a bin whose file is
-// missing, or a bin that exits non-zero; or stops reading the bin npm installs from the manifests:
-// `publishConfig.bin` (the build) over `bin` (the source, inside the workspace).
-
 let root: string
 
 function addPackage(dir: string, manifest: object, files: Record<string, string> = {}): void {

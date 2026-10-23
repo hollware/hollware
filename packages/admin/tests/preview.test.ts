@@ -4,10 +4,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { previewDocument } from '../app/lib/preview.ts'
 
-// Fails when: the preview of a draft (T-60) stops being a page of its own in a frame with an empty
-// sandbox (Entry.vue), so the rendered HTML runs in the admin's page again, or stops sending no
-// referrer, or stops taking the entry's locale as its language and nothing else.
-
 const ENTRY = readFileSync(join(import.meta.dirname, '..', 'app', 'pages', 'Entry.vue'), 'utf8')
 
 describe('the preview of a draft', () => {
