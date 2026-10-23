@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util'
+import { parseJsonc } from '../support/jsonc.ts'
 import { isRecord, isStringArray, recordAt, stringAt } from '../support/values.ts'
 import { HOMEPAGE_URL, ISSUES_URL, REPOSITORY_URL } from './project.ts'
 import type { TextFile, Violation } from './types.ts'
@@ -275,4 +276,19 @@ export function checkManifests(input: ManifestsInput): Violation[] {
     }
   }
   return violations
+}
+
+export function checkBaseTsconfig(tsconfig: TextFile): Violation[] {
+  const parsed = parseJsonc(tsconfig.text)
+  const value = parsed.ok
+    ? recordAt(parsed.value, 'compilerOptions')?.erasableSyntaxOnly
+    : undefined
+  if (value === true) return []
+  return [
+    {
+      rule: 'manifest/erasable-syntax',
+      file: tsconfig.path,
+      message: `"compilerOptions.erasableSyntaxOnly" must be true, so Node.js runs every source as it is, found ${show(value)}`,
+    },
+  ]
 }

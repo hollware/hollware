@@ -10,7 +10,7 @@ import reactConfig from '../../packages/react/vite.config.ts'
 import nuxtConfig from '../../packages/nuxt/vite.config.ts'
 import vueConfig from '../../packages/vue/vite.config.ts'
 import serverConfig from '../../packages/server/vite.config.ts'
-import { checkManifests, type ManifestsInput } from '../guards/manifests.ts'
+import { checkBaseTsconfig, checkManifests, type ManifestsInput } from '../guards/manifests.ts'
 import { describeViolations } from '../guards/types.ts'
 import {
   file,
@@ -19,7 +19,7 @@ import {
   PUBLISHED_DIRS,
   publishedManifest,
 } from '../support/fixtures.ts'
-import { repoFiles } from '../support/repo.ts'
+import { readText, repoFiles } from '../support/repo.ts'
 import { recordAt } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
@@ -29,7 +29,7 @@ import { workspaceManifests } from '../support/workspace.ts'
 // package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
 // or a package's vite.config.ts stops building with `pack.exports.devExports: true`; or a package
 // exports an entry besides its root that SUBPATHS or SOURCE_FILES of tests/guards/manifests.ts does
-// not declare.
+// not declare; or tsconfig.base.json stops setting erasableSyntaxOnly to true.
 
 /** The published exports of every package, as the guard expects them. */
 const PUBLISHED_EXPORTS = {
@@ -341,6 +341,37 @@ describe('package manifests', () => {
       expect(result).toHaveLength(1)
       expect(result[0]?.rule).toBe('manifest/invalid-json')
       expect(result[0]?.file).toBe('packages/oops/package.json')
+    })
+  })
+})
+
+describe('tsconfig.base.json', () => {
+  it('allows only syntax that erases', () => {
+    const path = 'tsconfig.base.json'
+    expect(describeViolations(checkBaseTsconfig(file(path, readText(path))))).toEqual([])
+  })
+
+  describe('self-test: the guard fails on a bad fixture', () => {
+    const check = (text: string) => checkBaseTsconfig(file('tsconfig.base.json', text))
+
+    it('accepts erasableSyntaxOnly, in JSONC with a comment', () => {
+      expect(
+        check('{ "compilerOptions": { // only erasable\n "erasableSyntaxOnly": true } }'),
+      ).toEqual([])
+    })
+
+    it('reports erasableSyntaxOnly turned off, or left out', () => {
+      expect(check('{ "compilerOptions": { "erasableSyntaxOnly": false } }')).toEqual([
+        {
+          rule: 'manifest/erasable-syntax',
+          file: 'tsconfig.base.json',
+          message:
+            '"compilerOptions.erasableSyntaxOnly" must be true, so Node.js runs every source as it is, found false',
+        },
+      ])
+      expect(check('{ "compilerOptions": {} }').map((v) => v.message)).toEqual([
+        '"compilerOptions.erasableSyntaxOnly" must be true, so Node.js runs every source as it is, found undefined',
+      ])
     })
   })
 })

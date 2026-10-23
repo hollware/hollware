@@ -129,9 +129,11 @@ export default defineConfig({
         cache: false,
       },
       // What the hook pre-push runs: every task of ci.yml that can run on this machine (the guard
-      // pre-push holds it). A push that skips the hook meets the same tasks in CI.
+      // pre-push holds it), and the subjects of the commits not on main. A push that skips the hook
+      // meets the same tasks in CI.
       'check:local': {
         command: [
+          'node scripts/commit-subjects.ts',
           'vp run check:push',
           'vp run test:acceptance',
           'vp run e2e:admin',

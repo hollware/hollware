@@ -26,6 +26,7 @@ describe('exception lists', () => {
       'TABLES_WITHOUT_SITE',
       'VIRTUAL_IMPORTS',
       'WEB_TEXT_LITERALS',
+      'WORKERS_WITHOUT_EVENTS',
       'ZIZMOR_IGNORES',
     ])
     expect(describeViolations(checkExceptionLists(EXCEPTION_LISTS))).toEqual([])

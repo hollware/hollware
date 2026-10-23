@@ -27,7 +27,7 @@ deleted when v1.0 ships, together with this section.
 | `vp run bench`                | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
 | `vp run check:budgets`        | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
 | `vp run check:push`           | The CI check job: check, test, bench, build, budgets, publint, types              |
-| `vp run check:local`          | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance       |
+| `vp run check:local`          | Pre-push hook: check:push, acceptance, e2e:admin, conformance, commit subjects    |
 | `vp run test:conformance`     | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
 | `vp run test:acceptance`      | The acceptance suite of the stage, against the built playground and example site  |
 | `vp run e2e:admin`            | Admin in Chromium, virtual passkey and axe (`playwright install chromium` once)   |

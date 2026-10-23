@@ -11,6 +11,7 @@ export interface LicensesInput {
   root: Uint8Array | undefined
   /** The `LICENSE` of each package directory (`packages/core`), or `undefined` when missing. */
   packages: readonly { dir: string; license: Uint8Array | undefined }[]
+  copyright: string
 }
 
 export function checkLicenses(input: LicensesInput): Violation[] {
@@ -29,6 +30,13 @@ export function checkLicenses(input: LicensesInput): Violation[] {
       rule: 'license/root-not-mit',
       file: 'LICENSE',
       message: 'the root LICENSE must be the MIT License: its first line is "MIT License"',
+    })
+  }
+  if (rootText.split('\n')[2] !== input.copyright) {
+    violations.push({
+      rule: 'license/copyright',
+      file: 'LICENSE',
+      message: `the third line of the root LICENSE must be "${input.copyright}"`,
     })
   }
   for (const { dir, license } of input.packages) {

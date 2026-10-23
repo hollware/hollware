@@ -463,6 +463,27 @@ describe('a second run of the fixture corpus', () => {
 })
 
 describe('hollware import --publish', () => {
+  it('publishes 101 entries as an entry with a group of 99, which is the most publish takes, then one more', async () => {
+    const stub = await serve()
+    const name = (n: number) => `blog/en/p${String(n).padStart(3, '0')}.md`
+    const dir = temp.make(
+      Object.fromEntries(Array.from({ length: 101 }, (_, n) => [name(n + 1), post(`P${n + 1}`)])),
+    )
+
+    const { code, out, err } = await runImport(dir, stub.url, ['--publish'])
+
+    expect(err).toEqual([])
+    expect(code).toBe(0)
+    expect(out.at(-1)).toBe('Publishing: 101 published, 0 need acknowledgement, 0 blocked.')
+    const publishes = stub.calls.filter((call) => call.tool === 'publish')
+    expect(
+      publishes.map(({ args }) => [args.id, Array.isArray(args.group) ? args.group.length : null]),
+    ).toEqual([
+      [id(1), 99],
+      [id(101), 0],
+    ])
+  })
+
   it('acknowledges no warning, and reports what blocks and what needs an acknowledgement', async () => {
     const stub = await serve({
       findings: (file) => {

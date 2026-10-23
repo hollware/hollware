@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createD1Store } from '../../src/db/index.ts'
 import { ftsQuery } from '../../src/db/reads.ts'
-import type { ContentStore } from '../../src/ports.ts'
+import type { ContentStore, NewRevision } from '../../src/ports.ts'
 import { fixedClock, newRevision, seedOwner, siteKey, VERDICT, type Owner } from './support.ts'
 
 // Fails when: the full-text index (migrations/0008_search.sql) stops following what is published:
@@ -21,6 +21,7 @@ interface Page {
   readonly tags?: readonly string[]
   readonly locale?: string
   readonly collection?: string
+  readonly headed?: boolean
 }
 
 async function world(label: string) {
@@ -37,6 +38,8 @@ async function page(
   { draft = false }: { draft?: boolean } = {},
 ): Promise<string> {
   const frontmatter = { title: spec.title }
+  const heading: NewRevision['document']['nodes'] =
+    spec.headed === false ? [] : [['h1', { id: 'heading-attribute' }, spec.title]]
   const saved = await store.createEntry(owner.site, {
     collection: spec.collection ?? 'blog',
     locale: spec.locale ?? 'en',
@@ -49,10 +52,7 @@ async function page(
       document: {
         frontmatter,
         meta: {},
-        nodes: [
-          ['h1', { id: 'heading-attribute' }, spec.title],
-          ['p', {}, spec.text, ['a', { href: '/hidden-target/' }, ' read more']],
-        ],
+        nodes: [...heading, ['p', {}, spec.text, ['a', { href: '/hidden-target/' }, ' read more']]],
       },
       tags: spec.tags ?? [],
     }),
@@ -187,6 +187,40 @@ describe('full-text search', () => {
     )
     expect(hits[1]?.entry.entry.status).toBe('published')
     expect((hits[0]?.score ?? 0) > (hits[1]?.score ?? 0)).toBe(true)
+  })
+
+  it('weighs a match in the title 10, in the tags 4 and in the text 1: the title over the tags and five in the text, the tags over three in the text', async () => {
+    const { owner, store } = await world('search-weights')
+    await page(store, owner, {
+      slug: 'text-only',
+      title: 'Garden diary',
+      text: 'Quokka quokka quokka on keeping a small garden of herbs.',
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'tags-only',
+      title: 'Window herbs',
+      text: 'Notes on keeping a small garden of herbs indoors.',
+      tags: ['quokka'],
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'tags-and-text',
+      title: 'Herb shelf',
+      text: 'Quokka quokka quokka quokka quokka by the herb shelf.',
+      tags: ['quokka'],
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'title-only',
+      title: 'Quokka garden',
+      text: 'Notes on keeping a small garden of herbs by windows.',
+      headed: false,
+    })
+
+    const hits = await store.searchEntries(owner.site, { text: 'quokka', limit: 10 })
+
+    expect(slugs(hits)).toEqual(['title-only', 'tags-and-text', 'tags-only', 'text-only'])
   })
 
   it('narrows to a collection and a locale, and keeps to the limit', async () => {

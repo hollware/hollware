@@ -17,11 +17,14 @@ import type { TextFile, Violation } from './types.ts'
  * it lists `global_fetch_strictly_public`, without which the server would fetch a client's
  * metadata document through the zone and refuses to take such documents, and it binds `OAUTH_KV`,
  * at the top and in every environment that names its own bindings (bindings do not inherit).
+ * There it also declares a cron trigger and consumes a queue with a `dead_letter_queue`, unless
+ * `WORKERS_WITHOUT_EVENTS` names the config.
  */
 
 export interface WranglerFlagsInput {
   /** Every `wrangler.jsonc` of the repository. */
   configs: readonly TextFile[]
+  workersWithoutEvents: readonly string[]
 }
 
 /** The flags that turn Node.js compatibility off; both are needed. */
@@ -47,8 +50,28 @@ function bindsOAuthKv(bindings: Record<string, unknown>): boolean {
   )
 }
 
+function triggersCron(bindings: Record<string, unknown>): boolean {
+  const triggers = bindings.triggers
+  return isRecord(triggers) && Array.isArray(triggers.crons) && triggers.crons.length > 0
+}
+
+function consumesWithDeadLetters(bindings: Record<string, unknown>): boolean {
+  const queues = bindings.queues
+  return (
+    isRecord(queues) &&
+    Array.isArray(queues.consumers) &&
+    queues.consumers.some(
+      (consumer) =>
+        isRecord(consumer) &&
+        typeof consumer.dead_letter_queue === 'string' &&
+        consumer.dead_letter_queue !== '',
+    )
+  )
+}
+
 export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
   const violations: Violation[] = []
+  const excusedWithReason = new Set<string>()
   for (const config of input.configs) {
     const report = (rule: string, message: string): void => {
       violations.push({ rule: `wrangler-flags/${rule}`, file: config.path, message })
@@ -88,11 +111,29 @@ export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
           isRecord(bindings) && bindsHollware(bindings) ? [[`env.${name}`, bindings]] : [],
         ),
       ]
+      const excused = input.workersWithoutEvents.includes(config.path)
+      const lacksEvents = places.some(
+        ([, bindings]) => !triggersCron(bindings) || !consumesWithDeadLetters(bindings),
+      )
+      if (excused && lacksEvents) excusedWithReason.add(config.path)
       for (const [place, bindings] of places) {
         if (!bindsOAuthKv(bindings)) {
           report(
             'oauth',
             `${place} must bind a KV namespace as "OAUTH_KV": the OAuth server keeps its clients, grants and tokens there`,
+          )
+        }
+        if (excused) continue
+        if (!triggersCron(bindings)) {
+          report(
+            'events',
+            `${place} must declare a cron trigger: it publishes the scheduled entries whose time has come`,
+          )
+        }
+        if (!consumesWithDeadLetters(bindings)) {
+          report(
+            'events',
+            `${place} must consume a queue with a "dead_letter_queue": it delivers the publication events and keeps the ones it could not`,
           )
         }
       }
@@ -102,6 +143,15 @@ export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
         'send-metrics',
         `"send_metrics" must be false, so no wrangler command of this repository sends telemetry, found ${JSON.stringify(parsed.value.send_metrics)}`,
       )
+    }
+  }
+  for (const path of input.workersWithoutEvents) {
+    if (!excusedWithReason.has(path)) {
+      violations.push({
+        rule: 'wrangler-flags/stale-exception',
+        file: 'tests/guards/exceptions.ts',
+        message: `WORKERS_WITHOUT_EVENTS names ${path}, which is no Worker of Hollware without its cron trigger or dead-letter queue: remove it`,
+      })
     }
   }
   return violations

@@ -249,6 +249,26 @@ export const OPERATIONS_WITHOUT_ADMIN: ExceptionList = {
   ],
 }
 
+/**
+ * Configs of a Worker of Hollware that need no cron trigger and no queue consumer with a
+ * dead-letter queue (guard `wrangler-flags`). The value is the path of the `wrangler.jsonc`.
+ */
+export const WORKERS_WITHOUT_EVENTS: ExceptionList = {
+  max: 2,
+  entries: [
+    {
+      value: 'packages/server/wrangler.jsonc',
+      reason:
+        'Never deployed: the tests of the server run under it and call its scheduled and queue handlers themselves.',
+    },
+    {
+      value: 'tests/conformance/worker/wrangler.jsonc',
+      reason:
+        'Never deployed: the MCP conformance suite runs against it under wrangler dev and calls no scheduled or queued work.',
+    },
+  ],
+}
+
 /** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
 function byValue(list: TestRunnerList): ExceptionList {
   return {
@@ -269,6 +289,7 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   ADMIN_TEXT_LITERALS,
   WEB_TEXT_LITERALS,
   OPERATIONS_WITHOUT_ADMIN,
+  WORKERS_WITHOUT_EVENTS,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

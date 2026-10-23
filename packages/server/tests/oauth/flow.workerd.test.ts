@@ -1,6 +1,6 @@
 import { defineConfig } from '@hollware/core'
 import { env } from 'cloudflare:workers'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import { createSession } from '../../src/identity/store.ts'
@@ -35,6 +35,7 @@ import {
 
 afterEach(() => {
   restoreLogs()
+  vi.useRealTimers()
 })
 
 const MCP = `${PUBLIC_URL}/mcp`
@@ -189,7 +190,12 @@ async function exchange(
     }).toString(),
   })
   expect(response.status).toBe(200)
-  return await response.json<{ access_token: string; refresh_token: string; scope: string }>()
+  return await response.json<{
+    access_token: string
+    refresh_token: string
+    scope: string
+    expires_in: number
+  }>()
 }
 
 /** The whole flow, for a person of this role who allows what the page offers. */
@@ -452,6 +458,36 @@ describe('an access token', () => {
         resource: MCP,
       }).toString(),
     })
+
+  it('lives an hour', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+
+    const { tokens } = await tokenFor(worker, 'author')
+
+    expect(tokens.expires_in).toBe(3600)
+  })
+
+  it('comes with a refresh token that is refused thirty days after the code, refreshed or not', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.parse(NOW) })
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { clientId, tokens } = await tokenFor(worker, 'editor')
+    const at = (iso: string) => {
+      vi.setSystemTime(Date.parse(iso))
+      worker.clock.set(iso)
+    }
+
+    at('2026-11-12T11:58:00.000Z')
+    const early = await refreshWith(worker, clientId, tokens.refresh_token)
+    const rotated = await early.clone().json<{ refresh_token: string }>()
+    at('2026-11-12T12:00:00.000Z')
+    const late = await refreshWith(worker, clientId, rotated.refresh_token)
+
+    expect([early.status, late.status, (await late.json<{ error: string }>()).error]).toEqual([
+      200,
+      400,
+      'invalid_grant',
+    ])
+  })
 
   it('takes a spent refresh token again within a minute, for an answer that was lost (T-34)', async () => {
     const worker = boot({ config: WITH_REGISTRATION })

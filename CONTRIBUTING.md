@@ -39,7 +39,7 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp run bench`            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95                  |
 | `pnpm exec vp run check:budgets`    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup                  |
 | `pnpm exec vp run check:push`       | The CI check job: check, test, bench, build, budgets, publint, types                               |
-| `pnpm exec vp run check:local`      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance                        |
+| `pnpm exec vp run check:local`      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance, commit subjects       |
 | `pnpm exec vp run test:conformance` | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions                    |
 | `pnpm exec vp run test:acceptance`  | The acceptance suite of the stage, against the built playground and example site                   |
 | `pnpm exec vp run e2e:admin`        | The admin in Chromium with a virtual passkey and axe (`playwright install chromium` once)          |
@@ -95,7 +95,7 @@ Use the issue forms. A bug report asks for the Hollware version, where it runs, 
 
 1. Fork the repository and create a branch from `main`.
 2. Make your change, with tests, and a changeset if a published package changed.
-3. Push. The hook pre-push runs `pnpm exec vp run check:local`, every check of CI that runs on your machine: check, test, build, publint, types, acceptance, the admin's end-to-end tests and MCP conformance. Run it by hand to know earlier.
+3. Push. The hook pre-push runs `pnpm exec vp run check:local`, every check of CI that runs on your machine: check, test, build, publint, types, acceptance, the admin's end-to-end tests and MCP conformance, and it checks that the subject of each commit not on `main` is a Conventional Commit. Run it by hand to know earlier.
 4. Open a pull request against `main` and fill in the template.
 
 CI must pass before a pull request can be merged. Keep each pull request to one concern: small changes are reviewed faster. Hollware has a single maintainer, [Sergio Azócar](https://github.com/sergioazoc), so reviews take time. Please be patient.

@@ -132,6 +132,29 @@ describe.each(['home', 'stranger'] as const)(
       )
     })
 
+    it('finds no revision and no review of the other site by its id', async () => {
+      const { caller, other, mine, theirs, store } = await seedPair(callerIs)
+      const review = (site: SeededSite, entry: SeededEntry) => {
+        const id = `rvw_${crypto.randomUUID()}`
+        return env.DB.prepare(
+          `INSERT INTO reviews (id, site_id, entry_id, revision_id, status, acknowledged,
+            requested_by, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, 'pending', '[]', ?5, ?6, ?6)`,
+        )
+          .bind(id, site.site, entry.id, entry.revisionId, site.userId, NOW)
+          .run()
+          .then(() => id)
+      }
+      const own = await review(caller, mine.draft)
+      const foreign = await review(other, theirs.draft)
+
+      expect(await store.findRevision(caller.site, theirs.english.revisionId)).toBeNull()
+      expect((await store.findRevision(caller.site, mine.english.revisionId))?.id).toBe(
+        mine.english.revisionId,
+      )
+      expect(await store.findReview(caller.site, foreign)).toBeNull()
+      expect((await store.findReview(caller.site, own))?.id).toBe(own)
+    })
+
     it('lists, and counts for the next page, only its own entries', async () => {
       const { caller, mine, store } = await seedPair(callerIs)
       const list = (query: {
