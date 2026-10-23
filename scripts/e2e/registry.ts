@@ -56,9 +56,7 @@ export function packument(
 }
 
 export function upstreamUrl(path: string): URL {
-  const target = new URL(path, UPSTREAM)
-  if (target.origin !== UPSTREAM) throw new Error(`Not a path of the npm registry: ${path}`)
-  return target
+  return new URL(`${UPSTREAM}/${path.replace(/^\/+/, '')}`)
 }
 
 async function forward(request: IncomingMessage, response: ServerResponse): Promise<void> {

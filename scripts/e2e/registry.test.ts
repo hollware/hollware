@@ -12,11 +12,10 @@ describe('the upstream of the e2e registry', () => {
   })
 
   it('is never another host, whatever the path says', () => {
-    expect(() => upstreamUrl('//evil.example/x')).toThrow(
-      'Not a path of the npm registry: //evil.example/x',
-    )
-    expect(() => upstreamUrl('https://evil.example/x')).toThrow(
-      'Not a path of the npm registry: https://evil.example/x',
-    )
+    expect(
+      ['//evil.example/x', '@evil.example/x', 'https://evil.example/x'].map(
+        (path) => upstreamUrl(path).host,
+      ),
+    ).toEqual(['registry.npmjs.org', 'registry.npmjs.org', 'registry.npmjs.org'])
   })
 })
