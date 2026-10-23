@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { matchesGlob } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
-import { fixtures, generated } from '../../vite.config.ts'
+import { byteExactFixtures, generated } from '../../vite.config.ts'
 import { checkComments, type CommentsInput } from '../guards/comments.ts'
 import { ZIZMOR_IGNORES } from '../guards/exceptions.ts'
 import { describeViolations } from '../guards/types.ts'
@@ -65,7 +65,7 @@ function bins(): string[] {
   )
 }
 
-const EXCLUDED = [...generated, ...fixtures]
+const EXCLUDED = [...generated, ...byteExactFixtures]
 
 function judged(path: string): boolean {
   return (

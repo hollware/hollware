@@ -8,6 +8,12 @@ export interface WorkflowPermissionsInput {
 
 export const ID_TOKEN_JOBS: readonly string[] = ['release.yml#publish', 'security.yml#scorecard']
 
+export const WRITE_SCOPES: Readonly<Record<string, readonly string[]>> = {
+  'release.yml#version': ['contents', 'pull-requests'],
+  'release.yml#finalize': ['contents'],
+  'security.yml#scorecard': ['security-events'],
+}
+
 export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Violation[] {
   const violations: Violation[] = []
   for (const file of input.workflows) {
@@ -52,6 +58,16 @@ export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Viola
           report(
             'id-token',
             `job "${job.id}" grants "id-token: write", which only ${ID_TOKEN_JOBS.join(' and ')} may: it lets a job mint OIDC tokens`,
+          )
+        }
+      }
+      if (isRecord(job.permissions)) {
+        const allowed = WRITE_SCOPES[`${workflow.file}#${job.id}`] ?? []
+        for (const [scope, level] of Object.entries(job.permissions)) {
+          if (scope === 'id-token' || level !== 'write' || allowed.includes(scope)) continue
+          report(
+            'write-scope',
+            `job "${job.id}" grants "${scope}: write", which WRITE_SCOPES does not give ${workflow.file}#${job.id}`,
           )
         }
       }

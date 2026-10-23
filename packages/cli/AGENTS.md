@@ -38,7 +38,8 @@ The `hollware` command. Boundary rules for this package:
   Bound by `tests/init.test.ts` and by `tests/integration.test.ts`, where a script that fails on its
   last statement leaves the earlier ones unwritten.
 - The first token has every scope and 90 days (`PERSONAL_TOKEN_TTL_DAYS`). `token create` has
-  `content:read,content:write` and 90 days by default, and at most 365 days.
+  `content:read,content:write` by default, never expires without `--expires-in-days` (the person
+  chooses), and lives at most 365 days (`MAX_EXPIRES_IN_DAYS`).
 - `src/d1.ts` reads the D1 binding `DB` of `wrangler.jsonc` (JSON with comments, `src/jsonc.ts`)
   unless `--database` names one, and turns the `--json` answer of wrangler into rows.
 - Every command defaults to the local database, and always passes `--local` or `--remote` to
@@ -52,6 +53,15 @@ The `hollware` command. Boundary rules for this package:
   and for `--remote` it exports a backup to `.wrangler/hollware-backups` first, and stops if
   `wrangler d1 export` fails or leaves no file. With nothing pending it takes no backup (an
   export locks the database). Bound by `tests/migrate.test.ts`.
+
+## Deploy
+
+- An upgrade migrates the remote database before `wrangler deploy` (migrations only add, so the
+  old Worker keeps working); a first deploy has no remote database yet and migrates after. Bound by
+  `tests/deploy.test.ts`.
+- `deploy` edits `wrangler.jsonc` as text (`withPublicUrl`, `withCustomDomain`): the user's
+  comments, order and spacing stay. It gives the Worker `HOLLWARE_SECRET` only when it has none: a
+  new one would leave what the old one sealed unopenable.
 
 ## Import
 
@@ -91,8 +101,8 @@ The `hollware` command. Boundary rules for this package:
 
 ## Tests
 
-- Every test file starts with a `// Fails when:` header that names, for each test, the production
-  change that fails it. A new test names its line, or it is not written.
+- A test's name says what fails it; `scripts/break-line.ts` on the line it guards proves it
+  (`CAUGHT`). A test that no mutation of `src` fails is not written.
 - `tests/support/fake-wrangler.ts` fakes wrangler, which this repository does not own, to pin the
   exact arguments and SQL. `tests/support/stub-hollware.ts` is a Hollware stand-in: an MCP server
   built with `@modelcontextprotocol/server` over HTTP on a random port, with stateful tools that

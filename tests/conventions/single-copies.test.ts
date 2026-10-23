@@ -17,7 +17,7 @@ function workspaceLockfile(): unknown {
 }
 
 describe('single copies', () => {
-  it('zod, hono, drizzle-orm and the MCP server SDK resolve to one version each', () => {
+  it('zod, hono, drizzle-orm, the MCP server SDK, vitest, and the h3 and nitropack of nuxt resolve to one version each', () => {
     const lockfile = workspaceLockfile()
     expect(isRecord(lockfile) && isRecord(lockfile.importers)).toBe(true)
     expect(describeViolations(checkSingleCopies({ lockfile }))).toEqual([])

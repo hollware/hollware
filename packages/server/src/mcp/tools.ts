@@ -35,10 +35,11 @@ export interface Tool {
   readonly scopes: readonly [Scope, ...Scope[]]
 }
 
-const byName = (a: Operation, b: Operation) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+const byCodeUnitsOfName = (a: Operation, b: Operation) =>
+  a.name < b.name ? -1 : a.name > b.name ? 1 : 0
 
 export function createToolTable(operations: readonly Operation[] = OPERATIONS): readonly Tool[] {
-  return operations.toSorted(byName).map((spec) => {
+  return operations.toSorted(byCodeUnitsOfName).map((spec) => {
     const [first, ...rest] = spec.scopes
     if (first === undefined) {
       throw new Error(`${spec.name} asks for no scope; every tool needs at least one`)

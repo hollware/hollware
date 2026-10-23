@@ -4,13 +4,19 @@ import { REPO_ROOT } from './repo.ts'
 import { isRecord } from './values.ts'
 
 export function listedTestFiles(): { file: string; project: string }[] {
-  const env = Object.fromEntries(
+  const envOutsideThisTestRun = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !name.startsWith('VITEST')),
   )
   const result = spawnSync(
     join(REPO_ROOT, 'node_modules/.bin/vp'),
     ['test', 'list', '--filesOnly', '--json'],
-    { cwd: REPO_ROOT, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024, timeout: 60_000 },
+    {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: envOutsideThisTestRun,
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 60_000,
+    },
   )
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) {

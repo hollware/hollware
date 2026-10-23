@@ -10,3 +10,8 @@ a Worker of their own. Boundary rules for this package:
   its bindings. Never read `process.env`.
 - No dependency beyond `@hollware/core`: the roles need a schedule, a little memory, MCP and a
   model, which a Worker has.
+- A run of a free Worker has 50 subrequests: one role a run (`roleAt`), and `MAX_PAGES`,
+  `MAX_REVIEWS`, `FIX_ROUNDS` and the translator's `limit` keep a role under them. `MAX_COMMENT`
+  stays under the 4,000 characters of `comment_review` (`tests/reviewer.test.ts`).
+- A request over a service binding carries no Host: `mcpHollware` sets the public URL's, which
+  Hollware's guard compares.

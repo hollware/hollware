@@ -1,13 +1,11 @@
 import { previewTokenFromCookie } from '@hollware/client'
 import { defineNitroPlugin } from 'nitropack/runtime'
 import { removeResponseHeader, setResponseHeader } from 'h3'
-import { PREVIEW_HEADER } from '../tags.ts'
+import { markPreviewRequest } from '../tags.ts'
 
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('request', (event) => {
-    const headers = event.node.req.headers
-    if (previewTokenFromCookie(headers.cookie) === undefined) delete headers[PREVIEW_HEADER]
-    else headers[PREVIEW_HEADER] = crypto.randomUUID()
+    markPreviewRequest(event.node.req.headers)
   })
   nitroApp.hooks.hook('beforeResponse', (event) => {
     if (previewTokenFromCookie(event.node.req.headers.cookie) === undefined) return

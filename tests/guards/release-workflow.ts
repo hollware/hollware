@@ -75,6 +75,10 @@ const SCRIPT_STEPS: readonly ScriptStep[] = [
   },
 ]
 
+export const VERSION_PACKAGES_TITLE = 'Version Packages'
+
+const FINALIZE_DEFAULT_WAIT_SECONDS = 1800
+
 export const AUDIT_COMMAND = "pnpm --filter './packages/*' audit --prod --audit-level=high"
 
 const STATUS_FUNCTION = /\b(?:always|cancelled|failure)\(\)/
@@ -256,6 +260,23 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     }
   }
 
+  const versionJob = workflow.jobs.find((job) => job.id === 'version')
+  if (versionJob !== undefined) {
+    const versionStep = versionJob.steps.find(
+      (step) => step.uses?.value.startsWith('changesets/action/version@') === true,
+    )
+    for (const key of ['commit-message', 'pr-title']) {
+      const title = versionStep?.inputs[key]
+      if (title !== VERSION_PACKAGES_TITLE) {
+        report(
+          releaseFile,
+          'version-title',
+          `job "version": changesets/action/version must set "${key}: ${VERSION_PACKAGES_TITLE}", the title by which changeset-check.sh skips its merge and finalize-release.sh finds the release commit, found ${JSON.stringify(title)}`,
+        )
+      }
+    }
+  }
+
   const concurrency = workflow.concurrency
   const group = isRecord(concurrency) ? normalize(concurrency.group) : undefined
   if (
@@ -376,6 +397,15 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     }
   }
   if (finalize !== undefined) {
+    const waitSeconds = Number(finalizeStep?.env.WAIT_SECONDS ?? FINALIZE_DEFAULT_WAIT_SECONDS)
+    const timeout = finalize.timeoutMinutes
+    if (typeof timeout !== 'number' || timeout * 60 <= waitSeconds) {
+      report(
+        releaseFile,
+        'finalize-timeout',
+        `job "finalize": "timeout-minutes" must outlast the ${waitSeconds} s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found ${JSON.stringify(timeout)}`,
+      )
+    }
     const condition = normalize(finalize.condition)
     if (!condition.includes("github.event_name == 'workflow_dispatch' && inputs.finalize_only")) {
       report(

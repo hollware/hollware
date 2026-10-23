@@ -57,9 +57,15 @@ Where things are:
   upgrade re-runs the hostile and braces tests: the parser turns off the markdown-it rule
   `comark_block_yaml` (an alias bomb in a component's YAML props took tens of seconds) and wraps
   `comark_inline_props` by name.
+- The parser takes no default plugin of Comark (`registerDefaultPlugins: false`): never `html`,
+  emoji, math or footnotes. Comark's `security` plugin is not used either: it runs before the walk
+  of `analyze.ts`, drops attributes without a report and compares tags without regard to case.
+- `src/webhooks.ts` imports nothing: `@hollware/core/webhooks` serves sites whose zod is another
+  major (`packages/client/tests/webhooks-entry.test.ts`).
 - Tests that process Markdown call `warmUpComark()` from `tests/markdown/support.ts`: the first
   import of Comark in workerd takes seconds. `vp run bench` fails when the p95 CPU time of a
-  write of the 2,027-word fixture is over 3 ms.
+  write of the 2,027-word fixture is over 3 ms. It reads CPU time (`process.cpuUsage`), not the wall
+  clock, and runs in Node only: workerd's clock moves in steps of a millisecond.
 - `src/contracts/`: the runner and the built-in contracts. Unsafe content is refused with a fix, never sanitized in silence: the agent learns from the fix. `runContracts` is
   the one entry: `schema` runs first, and the collection's own contracts run only once it passed,
   with the schema's output; a contract that throws becomes an error of that contract; violations

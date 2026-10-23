@@ -53,6 +53,18 @@ describe('contractsHash', () => {
     expect(await sha256Hex(CANONICAL)).toBe(HASH)
   })
 
+  it('holds the parameters of a rule, and none for a rule without them, so older verdicts keep their hash', async () => {
+    const ruled = (params: Readonly<Record<string, unknown>>) =>
+      handMade([{ ...SEO_TITLE, rule: { name: 'field-length', params } }])
+
+    expect(await hashOf(ruled({}))).toBe(HASH)
+    expect(await hashOf(ruled({ max: 60 }))).toBe(
+      await sha256Hex(
+        CANONICAL.replace('{"id":"seo-title",', '{"id":"seo-title","params":{"max":60},'),
+      ),
+    )
+  })
+
   it('is the same for the same rules, whatever the content', async () => {
     expect(await hashOf(handMade(), 'write', { title: 'A title' })).toBe(HASH)
     expect(await hashOf(handMade(), 'write', { title: 42 })).toBe(HASH)

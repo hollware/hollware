@@ -380,6 +380,28 @@ describe('hollware export writes only into a new or an empty directory', () => {
     expect(readFileSync(join(base, 'out/notes.txt'), 'utf8')).toBe('mine')
   })
 
+  it('never writes over a file that appears after the directory was checked', async () => {
+    const stub = await sampleSite()
+    const base = temp.make({})
+
+    const { code, err } = await run(['export', 'out', '--url', stub.url], {
+      cwd: base,
+      readStdin: () => {
+        mkdirSync(join(base, 'out/blog/en'), { recursive: true })
+        writeFileSync(join(base, 'out/blog/en/a.md'), 'mine')
+        return Promise.resolve(TOKEN)
+      },
+    })
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      expect.stringMatching(
+        /^hollware export: could not write blog\/en\/a\.md: EEXIST: .*\. 0 of 3 files written: remove out and run the export again\.$/,
+      ),
+    ])
+    expect(readFileSync(join(base, 'out/blog/en/a.md'), 'utf8')).toBe('mine')
+  })
+
   it('refuses a file', async () => {
     const base = temp.make({ 'out.md': 'x' })
 

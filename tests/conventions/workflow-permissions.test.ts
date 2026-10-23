@@ -83,6 +83,22 @@ describe('workflow permissions', () => {
       ])
     })
 
+    it('reports a write scope that WRITE_SCOPES does not give the job, and accepts the ones it does', () => {
+      const text = goodRelease.replace(
+        '  pack:\n    permissions:\n      contents: read',
+        '  pack:\n    permissions:\n      contents: write',
+      )
+      expect(check('release.yml', text)).toEqual([
+        {
+          rule: 'workflow-permissions/write-scope',
+          file: '.github/workflows/release.yml',
+          message:
+            'job "pack" grants "contents: write", which WRITE_SCOPES does not give release.yml#pack',
+        },
+      ])
+      expect(check('release.yml', text.replace('  pack:', '  finalize:'))).toEqual([])
+    })
+
     it('reports the job named publish in another workflow, and scorecard in release.yml', () => {
       expect(check('ci.yml', goodRelease).map((violation) => violation.message)).toEqual([
         'job "publish" grants "id-token: write", which only release.yml#publish and security.yml#scorecard may: it lets a job mint OIDC tokens',

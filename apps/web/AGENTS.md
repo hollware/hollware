@@ -16,3 +16,8 @@ The site, the docs, the admin, the CLI and every error speak alike:
   (entrada, borrador, contrato, veredicto, revisión, publicar, colección, sitio).
 - The headline is "The CMS your agents write to." and the sign-off "Made for agents, kept by
   people."
+
+## Build
+
+- `buildDir: '.nuxt'` in `nuxt.config.ts` stays: a build elsewhere rewrites the types of the server
+  routes to point there, and the type-check of the repository loses them.

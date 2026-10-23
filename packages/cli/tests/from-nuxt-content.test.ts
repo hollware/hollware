@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -15,7 +15,7 @@ function content(files: Record<string, string>): string {
 }
 
 describe('a Nuxt Content directory', () => {
-  it('routes each page to its slug and keeps its Markdown as it is', () => {
+  it('routes each page to its slug, keeps its Markdown as it is, and follows no link', () => {
     const page = '---\ntitle: Install\n---\n\n::callout{type="tip"}\nRun it.\n::\n'
     const root = content({
       '1.guide/2.install.md': page,
@@ -25,6 +25,8 @@ describe('a Nuxt Content directory', () => {
       '.navigation.yml': 'title: Docs',
       'authors.yml': 'name: Ada',
     })
+    const outside = content({ 'secret.md': '# Secret\n' })
+    symlinkSync(join(outside, 'secret.md'), join(root, 'linked.md'))
 
     const corpus = corpusFromNuxtContent(root, {
       collection: 'docs',

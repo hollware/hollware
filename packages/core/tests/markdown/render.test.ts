@@ -199,6 +199,11 @@ describe('the HTML of a document that no Markdown wrote', () => {
     ],
     ['a value that is no text', { a: 1 }, '<a>x</a>'],
     ['a page of the site, with its query', '/ok/?a=1&b=2', '<a href="/ok/?a=1&amp;b=2">x</a>'],
+    [
+      'a page whose query holds a character reference, as written',
+      '/ok/?q=&#106;',
+      '<a href="/ok/?q=&amp;#106;">x</a>',
+    ],
   ])(
     'reads a link bound to the frontmatter under the rules of a link: %s',
     async (_name, url, html) => {

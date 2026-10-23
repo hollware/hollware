@@ -37,6 +37,7 @@ describe('the size limit', () => {
       ['日'.repeat(3), 9],
       ['😀', 4],
       ['\ud800', 3],
+      ['\ud800a', 4],
       ['a😀b', 6],
     ] as const) {
       expect((await processMarkdown(text, limit(bytes))).ok).toBe(true)

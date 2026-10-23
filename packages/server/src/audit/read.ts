@@ -51,12 +51,20 @@ function encodeCursor(at: string, id: string): string {
   return btoa(`${at}|${id}`).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function decodeCursor(cursor: string): { at: string; id: string } {
+function cursorPartsOrNull(cursor: string): { at: string; id: string } | null {
+  let text: string
   try {
-    const text = atob(cursor.replace(/-/g, '+').replace(/_/g, '/'))
-    const [at = '', id = ''] = text.split('|')
-    if (INSTANT.test(at) && ID.test(id)) return { at, id }
-  } catch {}
+    text = atob(cursor.replace(/-/g, '+').replace(/_/g, '/'))
+  } catch {
+    return null
+  }
+  const [at = '', id = ''] = text.split('|')
+  return INSTANT.test(at) && ID.test(id) ? { at, id } : null
+}
+
+function decodeCursor(cursor: string): { at: string; id: string } {
+  const parts = cursorPartsOrNull(cursor)
+  if (parts !== null) return parts
   throw new ActivityInputError(
     'The cursor is not valid for the activity log.',
     'Pass the nextCursor of the previous page unchanged, or leave it out for the first page.',

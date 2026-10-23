@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out the repository
+      - name: Check out the repository with its history and release tags
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -152,7 +152,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out the repository
+      - name: Check out the repository with the tags of earlier releases
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -224,5 +224,5 @@ jobs:
       - name: Build the packages
         run: vp run -r build
 
-      - name: Publish previews to pkg.pr.new
+      - name: Publish previews to pkg.pr.new, whose GitHub App needs no token
         run: pnpm exec pkg-pr-new publish --pnpm './packages/*' # zizmor: ignore[use-trusted-publishing]

@@ -57,6 +57,17 @@ describe('the images-have-alt contract', () => {
     }
   })
 
+  it('passes an image of the site with no alt, which a reader gets with the alt it was uploaded with', async () => {
+    const verdict = await runImages(
+      [
+        { src: 'asset:ast_0123456789abcdef0123456789', alt: '', line: 2 },
+        { src: 'asset:not-an-asset', alt: '', line: 5 },
+      ],
+      'write',
+    )
+    expect(verdict.errors.map((error) => error.line)).toStrictEqual([5])
+  })
+
   it('leaves out the line when the image has none', async () => {
     const verdict = await runImages([{ src: '/a.png', alt: '' }], 'write')
     expect(verdict.errors).toStrictEqual([

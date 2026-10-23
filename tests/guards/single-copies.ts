@@ -8,7 +8,10 @@ export interface SingleCopiesInput {
 export const SINGLE_COPY_PACKAGES = [
   '@modelcontextprotocol/server',
   'drizzle-orm',
+  'h3',
   'hono',
+  'nitropack',
+  'vitest',
   'zod',
 ] as const
 

@@ -1,3 +1,4 @@
+import { previewTokenFromCookie } from '@hollware/client'
 import { entryTag, EVERY_LOCALE, groupTag, listTag, SITE_TAG } from '@hollware/core'
 
 const KEY = 'hollwareTags'
@@ -67,3 +68,10 @@ export function edgeHeaders(
 }
 
 export const PREVIEW_HEADER = 'x-hollware-preview'
+
+export function markPreviewRequest(headers: Record<string, string | string[] | undefined>): void {
+  const cookie = headers['cookie']
+  if (previewTokenFromCookie(typeof cookie === 'string' ? cookie : undefined) === undefined) {
+    delete headers[PREVIEW_HEADER]
+  } else headers[PREVIEW_HEADER] = crypto.randomUUID()
+}

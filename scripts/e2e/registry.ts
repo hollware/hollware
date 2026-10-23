@@ -17,7 +17,7 @@ export interface Registry {
 }
 
 const UPSTREAM = 'https://registry.npmjs.org'
-const LONG_AGO = '2000-01-01T00:00:00.000Z'
+const OLDER_THAN_ANY_MINIMUM_RELEASE_AGE = '2000-01-01T00:00:00.000Z'
 
 type Json = Record<string, unknown>
 
@@ -48,7 +48,7 @@ export function packument(
         integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
       },
     }
-    time[local.version] = LONG_AGO
+    time[local.version] = OLDER_THAN_ANY_MINIMUM_RELEASE_AGE
   }
   const newest = locals.at(-1)
   if (newest !== undefined) tags['latest'] = newest.version

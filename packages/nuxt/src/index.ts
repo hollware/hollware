@@ -1,4 +1,3 @@
-import type { NitroRouteConfig } from 'nitropack'
 import {
   addComponent,
   addImports,
@@ -9,7 +8,7 @@ import {
   createResolver,
   defineNuxtModule,
 } from '@nuxt/kit'
-import { PREVIEW_HEADER } from './runtime/tags.ts'
+import { secondsCacheRules } from './route-rules.ts'
 
 /** The options of `hollware` in nuxt.config.ts. */
 export interface ModuleOptions {
@@ -113,13 +112,8 @@ export default defineNuxtModule<ModuleOptions>({
       })
     }
     if (typeof options.cache === 'number' && options.cache > 0) {
-      const pages: NitroRouteConfig = {
-        cache: { swr: true, maxAge: options.cache, varies: [PREVIEW_HEADER] },
-      }
-      const routes: NitroRouteConfig = { swr: false, cache: false }
       nuxt.options.routeRules = {
-        '/**': pages,
-        '/_hollware/**': routes,
+        ...secondsCacheRules(options.cache),
         ...nuxt.options.routeRules,
       }
     }

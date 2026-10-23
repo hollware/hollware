@@ -12,6 +12,9 @@ serve them. Boundary rules for this package:
   change without its migration.
 - What drizzle-kit does not model (triggers) and every table rebuild go in a hand-written
   migration, `drizzle-kit generate --custom --name <what>`, without the comment it writes.
+- D1 keeps foreign keys on: a migration cannot drop or rebuild a table that rows point at (D1
+  answers "internal error"). A column of such a table comes by `ADD COLUMN` without a CHECK, and
+  `entries` and `revisions` point at each other with no foreign key.
 - `revisions`, `revision_tags` and `publications` are append-only, through the triggers
   of `migrations/0002_append_only.sql`. A migration that rebuilds one of them creates its
   triggers again. A new column of them goes in its `_immutable` trigger or is listed as derived
@@ -45,7 +48,8 @@ serve them. Boundary rules for this package:
   (`tests/db/isolation.workerd.test.ts` runs every method against two seeded sites).
 - D1's limits are kept in code: at most 90 bound values per statement (`src/db/chunks.ts`),
   compound `SELECT`s of at most 5 terms (tags go in a `VALUES` list), and rows under
-  `MAX_ROW_BYTES`, refused as `too_large` before they are written.
+  `MAX_ROW_BYTES`, refused as `too_large` before they are written: Miniflare does not enforce
+  D1's 2 MB.
 - Listings read summaries (the revision's id, frontmatter and tags) from an index of `entries`
   and sort nothing: the published view names the literal `'published'`, and the cursor is the
   row value `(sort key, id) < (?, ?)` (`tests/db/list-plans.workerd.test.ts` reads
@@ -67,8 +71,10 @@ serve them. Boundary rules for this package:
   server validates a token by its shape: `hw_pat_…` goes to `checkPersonalToken`, anything else to
   the authorization server, and either way the scopes are intersected with the user's role at that
   request. `/authorize` is ours (`authorize.ts`): the session cookie, then a consent page that
-  offers only what the role allows. A validator never throws to the library, which would answer a
-  bare 503: it hands the error to the gateway, which throws it into the error handler.
+  offers only what the role allows. The admin is a registered public client, not a metadata
+  document, which needs an `https` URL the Worker fetches from itself. A validator never throws
+  to the library, which would answer a bare 503: it hands the error to the gateway, which throws
+  it into the error handler.
 - Reviews (v0.3): `publish` from a principal without `content:publish` runs the same checks and
   asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
   closes its pending review in the same batch: a new revision cancels it, a publication approves
@@ -80,7 +86,8 @@ serve them. Boundary rules for this package:
 - `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
   `/signin`, the four steps of their ceremonies, and `POST /authorize/signout`, below the one path
   the session cookie is sent to. A person manages their own passkeys, grants and sessions over
-  `/v1/admin/account`; their last passkey is refused in the statement that deletes.
+  `/v1/admin/account`; their last passkey is refused in the statement that deletes. `routes.ts`
+  imports the ceremonies with `import()`, so SimpleWebAuthn stays out of startup.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
   when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
   there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one
@@ -91,7 +98,8 @@ serve them. Boundary rules for this package:
   primary), the authorization server's routes, the identity pages and a JSON 404. Whatever a route throws is a JSON 500 with the request id in its
   fix; a D1 failure is never a 401. Hono 5's `onError` and `notFound` are middleware `(c, next)`;
   the Hono 4 form answers a plain-text 500, so everything version-specific stays in
-  `src/http/errors.ts`.
+  `src/http/errors.ts`. A route's error reaches `onError` before any middleware around it, so a
+  route catches what it answers itself (`src/http/read-api.ts`).
 - `src/rpc` is what sites call over a service binding: the class has the six methods of
   `HollwareRpc` and nothing else, because everything on its prototype is callable. Each call checks
   its site, parses its input with the spec, and runs on the published view with a binding

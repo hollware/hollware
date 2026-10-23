@@ -16,15 +16,19 @@ import type { SourceInput } from '../../src/analytics/source.ts'
 
 const NOW = () => new Date('2026-10-21T12:00:00.000Z')
 
+function jsonOrText(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 function provider(...answers: { status: number; body: unknown }[]) {
   const asked: { url: string; method: string; headers: Record<string, string>; body: unknown }[] =
     []
   const fetch: Fetch = async (url, init) => {
-    const text = typeof init?.body === 'string' ? init.body : ''
-    let body: unknown = text
-    try {
-      body = JSON.parse(text)
-    } catch {}
+    const body = jsonOrText(typeof init?.body === 'string' ? init.body : '')
     asked.push({
       url,
       method: init?.method ?? 'GET',

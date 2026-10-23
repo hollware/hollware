@@ -9,7 +9,7 @@ export const generated = [
   'packages/admin/app/components.d.ts',
 ]
 
-export const fixtures = ['tests/fixtures/content/**']
+export const byteExactFixtures = ['tests/fixtures/content/**']
 
 export default defineConfig({
   staged: {
@@ -18,7 +18,7 @@ export default defineConfig({
   fmt: {
     semi: false,
     singleQuote: true,
-    ignorePatterns: [...generated, ...fixtures],
+    ignorePatterns: [...generated, ...byteExactFixtures],
   },
   lint: {
     plugins: ['typescript', 'unicorn', 'oxc', 'import', 'node'],

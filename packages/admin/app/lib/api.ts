@@ -25,6 +25,10 @@ export interface ApiDeps {
   readonly text?: () => Messages['api']
 }
 
+function pageLeftForSignIn(): Promise<never> {
+  return new Promise<never>(() => {})
+}
+
 export function createApi(deps: ApiDeps) {
   const text = deps.text ?? (() => en.api)
   async function sendFor<Answer>(
@@ -35,7 +39,7 @@ export function createApi(deps: ApiDeps) {
     const token = await deps.auth.token()
     if (token === null) {
       await deps.auth.signIn(deps.here())
-      return new Promise<never>(() => {})
+      return pageLeftForSignIn()
     }
     const headers = new Headers(init.headers)
     headers.set('authorization', `Bearer ${token}`)
@@ -43,7 +47,7 @@ export function createApi(deps: ApiDeps) {
     if (response.status === 401) {
       deps.auth.forget()
       await deps.auth.signIn(deps.here())
-      return new Promise<never>(() => {})
+      return pageLeftForSignIn()
     }
     if (response.ok) return read(response)
     const body: unknown = await response.json()

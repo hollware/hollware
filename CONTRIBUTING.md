@@ -56,7 +56,7 @@ prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
 
 ## Conventions
 
-- **English everywhere.** Code, comments, commit messages, documentation and issues are written in English.
+- **English everywhere.** Code, commit messages, documentation and issues are written in English.
 - **Conventional Commits.** Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org): `feat: ...`, `fix: ...`, `docs: ...`, `chore: ...`, with an optional scope such as `fix(cli): ...`.
 - **A changeset for every change to a published package.** Run `pnpm exec changeset`, pick the packages and the bump, and write the summary for the people who will read the changelog. Commit the file it creates in `.changeset/` together with your change. Changes that touch no published package, such as docs, tests and tooling, do not need one.
 - **Dependencies come from the pnpm catalog.** The catalog in `pnpm-workspace.yaml` pins exact versions, each one published at least 24 hours before it was pinned, and packages refer to them as `catalog:`. Never lower `minimumReleaseAge`. If your change needs a new dependency, say why in the pull request. The routine for updating dependencies is in `AGENTS.md`.

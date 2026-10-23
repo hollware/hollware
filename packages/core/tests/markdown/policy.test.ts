@@ -26,6 +26,7 @@ describe('urlScheme', () => {
     ['javascript&colon;x', 'javascript'],
     ['javascript&#58;x', 'javascript'],
     ['&#x6A;&#x61;vascript:x', 'javascript'],
+    ['&#38;#106;avascript:x', 'javascript'],
     ['https://example.com/a:b', 'https'],
     ['mailto:a@b.co', 'mailto'],
     ['tel:+123', 'tel'],

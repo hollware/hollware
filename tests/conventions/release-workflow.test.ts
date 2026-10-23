@@ -37,7 +37,10 @@ const JOBS: Record<JobId, string[]> = {
     '    needs: select-mode',
     `    if: ${MAIN} && needs.select-mode.outputs.mode == 'version'`,
     '    steps:',
-    '      - run: echo version',
+    '      - uses: changesets/action/version@' + 'c'.repeat(40) + ' # v2.1.2',
+    '        with:',
+    '          commit-message: Version Packages',
+    '          pr-title: Version Packages',
   ],
   'promotion-check': [
     '  promotion-check:',
@@ -73,6 +76,7 @@ const JOBS: Record<JobId, string[]> = {
     '    if: >-',
     `      \${{ !cancelled() && ${RELEASE} &&`,
     "      (needs.publish.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.finalize_only)) }}",
+    '    timeout-minutes: 45',
     '    steps:',
     CHECKOUT,
     ...FULL_HISTORY,
@@ -459,7 +463,7 @@ describe('release workflow', () => {
           ])
         }
         expect(check(release({ finalize: without('finalize', 'WAIT_SECONDS') }))).toEqual([])
-        expect(check(release({ finalize: change('finalize', "'1800'", '3600') }))).toEqual([])
+        expect(check(release({ finalize: change('finalize', "'1800'", '2400') }))).toEqual([])
       })
 
       it('reports a job that no longer runs its script', () => {
@@ -629,6 +633,41 @@ describe('release workflow', () => {
         )
         expect(messages(boolean)).toEqual([wanted('{"type":"boolean"}')])
       })
+    })
+
+    it('reports a Version Packages pull request or commit under another title', () => {
+      for (const key of ['commit-message', 'pr-title']) {
+        const renamed = release({
+          version: change('version', `${key}: Version Packages`, `${key}: Release`),
+        })
+        expect(messages(renamed)).toEqual([
+          `release-workflow/version-title: job "version": changesets/action/version must set "${key}: Version Packages", the title by which changeset-check.sh skips its merge and finalize-release.sh finds the release commit, found "Release"`,
+        ])
+      }
+    })
+
+    it('reports a finalize job that the runner would stop before the wait for npm ends', () => {
+      const short = release({
+        finalize: change('finalize', 'timeout-minutes: 45', 'timeout-minutes: 30'),
+      })
+      expect(messages(short)).toEqual([
+        'release-workflow/finalize-timeout: job "finalize": "timeout-minutes" must outlast the 1800 s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found 30',
+      ])
+      const longerWait = release({ finalize: change('finalize', "'1800'", "'3000'") })
+      expect(messages(longerWait)).toEqual([
+        'release-workflow/finalize-timeout: job "finalize": "timeout-minutes" must outlast the 3000 s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found 45',
+      ])
+      const defaultWait = release({
+        finalize: without('finalize', 'WAIT_SECONDS').map((line) =>
+          line.replace('timeout-minutes: 45', 'timeout-minutes: 20'),
+        ),
+      })
+      expect(messages(defaultWait)).toEqual([
+        'release-workflow/finalize-timeout: job "finalize": "timeout-minutes" must outlast the 1800 s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found 20',
+      ])
+      expect(messages(release({ finalize: without('finalize', 'timeout-minutes') }))).toEqual([
+        'release-workflow/finalize-timeout: job "finalize": "timeout-minutes" must outlast the 1800 s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found undefined',
+      ])
     })
 
     it('reports a ci.yml that stops running on release, or runs the changeset check there', () => {

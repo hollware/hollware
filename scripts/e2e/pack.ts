@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LocalPackage } from './registry.ts'
 
+const MACOS_TAR_WITHOUT_APPLEDOUBLE_FILES = { COPYFILE_DISABLE: '1' }
+
 export const PUBLISHED = ['core', 'server', 'client', 'admin', 'nuxt', 'cli', 'create-hollware']
 
 type Json = Record<string, unknown>
@@ -63,7 +65,7 @@ export function packAll(root: string, version: string, out: string): LocalPackag
       const file = join(out, `${name.replace('@', '').replace('/', '-')}-${version}.tgz`)
       execFileSync('tar', ['czf', file, 'package'], {
         cwd: work,
-        env: { ...process.env, COPYFILE_DISABLE: '1' },
+        env: { ...process.env, ...MACOS_TAR_WITHOUT_APPLEDOUBLE_FILES },
       })
       return { name, version, manifest: versioned, file }
     } finally {

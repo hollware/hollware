@@ -54,7 +54,6 @@ new process group, so the child outlives its supervisor.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
   its `src` type-checks against the web platform only.
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
-- Keep `fsModuleCache: false` in workerd test configs: the module cache saved no test time.
 - `vp dev` starts through a launcher: stopping it leaves the dev server and
   workerd running; stop the process that listens on the port.
 - `compatibility_date` must not be newer than the workerd that wrangler bundles.
@@ -174,5 +173,7 @@ What each guard binds, and how to write one, is in `tests/AGENTS.md`. A new guar
 1. Check what is outdated with `pnpm outdated -r`.
 2. Pick versions published more than 24 hours ago and update the catalog.
 3. Run `pnpm install`, then `vp run check:push`.
-4. Read the changelogs of anything in a 0.x or release-candidate line before
-   committing, and record notable changes in the commit message.
+4. Read the changelogs of anything 0.x or pre-release before committing, and
+   record notable changes in the commit message.
+5. hono stays a 5.0 candidate (fallback 4.13.13); `@modelcontextprotocol/conformance`
+   an alpha, as only 0.2 has the 2026-07-28 requirements.

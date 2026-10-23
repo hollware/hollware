@@ -21,3 +21,5 @@ The Astro content loaders of Hollware. Boundary rules for this package:
   content only.
 - `examples/astro-blog` is its proof: `apps/playground/test/harness/astro-site.test.ts` builds it
   and reads the playground over the service binding.
+- A site that reads only Hollware sets `session: false` and `imageService: 'passthrough'`
+  (`examples/astro-blog/astro.config.ts`): otherwise `@astrojs/cloudflare` binds a KV namespace and Images.

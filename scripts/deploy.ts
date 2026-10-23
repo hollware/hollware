@@ -214,7 +214,11 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     plan.probes.map(async (url) => [url, await probe(url, fetcher, wait)] as const),
   )
   for (const [url, ok] of results) console.log(`${ok ? '✔' : '✘'} ${url}`)
-  return results.every(([, ok]) => ok) ? 0 : 1
+  if (results.every(([, ok]) => ok)) return 0
+  console.error(
+    '✘ A probe failed. The previous versions stay available: roll back with `wrangler rollback`.',
+  )
+  return 1
 }
 
 const invoked = process.argv[1]

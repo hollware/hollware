@@ -150,14 +150,14 @@ async function check() {
 async function previewOnSite() {
   if (entry.value === null) return
   busy.value = true
-  const tab = window.open('', '_blank')
-  if (tab !== null) tab.opener = null
+  const tabOpenedBeforeAnyAwait = window.open('', '_blank')
+  if (tabOpenedBeforeAnyAwait !== null) tabOpenedBeforeAnyAwait.opener = null
   try {
     const result = await openPreview(api, entry.value.id, (url) => {
-      if (tab === null) window.open(url, '_blank', 'noopener')
-      else tab.location.replace(url)
+      if (tabOpenedBeforeAnyAwait === null) window.open(url, '_blank', 'noopener')
+      else tabOpenedBeforeAnyAwait.location.replace(url)
     })
-    if (result !== 'opened') tab?.close()
+    if (result !== 'opened') tabOpenedBeforeAnyAwait?.close()
     toast.add(
       result === 'opened'
         ? {
@@ -172,7 +172,7 @@ async function previewOnSite() {
           },
     )
   } catch (error) {
-    tab?.close()
+    tabOpenedBeforeAnyAwait?.close()
     report(error, m.value.entry.notPreviewed)
   } finally {
     busy.value = false

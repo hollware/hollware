@@ -8,7 +8,7 @@ const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'prom
 
 const ZEROS = '0000000000000000000000000000000000000000'
 
-const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+const gitEnvWithoutUserConfig = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 let root: string
 
@@ -16,7 +16,7 @@ function git(...args: string[]): string {
   const run = spawnSync('git', args, {
     cwd: root,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
   })
   if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
   return run.stdout.trim()
@@ -111,7 +111,7 @@ function promote(env: Record<string, string>): Outcome {
   const run = spawnSync('bash', [script], {
     cwd: root,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv, ...env },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig, ...env },
   })
   const errors = run.stderr
     .split('\n')

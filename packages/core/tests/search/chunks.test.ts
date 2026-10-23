@@ -45,7 +45,7 @@ describe('chunksOf', () => {
   })
 
   it('cuts a piece at the last word within its limit', () => {
-    const word = 'harbour '
+    const word = 'harbours '
     const long = word.repeat(Math.ceil(CHUNK_LIMITS.section / word.length) + 10)
     const [, section] = chunksOf({
       title: 'Long',
@@ -56,7 +56,7 @@ describe('chunksOf', () => {
     })
 
     expect(section?.text.length).toBeLessThanOrEqual(CHUNK_LIMITS.section)
-    expect(section?.text.endsWith('harbour')).toBe(true)
+    expect(section?.text.endsWith('harbours')).toBe(true)
     expect(section?.text.length).toBeGreaterThan(CHUNK_LIMITS.section - word.length)
   })
 

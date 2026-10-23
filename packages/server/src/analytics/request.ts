@@ -18,6 +18,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const MAX_MESSAGE_LENGTH = 300
+const MIN_REDACTED_SECRET_LENGTH = 8
+
+function jsonOrText(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 export function messageOf(body: unknown, secrets: readonly string[]): string {
   const candidates: unknown[] = []
   if (typeof body === 'string') candidates.push(body)
@@ -31,9 +42,11 @@ export function messageOf(body: unknown, secrets: readonly string[]): string {
   let text = candidates.find((item): item is string => typeof item === 'string' && item !== '')
   if (text === undefined) return 'No reason given.'
   for (const secret of secrets) {
-    if (secret.length >= 8) text = text.split(secret).join('[credential]')
+    if (secret.length >= MIN_REDACTED_SECRET_LENGTH) text = text.split(secret).join('[credential]')
   }
-  return text.length > 300 ? `${text.slice(0, 297)}...` : text
+  return text.length > MAX_MESSAGE_LENGTH
+    ? `${text.slice(0, MAX_MESSAGE_LENGTH - '...'.length)}...`
+    : text
 }
 
 export async function request(
@@ -55,10 +68,5 @@ export async function request(
       'Try again in a minute. If it keeps failing, check that the provider is up.',
     )
   }
-  const text = await response.text()
-  let body: unknown = text
-  try {
-    body = JSON.parse(text)
-  } catch {}
-  return { status: response.status, body }
+  return { status: response.status, body: jsonOrText(await response.text()) }
 }

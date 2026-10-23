@@ -46,7 +46,7 @@ export function exchangePreviewLink(
   makeNonce: () => string = nonce,
 ): PreviewExchange | undefined {
   const { pathname: asked, search } = typeof url === 'string' ? new URL(url) : url
-  const pathname = `/${asked.replace(/^[/\\]+/, '')}`
+  const pathname = pathOnThisHost(asked)
   const kept: string[] = []
   let found: string | undefined
   let seen = false
@@ -63,14 +63,18 @@ export function exchangePreviewLink(
     found = at === -1 ? '' : safeDecode(pair.slice(at + 1))
   }
   if (!seen) return undefined
-  if (isPreviewToken(found)) kept.push(`${PREVIEW_VIEW_PARAM}=${makeNonce()}`)
+  if (isPreviewToken(found)) kept.push(`${CACHE_BUSTING_PARAM}=${makeNonce()}`)
   return {
     location: kept.length === 0 ? pathname : `${pathname}?${kept.join('&')}`,
     token: isPreviewToken(found) ? found : undefined,
   }
 }
 
-export const PREVIEW_VIEW_PARAM = 'hollware-view'
+const CACHE_BUSTING_PARAM = 'hollware-view'
+
+function pathOnThisHost(path: string): string {
+  return `/${path.replace(/^[/\\]+/, '')}`
+}
 
 function nonce(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(9))

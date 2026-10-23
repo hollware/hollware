@@ -3,11 +3,15 @@ import type { StoredEntry } from '../ports.ts'
 
 const NAME_LIMIT = 60
 
+function isHighSurrogate(codeUnit: number): boolean {
+  return codeUnit >= 0xd800 && codeUnit <= 0xdbff
+}
+
 function shown(name: string): string {
   if (name.length <= NAME_LIMIT) return JSON.stringify(name)
   const head = name.slice(0, NAME_LIMIT)
-  const last = head.charCodeAt(NAME_LIMIT - 1)
-  return JSON.stringify(`${last >= 0xd800 && last <= 0xdbff ? head.slice(0, -1) : head}…`)
+  const cut = isHighSurrogate(head.charCodeAt(NAME_LIMIT - 1)) ? head.slice(0, -1) : head
+  return JSON.stringify(`${cut}…`)
 }
 
 export function requireCollection(site: ResolvedSite, name: string): ResolvedCollection {

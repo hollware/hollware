@@ -5,7 +5,7 @@ import { makePreviewToken, verifyPreviewToken } from '../src/preview.ts'
 const SECRET = 's'.repeat(32)
 const SITE = 'playground'
 const ENTRY = 'ent_01'
-const NOW = new Date('2025-10-09T08:53:20.000Z')
+const NOW = new Date(1_760_000_000_000)
 
 const TOKEN =
   'hw_prv_eyJzIjoicGxheWdyb3VuZCIsImUiOiJlbnRfMDEiLCJ4IjoxNzYwMDAzNjAwfQ.nVLhIGX_NQm0tpYSnlpVHXYQMHCSWlmMu2_z7xHlWws'

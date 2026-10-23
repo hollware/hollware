@@ -29,7 +29,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), the sign-in pages its ground and accent, every logo one mark.
 - `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: its files, the catalog's exact versions, `HOLLWARE_VERSION`, a standalone tsconfig.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
-- `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each.
+- `tests/conventions/single-copies.test.ts`: each of `SINGLE_COPY_PACKAGES` resolves to one version.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
 - `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds, excludes, ignored advisories, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
@@ -38,9 +38,9 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/dev-port.test.ts`: the playground and the starter serve `vp dev` on a fixed port with `strictPort`, and their `HOLLWARE_PUBLIC_URL` names that port.
 - `tests/conventions/conformance-baselines.test.ts`: each revision's baseline (`tests/conformance/baselines/`) names single checks with a class and reason, none of the must-pass profile, at its recorded size; the profile keeps its claims.
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
-- `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `release.yml` `publish` and the Scorecard job, no kept credentials, Scorecard rules.
+- `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `publish` and Scorecard, other writes per `WRITE_SCOPES`, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), jobs gated to this repository and branch, chained by `needs`; `publish` isolated; one run per ref, never cancelled; its scripts get exactly their env and full history; `finalize_only` finalizes only `RELEASE_SHA`/`release_sha`; `ci.yml` runs on `release` without the changeset gate, `fetch-depth: 0`.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), jobs gated to this repository and branch, chained by `needs`; `publish` isolated; one run per ref, never cancelled; its scripts get exactly their env and full history; `finalize_only` finalizes only `RELEASE_SHA`/`release_sha`; the Version Packages title; `finalize` outlasts its wait; `ci.yml` runs on `release` without the changeset gate, `fetch-depth: 0`.
 - `tests/conventions/deploy-workflow.test.ts`: `deploy.yml` deploys staging from `main`, production from `release` or either by hand, gated by `DEPLOY_ENABLED`, in `environment: deploy`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
@@ -75,5 +75,5 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/meta/scanners.test.ts`: the JSONC, Markdown, source, comment, syntax-tree, Vite+ task and workspace readers.
 - `tests/ci/changeset-check.test.ts`: the changeset gate checks pull requests, pushes and manual runs, skipping only a branch creation and the Version Packages pull request of github-actions[bot] and its merge; it fails on a push whose previous tip is no ancestor of the head.
 - `tests/ci/promotion-check.test.ts`: the promotion gate refuses a commit not on `main`, a push that is no fast-forward or has no previous tip (but a manual run), and a pending changeset.
-- `tests/ci/verify-and-publish.test.ts`: the `publish` job's shell, with a stub `npm`, verifies the plan and every tarball before publishing, skips versions npm has, uses `--provenance`, refuses an answer for another version.
-- `tests/ci/finalize-release.test.ts`: `finalize-release.sh`, with stub `gh`, `npm` and `sleep`, waits for every version live on npm with provenance, then tags and releases only the public packages the release commit bumped, with the right Latest, prerelease flags and notes; leaves what exists alone; fails on a later bump under an unknown title.
+- `tests/ci/verify-and-publish.test.ts`: the `publish` job's shell verifies the plan and every tarball before publishing, skips versions npm has, uses `--provenance`, refuses an answer for another version.
+- `tests/ci/finalize-release.test.ts`: `finalize-release.sh` waits for every version live on npm with provenance, then tags and releases only the public packages the release commit bumped, with the right Latest, prerelease flags and notes; leaves what exists alone; fails on a later bump under an unknown title.

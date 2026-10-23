@@ -54,10 +54,12 @@ function bytesOfBase64(data: string): Uint8Array | null {
   return bytes
 }
 
+const BYTES_PER_SPREAD = 0x8000
+
 export function base64Of(bytes: Uint8Array): string {
   let binary = ''
-  for (let start = 0; start < bytes.length; start += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000))
+  for (let start = 0; start < bytes.length; start += BYTES_PER_SPREAD) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + BYTES_PER_SPREAD))
   }
   return btoa(binary)
 }
@@ -66,6 +68,10 @@ async function sha256Of(bytes: Uint8Array): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
   return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
+
+const IMAGES_NOT_AN_IMAGE = 9412
+const IMAGES_CANNOT_DECODE = 9516
+const IMAGES_NO_ALLOWANCE_LEFT = 9422
 
 function imagesCode(error: unknown): number | null {
   const code: unknown =
@@ -144,8 +150,8 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
       }
     } catch (error) {
       const code = imagesCode(error)
-      if (code === 9422) return NO_ALLOWANCE
-      if (code === 9412 || code === 9516) return NOT_READABLE
+      if (code === IMAGES_NO_ALLOWANCE_LEFT) return NO_ALLOWANCE
+      if (code === IMAGES_NOT_AN_IMAGE || code === IMAGES_CANNOT_DECODE) return NOT_READABLE
       throw error
     }
   }
@@ -195,7 +201,7 @@ async function variantsOf(
       )
       made.push({ width: copy, ...converted })
     } catch (error) {
-      if (imagesCode(error) === 9422) break
+      if (imagesCode(error) === IMAGES_NO_ALLOWANCE_LEFT) break
       throw error
     }
   }

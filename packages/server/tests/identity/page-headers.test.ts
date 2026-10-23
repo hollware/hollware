@@ -18,6 +18,10 @@ describe('the headers of the sign-in, setup and consent pages', () => {
     expect(JSON.stringify([pageHeaders('n'), plainPageHeaders()])).not.toContain('unsafe-inline')
   })
 
+  it('leave form-action open on the consent page, since a browser applies it to the redirect to the client', () => {
+    expect(plainPageHeaders()['content-security-policy']).not.toContain('form-action')
+  })
+
   it('isolate the page from other origins and ask for no device', () => {
     const isolation = {
       'cross-origin-opener-policy': 'same-origin',

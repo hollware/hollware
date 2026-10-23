@@ -22,3 +22,5 @@ The React helpers of Hollware. Boundary rules for this package:
   hook and no `'use client'`, so it serves a Server Component and hydrates in the browser.
 - `examples/react-router-blog` is its proof: `apps/playground/test/harness/react-router-site.test.ts`
   builds it and reads the playground over the service binding.
+- In React Router a page's headers come only from a `headers` export: the route answers its
+  `loaderHeaders`, and the root its `errorHeaders`, the ones of a thrown 404 (`examples/react-router-blog/app/root.tsx`).

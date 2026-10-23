@@ -58,13 +58,17 @@ export function hollwarePreview(): MiddlewareHandler {
     })
     const response = await next()
     if (token === undefined) return response
-    const answer = new Response(response.body, response)
-    answer.headers.set('cache-control', 'no-store')
-    if (slot.hollwarePreviewRefused) {
-      answer.headers.append('set-cookie', clearedPreviewCookie({ secure: isSecureRequest(url) }))
-    }
-    return answer
+    return previewResponse(response, slot.hollwarePreviewRefused, url)
   }
+}
+
+export function previewResponse(page: Response, refused: boolean, url: URL): Response {
+  const answer = new Response(page.body, page)
+  answer.headers.set('cache-control', 'no-store')
+  if (refused) {
+    answer.headers.append('set-cookie', clearedPreviewCookie({ secure: isSecureRequest(url) }))
+  }
+  return answer
 }
 
 /**

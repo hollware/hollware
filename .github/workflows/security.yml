@@ -72,7 +72,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Audit the workflows
+      - name: Audit the workflows, failing on any finding
         uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
         with:
           advanced-security: false
@@ -98,7 +98,7 @@ jobs:
           node-version-file: .node-version
           run-install: false
 
-      - name: Audit the lockfile
+      - name: Audit the whole lockfile, private apps included
         run: pnpm audit --prod --audit-level=high
 
   repo-settings:
@@ -122,7 +122,7 @@ jobs:
           node-version-file: .node-version
           run-install: false
 
-      - name: Compare the settings with .github/settings.json
+      - name: Compare the rulesets and environment branches with .github/settings.json
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/repo-settings.ts
@@ -140,7 +140,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Scan staging
+      - name: Scan staging, failing only on the FAIL rules of .github/zap/rules.tsv
         env:
           ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:5ccfff9a411743ab2615136a2edd7416bec9ce41572fa94e935df38c14adb2b6
         run: |

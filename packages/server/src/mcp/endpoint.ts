@@ -42,6 +42,15 @@ function authInfoOf(principal: Principal, resourceMetadataUrl: string | null): A
   }
 }
 
+function logIgnoringLoggerFailure(
+  log: ((entry: McpLogEntry) => void) | undefined,
+  entry: McpLogEntry,
+): void {
+  try {
+    log?.(entry)
+  } catch {}
+}
+
 export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
   const timeoutMs = options.timeoutMs ?? OPERATION_TIMEOUT_MS
   const openWorldTimeoutMs = options.openWorldTimeoutMs ?? OPEN_WORLD_TIMEOUT_MS
@@ -56,11 +65,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
   const tools = createToolTable()
   const calls = new WeakMap<AuthInfo, McpCall>()
 
-  const emit = (entry: McpLogEntry) => {
-    try {
-      options.log?.(entry)
-    } catch {}
-  }
+  const emit = (entry: McpLogEntry) => logIgnoringLoggerFailure(options.log, entry)
 
   const runTool = async (
     spec: Operation,

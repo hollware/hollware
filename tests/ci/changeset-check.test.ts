@@ -8,7 +8,7 @@ const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'chan
 
 const ZEROS = '0000000000000000000000000000000000000000'
 
-const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+const gitEnvWithoutUserConfig = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 let dir: string
 let calls: string
@@ -17,7 +17,7 @@ function git(...args: string[]): string {
   const run = spawnSync('git', args, {
     cwd: dir,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
   })
   if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
   return run.stdout.trim()
@@ -51,7 +51,11 @@ function check(env: Record<string, string>): Outcome {
   const run = spawnSync('bash', [script], {
     cwd: dir,
     encoding: 'utf8',
-    env: { PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`, ...gitEnv, ...env },
+    env: {
+      PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`,
+      ...gitEnvWithoutUserConfig,
+      ...env,
+    },
   })
   let pnpm = ''
   try {

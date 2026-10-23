@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createTestHarness, type TestHarness } from 'wrangler'
 
-process.env['WRANGLER_REGISTRY_PATH'] = mkdtempSync(join(tmpdir(), 'hollware-registry-'))
+const REGISTRY_OF_THIS_TEST_PROCESS = mkdtempSync(join(tmpdir(), 'hollware-registry-'))
+process.env['WRANGLER_REGISTRY_PATH'] = REGISTRY_OF_THIS_TEST_PROCESS
 
 export const HOLLWARE_URL = 'http://localhost'
 

@@ -332,14 +332,15 @@ describe('what the analysis takes off and gives back', () => {
         url: 'vbscript:x',
         ctaUrl: 'javascript:alert(2)',
         imageSrc: 'data:text/html,x',
-        link: '/docs/',
+        link: 'javascript:alert(3)',
+        docsHref: '/docs/',
         title: 'javascript: is only text here',
       },
       'x',
     ])
     const { extracted } = analyzeDocument(document, OPTIONS)
     expect(extracted.components[0]?.props).toStrictEqual({
-      link: '/docs/',
+      docsHref: '/docs/',
       title: 'javascript: is only text here',
     })
     expect(extracted.disallowed.map((item) => [item.kind, item.name])).toStrictEqual([
@@ -347,6 +348,7 @@ describe('what the analysis takes off and gives back', () => {
       ['unsafe-url', 'vbscript:x'],
       ['unsafe-url', 'javascript:alert(2)'],
       ['unsafe-url', 'data:text/html,x'],
+      ['unsafe-url', 'javascript:alert(3)'],
     ])
   })
 

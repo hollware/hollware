@@ -28,6 +28,7 @@ export interface WorkflowJob {
   hasPermissions: boolean
   permissions: unknown
   environment: unknown
+  timeoutMinutes: unknown
   uses: UsesRef | undefined
   steps: WorkflowStep[]
 }
@@ -131,6 +132,7 @@ export function parseWorkflow(file: TextFile): Workflow {
         hasPermissions: jobPermissions !== undefined,
         permissions: jobPermissions === undefined ? undefined : plain(jobPermissions.value),
         environment: plain(mapEntry(job, 'environment')?.value),
+        timeoutMinutes: plain(mapEntry(job, 'timeout-minutes')?.value),
         uses: usesOf(job),
         steps,
       })

@@ -43,11 +43,10 @@ const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
 
 const api = computed(() => table.value?.tableApi)
 const rows = computed(() => [...props.data])
-const filtered = computed(() => {
-  const all = rows.value.length
-  const text = filter.value
+function countLeftByFilter(all: number, text: string): number {
   return api.value === undefined || text === '' ? all : api.value.getFilteredRowModel().rows.length
-})
+}
+const filtered = computed(() => countLeftByFilter(rows.value.length, filter.value))
 const range = computed(() =>
   pageRange(pagination.value.pageIndex, pagination.value.pageSize, filtered.value),
 )

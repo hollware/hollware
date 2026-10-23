@@ -17,7 +17,7 @@ const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'fina
 
 const REPO = 'hollware/hollware'
 
-const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+const gitEnvWithoutUserConfig = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 const GH_STUB = `#!/usr/bin/env bash
 # The part of gh that finalize-release.sh uses, over the state file of the test.
@@ -209,7 +209,7 @@ function git(...args: string[]): string {
   const run = spawnSync('git', args, {
     cwd: root,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
   })
   if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
   return run.stdout.trim()
@@ -467,7 +467,7 @@ function finalize(env: Record<string, string | undefined> = {}, options: Options
 
   const environment: Record<string, string | undefined> = {
     PATH: `${join(stubs, 'bin')}:${process.env.PATH ?? ''}`,
-    ...gitEnv,
+    ...gitEnvWithoutUserConfig,
     GITHUB_REPOSITORY: REPO,
     GITHUB_STEP_SUMMARY: summaryFile,
     STUB_WORLD: world,
