@@ -52,7 +52,7 @@ export const INIT_USAGE = [
   'in to the admin as before, and prints a token of the new site. It does nothing when the site',
   'has an owner.',
   'The site starts from a preset, which its owner then shapes in the admin, or an agent over MCP',
-  '(ADR-033). A project with a hollware.config.ts keeps it instead: the Worker moves it into the',
+  '. A project with a hollware.config.ts keeps it instead: the Worker moves it into the',
   'database on its first request.',
   'Run "hollware migrate" first: the database needs its tables.',
   '',
@@ -366,7 +366,7 @@ function connectLines(url: string | undefined, tokenFile: TokenFile | undefined)
 const LOCALE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/
 
 /**
- * The first definition of the site (ADR-033), from `--preset` and `--locales`; `null` for a
+ * The first definition of the site, from `--preset` and `--locales`; `null` for a
  * project with a hollware.config.ts, whose Worker moves it into the database on its first request.
  */
 export function initialDefinition(
@@ -403,7 +403,7 @@ export function initialDefinition(
   }
 }
 
-/** What the activity log of the new site keeps (ADR-037), and whether a flag said so. */
+/** What the activity log of the new site keeps, and whether a flag said so. */
 export interface AuditChoice {
   readonly ipAddresses: 'off' | 'hashed'
   readonly retentionDays: number | null

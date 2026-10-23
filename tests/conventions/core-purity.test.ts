@@ -202,7 +202,7 @@ describe('core purity', () => {
         {
           rule: 'core-purity/types',
           file: 'packages/core/tsconfig.json',
-          message: `must type-check only src against the web platform, {"include":["src"],"lib":["es2024","webworker"],"types":[]}, so that a Node or browser global is a type error (ADR-018); found ${JSON.stringify(found)}`,
+          message: `must type-check only src against the web platform, {"include":["src"],"lib":["es2024","webworker"],"types":[]}, so that a Node or browser global is a type error; found ${JSON.stringify(found)}`,
         },
       ]
       expect(check({ lib: ['es2024', 'webworker'], types: ['node'] }, ['src'])).toEqual(
@@ -254,7 +254,7 @@ describe('core purity', () => {
           rule: 'core-purity/runtimes',
           file: TEST,
           message:
-            'runs in ["@hollware/core"]: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+            'runs in ["@hollware/core"]: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"]',
         },
       ])
       expect(runs([])).toEqual([
@@ -262,7 +262,7 @@ describe('core purity', () => {
           rule: 'core-purity/runtimes',
           file: TEST,
           message:
-            'runs in []: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+            'runs in []: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"]',
         },
       ])
       expect(runs(['core:workerd', '@hollware/core'])).toEqual([])

@@ -89,7 +89,7 @@ async function grant(world: World, id: string) {
 }
 
 /**
- * The seeded token writes only; the cron reads it again at the time (T-108), so a token that
+ * The seeded token writes only; the cron reads it again at the time, so a token that
  * schedules a publication must hold content:publish in the database too.
  */
 async function mayPublish(world: World) {
@@ -170,7 +170,7 @@ describe('publishAt', () => {
     expect(await run(world)).toEqual({ published: 0, cancelled: 0 })
   })
 
-  it('writes a line of the activity log for what it publishes, as the deployment for who scheduled it (ADR-037)', async () => {
+  it('writes a line of the activity log for what it publishes, as the deployment for who scheduled it', async () => {
     const world = await newWorld(env.DB, 'schedule-audit')
     await mayPublish(world)
     const id = await post(world)
@@ -206,7 +206,7 @@ describe('publishAt', () => {
     ])
   })
 
-  it('cancels what a token since revoked scheduled, and logs it as denied (T-108)', async () => {
+  it('cancels what a token since revoked scheduled, and logs it as denied', async () => {
     const world = await newWorld(env.DB, 'schedule-revoked')
     const id = await scheduled(world)
     await env.DB.prepare('UPDATE tokens SET revoked_at = ?1 WHERE id = ?2')
@@ -226,7 +226,7 @@ describe('publishAt', () => {
     expect(results).toEqual([{ outcome: 'denied', error_code: 'insufficient_scope' }])
   })
 
-  it('cancels it when the token expired, the person left, or the role no longer publishes (T-108)', async () => {
+  it('cancels it when the token expired, the person left, or the role no longer publishes', async () => {
     const expired = await newWorld(env.DB, 'schedule-expired')
     const left = await newWorld(env.DB, 'schedule-left')
     const demoted = await newWorld(env.DB, 'schedule-demoted')
@@ -257,7 +257,7 @@ describe('publishAt', () => {
     }
   })
 
-  it('cancels what an OAuth client scheduled once its grant of the site is revoked (T-108)', async () => {
+  it('cancels what an OAuth client scheduled once its grant of the site is revoked', async () => {
     const world = await newWorld(env.DB, 'schedule-oauth-revoked')
     const id = await post(world)
     const client = agentFor(
@@ -450,7 +450,7 @@ describe('schedule_unpublish', () => {
     expect((await entryColumns(world.db, id))?.status).toBe('published')
   })
 
-  it('does not unpublish for a token since revoked, and drops the schedule (T-108)', async () => {
+  it('does not unpublish for a token since revoked, and drops the schedule', async () => {
     const { world, id } = await published('unpublish-revoked')
     await world.agent.scheduleUnpublish({ id, unpublishAt: LATER })
     await env.DB.prepare('UPDATE tokens SET revoked_at = ?1 WHERE id = ?2')

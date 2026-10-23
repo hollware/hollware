@@ -1012,7 +1012,7 @@
                   "ipAddresses": "off",
                   "retentionDays": null
                 },
-                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "description": "What the activity log of the site keeps. Only an owner should change it.",
                 "properties": {
                   "ipAddresses": {
                     "default": "off",
@@ -1313,7 +1313,7 @@
                   "quality": 85,
                   "widths": [640, 1280]
                 },
-                "description": "How the site converts the images it receives (ADR-038).",
+                "description": "How the site converts the images it receives.",
                 "properties": {
                   "format": {
                     "default": "webp",
@@ -2978,7 +2978,7 @@
                   "ipAddresses": "off",
                   "retentionDays": null
                 },
-                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "description": "What the activity log of the site keeps. Only an owner should change it.",
                 "properties": {
                   "ipAddresses": {
                     "default": "off",
@@ -3293,7 +3293,7 @@
                   "quality": 85,
                   "widths": [640, 1280]
                 },
-                "description": "How the site converts the images it receives (ADR-038).",
+                "description": "How the site converts the images it receives.",
                 "properties": {
                   "format": {
                     "default": "webp",
@@ -7418,7 +7418,7 @@
                   "ipAddresses": "off",
                   "retentionDays": null
                 },
-                "description": "What the activity log of the site keeps (ADR-037). Only an owner should change it.",
+                "description": "What the activity log of the site keeps. Only an owner should change it.",
                 "properties": {
                   "ipAddresses": {
                     "default": "off",
@@ -7719,7 +7719,7 @@
                   "quality": 85,
                   "widths": [640, 1280]
                 },
-                "description": "How the site converts the images it receives (ADR-038).",
+                "description": "How the site converts the images it receives.",
                 "properties": {
                   "format": {
                     "default": "webp",

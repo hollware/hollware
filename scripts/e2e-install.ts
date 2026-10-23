@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     step('A draft, published')
     await publishPost(token, 'written-in-the-install-test', 'Written in the install test')
 
-    step('An image, uploaded over MCP and served as WebP (ADR-038)')
+    step('An image, uploaded over MCP and served as WebP')
     const pixel =
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='
     const uploaded = await call(token, 'upload_asset', {

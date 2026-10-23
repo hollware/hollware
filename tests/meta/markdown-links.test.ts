@@ -14,12 +14,7 @@ describe('Markdown links', () => {
       (path) => path.endsWith('.md') && !path.startsWith('tests/fixtures/'),
     )
     expect(docs.map((doc) => doc.path)).toEqual(
-      expect.arrayContaining([
-        'README.md',
-        'CONTRIBUTING.md',
-        'docs/design.md',
-        'docs/adr/README.md',
-      ]),
+      expect.arrayContaining(['README.md', 'CONTRIBUTING.md']),
     )
     const byPath = new Map(docs.map((doc) => [doc.path, anchorsOf(doc.text)]))
     const violations = checkMarkdownLinks({

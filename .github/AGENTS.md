@@ -13,12 +13,12 @@ Rules for `.github/` and `.changeset/`. Convention tests enforce them (`tests/co
 
 ## Release flow
 
-`main` is for development and `release` is what ships (ADR-015). `release` only moves by fast-forward to a commit that is on `main`.
+`main` is for development and `release` is what ships. `release` only moves by fast-forward to a commit that is on `main`.
 
 1. A push to `main` runs `release.yml` in version mode: `select-mode`, then `version` runs `pnpm run version-packages` and opens the "Version Packages" pull request. `GITHUB_TOKEN` makes it, so CI does not run on it: close and reopen it to run CI. Keep its title, because `ci.yml` skips the changeset check on its merge. Its text, written by the action, says that merging publishes. It does not.
 2. Merge it and wait for CI on `main`. Then promote the merge commit (`<commit>`, the Version Packages merge on `main`), checking its ancestry first: `git fetch origin && git merge-base --is-ancestor <commit> origin/main && git push origin <commit>:refs/heads/release`. A push to `release` cannot be undone (see below).
 3. A push to `release` runs, in order, `promotion-check` (`.github/scripts/promotion-check.sh`: the commit is on `main`, the push is a fast-forward and `.changeset/` holds no changeset; only a manual run, which has no previous tip, skips the fast-forward check), `pack` (builds, then writes the tarballs and `publish-plan.json`, which holds the sha256 of each; it does nothing when every version is on npm) and `publish`.
-4. `publish` (environment `npm`, no checkout, no repository code) runs at once: the push to `release` is the only human gate (ADR-035). It verifies the plan and every tarball, then runs `npm publish --provenance` for each package, dependencies first, and skips a version that is already on npm. After a failure, run the job again: it publishes what is left. Runs of `release` go one at a time. Never push to `release` unless the maintainer asked for that release: it publishes to npm.
+4. `publish` (environment `npm`, no checkout, no repository code) runs at once: the push to `release` is the only human gate. It verifies the plan and every tarball, then runs `npm publish --provenance` for each package, dependencies first, and skips a version that is already on npm. After a failure, run the job again: it publishes what is left. Runs of `release` go one at a time. Never push to `release` unless the maintainer asked for that release: it publishes to npm.
 5. `finalize` waits until every version is live with its provenance attestation, then creates the tags `<name>@<version>` and the GitHub Releases. If it fails, run `release.yml` on `release` with `finalize_only`. Without `release_sha`, that run takes the latest "Version Packages" commit of the history. It stops, naming the commit to give in `release_sha`, when a later commit changed the versions under another title.
 
 ## Also

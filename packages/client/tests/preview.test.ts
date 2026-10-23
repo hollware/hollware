@@ -46,7 +46,7 @@ describe('the exchange of a preview link', () => {
     })
   })
 
-  it('redirects to a path of this site, never to the host a path with // or /\\ names (T-103)', () => {
+  it('redirects to a path of this site, never to the host a path with // or /\\ names', () => {
     const where = (path: string) =>
       exchangePreviewLink(`https://site.test${path}?hollware-preview=x`)?.location
 

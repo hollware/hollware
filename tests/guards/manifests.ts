@@ -13,7 +13,7 @@ import { parseManifests, type Manifest } from './workspace.ts'
  * ESM, the files that ship, public provenance publishing, an engine range and the `build`
  * and `publint` scripts. Its `exports` (and `bin`) point at its source, so inside the
  * workspace no package needs another one built; the published entry, `types` first, sits
- * in `publishConfig`, which `pnpm pack` moves into `exports` and `bin` (ADR-016). The apps,
+ * in `publishConfig`, which `pnpm pack` moves into `exports` and `bin`. The apps,
  * templates and examples are private. Each published package also has a README and an
  * AGENTS.md next to its manifest.
  */
@@ -75,7 +75,7 @@ const SUBPATHS: Readonly<Record<string, readonly string[]>> = {
   core: ['webhooks'],
 }
 
-/** `exports` inside the workspace: the source (ADR-016). */
+/** `exports` inside the workspace: the source. */
 function sourceExports(name: string): Record<string, unknown> {
   return {
     '.': './src/index.ts',
@@ -166,7 +166,7 @@ function checkPublished(manifest: Manifest, files: ReadonlySet<string>): Violati
   if (!isDeepStrictEqual(json.exports, SOURCE_EXPORTS)) {
     report(
       'exports',
-      `"exports" must be ${show(SOURCE_EXPORTS)}: inside the workspace a package resolves to its source (ADR-016), found ${show(json.exports)}`,
+      `"exports" must be ${show(SOURCE_EXPORTS)}: inside the workspace a package resolves to its source, found ${show(json.exports)}`,
     )
   }
 
@@ -247,7 +247,7 @@ export function checkManifests(input: ManifestsInput): Violation[] {
       violations.push({
         rule: 'manifest/dev-exports',
         file: `${manifest.dir}/vite.config.ts`,
-        message: `"pack.exports.devExports" must be true, or the next \`vp pack\` points the manifest at dist again (ADR-016), found ${show(devExports)}`,
+        message: `"pack.exports.devExports" must be true, or the next \`vp pack\` points the manifest at dist again, found ${show(devExports)}`,
       })
     }
   }

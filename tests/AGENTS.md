@@ -26,7 +26,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and its timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to site tables carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration of a `@hollware/server@*` release tag is edited or removed, and the tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
-- `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), the sign-in pages its ground and accent, every logo one mark, `docs/brand.md` its colors.
+- `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), the sign-in pages its ground and accent, every logo one mark.
 - `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: the starter's files, the catalog's exact versions, Hollware's as `HOLLWARE_VERSION`, a standalone tsconfig.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
 - `tests/conventions/single-copies.test.ts`: zod, hono, drizzle-orm and `@modelcontextprotocol/server` resolve to one version each in the workspace.
@@ -45,7 +45,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
 - `tests/conventions/admin-parity.test.ts`: the admin calls every MCP operation, or says why not.
-- `tests/conventions/adr.test.ts`: ADR names, numbers, status and sections; the index and design table match the files.
+- `tests/conventions/voice.test.ts`: no text file uses a word Hollware never says.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
@@ -56,7 +56,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/legacy-role.test.ts`: no package source reads `users.role`; the role of a person in a site is in `members`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
 - `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
-- `tests/conventions/public-api.test.ts`: `api/` is the code's public API (ADR-036); `scripts/api-check.test.ts`: a break needs a major changeset.
+- `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major changeset.
 - `tests/conventions/workerd-tests.test.ts`: `*.workerd.test.ts` is the name of tests importing `vitest` or `cloudflare:*`; no `fsModuleCache: true`.
 - `tests/meta/agents-paths.test.ts`: backticked paths in `AGENTS.md` and `README.md` files exist.
 - `tests/meta/agents-commands.test.ts`: the `vp run`, `pnpm --filter` and `node` commands `AGENTS.md` cites exist.

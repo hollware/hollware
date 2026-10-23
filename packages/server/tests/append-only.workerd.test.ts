@@ -139,10 +139,10 @@ describe('append-only tables', () => {
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
     expect(results).toEqual([
-      // migrations/0017_assets.sql (ADR-038).
+      // migrations/0017_assets.sql.
       { name: 'assets_immutable', tbl_name: 'assets' },
       { name: 'assets_no_delete', tbl_name: 'assets' },
-      // migrations/0016_audit_log.sql (ADR-037).
+      // migrations/0016_audit_log.sql.
       { name: 'audit_log_immutable', tbl_name: 'audit_log' },
       { name: 'audit_log_no_delete', tbl_name: 'audit_log' },
       { name: 'audit_log_no_replace', tbl_name: 'audit_log' },
@@ -158,14 +158,14 @@ describe('append-only tables', () => {
       { name: 'revisions_immutable', tbl_name: 'revisions' },
       { name: 'revisions_no_delete', tbl_name: 'revisions' },
       { name: 'revisions_no_replace', tbl_name: 'revisions' },
-      // migrations/0015_site_changes_append_only.sql (T-83).
+      // migrations/0015_site_changes_append_only.sql.
       { name: 'site_changes_immutable', tbl_name: 'site_changes' },
       { name: 'site_changes_no_delete', tbl_name: 'site_changes' },
       { name: 'site_changes_no_replace', tbl_name: 'site_changes' },
     ])
   })
 
-  it('keep site_changes as it was written: no line is changed, deleted or replaced (T-83)', async () => {
+  it('keep site_changes as it was written: no line is changed, deleted or replaced', async () => {
     const site = `audit-${crypto.randomUUID().slice(0, 8)}`
     await env.DB.prepare("INSERT INTO sites (id, created_at, updated_at) VALUES (?1, 'now', 'now')")
       .bind(site)
@@ -190,7 +190,7 @@ describe('append-only tables', () => {
     ).rejects.toThrow('append-only: a change of the structure is written once')
   })
 
-  describe('audit_log (ADR-037)', () => {
+  describe('audit_log', () => {
     /** A site whose definition keeps the log for `retention` days, or forever with `null`. */
     async function siteKeeping(retention: unknown): Promise<string> {
       const site = `log-${crypto.randomUUID().slice(0, 8)}`

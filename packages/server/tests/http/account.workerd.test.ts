@@ -216,7 +216,7 @@ async function authorizeWith(worker: Booted, adminClient: string, cookie: string
   return new URL(response.headers.get('location') ?? '', PUBLIC_URL).pathname
 }
 
-/** The lines of the activity log of a person's own action (ADR-037): outcome, code and target. */
+/** The lines of the activity log of a person's own action: outcome, code and target. */
 async function auditOf(userId: string, action: string) {
   const { results } = await env.DB.prepare(
     'SELECT outcome, error_code, target_id FROM audit_log WHERE actor_user_id = ?1 AND action = ?2 ORDER BY created_at, id',
@@ -226,7 +226,7 @@ async function auditOf(userId: string, action: string) {
   return results.map((row) => [row.outcome, row.error_code, row.target_id])
 }
 
-describe("a person's passkeys (T-54)", () => {
+describe("a person's passkeys", () => {
   it('lists them by label and dates, never their key or credential id', async () => {
     const worker = boot()
     const me = await person(worker)
@@ -284,7 +284,7 @@ describe("a person's passkeys (T-54)", () => {
   })
 })
 
-describe('the apps a person connected (T-45)', () => {
+describe('the apps a person connected', () => {
   it('lists each grant with its client, scopes and site, and marks the admin', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const me = await person(worker)
@@ -357,7 +357,7 @@ describe('the apps a person connected (T-45)', () => {
   })
 })
 
-describe("a person's sessions (T-44)", () => {
+describe("a person's sessions", () => {
   it("ends every session of the person, and the admin's grants, and no one else's", async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const me = await person(worker)

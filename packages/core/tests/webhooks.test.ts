@@ -7,7 +7,7 @@ import { signWebhook, verifyWebhook } from '../src/webhooks.ts'
 // timestamp outside the tolerance, before or after now, or a request without its signature or its
 // timestamp, or any request with an empty secret (a site that never set one), or refuses a webhook
 // that is in order; or, given `isNew`, stops
-// refusing an event it was given before, by the id of its signed body and never of the header (T-67).
+// refusing an event it was given before, by the id of its signed body and never of the header.
 
 const SECRET = 'whsec_test'
 const BODY = '{"kind":"entry.published"}'
@@ -69,7 +69,7 @@ describe('webhook signatures', () => {
   })
 })
 
-describe('webhook replays (T-67)', () => {
+describe('webhook replays', () => {
   const body = '{"id":"evt_1","kind":"entry.published"}'
   /** A receiver's record of the events it has had, as a Set. */
   function receiver() {

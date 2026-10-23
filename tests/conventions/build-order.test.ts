@@ -34,7 +34,7 @@ describe('build order', () => {
           rule: 'build-order/build-first',
           file: 'vite.config.ts',
           message:
-            'check:push runs "vp run -r build" before "vp test": the tests must run before anything builds, or a package that resolves to dist/ again goes unnoticed (ADR-016)',
+            'check:push runs "vp run -r build" before "vp test": the tests must run before anything builds, or a package that resolves to dist/ again goes unnoticed',
         },
       ])
     })
@@ -45,8 +45,8 @@ describe('build order', () => {
           (violation) => violation.message,
         )
       expect(messages('vp pack')).toEqual([
-        'check:push runs "vp pack" before "vp check": the type check must run before anything builds, or a package that resolves to dist/ again goes unnoticed (ADR-016)',
-        'check:push runs "vp pack" before "vp test": the tests must run before anything builds, or a package that resolves to dist/ again goes unnoticed (ADR-016)',
+        'check:push runs "vp pack" before "vp check": the type check must run before anything builds, or a package that resolves to dist/ again goes unnoticed',
+        'check:push runs "vp pack" before "vp test": the tests must run before anything builds, or a package that resolves to dist/ again goes unnoticed',
       ])
       expect(messages('vp build --mode production')).toHaveLength(2)
       expect(messages('vp run publint')).toEqual([])

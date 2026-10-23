@@ -95,13 +95,13 @@ describe('package manifests', () => {
           rule: 'manifest/dev-exports',
           file: 'packages/core/vite.config.ts',
           message:
-            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found undefined',
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again, found undefined',
         },
         {
           rule: 'manifest/dev-exports',
           file: 'packages/server/vite.config.ts',
           message:
-            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found false',
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again, found false',
         },
       ])
     })
@@ -127,7 +127,7 @@ describe('package manifests', () => {
           rule: 'manifest/exports',
           file: 'packages/server/package.json',
           message:
-            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source, found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
         },
       ])
     })
@@ -179,7 +179,7 @@ describe('package manifests', () => {
           rule: 'manifest/exports',
           file: 'packages/admin/package.json',
           message:
-            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":"./src/index.ts","./vite":"./src/vite.ts","./package.json":"./package.json"}',
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source, found {".":"./src/index.ts","./vite":"./src/vite.ts","./package.json":"./package.json"}',
         },
       ])
     })

@@ -28,10 +28,10 @@ import {
 // for an access token that `/mcp` accepts as the person, through the client, with the scopes the
 // person allowed intersected with their role as it is at each request; and a token for `/mcp` is
 // refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
-// another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
-// person removed from the site keeps a token that works (T-20); or a spent refresh token works,
+// another client, even for `/v1` with schema:admin, never reaches the admin's own routes; or a
+// person removed from the site keeps a token that works; or a spent refresh token works,
 // in whatever case its request names the media type,
-// again after a minute instead of revoking its grant (T-34); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
+// again after a minute instead of revoking its grant; or a consent stops being a line of the activity log as the person. src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
 
 afterEach(() => {
   restoreLogs()
@@ -399,7 +399,7 @@ describe('an access token', () => {
 
     expect(tokens.scope).toBe('content:read content:write')
     expect(answer.status).toBe(200)
-    // The consent is a line of the site's activity log, as the person (ADR-037).
+    // The consent is a line of the site's activity log, as the person.
     const { results } = await env.DB.prepare(
       "SELECT action, actor_kind, target_type, target_id, detail FROM audit_log WHERE actor_user_id = ?1 AND action = 'app.allow'",
     )
@@ -489,7 +489,7 @@ describe('an access token', () => {
     ])
   })
 
-  it('takes a spent refresh token again within a minute, for an answer that was lost (T-34)', async () => {
+  it('takes a spent refresh token again within a minute, for an answer that was lost', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { clientId, tokens } = await tokenFor(worker, 'editor')
     const first = await refreshWith(worker, clientId, tokens.refresh_token)
@@ -500,7 +500,7 @@ describe('an access token', () => {
     expect([first.status, retried.status]).toEqual([200, 200])
   })
 
-  it('revokes the grant when a spent refresh token comes back after the grace (T-34)', async () => {
+  it('revokes the grant when a spent refresh token comes back after the grace', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { userId, clientId, tokens } = await tokenFor(worker, 'editor')
     const rotated = await (
@@ -541,7 +541,7 @@ describe('an access token', () => {
     ])
   })
 
-  it('revokes it too when the spent token comes with the media type in capitals (T-34)', async () => {
+  it('revokes it too when the spent token comes with the media type in capitals', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { clientId, tokens } = await tokenFor(worker, 'editor')
     const rotated = await (
@@ -561,7 +561,7 @@ describe('an access token', () => {
     expect([stolen.status, own.status]).toEqual([400, 400])
   })
 
-  it('is refused at once when the person is no longer a member of the site (T-20)', async () => {
+  it('is refused at once when the person is no longer a member of the site', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { userId, tokens } = await tokenFor(worker, 'editor')
     const before = await callRaw(
@@ -620,7 +620,7 @@ describe('an access token', () => {
   })
 })
 
-describe("the admin's own routes and the tokens of other clients (T-24)", () => {
+describe("the admin's own routes and the tokens of other clients", () => {
   it('refuse a token of another client, even for /v1 with schema:admin, the admin alone may use', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const person = await signedIn('owner')

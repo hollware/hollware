@@ -28,7 +28,7 @@ import { collectionDefinitionData, siteDefinitionData } from '../structure/defin
 import { defineOperation } from './types.ts'
 
 /**
- * The operations of v0.1, specified once (ADR-017). The outcomes and the effect of each one are
+ * The operations of v0.1, specified once. The outcomes and the effect of each one are
  * the table of the v0.1 plan; `tests/operations.test.ts` holds it literally. Inputs are strict
  * objects, so a misspelled field is an error instead of being ignored.
  */
@@ -704,7 +704,7 @@ export const rejectReview = defineOperation({
   },
 })
 
-/** The analytics a site can read its page views from (ADR-040): the site's own, never Hollware's. */
+/** The analytics a site can read its page views from: the site's own, never Hollware's. */
 export const ANALYTICS_PROVIDERS = ['cloudflare', 'ga4', 'plausible', 'posthog'] as const
 
 /** One of `ANALYTICS_PROVIDERS`. */
@@ -775,7 +775,7 @@ export const getAnalytics = defineOperation({
   name: 'get_analytics',
   title: 'Read the analytics connection',
   description:
-    'The analytics the site reads its page views from (ADR-040), without its credential: the provider, its settings and when it was last checked. not_connected when there is none.',
+    'The analytics the site reads its page views from, without its credential: the provider, its settings and when it was last checked. not_connected when there is none.',
   input: z.strictObject({}),
   output: z.object({
     outcome: z.enum(['connected', 'not_connected']),
@@ -845,7 +845,7 @@ export const contentStats = defineOperation({
   name: 'content_stats',
   title: 'Read what readers read',
   description:
-    'The most read pages of the sites that read this one, over the last days, most read first, each with the published entry it shows when it shows one, from the analytics the site connected (ADR-040). Use it to pick what to update. unavailable when the site has connected none.',
+    'The most read pages of the sites that read this one, over the last days, most read first, each with the published entry it shows when it shows one, from the analytics the site connected. Use it to pick what to update. unavailable when the site has connected none.',
   input: z.strictObject({
     days: z.number().int().min(1).max(90).default(30).describe('How many days back to count.'),
     limit: z.number().int().min(1).max(50).default(10),
@@ -1079,7 +1079,7 @@ export const makeWebhookSecret = defineOperation({
 })
 
 /*
- * The images of a site (ADR-038): sent once, converted by the site's `media` setting, kept in R2,
+ * The images of a site: sent once, converted by the site's `media` setting, kept in R2,
  * and named in content as `asset:ast_…`.
  */
 

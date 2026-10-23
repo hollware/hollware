@@ -1,5 +1,5 @@
 /**
- * The breaks of the public API between a version and the code (ADR-036): reads `api/` as it was at
+ * The breaks of the public API between a version and the code: reads `api/` as it was at
  * a git ref, such as the tag of the last release, and as the code makes it now, and lists what of
  * the change a minor version cannot carry (scripts/api-compat.ts).
  *
@@ -129,9 +129,7 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
       .filter((tag) => tag !== '')
     const promised = promisedTag(tags)
     if (promised === null) {
-      console.log(
-        'No release of 1.x yet: the public API promises nothing to compare with (ADR-036).',
-      )
+      console.log('No release of 1.x yet: the public API promises nothing to compare with.')
       return 0
     }
     ref = promised

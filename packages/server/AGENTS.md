@@ -1,18 +1,18 @@
 # @hollware/server
 
 The Hollware Worker: one handler per operation spec of `packages/core`, and the adapters that
-serve them (ADR-017). Boundary rules for this package:
+serve them. Boundary rules for this package:
 
 - It owns the D1 migrations in `migrations/` and ships them (`files` in `package.json`).
-- A shipped migration is never edited or removed: fix forward with a new migration (ADR-023).
+- A shipped migration is never edited or removed: fix forward with a new migration.
   The guard `shipped-migrations` compares `migrations/` with every `@hollware/server@*` tag.
 - `src/db/schema.ts` is the schema. To change it, edit it and run
   `pnpm exec drizzle-kit generate --name <what>` here (`drizzle.config.ts`), then commit the SQL
   and its snapshot in `migrations/meta`. `tests/migrations.test.ts` fails while the schema has a
   change without its migration.
 - What drizzle-kit does not model (triggers) and every table rebuild go in a hand-written
-  migration, `drizzle-kit generate --custom --name <what>`, opening with a comment that says why.
-- `revisions`, `revision_tags` and `publications` are append-only (ADR-021), through the triggers
+  migration, `drizzle-kit generate --custom --name <what>`, without the comment it writes.
+- `revisions`, `revision_tags` and `publications` are append-only, through the triggers
   of `migrations/0002_append_only.sql`. A migration that rebuilds one of them creates its
   triggers again. A new column of them goes in its `_immutable` trigger or is listed as derived
   in `tests/append-only.workerd.test.ts`, and a new unique key goes in its `_no_replace` trigger.
@@ -62,7 +62,7 @@ serve them (ADR-017). Boundary rules for this package:
   session, so a revoked token stops at once. Hand its `touch` to `ctx.waitUntil`. A refused token
   gets one answer whether it was unknown, expired or revoked: log the reason, never send it.
   `ROLE_SCOPES` has one entry per role of the `users_role` check: owner, editor, author.
-- `src/oauth` is the OAuth server of ADR-026, built once per public URL: an
+- `src/oauth` is the OAuth server, built once per public URL: an
   `OAuthAuthorizationServer` and an `OAuthResourceServer` each for `/mcp` and `/v1`. The resource
   server validates a token by its shape: `hw_pat_…` goes to `checkPersonalToken`, anything else to
   the authorization server, and either way the scopes are intersected with the user's role at that
@@ -108,3 +108,32 @@ serve them (ADR-017). Boundary rules for this package:
   `wrangler.jsonc` (the test configuration, without Node.js), and nothing else.
 - Tests that need workerd (D1, `cloudflare:*`) are `*.workerd.test.ts` and run in
   `server:workerd`, on a local D1 with `migrations/` applied; the rest run in Node.
+
+## Decisions
+
+- Effects of a change (events, webhooks) go through the outbox, written in the batch of the
+  change; never in `waitUntil`, which a Worker may cancel.
+- The operation registry is the only schema: no `@hono/zod-openapi`. No Better Auth (four times
+  the bundle, and `nodejs_compat`) and no Agents SDK (its own copy of the MCP SDK).
+- An IP address is kept only as an HMAC under the site's key: a plain hash of one is reversible.
+- An SVG is refused, never rewritten. Hollware never instruments a site's frontend: it reads the
+  analytics the site already has. Semantic search is optional: without its bindings, full text.
+
+## Accepted on purpose
+
+Do not "fix" these: each is a decision of the maintainer.
+
+- A preflight answers for the origins of every site; the read that follows checks the token's.
+- A read token is public once a browser has it: it reads only what the site publishes.
+- A personal token may never expire, when its maker gives no days.
+- `GET /authorize` with a URL `client_id` fetches that URL: public addresses only, cached, capped.
+- OAuth lifetimes are sized to the 1,000 KV writes a day of the Free plan.
+- A draft's preview loads its images from their hosts (sandboxed, no referrer, no cookie).
+- A site that renders Markdown with its own pipeline sanitizes it itself.
+- An owner may point an analytics credential at a host of their choosing (`https://`, public).
+- A translation or a comment of an agent reaches readers only through a person's approval, and
+  any MCP client named `hollware-agents` is trusted as the agents.
+- A holder of `schema:admin` creates sites without a cap.
+- A push to `release` publishes with no second approval.
+- Any Worker of the account with the service binding may read any site it names.
+- A refusal before the site is known is logged in Workers Logs, not in the activity log.

@@ -258,7 +258,7 @@ describe('release workflow', () => {
       ])
     })
 
-    it('reports a promotion check that no longer audits what is published (T-92)', () => {
+    it('reports a promotion check that no longer audits what is published', () => {
       const unaudited = change(
         'promotion-check',
         `        run: ${AUDIT_COMMAND}`,

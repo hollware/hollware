@@ -551,7 +551,7 @@ describe('hollware export stops with a clear error and writes nothing when a cal
   })
 })
 
-describe('hollware export and its images (ADR-038)', () => {
+describe('hollware export and its images', () => {
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
   /** A site with a post that shows one image, uploaded the way an agent uploads it. */

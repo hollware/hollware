@@ -19,8 +19,8 @@ import { softAuthenticator } from '../support/authenticator.ts'
 // role, each once and before it expires; sign-in with a registered passkey opens a session that
 // knows the person, whose role is that of each site they are a member of; and a registration or a sign-in from another origin, a
 // challenge used twice, an invitation redeemed by a second registration, a signature that does
-// not verify, a passkey of no one, a challenge older than five minutes (T-48), a counter that went
-// back (T-52) or an assertion without user verification (T-53) is refused.
+// not verify, a passkey of no one, a challenge older than five minutes, a counter that went
+// back or an assertion without user verification is refused.
 
 const ORIGIN = 'https://cms.example.com'
 const NOW = new Date('2026-10-14T10:00:00.000Z')
@@ -200,7 +200,7 @@ describe('sign-in', () => {
     return { ceremony, authenticator }
   }
 
-  it('refuses a challenge older than five minutes, and takes one of just under (T-48)', async () => {
+  it('refuses a challenge older than five minutes, and takes one of just under', async () => {
     const { ceremony, authenticator } = await registered()
     const late = await authenticationOptions(ceremony)
     const lateResponse = await authenticator.authenticate(late.options)
@@ -219,7 +219,7 @@ describe('sign-in', () => {
     ).resolves.toMatchObject({ userId: expect.stringMatching(/^usr_/) })
   })
 
-  it('refuses a counter that went back, as a cloned authenticator gives (T-52)', async () => {
+  it('refuses a counter that went back, as a cloned authenticator gives', async () => {
     const { ceremony, authenticator } = await registered()
     const first = await authenticationOptions(ceremony)
     await verifyAuthentication(ceremony, {
@@ -236,7 +236,7 @@ describe('sign-in', () => {
     ).rejects.toThrow('The passkey could not be verified')
   })
 
-  it('refuses a sign-in in which the device was touched but not unlocked (T-53)', async () => {
+  it('refuses a sign-in in which the device was touched but not unlocked', async () => {
     const { ceremony, authenticator } = await registered()
     const { challengeId, options } = await authenticationOptions(ceremony)
 

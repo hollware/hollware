@@ -22,7 +22,7 @@ import { dependencySpecs, parseManifests } from './workspace.ts'
  * `peerDependencies` and `optionalDependencies` hold no `@cloudflare/*` package and no
  * `wrangler` ("No Cloudflare dependencies", as its README says). Dev dependencies are tools.
  *
- * Two more facts keep the claim true beyond those names (ADR-018). `packages/core/tsconfig.json`
+ * Two more facts keep the claim true beyond those names. `packages/core/tsconfig.json`
  * covers only `src`, with the web platform as its type environment (`lib` es2024 and webworker,
  * no `types`), so `vp check` rejects any other Node or browser global. And every test file of
  * `packages/core/tests` runs twice: in Node and inside workerd.
@@ -41,7 +41,7 @@ export interface CorePurityInput {
   testRuns: readonly { file: string; project: string }[]
 }
 
-/** The type environment of core's `src`: the web platform, no Node and no DOM (ADR-018). */
+/** The type environment of core's `src`: the web platform, no Node and no DOM. */
 const SOURCE_TYPES = { include: ['src'], lib: ['es2024', 'webworker'], types: [] }
 
 /** The projects each test of core runs in: Node, then workerd. */
@@ -74,7 +74,7 @@ function checkTypeEnvironment(tsconfig: TextFile): Violation[] {
   return isDeepStrictEqual(found, SOURCE_TYPES)
     ? []
     : report(
-        `must type-check only src against the web platform, ${JSON.stringify(SOURCE_TYPES)}, so that a Node or browser global is a type error (ADR-018); found ${JSON.stringify(found)}`,
+        `must type-check only src against the web platform, ${JSON.stringify(SOURCE_TYPES)}, so that a Node or browser global is a type error; found ${JSON.stringify(found)}`,
       )
 }
 
@@ -89,7 +89,7 @@ function checkTestRuntimes(input: CorePurityInput): Violation[] {
       violations.push({
         rule: 'core-purity/runtimes',
         file,
-        message: `runs in ${JSON.stringify(projects)}: every test of core runs in Node and inside workerd, ${JSON.stringify(CORE_TEST_PROJECTS)} (ADR-018)`,
+        message: `runs in ${JSON.stringify(projects)}: every test of core runs in Node and inside workerd, ${JSON.stringify(CORE_TEST_PROJECTS)}`,
       })
     }
   }

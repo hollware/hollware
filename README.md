@@ -74,11 +74,6 @@ Eleven packages, released together at one version, in the order they arrived.
 | [`@hollware/vue`](packages/vue)               | Reads Hollware from a Vue 3 app that is not Nuxt: a component, server helpers, composables. | v0.10 |
 | [`@hollware/agents`](packages/agents)         | A reviewer, a translator and a weekly auditor on a Worker; none publishes.                  | v0.6  |
 
-## Documentation
-
-- [`docs/design.md`](docs/design.md): the design document, with the thesis, the architecture, the data model and the roadmap in full.
-- [`docs/adr/`](docs/adr/): the architecture decision records, one for each structural decision.
-
 ## Contributing
 
 Contributions are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to set up the repository and what a good pull request looks like, and everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Coding agents start from [`AGENTS.md`](AGENTS.md).

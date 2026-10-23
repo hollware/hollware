@@ -18,7 +18,7 @@ export const INVITE_USAGE = [
   'Usage: hollware invite (--role <editor | author> | --owner) [--days <n>] [--url <url>]',
   '                       [--site <key>] [--local | --remote] [--database <name>] [--json]',
   '',
-  'Invites a person to the admin (ADR-026): prints a link, valid once and for 7 days by default,',
+  'Invites a person to the admin: prints a link, valid once and for 7 days by default,',
   'where they set up a passkey. An editor reads, writes and publishes; an author reads and writes,',
   'and what an author publishes goes through review. With --owner, the link is for the owner of',
   'the site, to set up a passkey: on a deployment that was made before the admin existed, or on a',

@@ -34,12 +34,8 @@ export interface ExceptionList {
  * (guard `agents-paths`). The value is the text between the backticks.
  */
 export const MISSING_DOC_PATHS: ExceptionList = {
-  max: 5,
+  max: 4,
   entries: [
-    {
-      value: 'NNNN-kebab-case-title.md',
-      reason: 'The ADR file-name template in docs/adr/README.md.',
-    },
     {
       value: 'CLAUDE.md',
       reason: 'Named only to say that it must never exist (guard `no-claude-md`).',
@@ -150,7 +146,7 @@ export const TABLES_WITHOUT_SITE: ExceptionList = {
     {
       value: 'users',
       reason:
-        'A user belongs to the deployment and may work on several sites; the tokens carry the site (ADR-019).',
+        'A user belongs to the deployment and may work on several sites; the tokens carry the site.',
     },
     {
       value: 'passkeys',

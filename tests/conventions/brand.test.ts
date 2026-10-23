@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vite-plus/test'
 import { readText } from '../support/repo.ts'
 
 // Fails when: hollware.com (apps/web), the admin (packages/admin) and the pages the Worker renders
-// to sign in (packages/server/src/identity/pages.ts) stop sharing the look of ADR-039: the theme
+// to sign in (packages/server/src/identity/pages.ts) stop sharing the same look: the theme
 // blocks of the two stylesheets differ, or lose Schibsted Grotesk, JetBrains Mono, the Carbón ground
 // or the flame amber; the Nuxt UI colors of the two configs differ from carbon, flame and carbon;
 // either one gets a light theme back (a switch of color mode, or a page without the class `dark`);
 // the sign-in pages answer the light of a device, or take another ground or accent than the theme's;
 // or the mark of the favicon, the site's logo, the admin's logo and the sign-in pages is not one path
-// in flame; or docs/brand.md names a color of the scales that the theme does not have.
+// in flame.
 
 const SITE_CSS = 'apps/web/app/assets/css/main.css'
 const ADMIN_CSS = 'packages/admin/app/app.css'
@@ -106,16 +106,6 @@ describe('the look of Hollware', () => {
     for (const logo of ['apps/web/app/components/AppLogo.vue', 'packages/admin/app/App.vue']) {
       expect(readText(logo)).toContain('w-auto shrink-0 fill-secondary')
     }
-  })
-
-  it('is described by docs/brand.md: each color the brand book names is the one of the theme', () => {
-    const theme = themeOf(readText(SITE_CSS)) ?? ''
-    const named = [
-      ...readText('docs/brand.md').matchAll(/`((?:carbon|flame)-\d+)`\s*\|\s*`(#[0-9a-f]{6})`/g),
-    ]
-
-    expect(named.length).toBeGreaterThanOrEqual(9)
-    for (const [, token, value] of named) expect(theme).toContain(`--color-${token}: ${value};`)
   })
 
   it('reads the theme block and the mark, and nothing around them', () => {

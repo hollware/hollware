@@ -3,9 +3,8 @@
 Hollware is an open-source headless CMS for the agent era, native to Cloudflare
 Workers. Agents write Markdown through MCP, contracts validate every write, D1 is
 the single source of truth, and sites read published content over Workers RPC.
-The design is in `docs/design.md` and every structural decision is an ADR in
-`docs/adr/`. How Hollware looks and speaks (the mark, color, type, voice) is in
-`docs/brand.md`: read it before any change to the site, the docs, the admin or copy.
+Its look is the theme that the site and the admin share
+(`apps/web/app/assets/css/main.css`); how it speaks is in `apps/web/AGENTS.md`.
 
 This file orients. Rules live in tests, lint rules or types: if a test could hold
 a claim, the claim belongs in a test.
@@ -28,14 +27,14 @@ deleted when v1.0 ships, together with this section.
 | `vp run check:budgets`        | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
 | `vp run check:push`           | The CI check job: check, test, bench, build, budgets, publint, types              |
 | `vp run check:local`          | Pre-push hook: check:push, acceptance, e2e:admin, conformance, commit subjects    |
-| `vp run test:conformance`     | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions   |
+| `vp run test:conformance`     | MCP conformance: the suite against `wrangler dev`, for both revisions             |
 | `vp run test:acceptance`      | The acceptance suite of the stage, against the built playground and example site  |
 | `vp run e2e:admin`            | Admin in Chromium, virtual passkey and axe (`playwright install chromium` once)   |
 | `vp run e2e:install`          | `create-hollware` from this checkout, then MCP, publish and a read token          |
 | `vp run e2e:upgrade`          | A project of 0.3.0 (`-- --from <version>`) from npm, moved here and migrated      |
 | `vp run e2e:integrations`     | The Nuxt, Astro and React Router examples over the built playground, previews too |
 | `vp run eval:search`          | Search quality against a deployment with semantic search (`-- --hollware <url>`)  |
-| `node scripts/api.ts --write` | Writes the public API, `api/` (ADR-036); `api-check.ts --against <ref>`: breaks   |
+| `node scripts/api.ts --write` | Writes the public API, `api/`; `api-check.ts --against <ref>`: breaks             |
 
 The mutation probe, `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>`,
 prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
@@ -53,7 +52,7 @@ new process group, so the child outlives its supervisor.
   `playground:harness` (Node, wrangler's `createTestHarness` over the built Workers). Run both with
   `pnpm --filter @hollware/playground run test`.
 - The tests of `packages/core` run in Node and again inside workerd (`core:workerd`), and
-  its `src` type-checks against the web platform only (ADR-018).
+  its `src` type-checks against the web platform only.
 - Tests that import from `vitest` or `cloudflare:test` are named `*.workerd.test.ts`.
 - Keep `fsModuleCache: false` in workerd test configs: the module cache saved no test time.
 - `vp dev` starts through a launcher: stopping it leaves the dev server and
@@ -81,7 +80,7 @@ new process group, so the child outlives its supervisor.
   (`examples/worker-site/src/probe.ts`), each bound to itself as `PROBE`, is how a Node.js test asks
   a built Worker for its Node.js globals. It is no route, so the gateway's guard has no exception.
 - `budgets.json` holds the ceilings of the built playground Worker, minified and gzipped (main
-  module 250 KiB, all modules 450 KiB; the CPU of a write is `vp run bench`'s); raising one needs a note in an ADR.
+  module 250 KiB, all modules 450 KiB; the CPU of a write is `vp run bench`'s); raising one says why in its `reason`.
   `scripts/check-budgets.ts` fails above a ceiling, keeps Comark and `@comark/html` in lazy chunks
   (read from the source maps of the build), and logs startup and the cost of a write.
 - The conformance Worker (`tests/conformance/worker`) runs under `wrangler dev`, never `vp dev`:
@@ -126,11 +125,21 @@ new process group, so the child outlives its supervisor.
   with a reason and an expiry date.
 - Every bare import is declared in the importing package's `package.json`.
 - Inside the workspace a package resolves to its source: `exports` and `bin` point at
-  the source, and only `publishConfig` points at the build (ADR-016). Nothing needs a
+  the source, and only `publishConfig` points at the build. Nothing needs a
   build to type-check or test; `vp pack` writes those fields from each package's
   `vite.config.ts`, so change them there.
 - Packages never read `process.env`; configuration arrives as arguments.
 - A promise is always awaited or explicitly handled: Workers cancel the rest.
+- No comments and no free prose: the code says what it does and why. A product decision goes,
+  in one line, in the AGENTS.md of its boundary, and only when an agent needs it.
+
+## Decisions
+
+- Cloudflare only: native primitives, no provider abstraction. One deployment per account; its
+  sites are isolated by `site_id`, not by tenant infrastructure.
+- A site's structure is data in D1, changed over MCP with no deploy.
+- Semver covers `api/` and only it: `/v1/admin`, the text of messages and descriptions, logs,
+  the playground, the examples and hollware.com are outside it.
 
 ## Test bar
 

@@ -106,7 +106,7 @@ describe('get_structure', () => {
   })
 })
 
-describe('get_structure and the URLs of webhooks (T-70)', () => {
+describe('get_structure and the URLs of webhooks', () => {
   it('shows an owner the whole URL, and anyone else its origin only', async () => {
     const { key, context, seeded } = await setUp()
     const hook = 'https://api.vercel.com/v1/integrations/deploy/prj_1/s3cr3t?buildCache=false'
@@ -362,7 +362,7 @@ describe('update_site', () => {
     expect(results.map((row) => row.id)).toEqual(['evt_first'])
   })
 
-  it('refuses a definition whose IndexNow or webhook would send a secret of the Worker out (T-69)', async () => {
+  it('refuses a definition whose IndexNow or webhook would send a secret of the Worker out', async () => {
     const { key, context } = await setUp()
     const leaking = siteDefinitionData.parse({
       ...BLOG,

@@ -276,7 +276,7 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expectAccessible(owner)
 })
 
-test('the owner connects analytics in Site, and the provider is asked before anything is kept (ADR-040)', async () => {
+test('the owner connects analytics in Site, and the provider is asked before anything is kept', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByText('No analytics connected.')).toBeVisible()
   await owner.getByRole('link', { name: 'Connect analytics' }).click()
@@ -344,7 +344,7 @@ test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => 
   }
 })
 
-test('the owner uploads an image, sees it in the library and copies its reference (ADR-038)', async () => {
+test('the owner uploads an image, sees it in the library and copies its reference', async () => {
   // A PNG of one red pixel: the local Images binding converts it to WebP.
   const pixel = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
@@ -540,7 +540,7 @@ test('the bar of every page names the site it is of, with the menu to switch to 
   await owner.keyboard.press('Escape')
 })
 
-test('signing in goes back to a page of this Hollware, and never to another host (T-43)', async () => {
+test('signing in goes back to a page of this Hollware, and never to another host', async () => {
   // The owner's page holds the virtual passkey since the first test.
   await owner.goto('/signin?return_to=%2Fadmin%2Ftokens')
   await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
@@ -640,7 +640,7 @@ test('the owner finds the daily backups of the site in Site, keeps them a week, 
   await expectAccessible(owner)
 })
 
-test('the owner sees their passkey and the admin in Tu cuenta, then signs out (T-44, T-45, T-54)', async () => {
+test('the owner sees their passkey and the admin in Tu cuenta, then signs out', async () => {
   // The admin is in Spanish since the tests before; the owner has the one passkey of setup. The
   // last test: signing out ends the session the tests before signed in with.
   await owner.goto('/admin/')

@@ -238,7 +238,7 @@ export function checkBudgets(measurement: Measurement, budgets: Budgets): Violat
     if (bytes > ceiling.gzipKiB * KIB) {
       violations.push({
         rule,
-        message: `${what} is ${kib(bytes)} gzipped, over the ceiling of ${ceiling.gzipKiB} KiB in budgets.json. ${ceiling.reason} Make the build smaller; raising a ceiling needs a note in an ADR.`,
+        message: `${what} is ${kib(bytes)} gzipped, over the ceiling of ${ceiling.gzipKiB} KiB in budgets.json. ${ceiling.reason} Make the build smaller; raising a ceiling says why in its reason.`,
       })
     }
   }

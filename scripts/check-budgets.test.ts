@@ -111,7 +111,7 @@ describe('checkBudgets', () => {
       {
         rule: 'main-ceiling',
         message:
-          'the main module and what it imports at startup is 250.00 KiB gzipped, over the ceiling of 250 KiB in budgets.json. The main module is evaluated at every cold start. Make the build smaller; raising a ceiling needs a note in an ADR.',
+          'the main module and what it imports at startup is 250.00 KiB gzipped, over the ceiling of 250 KiB in budgets.json. The main module is evaluated at every cold start. Make the build smaller; raising a ceiling says why in its reason.',
       },
     ])
   })

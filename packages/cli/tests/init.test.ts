@@ -68,7 +68,7 @@ function setup(
   }
 }
 
-/** The definition of the preset blog in English, as the site's first (ADR-033). */
+/** The definition of the preset blog in English, as the site's first. */
 const BLOG_DEFINITION =
   '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
 
@@ -376,7 +376,7 @@ describe('the first definition of a site', () => {
   })
 })
 
-describe('what the activity log of the new site keeps (ADR-037)', () => {
+describe('what the activity log of the new site keeps', () => {
   it('keeps no address and every line unless a flag says otherwise', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'init-audit-'))
 

@@ -15,7 +15,7 @@ import {
 } from '../config/backups.ts'
 
 /**
- * The definition of a site as data (ADR-033): what D1 stores for it and what the operations that
+ * The definition of a site as data: what D1 stores for it and what the operations that
  * change the structure take. Its shape is checked here; what only makes sense of the whole (a
  * route with `:slug`, a default locale among the locales, a rule's parameters) is checked when it
  * is compiled, with one problem for each thing wrong.
@@ -116,7 +116,7 @@ export const siteDefinitionData = z.strictObject({
         ),
     })
     .default({ ipAddresses: 'off', retentionDays: null })
-    .describe('What the activity log of the site keeps (ADR-037). Only an owner should change it.'),
+    .describe('What the activity log of the site keeps. Only an owner should change it.'),
   backups: z
     .strictObject({
       enabled: z
@@ -176,7 +176,7 @@ export const siteDefinitionData = z.strictObject({
         ),
     })
     .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })
-    .describe('How the site converts the images it receives (ADR-038).'),
+    .describe('How the site converts the images it receives.'),
   collections: z.record(z.string(), collectionDefinitionData),
 })
 

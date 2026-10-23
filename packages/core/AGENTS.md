@@ -1,13 +1,13 @@
 # @hollware/core
 
 Contracts, operation specs, schemas and the Markdown pipeline. A spec has no handler: those
-live in `packages/server` (ADR-017). Boundary rules for this package:
+live in `packages/server`. Boundary rules for this package:
 
 - No Cloudflare or Workers APIs and no Node-only APIs in `src`: the package must run
   anywhere (Workers, Node, browsers).
 - `src` type-checks against the web platform only (`tsconfig.json`: `lib` es2024 and
   webworker, no `types`), so a Node or browser global is a type error. Tests and configs
-  type-check through `tests/tsconfig.json` (ADR-018).
+  type-check through `tests/tsconfig.json`.
 - Every test runs in Node and inside workerd (`vitest.workerd.config.ts`).
 - Never read `process.env`: configuration arrives as arguments.
 
@@ -39,7 +39,7 @@ Where things are:
   pipeline share with the server.
 - `src/tokens.ts`, `src/scopes.ts`, `src/ids.ts` and `src/errors.ts`: the personal token format,
   the scopes, prefixed ULIDs and `HollwareError`.
-- `src/markdown/`: the Markdown pipeline (ADR-001, ADR-020). `processMarkdown` answers for any
+- `src/markdown/`: the Markdown pipeline. Markdown, not Portable Text or Lexical: agents write prose and diffs stay readable; remark costs too much CPU for a write. `processMarkdown` answers for any
   string and never throws: a file it cannot store comes back as a `size-limit`,
   `frontmatter-syntax` or `comark-parse` violation (`tests/markdown/limits.test.ts`,
   `tests/markdown/frontmatter.test.ts`, `tests/markdown/fuzz.test.ts`).
@@ -60,7 +60,7 @@ Where things are:
 - Tests that process Markdown call `warmUpComark()` from `tests/markdown/support.ts`: the first
   import of Comark in workerd takes seconds. `vp run bench` fails when the p95 CPU time of a
   write of the 2,027-word fixture is over 3 ms.
-- `src/contracts/`: the runner and the built-in contracts (ADR-004, ADR-020). `runContracts` is
+- `src/contracts/`: the runner and the built-in contracts. Unsafe content is refused with a fix, never sanitized in silence: the agent learns from the fix. `runContracts` is
   the one entry: `schema` runs first, and the collection's own contracts run only once it passed,
   with the schema's output; a contract that throws becomes an error of that contract; violations
   come in a fixed order. `write` runs the contracts declared for it, `publish` every contract
