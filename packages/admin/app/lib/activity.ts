@@ -1,12 +1,5 @@
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '@hollware/core'
 
-/**
- * The logic of the Activity page and of the activity section of Site (ADR-037), apart from the
- * pages so a test can hold it: the query a set of filters makes, who a line names, and the
- * retention an owner types.
- */
-
-/** A line of the log, as `GET /v1/admin/activity` answers it. */
 export interface ActivityLine {
   readonly id: string
   readonly at: string
@@ -33,7 +26,6 @@ export interface ActivityPage {
   readonly nextCursor: string | null
 }
 
-/** What the person filters by: dates are `YYYY-MM-DD` as a date input gives them. */
 export interface ActivityFilters {
   readonly actor?: string
   readonly action?: string
@@ -43,7 +35,6 @@ export interface ActivityFilters {
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/
 
-/** The instant a day starts at, in UTC, or `null` when the text is no day. */
 function startOf(day: string, plusDays = 0): string | null {
   const parts = DAY.exec(day)
   if (parts === null) return null
@@ -51,11 +42,6 @@ function startOf(day: string, plusDays = 0): string | null {
   return Number.isNaN(time) ? null : new Date(time).toISOString()
 }
 
-/**
- * The query string of a request for the log (without the `?`). `from` is the start of its day and
- * `to`, which the server takes as exclusive, the start of the day after the one chosen, so the day
- * chosen is in the range.
- */
 export function activityQuery(
   filters: ActivityFilters,
   paging: { readonly cursor?: string | null; readonly limit?: number } = {},
@@ -74,13 +60,10 @@ export function activityQuery(
 
 export interface Who {
   readonly kind: ActivityLine['actor']['kind']
-  /** The name to show; `null` for the deployment, which the page names in its own words. */
   readonly name: string | null
-  /** The name the client declared for itself, shown as its claim; `null` when it gave none. */
   readonly via: string | null
 }
 
-/** Who a line names: the person, the token's label or the app's id, whichever the actor is. */
 export function whoOf(line: ActivityLine): Who {
   const { actor } = line
   const declared = actor.declared?.['name']
@@ -97,7 +80,6 @@ export function whoOf(line: ActivityLine): Who {
   }
 }
 
-/** A target as `type · short id`: the id is a prefix and 26 characters; the end tells them apart. */
 export function targetLabel(target: ActivityLine['target']): string {
   if (target === null) return '—'
   const id = target.id.length > 12 ? `…${target.id.slice(-8)}` : target.id
@@ -108,7 +90,6 @@ export type Retention =
   | { readonly ok: true; readonly days: number | null }
   | { readonly ok: false; readonly min: number; readonly max: number }
 
-/** The retention the form holds: forever, or a whole number of days from 30 to 3650. */
 export function parseRetention(
   forever: boolean,
   days: number | string | null | undefined,

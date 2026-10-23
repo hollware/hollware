@@ -14,16 +14,6 @@ import {
   type World,
 } from './world.ts'
 
-// Fails when: publish or unpublish stop doing what the specs say. publish.ts publishes without the
-// version of the entry being the one the caller read (conflict has to win over every other
-// answer), lets errors through (the contracts run again, in the publish phase, on the latest
-// revision, against the entries as they are now), publishes with a warning that was not
-// acknowledged, matches an acknowledgement by something else than its contract and its path,
-// records something else than every warning of the verdict as acknowledged, drops or mixes up the
-// actor, or the sort key (the sorting field of the collection, else when the entry was first
-// published, else now); answers the store's conflict, not_found and too_large as something else.
-// unpublish.ts leaves an entry up, writes for an entry that is not published, or forgets who did it.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -37,18 +27,15 @@ const english = { collection: 'blog', locale: 'en', slug: 'edge-caching-guide' }
 const TITLE = 'A guide to caching at the edge of the network with Workers and D1 tonight'
 const TITLE_ACK = { contract: 'seo-title-length', path: '/frontmatter/title' }
 
-/** A note that gets three warnings when it is published: one of `entry-id` and two of `many-warnings`. */
 const NOTE = { collection: 'notes', locale: 'en', slug: 'a-note' }
 const FLOODED = '---\ntitle: A note\nprobe: true\nflood: 2\n---\n\nText\n'
 const PROBE_KEY = { contract: 'entry-id', path: '' }
 const FLOOD_KEY = { contract: 'many-warnings', path: '/frontmatter/flood' }
 
-/** How many publications the site has, for the tests that say nothing was published. */
 function publications(world: World) {
   return countRows(world.db, 'publications', world.tenant.key)
 }
 
-/** A pair of drafts, English and Spanish, in one translation group: what the blog needs to publish. */
 async function pair(world: World, group = 'edge-caching-guide') {
   const en = await createPost(world, { slug: 'edge-caching-guide', group, at: T0 })
   const es = await createPost(world, { slug: 'guia-de-cache', locale: 'es', group })
@@ -86,7 +73,6 @@ describe('publish', () => {
       head_rev: revision?.id,
       published_rev: revision?.id,
       published_at: T1,
-      // The blog sorts by its `date`.
       published_sort_key: '2026-10-01',
     })
     const [publication, ...others] = await publicationsOf(world.db, en.id)
@@ -132,7 +118,6 @@ describe('publish', () => {
   it('is blocked by an error, even when every warning is acknowledged, and publishes nothing', async () => {
     const world = await newWorld(env.DB, 'blocked')
     await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })
-    // A long title is a warning, and an image without alt text is an error.
     const created = await world.agent.createDraft({
       ...english,
       markdown: blogPost({ title: TITLE }, '\n![](/images/edge.png)\n'),
@@ -159,7 +144,6 @@ describe('publish', () => {
   it('checks the entry again when it publishes: a rule that reads other entries, the translation pair', async () => {
     const world = await newWorld(env.DB, 'pair')
     const en = await createPost(world, { slug: 'edge-caching-guide', group: 'guide' })
-    // The draft was saved with nothing to fix: the translation pair is checked when publishing.
     expect((await world.agent.getEntry(english)).entry?.verdict.ok).toBe(true)
 
     const alone = await world.agent.publish({ id: en.id, version: 1 })
@@ -235,8 +219,6 @@ describe('publish', () => {
     const created = await world.agent.createDraft({ ...NOTE, markdown: FLOODED })
     const id = created.entry?.id ?? ''
 
-    // One acknowledgement covers the two warnings of one contract at one path, and the one that
-    // is no warning of this entry is not recorded.
     const published = await world.agent.publish({
       id,
       version: 1,
@@ -293,8 +275,6 @@ describe('publish', () => {
     const head = (await world.agent.getEntry(english)).entry?.revision
     expect(fixed.entry?.version).toBe(2)
 
-    // At version 1 the entry had errors, and at 2 it has a warning and no translation. None of
-    // that is asked: the version is not the entry's.
     const answers = [
       await world.agent.publish({ id, version: 1 }),
       await world.agent.publish({ id, version: 3, acknowledgeWarnings: [TITLE_ACK] }),
@@ -347,8 +327,6 @@ describe('publish', () => {
 
   it('is blocked, with the size that was counted, when the publication would be over the limit of the database', async () => {
     const world = await newWorld(env.DB, 'too-large')
-    // The draft is small, because `many-warnings` only runs when publishing: it is the verdict of
-    // the publish that makes the row large.
     const created = await world.agent.createDraft({
       ...NOTE,
       markdown: '---\ntitle: A note\nflood: 12000\n---\n\nText\n',
@@ -389,7 +367,6 @@ describe('publish', () => {
 
   it('is blocked, with the refusal as its verdict, when the latest revision cannot be stored under the rules of now', async () => {
     const world = await newWorld(env.DB, 'refused')
-    // A file that the notes took when they allowed 768 KiB, and that they would refuse today.
     const created = await world.agent.createDraft({
       ...NOTE,
       markdown: `---\ntitle: A note\n---\n\n${'x'.repeat(600_000)}\n`,
@@ -423,7 +400,6 @@ describe('publish', () => {
 })
 
 describe('what orders a published entry', () => {
-  /** A note published at `at`. */
   async function publishNote(world: World, slug: string, at: string) {
     world.time.set(at)
     const created = await world.agent.createDraft({
@@ -495,7 +471,6 @@ describe('unpublish', () => {
         status: 'draft',
         version: 3,
         hasUnpublishedChanges: true,
-        // When it was first published stays, so that publishing it again does not move it.
         publishedAt: T1,
         updatedAt: T2,
       },

@@ -1,26 +1,3 @@
-// Fails when:
-// - "hollware --help prints the usage …" / "does the same with no arguments": the usage of
-//   `src/index.ts` stops being printed on out with exit code 0 (or is printed on err).
-// - "lists every command with what it does": a command is dropped from COMMANDS, or its summary
-//   changes.
-// - "--help of each command …" / "shows the usage of token when it gets no subcommand": a
-//   command stops handling `--help` before it looks at anything else (a missing option,
-//   wrangler, the network), or `token` alone stops printing its usage.
-// - "the usage of each command names its options": an option disappears from a command's usage.
-// - "hollware --version …": `readVersion` (src/version.ts) stops reading the package.json next
-//   to the module, or the output loses the name; the throw test: it stops throwing without a
-//   version.
-// - "an unknown argument …": `main` stops answering an unknown first argument with the usage on
-//   err and exit code 1, or stops cleaning control characters out of what it repeats.
-// - "does not take a name of Object.prototype for a command": the commands are looked up in an
-//   object, so `constructor` or `toString` runs.
-// - "names the command, and the subcommand, in front of an error …": `main` stops prefixing
-//   errors with the command words, or stops pointing at `--help` after a mistake in the arguments.
-// - "names only the command when the subcommand is not one": an unknown subcommand is named as
-//   if it were one.
-// - "adds no pointer to the help to an error that is not a mistake …": the pointer is added to
-//   every CliError.
-// - "lets an error that is not a CliError escape": `main` catches everything.
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
@@ -36,7 +13,6 @@ afterEach(() => {
   for (const installed of installs.splice(0)) installed.remove()
 })
 
-// Loads a copy of the module that sits next to a package.json the test controls.
 async function loadFrom(manifest: object): Promise<typeof main> {
   const installed = install(manifest)
   installs.push(installed)

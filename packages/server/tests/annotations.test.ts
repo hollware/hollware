@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { annotationsOf, EFFECT_ANNOTATIONS } from '../src/mcp/annotations.ts'
 
-// Fails when: the MCP hints of an effect move away from the map of the v0.1 plan, an operation
-// would reach MCP with hints that do not follow from its effect, or a tool other than the two that
-// ask a site's analytics provider (ADR-040) says it reaches outside the deployment.
-
 describe('MCP hints', () => {
   it('follow from the effect, closed-world', () => {
     expect(EFFECT_ANNOTATIONS).toEqual({

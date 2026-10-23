@@ -1,16 +1,5 @@
 name: Release
 
-# The release pipeline (ADR-015, ADR-035). `main` is for development and `release` is what ships:
-# `release` only moves by fast-forward to a commit that is on `main`.
-#
-#   push to main:     select-mode -> version -> (merge the Version Packages pull request)
-#   push to release:  promotion-check -> pack -> publish -> finalize
-#
-# A push to `main` never packs or publishes. `publish` is the only job that may request an
-# OIDC token. It runs in the environment `npm`, which only `release` may use and which
-# waits for no one (ADR-035): it checks out nothing and runs no repository code: it verifies the tarballs that `pack` built and hands
-# them to npm with provenance.
-
 on:
   push:
     branches: [main, release]
@@ -27,8 +16,6 @@ on:
 
 permissions: {}
 
-# One run at a time per branch. The two branches have separate groups: a run of `release`
-# that waits for the approval of `publish` must never be replaced by a later push to `main`.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -67,13 +54,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      contents: write # push the changeset-release/main branch
-      pull-requests: write # open or update the Version Packages pull request
+      contents: write
+      pull-requests: write
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false # the action pushes through the GitHub API with its own token
+          persist-credentials: false
 
       - name: Set up Vite+
         uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
@@ -82,9 +69,6 @@ jobs:
           node-version-file: .node-version
           cache: false
 
-      # The script is `changeset version && pnpm install --lockfile-only && vp fmt`.
-      # The commit and the pull request keep the title "Version Packages": the
-      # changeset check in ci.yml recognizes the merge by it.
       - name: Version the packages
         uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
@@ -100,14 +84,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out the repository
+      - name: Check out the repository with the history of main and release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # origin/main, and the history between the two tips of release
+          fetch-depth: 0
           persist-credentials: false
 
-      # Fails unless the pushed commit is on main, release moved by fast-forward and
-      # .changeset/ holds no pending changeset. Nothing below runs before it passes.
       - name: Check the promotion
         env:
           PROMOTED_SHA: ${{ github.sha }}
@@ -120,12 +102,9 @@ jobs:
           version: 1.3.0
           node-version-file: .node-version
           cache: false
-          run-install: false # the audit reads pnpm-lock.yaml, it needs no node_modules
+          run-install: false
 
-      # No release of a package whose production dependencies have a known high vulnerability
-      # (T-92). The private apps and examples are not published, so they are not audited here;
-      # the weekly audit of security.yml reads the whole lockfile.
-      - name: Audit what is published
+      - name: Audit the production dependencies of the published packages
         run: pnpm --filter './packages/*' audit --prod --audit-level=high
 
   pack:
@@ -151,8 +130,6 @@ jobs:
           node-version-file: .node-version
           cache: false
 
-      # `publish` when some public package has a version that npm does not have yet.
-      # `none` when every version is on npm, which makes this run a no-op.
       - name: Select the mode
         id: select
         uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
@@ -161,8 +138,6 @@ jobs:
         if: steps.select.outputs.mode == 'publish'
         run: vp run -r build
 
-      # Writes the tarballs and publish-plan.json (name, version, tarball path and
-      # sha256 of every release) and uploads them as one artifact.
       - name: Pack the tarballs
         id: pack
         if: steps.select.outputs.mode == 'publish'
@@ -181,14 +156,13 @@ jobs:
     name: Publish to npm
     needs: pack
     if: github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' && needs.pack.outputs.artifact-id != ''
-    environment: npm # only `release` may use it; the npm trusted publisher is bound to it
+    environment: npm
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      contents: read # nothing is checked out
-      id-token: write # trusted publishing and provenance: the only job in this repository that gets it, besides Scorecard
+      contents: read
+      id-token: write
     steps:
-      # No registry-url: it writes an .npmrc that stops npm from using the OIDC token.
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -201,8 +175,6 @@ jobs:
           artifact-ids: ${{ needs.pack.outputs.artifact-id }}
           path: ${{ runner.temp }}/pack
 
-      # Nothing is checked out here, so this shell cannot live in .github/scripts: it is
-      # inline, and tests/ci/verify-and-publish.test.ts runs this very text with a stub npm.
       - name: Verify the tarballs and publish them
         env:
           PACK_DIR: ${{ runner.temp }}/pack
@@ -219,7 +191,6 @@ jobs:
           work="$(mktemp -d)"
           trap 'rm -rf "$work"' EXIT
 
-          # Trusted publishing over OIDC needs npm 11.5.1 or newer.
           npm_version="$(npm --version)"
           echo "npm ${npm_version}"
           printf '%s\n' 11.5.1 "$npm_version" | sort -V -C || fail "Trusted publishing needs npm 11.5.1 or newer, found ${npm_version}."
@@ -234,12 +205,9 @@ jobs:
           path_re='^packages/[A-Za-z0-9][A-Za-z0-9._-]*\.tgz$'
           integrity_re='^sha256-[A-Za-z0-9+/]{43}=$'
 
-          # One tab-separated line per release, dependencies first. A missing or empty value
-          # becomes <empty>: read would merge two tabs in a row and shift the fields.
           releases="$(jq -r '.plan[][] | select(.kind == "publish") | [.name, .version, .tarball.path, .tarball.integrity, .tag, .access] | map(if . == null or . == "" then "<empty>" else . end) | @tsv' "$plan")" || fail "publish-plan.json does not have the shape of a publish plan."
           [[ -n "$releases" ]] || fail "The publish plan has nothing to publish."
 
-          # 1. Verify the plan and every tarball before anything leaves this job.
           rows=()
           paths=()
           while IFS=$'\t' read -r name version path integrity tag access; do
@@ -254,9 +222,6 @@ jobs:
             [[ -f "$file" && ! -L "$file" ]] || fail "The tarball of ${name}@${version} is missing: ${path}"
             actual="sha256-$(openssl dgst -sha256 -binary "$file" | base64 | tr -d '\n')"
             [[ "$actual" == "$integrity" ]] || fail "The sha256 of ${path} does not match the publish plan."
-            # The name and version inside, and what is left of publishConfig once access and
-            # provenance, which the command line overrides anyway, are taken out: npm would
-            # apply the rest (a registry, a tag) to the publish.
             manifest="$(tar -xzOf "$file" package/package.json | jq -r '"\(.name)@\(.version)", (.publishConfig // {} | if type == "object" then del(.access, .provenance) else . end | tojson)')" || fail "${path} is not a package tarball."
             { IFS= read -r inside; IFS= read -r config; } <<<"$manifest"
             [[ "$inside" == "${name}@${version}" ]] || fail "${path} holds ${inside}, the publish plan says ${name}@${version}."
@@ -269,8 +234,6 @@ jobs:
           unexpected="$(comm -13 <(printf '%s\n' publish-plan.json "${paths[@]}" | sort) <(cd "$PACK_DIR" && find . ! -type d | sed 's|^\./||' | sort))"
           [[ -z "$unexpected" ]] || fail "The artifact holds files that are not in the publish plan: ${unexpected//$'\n'/, }"
 
-          # 2. Ask npm which versions it already has, still before anything is published: a
-          #    registry error here costs nothing.
           states=()
           for row in "${rows[@]}"; do
             IFS=$'\t' read -r name version _ <<<"$row"
@@ -287,8 +250,6 @@ jobs:
             fi
           done
 
-          # 3. Publish, dependencies first. The summary grows with every package, so a run
-          #    that stops half-way leaves a record of what went out.
           {
             echo "## Published on npm"
             echo
@@ -319,20 +280,19 @@ jobs:
   finalize:
     name: Tag and release
     needs: publish
-    # `publish` is skipped on a finalize-only run, so a status function is needed to run after it.
     if: >-
       ${{ !cancelled() && github.repository == 'hollware/hollware' && github.ref == 'refs/heads/release' &&
       (needs.publish.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.finalize_only)) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45 # the script gives up on npm after half an hour
+    timeout-minutes: 45
     permissions:
-      contents: write # create the tags and the GitHub Releases
+      contents: write
     steps:
-      - name: Check out the repository
+      - name: Check out the repository with the history that holds the release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # the release commit is found in the history
-          persist-credentials: false # gh authenticates with GH_TOKEN, git is never used to push
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -343,9 +303,6 @@ jobs:
       - name: Wait for npm, then tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-          # The commit this run published: the head of release. A finalize-only run has no
-          # build of its own, so the script looks for the latest "Version Packages" commit
-          # in the history, unless release_sha names the commit.
           RELEASE_SHA: ${{ inputs.finalize_only != true && github.sha || inputs.release_sha }}
           WAIT_SECONDS: '1800'
         run: bash .github/scripts/finalize-release.sh

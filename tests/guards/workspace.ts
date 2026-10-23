@@ -1,16 +1,12 @@
 import { isRecord, parseJson } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/** A parsed `package.json` of the workspace. */
 export interface Manifest {
-  /** Repository-relative path of the file, e.g. `packages/core/package.json`. */
   path: string
-  /** Directory of the package, `''` for the root. */
   dir: string
   json: Record<string, unknown>
 }
 
-/** The `package.json` paths that belong to the workspace, given its `packages:` globs. */
 export function workspaceManifestPaths(
   globs: readonly string[],
   files: readonly string[],
@@ -24,13 +20,17 @@ export function workspaceManifestPaths(
       unsupportedGlobs.push(glob)
       continue
     }
-    const pattern = new RegExp(`^${base.replace(/[.]/g, '\\.')}/[^/]+/package\\.json$`)
-    paths.push(...files.filter((file) => pattern.test(file)))
+    const prefix = `${base}/`
+    paths.push(
+      ...files.filter(
+        (file) =>
+          file.startsWith(prefix) && /^[^/]+\/package\.json$/.test(file.slice(prefix.length)),
+      ),
+    )
   }
   return { paths: paths.sort(), unsupportedGlobs }
 }
 
-/** Parses manifests. A file that is not a JSON object is reported and left out. */
 export function parseManifests(files: readonly TextFile[]): {
   manifests: Manifest[]
   violations: Violation[]
@@ -55,7 +55,6 @@ export function parseManifests(files: readonly TextFile[]): {
   return { manifests, violations }
 }
 
-/** The dependency fields of a manifest, with every `name: spec` pair they hold. */
 export const DEPENDENCY_FIELDS = [
   'dependencies',
   'devDependencies',
@@ -76,7 +75,6 @@ export function dependencySpecs(
   return found
 }
 
-/** Whether a manifest is a published package: it lives in `packages/` and is not private. */
 export function isPublishable(manifest: Manifest): boolean {
   return /^packages\/[^/]+$/.test(manifest.dir) && manifest.json.private !== true
 }

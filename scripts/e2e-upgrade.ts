@@ -1,21 +1,3 @@
-/**
- * The upgrade, end to end (AC-0.4-2):
- *
- *   node scripts/e2e-upgrade.ts [--from 0.3.0]
- *
- * A project made as the release `--from` made it, from the starter at the tag
- * `create-hollware@<from>` (with scripts/sync-starter.ts of today, which only pins versions), is
- * installed from npm, migrated, given its site and a token, and a post is published. Then its
- * Hollware packages move to this checkout's, packed at a version of their own and served by the
- * local registry, and:
- *
- * 1. `hollware migrate --local` applies the migrations the old release did not have;
- * 2. the token of the old release still works, over MCP;
- * 3. the post published before the upgrade still reads as published;
- * 4. a read token of the new release reads it too, and a new post publishes.
- *
- * It needs the network (npm) and port 5199. Exits 0 when every step passed.
- */
 import { execFileSync } from 'node:child_process'
 import {
   existsSync,
@@ -45,7 +27,6 @@ type Manifest = {
   overrides?: Record<string, string>
 }
 
-/** How many migrations this checkout ships that `@hollware/server@<from>` did not. */
 function newMigrations(from: string): number {
   const list = (ref: string | null) =>
     execFileSync('git', ['ls-tree', '--name-only', ref ?? 'HEAD', 'packages/server/migrations/'], {
@@ -58,7 +39,6 @@ function newMigrations(from: string): number {
   return list(null).filter((name) => !before.has(name)).length
 }
 
-/** Writes the project of the release `from`, as its create-hollware would have, into `project`. */
 function writeOldProject(from: string, project: string): void {
   const old = mkdtempSync(join(tmpdir(), 'hollware-e2e-old-'))
   try {
@@ -84,18 +64,15 @@ function writeOldProject(from: string, project: string): void {
   } finally {
     rmSync(old, { recursive: true, force: true })
   }
-  // The starter has had a gitignore since 0.4; npm leaves .gitignore out of a package.
   if (existsSync(join(project, 'gitignore'))) {
     renameSync(join(project, 'gitignore'), join(project, '.gitignore'))
   }
   const manifest: Manifest = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'))
-  // The CLI of that release, which its README ran with npx; and the override that npm needs.
   manifest.devDependencies['hollware'] = from
   manifest.overrides = { vite: '$vite' }
   writeFileSync(join(project, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
-/** Moves the project's Hollware packages to `version`. */
 function upgrade(project: string, version: string): void {
   const manifest: Manifest = JSON.parse(readFileSync(join(project, 'package.json'), 'utf8'))
   for (const deps of [manifest.dependencies, manifest.devDependencies]) {
@@ -105,7 +82,6 @@ function upgrade(project: string, version: string): void {
 }
 
 async function main(): Promise<void> {
-  // `vp run e2e:upgrade -- --from <version>` hands the script its `--` too.
   const argv = process.argv.slice(2)
   const { values } = parseArgs({
     args: argv[0] === '--' ? argv.slice(1) : argv,
@@ -140,8 +116,6 @@ async function main(): Promise<void> {
     await run('npm', ['install'], project, env)
     const migrated = await run(hollware, ['migrate', '--local'], project, env)
     process.stdout.write(migrated)
-    // The migrations this checkout ships that the release `from` did not: each is applied once,
-    // and a release with none to add applies nothing.
     const added = newMigrations(from)
     const expected =
       added === 0

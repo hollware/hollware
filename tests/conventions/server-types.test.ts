@@ -4,9 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: packages/server/tsconfig.json stops covering only src and the generated runtime
-// types, or gives src other types (Node's, for example).
-
 describe('server types', () => {
   it('packages/server/src type-checks with the Workers runtime types only', () => {
     const tsconfig = readRepoFiles((path) => path === 'packages/server/tsconfig.json')[0]

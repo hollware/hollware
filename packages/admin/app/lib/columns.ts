@@ -3,10 +3,6 @@ import type { Column } from '@tanstack/vue-table'
 import { h } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 
-/**
- * The header of a column of a table that sorts: its label as a button that sorts it up, then
- * down, with an arrow that says which, as Nuxt UI's tables do.
- */
 export function sortable<Row>(label: string) {
   return ({ column }: { column: Column<Row> }) => {
     const sorted = column.getIsSorted()

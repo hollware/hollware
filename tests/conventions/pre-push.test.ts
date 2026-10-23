@@ -5,10 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { readBytesIfExists, readText } from '../support/repo.ts'
 import { taskGraph } from '../support/vp.ts'
 
-// Fails when: .vite-hooks/pre-push stops running check:local; or check:local of the root
-// vite.config.ts stops running a task that a job of ci.yml runs (other than CI_ONLY), or runs one
-// that no job of CI runs; or CI_ONLY names a task CI no longer runs.
-
 const CI =
   'jobs:\n  a:\n    steps:\n      - run: vp run check:push\n      - run: vp run e2e:upgrade\n'
 const GRAPH = { 'check:local': ['check:push'], 'check:push': [] }

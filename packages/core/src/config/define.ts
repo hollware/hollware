@@ -6,12 +6,6 @@ import type {
   HollwareConfig,
 } from './types.ts'
 
-/**
- * The `define*` helpers only give the config its types: the frontmatter type of a collection
- * flows from its schema into its contracts. Validating the config is the job of the config
- * module, when the Worker starts.
- */
-
 /** Declares the config of a deployment: what `hollware.config.ts` exports. */
 export function defineConfig(config: HollwareConfig): HollwareConfig {
   return config

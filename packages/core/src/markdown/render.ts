@@ -13,18 +13,8 @@ import {
 } from './policy.ts'
 import type { EntryDocument, RenderHtml } from './types.ts'
 
-/*
- * Rendering a stored document. The pipeline already keeps raw HTML, event handlers and
- * unsafe URLs out of what it stores, but `@comark/html` prints whatever it is handed: a
- * `script` element, an `onclick` prop, a comment that closes itself and opens a script, an
- * `href` with a character reference that the browser reads as `javascript:`. So the document is
- * copied through the rules below first, and the HTML is safe for any document, not only for the
- * ones this pipeline wrote.
- */
-
 type Props = Record<string, unknown>
 
-/** HTML elements that load, run or restyle something, or change how the HTML after them is read. */
 const DANGEROUS_TAGS: ReadonlySet<string> = new Set([
   'script',
   'style',
@@ -68,10 +58,8 @@ const DANGEROUS_TAGS: ReadonlySet<string> = new Set([
   'image',
 ])
 
-/** A tag name that is safe to print: letters, digits and a few separators, starting with a letter. */
 const TAG_NAME = /^[A-Za-z][\w.-]{0,63}$/
 
-/** The attributes that hold a URL, by the name `attributeName` gives them. */
 const URL_ATTRIBUTES: ReadonlySet<string> = new Set([
   'href',
   'xlinkhref',
@@ -87,10 +75,8 @@ function isProps(value: unknown): value is Props {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** What a binding such as `:href="frontmatter.url"` reads: the frontmatter and meta of the document. */
 type DocumentData = Readonly<Record<string, unknown>>
 
-/** The value a path such as `frontmatter.url` names in the data, or `undefined`. */
 function resolvePath(data: DocumentData, path: string): unknown {
   let value: unknown = data
   for (const part of path.split('.')) {
@@ -100,7 +86,6 @@ function resolvePath(data: DocumentData, path: string): unknown {
   return value
 }
 
-/** The name of an attribute without the `:` or `v-bind:` of a binding. */
 function unbound(key: string): string {
   return key.startsWith('v-bind:') ? key.slice('v-bind:'.length) : key.replace(/^:/, '')
 }
@@ -109,9 +94,6 @@ function sanitizeProps(raw: unknown, data: DocumentData): Props {
   const props: Props = {}
   if (!isProps(raw)) return props
   for (const key of Object.keys(raw)) {
-    // Keys that start with `$` are Comark's and the pipeline's own. `$` carries what Comark knows of
-    // an element that came from raw HTML, and the renderer prints the text of such an element
-    // without escaping it.
     if (key.startsWith('$')) continue
     const name = attributeName(key)
     if (isForbiddenAttribute(name)) continue
@@ -120,10 +102,7 @@ function sanitizeProps(raw: unknown, data: DocumentData): Props {
       const kind = name === 'src' ? 'image' : 'link'
       const url = urlValue(key, value)
       if (url === undefined) continue
-      // A binding whose value is no JSON string, such as `:href="frontmatter.url"`, is a path.
       if (isBinding(key) && url === value) {
-        // A path into the data of the document: read it here, under the same rules as a URL
-        // written out, and print what it holds, so no URL reaches the page on Comark's word (T-59).
         const bound = resolvePath(data, url)
         if (typeof bound === 'string' && isSafeUrl(bound, kind)) {
           setOwn(props, unbound(key), bound.replaceAll('&', '&amp;'))
@@ -132,7 +111,6 @@ function sanitizeProps(raw: unknown, data: DocumentData): Props {
       }
       if (!isSafeUrl(url, kind)) continue
     }
-    // The renderer leaves `&#106;` in an attribute as it is, and a browser reads it as `j`: say `&` once, as `&amp;`.
     setOwn(
       props,
       key,
@@ -152,7 +130,6 @@ function sanitizeElement(
   data: DocumentData,
 ): ElementNode | undefined {
   const tag: unknown = node[0]
-  // A comment node, or anything else that is not an element, is not printed.
   if (typeof tag !== 'string') return undefined
   if (!NATIVE_TAGS.has(tag) && tag !== MARKER_TAG) {
     if (!TAG_NAME.test(tag) || DANGEROUS_TAGS.has(tag.toLowerCase())) return marker(tag)

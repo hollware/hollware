@@ -1,7 +1,5 @@
 export const name = '@hollware/vue'
 
-// The server helpers know no framework, so they live in `@hollware/client`, shared with
-// `@hollware/react`; this package re-exports them so a Vue app imports one package.
 export {
   createHollware,
   hollwareBinding,

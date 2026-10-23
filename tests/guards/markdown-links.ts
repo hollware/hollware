@@ -1,35 +1,27 @@
 import { headings, stripFencedBlocks } from '../support/markdown.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `markdown-links`: a relative link in a Markdown file leads somewhere. The file or
- * directory it names exists, and when it ends with `#anchor` and names a Markdown file, that
- * file has a heading with that anchor (GitHub's rule: lowercase, punctuation dropped, spaces
- * to hyphens, a repeated heading gets `-1`, `-2`).
- *
- * Inline links, images and reference definitions are read; fenced blocks and inline code are
- * not. Absolute URLs and `mailto:` links are not followed. A path that starts with `/` is
- * relative to the repository root, as on GitHub. The files handed to the guard are the
- * documentation of the repository: its test leaves out `tests/fixtures/`, whose content is
- * wrong on purpose.
- */
-
 export interface MarkdownLinksInput {
-  /** The Markdown files of the repository, with their text. */
   docs: readonly TextFile[]
-  /** Whether a repository-relative path is a file or a directory of the repository. */
   exists: (path: string) => boolean
-  /** The anchors of a Markdown file of the repository, or `undefined` when it has none to give. */
   anchorsOf: (path: string) => readonly string[] | undefined
 }
 
-/** The anchors GitHub gives to the headings of a Markdown text, repeated ones numbered. */
+function withoutTags(text: string): string {
+  let previous: string
+  let current = text
+  do {
+    previous = current
+    current = current.replace(/<[^>]+>/g, '')
+  } while (current !== previous)
+  return current
+}
+
 export function anchorsOf(markdown: string): string[] {
   const seen = new Map<string, number>()
   const anchors: string[] = []
   for (const { text } of headings(markdown)) {
-    const base = text
-      .replace(/<[^>]+>/g, '')
+    const base = withoutTags(text)
       .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
       .replace(/[`*]/g, '')
       .toLowerCase()

@@ -1,41 +1,28 @@
 import { isRecord } from '../support/values.ts'
 import type { Violation } from './types.ts'
 
-/**
- * Guard `single-copies`: the libraries whose copies would cost a Worker twice resolve to one
- * version in everything the workspace packages and apps install: zod (a second copy costs
- * about 13 ms of startup and 100 KB), hono, drizzle-orm and `@modelcontextprotocol/server`.
- * Two copies of zod also break the schemas the MCP SDK receives from `core` (ADR-017).
- *
- * The walk starts at every importer of `pnpm-lock.yaml` except the root, whose tools (the MCP
- * conformance suite brings its own hono) never reach a Worker, and follows `dependencies`,
- * `devDependencies` and `optionalDependencies` through the snapshots. Workspace links are
- * walked from their own importer.
- */
-
 export interface SingleCopiesInput {
-  /** `pnpm-lock.yaml`, parsed. */
   lockfile: unknown
 }
 
 export const SINGLE_COPY_PACKAGES = [
   '@modelcontextprotocol/server',
   'drizzle-orm',
+  'h3',
   'hono',
+  'nitropack',
+  'vitest',
   'zod',
 ] as const
 
 const FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies']
 
-/** `name@1.2.3(peer@1)` → the snapshot key, or undefined for a workspace link. */
 function snapshotKey(name: string, version: string): string | undefined {
   if (version.startsWith('link:')) return undefined
-  // An alias (`npm:other@1`) is recorded as `other@1`: the version names its package.
   const base = version.split('(')[0] ?? version
   return /^@?[^@]+@/.test(base) ? version : `${name}@${version}`
 }
 
-/** `name@1.2.3(peer@1)` → [`name`, `1.2.3`]. */
 function nameAndVersion(key: string): [string, string] {
   const base = key.split('(')[0] ?? key
   const at = base.lastIndexOf('@')

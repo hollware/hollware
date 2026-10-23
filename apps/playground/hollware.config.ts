@@ -1,12 +1,6 @@
 import { contracts, defineCollection, defineComponent, defineConfig } from '@hollware/core'
 import * as z from 'zod'
 
-/**
- * The playground's config, which the demo deployment runs too: a bilingual blog, the site the
- * tests write to and read from, and the documentation of hollware.com. Its corpus is tests/fixtures/content/blog, and its broken variants are
- * tests/fixtures/content/invalid, each of which breaks one of the contracts below.
- */
-
 const blog = defineCollection({
   schema: z.object({
     title: z.string().min(1),
@@ -33,13 +27,9 @@ const blog = defineCollection({
     }),
   },
   contracts: [
-    // A post may go out in one language first: publishing it asks to acknowledge the other.
     contracts.translationPair({ severity: 'warning' }),
-    // A warning, not an error: two drafts that link to each other could never be published, since
-    // each would wait for the other to be published first.
     contracts.internalLinksResolve({ severity: 'warning' }),
     contracts.imagesHaveAlt(),
-    // A title of at most 60 characters, or a seoTitle, which search engines show.
     contracts.fieldLength(
       { field: 'title', max: 60, unless: 'seoTitle' },
       { severity: 'warning', id: 'seo-title-length' },
@@ -48,10 +38,6 @@ const blog = defineCollection({
   styleGuide: 'Short paragraphs, one idea per section, and an example for every claim.',
 })
 
-/**
- * The weekly reports of the auditor of @hollware/agents (v0.6): drafts that a person reads in the
- * admin, never published, so no site has a page for them.
- */
 const reports = defineCollection({
   schema: z.object({
     title: z.string().min(1),
@@ -60,11 +46,6 @@ const reports = defineCollection({
   routes: { es: '/informes/:slug/', en: '/en/reports/:slug/' },
 })
 
-/**
- * The documentation of hollware.com (v0.4): written in Hollware by agents and people, and read
- * by the site over a service binding. A page belongs to a section of the sidebar, and `order` is
- * its place in it.
- */
 const docs = defineCollection({
   schema: z.object({
     title: z.string().min(1).max(70),
@@ -102,7 +83,6 @@ export default defineConfig({
     playground: {
       locales: ['es', 'en'],
       defaultLocale: 'es',
-      // The blog of the demo (examples/nuxt-blog), served at this url.
       url: 'https://demo.hollware.com',
       collections: { blog, reports },
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',

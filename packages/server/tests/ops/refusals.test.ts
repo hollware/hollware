@@ -3,17 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { ContentStore, EntryView, StoredPublication, WriteRefusal } from '../../src/ports.ts'
 import { agent, blogPost, contextFor, NO_ENTRY, tenantOf, UNTOUCHED } from './support.ts'
 
-// Fails when: a handler maps an answer of the store that the real store cannot be made to give at
-// that call to something else than the spec says. update-draft.ts and publish.ts stop answering
-// not_found when the store says the entry is gone between the read and the write; create-draft.ts,
-// publish.ts and unpublish.ts stop failing as `internal` on an answer that their call never gets
-// (the cause naming the call and the answer, and the message saying nothing about it); answers.ts
-// violationOf stops failing on a translation group that is taken in a collection that has none;
-// answers.ts publicationView stops failing on a publish that names no revision or verdict, which
-// the schema forbids, and shows the entry as if it had been published at nothing.
-// The answers that the real store does give (conflict, taken, too_large) are the tests that run
-// in workerd, in drafts, publishing and isolation: this store is scripted only for the rest.
-
 const CLOCK = { now: () => new Date('2026-10-13T10:00:00.000Z') }
 const REVISION = 'rev_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
 const tenant = tenantOf(
@@ -22,7 +11,6 @@ const tenant = tenantOf(
   'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VB',
 )
 
-/** An English draft of the blog at version 1, as the store would read it. */
 const VIEW: EntryView = {
   entry: {
     id: NO_ENTRY,
@@ -56,7 +44,6 @@ const VIEW: EntryView = {
   },
 }
 
-/** The pair of its translation group, so that nothing in the publish phase is missing. */
 const TRANSLATIONS = [
   {
     collection: 'blog',
@@ -76,7 +63,6 @@ const TRANSLATIONS = [
   },
 ] as const
 
-/** A store that reads the draft above, and answers each write the way the test scripts it. */
 function scripted(writes: Partial<ContentStore>): ContentStore {
   return {
     ...UNTOUCHED,

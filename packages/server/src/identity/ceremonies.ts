@@ -24,21 +24,12 @@ import {
   touchPasskey,
 } from './store.ts'
 
-/**
- * The passkey ceremonies (ADR-026), with SimpleWebAuthn: registration redeems an invitation (the
- * owner's setup link or an invitation with a role), and sign-in opens a session. The relying party
- * is the public URL of the Worker: its host is the RP ID, always given, and its origin the only
- * origin accepted. Every option object is built for one call, never shared.
- */
-
 export interface Ceremony {
   readonly db: Db
-  /** The public URL of the Worker, `HOLLWARE_PUBLIC_URL`. */
   readonly publicUrl: string
   readonly now: Date
 }
 
-/** How long a session lasts: a working day. */
 const SESSION_HOURS = 12
 
 function relyingParty(ceremony: Ceremony) {
@@ -50,11 +41,6 @@ function refused(message: string, fix: string): HollwareError {
   return new HollwareError('invalid_input', message, fix)
 }
 
-/**
- * A verification of the library, or `{ verified: false }` when it throws: it throws for a response
- * from another origin, without user verification, or with a counter that went back, and each of
- * those is a passkey that could not be verified, not a failure of the server.
- */
 async function unlessThrown<T extends { verified: boolean }>(
   verify: () => Promise<T>,
 ): Promise<T | { verified: false }> {
@@ -65,7 +51,6 @@ async function unlessThrown<T extends { verified: boolean }>(
   }
 }
 
-/** The options of `navigator.credentials.create` for the person of an invitation. */
 export async function registrationOptions(ceremony: Ceremony, invitationSecret: string) {
   const invitation = await findInvitation(ceremony.db, invitationSecret, ceremony.now)
   if (invitation === null) {
@@ -97,16 +82,11 @@ export async function registrationOptions(ceremony: Ceremony, invitationSecret: 
   return { challengeId, options }
 }
 
-/**
- * Verifies a registration and redeems its invitation, once: a new person is made with the
- * invitation's role, or the passkey joins the person the link names. Opens their session.
- */
 export async function verifyRegistration(
   ceremony: Ceremony,
   input: {
     readonly challengeId: string
     readonly response: RegistrationResponseJSON
-    /** The name of a new person; ignored when the link names an existing one. */
     readonly name: string
     readonly label: string
   },
@@ -126,7 +106,6 @@ export async function verifyRegistration(
       expectedChallenge: challenge.challenge,
       expectedOrigin: rp.origin,
       expectedRPID: rp.id,
-      // The person unlocked the device, not only touched it (T-53); the library's default too.
       requireUserVerification: true,
     }),
   )
@@ -165,7 +144,6 @@ export async function verifyRegistration(
   return { userId: challenge.userId, session: session.secret }
 }
 
-/** The options of `navigator.credentials.get`: any passkey of this deployment, chosen by the person. */
 export async function authenticationOptions(ceremony: Ceremony) {
   const rp = relyingParty(ceremony)
   const options = await generateAuthenticationOptions({
@@ -182,7 +160,6 @@ export async function authenticationOptions(ceremony: Ceremony) {
   return { challengeId, options }
 }
 
-/** Verifies a sign-in with a passkey of this deployment, and opens the person's session. */
 export async function verifyAuthentication(
   ceremony: Ceremony,
   input: { readonly challengeId: string; readonly response: AuthenticationResponseJSON },
@@ -204,9 +181,7 @@ export async function verifyAuthentication(
       expectedChallenge: challenge.challenge,
       expectedOrigin: rp.origin,
       expectedRPID: rp.id,
-      // The person unlocked the device, not only touched it (T-53); the library's default too.
       requireUserVerification: true,
-      // A counter that did not grow is a cloned authenticator, and is refused (T-52).
       credential: {
         id: passkey.credentialId,
         publicKey: isoBase64URL.toBuffer(passkey.publicKey),

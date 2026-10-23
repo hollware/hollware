@@ -8,48 +8,30 @@ import {
 import type { Principal } from '../auth/types.ts'
 import type { D1Like } from '../db/d1.ts'
 
-/**
- * The activity log (ADR-037): who did what to a site, through what, and how it ended. A line is
- * written in the batch of the change it describes where a route makes the change itself, and on its
- * own after an operation, whose revision, publication or change of structure already names its
- * actor in its own batch. Writing a line on its own never fails the request: a line that cannot be
- * written is logged as `audit_write_failed`.
- */
-
-/** Who acted, as Hollware verified it, and what the client said about itself. */
 export interface AuditActor {
   readonly kind: AuditActorKind
   readonly userId: string | null
   readonly tokenId: string | null
   readonly clientId: string | null
-  /** The client's own claim (its MCP client, its model): never what let it in. */
   readonly meta: Readonly<Record<string, unknown>> | null
 }
 
-/** One line, as a route or an operation describes it. */
 export interface AuditLine {
   readonly action: AuditAction
   readonly outcome: AuditOutcome
   readonly errorCode?: string | null
   readonly target?: { readonly type: string; readonly id: string } | null
-  /** A small object about the change: never a secret, a token or the content of an entry. */
   readonly detail?: Readonly<Record<string, unknown>> | null
 }
 
-/** The most characters of JSON a line keeps in `detail` and in `actor_meta`, as the table checks. */
 export const AUDIT_JSON_MAX = 2000
 
-/** JSON of at most `AUDIT_JSON_MAX` characters: a longer value says only that it was too long. */
 export function boundedJson(value: Readonly<Record<string, unknown>> | null): string | null {
   if (value === null) return null
   const text = JSON.stringify(value)
   return text.length <= AUDIT_JSON_MAX ? text : JSON.stringify({ truncated: true })
 }
 
-/**
- * The actor of a principal. A person signed in to the admin is a `user`, with the admin as their
- * client; any other OAuth client is an `oauth_client`; a personal or read token is a `token`.
- */
 export function actorOf(
   principal: Exclude<Principal, { readonly kind: 'binding' }>,
   meta: Readonly<Record<string, unknown>> | null,
@@ -73,21 +55,14 @@ export function actorOf(
   }
 }
 
-/** A person, signed in with their passkey, on the pages of the Worker. */
 export function personActor(userId: string): AuditActor {
   return { kind: 'user', userId, tokenId: null, clientId: null, meta: null }
 }
 
-/** The deployment itself, acting for the person who asked it to: its cron. */
 export function systemActor(forUserId: string | null): AuditActor {
   return { kind: 'system', userId: forUserId, tokenId: null, clientId: null, meta: null }
 }
 
-/**
- * The key of a site that hashes addresses: HKDF-SHA256 of the Worker secret `HOLLWARE_SECRET`,
- * bound to the site, so one address hashes alike within a site and differently in another, and
- * no hash can be checked against the 2³² IPv4 addresses without the secret.
- */
 async function addressKey(master: string, site: string): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey(
     'raw',
@@ -110,7 +85,6 @@ async function addressKey(master: string, site: string): Promise<CryptoKey> {
   )
 }
 
-/** The hex HMAC-SHA256 of an address under the key of its site. */
 export async function hashAddress(master: string, site: string, address: string): Promise<string> {
   const mac = await crypto.subtle.sign(
     'HMAC',
@@ -120,7 +94,6 @@ export async function hashAddress(master: string, site: string, address: string)
   return [...new Uint8Array(mac)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** What the log says when a line could not be written, or written whole. */
 export type AuditLogEntry =
   | {
       readonly kind: 'audit_write_failed'
@@ -130,33 +103,26 @@ export type AuditLogEntry =
       readonly message: string
     }
   | {
-      /** A site keeps addresses, but the Worker has no `HOLLWARE_SECRET` to key their hash. */
       readonly kind: 'audit_address_unkeyed'
       readonly site: string
       readonly requestId: string | null
     }
 
-/** What a request knows when it writes lines: where they go and what each of them repeats. */
 export interface AuditRequest {
   readonly db: D1Like
   readonly actor: AuditActor
   readonly requestId: string | null
-  /** The address of the request (`cf-connecting-ip`), or `null` when there is none. */
   readonly address: string | null
-  /** `HOLLWARE_SECRET`; without it a site that keeps addresses gets none, and it is logged. */
   readonly master: string | undefined
   readonly now: () => Date
   readonly log: (entry: AuditLogEntry) => void
 }
 
 export interface AuditLog {
-  /** The statement that writes a line of a site, for the batch of the change it describes. */
   statement(site: AuditSite, line: AuditLine): Promise<D1PreparedStatement>
-  /** Writes a line of a site on its own. It never throws: a failure is logged. */
   write(site: AuditSite, line: AuditLine): Promise<void>
 }
 
-/** A site as the log needs it: its key, and what its owner chose to keep. */
 export interface AuditSite {
   readonly key: string
   readonly audit: ResolvedAudit
@@ -218,13 +184,8 @@ export function createAuditLog(request: AuditRequest): AuditLog {
   }
 }
 
-/** How many lines past their retention one run of the cron deletes, per site. */
 export const EXPIRED_LINES_PER_RUN = 500
 
-/**
- * Deletes the lines of a site older than its retention, a bounded number per run (ADR-037). A site
- * with no retention keeps every line. The trigger of migrations/0016 refuses any other delete.
- */
 export async function dropExpiredLines(db: D1Like, site: AuditSite, now: Date): Promise<number> {
   const days = site.audit.retentionDays
   if (days === null) return 0

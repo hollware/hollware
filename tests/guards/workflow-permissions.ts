@@ -2,26 +2,25 @@ import { isRecord } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 import { describeStep, parseWorkflow } from './workflow-model.ts'
 
-/**
- * Guard `workflow-permissions`: least privilege, bound to the files.
- *
- * - Every workflow starts with `permissions: {}`: nothing is granted unless a job asks.
- * - A job's `permissions` is a mapping, never `write-all`.
- * - `id-token: write` (the OIDC token that npm trusted publishing and Scorecard use) is
- *   granted to exactly two jobs: `publish` of release.yml and `scorecard` of security.yml.
- * - Every `actions/checkout` step sets `persist-credentials: false`, so no later step can push
- *   with the workflow's token.
- * - `security.yml` has no top-level `env` or `defaults`: OpenSSF Scorecard rejects the results
- *   of a workflow that has them.
- */
-
 export interface WorkflowPermissionsInput {
-  /** The `.github/workflows/*.yml` files. */
   workflows: readonly TextFile[]
 }
 
-/** The only jobs allowed to request an OIDC token, as `file#job`. */
 export const ID_TOKEN_JOBS: readonly string[] = ['release.yml#publish', 'security.yml#scorecard']
+
+export const WRITE_SCOPES: Readonly<Record<string, readonly string[]>> = {
+  'release.yml#version': ['contents', 'pull-requests'],
+  'release.yml#finalize': ['contents'],
+  'security.yml#scorecard': ['security-events'],
+}
+
+export const SCORECARD_ACTIONS: readonly string[] = [
+  'actions/checkout',
+  'actions/upload-artifact',
+  'github/codeql-action/upload-sarif',
+  'ossf/scorecard-action',
+  'step-security/harden-runner',
+]
 
 export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Violation[] {
   const violations: Violation[] = []
@@ -42,6 +41,18 @@ export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Viola
             `security.yml must have no top-level "${key}": OpenSSF Scorecard rejects the results of a workflow that has it`,
           )
         }
+      }
+    }
+
+    for (const job of workflow.jobs) {
+      if (`${workflow.file}#${job.id}` !== 'security.yml#scorecard') continue
+      for (const step of job.steps) {
+        const action = step.uses?.value.split('@')[0]
+        if (action !== undefined && SCORECARD_ACTIONS.includes(action)) continue
+        report(
+          'scorecard',
+          `${describeStep(job.id, step)}: the Scorecard job may only use ${SCORECARD_ACTIONS.join(', ')}, and run nothing: Scorecard refuses to publish results otherwise, found ${JSON.stringify(step.uses?.value ?? step.run)}`,
+        )
       }
     }
 
@@ -67,6 +78,16 @@ export function checkWorkflowPermissions(input: WorkflowPermissionsInput): Viola
           report(
             'id-token',
             `job "${job.id}" grants "id-token: write", which only ${ID_TOKEN_JOBS.join(' and ')} may: it lets a job mint OIDC tokens`,
+          )
+        }
+      }
+      if (isRecord(job.permissions)) {
+        const allowed = WRITE_SCOPES[`${workflow.file}#${job.id}`] ?? []
+        for (const [scope, level] of Object.entries(job.permissions)) {
+          if (scope === 'id-token' || level !== 'write' || allowed.includes(scope)) continue
+          report(
+            'write-scope',
+            `job "${job.id}" grants "${scope}: write", which WRITE_SCOPES does not give ${workflow.file}#${job.id}`,
           )
         }
       }

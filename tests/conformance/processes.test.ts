@@ -13,16 +13,8 @@ import {
   type ManagedProcess,
 } from './processes.ts'
 
-// Fails when: stopping a process leaves what it started alive (wrangler starts workerd, and a run
-// that leaks it keeps a port and a database open), or stops signalling its group; a process that
-// ignores SIGTERM is no longer killed; `stopAll` leaves one running; a command's exit code or its
-// output (stderr included) is lost; a command that cannot start no longer throws; the log file stops
-// receiving the output; the wait for the Worker stops sending the Host of its public URL, accepts
-// anything but 200, or goes on after the process ended or past its limit.
-
 const env = { ...process.env }
 
-/** Node, running a program that starts a long-lived child and prints the pid of each. */
 const PARENT_WITH_CHILD = `
   const { spawn } = require('node:child_process')
   const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
@@ -180,7 +172,6 @@ describe('freePort', () => {
 })
 
 describe('waiting for the Worker', () => {
-  /** A Worker stand-in that answers 200 only to the Host `hollware.test:1234`, and 503 first. */
   async function worker(): Promise<{
     port: number
     seen: (string | undefined)[]

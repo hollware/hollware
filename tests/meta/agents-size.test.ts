@@ -4,13 +4,10 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { isAgentsFile, readRepoFiles } from '../support/repo.ts'
 
-// Fails when: any AGENTS.md of the repository, root or nested, is longer than 12,000 characters.
-
 describe('AGENTS.md size', () => {
   it('every AGENTS.md fits in 12,000 characters', () => {
     const docs = readRepoFiles(isAgentsFile)
     expect(MAX_AGENTS_CHARACTERS).toBe(12_000)
-    // The registry of the guards lives in tests/AGENTS.md, which grows with every guard.
     expect(docs.map((doc) => doc.path)).toEqual(
       expect.arrayContaining(['AGENTS.md', 'tests/AGENTS.md', '.github/AGENTS.md']),
     )
@@ -42,7 +39,6 @@ describe('AGENTS.md size', () => {
     })
 
     it('counts characters, not UTF-16 units or bytes', () => {
-      // 6,000 emoji are 12,000 UTF-16 units and 24,000 bytes, but 6,000 characters.
       expect(
         checkAgentsSize({ docs: [file('AGENTS.md', '\u{1F600}'.repeat(6_000))], max: 12_000 }),
       ).toEqual([])

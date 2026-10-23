@@ -30,14 +30,10 @@ import {
   wrongType,
 } from './values.ts'
 
-/** What a collection is checked against besides itself: the site it belongs to. */
 export interface SiteContext {
-  /** Where the site is in the config: `sites.demo`. */
   readonly path: string
   readonly locales: readonly string[]
-  /** Whether `locales` is non-empty, valid and without repeats, so that routes can be checked. */
   readonly localesOk: boolean
-  /** The routes of the site seen so far: normalized pattern → path of the route that has it. */
   readonly routes: Map<string, string>
 }
 
@@ -46,12 +42,9 @@ const RESERVED: ReadonlySet<string> = new Set(BUILT_IN_CONTRACT_IDS)
 const SCHEMA_FIX =
   'Use a schema from a library that implements Standard Schema and Standard JSON Schema, such as zod 4.2 or later.'
 
-/** A schema that checked out, with the JSON Schema that agents see and its object node. */
 interface ObjectSchema {
   readonly schema: DescribedSchema
-  /** The whole JSON Schema, where the `$ref`s of the object resolve. */
   readonly document: JsonObject
-  /** The object it describes: the document itself, or what its root `$ref` points to. */
   readonly object: JsonObject
 }
 
@@ -61,7 +54,6 @@ function standardProps(value: unknown): unknown {
     : undefined
 }
 
-/** A Standard Schema that also converts to JSON Schema, which is what a collection needs. */
 function isDescribedSchema(value: unknown): value is DescribedSchema {
   const standard = standardProps(value)
   if (!isRecord(standard) || typeof standard['validate'] !== 'function') return false
@@ -69,7 +61,6 @@ function isDescribedSchema(value: unknown): value is DescribedSchema {
   return isRecord(converter) && typeof converter['input'] === 'function'
 }
 
-/** What `isDescribedSchema` found missing, for the message. */
 function whyNotDescribed(value: unknown): string {
   const standard = standardProps(value)
   if (!isRecord(standard)) return wrongType(value, 'a Standard Schema with JSON Schema')
@@ -83,10 +74,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/**
- * The schema of a collection's frontmatter, or of a component's props, once it is known to
- * convert to the JSON Schema of an object. Props must also reject the keys they do not declare.
- */
 function readSchema(
   path: string,
   raw: unknown,
@@ -133,13 +120,8 @@ function readSchema(
 const ROUTES_FIX =
   'Add one route per locale, such as routes: { es: "/blog/:slug/", en: "/en/blog/:slug/" }.'
 
-/**
- * Where the slug of the entry goes in a route; `:slugs` is another placeholder, not this one. It is
- * global because `matchAll` needs that, and `matchAll` works on a copy, so nothing is shared.
- */
 const SLUG_PLACEHOLDER = /:slug(?![A-Za-z0-9_])/g
 
-/** Reports what is wrong with the shape of a route; true when nothing is. */
 function isRoutePattern(path: string, route: string, problems: Problems): boolean {
   let valid = true
   if (!route.startsWith('/')) {
@@ -162,9 +144,7 @@ function isRoutePattern(path: string, route: string, problems: Problems): boolea
   return valid
 }
 
-/** Takes a route for the site, or reports the route that already has the same pattern. */
 function claimRoute(route: string, path: string, site: SiteContext, problems: Problems): void {
-  // `/blog/:slug` and `/blog/:slug/` match the same links.
   const pattern = route.endsWith('/') ? route.slice(0, -1) : route
   const owner = site.routes.get(pattern)
   if (owner === undefined) {
@@ -178,7 +158,6 @@ function claimRoute(route: string, path: string, site: SiteContext, problems: Pr
   )
 }
 
-/** The route of each locale, in the order of the site's locales. */
 function readRoutes(
   path: string,
   raw: unknown,
@@ -226,7 +205,6 @@ function readRoutes(
   return routes
 }
 
-/** A field of the frontmatter that the config points at, and what it must be. */
 interface FieldKind {
   readonly mustBe: string
   readonly accepts: (document: JsonObject, property: unknown) => boolean
@@ -246,10 +224,6 @@ const TAGS: FieldKind = {
     `Declare ${quote(field)} as z.array(z.string()) in the schema, or name another field.`,
 }
 
-/**
- * Listings sort by this field as text, which is chronological only for ISO 8601 dates. A string
- * that is not declared with the `date` or `date-time` format may be anything, so it is refused.
- */
 const SORT_BY: FieldKind = {
   mustBe: 'a string with the "date" or "date-time" format',
   accepts: isDateSchema,
@@ -257,7 +231,6 @@ const SORT_BY: FieldKind = {
     `Declare ${quote(field)} as z.iso.date() or z.iso.datetime() in the schema, or name another field.`,
 }
 
-/** The name of a field of the frontmatter, checked against the schema when there is one. */
 function readField(
   path: string,
   raw: unknown,
@@ -398,10 +371,6 @@ function checkPhases(path: string, raw: unknown, problems: Problems): void {
   }
 }
 
-/**
- * Reports every problem with the shape of one contract and says whether it has none, which is
- * what makes it a `Contract`. Whether it may have its id is a question for `checkIdentity`.
- */
 function isContract(item: unknown, path: string, problems: Problems): item is Contract<unknown> {
   if (!isRecord(item)) {
     problems.add(
@@ -446,13 +415,6 @@ function isContract(item: unknown, path: string, problems: Problems): item is Co
   return problems.list.length === before
 }
 
-/**
- * Whether a contract may have its id: the id of a built-in contract only when Hollware made the
- * contract (`contracts.translationPair()`, which is `own`), and no id that another contract of the
- * collection has. `ids` holds the contracts seen so far, by id. A contract that Hollware did not
- * make, such as a plain object with the id `translation-pair`, would be taken for the real one in
- * a verdict.
- */
 function checkIdentity(
   id: string,
   own: boolean,
@@ -500,7 +462,6 @@ function readContracts(path: string, raw: unknown, problems: Problems): Contract
       checkIdentity(item.id, isBuiltInContract(item), itemAt, ids, problems)
       contracts.push(item)
     } else if (isRecord(item) && typeof item['id'] === 'string' && CONTRACT_ID.test(item['id'])) {
-      // What is not a whole contract is none of Hollware's, so its id gets no exception.
       checkIdentity(item['id'], false, itemAt, ids, problems)
     }
   }
@@ -525,10 +486,6 @@ function readMaxMarkdownBytes(path: string, raw: unknown, problems: Problems): n
   return DEFAULT_MAX_MARKDOWN_BYTES
 }
 
-/**
- * Checks one collection and fills in its defaults. `null` when its schema is unusable, which is a
- * problem already: `resolveConfig` throws when there is any, so nothing else keeps track of them.
- */
 export function readCollection(
   path: string,
   name: string,

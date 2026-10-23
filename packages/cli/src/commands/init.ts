@@ -52,7 +52,7 @@ export const INIT_USAGE = [
   'in to the admin as before, and prints a token of the new site. It does nothing when the site',
   'has an owner.',
   'The site starts from a preset, which its owner then shapes in the admin, or an agent over MCP',
-  '(ADR-033). A project with a hollware.config.ts keeps it instead: the Worker moves it into the',
+  '. A project with a hollware.config.ts keeps it instead: the Worker moves it into the',
   'database on its first request.',
   'Run "hollware migrate" first: the database needs its tables.',
   '',
@@ -79,7 +79,6 @@ export const INIT_USAGE = [
   '  --help               Show this help',
 ].join('\n')
 
-/** The label of the token `init` creates. */
 export const FIRST_TOKEN_LABEL = 'hollware init'
 
 export async function init(argv: readonly string[], io: Io): Promise<number> {
@@ -161,9 +160,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     expiresAt: setupExpiresAt,
     now: timestamp,
   })
-  // Drawn last, so that the ids and secrets above stay what they were before members existed.
   const memberId = newId(io, 'member')
-  // And the change of the structure after it, for the same reason.
   const structure =
     definition === null ? undefined : { definition, changeId: newId(io, 'siteChange') }
   const script = initScript({
@@ -247,7 +244,6 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   return 0
 }
 
-/** `init` for one more site of a deployment whose owner exists: that owner owns the new site too. */
 async function addSite(
   io: Io,
   where: {
@@ -334,11 +330,9 @@ async function addSite(
   return 0
 }
 
-/** What a person is told of the passkey: it is for the admin in a browser, and no step of an agent. */
 export const PASSKEY_NOTE =
   'The link above is for you, in a browser: it sets up the passkey that signs you in to the admin. Your agent can start now with the token alone; set up the passkey whenever you want.'
 
-/** The lines that hand the token over: in the answer, once, or as the path of its file. */
 function tokenLines(what: string, delivered: { token: string } | { tokenFile: string }): string[] {
   if ('tokenFile' in delivered) {
     return [
@@ -348,7 +342,6 @@ function tokenLines(what: string, delivered: { token: string } | { tokenFile: st
   return [`${what}. It is shown only once: Hollware keeps just its hash.`, '', delivered.token]
 }
 
-/** How to connect an agent: the line for Claude Code and the JSON block for the other clients. */
 function connectLines(url: string | undefined, tokenFile: TokenFile | undefined): string[] {
   return [
     'Connect an agent. The token goes in the environment variable HOLLWARE_TOKEN, never in the configuration:',
@@ -362,13 +355,8 @@ function connectLines(url: string | undefined, tokenFile: TokenFile | undefined)
   ]
 }
 
-/** A locale tag, as a site's definition takes it: `en`, `es-CL`. */
 const LOCALE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/
 
-/**
- * The first definition of the site (ADR-033), from `--preset` and `--locales`; `null` for a
- * project with a hollware.config.ts, whose Worker moves it into the database on its first request.
- */
 export function initialDefinition(
   cwd: string,
   preset: string | undefined,
@@ -403,7 +391,6 @@ export function initialDefinition(
   }
 }
 
-/** What the activity log of the new site keeps (ADR-037), and whether a flag said so. */
 export interface AuditChoice {
   readonly ipAddresses: 'off' | 'hashed'
   readonly retentionDays: number | null
@@ -412,7 +399,6 @@ export interface AuditChoice {
 
 const DEFAULT_AUDIT_CHOICE: AuditChoice = { ipAddresses: 'off', retentionDays: null, given: false }
 
-/** `--ip-addresses` and `--audit-retention-days`, checked; the defaults when both are left out. */
 export function auditOf(addresses: string | undefined, days: string | undefined): AuditChoice {
   if (addresses !== undefined && addresses !== 'off' && addresses !== 'hashed') {
     throw new UsageError(`--ip-addresses is off or hashed, not "${addresses}".`)
@@ -437,7 +423,6 @@ export function auditOf(addresses: string | undefined, days: string | undefined)
   }
 }
 
-/** What `init` says of the activity log of the new site, and where its owner changes it. */
 export function activityNote(audit: AuditChoice): string {
   const addresses =
     audit.ipAddresses === 'hashed'

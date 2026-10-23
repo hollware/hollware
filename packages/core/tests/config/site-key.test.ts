@@ -5,14 +5,6 @@ import { resolveConfig } from '../../src/config/resolve.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH, SITE_KEY_PATTERN } from '../../src/config/site-key.ts'
 import { collectionWith, siteWith, thrownBy } from './support.ts'
 
-// Fails when: the rule of a site key moves from lowercase letters and digits joined by single
-// hyphens, 1 to 64 characters, which is the rule of the CLI: SITE_KEY_PATTERN or SITE_KEY_MAX_LENGTH
-// change; isSiteKey accepts what it should refuse (capitals, underscores, spaces, accents, a
-// leading, trailing or doubled hyphen, nothing, 65 characters, a line break anywhere, something
-// that is no string, an array that reads like a key) or refuses what it should accept (digits
-// first, a single character, 64 characters); resolveConfig stops using that rule for the key of a
-// site, or uses it for collection names, which have their own.
-
 const accepted = [
   'blog',
   'a',

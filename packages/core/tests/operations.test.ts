@@ -9,11 +9,6 @@ import {
   updateDraft,
 } from '../src/operations/index.ts'
 
-// Fails when: an operation is added, removed or renamed; its effect, scopes or outcomes leave the
-// table of the plan (v0.1, and the reviews of v0.3); `tools/list` would stop being sorted by name; an input stops
-// being a strict object or an output an object whose `outcome` lists exactly the outcomes of the
-// spec, as JSON Schema shows them to agents; or an input default moves.
-
 const ENTRY_ID = 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
 
 const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
@@ -131,7 +126,6 @@ describe('operation specs', () => {
         outcomes: ['created', 'taken', 'invalid'],
         errors: ['taken', 'invalid'],
       },
-      // The trash of entries: only a draft goes there, and it comes back as it was.
       delete_entry: {
         effect: 'destructive',
         scopes: ['content:write'],
@@ -160,7 +154,6 @@ describe('operation specs', () => {
       },
       list_entries: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       list_reviews: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
-      // Without content:publish, publish asks for a review (v0.3).
       upload_asset: {
         effect: 'write',
         scopes: ['content:write'],

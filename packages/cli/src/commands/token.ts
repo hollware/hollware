@@ -81,7 +81,6 @@ export const TOKEN_REVOKE_USAGE = [
   ...WHERE_FLAGS,
 ].join('\n')
 
-/** The scopes of a token that `--scopes` does not name: to read and to write drafts, not to publish. */
 export const DEFAULT_SCOPES: readonly Scope[] = ['content:read', 'content:write']
 
 export async function token(argv: readonly string[], io: Io): Promise<number> {
@@ -147,7 +146,6 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
     : values.scopes === undefined
       ? DEFAULT_SCOPES
       : parseScopes(values.scopes)
-  // Without --expires-in-days the token never expires: the person chooses (T-26, accepted).
   const days =
     values['expires-in-days'] === undefined ? null : parseExpiresInDays(values['expires-in-days'])
   const tokenFile = tokenFileOf(io, values['token-file'], values.force)
@@ -300,7 +298,6 @@ async function revokeTokenById(argv: readonly string[], io: Io): Promise<number>
   return 0
 }
 
-/** The site a command acts on: the one `--site` names (already checked), or the only one of the database. */
 export function chooseSite(rows: readonly Row[], site: string | undefined): string {
   const sites = rows.map((row) => row.id).filter((id): id is string => typeof id === 'string')
   if (site !== undefined) {
@@ -350,8 +347,6 @@ function scopesOf(value: unknown): string {
         .map(printable)
         .join(' ')
     }
-  } catch {
-    // Not JSON: show it as it is.
-  }
+  } catch {}
   return printable(value)
 }

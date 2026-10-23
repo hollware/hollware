@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { reportOf } from '../src/auditor.ts'
 import { slugOf, unfenced } from '../src/translator.ts'
 
-// Fails when: the translator (src/translator.ts) stops making a slug of lowercase ASCII words from
-// a title, accents dropped, or stops taking a file out of the code fence a model may put around
-// it; or the auditor's report (src/auditor.ts) stops carrying its frontmatter and both sections.
-
 describe('slugOf', () => {
   it('makes lowercase ASCII words joined by hyphens, accents dropped', () => {
     expect(slugOf('Purgar la caché del borde: ¿cómo?')).toBe('purgar-la-cache-del-borde-como')

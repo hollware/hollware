@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// The docs start at their first page in reading order.
 const { locale, m } = useLocale()
 const pages = await useDocsPages(locale.value)
 const first = pages.value[0]

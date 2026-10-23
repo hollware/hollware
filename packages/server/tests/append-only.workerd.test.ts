@@ -2,19 +2,9 @@ import { newId } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
-// Fails when: migrations/0002_append_only.sql loses a trigger, or a later migration rebuilds
-// revisions, revision_tags or publications without creating their triggers again; a `_immutable`
-// trigger stops covering a column, or covers a derived one; a `_no_replace` trigger stops
-// matching an id (or, for tags, a revision and tag) that is taken; or one of these tables gains a
-// column that is neither in its `_immutable` trigger nor listed as derived below, or a unique key
-// that its `_no_replace` trigger does not check; or site_changes can be changed, deleted or
-// replaced by its id (migrations/0015, T-83); or a line of audit_log can be changed, replaced, or
-// deleted before its site's retention has passed, or kept after it (migrations/0016, ADR-037).
-
 const TABLES = [
   {
     table: 'revisions',
-    // Rebuilt by `hollware reparse`, with `updated_at`. Everything else is the revision itself.
     derived: [
       'frontmatter',
       'document',
@@ -36,7 +26,6 @@ const TABLES = [
       'actor_meta',
       'created_at',
     ],
-    // Every unique key. `_no_replace` checks `id` (which covers `id, site_id`).
     uniqueKeys: ['id', 'id, site_id'],
     deleted: 'append-only: a revision is never deleted',
     changed: 'append-only: only the derived columns of a revision change',
@@ -46,7 +35,6 @@ const TABLES = [
     table: 'revision_tags',
     derived: ['updated_at'],
     immutable: ['id', 'site_id', 'revision_id', 'tag', 'created_at'],
-    // `_no_replace` checks `id` and `revision_id, tag`.
     uniqueKeys: ['id', 'id, site_id', 'revision_id, tag'],
     deleted: 'append-only: a revision tag is never deleted',
     changed: 'append-only: a revision tag never changes',
@@ -80,7 +68,6 @@ const INSERT_REVISION = `INSERT INTO revisions (id, site_id, entry_id, markdown,
   comark_version, pipeline_version, word_count, verdict, actor_kind, actor_user_id, created_at,
   updated_at) VALUES (?1, ?2, ?3, '# Hello', '{}', '{}', '0.7.0', '1', 1, '{}', 'user', ?4, ?5, ?5)`
 
-/** A published entry with one revision, one tag and one publication, under a site of its own. */
 async function seed() {
   const site = `site-${crypto.randomUUID()}`
   const user = newId('usr')
@@ -118,7 +105,6 @@ async function seed() {
   return { site, user, entry, ids, now }
 }
 
-/** Runs one statement: `ok`, or the message of the trigger (or constraint) that stopped it. */
 async function attempt(statement: D1PreparedStatement): Promise<string> {
   try {
     await statement.run()
@@ -139,14 +125,11 @@ describe('append-only tables', () => {
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
     expect(results).toEqual([
-      // migrations/0017_assets.sql (ADR-038).
       { name: 'assets_immutable', tbl_name: 'assets' },
       { name: 'assets_no_delete', tbl_name: 'assets' },
-      // migrations/0016_audit_log.sql (ADR-037).
       { name: 'audit_log_immutable', tbl_name: 'audit_log' },
       { name: 'audit_log_no_delete', tbl_name: 'audit_log' },
       { name: 'audit_log_no_replace', tbl_name: 'audit_log' },
-      // migrations/0008_search.sql: the full-text index follows what is published.
       { name: 'entries_fts_publication', tbl_name: 'entries' },
       { name: 'entries_fts_removal', tbl_name: 'entries' },
       { name: 'publications_immutable', tbl_name: 'publications' },
@@ -158,14 +141,13 @@ describe('append-only tables', () => {
       { name: 'revisions_immutable', tbl_name: 'revisions' },
       { name: 'revisions_no_delete', tbl_name: 'revisions' },
       { name: 'revisions_no_replace', tbl_name: 'revisions' },
-      // migrations/0015_site_changes_append_only.sql (T-83).
       { name: 'site_changes_immutable', tbl_name: 'site_changes' },
       { name: 'site_changes_no_delete', tbl_name: 'site_changes' },
       { name: 'site_changes_no_replace', tbl_name: 'site_changes' },
     ])
   })
 
-  it('keep site_changes as it was written: no line is changed, deleted or replaced (T-83)', async () => {
+  it('keep site_changes as it was written: no line is changed, deleted or replaced', async () => {
     const site = `audit-${crypto.randomUUID().slice(0, 8)}`
     await env.DB.prepare("INSERT INTO sites (id, created_at, updated_at) VALUES (?1, 'now', 'now')")
       .bind(site)
@@ -190,8 +172,7 @@ describe('append-only tables', () => {
     ).rejects.toThrow('append-only: a change of the structure is written once')
   })
 
-  describe('audit_log (ADR-037)', () => {
-    /** A site whose definition keeps the log for `retention` days, or forever with `null`. */
+  describe('audit_log', () => {
     async function siteKeeping(retention: unknown): Promise<string> {
       const site = `log-${crypto.randomUUID().slice(0, 8)}`
       await env.DB.prepare(
@@ -202,7 +183,6 @@ describe('append-only tables', () => {
       return site
     }
 
-    /** A line of the site, written `daysAgo` days ago. */
     async function line(site: string, daysAgo: number): Promise<string> {
       const id = newId('aud')
       const at = new Date(Date.now() - daysAgo * 86_400_000).toISOString()

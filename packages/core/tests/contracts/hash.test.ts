@@ -6,15 +6,6 @@ import { canonicalJson, sha256Hex } from '../../src/contracts/hash.ts'
 import { contracts, type Contract, type Phase, type Severity } from '../../src/contracts/index.ts'
 import { collectionOf, conversionLog, described, markdownOf, run } from './support.ts'
 
-// Fails when: `contractsHash` stops being the SHA-256, in lowercase hex, of the canonical JSON of
-// the input JSON Schema of the frontmatter and of each component's props and the id, severity and
-// phases of the contracts that were to run, sorted by id; the same rules stop giving the same hash
-// whatever the content, or any change of a schema, a component, or the id, severity or phases of a
-// contract stops changing it, or a change of wording or of the order of the config starts changing
-// it; the write and publish phases stop being told apart when they run different contracts; the
-// JSON Schema of a collection is converted more than once; or `canonicalJson` stops putting keys in
-// order, keeping arrays in order and leaving out what `JSON.stringify` leaves out.
-
 const SEO_TITLE: Contract<unknown> = {
   id: 'seo-title',
   severity: 'warning',
@@ -22,10 +13,8 @@ const SEO_TITLE: Contract<unknown> = {
   check: () => [],
 }
 
-/** What the collection below is checked against, written out by hand. */
 const CANONICAL =
   '{"components":{"callout":{"properties":{"type":{"enum":["info"]}},"type":"object"}},"contracts":[{"id":"components","phases":["write","publish"],"severity":"error"},{"id":"disallowed-attribute","phases":["write","publish"],"severity":"error"},{"id":"raw-html","phases":["write","publish"],"severity":"error"},{"id":"schema","phases":["write","publish"],"severity":"error"},{"id":"seo-title","phases":["write","publish"],"severity":"warning"},{"id":"unknown-component","phases":["write","publish"],"severity":"error"},{"id":"unsafe-url","phases":["write","publish"],"severity":"error"}],"frontmatter":{"properties":{"title":{"type":"string"}},"type":"object"}}'
-/** `printf '%s' "$CANONICAL" | shasum -a 256` */
 const HASH = 'e47e4a39b6b50cdd37e4da98f6cce358170ac58e754e9ac542d1882bac8e770c'
 
 function handMade(contractsOfCollection: readonly Contract<unknown>[] = [SEO_TITLE]) {
@@ -61,8 +50,19 @@ function custom(id: string, severity: Severity, phases?: readonly Phase[]): Cont
 describe('contractsHash', () => {
   it('is the SHA-256, in lowercase hex, of the canonical JSON of what the revision was checked against', async () => {
     expect(await hashOf()).toBe(HASH)
-    // The literal text above is what is hashed, so a failure above is a difference in the text.
     expect(await sha256Hex(CANONICAL)).toBe(HASH)
+  })
+
+  it('holds the parameters of a rule, and none for a rule without them, so older verdicts keep their hash', async () => {
+    const ruled = (params: Readonly<Record<string, unknown>>) =>
+      handMade([{ ...SEO_TITLE, rule: { name: 'field-length', params } }])
+
+    expect(await hashOf(ruled({}))).toBe(HASH)
+    expect(await hashOf(ruled({ max: 60 }))).toBe(
+      await sha256Hex(
+        CANONICAL.replace('{"id":"seo-title",', '{"id":"seo-title","params":{"max":60},'),
+      ),
+    )
   })
 
   it('is the same for the same rules, whatever the content', async () => {
@@ -136,7 +136,6 @@ describe('contractsHash', () => {
       contracts: [contracts.translationPair()],
     })
     expect(await hashOf(withPair, 'write')).not.toBe(await hashOf(withPair, 'publish'))
-    // Without a publish-only contract both phases answer to the same rules.
     expect(await hashOf(handMade(), 'write')).toBe(await hashOf(handMade(), 'publish'))
   })
 
@@ -145,8 +144,6 @@ describe('contractsHash', () => {
       schema: z.object({ title: z.string() }),
       contracts: [custom('reads-frontmatter', 'error')],
     })
-    // With a number for a title the schema fails and `reads-frontmatter` does not run, but it was
-    // to run: the hash tells the rules, not what happened to the content.
     expect(await hashOf(collection, 'write', { title: 42 })).toBe(
       await hashOf(collection, 'write', { title: 'A title' }),
     )
@@ -193,7 +190,6 @@ describe('the conversion of the schemas to JSON Schema', () => {
       },
     }
     const collection = collectionOf({ schema: broken })
-    // `{"components":{},"contracts":[…the six contracts that always run…],"frontmatter":null}`
     const NULL_HASH = '1abc68ea059a73da99f7c5857900dcfec12be1015d86c85537a69c18f8e4c870'
     expect(await hashOf(collection)).toBe(NULL_HASH)
     expect(await hashOf(collection)).toBe(NULL_HASH)

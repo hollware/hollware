@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { exceptionValues, WORKERS_WITHOUT_EVENTS } from '../guards/exceptions.ts'
 import { describeViolations } from '../guards/types.ts'
 import { checkWranglerFlags } from '../guards/wrangler-flags.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
-
-// Fails when: a wrangler.jsonc stops listing both no_nodejs_compat and no_nodejs_compat_v2, lists
-// nodejs_compat or nodejs_compat_v2, or, outside templates/, stops setting send_metrics to false;
-// or a Worker of Hollware (one with the D1 binding DB) stops listing global_fetch_strictly_public
-// or binding OAUTH_KV, at the top or in an environment with bindings of its own.
 
 const isWranglerConfig = (path: string) => /(^|\/)wrangler\.jsonc$/.test(path)
 
@@ -26,12 +22,19 @@ describe('wrangler flags', () => {
       'templates/starter/wrangler.jsonc',
       'tests/conformance/worker/wrangler.jsonc',
     ])
-    expect(describeViolations(checkWranglerFlags({ configs }))).toEqual([])
+    expect(
+      describeViolations(
+        checkWranglerFlags({
+          configs,
+          workersWithoutEvents: exceptionValues(WORKERS_WITHOUT_EVENTS),
+        }),
+      ),
+    ).toEqual([])
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
-    const check = (path: string, text: string) =>
-      checkWranglerFlags({ configs: [file(path, text)] })
+    const check = (path: string, text: string, workersWithoutEvents: string[] = []) =>
+      checkWranglerFlags({ configs: [file(path, text)], workersWithoutEvents })
 
     it('accepts both opt-outs, in JSONC with comments, and telemetry off', () => {
       const text = [
@@ -91,14 +94,21 @@ describe('wrangler flags', () => {
       expect(check('templates/starter/wrangler.jsonc', `{ ${flags} }`)).toEqual([])
     })
 
+    const flags = '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"]'
+    const hollwareFlags =
+      '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2", "global_fetch_strictly_public"]'
+    const db = '"d1_databases": [{ "binding": "DB" }]'
+    const kv = '"kv_namespaces": [{ "binding": "OAUTH_KV" }]'
+    const cron = '"triggers": { "crons": ["* * * * *"] }'
+    const consumer = '"queues": { "consumers": [{ "queue": "e", "dead_letter_queue": "e-dlq" }] }'
+    const worker = (top: string, demo: string) =>
+      `{ ${hollwareFlags}, "send_metrics": false, ${top}, "env": { "demo": { ${demo} } } }`
+
     it('holds a Worker of Hollware to the OAuth server: the flag, and OAUTH_KV in every environment', () => {
-      const flags = '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"]'
-      const db = '"d1_databases": [{ "binding": "DB" }]'
-      const kv = '"kv_namespaces": [{ "binding": "OAUTH_KV" }]'
       expect(
         check(
           'apps/x/wrangler.jsonc',
-          `{ ${flags}, "send_metrics": false, ${db}, ${kv}, "env": { "demo": { ${db} } } }`,
+          `{ ${flags}, "send_metrics": false, ${db}, ${kv}, ${cron}, ${consumer}, "env": { "demo": { ${db}, ${cron}, ${consumer} } } }`,
         ),
       ).toEqual([
         {
@@ -114,8 +124,66 @@ describe('wrangler flags', () => {
             'env.demo must bind a KV namespace as "OAUTH_KV": the OAuth server keeps its clients, grants and tokens there',
         },
       ])
-      // A site that reads Hollware over a binding has no OAuth server of its own.
       expect(check('examples/x/wrangler.jsonc', `{ ${flags}, "send_metrics": false }`)).toEqual([])
+    })
+
+    it('accepts a Worker of Hollware with its cron trigger and dead-letter queue in every environment', () => {
+      const all = `${db}, ${kv}, ${cron}, ${consumer}`
+      expect(check('apps/x/wrangler.jsonc', worker(all, all))).toEqual([])
+    })
+
+    it('reports a Worker of Hollware without a cron trigger, or whose consumer has no dead-letter queue', () => {
+      const top = `${db}, ${kv}, ${cron}, ${consumer}`
+      const noDeadLetters = '"queues": { "consumers": [{ "queue": "e", "max_retries": 5 }] }'
+      expect(check('apps/x/wrangler.jsonc', worker(top, `${db}, ${kv}, ${noDeadLetters}`))).toEqual(
+        [
+          {
+            rule: 'wrangler-flags/events',
+            file: 'apps/x/wrangler.jsonc',
+            message:
+              'env.demo must declare a cron trigger: it publishes the scheduled entries whose time has come',
+          },
+          {
+            rule: 'wrangler-flags/events',
+            file: 'apps/x/wrangler.jsonc',
+            message:
+              'env.demo must consume a queue with a "dead_letter_queue": it delivers the publication events and keeps the ones it could not',
+          },
+        ],
+      )
+      expect(
+        check(
+          'apps/x/wrangler.jsonc',
+          `{ ${hollwareFlags}, "send_metrics": false, ${db}, ${kv}, ${consumer} }`,
+        ).map((violation) => violation.message),
+      ).toEqual([
+        'the top of the config must declare a cron trigger: it publishes the scheduled entries whose time has come',
+      ])
+    })
+
+    it('excuses a Worker of WORKERS_WITHOUT_EVENTS, and reports the exception once it no longer applies', () => {
+      const bare = `{ ${hollwareFlags}, "send_metrics": false, ${db}, ${kv} }`
+      expect(check('tests/x/wrangler.jsonc', bare, ['tests/x/wrangler.jsonc'])).toEqual([])
+      const all = `${db}, ${kv}, ${cron}, ${consumer}`
+      expect(
+        check('tests/x/wrangler.jsonc', worker(all, all), [
+          'tests/x/wrangler.jsonc',
+          'gone/wrangler.jsonc',
+        ]),
+      ).toEqual([
+        {
+          rule: 'wrangler-flags/stale-exception',
+          file: 'tests/guards/exceptions.ts',
+          message:
+            'WORKERS_WITHOUT_EVENTS names tests/x/wrangler.jsonc, which is no Worker of Hollware without its cron trigger or dead-letter queue: remove it',
+        },
+        {
+          rule: 'wrangler-flags/stale-exception',
+          file: 'tests/guards/exceptions.ts',
+          message:
+            'WORKERS_WITHOUT_EVENTS names gone/wrangler.jsonc, which is no Worker of Hollware without its cron trigger or dead-letter queue: remove it',
+        },
+      ])
     })
 
     it('reports a file that is not JSONC holding an object', () => {

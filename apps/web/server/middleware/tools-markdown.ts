@@ -2,10 +2,6 @@ import { OPERATIONS } from '@hollware/core'
 import { defineEventHandler, getRequestURL, setResponseHeader } from 'h3'
 import * as z from 'zod'
 
-/**
- * `/reference/mcp-tools.md`: the tools reference as Markdown, for agents, made from the same
- * operation specs as the page and as the server's tools/list.
- */
 export default defineEventHandler((event) => {
   if (getRequestURL(event).pathname !== '/reference/mcp-tools.md') return
   const tools = [...OPERATIONS].sort((a, b) => a.name.localeCompare(b.name))

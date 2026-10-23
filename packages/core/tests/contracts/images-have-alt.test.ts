@@ -4,12 +4,6 @@ import { contracts, type Phase } from '../../src/contracts/index.ts'
 import type { ImageRef } from '../../src/markdown/types.ts'
 import { collectionOf, markdownOf, run } from './support.ts'
 
-// Fails when: `images-have-alt` stops reporting an image whose alt is empty or only spaces, or
-// starts reporting one that has alt text; stops pointing at /body with the line of the image;
-// stops saying which image and how to fix it; runs in only one phase; runs for a collection that
-// did not list it; stops running when the frontmatter fails the schema (it does not read it); or
-// ignores the severity it is given.
-
 const PHASES: Phase[] = ['write', 'publish']
 
 function runImages(images: readonly ImageRef[], phase: Phase, severity?: 'warning') {
@@ -61,6 +55,17 @@ describe('the images-have-alt contract', () => {
       ])
       expect(verdict.ok).toBe(false)
     }
+  })
+
+  it('passes an image of the site with no alt, which a reader gets with the alt it was uploaded with', async () => {
+    const verdict = await runImages(
+      [
+        { src: 'asset:ast_0123456789abcdef0123456789', alt: '', line: 2 },
+        { src: 'asset:not-an-asset', alt: '', line: 5 },
+      ],
+      'write',
+    )
+    expect(verdict.errors.map((error) => error.line)).toStrictEqual([5])
   })
 
   it('leaves out the line when the image has none', async () => {

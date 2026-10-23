@@ -7,11 +7,6 @@ import { entryPath } from './event.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 import { fuse, semanticSearch, SEMANTIC_TOP_K } from './semantic-search.ts'
 
-/**
- * The published entries of the site that match the query, best first: by its words, by meaning,
- * or both (ADR-030). Without the semantic search of the deployment, every mode is full text, and
- * the answer's `mode` says which one ran.
- */
 export const search: OperationHandler<'search'> = async (input, context) => {
   if (input.collection !== undefined) requireCollection(context.site, input.collection)
   if (input.locale !== undefined) requireLocale(context.site, input.locale)
@@ -32,7 +27,6 @@ export const search: OperationHandler<'search'> = async (input, context) => {
   } else if (mode === 'semantic') {
     hits = await semanticSearch(semantic, context.store, site, query)
   } else {
-    // Each list longer than the answer, so that an entry low in one can rise with the other.
     const wide = { ...query, limit: Math.max(query.limit, SEMANTIC_TOP_K) }
     const [words, meaning] = await Promise.all([
       context.store.searchEntries(site, wide),
@@ -58,7 +52,6 @@ export const search: OperationHandler<'search'> = async (input, context) => {
   }
 }
 
-/** The words of a text, lowercase and without accents, as full text compares them. */
 function wordsOf(text: string): string[] {
   return text
     .normalize('NFD')
@@ -68,7 +61,6 @@ function wordsOf(text: string): string[] {
     .filter((word) => word.length > 1)
 }
 
-/** The piece that holds the most words of the query, a section before the summary on a tie. */
 function bestByWords(chunks: readonly Chunk[], query: string): Chunk | undefined {
   const asked = new Set(wordsOf(query))
   let best: { chunk: Chunk; found: number } | undefined
@@ -87,11 +79,6 @@ function bestByWords(chunks: readonly Chunk[], query: string): Chunk | undefined
   return best?.chunk
 }
 
-/**
- * The passage a hit stands on: the piece a match by meaning found, or the one that holds most of
- * the words of the query, read from the published revision with the chunker of the vectors, and
- * the URL of the entry on the site. `undefined` for an entry no longer published.
- */
 async function passageOf(context: OperationContext, hit: SearchHit, query: string) {
   const found = await context.store.findEntryById(context.site.key, hit.entry.entry.id, 'published')
   if (found === null) return undefined
@@ -112,7 +99,6 @@ async function passageOf(context: OperationContext, hit: SearchHit, query: strin
   const text = chunk?.text ?? ''
   return {
     heading,
-    // A section's piece starts with its heading, for the vector: the passage has it apart.
     text:
       heading !== null && text.startsWith(heading) ? text.slice(heading.length).trimStart() : text,
     url: path === null || context.site.url === null ? null : `${context.site.url}${path}`,

@@ -15,15 +15,6 @@ import {
   type Status,
 } from './results.ts'
 
-// Fails when: the must-pass profile stops failing the run on a check that is FAILURE, WARNING or
-// SKIPPED, on one that the suite no longer reports, on a scenario that did not run, or on a check
-// that fails in only one of the scenarios a wildcard covers; when repeated ids stop collapsing to
-// the most severe one, as the suite collapses them; when a baseline entry that excuses nothing (a
-// passing check, one the suite does not report, one in a scenario that is not scored) stops being
-// found, or a failure outside the baseline stops being found in a scored scenario, or one in a
-// scenario that is not scored starts to count; when the results of a run are read wrong; or when
-// the counts of the summary drift from the checks.
-
 const check = (id: string, status: Status, errorMessage?: string): CheckResult => ({
   id,
   status,

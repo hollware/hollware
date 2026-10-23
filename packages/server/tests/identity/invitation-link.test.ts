@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { invitationOf, setupPage } from '../../src/identity/pages.ts'
 
-// Fails when: the setup page (src/identity/pages.ts) stops reading the invitation from the fragment
-// of its address, which no request carries (T-55), or stops taking one from the query, as links
-// made before 0.11 hold it; or the page stops running that very function.
-
 describe('invitationOf', () => {
   it.each([
     ['the fragment', '#invitation=hw_inv_a', '', 'hw_inv_a'],

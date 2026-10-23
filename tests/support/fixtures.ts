@@ -1,8 +1,5 @@
-/** Builders for the synthetic repositories the self-tests of the guards feed to a guard. */
-
 import type { TextFile } from '../guards/types.ts'
 
-/** `JSON.stringify` with the indentation of a real manifest. */
 export function json(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`
 }
@@ -11,7 +8,6 @@ export function file(path: string, text: string): TextFile {
   return { path, text }
 }
 
-/** A published package manifest that satisfies every rule of the `manifests` guard. */
 export function publishedManifest(
   dir: string,
   overrides: Record<string, unknown> = {},
@@ -21,7 +17,6 @@ export function publishedManifest(
     'packages/create-hollware': 'create-hollware',
   }
   const binName = unscoped[dir]
-  // The packages with a second entry, as the guard declares them (SUBPATHS).
   const webhooks = dir === 'packages/client' || dir === 'packages/core'
   const manifest: Record<string, unknown> = {
     name: unscoped[dir] ?? `@hollware/${dir.slice('packages/'.length)}`,
@@ -67,7 +62,6 @@ export function publishedManifest(
   return { ...manifest, ...overrides }
 }
 
-/** The six published packages of a synthetic repository, as manifests and files. */
 export const PUBLISHED_DIRS = [
   'packages/admin',
   'packages/cli',

@@ -2,7 +2,7 @@
 
 Thank you for your interest in Hollware. The project is open source from its first commit, and contributions are welcome.
 
-Hollware is **pre-alpha** and is built one stage at a time, following [`PLAN.md`](PLAN.md). Right now the most useful contributions are feedback on the design ([`docs/design.md`](docs/design.md)) and on the decisions ([`docs/adr/`](docs/adr/)), and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
+Hollware is **pre-alpha** and is built one stage at a time, following [`PLAN.md`](PLAN.md). Right now the most useful contributions are feedback in issues and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
 
 Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -39,15 +39,15 @@ Installing also enables the Git pre-commit hook, which formats the staged files 
 | `pnpm exec vp run bench`            | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95                  |
 | `pnpm exec vp run check:budgets`    | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup                  |
 | `pnpm exec vp run check:push`       | The CI check job: check, test, bench, build, budgets, publint, types                               |
-| `pnpm exec vp run check:local`      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance                        |
-| `pnpm exec vp run test:conformance` | MCP conformance (ADR-022): the suite against `wrangler dev`, for both revisions                    |
+| `pnpm exec vp run check:local`      | What the hook pre-push runs: check:push, acceptance, e2e:admin, conformance, commit subjects       |
+| `pnpm exec vp run test:conformance` | MCP conformance: the suite against `wrangler dev`, for both revisions                              |
 | `pnpm exec vp run test:acceptance`  | The acceptance suite of the stage, against the built playground and example site                   |
 | `pnpm exec vp run e2e:admin`        | The admin in Chromium with a virtual passkey and axe (`playwright install chromium` once)          |
 | `pnpm exec vp run e2e:install`      | `create-hollware` from a local registry of this checkout, then MCP, publish, a read token          |
 | `pnpm exec vp run e2e:upgrade`      | A project of 0.3.0 (`-- --from <version>`) from npm, moved here, migrated; its data and token work |
 | `pnpm exec vp run e2e:integrations` | The Nuxt, Astro and React Router examples over the built playground, previews included             |
 | `pnpm exec vp run eval:search`      | Search quality against a deployment with semantic search (`-- --hollware <url>`)                   |
-| `node scripts/api.ts --write`       | Writes `api/`, the public API (ADR-036); `api-check.ts --against <ref>`: its breaks                |
+| `node scripts/api.ts --write`       | Writes `api/`, the public API; `api-check.ts --against <ref>`: its breaks                          |
 
 The mutation probe, `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>`,
 prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
@@ -56,11 +56,11 @@ prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
 
 ## Conventions
 
-- **English everywhere.** Code, comments, commit messages, documentation and issues are written in English.
+- **English everywhere.** Code, commit messages, documentation and issues are written in English.
 - **Conventional Commits.** Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org): `feat: ...`, `fix: ...`, `docs: ...`, `chore: ...`, with an optional scope such as `fix(cli): ...`.
 - **A changeset for every change to a published package.** Run `pnpm exec changeset`, pick the packages and the bump, and write the summary for the people who will read the changelog. Commit the file it creates in `.changeset/` together with your change. Changes that touch no published package, such as docs, tests and tooling, do not need one.
 - **Dependencies come from the pnpm catalog.** The catalog in `pnpm-workspace.yaml` pins exact versions, each one published at least 24 hours before it was pinned, and packages refer to them as `catalog:`. Never lower `minimumReleaseAge`. If your change needs a new dependency, say why in the pull request. The routine for updating dependencies is in `AGENTS.md`.
-- **Structural decisions are recorded as ADRs.** A change that makes or alters one adds an ADR in `docs/adr/`, whose README has the template.
+- **No comments and no free prose.** The code says what it does and why, and a claim about the repository is a test. A product decision goes, in one line, in the `AGENTS.md` of its package, and only when an agent needs it.
 
 `AGENTS.md` lists the rest, and lint and the tests enforce most of it: every bare import is declared in the importing package's `package.json`, packages never read `process.env` (configuration arrives as arguments), and a promise is always awaited or explicitly handled, because Workers cancel whatever is left.
 
@@ -95,7 +95,7 @@ Use the issue forms. A bug report asks for the Hollware version, where it runs, 
 
 1. Fork the repository and create a branch from `main`.
 2. Make your change, with tests, and a changeset if a published package changed.
-3. Push. The hook pre-push runs `pnpm exec vp run check:local`, every check of CI that runs on your machine: check, test, build, publint, types, acceptance, the admin's end-to-end tests and MCP conformance. Run it by hand to know earlier.
+3. Push. The hook pre-push runs `pnpm exec vp run check:local`, every check of CI that runs on your machine: check, test, build, publint, types, acceptance, the admin's end-to-end tests and MCP conformance, and it checks that the subject of each commit not on `main` is a Conventional Commit. Run it by hand to know earlier.
 4. Open a pull request against `main` and fill in the template.
 
 CI must pass before a pull request can be merged. Keep each pull request to one concern: small changes are reviewed faster. Hollware has a single maintainer, [Sergio Azócar](https://github.com/sergioazoc), so reviews take time. Please be patient.

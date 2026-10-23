@@ -4,11 +4,6 @@ import { createApi } from '../app/lib/api.ts'
 import type { Auth } from '../app/lib/auth.ts'
 import { openPreview } from '../app/lib/site-preview.ts'
 
-// Fails when: openPreview (app/lib/site-preview.ts) stops asking POST /v1/admin/preview, with the
-// access token, for the entry it is given, opens a link the server did not answer (or one when the
-// answer has no url), or stops saying whether it opened one (Entry.vue's "Preview on the site",
-// T-103).
-
 function world(answer: { token: string; expiresAt: string; url: string | null }) {
   const sent: Array<{ url: string; method: string; body: string }> = []
   const opened: string[] = []

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { breakingChanges, onlyAddsOptional } from './api-compat.ts'
 
-// Fails when: the check of what 1.0 promises (scripts/api-compat.ts, ADR-036) stops reporting a
-// break of the public API, or reports as a break what fits a minor version: a new optional input,
-// a new field or a new outcome of an answer, a new tool, a new export.
-
 const tool = (input: object, output: object, scopes = ['content:read']) => ({
   'mcp.json': { tools: [{ name: 'get_entry', scopes, input, output }] },
 })

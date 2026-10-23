@@ -3,14 +3,12 @@ import type { Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 
-/** The colors of Nuxt UI's theme, light or dark, through its CSS variables. */
 const chrome = EditorView.theme({
   '&': { backgroundColor: 'var(--ui-bg)', color: 'var(--ui-text)' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.7' },
   '.cm-content': { caretColor: 'var(--ui-primary)' },
   '.cm-gutters': {
     backgroundColor: 'var(--ui-bg-elevated)',
-    // Toned, not muted: the line numbers pass a contrast of 4.5:1 on both themes.
     color: 'var(--ui-text-toned)',
     borderRight: '1px solid var(--ui-border)',
   },
@@ -25,11 +23,6 @@ const chrome = EditorView.theme({
   '.cm-tooltip': { backgroundColor: 'var(--ui-bg-elevated)', color: 'var(--ui-text)' },
 })
 
-/**
- * The Markdown's own colors, from the same variables: the structure (the frontmatter fences, the
- * marks of headings and lists) muted, what a reader sees highlighted, links in the accent. Every
- * color is one of the theme's text colors, which pass a contrast of 4.5:1 on its background.
- */
 const markdownColors = HighlightStyle.define([
   {
     tag: [tags.meta, tags.processingInstruction, tags.contentSeparator],

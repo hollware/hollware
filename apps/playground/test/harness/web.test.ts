@@ -10,16 +10,6 @@ import {
 } from './support.ts'
 import { createWebHarness, webFetch } from './workers.ts'
 
-// Fails when: hollware.com (apps/web) stops serving its docs from Hollware: a page of the docs
-// site rendered on the server from its Comark document, with its `callout` as the site's own
-// component and the sidebar in reading order (`readingOrder` of app/utils/docs.ts); a draft as a
-// 404; the Markdown of a page at /docs/<slug>.md (server/middleware/markdown.ts); llms.txt with
-// every page in reading order; the MCP tools page, and its Markdown, generated from @hollware/core; or the landing
-// page with the install command. In Spanish (under /es/, app/composables/useLocale.ts): the site's
-// own words, `<html lang="es">` and the alternates of each language; a page of the docs read in
-// Spanish, or in English with a notice while it is not translated; its Markdown at
-// /es/docs/<slug>.md. The docs are written through MCP to the site `docs`, as an agent writes them.
-
 const server = createWebHarness()
 
 const page = (title: string, section: string, order: number, body: string) =>
@@ -91,9 +81,7 @@ describe('hollware.com', () => {
     expect(html).toContain('<title>First steps · Hollware</title>')
     expect(html).toContain('<h2 id="install">Install</h2>')
     expect(html).toContain('Keep the token.')
-    // The callout of the docs, as the site's DocsCallout draws it.
     expect(html).toMatch(/data-slot="title"[^>]*><!--\[-->Tip<!--\]-->/)
-    // Getting started, then Frameworks, then Concepts, whatever the order of publication.
     expect(html.indexOf('>First steps<')).toBeLessThan(html.indexOf('>A framework<'))
     expect(html.indexOf('>A framework<')).toBeLessThan(html.indexOf('>A concept<'))
     expect(html).toContain('>Frameworks<')
@@ -114,7 +102,6 @@ describe('hollware.com', () => {
   it('lists every page for language models, in reading order', async () => {
     const llms = await webFetch(server, '/llms.txt')
     const text = await llms.text()
-    // A route of the site's own that reads through useHollware is tagged by the reader (S8).
     expect((llms.headers.get('cache-tag') ?? '').split(',')).toContain('list:docs:en')
 
     expect(text).toContain(
@@ -136,7 +123,6 @@ describe('hollware.com', () => {
     expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
-    // Every use case is in the page, not only the one picked: a crawler reads them all.
     expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
     expect(home).toContain('Docs that follow the code')
     expect(home).toContain('MCP is the main door, not a plugin: 40 tools')
@@ -161,7 +147,6 @@ describe('hollware.com', () => {
     expect(translated).toContain('<title>Primeros pasos · Hollware</title>')
     expect(translated).toContain('<h2 id="instalar">Instalar</h2>')
     expect(translated).not.toContain('todavía no está traducida')
-    // The sidebar in Spanish: its sections, its links, and the page that is only in English.
     expect(translated).toContain('Primeros pasos</')
     expect(translated).toContain('href="/es/docs/a-concept/"')
     expect(english.status).toBe(200)

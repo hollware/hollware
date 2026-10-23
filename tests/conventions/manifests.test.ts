@@ -10,7 +10,7 @@ import reactConfig from '../../packages/react/vite.config.ts'
 import nuxtConfig from '../../packages/nuxt/vite.config.ts'
 import vueConfig from '../../packages/vue/vite.config.ts'
 import serverConfig from '../../packages/server/vite.config.ts'
-import { checkManifests, type ManifestsInput } from '../guards/manifests.ts'
+import { checkBaseTsconfig, checkManifests, type ManifestsInput } from '../guards/manifests.ts'
 import { describeViolations } from '../guards/types.ts'
 import {
   file,
@@ -19,30 +19,19 @@ import {
   PUBLISHED_DIRS,
   publishedManifest,
 } from '../support/fixtures.ts'
-import { repoFiles } from '../support/repo.ts'
+import { readText, repoFiles } from '../support/repo.ts'
 import { recordAt } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: a packages/*/package.json drops or changes name, version, license, repository,
-// type, files, publishConfig, engines or the build and publint scripts; its `exports` or `bin`
-// stop pointing at the source, or the published ones in publishConfig at dist; a published
-// package gets `private`, an app or template loses it, or a package loses its README or AGENTS.md;
-// or a package's vite.config.ts stops building with `pack.exports.devExports: true`; or a package
-// exports an entry besides its root that SUBPATHS or SOURCE_FILES of tests/guards/manifests.ts does
-// not declare.
-
-/** The published exports of every package, as the guard expects them. */
 const PUBLISHED_EXPORTS = {
   '.': { types: './dist/index.d.mts', default: './dist/index.mjs' },
   './package.json': './package.json',
 }
 
-/** `pack.exports.devExports` of a package's vite.config.ts: what `vp pack` writes the manifest from. */
 function devExportsOf(config: unknown): unknown {
   return recordAt(recordAt(config, 'pack'), 'exports')?.devExports
 }
 
-/** Every published package builds with `devExports: true`, as the self-tests assume. */
 const GOOD_DEV_EXPORTS = Object.fromEntries(PUBLISHED_DIRS.map((dir) => [dir, true]))
 
 describe('package manifests', () => {
@@ -95,13 +84,13 @@ describe('package manifests', () => {
           rule: 'manifest/dev-exports',
           file: 'packages/core/vite.config.ts',
           message:
-            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found undefined',
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again, found undefined',
         },
         {
           rule: 'manifest/dev-exports',
           file: 'packages/server/vite.config.ts',
           message:
-            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again (ADR-016), found false',
+            '"pack.exports.devExports" must be true, or the next `vp pack` points the manifest at dist again, found false',
         },
       ])
     })
@@ -127,7 +116,7 @@ describe('package manifests', () => {
           rule: 'manifest/exports',
           file: 'packages/server/package.json',
           message:
-            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source, found {".":{"types":"./dist/index.d.mts","default":"./dist/index.mjs"},"./package.json":"./package.json"}',
         },
       ])
     })
@@ -179,7 +168,7 @@ describe('package manifests', () => {
           rule: 'manifest/exports',
           file: 'packages/admin/package.json',
           message:
-            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source (ADR-016), found {".":"./src/index.ts","./vite":"./src/vite.ts","./package.json":"./package.json"}',
+            '"exports" must be {".":"./src/index.ts","./package.json":"./package.json"}: inside the workspace a package resolves to its source, found {".":"./src/index.ts","./vite":"./src/vite.ts","./package.json":"./package.json"}',
         },
       ])
     })
@@ -341,6 +330,37 @@ describe('package manifests', () => {
       expect(result).toHaveLength(1)
       expect(result[0]?.rule).toBe('manifest/invalid-json')
       expect(result[0]?.file).toBe('packages/oops/package.json')
+    })
+  })
+})
+
+describe('tsconfig.base.json', () => {
+  it('allows only syntax that erases', () => {
+    const path = 'tsconfig.base.json'
+    expect(describeViolations(checkBaseTsconfig(file(path, readText(path))))).toEqual([])
+  })
+
+  describe('self-test: the guard fails on a bad fixture', () => {
+    const check = (text: string) => checkBaseTsconfig(file('tsconfig.base.json', text))
+
+    it('accepts erasableSyntaxOnly, in JSONC with a comment', () => {
+      expect(
+        check('{ "compilerOptions": { // only erasable\n "erasableSyntaxOnly": true } }'),
+      ).toEqual([])
+    })
+
+    it('reports erasableSyntaxOnly turned off, or left out', () => {
+      expect(check('{ "compilerOptions": { "erasableSyntaxOnly": false } }')).toEqual([
+        {
+          rule: 'manifest/erasable-syntax',
+          file: 'tsconfig.base.json',
+          message:
+            '"compilerOptions.erasableSyntaxOnly" must be true, so Node.js runs every source as it is, found false',
+        },
+      ])
+      expect(check('{ "compilerOptions": {} }').map((v) => v.message)).toEqual([
+        '"compilerOptions.erasableSyntaxOnly" must be true, so Node.js runs every source as it is, found undefined',
+      ])
     })
   })
 })

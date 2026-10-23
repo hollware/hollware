@@ -8,15 +8,6 @@ import { seedSite } from '../support/sites.ts'
 import { adminPerson, call } from './admin-session.ts'
 import { boot, CONFIG, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
 
-// Fails when: the admin's route of previews (`POST /v1/admin/preview`, src/http/admin-api.ts)
-// stops making a signed token of one hour for an entry of the person's site for any member, or
-// answers the entry's page on the site with `?hollware-preview=<token>` (null without a site
-// URL), or answers 200 for an entry of another site, a body that names no entry, a token of
-// another client or no signing secret (503 `unavailable`), or stops writing the line
-// `preview.create` of the activity log without the token; or the read API stops reading the
-// latest revision with `?preview=` (uncacheable: `no-store` and no ETag, a refusal included) for a
-// valid token and nothing else (T-103).
-
 const SECRET = 'q'.repeat(32)
 const DRAFT = 'from-draft-to-published'
 const PUBLISHED = 'edge-caching-basics'
@@ -41,7 +32,6 @@ let seededOnce: ReturnType<typeof seedSite> | undefined
 let otherOnce: ReturnType<typeof seedSite> | undefined
 
 async function world(options: { url?: boolean; secret?: boolean; now?: string } = {}) {
-  // The tests share the database of the file: the site is seeded once.
   const seeded = await (seededOnce ??= seedSite(env.DB, SITE_KEY))
   const other = await (otherOnce ??= seedSite(env.DB, OTHER_SITE_KEY))
   const worker = boot({
@@ -209,7 +199,6 @@ describe('the read API with a preview token', () => {
       token: seeded.token,
     })
 
-    // The same for a published entry of another slug and for no entry: the token tells nothing.
     expect([another.status, missing.status, expired.status]).toEqual([404, 404, 400])
     expect(await another.json()).toEqual(await missing.json())
     expect(expired.headers.get('cache-control')).toBe('no-store')

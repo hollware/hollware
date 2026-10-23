@@ -1,23 +1,5 @@
 import { parseSync, Visitor } from 'vite-plus'
 
-/**
- * Reads what a JavaScript or TypeScript file imports and which Node globals it touches.
- *
- * TypeScript 7 ships no JavaScript compiler API, so the parser is the one Vite+ re-exports
- * from Vite 8 (`parseSync`, Oxc). Comments, strings, template literals and regular
- * expressions are never mistaken for code, which a regular expression could not promise.
- *
- * Limits:
- * - Only literal specifiers are read. `import(name)` and `require(name)` with a computed
- *   argument are skipped, and so are `vi.mock('x')`-style strings.
- * - `/// <reference types="x" />` directives are comments and are not read. The type check
- *   of `vp check` is what resolves them.
- * - Node globals are found by name, without scope analysis: a local variable called
- *   `process` counts. Property names (`a.process`, `{ process: 1 }`, `class { process() {} }`),
- *   declaration names and calls (`process(x)`, because the Node global is not callable) do
- *   not.
- */
-
 export type ReferenceKind =
   | 'import'
   | 'export-from'
@@ -39,9 +21,7 @@ export interface GlobalReference {
 }
 
 export interface LiteralProperty {
-  /** The key of an object property, e.g. `fsModuleCache`. */
   key: string
-  /** The literal value, when the property holds a boolean, a string or a number. */
   value: boolean | string | number
   line: number
 }
@@ -49,21 +29,16 @@ export interface LiteralProperty {
 export interface SourceAnalysis {
   references: ModuleReference[]
   globals: GlobalReference[]
-  /** Object properties set to a literal, such as `{ fsModuleCache: true }`. */
   properties: LiteralProperty[]
-  /** Syntax errors. A file that does not parse cannot be judged. */
   syntaxErrors: string[]
 }
 
-/** The Node globals that code meant to run anywhere must not use. */
 export const NODE_GLOBALS = ['process', 'Buffer', '__dirname', '__filename', 'require'] as const
 
 const NODE_GLOBAL_NAMES: ReadonlySet<string> = new Set(NODE_GLOBALS)
 
-/** `globalThis.process` is the same global reached through its holder. */
 const GLOBAL_OBJECTS: ReadonlySet<string> = new Set(['globalThis', 'global', 'self'])
 
-/** The 1-based line of a character offset. */
 export function lineAt(text: string, offset: number): number {
   let line = 1
   for (let i = 0; i < offset && i < text.length; i += 1) {
@@ -81,8 +56,6 @@ export function analyzeSource(path: string, text: string): SourceAnalysis {
     references.push({ specifier, kind, line: lineAt(text, offset) })
   }
 
-  // Identifiers that name a property, a declaration or a callee, collected on the way down
-  // (the parent is visited before its children) and skipped when the identifier comes up.
   const notReferences = new WeakSet<object>()
 
   new Visitor({
@@ -125,7 +98,6 @@ export function analyzeSource(path: string, text: string): SourceAnalysis {
           : undefined
       if (callee.type === 'Identifier') {
         if (callee.name === 'require' && literal !== undefined) add(literal, 'require', node.start)
-        // `process(x)` cannot be the Node global: it is not callable.
         if (callee.name === 'process') notReferences.add(callee)
       } else if (
         callee.type === 'MemberExpression' &&
@@ -224,4 +196,31 @@ export function analyzeSource(path: string, text: string): SourceAnalysis {
     properties,
     syntaxErrors: result.errors.map((error) => error.message),
   }
+}
+
+export interface SourceComment {
+  text: string
+  start: number
+  end: number
+}
+
+export function commentsOf(path: string, text: string): SourceComment[] {
+  const result = parseSync(path, text)
+  const found: SourceComment[] = []
+  const { hashbang } = result.program
+  if (hashbang !== null) {
+    found.push({
+      text: text.slice(hashbang.start, hashbang.end),
+      start: hashbang.start,
+      end: hashbang.end,
+    })
+  }
+  for (const comment of result.comments) {
+    found.push({
+      text: text.slice(comment.start, comment.end),
+      start: comment.start,
+      end: comment.end,
+    })
+  }
+  return found
 }

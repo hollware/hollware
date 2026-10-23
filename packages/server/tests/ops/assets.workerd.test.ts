@@ -11,48 +11,16 @@ import type { OperationContext } from '../../src/ops/types.ts'
 import { agent, blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, publishPost, type World } from './world.ts'
 
-// Fails when (src/ops/assets.ts, src/media/cloudflare.ts, ADR-038):
-// - "converts once …": the converter is asked for anything but the site's setting with quality and
-//   anim given, the file served or the original is not in R2 under its key, or the row is not
-//   written with the size the converter made, or its copy 640 pixels wide is not made from the
-//   original, kept at <served>/640 and answered in widths and srcset.
-// - "makes the copies of the widths of the site …": the copies are not the site's widths, the
-//   allowance running out at a copy refuses the image instead of keeping those made, or
-//   `widths: []` still makes one.
-// - "keeps no original …": the original is written under media.keepOriginals false, or the file
-//   served or its copies are not.
-// - "is the same asset …": the same bytes convert or write again, or a second row appears.
-// - "scales down …": a wide image keeps its width, or its height is not scaled with it.
-// - "keeps a plain SVG … refuses one that can run": an SVG reaches the converter, or a refused one
-//   leaves a file or a row behind.
-// - "refuses what is not an image": the name or the claimed type is trusted over the bytes.
-// - "says when it cannot": no bucket, or the converter's 9412, 9516 and 9422, are not refused or
-//   unavailable with a fix, or leave something behind; without the binding the file is not kept.
-// - "changes the alt …": update_asset keeps the old alt, changes another site's image, or the alt
-//   of an image of the site does not reach a reader where the Markdown gives none, or replaces one
-//   it gives; or images-have-alt refuses an image of the site written without an alt.
-// - "lists and gets …": a page is not newest first, the cursor does not continue it, or a site
-//   reads another's asset.
-// - "a read of the published site sees URLs …": get_entry, list_entries or get_translations of
-//   a site (the published view, or a reader's preview of the head) keep `asset:` in the
-//   frontmatter or the document, or MCP stops seeing what the agent wrote.
-// - "a read of the published site …": the published view or HTML keeps `asset:`, or the head view
-//   (an agent over MCP) does not; the HTML or a reader's document loses the srcset, sizes and size
-//   of an image; or `images` of the summary (get_entry, list_entries) is missing for a site or
-//   given to an agent.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6])
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 8, 9])
-// Another PNG, uploaded only as an asset of rc.2 would have been.
 const PNG_SMALL = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 4, 2])
 const WEBP_OUT = new TextEncoder().encode('RIFF\0\0\0\0WEBPVP8 converted')
 const SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4"/></svg>'
 
-/** Base64 of bytes or text, a chunk at a time: a spread of 10 MB would overflow the stack. */
 const base64 = (bytes: Uint8Array | string) => {
   const all = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes
   let binary = ''
@@ -62,13 +30,11 @@ const base64 = (bytes: Uint8Array | string) => {
   return btoa(binary)
 }
 
-/** What the fake converter makes: a narrower copy names its width, so a test tells them apart. */
 const copyOut = (conversion: Conversion) =>
   conversion.width === undefined || conversion.width === 2400
     ? WEBP_OUT
     : new TextEncoder().encode(`RIFF\0\0\0\0WEBPVP8 ${conversion.width}`)
 
-/** A converter that answers what it is told, and records what it was asked. */
 function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: Error) {
   const asked: Conversion[] = []
   const images: ImageConverter = {
@@ -126,7 +92,6 @@ describe('upload_asset', () => {
       context,
     )
 
-    // The file served, then its copy 640 pixels wide: 1280 is not narrower than the image.
     expect(asked).toEqual([
       { format: 'image/webp', quality: 85, anim: true },
       { format: 'image/webp', quality: 85, anim: true, width: 640 },
@@ -160,7 +125,6 @@ describe('upload_asset', () => {
 
   it('makes the copies of the widths of the site, keeps those made when the allowance ends, and none when it says none', async () => {
     const asked: Conversion[] = []
-    // The allowance of the month runs out at the second copy.
     const images: ImageConverter = {
       info: async () => ({ format: 'image/jpeg', width: 2000, height: 1000 }),
       convert: async (_bytes, conversion) => {
@@ -267,7 +231,6 @@ describe('upload_asset', () => {
     )
 
     expect([again.outcome, again.asset?.id]).toEqual(['exists', `ast_${sha.slice(0, 26)}`])
-    // Found before anything is written: no file under another id in R2.
     expect((await env.MEDIA.list({ prefix: `sites/${legacy.tenant.key}/` })).objects).toEqual([])
   })
 
@@ -368,7 +331,6 @@ describe('upload_asset', () => {
       ),
     )
 
-    // What the binding threw on a damaged PNG in staging: its code is only in the message.
     const damaged = await uploadAsset(
       { filename: 'a.png', alt: 'x', data: png(5) },
       withMedia(
@@ -524,7 +486,6 @@ describe('update_asset', () => {
     )
     expect([updated.outcome, updated.asset?.alt]).toEqual(['updated', 'The new alt'])
     expect([unchanged.outcome, theirs.outcome]).toEqual(['unchanged', 'not_found'])
-    // The catalog itself changes the asset of the site it is given, never another's.
     expect(await d1Catalog(env.DB).updateAlt(other.tenant.key, id, 'Stolen')).toBe(null)
     expect((await d1Catalog(env.DB).byId(world.tenant.key, id))?.alt).toBe('The new alt')
     expect(read.entry?.html).toContain('alt="The new alt"')
@@ -577,14 +538,12 @@ describe('asset references in reads', () => {
     expect(JSON.stringify(reader.entry?.document)).not.toContain('asset:')
     expect(JSON.stringify(reader.entry?.document)).toContain(url)
     expect(reader.entry?.html).toContain(`src="${url}"`)
-    // Whoever reads the HTML gets the copies and the size of each image, MCP as a site.
     for (const html of [head.entry?.html, reader.entry?.html]) {
       expect(html).toContain(`srcset="${srcset}"`)
       expect(html).toContain('sizes="(min-width: 1600px) 1600px, 100vw"')
       expect(html).toContain('width="1600" height="900"')
     }
     expect(JSON.stringify(reader.entry?.document)).toContain(`"srcset":"${srcset}"`)
-    // The cover of the frontmatter, by its URL, for a site; nothing for an agent.
     expect(reader.entry?.images).toEqual({
       [url]: { width: 1600, height: 900, srcset, alt: 'Cover' },
     })
@@ -595,7 +554,6 @@ describe('asset references in reads', () => {
       url,
     ])
 
-    // A site's preview of a draft reads the head revision, as a reader: URLs too.
     const preview = await agent({ ...withMedia(world.context(), media), reader: true }).getEntry({
       ...key,
       formats: ['document'],
@@ -603,7 +561,6 @@ describe('asset references in reads', () => {
     expect(preview.entry?.frontmatter['cover']).toBe(url)
     expect(JSON.stringify(preview.entry?.document)).not.toContain('asset:')
 
-    // Lists and translations of the published site, against what an agent lists.
     const site = agent(withMedia(world.context({ view: 'published' }), media))
     const listed = await site.listEntries({ collection: 'blog', locale: 'en' })
     const mine = await agent(withMedia(world.context(), media)).listEntries({

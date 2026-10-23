@@ -3,16 +3,8 @@ import { registerBuiltIn } from './registry.ts'
 import { count, isRecord, quote } from './text.ts'
 import type { Contract, ContractContext, ContractFinding, Severity } from './types.ts'
 
-/**
- * The generic rules of the catalog (ADR-033): what a site asks of its entries without writing
- * code, each one data with parameters. A rule reads a field of the frontmatter by its name, at
- * the top of it; one that is absent or of another type is the schema's to report, so the rule
- * passes it.
- */
-
 interface RuleOptions {
   readonly severity?: Severity
-  /** The id of the contract, when a collection has this rule twice: `field-length` otherwise. */
   readonly id?: string
 }
 
@@ -20,7 +12,6 @@ export interface FieldLengthParams {
   readonly field: string
   readonly min?: number
   readonly max?: number
-  /** A field whose presence lifts the rule: a title may be long when a `seoTitle` is given. */
   readonly unless?: string
 }
 
@@ -30,13 +21,11 @@ function present(frontmatter: unknown, field: string): unknown {
 
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 
-/** The length of a value as a reader counts it: characters of a text (an emoji is one), items of a list. */
 function lengthOf(value: unknown): number | undefined {
   if (typeof value === 'string') return [...GRAPHEMES.segment(value)].length
   return Array.isArray(value) ? value.length : undefined
 }
 
-/** A text, or a list, of a field has between `min` and `max` characters or items. */
 export function fieldLength(
   params: FieldLengthParams,
   options: RuleOptions = {},
@@ -87,13 +76,10 @@ export function fieldLength(
 
 export interface FieldPatternParams {
   readonly field: string
-  /** A regular expression (Unicode) the whole text must match. */
   readonly pattern: string
-  /** What the pattern asks for, in words: `a slug of lowercase words`. */
   readonly description: string
 }
 
-/** A text field matches a pattern. */
 export function fieldPattern(
   params: FieldPatternParams,
   options: RuleOptions = {},
@@ -125,7 +111,6 @@ export interface RequiredToPublishParams {
   readonly fields: readonly string[]
 }
 
-/** Fields a draft may lack and a published entry must have, with something in them. */
 export function requiredToPublish(
   params: RequiredToPublishParams,
   options: RuleOptions = {},
@@ -157,7 +142,6 @@ export function requiredToPublish(
 
 export interface BannedWordsParams {
   readonly words: readonly string[]
-  /** Why the words are out, for the fix: `the brand is spelled Hollware`. */
   readonly reason?: string
 }
 
@@ -165,7 +149,6 @@ function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Words that may appear neither in a text field of the frontmatter nor in the body. */
 export function bannedWords(
   params: BannedWordsParams,
   options: RuleOptions = {},
@@ -230,11 +213,6 @@ export function referencedSlugs(value: unknown): string[] {
     : []
 }
 
-/**
- * A field refers to entries of another collection by their slug: `author: ada` names the entry
- * `ada` of `authors`. When writing, each must exist; to publish, each must be published, so a page
- * never shows a reference to nothing. `get_entry` with `references` reads them.
- */
 export function reference(params: ReferenceParams, options: RuleOptions = {}): Contract<unknown> {
   const where = params.locale === undefined ? '' : ` in ${params.locale}`
   return registerBuiltIn(

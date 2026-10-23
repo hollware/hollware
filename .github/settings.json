@@ -1,5 +1,4 @@
 {
-  "$comment": "What the settings of hollware/hollware on GitHub are, which nothing in a workflow can set (T-91 of docs/security/threat-model.md). scripts/repo-settings.ts compares them with GitHub every week (security.yml), and fails when they drift. Change a setting on GitHub and here together.",
   "rulesets": [
     {
       "name": "main",
@@ -33,7 +32,13 @@
     }
   ],
   "environments": [
-    { "name": "deploy", "branches": ["main", "release"] },
-    { "name": "npm", "branches": ["release"] }
+    {
+      "name": "deploy",
+      "branches": ["main", "release"]
+    },
+    {
+      "name": "npm",
+      "branches": ["release"]
+    }
   ]
 }

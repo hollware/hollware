@@ -1,24 +1,10 @@
 import { isMap, mapEntry, plain, readYaml } from '../support/yaml.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `patches`: a dependency patch is explained and tested.
- *
- * When `pnpm-workspace.yaml` has `patchedDependencies`, each patch file exists, starts with a
- * `PATCHED (<reason>)` line that says why the dependency is patched, and is mentioned by at
- * least one test file, so that something fails when the patch stops applying or stops being
- * needed. Test files of the guards themselves (`tests/guards`, `tests/conventions`,
- * `tests/meta`, `tests/support`) do not count. A `.patch` file that `patchedDependencies`
- * does not list is reported, because it looks applied and is not. Today there are none.
- */
-
 export interface PatchesInput {
   workspace: TextFile
-  /** The text of a repository file, or `undefined` when it does not exist. */
   readPatch: (path: string) => string | undefined
-  /** The test files of the repository, with their text. */
   testFiles: readonly TextFile[]
-  /** Every `.patch` file of the repository. */
   patchFiles: readonly string[]
 }
 

@@ -5,24 +5,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { checkPersonalToken, recordTokenUse, type TokenCheck } from '../../src/auth/token.ts'
 import { newSite, readUse, seedToken } from './support.ts'
 
-// Fails when: checkPersonalToken (src/auth/token.ts) accepts a token that is unknown, of another
-// site (the `site_id` of LOOKUP), revoked (`revoked_at`) or expired (`hasExpired`, at the instant of
-// the expiry and after it, in any ISO spelling, and when it cannot be read), or looks a string up
-// that has not the shape of a token; hands out scopes other than the token's own intersected with
-// the role of its user as of now (`effectiveScopes`); starts or skips the write of `last_used_at`
-// when it should not (the hour in `recent`), or lets that write reject; and recordTokenUse writes
-// when `last_used_at` is within the hour (its `UPDATE`'s condition), writes a token of another
-// site (its `site_id`), or stops moving `updated_at` with it; or a read token stops being a read
-// principal with `content:read` alone, or a token whose prefix and row disagree on its kind is
-// accepted. D1 is the real thing, migrated.
-
 const NOW = new Date('2026-10-12T18:30:00.000Z')
 
 function at(site: string, now: Date = NOW) {
   return { sites: new Set([site]), now }
 }
 
-/** Waits for the write of `last_used_at` that a check starts, so that no test leaves a query behind. */
 async function settle(check: TokenCheck): Promise<void> {
   if (check.ok && check.touch !== null) await check.touch
 }
@@ -93,7 +81,6 @@ describe('checkPersonalToken: who the token is', () => {
     expect(asked).toEqual({ ok: false, reason: 'unknown' })
     expect(asked).toEqual(await checkPersonalToken(env.DB, generatePersonalToken(), at(home)))
     expect(await readUse(env.DB, theirs.tokenId)).toMatchObject({ last_used_at: null })
-    // Each token is fine in its own site.
     const own = await checkPersonalToken(env.DB, mine.token, at(home))
     expect(own).toMatchObject({ ok: true, principal: { site: home, tokenId: mine.tokenId } })
     const theirOwn = await checkPersonalToken(env.DB, theirs.token, at(stranger))
@@ -129,7 +116,6 @@ describe('checkPersonalToken: read tokens', () => {
 
   it('refuses a token whose prefix is not the kind of its row, as unknown', async () => {
     const site = newSite()
-    // A personal token stored as a read token, and a read token stored as a personal one.
     const personalAsRead = await seedToken(env.DB, site, {
       read: true,
       secret: generatePersonalToken(),
@@ -181,7 +167,6 @@ describe('checkPersonalToken: a token that stopped working', () => {
     })
   })
 
-  // NOW is 2026-10-12T18:30:00.000Z. A token is expired at the instant of its expiry and after it.
   it.each([
     ['a millisecond after now', '2026-10-12T18:30:00.001Z', 'ok'],
     ['the instant of now', '2026-10-12T18:30:00.000Z', 'expired'],
@@ -277,14 +262,12 @@ describe('checkPersonalToken: last_used_at', () => {
     await settle(first)
     expect(await lastUsed()).toBe('2026-10-12T18:30:00.000Z')
 
-    // 59 minutes and 59.999 seconds later, and exactly an hour later: nothing to write.
     for (const iso of ['2026-10-12T19:29:59.999Z', '2026-10-12T19:30:00.000Z']) {
       const within = await checkAt(iso)
       expect(within).toMatchObject({ ok: true, touch: null })
       expect(await lastUsed()).toBe('2026-10-12T18:30:00.000Z')
     }
 
-    // A millisecond past the hour it is written again, and the hour starts over.
     const after = await checkAt('2026-10-12T19:30:00.001Z')
     expect(after).toMatchObject({ ok: true, touch: expect.any(Promise) })
     await settle(after)
@@ -298,7 +281,6 @@ describe('checkPersonalToken: last_used_at', () => {
     const site = newSite()
     const seeded = await seedToken(env.DB, site)
     const trigger = `refuse_touch_${crypto.randomUUID().replaceAll('-', '')}`
-    // A real failure of the real database: only this token's updates are refused.
     await env.DB.prepare(
       `CREATE TRIGGER ${trigger} BEFORE UPDATE ON tokens WHEN OLD.id = '${seeded.tokenId}'
         BEGIN SELECT RAISE(ABORT, 'test: the update is refused'); END`,
@@ -337,14 +319,11 @@ describe('recordTokenUse', () => {
     }
     expect(await readUse(env.DB, seeded.tokenId)).toEqual(written)
 
-    // Within the hour, and exactly an hour later, the condition of the UPDATE leaves the row as it
-    // is: the same boundary as the check's, which does not start the write at all.
     await record('2026-10-12T19:29:59.999Z')
     expect(await readUse(env.DB, seeded.tokenId)).toEqual(written)
     await record('2026-10-12T19:30:00.000Z')
     expect(await readUse(env.DB, seeded.tokenId)).toEqual(written)
 
-    // Long after, but for another site: its token is not this one.
     await record('2026-10-12T21:00:00.000Z', `other-${site}`)
     expect(await readUse(env.DB, seeded.tokenId)).toEqual(written)
 

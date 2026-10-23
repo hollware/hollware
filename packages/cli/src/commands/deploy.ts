@@ -29,7 +29,6 @@ export const DEPLOY_USAGE = [
   '  --help       Show this help',
 ].join('\n')
 
-/** "Run wrangler login" only when wrangler says so: another failure has nothing to do with it. */
 function loginHint(result: { stdout: string; stderr: string }): string {
   return /not logged in|log ?in|authenticat|oauth|api token/i.test(
     `${result.stdout}\n${result.stderr}`,
@@ -38,11 +37,6 @@ function loginHint(result: { stdout: string; stderr: string }): string {
     : ''
 }
 
-/**
- * `wrangler types` after deploy rewrote wrangler.jsonc: the types of the Worker hold the value of
- * HOLLWARE_PUBLIC_URL, and `wrangler types --check` fails on the old one. A project without the
- * generated file has nothing to keep current.
- */
 async function regenerateTypes(io: Io): Promise<void> {
   if (!existsSync(join(io.cwd, 'worker-configuration.d.ts'))) return
   const typed = await io.wrangler(['types'])
@@ -52,22 +46,18 @@ async function regenerateTypes(io: Io): Promise<void> {
   io.out('Wrote worker-configuration.d.ts again, for the new wrangler.jsonc.')
 }
 
-/** The workers.dev URL that `wrangler deploy` prints, or `undefined`. */
 export function workersDevUrlOf(stdout: string): string | undefined {
-  // The host ends at workers.dev: `….workers.dev.evil.example` is another host.
   const match = /https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.workers\.dev(?![\w.-])/i.exec(
     stripAnsi(stdout),
   )
   return match === null ? undefined : new URL(match[0]).origin
 }
 
-/** Whether a URL is this machine's: the one `pnpm dev` serves, which no deploy answers at. */
 function isLoopback(url: string): boolean {
   const { hostname } = new URL(url)
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
 }
 
-/** The host of a public URL on a domain of its own: neither this machine nor workers.dev. */
 export function customDomainOf(url: string): string | undefined {
   if (isLoopback(url)) return undefined
   const { hostname } = new URL(url)
@@ -75,13 +65,8 @@ export function customDomainOf(url: string): string | undefined {
 }
 
 const ROUTES_KEY = /^\s*"routes"\s*:/m
-/** The first key of the starter's wrangler.jsonc, at the top level of the object. */
 const TOP_LEVEL_NAME = /^ {2}"name"\s*:\s*"[^"\n]*",[^\n]*\n/m
 
-/**
- * `wrangler.jsonc` with a route that serves the Worker at `host` as a custom domain, after its
- * `name`, and everything else as it was. A config with routes of its own is left as it is.
- */
 export function withCustomDomain(text: string, host: string): string {
   if (ROUTES_KEY.test(text)) return text
   if (!TOP_LEVEL_NAME.test(text)) {
@@ -99,10 +84,6 @@ export function withCustomDomain(text: string, host: string): string {
 
 const PUBLIC_URL_VALUE = /("HOLLWARE_PUBLIC_URL"\s*:\s*)"[^"\n]*"/
 
-/**
- * `wrangler.jsonc` with `HOLLWARE_PUBLIC_URL` set to `url`, and everything else as it was: its
- * comments, its order and its spacing. It changes the one string and nothing around it.
- */
 export function withPublicUrl(text: string, url: string): string {
   if (!PUBLIC_URL_VALUE.test(text)) {
     throw new CliError(
@@ -112,7 +93,6 @@ export function withPublicUrl(text: string, url: string): string {
   return text.replace(PUBLIC_URL_VALUE, (_match, key: string) => `${key}${JSON.stringify(url)}`)
 }
 
-/** Migrates the remote database when it is there already; `false` when wrangler finds none. */
 async function migrateIfThere(io: Io, database: string): Promise<boolean> {
   const listed = await io.wrangler(['d1', 'migrations', 'list', database, '--remote'])
   if (listed.code !== 0) return false
@@ -152,7 +132,6 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   const domain = known === undefined ? undefined : customDomainOf(known)
   let written = configured
   if (known !== undefined && domain !== undefined) {
-    // A domain of its own is known before the first deploy, which then serves it at once.
     const before = readFileSync(file, 'utf8')
     const withUrl = known === configured ? before : withPublicUrl(before, known)
     const after = withCustomDomain(withUrl, domain)
@@ -171,9 +150,6 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
     written = known
   }
 
-  // An upgrade migrates before it deploys: the Worker that serves keeps working on migrations,
-  // which only add, and the new one never serves a database that lacks its tables. A first deploy
-  // has no remote database until wrangler creates it, so it migrates after.
   const deployedBefore = configured !== undefined && !isLoopback(configured)
   const migratedFirst = deployedBefore && (await migrateIfThere(io, database))
 
@@ -217,14 +193,8 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   return 0
 }
 
-/** The Worker secret that seals the secrets Hollware makes for the structure (ADR-033). */
 export const MASTER_SECRET = 'HOLLWARE_SECRET'
 
-/**
- * Gives the Worker its `HOLLWARE_SECRET` when it has none: 32 random bytes in hex, through a file
- * that only the user may read, deleted at once, so the value is never printed nor kept. One the
- * Worker has is left as it is: a new one would leave the sealed secrets unopenable.
- */
 export async function ensureMasterSecret(io: Io): Promise<void> {
   const listed = await io.wrangler(['secret', 'list'])
   if (listed.code !== 0) {

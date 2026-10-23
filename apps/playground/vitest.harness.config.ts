@@ -6,7 +6,6 @@ export default defineConfig({
     include: ['test/harness/**/*.test.ts'],
     environment: 'node',
     globalSetup: ['test/harness/build-workers.global-setup.ts'],
-    // Building two projects and starting two Workers happens before the first assertion.
     hookTimeout: 60_000,
     testTimeout: 30_000,
   },

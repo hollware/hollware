@@ -1,17 +1,7 @@
 import type { TextFile, Violation } from './types.ts'
 import { actionRepository, allUses, parseWorkflow } from './workflow-model.ts'
 
-/**
- * Guard `workflow-pinning`: every `uses:` of every workflow is
- * `owner/repo[/subpath]@<40-character commit SHA> # vX.Y.Z`. A tag or a branch can be moved
- * after review, a commit cannot; the comment says which release the commit is. An action used
- * in several places is pinned to the same commit with the same comment everywhere, because
- * bumping an action replaces them all at once (`.github/AGENTS.md`). Local actions and
- * `docker://` images are not accepted: nothing pins them.
- */
-
 export interface WorkflowPinningInput {
-  /** The `.github/workflows/*.yml` files. */
   workflows: readonly TextFile[]
 }
 

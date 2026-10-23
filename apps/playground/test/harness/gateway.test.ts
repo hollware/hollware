@@ -8,17 +8,6 @@ import {
   retryingLostConnection,
 } from './workers.ts'
 
-// Fails when: the gateway of the built Hollware Worker (packages/server/src/http, src/auth) stops
-// answering what AC-0.1-6 says, as the Worker runs outside the test runner of the server: a request
-// for another Host (403 `forbidden_host`) or with another Origin (403 `forbidden_origin`) is
-// answered before its token is even looked at, so a valid token does not open it; a request with
-// no token (401 `unauthorized` with the Bearer challenge), or with one that is not Hollware's
-// (401 with `invalid_token`), is refused; and a deployment that forgot HOLLWARE_PUBLIC_URL answers
-// 500 `misconfigured` to everything, `/health` included; the OAuth server stops publishing its
-// metadata, or stops taking metadata documents of clients, which it does only with the
-// `global_fetch_strictly_public` flag of the built config, or lets clients register themselves. A valid token still works, so none of the
-// refusals is an accident of the setup.
-
 const server = createPlaygroundHarness()
 let agent: Agent
 let token: string
@@ -118,8 +107,6 @@ describe('the built Hollware Worker', () => {
       authorization: 'Bearer hw_pat_not-one-of-ours',
     })
 
-    // With the body, and workerd's own log, so that a 500 in CI says which one it is (seen in CI
-    // since 2026-10-17, never locally).
     if (response.status !== 401) server.debug()
     expect([response.status, response.status === 401 ? '' : await response.clone().text()]).toEqual(
       [401, ''],
@@ -146,8 +133,6 @@ describe('the OAuth server of the built Worker', () => {
 })
 
 describe('a deployment without HOLLWARE_PUBLIC_URL', () => {
-  // Made when its tests start, not when the file is read: a harness made then ran next to the one
-  // above while its tests ran, and a request of theirs lost its connection (CI, 2026-10-17).
   let alone: ReturnType<typeof createHarnessWithoutPublicUrl>
 
   beforeAll(async () => {

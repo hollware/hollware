@@ -17,14 +17,6 @@ import {
   wire,
 } from './support.ts'
 
-// Fails when: `createHollwareWith` stops resolving the config when it is called, so that a broken
-// config throws its `ConfigError` (with its path, its message and its fix) at startup, and not at
-// the first request, or at all; stops returning the `fetch` and the `Hollware` class of the Worker
-// and nothing else; makes `fetch` depend on being called as a method of the object (a Worker
-// writes `export default { fetch: hollware.fetch }`); or stops giving the Worker the system clock
-// when none is passed, read at each request and not once at startup (a token's expiry is judged by
-// it); or stops serving every site of the config, each to the tokens of that site.
-
 const collection = defineCollection({
   schema: z.object({ title: z.string().min(1) }),
   routes: { en: '/blog/:slug/' },

@@ -5,13 +5,6 @@ import type { Principal } from '../../src/auth/types.ts'
 import { agent as agentFor, warmUpComark } from './support.ts'
 import { createPost, newWorld, type World } from './world.ts'
 
-// Fails when: request_review (src/ops/reviews.ts) publishes for a caller that holds
-// content:publish, instead of asking for a review after the same checks as publish; or
-// comment_review (src/ops/reviews.ts, src/db/reviews.ts) stops adding a comment to a
-// pending review in the caller's name, with the name its client gave, or adds one to a review
-// that was decided or that does not exist, or to a review of another site; or list_reviews stops
-// answering each review with its comments, oldest first.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -28,7 +21,6 @@ function writer(world: World): Principal {
   }
 }
 
-/** A pending review of an English post, asked by a writer, and the writer's agent. */
 async function pending(world: World) {
   const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
   await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })
@@ -102,7 +94,6 @@ describe('request_review', () => {
     const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
     await createPost(world, { slug: 'guia-de-cache', locale: 'es', group: 'edge-caching-guide' })
 
-    // world.agent holds content:publish.
     const answer = await world.agent.requestReview({ id: en.id, version: en.version })
     const entry = await world.agent.getEntry({
       collection: 'blog',

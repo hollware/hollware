@@ -1,11 +1,3 @@
-/**
- * The JSON Schema of a collection's frontmatter as a list of fields a person edits (ADR-033), and
- * back. What the form knows of a field (its kind, bounds, choices, description, whether it is
- * required) it writes; everything else the schema says (a pattern, a format, a keyword of its
- * own, the keywords of the whole object) is kept as it was. A field whose kind changes starts
- * over as a schema of its new kind.
- */
-
 import type { AutomaticKind } from '@hollware/core'
 import type { Messages } from '../i18n/en.ts'
 
@@ -27,19 +19,15 @@ export interface BuilderField {
   kind: BuilderKind
   required: boolean
   description: string
-  /** Characters of a text, items of a list, or the value of a number. */
   min: number | null
   max: number | null
-  /** The values of a choice. */
   options: string[]
-  /** The field's schema as it was read, and the kind it had: what is kept. */
   readonly original: Json
   readonly originalKind: BuilderKind | null
 }
 
 export interface BuilderSchema {
   fields: BuilderField[]
-  /** The keywords of the whole object besides its fields: `additionalProperties`, `$schema`… */
   readonly rest: Json
 }
 
@@ -51,7 +39,6 @@ function numberOr(value: unknown): number | null {
   return typeof value === 'number' ? value : null
 }
 
-/** The kind of a field's schema, as the form shows it. */
 export function kindOf(schema: Json): BuilderKind {
   if (Array.isArray(schema['enum']) && schema['enum'].every((value) => typeof value === 'string')) {
     return 'choice'
@@ -74,7 +61,6 @@ export function kindOf(schema: Json): BuilderKind {
   }
 }
 
-/** The bounds keywords of a kind: what `min` and `max` mean for it. */
 function boundsOf(kind: BuilderKind): readonly [string, string] | null {
   switch (kind) {
     case 'text':
@@ -113,7 +99,6 @@ export function fieldsFromSchema(schema: Json): BuilderSchema {
   return { fields, rest }
 }
 
-/** A field's schema for a kind, from nothing. */
 function freshSchema(kind: BuilderKind): Json {
   switch (kind) {
     case 'text':
@@ -166,7 +151,6 @@ export function schemaFromFields(builder: BuilderSchema): Json {
   }
 }
 
-/** A new field of a kind, to add to the list. */
 export function newField(key: string, kind: BuilderKind): BuilderField {
   return {
     key,
@@ -181,7 +165,6 @@ export function newField(key: string, kind: BuilderKind): BuilderField {
   }
 }
 
-/** What is wrong with the fields, for the form to say before anything is sent. */
 export function problemsOf(
   fields: readonly BuilderField[],
   text: Messages['collection']['problems'],
@@ -204,7 +187,6 @@ export function problemsOf(
   return problems
 }
 
-/** What Hollware can fill in a field of a kind: dates in a date, counts in a number. */
 export function automaticChoices(kind: BuilderKind): readonly AutomaticKind[] {
   switch (kind) {
     case 'date':
@@ -218,11 +200,6 @@ export function automaticChoices(kind: BuilderKind): readonly AutomaticKind[] {
   }
 }
 
-/**
- * The fields Hollware fills, as the collection is saved: only fields that are still there, of a
- * kind that takes what Hollware fills them with. A field renamed or of another kind is written
- * by hand again.
- */
 export function automaticOf(
   fields: readonly BuilderField[],
   automatic: Readonly<Record<string, AutomaticKind>>,

@@ -1,17 +1,3 @@
-// Fails when:
-// - "reads <collection>/<locale>/<slug>.md and sorts the entries": `readCorpus` stops reading the
-//   three-level layout, takes another part of the path for the collection, the locale or the
-//   slug, or stops sorting by collection, locale and slug.
-// - "reports a Markdown file elsewhere as skipped": a `.md` at another depth is imported, or is
-//   dropped without being reported.
-// - "ignores what is not Markdown, hidden, or a symbolic link": a non-`.md` file, a hidden file
-//   or folder, or a symbolic link (which could lead out of the directory) is read.
-// - "reports a slug that is not a slug as a problem": a bad slug is imported or skipped
-//   silently.
-// - "reports bytes that are not UTF-8 as a problem": invalid UTF-8 is decoded with replacement
-//   characters instead of being refused.
-// - "keeps the byte order mark and the line ends of a file": the text is trimmed, decoded
-//   without `ignoreBOM`, or its line ends are changed.
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'

@@ -1,5 +1,5 @@
 /**
- * Personal tokens (ADR-019): `hw_pat_` and 52 characters of lowercase Crockford base 32, which
+ * Personal tokens: `hw_pat_` and 52 characters of lowercase Crockford base 32, which
  * carry 260 random bits. The CLI makes a token and prints it once. The server never stores it:
  * it keeps the SHA-256 of the whole token, in hex, and finds a presented token by that hash. The
  * row of a token has an id of its own (`tok_…`, see `ids.ts`), its scopes and its expiry.

@@ -1,7 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
 
-/** Where the Worker is, and the owner's setup link, from the global setup. */
 export function target(): { url: string; setup: string } {
   const url = process.env['HOLLWARE_E2E_URL']
   const setup = process.env['HOLLWARE_E2E_SETUP']
@@ -9,10 +8,6 @@ export function target(): { url: string; setup: string } {
   return { url, setup }
 }
 
-/**
- * A passkey device for the page: Chromium's virtual authenticator (CDP), which keeps the
- * credentials it makes and says yes when asked, as a person's device does after Touch ID.
- */
 export async function passkeyDevice(page: Page): Promise<void> {
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('WebAuthn.enable')
@@ -28,7 +23,6 @@ export async function passkeyDevice(page: Page): Promise<void> {
   })
 }
 
-/** Sets up a passkey through a link, as a person does on the setup page, and lands in the admin. */
 export async function setUp(page: Page, link: string, name: string): Promise<void> {
   await passkeyDevice(page)
   await page.goto(link)
@@ -38,10 +32,6 @@ export async function setUp(page: Page, link: string, name: string): Promise<voi
   await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
 }
 
-/**
- * What axe does not look at, each with why. The list only shrinks: a page of the admin that needs
- * an entry here needs a reason a reviewer accepts.
- */
 export const AXE_EXCLUDED: readonly { readonly selector: string; readonly reason: string }[] = [
   {
     selector: '[role="region"][aria-label^="Notifications"] > span[aria-hidden="true"]',
@@ -50,7 +40,6 @@ export const AXE_EXCLUDED: readonly { readonly selector: string; readonly reason
   },
 ]
 
-/** Axe finds nothing serious or critical on the page (AC-0.3-4). */
 export async function expectAccessible(page: Page): Promise<void> {
   let builder = new AxeBuilder({ page })
   for (const { selector } of AXE_EXCLUDED) builder = builder.exclude(selector)
@@ -69,7 +58,6 @@ export async function expectAccessible(page: Page): Promise<void> {
   expect(blocking).toEqual([])
 }
 
-/** Replaces the Markdown in the editor, as a person who selects all and types does. */
 export async function writeMarkdown(page: Page, markdown: string): Promise<void> {
   const editor = page.locator('.cm-content').first()
   await editor.click()
@@ -77,7 +65,6 @@ export async function writeMarkdown(page: Page, markdown: string): Promise<void>
   await page.keyboard.insertText(markdown)
 }
 
-/** A post the blog of the playground takes, with no links, so it has nothing to warn about. */
 export function post(title: string, group: string): string {
   return [
     '---',
@@ -96,10 +83,6 @@ export function post(title: string, group: string): string {
   ].join('\n')
 }
 
-/**
- * A screenshot of the page, full length, into the directory of HOLLWARE_SCREENSHOTS when it is
- * set, to look at the admin by eye; nothing otherwise.
- */
 export async function shot(page: Page, name: string): Promise<void> {
   const directory = process.env['HOLLWARE_SCREENSHOTS']
   if (directory === undefined || directory === '') return

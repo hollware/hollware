@@ -4,11 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 
-// Fails when: a file in .github/ISSUE_TEMPLATE is not valid YAML or breaks GitHub's issue-form
-// schema (name, description, body; element types, attributes and validations; unique ids and
-// labels; markdown without an id), config.yml allows blank issues, or a form stops asking for
-// what CONTRIBUTING.md says it asks for.
-
 const input = (label: string, extra: Record<string, unknown> = {}) => ({
   type: 'input',
   id: label,

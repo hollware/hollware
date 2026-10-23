@@ -4,13 +4,6 @@ import { entrySummary, type EntrySummary } from './answers.ts'
 import { readsUrls } from './assets.ts'
 import type { OperationContext } from './types.ts'
 
-/*
- * The fields Hollware fills itself (`automaticFields` of a collection, core's `automatic.ts`): a
- * site reads them filled, an agent over MCP reads what was written, and `get_entry` answers their
- * values apart, for an export that writes what a site reads.
- */
-
-/** The values of the fields the collection fills, for the revision of a view; none when it fills none. */
 export function automaticValues(
   context: Pick<OperationContext, 'site'>,
   view: EntrySummaryView,
@@ -33,7 +26,6 @@ export function automaticValues(
   )
 }
 
-/** The summary of an entry as the call reads it: for a site, with the fields Hollware fills. */
 export function summaryFor(
   context: Pick<OperationContext, 'site' | 'view' | 'reader'>,
   view: EntrySummaryView,

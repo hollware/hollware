@@ -1,16 +1,7 @@
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `advisory-url`: every place that sends a reporter to GitHub's private vulnerability
- * reporting sends them to the same address. `SECURITY.md`, the issue chooser
- * (`.github/ISSUE_TEMPLATE/config.yml`) and the bug form (`bug_report.yml`) each hold the
- * address of the project, and no other advisory address appears in them.
- */
-
 export interface AdvisoryUrlInput {
-  /** The three files, with their text. */
   files: readonly TextFile[]
-  /** The address every one of them must hold. */
   expected: string
 }
 

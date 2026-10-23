@@ -1,8 +1,3 @@
-/**
- * Reads JSON with comments, the format of `wrangler.jsonc`: `//` and `/* *\/` comments and a
- * comma before a closing bracket are dropped, and a comment marker inside a string is left
- * alone. It does nothing else: whatever `JSON.parse` rejects after that is an error.
- */
 export function parseJsonc(text: string): unknown {
   return JSON.parse(stripJsonc(text))
 }
@@ -53,7 +48,6 @@ function stripJsonc(text: string): string {
   return dropTrailingCommas(out)
 }
 
-/** Drops a comma that only whitespace separates from a closing bracket, outside strings. */
 function dropTrailingCommas(code: string): string {
   let out = ''
   let inString = false

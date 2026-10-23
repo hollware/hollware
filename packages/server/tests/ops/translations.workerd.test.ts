@@ -4,12 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, newWorld, type World } from './world.ts'
 
-// Fails when: a translation (an entry of a group in another locale than the site's default, es
-// here) stops being told outdated once its source changed after it was saved, or stays outdated
-// once it is saved again; or one written before its source is called outdated; or the entries in
-// the default locale get the flag (src/ops/translations.ts, list_entries, get_entry,
-// get_translations).
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -61,7 +55,6 @@ describe('an outdated translation', () => {
       { es: undefined, en: true },
       { es: undefined, en: false },
     ])
-    // The source of the group is its entry in es, and none other: its first and its head revision.
     expect(
       await world.store.sourceHeadTimes(world.tenant.key, 'es', [
         { collection: 'blog', group: 'pair' },

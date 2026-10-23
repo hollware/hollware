@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { fuse } from '../../src/ops/semantic-search.ts'
 import type { EntrySummaryView, SearchHit } from '../../src/ports.ts'
 
-// Fails when: reciprocal rank fusion (fuse, src/ops/semantic-search.ts) stops adding up an entry's
-// 1 / (60 + place) over every list it is in, stops keeping the snippet of the first list that has
-// it, or stops keeping to the limit.
-
 function hit(id: string, snippet: string): SearchHit {
   const entry: EntrySummaryView = {
     entry: {
@@ -43,7 +39,6 @@ describe('fuse', () => {
 
     const fused = fuse([words, meaning], 10)
 
-    // b: 1/62 + 1/62; a: 1/61; c: 1/61.
     expect(fused.map((one) => [one.entry.entry.id, one.snippet, one.score])).toEqual([
       ['b', 'b by words', 2 / 62],
       ['a', 'a by words', 1 / 61],

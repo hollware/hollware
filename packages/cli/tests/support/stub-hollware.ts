@@ -26,26 +26,8 @@ import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
-/**
- * A stand-in for a running Hollware, for the tests of `import` and `export`: an MCP server built
- * with `@modelcontextprotocol/server`, served over HTTP on a random local port, whose seven tools
- * (`describe_site`, `list_entries`, `get_entry`, `create_draft`, `update_draft`, `validate`,
- * `publish`) keep state and use the input and output schemas of the real operation specs. It stands in for the Worker of
- * `packages/server`, which this package does not own, and it follows what the specs and the
- * plan say: a draft is saved at version 1, an update at the version read saves a new
- * revision or answers `unchanged` for the same Markdown, a stale version is a `conflict`,
- * every change of an entry (a publish too) bumps its version, and a publish is `blocked` by
- * errors and needs the acknowledgement of warnings. `list_entries` leaves out the trash, filters
- * by locale and status, and pages with `nextCursor`; `get_entry` with `published` reads the
- * published revision, and answers `not_found` for an entry that is not published.
- *
- * Like the real server, it answers 401 to a missing or wrong bearer token, and 403 with an
- * `insufficient_scope` challenge naming the scopes a tool needs when the token lacks them.
- */
-
 export const STUB_TIME = '2026-10-12T12:00:00.000Z'
 
-/** Put this anywhere in a file and the stub reports a `comark-parse` violation. */
 export const COMARK_BREAK = '<<comark-break>>'
 
 export interface StubViolation {
@@ -69,21 +51,14 @@ export interface StubEntry {
   locale: string
   slug: string
   version: number
-  /** The Markdown of every revision, oldest first. */
   revisions: string[]
-  /** The index of the published revision, or `null`. */
   published: number | null
-  /** When the entry went to the trash; absent or `null` when it is not there. */
   deletedAt?: string | null
-  /** The verdict of the latest revision as it was written, which Hollware keeps with it. */
   written?: ReturnType<typeof writtenVerdict>
-  /** The frontmatter as written, which a summary answers; `{}` when absent. */
   frontmatter?: Record<string, unknown>
-  /** The values of the fields Hollware fills, which get_entry answers apart. */
   automatic?: Record<string, unknown>
 }
 
-/** The shape of a verdict the stub keeps with a revision. */
 function writtenVerdict(verdict: {
   ok: boolean
   phase: 'write' | 'publish'
@@ -96,49 +71,26 @@ function writtenVerdict(verdict: {
 
 export interface RecordedCall {
   tool: string
-  /** The arguments exactly as the CLI sent them. */
   args: Record<string, unknown>
 }
 
 export interface StubOptions {
-  /** The bearer token the stub accepts. */
   token: string
-  /** The scopes of that token. Every scope when absent. */
   scopes?: readonly Scope[]
-  /** The UTF-8 bytes beyond which a file is refused with `size-limit`. */
   maxBytes?: number
-  /** Other errors and warnings of a file: the contract errors that are saved with a draft. */
   findings?: (file: StubFile) => { errors?: StubViolation[]; warnings?: StubViolation[] }
-  /** Tools the server does not have: a call to one is answered with a protocol error. */
   without?: readonly string[]
-  /** Answers a tool call with words only, as a tool that fails does: `isError` and no outcome. */
   toolError?: (call: RecordedCall) => string | undefined
-  /** Runs before a tool call is handled, to change the state the way another writer would. */
   before?: (call: RecordedCall, entries: Map<string, StubEntry>) => void
-  /** Answers a request itself instead of the stub, to play a server that misbehaves. */
   respond?: (request: Request) => Response | undefined
-  /** What `describe_site` says. A site `blog` with the collection `blog` in `en` and `es` when absent. */
   site?: { key: string; locales: string[]; collections: string[] }
-  /** The most entries a page of `list_entries` holds, whatever limit is asked; the limit when absent. */
   pageSize?: number
-  /**
-   * The redirects of the site, as list_redirects answers them; without it the stub has no such
-   * tool, as a Hollware before 1.0 had not.
-   */
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
-  /** The backups list_backups answers; without it the stub has no such tool. */
   backups?: { date: string; bytes: number }[]
-  /**
-   * The analytics tools of 1.0.0-rc.7 (ADR-040): what connect_analytics answers for the call it
-   * gets; without it the stub has none of them, as a Hollware before had not. A `connected`
-   * answer makes get_analytics answer that connection, until disconnect_analytics.
-   */
   analytics?: (args: Record<string, unknown>) => { outcome: string; [field: string]: unknown }
-  /** Answers every `upload_asset` with `refused` and this problem, as Hollware refuses a file. */
   refuseUploads?: { message: string; fix: string }
 }
 
-/** An image of the stub's site: the file served, and the file as it was uploaded. */
 export interface StubAsset {
   id: string
   format: 'image/webp' | 'image/png' | 'image/svg+xml'
@@ -150,14 +102,10 @@ export interface StubAsset {
 }
 
 export interface StubServer {
-  /** `http://127.0.0.1:<port>`: the address to give `--url`. */
   url: string
   entries: Map<string, StubEntry>
-  /** The images of the site, by id. */
   assets: Map<string, StubAsset>
-  /** Every tool call, in order. */
   calls: RecordedCall[]
-  /** The `Authorization` header of every HTTP request, in order. */
   authorizations: (string | null)[]
   close: () => Promise<void>
 }
@@ -193,7 +141,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     createdAt: '2026-10-13T10:00:00.000Z',
   })
   const calls: RecordedCall[] = []
-  /** The analytics connection, kept across requests as the server keeps it in D1. */
   let connection: { outcome: string; [field: string]: unknown } | null = null
   const authorizations: (string | null)[] = []
   const granted = options.scopes ?? [
@@ -280,7 +227,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     ...(outcomes[output.outcome]?.isError === true ? { isError: true } : {}),
   })
 
-  /** Records the call, lets the test fail it or change the state, then runs the handler. */
   const guarded =
     <Args extends Record<string, unknown>>(tool: string, handler: (args: Args) => CallToolResult) =>
     (args: Args): CallToolResult => {
@@ -452,7 +398,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             })
           }
           const original = new Uint8Array(Buffer.from(args.data, 'base64'))
-          // As Hollware names an asset: by its site and its bytes (assetIdOf of @hollware/core).
           const bytes = createHash('sha256').update(original).digest('hex')
           const id = `ast_${createHash('sha256').update(`${site.key}:${bytes}`).digest('hex').slice(0, 26)}`
           const found = assets.get(id)
@@ -519,7 +464,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           outputSchema: listEntries.output,
         },
         guarded(listEntries.name, (args) => {
-          // Newest first, as Hollware lists them: the last created first.
           const matching = [...entries.values()]
             .reverse()
             .filter(
@@ -606,7 +550,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             return reply(updateDraft.outcomes, { outcome: 'refused', verdict })
           }
           if (entry.revisions.at(-1) === args.markdown) {
-            // As Hollware does: the verdict kept with the revision, from when it was written.
             return reply(updateDraft.outcomes, {
               outcome: 'unchanged',
               entry: summaryOf(entry),
@@ -638,8 +581,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         publish.name,
         { ...describe(publish), inputSchema: publish.input, outputSchema: publish.output },
         guarded(publish.name, (args) => {
-          // Like Hollware: without content:publish, one entry is asked for review, now, and a
-          // group or a time is refused (v0.3).
           const reviewOnly = !granted.includes('content:publish')
           if (reviewOnly && (args.group.length > 0 || args.publishAt !== undefined)) {
             return {
@@ -652,8 +593,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               isError: true,
             }
           }
-          // Like Hollware: the entry and its group, all or none, and the member that stops the
-          // group named in failedEntry when there is a group.
           const members = [{ id: args.id, version: args.version }, ...args.group]
           const named = args.group.length > 0
           const checked = []
@@ -740,7 +679,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     authorizations.push(request.headers.get('authorization'))
     const custom = options.respond?.(request)
     if (custom !== undefined) return custom
-    // The images, as a Hollware serves them: to anyone, and the originals to the token.
     const path = new URL(request.url).pathname
     const served = /^\/assets\/[^/]+\/(ast_[0-9a-f]{26})$/.exec(path)
     if (served !== null) {
@@ -824,7 +762,6 @@ export function startStub(options: StubOptions): Promise<StubServer> {
   })
 }
 
-/** The scopes the tool of a `tools/call` request needs, from the operation specs. */
 async function scopesNeeded(request: Request): Promise<readonly Scope[]> {
   if (request.method !== 'POST') return []
   try {

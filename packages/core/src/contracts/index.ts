@@ -1,8 +1,3 @@
-/**
- * Contracts (ADR-004, ADR-020): the shapes of a verdict, the runner that makes one, the built-in
- * contracts and the factories a config uses. `packages/core/src/index.ts` re-exports this.
- */
-
 export {
   BUILT_IN_CONTRACT_IDS,
   describeBuiltInContracts,

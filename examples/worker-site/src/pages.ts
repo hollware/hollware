@@ -1,12 +1,5 @@
 import { blogPath, LOCALES, type Locale } from './routes.ts'
 
-/**
- * The HTML of the site, as plain functions of data. Every value that came from Hollware is text of
- * an author, so it goes through `escapeHtml` on its way into a page. The one exception is the
- * body of an entry, which is HTML that `renderHtml` of @hollware/core made from the stored
- * document: it has kept out raw HTML, event handlers and unsafe URLs, whatever the document holds.
- */
-
 const NAMES: Readonly<Record<Locale, string>> = { es: 'Español', en: 'English' }
 
 const ESCAPES: Readonly<Record<string, string>> = {
@@ -17,18 +10,15 @@ const ESCAPES: Readonly<Record<string, string>> = {
   "'": '&#39;',
 }
 
-/** Text as HTML text or as the value of a quoted attribute. */
 export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (character) => ESCAPES[character] ?? character)
 }
 
-/** A link to the same content in another locale. */
 export interface Alternate {
   readonly locale: Locale
   readonly href: string
 }
 
-/** What a listing shows of an entry. */
 export interface Summary {
   readonly href: string
   readonly title: string
@@ -104,16 +94,12 @@ function summaryHtml(entry: Summary, locale: Locale): string {
 
 export interface ListingInput {
   readonly locale: Locale
-  /** The tag the listing is filtered by, or `''` for none. */
   readonly tag: string
   readonly entries: readonly Summary[]
-  /** The link to the next page, or `null` on the last one. */
   readonly nextHref: string | null
-  /** The index of every other locale. */
   readonly alternates: readonly Alternate[]
 }
 
-/** The blog index: published entries, newest first, one page of them. */
 export function listingPage(input: ListingInput): string {
   const { locale, tag, entries, nextHref, alternates } = input
   const heading = tag === '' ? 'Blog' : `Blog: ${tag}`
@@ -130,13 +116,10 @@ export interface EntryInput {
   readonly locale: Locale
   readonly title: string
   readonly description: string
-  /** HTML from `renderHtml`, printed as it is. */
   readonly body: string
-  /** The same entry in the other locales that publish it. */
   readonly translations: readonly Alternate[]
 }
 
-/** One published entry. */
 export function entryPage(input: EntryInput): string {
   const { locale, title, description, body, translations } = input
   const head = `<meta name="description" content="${escapeHtml(description)}">\n`
@@ -152,7 +135,6 @@ export function entryPage(input: EntryInput): string {
   return layout(locale, title, head, translations, `<article>\n${body}\n</article>${links}`)
 }
 
-/** A page that says what happened: a 404, a 400, a 502 or a 405. The navigation leads out of it. */
 export function messagePage(locale: Locale, title: string, text: string): string {
   return layout(locale, title, '', [], `<h1>${escapeHtml(title)}</h1>\n<p>${escapeHtml(text)}</p>`)
 }

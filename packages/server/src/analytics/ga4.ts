@@ -3,12 +3,6 @@ import { ranked } from './normalize.ts'
 import { isRecord, messageOf, ProviderError, request } from './request.ts'
 import { rowsFor, type Source, type SourceInput } from './source.ts'
 
-/*
- * Google Analytics 4 (ADR-040): `screenPageViews` by `pagePath` from the Data API, as a service
- * account that can view the property. Its JSON key signs a JWT (RS256, with Web Crypto) that
- * Google's token endpoint trades for an access token of `analytics.readonly`.
- */
-
 export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 export const GA4_DATA_API = 'https://analyticsdata.googleapis.com/v1beta'
 const SCOPE = 'https://www.googleapis.com/auth/analytics.readonly'
@@ -16,13 +10,11 @@ const SCOPE = 'https://www.googleapis.com/auth/analytics.readonly'
 const KEY_FIX =
   'Paste the JSON key of a Google Cloud service account: IAM, Service accounts, the account, Keys, Add key, JSON.'
 
-/** The parts of a service account's JSON key that sign. */
 export interface ServiceAccount {
   readonly clientEmail: string
   readonly privateKey: string
 }
 
-/** The service account of a JSON key, or an `invalid` error that says what is missing. */
 export function serviceAccountOf(credential: string): ServiceAccount {
   let parsed: unknown
   try {
@@ -50,7 +42,6 @@ function base64url(bytes: Uint8Array): string {
 
 const encoded = (value: unknown) => base64url(new TextEncoder().encode(JSON.stringify(value)))
 
-/** The JWT a service account sends to the token endpoint, signed with its key: valid one hour. */
 export async function signedAssertion(account: ServiceAccount, now: Date): Promise<string> {
   const der = Uint8Array.from(
     atob(account.privateKey.replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, '')),

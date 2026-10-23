@@ -14,14 +14,6 @@ import {
   type Overrides,
 } from './support.ts'
 
-// Fails when: the endpoint stops serving a 2026 client (discover, list, call) and a 2025 client
-// (initialize, list, call) inside workerd; a structured answer stops matching the output schema
-// the tool advertises, as the client's own validator checks it; a call stops being refused 403
-// when the token lacks its scope; `publish` stops asking a 2026 client the question over MRTR and
-// publishing with the warnings it accepts; `tools/list` stops being the same bytes on every call;
-// or the SDK stops choosing its Cloudflare Worker JSON Schema validator in workerd, where Ajv
-// cannot run because it needs to compile code.
-
 const TITLE = { contract: 'seo-title-length', path: '/frontmatter/title' }
 const ALT = { contract: 'image-alt', path: '/body' }
 
@@ -197,7 +189,6 @@ describe('the MCP endpoint in workerd', () => {
       required: ['a'],
     }
 
-    // Ajv compiles code and cannot do it in workerd; this is how @cfworker/json-schema words it.
     expect(fromJsonSchema(schema)['~standard'].validate({ a: 1 })).toEqual({
       issues: [
         {

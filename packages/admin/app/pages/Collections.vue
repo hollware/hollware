@@ -67,7 +67,6 @@ async function create() {
   )
 }
 
-/** How many fields a collection's schema declares. */
 function fieldCount(schema: Readonly<Record<string, unknown>>): number {
   const properties = schema['properties']
   return typeof properties === 'object' && properties !== null ? Object.keys(properties).length : 0

@@ -5,19 +5,6 @@ import { boot, SITE_KEY } from '../http/support.ts'
 import { CANNED } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
 
-// Fails when: the class a site reaches over a service binding (`Hollware`, `src/rpc/entrypoint.ts`)
-// stops being exactly the six methods of `HollwareRpc`: a seventh public member on it or on what it
-// inherits (anything on the prototype is callable by a Worker with the binding, and a writing
-// method must never be), or one of the four missing; stops handing each call to the operation of
-// its name with its arguments in the right order, over the environment the class was built with;
-// opens one session for several calls (a session is for one call); or stops being a class that the
-// user's Worker can extend as `export class Hollware extends hollware.Hollware {}`. The class is
-// instantiated here by hand; a real service binding is the playground harness's test.
-
-/**
- * Every name a Worker with the binding could call: own and inherited, up to `Object.prototype`.
- * Names are strings, which is all a call over RPC can name; the runtime's own symbols are not.
- */
 function callableNames(prototype: object | null): string[] {
   const names: string[] = []
   for (
@@ -30,7 +17,6 @@ function callableNames(prototype: object | null): string[] {
   return names.sort()
 }
 
-/** The methods of `HollwareRpc`: a key added to or taken from the interface is a type error here. */
 const RPC_METHODS: Record<keyof HollwareRpc, true> = {
   describeSite: true,
   getEntry: true,

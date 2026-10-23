@@ -6,10 +6,6 @@ import { getLiveEntry } from 'astro:content'
 import Callout from '../../components/Callout.astro'
 import Page from '../../layouts/Page.astro'
 
-// src/middleware.ts exchanged the link of the admin's "Preview on the site" for a cookie: the token
-// is in `Astro.locals`, it reads the latest revision of its entry, a draft included, and the
-// middleware answers `no-store`. A token that expired or is not valid is refused: the middleware
-// clears the cookie.
 const preview = Astro.locals.hollwarePreview
 
 const { entry, error } = await getLiveEntry('blog', { id: Astro.params.slug ?? '', preview })
@@ -23,8 +19,6 @@ if (error || !entry) {
   <article>
     <h1>{String(entry.data['title'] ?? entry.id)}</h1>
     <HollwareImage entry={entry} field="cover" />
-    {/* The body from the entry's document, its components as the site's own: `render(entry)` and
-    <Content /> give the HTML Hollware made instead. */}
     <HollwareContent entry={entry} components={{ callout: Callout }} />
   </article>
 </Page>

@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { impactLines, type Impact, type Problem } from '../lib/structure.ts'
 
-/** The answers of a change of the structure that need the person: confirm, fix, reload. */
 const props = defineProps<{
   impact: Impact | null
   problems: readonly Problem[]

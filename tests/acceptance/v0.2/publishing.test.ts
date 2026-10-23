@@ -9,12 +9,6 @@ import {
   type Agent,
 } from '../v0.1/support/harness.ts'
 
-// Fails when: the built playground stops publishing the way v0.2 says: AC-0.2-3, the ten entries
-// of the corpus, which link to each other in a cycle, stop publishing in one step with no warning
-// to acknowledge (one of them alone asks about its links); AC-0.2-2, a publish with publishAt
-// stops waiting as scheduled until the cron trigger runs after its time; AC-0.2-4, a publication
-// stops putting its event on the Queue (the outbox row is marked sent).
-
 const server = createPlaygroundHarness()
 let agent: Agent
 
@@ -58,7 +52,6 @@ async function database() {
   return env.DB
 }
 
-/** Calls `read` until `done` holds, for up to five seconds: work the Worker does after answering. */
 async function eventually<T>(read: () => Promise<T>, done: (value: T) => boolean): Promise<T> {
   const deadline = Date.now() + 5000
   for (;;) {

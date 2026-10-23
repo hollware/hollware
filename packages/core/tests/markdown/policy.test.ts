@@ -10,15 +10,6 @@ import {
   urlValue,
 } from '../../src/markdown/policy.ts'
 
-// Fails when: `urlScheme` (src/markdown/policy.ts) reads a scheme differently from a browser (case,
-// the control characters and spaces a browser drops at the start, the tab and the line breaks it
-// drops anywhere, a character reference in an attribute) or finds one in a path; `isSafeUrl` lets
-// a scheme through that its kind does not allow (links: http, https, mailto; images: http,
-// https; relative URLs always); `attributeName` and `isForbiddenAttribute` stop seeing an event
-// handler under the names Comark and Vue give it; `isAllowedAttribute` lets through an attribute
-// or a value that is not in the allowlist of its tag, or refuses one that Markdown and Comark put
-// on the tags themselves (a task list, a table alignment, a fenced code block, an alert).
-
 describe('urlScheme', () => {
   it.each([
     ['javascript:alert(1)', 'javascript'],
@@ -35,6 +26,7 @@ describe('urlScheme', () => {
     ['javascript&colon;x', 'javascript'],
     ['javascript&#58;x', 'javascript'],
     ['&#x6A;&#x61;vascript:x', 'javascript'],
+    ['&#38;#106;avascript:x', 'javascript'],
     ['https://example.com/a:b', 'https'],
     ['mailto:a@b.co', 'mailto'],
     ['tel:+123', 'tel'],

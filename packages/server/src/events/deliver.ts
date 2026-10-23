@@ -12,10 +12,8 @@ import type { EventPayload } from '../ops/event.ts'
 import type { Semantic } from '../ports.ts'
 import { syncEntryVectors } from '../semantic/index-entry.ts'
 
-/** Where IndexNow takes the URLs that changed. */
 export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
 
-/** A subscriber of a site: a name for the deliveries table, and how to send it an event. */
 interface Subscriber {
   readonly name: string
   send(payload: EventPayload, body: string): Promise<void>
@@ -25,16 +23,9 @@ export interface DeliveryDeps {
   readonly db: Db
   readonly site: ResolvedSite
   readonly clock: Clock
-  /** `fetch`, given so that tests never reach the network. */
   readonly fetch: (request: Request) => Promise<Response>
-  /** The value of a Worker secret by its name, or `undefined` when it is not set. */
   readonly secret: (name: string) => string | undefined
-  /**
-   * Hollware's own secret of a webhook of the site, sealed in the database (ADR-033), opened; or
-   * `undefined` when it has none, or it does not open. Absent where no webhook has one.
-   */
   readonly ownSecret?: (webhook: string) => Promise<string | undefined>
-  /** The model and the vector index, when the Worker has both; semantic search is off without. */
   readonly semantic?: Semantic | null
 }
 
@@ -43,7 +34,6 @@ async function ensureOk(response: Response, what: string): Promise<void> {
   throw new Error(`${what} answered ${response.status}`)
 }
 
-/** The subscribers that the config of the site declares (ADR-025). */
 export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
   const { site } = deps
   const subscribers: Subscriber[] = site.events.webhooks.map((webhook) => ({
@@ -78,9 +68,7 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
     subscribers.push({
       name: 'indexnow',
       async send(payload) {
-        // A change of the structure is about no page: nothing for search engines to fetch.
         if (payload.kind === 'site.changed' || payload.url === null) return
-        // The key is public, and the definition holds it: no secret of the Worker is ever read here.
         const key = indexNow.key
         const request = new Request(INDEXNOW_ENDPOINT, {
           method: 'POST',
@@ -93,7 +81,6 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
   }
   const semantic = deps.semantic
   if (semantic !== undefined && semantic !== null) {
-    // Hollware's own subscriber: the vectors follow what is published, whichever the event.
     subscribers.push({
       name: 'vectors',
       async send(payload) {
@@ -114,12 +101,6 @@ export interface DeliveryResult {
   readonly failed: readonly string[]
 }
 
-/**
- * Delivers one event of the outbox to every subscriber that does not have it yet, and records each
- * attempt. A subscriber that fails is tried again on the next delivery of the event, and one that
- * succeeded is never sent it again: the caller retries the message while `failed` is not empty.
- * An event that is gone, or a site without subscribers, delivers nothing.
- */
 export async function deliverEvent(deps: DeliveryDeps, eventId: string): Promise<DeliveryResult> {
   const event = await findEvent(deps.db, deps.site.key, eventId)
   if (event === null) return { delivered: [], failed: [] }

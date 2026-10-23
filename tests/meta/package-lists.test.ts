@@ -6,10 +6,6 @@ import { readText } from '../support/repo.ts'
 import { isRecord } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: the Layout of AGENTS.md lacks a bullet for a workspace package directory, the package
-// table of README.md or the Versions section of .changeset/README.md lists a package that is not
-// published or leaves one out, links it to the wrong directory, or gets the count wrong.
-
 const AGENTS = [
   '# Agents',
   '',

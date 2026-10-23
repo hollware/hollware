@@ -7,12 +7,6 @@ import { createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from '../http/support.ts'
 
-// Fails when: the OAuth server (src/oauth) lets through what docs/security/threat-model.md holds
-// it to refuse: a redirect URI other than the one registered (T-31); PKCE `plain`, or no PKCE
-// (T-32); a consent posted without its own cookie, or by another person (T-37); a client name that
-// reaches the consent page as markup (T-40); or a person's session cookie standing for a token at
-// `/mcp` or `/v1` (T-42).
-
 const MCP = `${PUBLIC_URL}/mcp`
 const REDIRECT = 'https://agent.example.com/callback'
 const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistration: true } })
@@ -67,7 +61,7 @@ function authorize(clientId: string, extra: Record<string, string>): string {
 }
 
 describe('the OAuth server refuses', () => {
-  it('a redirect URI other than the one registered, and sends nothing to it (T-31)', async () => {
+  it('a redirect URI other than the one registered, and sends nothing to it', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const clientId = await register(worker)
     const challenge = await challengeOf('v'.repeat(43))
@@ -85,7 +79,7 @@ describe('the OAuth server refuses', () => {
     expect(answer.headers.get('location')).toBe(null)
   })
 
-  it('PKCE plain, and no PKCE at all (T-32)', async () => {
+  it('PKCE plain, and no PKCE at all', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const clientId = await register(worker)
     const cookie = await cookieOf()
@@ -97,7 +91,6 @@ describe('the OAuth server refuses', () => {
     const none = await worker.send(authorize(clientId, {}), { headers: { cookie } })
 
     for (const answer of [plain, none]) {
-      // Refused before any consent: no page with a form, and no code.
       expect(answer.status === 200 && (await answer.clone().text()).includes('name="handle"')).toBe(
         false,
       )
@@ -105,7 +98,7 @@ describe('the OAuth server refuses', () => {
     }
   })
 
-  it('a consent posted without the cookie that binds it, and grants another person only their own (T-37)', async () => {
+  it('a consent posted without the cookie that binds it, and grants another person only their own', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const clientId = await register(worker)
     const first = await personOf('owner')
@@ -140,17 +133,14 @@ describe('the OAuth server refuses', () => {
     const withoutBinding = await post(owner)
     const otherPerson = await post(`${second.cookie}; ${bound}`)
 
-    // A form posted from a browser that did not open it is refused: no code goes anywhere.
     expect([withoutBinding.status, withoutBinding.headers.get('location')]).toEqual([400, null])
-    // One with the binding of the page, from a browser signed in as someone else, grants that
-    // someone their own access, never the person who opened the page.
     const code =
       new URL(otherPerson.headers.get('location') ?? 'x:/').searchParams.get('code') ?? ''
     expect(code.startsWith(`${second.userId}:`)).toBe(true)
     expect(code.startsWith(`${first.userId}:`)).toBe(false)
   })
 
-  it('a client name as markup on the consent page (T-40)', async () => {
+  it('a client name as markup on the consent page', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const clientId = await register(worker, '<img src=x onerror=alert(1)><script>alert(2)</script>')
 
@@ -169,7 +159,7 @@ describe('the OAuth server refuses', () => {
     expect(html).toContain('&#60;img src=x onerror=alert(1)&#62;')
   })
 
-  it('a session cookie in place of a token, at /mcp and at /v1 (T-42)', async () => {
+  it('a session cookie in place of a token, at /mcp and at /v1', async () => {
     const worker = boot()
     const cookie = await cookieOf()
 

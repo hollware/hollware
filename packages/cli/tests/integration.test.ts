@@ -1,29 +1,3 @@
-// Fails when (this file runs the real wrangler on a real local D1, with the migrations that
-// @hollware/server ships; it proves that the SQL of the CLI fits the schema of the server):
-// - "lists the pending migrations of an empty database": `migrate --check` stops listing what
-//   `wrangler d1 migrations list` prints, or exits 0 with migrations pending.
-// - "applies every migration to an empty database": `migrate` stops applying with
-//   `wrangler d1 migrations apply`, or the tables of the schema are not there afterwards.
-// - "a second migrate is a no-op, and --check is clean": a second run applies again or lists
-//   something pending.
-// - "init writes the site, the owner and a token whose hash is stored": a column or a value of
-//   `initScript` no longer fits `0001_core.sql` (a name, the `role` check, the scopes as a JSON
-//   array, the foreign keys), the hash stored is not the SHA-256 of the printed token, or the
-//   expiry is not 90 days.
-// - "a second init is refused and the database is unchanged": the owner check no longer reads
-//   the real answer of `wrangler d1 execute --json`, so a second `init` writes.
-// - "token create writes a hostile label as one string": the quoting no longer survives the
-//   real SQL splitter of wrangler and SQLite (a quote, a backslash, a `;`, a comment marker).
-// - "token list shows the tokens and never a hash": `list` prints a hash, or stops reading the
-//   rows of the real answer.
-// - "init is all or nothing …": the script of `init` stops being one `wrangler d1 execute` of a
-//   file (a statement that fails leaves the ones before it written), the SQL file stays behind
-//   when it fails, or `--database` stops reaching wrangler as it is given.
-// - "init of a second site makes the owner its owner …": the script of a second site stops
-//   fitting the tables, or makes a second person.
-// - "token revoke sets revoked_at and tells the three cases apart": the `UPDATE … RETURNING`
-//   and the `SELECT` no longer give two separate results in the real answer, or the
-//   statements no longer fit the table.
 import { createHash } from 'node:crypto'
 import {
   chmodSync,
@@ -48,7 +22,6 @@ const WRANGLER = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.m
 const MIGRATION_NAMES = readdirSync(MIGRATIONS)
   .filter((name) => name.endsWith('.sql'))
   .sort()
-// The clock of `run`: 2026-10-12T12:00:00.000Z, so 90 days later is 2027-01-10T12:00:00.000Z.
 const NOW = '2026-10-12T12:00:00.000Z'
 const SLOW = { timeout: 180_000 }
 
@@ -79,7 +52,6 @@ beforeAll(() => {
       ],
     }),
   )
-  // The project's wrangler is the one of this repository.
   const bin = join(project, 'node_modules', '.bin', 'wrangler')
   mkdirSync(join(project, 'node_modules', '.bin'), { recursive: true })
   writeFileSync(bin, `#!/bin/sh\nexec "${WRANGLER}" "$@"\n`)
@@ -90,7 +62,6 @@ afterAll(() => {
   rmSync(project, { recursive: true, force: true })
 })
 
-/** The CLI, with the real wrangler of the project and a real source of random bytes. */
 function cli(argv: string[], overrides: Partial<Io> = {}) {
   return run(argv, {
     cwd: project,
@@ -103,7 +74,6 @@ function cli(argv: string[], overrides: Partial<Io> = {}) {
 
 const Answer = z.array(z.object({ results: z.array(z.record(z.string(), z.unknown())) }))
 
-/** Reads the database the way the task says: `wrangler d1 execute --local --json`. */
 async function rows(command: string, database = 'DB'): Promise<Record<string, unknown>[][]> {
   const result = await createWranglerRunner(project)([
     'd1',
@@ -202,7 +172,6 @@ describe('hollware on a real local D1', () => {
     const [sites, users, tokens] = await rows(
       'SELECT * FROM sites; SELECT * FROM users; SELECT * FROM tokens;',
     )
-    // The site starts from the preset blog in English, at version 1 (ADR-033).
     expect(sites).toEqual([
       {
         id: 'blog',
@@ -284,7 +253,6 @@ describe('hollware on a real local D1', () => {
         label,
         hash: sha256(token),
         scopes: index === 0 ? '["content:read"]' : '["content:read","content:write"]',
-        // Without --expires-in-days the token never expires (T-26).
         expires_at: index === 0 ? '2026-11-11T12:00:00.000Z' : null,
         revoked_at: null,
         last_used_at: null,
@@ -293,7 +261,6 @@ describe('hollware on a real local D1', () => {
         kind: 'personal',
       })
     }
-    // The statement was one statement: nothing was dropped or injected, and three tokens exist.
     expect(await rows('SELECT count(*) AS tokens FROM tokens;')).toEqual([[{ tokens: 3 }]])
   })
 
@@ -360,10 +327,7 @@ describe('hollware on a real local D1', () => {
     'init is all or nothing: a script that fails leaves nothing behind, on another binding',
     SLOW,
     async () => {
-      // What `init` makes from the counting bytes: the token of its third call.
       const hash = sha256(`hw_pat_${'3'.repeat(52)}`)
-      // A second database, DB2, that already holds that hash: the last statement of the script
-      // fails, after the site and the owner were written.
       expect((await cli(['migrate', '--database', 'DB2'])).code).toBe(0)
       await rows(
         `INSERT INTO sites (id, created_at, updated_at) VALUES ('other', '${NOW}', '${NOW}'); INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('usr_EDITOR', NULL, 'editor', '${NOW}', '${NOW}'); INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_TAKEN', 'other', 'usr_EDITOR', 'taken', '${hash}', '[]', NULL, '${NOW}', '${NOW}');`,

@@ -9,10 +9,6 @@ import type { Diagnostic } from '../lib/diagnostics.ts'
 import { useMessages } from '../i18n/index.ts'
 import { theme } from './editor-theme.ts'
 
-/**
- * The Markdown of an entry, as it is: the editor keeps the file's own line endings, so a file
- * opened and saved without a change goes back byte for byte. The verdict shows as diagnostics.
- */
 const props = defineProps<{ modelValue: string; diagnostics: readonly Diagnostic[] }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
@@ -48,7 +44,6 @@ onBeforeUnmount(() => {
   view?.destroy()
 })
 
-// A text from outside (another revision was loaded) replaces the document.
 watch(
   () => props.modelValue,
   (text) => {

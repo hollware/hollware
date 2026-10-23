@@ -10,18 +10,6 @@ import {
   type LoadContext,
 } from '../src/index.ts'
 
-// Fails when the loaders stop keeping the document and the images of an entry for the components;
-// or when: the loaders of src/index.ts stop reading only the collection and locale they are
-// given, or give an entry an id other than its slug, data other than its frontmatter, or a
-// `rendered.html` other than the HTML Hollware made (source.ts `get`); or a listing stops following
-// the cursor, stops at `limit`, or reads one page too many (source.ts `list`); or a live loader
-// answers anything but `undefined` for an entry that is not published, or throws instead of
-// handing Astro an `error` (`asError`); or a build-time load keeps an entry that was unpublished
-// (`store.delete`), or stops validating the frontmatter with the schema of the collection
-// (`parseData`); or a live loader stops passing the preview token of its filter to the reader
-// (source.ts `get`), or lets a previewed entry carry a cacheHint (T-103); or a service binding that is not one passes for a reader, or a binding given as a function is read once, at import time, instead of on
-// each request.
-
 type Listed = Awaited<ReturnType<HollwareReader['listEntries']>>['entries'][number]
 type Found = NonNullable<Awaited<ReturnType<HollwareReader['getEntry']>>['entry']>
 type Published = Found & { html: string }
@@ -52,7 +40,6 @@ function post(slug: string, title: string): Published {
   }
 }
 
-/** A reader of published posts, two to a page: the calls it gets are in `calls`. */
 function fakeReader(published: readonly Published[]) {
   const calls: string[] = []
   const previews: Array<string | undefined> = []

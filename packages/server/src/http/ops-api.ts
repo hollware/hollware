@@ -18,35 +18,22 @@ import { analyticsSourcesOf } from '../analytics/env.ts'
 import { backupsIn } from '../backup/run.ts'
 import { invoke } from '../ops/invoke.ts'
 
-/**
- * The operations over HTTP, for the admin (ADR-026): `POST /v1/ops/{name}` takes the input of the
- * operation as JSON and answers its output, the same contract as the MCP tool of that name. It is
- * part of the `/v1` resource, so it takes a personal token or an OAuth access token for `/v1`, and
- * checks the scopes of the operation against the principal, as MCP does. An outcome that is an
- * error for the caller is still a 200: the outcome says what happened, as it does over MCP.
- */
-
 export interface OpsApiOptions {
-  /** The sites of the deployment, by key: an operation runs on the site of its principal. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: GatewayLogEntry) => void
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
-  /** What a write that committed events hands to the Queue, after the answer. */
-  /** The structure of the sites, for the operations that change it (ADR-033). */
   readonly structure?: (db: D1Database, master?: string) => Structure
   readonly notify: (
     c: Context<GatewayEnv>,
     requestId: string,
     site: string,
   ) => (ids: readonly string[]) => void
-  /** The activity log of a request (ADR-037); without it, no line is written. */
   readonly audit?: (c: Context<GatewayEnv>, principal: RequestPrincipal) => Promise<AuditLogFor>
 }
 
-/** The client of every call of this API: the admin. */
 const CLIENT = { name: 'hollware-admin' }
 
 const STATUS: Readonly<Record<string, 400 | 404 | 500 | 504>> = {
@@ -59,8 +46,6 @@ const STATUS: Readonly<Record<string, 400 | 404 | 500 | 504>> = {
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 }
-
-/** Calls the handler of an operation with input its spec has parsed. */
 
 export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): void {
   app.post('/v1/ops/:name', async (c) =>
@@ -78,7 +63,6 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         )
       }
       const site = options.sites.get(principal.site)
-      // The token check refuses a token of a site this deployment does not serve.
       if (site === undefined) throw new Error(`No site ${principal.site} for a checked token`)
       const audit = options.audit === undefined ? null : (await options.audit(c, principal))(CLIENT)
       const scopes: readonly Scope[] = spec.scopes
@@ -120,7 +104,6 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
           ? {}
           : { structure: options.structure(c.env.DB, c.env.HOLLWARE_SECRET) }),
       }
-      /** The line of the call, after it answered or failed. */
       const audited = async (result: { output: unknown } | { errorCode: string }) => {
         const line = operationLine(spec, parsed.data, site.key, result)
         if (line !== null) await audit?.write(site, line)

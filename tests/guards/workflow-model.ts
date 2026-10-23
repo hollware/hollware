@@ -2,65 +2,45 @@ import { isMap, isScalar, isSeq, mapEntry, plain, readYaml, scalarString } from 
 import { isRecord, isStringArray } from '../support/values.ts'
 import type { TextFile } from './types.ts'
 
-/** A `uses:` reference, with the comment that follows it. */
 export interface UsesRef {
-  /** The text after `uses:`, e.g. `actions/checkout@3d3c...`. */
   value: string
-  /** The trailing `# comment` of the line, without the `#`. */
   comment: string | undefined
-  /** 1-based line of the reference. */
   line: number
 }
 
 export interface WorkflowStep {
-  /** 0-based position in the job. */
   index: number
   name: string | undefined
-  /** `if:` of the step, as written. */
   condition: unknown
   uses: UsesRef | undefined
-  /** The `with:` inputs. Empty when there are none. */
   inputs: Record<string, unknown>
-  /** The `env:` of the step, as written. Empty when there is none. */
   env: Record<string, unknown>
-  /** The shell of a `run:` step, as the runner receives it. */
   run: string | undefined
 }
 
 export interface WorkflowJob {
   id: string
-  /** 1-based line of the job's key, and of the last line of its body. */
   startLine: number
   endLine: number
-  /** The jobs it waits for (`needs:`), whether the file writes one name or a list. */
   needs: string[]
-  /** `if:` of the job, as written. */
   condition: unknown
-  /** `concurrency:` of the job, as written (a group name or a mapping). Undefined when it has none. */
   concurrency: unknown
-  /** Whether the job has a `permissions:` key at all. */
   hasPermissions: boolean
   permissions: unknown
   environment: unknown
-  /** `uses:` of a job that calls a reusable workflow. */
+  timeoutMinutes: unknown
   uses: UsesRef | undefined
   steps: WorkflowStep[]
 }
 
 export interface Workflow {
   path: string
-  /** The file name, e.g. `release.yml`. */
   file: string
-  /** YAML errors. A workflow with errors cannot be judged. */
   errors: string[]
   hasPermissions: boolean
-  /** The top-level `permissions:` value. */
   permissions: unknown
-  /** The top-level keys, in file order. */
   topLevelKeys: string[]
-  /** The value of `on:` (the triggers). */
   triggers: unknown
-  /** The top-level `concurrency:` as written (a group name or a mapping). Undefined when it has none. */
   concurrency: unknown
   jobs: WorkflowJob[]
 }
@@ -69,7 +49,6 @@ export function fileName(path: string): string {
   return path.slice(path.lastIndexOf('/') + 1)
 }
 
-/** Reads a workflow into the parts the guards look at. */
 export function parseWorkflow(file: TextFile): Workflow {
   const yaml = readYaml(file.text)
   const workflow: Workflow = {
@@ -153,6 +132,7 @@ export function parseWorkflow(file: TextFile): Workflow {
         hasPermissions: jobPermissions !== undefined,
         permissions: jobPermissions === undefined ? undefined : plain(jobPermissions.value),
         environment: plain(mapEntry(job, 'environment')?.value),
+        timeoutMinutes: plain(mapEntry(job, 'timeout-minutes')?.value),
         uses: usesOf(job),
         steps,
       })
@@ -161,7 +141,6 @@ export function parseWorkflow(file: TextFile): Workflow {
   return workflow
 }
 
-/** Every `uses:` of the workflow, jobs and steps, with the job and step it sits in. */
 export function allUses(
   workflow: Workflow,
 ): { ref: UsesRef; job: string; step: WorkflowStep | undefined }[] {
@@ -175,13 +154,11 @@ export function allUses(
   return found
 }
 
-/** The `owner/repo` of a `uses:` value, e.g. `changesets/action` for `changesets/action/pack@...`. */
 export function actionRepository(uses: string): string {
   const [path = ''] = uses.split('@')
   return path.split('/').slice(0, 2).join('/')
 }
 
-/** A human name for a step: `job "stage", step 3 "Set up Node.js"`. */
 export function describeStep(job: string, step: WorkflowStep): string {
   const name = step.name === undefined ? '' : ` "${step.name}"`
   return `job "${job}", step ${step.index + 1}${name}`

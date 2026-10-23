@@ -4,11 +4,6 @@ import { softAuthenticator } from '../../../../packages/server/tests/support/aut
 import { migrate, seedOwnerToken, SITE_KEY } from './support.ts'
 import { createPlaygroundHarness, HOLLWARE_URL, HOLLWARE_WORKER } from './workers.ts'
 
-// Fails when: the built Worker stops serving the identity of ADR-026: the setup page loses its
-// policy (no framing, only its own script) or prints the invitation; a passkey registered over
-// HTTP through an invitation stops opening a session whose cookie only /authorize reads, or the
-// invitation works twice; or a sign-in with that passkey stops opening one.
-
 const server = createPlaygroundHarness()
 const INVITATION = 'hw_inv_acceptanceacceptanceacceptanceacceptance1234'
 
@@ -17,7 +12,6 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** The options a ceremony starts with, as the Worker answers them. */
 async function ceremonyOf(response: { json(): Promise<unknown> }) {
   const body: unknown = await response.json()
   if (

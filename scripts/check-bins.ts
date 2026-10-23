@@ -1,26 +1,12 @@
-/**
- * Post-build check of the command-line packages. After `vp run -r build`, runs each built bin
- * of `packages/*` with `--version` and compares what it prints with `<bin> <version>`, the
- * version being the one in the package's own `package.json`:
- *
- *   node scripts/check-bins.ts
- *
- * It proves that the file npm will link as a bin exists, runs, and reads its own manifest.
- * The unit tests run without a build, so this is the only check that sees `dist/`.
- *
- * Exits 0 when every bin answers as expected, 1 when one does not or none is found.
- */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 export interface BinResult {
-  /** The directory of the package, e.g. `packages/cli`. */
   dir: string
   bin: string
   ok: boolean
-  /** One line for the report. */
   message: string
 }
 
@@ -28,17 +14,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** What a bin must print for `--version`. */
 export function expectedVersionLine(bin: string, version: string): string {
   return `${bin} ${version}`
 }
 
-/**
- * The bins npm installs from a manifest, as `name -> path`. Inside the workspace `bin` points at
- * the source and `publishConfig.bin` at the build, which `pnpm pack` moves into `bin`
- * (ADR-016), so `publishConfig.bin` wins when there is one. A string `bin` is named after the
- * package.
- */
 export function binsOf(manifest: unknown): Record<string, string> {
   if (!isRecord(manifest)) return {}
   const { name } = manifest
@@ -53,7 +32,6 @@ export function binsOf(manifest: unknown): Record<string, string> {
   )
 }
 
-/** Runs every bin of every `packages/*` of the repository at `root`. */
 export function checkBins(root: string): BinResult[] {
   const results: BinResult[] = []
   const packages = join(root, 'packages')

@@ -3,17 +3,7 @@ import { parseJsonc } from '../support/jsonc.ts'
 import { isRecord, recordAt } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `server-types`: `packages/server/src` is Workers code without Node.js, like the Workers
- * that run it. Its `tsconfig.json` covers only `src` and the runtime types that `wrangler types`
- * generates for the package's test configuration, which opts out of Node.js compatibility
- * (guard `wrangler-flags`, and `types:check` keeps the file in step). With no other `types`,
- * a Node global in `src` is a type error in `vp check`. The tests and configs type-check
- * through `tests/tsconfig.json`.
- */
-
 export interface ServerTypesInput {
-  /** `packages/server/tsconfig.json`. */
   tsconfig: TextFile
 }
 

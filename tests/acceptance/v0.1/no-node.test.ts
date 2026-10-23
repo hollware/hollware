@@ -4,18 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { createPlaygroundHarness } from './support/harness.ts'
 
-// Fails when: a built Worker, Hollware or the example site, runs with Node.js compatibility, the
-// way AC-0.1-15 forbids: the config that `vp build` writes for it stops opting out with
-// `no_nodejs_compat` and `no_nodejs_compat_v2`, or the Worker finds `process`, `Buffer` or
-// `setImmediate` when it runs. The agent flow of AC-0.1-3 runs on the same build
-// (agent-flow.test.ts), so it proves Hollware works without them.
-
 const REPOSITORY = join(import.meta.dirname, '..', '..', '..')
 
-/**
- * The config that `vp build` writes for each Worker, by the Worker's name, and the flags it must
- * list: Hollware also has `global_fetch_strictly_public`, for its OAuth server (ADR-026).
- */
 const BUILT = {
   'hollware-playground': [
     join(REPOSITORY, 'apps/playground/dist/hollware_playground/wrangler.json'),

@@ -5,13 +5,6 @@ import { seedToken } from '../auth/support.ts'
 import { CANNED, INPUTS } from '../mcp/support.ts'
 import { boot, onlyCall, restoreLogs, SITE_KEY, wire } from './support.ts'
 
-// Fails when: the operations over HTTP (src/http/ops-api.ts) stop being the MCP tools' contract
-// for the admin: POST /v1/ops/{name} stops taking the input of the operation as JSON and
-// answering its output, stops checking the scopes of the operation (403 naming every scope it
-// needs, and the protected resource metadata of /v1), stops refusing an input its schema refuses
-// (400) or a name that is no operation (404), runs a handler without a token, or gives the handler
-// another principal than the token's, another site, or a view other than the head.
-
 afterEach(() => {
   restoreLogs()
 })

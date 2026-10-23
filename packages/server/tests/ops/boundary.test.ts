@@ -4,15 +4,8 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { analyzeSource } from '../../../../tests/support/source.ts'
 
-// Fails when: a module of src/ops imports anything but the ports, the types of the auth module,
-// `@hollware/core`, `zod` and its own siblings, whether it imports it as a value, as a type or
-// with `import()`. Handlers see the ports of src/ports.ts and never the D1 store, the MCP adapter,
-// Drizzle or a Cloudflare module (packages/server/AGENTS.md), which is what lets an adapter hand
-// them any store, and what keeps a Worker that never writes from loading what a write needs.
-
 const OPS = join(import.meta.dirname, '../../src/ops')
 
-/** The modules a handler may import, by specifier; a sibling is `./name.ts`. */
 const ALLOWED = new Set(['@hollware/core', 'zod', '../ports.ts', '../auth/types.ts'])
 
 function importsOf(file: string): string[] {

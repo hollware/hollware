@@ -4,14 +4,6 @@ import { contentFixture } from '../../../../tests/fixtures/content.ts'
 import { jsonProblem } from '../../src/markdown/json.ts'
 import { accepted, refused, warmUpComark } from './support.ts'
 
-// Fails when: `run` in src/markdown/process.ts stops turning a `YAMLException` into a
-// `frontmatter-syntax` violation, reports the wrong line or column (LF and CRLF files count the
-// frontmatter differently inside Comark), lets frontmatter through that is not a mapping, or lets
-// through one that `jsonProblem` (src/markdown/json.ts) refuses: anchors and aliases (a bomb of
-// nine levels is a value of 387 million nodes once written out, and `&a [*a]` is a cycle),
-// non-finite numbers, values nested deeper than MAX_DEPTH; or `linesBeforeBody` miscounts the
-// lines the frontmatter takes, which shifts every line of the body.
-
 warmUpComark()
 
 const YAML_FIX =
@@ -192,7 +184,6 @@ describe('frontmatter that cannot be stored as JSON', () => {
     'The frontmatter holds a YAML anchor or alias, which Hollware does not store.'
   const ALIAS_FIX = 'Remove the &anchor and *alias markers and write every value out in full.'
 
-  /** Nine arrays of nine references to the one before: 9^9 values once written out. */
   function bomb(): string {
     let yaml = 'a: &a ["x","x","x","x","x","x","x","x","x"]\n'
     let previous = 'a'
@@ -264,7 +255,6 @@ describe('frontmatter that cannot be stored as JSON', () => {
 
 describe('the lines of the body', () => {
   it('start after the frontmatter, however its lines end', async () => {
-    // The heading is on line 5 of the first three files and on line 6 of the last, whose frontmatter has two more lines. The carriage return that ends the closing fence belongs to the body.
     const files = [
       '---\ntitle: a\n---\n\n# Hi\n',
       '---\r\ntitle: a\r\n---\r\n\r\n# Hi\r\n',

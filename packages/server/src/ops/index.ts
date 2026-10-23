@@ -35,11 +35,6 @@ import { updateDraft } from './update-draft.ts'
 import { validate } from './validate.ts'
 import { defineHandlers } from './types.ts'
 
-/**
- * The handler of every operation, paired with its spec of `@hollware/core` by type
- * (ADR-017). Adapters check the scopes and build the `OperationContext`; a handler never sees a
- * request, and reads and writes only the site of its context.
- */
 export const handlers = defineHandlers({
   approve_review: approveReview,
   comment_review: commentReview,

@@ -4,7 +4,6 @@ import type { Model } from './model.ts'
 import { entriesOf } from './listing.ts'
 import { list, number, record, text, type Json } from './read.ts'
 
-/** How many times the translator fixes a draft the contracts refuse, before it leaves it. */
 export const FIX_ROUNDS = 2
 
 export const TRANSLATOR_PROMPT = [
@@ -31,7 +30,6 @@ export function slugOf(title: string): string {
   )
 }
 
-/** The model's file without a code fence around it, if it put one. */
 export function unfenced(answer: string): string {
   const trimmed = answer.trim()
   const fenced = /^```[a-z]*\n([\s\S]*?)\n```$/.exec(trimmed)
@@ -99,7 +97,6 @@ export async function translateMissing(
           const present = groupsIn.get(locale)
           if (locale === source || present === undefined || present.has(group)) continue
           if (drafted >= limit) return { drafted, sentToReview }
-          // One translation of a group into a locale per run, whichever locale it comes from.
           present.add(group)
           const key = `translated:${id}:${locale}`
           if ((await deps.memory.get(key)) !== null) continue
@@ -139,7 +136,6 @@ export async function translateMissing(
               markdown: translated,
             })
           }
-          // Remembered once it was tried: a run that stops before this tries it again.
           await deps.memory.put(key, String(saved['outcome']), 90 * 86_400)
           if (saved['outcome'] !== 'saved') continue
           drafted += 1
@@ -151,7 +147,6 @@ export async function translateMissing(
   return { drafted, sentToReview }
 }
 
-/** Fixes a saved draft up to `FIX_ROUNDS` times, then asks for its review if the contracts allow it. */
 async function fixAndAsk(
   deps: TranslatorDeps,
   saved: ToolOutput,

@@ -5,18 +5,11 @@ import { runtimeOf } from './runtime.ts'
 import { clip, quote } from './text.ts'
 import type { Contract } from './types.ts'
 
-/**
- * The four content-safety contracts (ADR-020). The Markdown pipeline never drops what it does not
- * allow: it leaves a marker, and each contract reports the markers of its own kind, one error for
- * each, with the line. They never block a draft, only publishing.
- */
-
 interface Wording {
   readonly message: string
   readonly fix: string
 }
 
-/** The components a collection allows, sorted: what a fix offers instead. */
 function allowedComponents(collection: ResolvedCollection): string[] {
   return [...collection.components.keys()].toSorted()
 }

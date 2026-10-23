@@ -2,12 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { asksForMajor, majorsSince, promisedTag } from './api-check.ts'
 
-// Fails when: promisedTag (scripts/api-check.ts) stops picking the newest release of
-// @hollware/core from 1.0.0-rc.0 on (ADR-036), counting a 0.x release, ordering candidates by
-// text instead of number, or ranking a candidate above the release of its version; or when a break
-// passes without a major changeset made since that release, or a major one already released (in
-// .changeset/pre/ at the ref) still lets a new break through.
-
 describe('the release that holds the promise of the public API', () => {
   it('is none before 1.0.0-rc.0, whatever 0.x says', () => {
     expect(promisedTag(['@hollware/core@0.10.0', '@hollware/core@0.11.0', 'hollware@1.0.0'])).toBe(

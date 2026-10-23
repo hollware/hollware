@@ -3,32 +3,19 @@ import { isRecord } from '../support/values.ts'
 import { plain, readYaml } from '../support/yaml.ts'
 import type { Violation } from './types.ts'
 
-/**
- * Guard `pre-push`: what CI checks runs on the maintainer's machine before a push. The hook
- * `.vite-hooks/pre-push` runs the task `check:local` of the root `vite.config.ts`, and that task
- * runs, directly or through the tasks it runs, every task a job of `ci.yml` runs with `vp run`,
- * except those of `CI_ONLY`. And it runs nothing CI does not, so a push that skips the hook
- * (`--no-verify`) still meets the same checks in CI.
- */
-
-/** The tasks of CI that cannot run before a push, each with the reason. The list only shrinks. */
 export const CI_ONLY: Readonly<Record<string, string>> = {
   'e2e:upgrade':
     'installs 0.3.0 from npm and a local registry in an empty directory: minutes of network, and CI runs it on a clean machine',
 }
 
 export interface PrePushInput {
-  /** The text of `.vite-hooks/pre-push`, or `undefined` when there is none. */
   readonly hook: string | undefined
-  /** For each task of the root `vite.config.ts`, the tasks it runs (`taskGraph`). */
   readonly graph: Readonly<Record<string, readonly string[]>>
-  /** The text of `.github/workflows/ci.yml`. */
   readonly ci: string
 }
 
 const LOCAL = 'check:local'
 
-/** The tasks that the `run` steps of the jobs of a workflow run with `vp run`. */
 function workflowTasks(text: string): string[] {
   const workflow = plain(readYaml(text).doc.contents)
   const jobs =
@@ -41,7 +28,6 @@ function workflowTasks(text: string): string[] {
   })
 }
 
-/** A task and every task it runs, through the graph. */
 function reach(graph: PrePushInput['graph'], start: string): Set<string> {
   const seen = new Set<string>()
   const queue = [start]

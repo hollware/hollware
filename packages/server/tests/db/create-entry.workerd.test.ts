@@ -15,19 +15,10 @@ import {
   VERDICT,
 } from './support.ts'
 
-// Fails when: src/db/writes.ts createEntry stops writing the entry at version 1 as a draft with its
-// first revision as the head, or the revision's columns (the Markdown byte for byte, the JSON
-// columns, the actor), or its tags once each, as one batch (an entry without its revision, or the
-// revision without its tags, then survives a failed write), or stops answering `taken` for a slug
-// or a translation that another entry of the collection and locale holds (reporting the slug first
-// and the id of the holder) and writing nothing, or src/db/statements.ts insertTags stops cutting
-// the tags into statements under the limit of bound values (150 tags must work).
-
 const NOW = '2026-10-12T10:00:00.000Z'
 
 const HELLO = { collection: 'blog', locale: 'en', slug: 'hello' }
 
-/** The view of an entry that was saved, or a failure that says what else the store answered. */
 async function created(answer: ReturnType<ContentStore['createEntry']>): Promise<EntryView> {
   const result = await answer
   if (result.outcome !== 'saved')
@@ -87,10 +78,8 @@ describe('createEntry', () => {
         createdAt: NOW,
       },
     })
-    // Reading it back gives the same view.
     expect(await store.findEntryById(owner.site, entry.id, 'head')).toEqual(result.view)
     expect(await store.findEntry(owner.site, HELLO, 'published')).toBeNull()
-    // The rows, as the database holds them.
     expect(await entryRow(env.DB, entry.id)).toEqual({
       id: entry.id,
       site_id: owner.site,
@@ -365,12 +354,9 @@ describe('createEntry for a slug or a translation that is taken', () => {
 
     const results = [
       await make(HELLO, 'greetings'),
-      // The translation of the same group: another locale, and so another slug.
       await make({ ...HELLO, locale: 'es', slug: 'hola' }, 'greetings'),
-      // The same slug in another locale, and in another collection, and the same group in it.
       await make({ ...HELLO, locale: 'pt' }, null),
       await make({ ...HELLO, collection: 'docs' }, 'greetings'),
-      // Two entries with no group, in one locale: neither holds one.
       await make({ ...HELLO, slug: 'no-group-1' }, null),
       await make({ ...HELLO, slug: 'no-group-2' }, null),
     ]

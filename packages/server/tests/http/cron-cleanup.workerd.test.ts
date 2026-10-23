@@ -1,13 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { defineCollection, defineComponent, defineConfig } from '@hollware/core'
+import { env } from 'cloudflare:workers'
+import { afterEach, describe, expect, it } from 'vitest'
+import * as z from 'zod'
 
-import { seedSite } from '../support/sites.ts'
-import { boot, SITE_KEY } from './support.ts'
+import { handlers } from '../../src/ops/index.ts'
+import { seedSite, type SeededSite } from '../support/sites.ts'
+import { boot, captureLogs, restoreLogs, SITE_KEY } from './support.ts'
 
-// Fails when: the cron trigger of Hollware (src/compose.ts, `dropExpired` of
-// src/identity/store.ts) stops dropping the WebAuthn challenges that nobody took and the sessions
-// that expired, which anyone could make grow by a row a request (T-11 of
-// docs/security/threat-model.md), or drops a challenge or a session that is still good; or stops
-// rebuilding the revisions an older pipeline parsed (src/derived/reparse.ts, ADR-021).
+afterEach(() => {
+  restoreLogs()
+})
 
 const PAST = '2000-01-01T00:00:00.000Z'
 const FUTURE = '2099-01-01T00:00:00.000Z'
@@ -69,7 +71,6 @@ describe('the cron trigger and what of sign-in expired', () => {
     const worker = boot()
     const db = worker.env.DB
     const seeded = await seedSite(db, SITE_KEY)
-    // A first request writes the structure of the test's site into D1, as a deployment has it.
     await worker.send('/health')
     const entry = seeded.entries[0]?.id ?? ''
     await db
@@ -94,5 +95,157 @@ describe('the cron trigger and what of sign-in expired', () => {
       .first<{ pipeline_version: string; document: string }>()
     expect(row?.pipeline_version).toBe('3')
     expect(row?.document).not.toBe('{}')
+  })
+})
+
+const BLOG = defineCollection({
+  schema: z.looseObject({ title: z.string().min(1) }),
+  routes: { en: '/en/blog/:slug/', es: '/blog/:slug/' },
+  components: {
+    callout: defineComponent({
+      props: z.strictObject({ type: z.enum(['info', 'warning', 'tip']) }),
+      description: 'A highlighted note.',
+      example: '::callout{type="tip"}\nKeep it short.\n::',
+    }),
+  },
+})
+
+async function scheduleDraft(db: D1Database, site: SeededSite): Promise<string> {
+  const draft = site.entries[2]?.id ?? ''
+  await db
+    .prepare(
+      `INSERT INTO schedules (id, site_id, entry_id, scheduled_at, version, acknowledged,
+        actor_kind, actor_user_id, actor_token_id, actor_meta, created_at, updated_at)
+        VALUES (?1, ?2, ?3, '2026-10-13T11:00:00.000Z', 1, '[]', 'token', ?4, ?5, NULL, ?6, ?6)`,
+    )
+    .bind(`sch_${crypto.randomUUID()}`, site.site, draft, site.userId, site.tokenId, PAST)
+    .run()
+  return draft
+}
+
+describe('the cron trigger, site by site', () => {
+  it('still publishes the due entry of the next site when the work of one site throws', async () => {
+    const tag = crypto.randomUUID().slice(0, 8)
+    const failing = await seedSite(env.DB, `cron-failing-${tag}`)
+    const next = await seedSite(env.DB, `cron-next-${tag}`)
+    const worker = boot({
+      handlers,
+      config: defineConfig({
+        sites: {
+          [failing.site]: {
+            locales: ['en', 'es'],
+            defaultLocale: 'en',
+            collections: { blog: BLOG },
+          },
+          [next.site]: { locales: ['en', 'es'], defaultLocale: 'en', collections: { blog: BLOG } },
+        },
+      }),
+    })
+    const db = worker.env.DB
+    await worker.ready()
+    const broken = await scheduleDraft(db, failing)
+    await db.prepare("UPDATE entries SET collection = 'retired' WHERE id = ?1").bind(broken).run()
+    const due = await scheduleDraft(db, next)
+    const logs = captureLogs()
+
+    await worker.worker.scheduled(
+      {
+        scheduledTime: Date.parse('2026-10-13T12:00:00Z'),
+        cron: '* * * * *',
+        noRetry: () => undefined,
+      },
+      worker.env,
+      worker.ctx,
+    )
+    await worker.settle()
+
+    const status = await db
+      .prepare('SELECT status FROM entries WHERE id = ?1')
+      .bind(due)
+      .first<string>('status')
+    const lines = logs.entries()
+    const failed = lines.findIndex(
+      (line) =>
+        typeof line === 'object' &&
+        line !== null &&
+        Reflect.get(line, 'kind') === 'cron_failed' &&
+        Reflect.get(line, 'site') === failing.site,
+    )
+    const published = lines.findIndex(
+      (line) =>
+        typeof line === 'object' &&
+        line !== null &&
+        Reflect.get(line, 'kind') === 'schedule' &&
+        Reflect.get(line, 'entryId') === due,
+    )
+    expect(status).toBe('published')
+    expect(failed).toBeGreaterThanOrEqual(0)
+    expect(published).toBeGreaterThan(failed)
+  })
+})
+
+describe('the cron trigger, step by step', () => {
+  it('queues the event of a scheduled publication in the run that publishes it', async () => {
+    const site = await seedSite(env.DB, `cron-order-${crypto.randomUUID().slice(0, 8)}`)
+    const sent: unknown[] = []
+    const worker = boot({
+      handlers,
+      config: defineConfig({
+        sites: {
+          [site.site]: { locales: ['en', 'es'], defaultLocale: 'en', collections: { blog: BLOG } },
+        },
+      }),
+      bindings: {
+        EVENTS: {
+          sendBatch: async (messages: Iterable<{ readonly body: unknown }>) => {
+            for (const message of messages) sent.push(message.body)
+          },
+        },
+      },
+    })
+    await worker.ready()
+    const due = await scheduleDraft(worker.env.DB, site)
+
+    await worker.worker.scheduled(
+      {
+        scheduledTime: Date.parse('2026-10-13T12:00:00Z'),
+        cron: '* * * * *',
+        noRetry: () => undefined,
+      },
+      worker.env,
+      worker.ctx,
+    )
+    await worker.settle()
+
+    const event = await worker.env.DB.prepare(
+      "SELECT id, sent_at FROM outbox WHERE site_id = ?1 AND entry_id = ?2 AND kind = 'entry.published'",
+    )
+      .bind(site.site, due)
+      .first<{ id: string; sent_at: string | null }>()
+    expect(event?.sent_at).not.toBeNull()
+    expect(sent).toEqual([{ site: site.site, id: event?.id }])
+  })
+})
+
+describe('the consumer of the events Queue', () => {
+  it('acks a message of a site the deployment does not serve, and throws nothing', async () => {
+    const worker = boot()
+    const verdicts: string[] = []
+
+    await worker.worker.queue(
+      {
+        messages: [
+          {
+            body: { site: 'a-site-nobody-serves', id: 'evt_01JAB3XQ8ZK4M6N2P5R7S9T0VW' },
+            ack: () => verdicts.push('ack'),
+            retry: () => verdicts.push('retry'),
+          },
+        ],
+      },
+      worker.env,
+      worker.ctx,
+    )
+
+    expect(verdicts).toEqual(['ack'])
   })
 })

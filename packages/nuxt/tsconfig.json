@@ -1,8 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Nuxt's and Nitro's packages declare their types for bundlers, as the apps that use this
-    // module resolve them.
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": ["node"]

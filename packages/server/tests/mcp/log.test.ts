@@ -15,13 +15,6 @@ import {
   type Overrides,
 } from './support.ts'
 
-// Fails when: a call stops writing exactly one line, with its request id, the tool, the outcome or
-// the error code, `isError` and the time it took in milliseconds; a refused call (scope) or an
-// answer replaced by an error stops being told as what it was; a line carries the input of the
-// call or a token; the cause of an error stops going to the log, or reaches the caller; a logger
-// that throws fails a call; a request the SDK refuses stops being reported; or the default stops
-// being no log at all.
-
 const NEVER = () => new Promise<never>(() => {})
 const duration = expect.any(Number)
 

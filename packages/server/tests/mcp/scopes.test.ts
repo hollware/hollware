@@ -13,12 +13,6 @@ import {
   tokenPrincipal,
 } from './support.ts'
 
-// Fails when: a tool stops requiring the scopes of its spec at call time, or requires others; a
-// refusal stops being 403 with the challenge that names the scope; the handler runs for a call
-// that was refused; the challenge names only the missing scopes instead of every scope the tool
-// needs; a call without scopes passes; or a request that comes without a principal reaches the
-// SDK or a handler.
-
 const REQUIRED = [
   ['approve_review', 'content:publish'],
   ['create_draft', 'content:write'],
@@ -27,7 +21,6 @@ const REQUIRED = [
   ['get_translations', 'content:read'],
   ['list_entries', 'content:read'],
   ['list_reviews', 'content:read'],
-  // Without content:publish, publish asks for a review; the handler decides that (v0.3).
   ['publish', 'content:write'],
   ['request_changes', 'content:publish'],
   ['unpublish', 'content:publish'],

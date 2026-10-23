@@ -8,13 +8,6 @@ import { consumeEvents, sweepOutbox, type EventMessage } from '../../src/events/
 import { agent, blogFrontmatter, warmUpComark } from './support.ts'
 import { newWorld, type World } from './world.ts'
 
-// Fails when: a publish or an unpublish stops writing its event to the outbox in its own batch
-// (ADR-025): exactly one row for a write that happened, none for one that was refused; the event
-// stops naming the entry, its path and its URL; deliverEvent stops signing a webhook so that
-// verifyWebhook accepts it, stops telling IndexNow the URL, or sends an event twice to a subscriber
-// that had it; consumeEvents stops asking for a retry while a subscriber failed; or the sweep stops
-// putting unsent events on the Queue, or, without one, delivering them and marking them sent.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -31,7 +24,6 @@ function withEvents(site: ResolvedSite): ResolvedSite {
   }
 }
 
-/** A fake network: what was sent, and an answer per URL (200 unless told otherwise). */
 function network(statuses: Record<string, number> = {}) {
   const sent: { url: string; body: string; headers: Headers }[] = []
   return {
@@ -61,7 +53,6 @@ async function outboxOf(world: World) {
   return results
 }
 
-/** A published pair (en, es) in one group, on the site with a url and subscribers. */
 async function published(world: World) {
   const writer = agent({ ...world.context(), site: withEvents(world.tenant.site) })
   const md = (slug: string) =>
@@ -102,7 +93,6 @@ describe('the outbox', () => {
       entry: { id, collection: 'blog', locale: 'en', slug: 'pair-en', translationGroup: 'pair' },
       path: '/en/blog/pair-en/',
       url: 'https://example.com/en/blog/pair-en/',
-      // What a site purges: the entry, the list of its collection in its locale, its group.
       cacheTags: [`entry:${id}`, 'list:blog:en', 'list:blog:*', 'group:blog:pair'],
     })
   })
@@ -231,7 +221,6 @@ describe('deliveries', () => {
     })
     const id = event?.id ?? ''
 
-    // The deployment serves the site of the world, and no other.
     const served = (fetch: DeliveryDeps['fetch']) => (site: string) =>
       site === world.tenant.key ? deps(world, fetch) : undefined
 

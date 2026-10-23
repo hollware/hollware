@@ -15,24 +15,16 @@ import type { AssetRow, Media } from '../ports.ts'
 import { actorOf } from './actor.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
-/*
- * The images of a site (ADR-038): `upload_asset` converts a file once, by the site's `media`
- * setting, and keeps it in R2 with its row in D1; `list_assets` and `get_asset` read them.
- */
-
 const NO_BUCKET = {
   message: 'This Hollware keeps no images: its Worker has no R2 bucket bound as MEDIA.',
   fix: 'Add { "binding": "MEDIA", "bucket_name": "<name>" } to r2_buckets in wrangler.jsonc, and run hollware deploy, which creates the bucket.',
 }
 
-/** The keys of an asset's files in R2: the file served, and the file as it was uploaded. */
 export const servedKey = (site: string, id: string) => `sites/${site}/${id}`
 export const originalKey = (site: string, id: string) => `originals/${site}/${id}`
-/** The key of its copy `width` pixels wide, made for `srcset`, served at `<url>/<width>`. */
 export const variantKey = (site: string, id: string, width: number) =>
   `${servedKey(site, id)}/${width}`
 
-/** An asset as the operations answer it. */
 export function assetView(row: AssetRow, media: Media) {
   const url = `${media.baseUrl}${row.site}/${row.id}`
   return {
@@ -62,11 +54,12 @@ function bytesOfBase64(data: string): Uint8Array | null {
   return bytes
 }
 
-/** Base64 of bytes, in slices, since a string of millions of arguments overflows the stack. */
+const BYTES_PER_SPREAD = 0x8000
+
 export function base64Of(bytes: Uint8Array): string {
   let binary = ''
-  for (let start = 0; start < bytes.length; start += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000))
+  for (let start = 0; start < bytes.length; start += BYTES_PER_SPREAD) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + BYTES_PER_SPREAD))
   }
   return btoa(binary)
 }
@@ -76,7 +69,10 @@ async function sha256Of(bytes: Uint8Array): Promise<string> {
   return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** The error code of the Images binding, such as 9412 (not an image) or 9422 (no allowance left). */
+const IMAGES_NOT_AN_IMAGE = 9412
+const IMAGES_CANNOT_DECODE = 9516
+const IMAGES_NO_ALLOWANCE_LEFT = 9422
+
 function imagesCode(error: unknown): number | null {
   const code: unknown =
     typeof error === 'object' && error !== null ? Reflect.get(error, 'code') : null
@@ -124,7 +120,6 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
   }
   const sha256 = await sha256Of(original)
   const site = context.site.key
-  // By the bytes, whatever id they got: an asset of rc.2 and before has the id of its bytes alone.
   const existing = await media.catalog.bySha256(site, sha256)
   if (existing !== null) return { outcome: 'exists', asset: assetView(existing, media) }
   const id = await assetIdOf(site, sha256)
@@ -155,16 +150,14 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
       }
     } catch (error) {
       const code = imagesCode(error)
-      if (code === 9422) return NO_ALLOWANCE
-      // 9412: not an image; 9516: it could not be decoded (seen on a PNG cut short, 2026-10-18).
-      if (code === 9412 || code === 9516) return NOT_READABLE
+      if (code === IMAGES_NO_ALLOWANCE_LEFT) return NO_ALLOWANCE
+      if (code === IMAGES_NOT_AN_IMAGE || code === IMAGES_CANNOT_DECODE) return NOT_READABLE
       throw error
     }
   }
 
   const variants = await variantsOf(media, original, originalFormat, format, width, context)
   await media.files.put(servedKey(site, id), served, format)
-  // The file as it came, for a later change of format, unless the site keeps only what it serves.
   if (context.site.media.keepOriginals) {
     await media.files.put(originalKey(site, id), original, originalFormat)
   }
@@ -190,11 +183,6 @@ export const uploadAsset: OperationHandler<'upload_asset'> = async (input, conte
   return { outcome: created ? 'created' : 'exists', asset: assetView(row, media) }
 }
 
-/**
- * The narrower copies of an image for `srcset`, made from the file as it was uploaded, in the
- * format it is served in: none without the binding. When the month's allowance runs out halfway,
- * the image keeps the copies already made, since the image itself was converted.
- */
 async function variantsOf(
   media: Media,
   original: Uint8Array,
@@ -213,19 +201,16 @@ async function variantsOf(
       )
       made.push({ width: copy, ...converted })
     } catch (error) {
-      if (imagesCode(error) === 9422) break
+      if (imagesCode(error) === IMAGES_NO_ALLOWANCE_LEFT) break
       throw error
     }
   }
   return made
 }
 
-/** The cursor of a page: the `createdAt` and id of its last row, in base64url. */
-/** The cursor after a row of a listing newest first: its `createdAt` and id, in base64url. */
 export const cursorOf = (row: { readonly createdAt: string; readonly id: string }) =>
   btoa(`${row.createdAt}|${row.id}`).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
-/** The position a cursor of `cursorOf` names, or `null` for none, or one that is not one. */
 export function parseCursor(cursor: string | undefined) {
   if (cursor === undefined) return null
   try {
@@ -261,7 +246,6 @@ export const getAsset: OperationHandler<'get_asset'> = async (input, context) =>
   return row === null ? { outcome: 'not_found' } : { outcome: 'ok', asset: assetView(row, media) }
 }
 
-/** Changes the alt of an image of the site; the same alt again answers unchanged. */
 export const updateAsset: OperationHandler<'update_asset'> = async (input, context) => {
   const media = context.media ?? null
   const row = media === null ? null : await media.catalog.byId(context.site.key, input.id)
@@ -274,10 +258,6 @@ export const updateAsset: OperationHandler<'update_asset'> = async (input, conte
     : { outcome: 'updated', asset: assetView(updated, media) }
 }
 
-/**
- * The URL an `asset:` reference of the site resolves to: where the Worker serves the image, or
- * the reference as it is when the Worker serves no media.
- */
 export function assetUrlOf(
   context: Pick<OperationContext, 'media' | 'site'>,
 ): (id: string) => string {
@@ -285,10 +265,6 @@ export function assetUrlOf(
   return (id) => (base === undefined ? `asset:${id}` : `${base}${context.site.key}/${id}`)
 }
 
-/**
- * A value as a site reads it (RPC and the read API, the published view or a preview): every
- * `asset:` reference in it as the image's URL. Over MCP, an agent reads what it wrote.
- */
 export function forReaders<T>(
   context: Pick<OperationContext, 'media' | 'site' | 'view' | 'reader'>,
   value: T,
@@ -296,11 +272,9 @@ export function forReaders<T>(
   return readsUrls(context) ? resolveAssetReferences(value, assetUrlOf(context)) : value
 }
 
-/** Whether the call reads `asset:` references as URLs: a site, or the published view. */
 export const readsUrls = (context: Pick<OperationContext, 'view' | 'reader'>) =>
   context.reader === true || context.view === 'published'
 
-/** The assets of the site that values (a frontmatter, a document) name, by id. */
 export async function imagesNamed(
   context: Pick<OperationContext, 'media' | 'site'>,
   values: readonly unknown[],
@@ -312,10 +286,6 @@ export async function imagesNamed(
   return new Map(rows.map((row) => [row.id, row]))
 }
 
-/**
- * The `images` of a summary: by URL, the size and `srcset` of each image its frontmatter names,
- * where references are read as URLs. Nothing when it names none the site has.
- */
 export function summaryImages(
   context: Pick<OperationContext, 'media' | 'site' | 'view' | 'reader'>,
   frontmatter: unknown,

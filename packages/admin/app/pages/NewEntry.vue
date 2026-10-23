@@ -12,7 +12,6 @@ const m = useMessages()
 const router = useRouter()
 const route = useRoute()
 
-/** What the link that opened the page set: a collection, a locale, the group a translation joins. */
 function queried(name: string): string | undefined {
   const value = route.query[name]
   return typeof value === 'string' && value !== '' ? value : undefined

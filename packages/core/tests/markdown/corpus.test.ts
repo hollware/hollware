@@ -4,17 +4,9 @@ import { BLOG_CORPUS, contentFixture } from '../../../../tests/fixtures/content.
 import { COMARK_VERSION, PIPELINE_VERSION } from '../../src/markdown/versions.ts'
 import { accepted, warmUpComark } from './support.ts'
 
-// Fails when: the pipeline stops accepting the playground's blog without a marker (an allowlist
-// in src/markdown/policy.ts rejects an attribute, a tag or a URL that Markdown and Comark put on
-// a plain post), or finds something other than what these posts hold: a heading (its depth, its
-// text, its id, its line), a link and the entry it names, an image and its alt, a component and
-// its props, the words, as src/markdown/analyze.ts reads them from the document. The word counts
-// were made by hand, with `wc -w` on the text without its marks.
-
 warmUpComark()
 
 describe('the blog corpus', () => {
-  /** Each entry, with the words of its body outside code blocks (counted by hand). */
   const WORDS: Record<string, number> = {
     'en/agents-write-with-contracts': 106,
     'en/edge-caching-basics': 100,

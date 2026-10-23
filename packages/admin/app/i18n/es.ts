@@ -1,13 +1,6 @@
 import type { AuditAction } from '@hollware/core'
 import type { Messages } from './en.ts'
 
-/**
- * Every text of the admin in neutral Spanish: buttons and menu items in the infinitive, and what
- * speaks to the reader with "tú". Its type is the shape of `en.ts`, so a missing, an extra or a
- * mistyped key is a type error.
- */
-
-/** "1 entrada", "3 entradas". */
 const entradas = (count: number) => (count === 1 ? '1 entrada' : `${count} entradas`)
 
 export const es: Messages = {
@@ -861,7 +854,6 @@ export const es: Messages = {
     markdown: 'Markdown de la entrada',
     live: 'El Markdown publicado',
     asked: 'El Markdown pedido',
-    /** `$` es el número de líneas, como lo formula la vista de diff de CodeMirror. */
     unchangedLines: '$ líneas sin cambios: mostrarlas',
   },
   callback: {

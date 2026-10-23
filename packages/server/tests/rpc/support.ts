@@ -2,7 +2,6 @@ import type { HollwareRpc } from '../../src/index.ts'
 import { CANNED } from '../mcp/support.ts'
 import { SITE_KEY } from '../http/support.ts'
 
-/** What a call is built from: the method, the operation that answers it, and an example. */
 export const CALLS = [
   {
     method: 'getEntry',

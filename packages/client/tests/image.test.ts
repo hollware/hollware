@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { imageOf } from '../src/index.ts'
 
-// Fails when imageOf (src/hollware.ts) stops reading the URL of the frontmatter field, the alt,
-// the size and the srcset of the image Hollware gives a site, gives a `sizes` that lets the image
-// grow past its own width, answers something for a field that holds no URL, or invents a size or
-// copies for an image Hollware knows nothing of.
-
 const COVER = 'https://cms.test/assets/blog/ast_a'
 const entry = {
   frontmatter: { img: COVER, other: 'https://elsewhere.test/a.png', title: 'Hello' },

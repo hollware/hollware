@@ -1,17 +1,6 @@
-/**
- * Sealing a secret of the structure (ADR-033) under the Worker secret `HOLLWARE_SECRET`, so that
- * the database alone never holds one in clear: AES-GCM with a 256-bit key that is the SHA-256 of
- * that secret, and a fresh 96-bit nonce each time. What is stored is `v2.` and the base64url of
- * the nonce and the ciphertext with its tag, sealed with the site and the name of the secret as
- * associated data: a value moved to another row of D1 does not open there (T-71 of the threat
- * model). One that was tampered with, or sealed under another `HOLLWARE_SECRET`, does not open.
- * A `v1.` value, sealed before the place was bound, still opens wherever it is.
- */
-
 const PREFIX = 'v2.'
 const BEFORE_PLACES = 'v1.'
 
-/** Where a sealed secret belongs: the site and the name it is stored under. */
 export interface Place {
   readonly site: string
   readonly name: string
@@ -56,7 +45,6 @@ export async function seal(master: string, value: string, place: Place): Promise
   return `${PREFIX}${base64url(sealed)}`
 }
 
-/** The value of a sealed secret, or `null` when it does not open under `master` at `place`. */
 export async function unseal(master: string, sealed: string, place: Place): Promise<string | null> {
   const bound = sealed.startsWith(PREFIX)
   if (!bound && !sealed.startsWith(BEFORE_PLACES)) return null
@@ -77,11 +65,6 @@ export async function unseal(master: string, sealed: string, place: Place): Prom
   }
 }
 
-/**
- * Opens a sealed secret, as `unseal` does, and hands a `v1.` value that opened to `rewrite` sealed
- * again as `v2.`, bound to its place: the values of 0.8 to 0.10 leave the database as they are
- * read, so moving one between rows stops working for them too (T-71).
- */
 export async function openSealed(
   master: string,
   sealed: string,
@@ -95,7 +78,6 @@ export async function openSealed(
   return value
 }
 
-/** A new secret for a webhook: 32 random bytes, hex, behind `whsec_`. */
 export function newWebhookSecret(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32))
   return `whsec_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`

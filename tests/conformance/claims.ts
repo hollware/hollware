@@ -1,45 +1,20 @@
 import { request } from 'node:http'
 import type { CheckResult } from './results.ts'
 
-/**
- * What the conformance suite cannot see of Hollware, probed directly at the Worker. The suite
- * reaches the Worker through the proxy, which gives every request the token of the owner, so it
- * never meets a 401 or a 403 for a missing scope. And its DNS rebinding scenario sends a foreign
- * Host and a foreign Origin together, so it goes red only when both checks of the Worker are gone,
- * never when one is. These probes send the requests the suite does not:
- *
- * - a foreign Host alone, and a foreign Origin alone, are refused with 403, and the public Host is
- *   accepted (so a Worker that refuses everything does not pass);
- * - a request without a token, and one with a token nobody issued, are 401 with their challenge;
- * - a token without the scope of a tool is 403 with the challenge that names the scope, and a token
- *   with it is served (so a Worker that refuses every call does not pass).
- *
- * The answers are the ones that `packages/server` documents and tests: `auth/responses.ts` for the
- * challenges and `mcp/scopes.ts` for the scope challenge, as the SDK words it. The probes are the
- * scenario `hollware-claims` of the results, in the shape of a scenario of the suite, so that the
- * must-pass profile names their checks like any other.
- */
-
 export const CLAIMS_SCENARIO = 'hollware-claims'
 
-/** A check of the scenario: the fields of `checks.json` that the runner reads, and their texts. */
 export interface ProbeResult extends CheckResult {
   readonly name: string
   readonly description: string
 }
 
-/** The protocol era of the requests that reach a tool: 2026-07-28 is modern, 2025-11-25 legacy. */
 export type Era = 'modern' | 'legacy'
 
 export interface ClaimsOptions {
-  /** The port of `wrangler dev`: the probes go to the Worker, not through the proxy. */
   readonly workerPort: number
-  /** The `HOLLWARE_PUBLIC_URL` of the Worker, the only Host and Origin it answers. */
   readonly publicUrl: string
   readonly era: Era
-  /** A personal token with `content:read` and nothing else. */
   readonly readOnlyToken: string
-  /** How long each request may wait for its answer, in milliseconds. 10 s when absent. */
   readonly timeoutMs?: number
 }
 
@@ -83,10 +58,6 @@ function exchange(
   })
 }
 
-/**
- * The JSON of an answer, whether the Worker sent it as JSON or as a server-sent event. An answer
- * that is not JSON throws, and the probe fails with what the parser said.
- */
 function messageOf(answer: Answer): unknown {
   const type = answer.headers['content-type']
   const json =
@@ -112,7 +83,6 @@ function codeOf(answer: Answer): unknown {
     : undefined
 }
 
-/** A `tools/call` as a client of the era sends it, with the headers the era requires. */
 function toolCall(era: Era, tool: string, args: Record<string, unknown>) {
   const modern = era === 'modern'
   const body = JSON.stringify({
@@ -148,7 +118,6 @@ function toolCall(era: Era, tool: string, args: Record<string, unknown>) {
   return { headers, body }
 }
 
-/** A draft that is valid for the collection of `worker/hollware.config.ts`. */
 const DRAFT = {
   collection: 'notes',
   locale: 'en',
@@ -157,12 +126,10 @@ const DRAFT = {
     '---\ntitle: Claims probe\n---\n\nA draft that a token without content:write must not make.\n',
 }
 
-/** A token of the right shape that no one was issued. */
 const UNKNOWN_TOKEN = 'hw_pat_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
 
 const FOREIGN = 'evil.example.com'
 
-/** The result of one probe: it passes without a problem, and a failed one says what the Worker answered. */
 function verdict(id: string, description: string, problems: string[]): ProbeResult {
   return {
     id,
@@ -177,7 +144,6 @@ function expectStatus(answer: Answer, status: number, problems: string[]): void 
   if (answer.status !== status) problems.push(`expected ${status}, got ${answer.status}`)
 }
 
-/** Where the challenges of `/mcp` send a client to learn how to get a token (RFC 9728, ADR-026). */
 function metadataOf(publicUrl: URL): string {
   return `${publicUrl.origin}/.well-known/oauth-protected-resource/mcp`
 }

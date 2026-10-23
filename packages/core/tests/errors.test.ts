@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { ERROR_CODES, HollwareError } from '../src/errors.ts'
 
-// Fails when: an error code is added, removed or renamed without this list following, or a
-// HollwareError stops carrying its code and fix, or lets its cause into its message.
-
 describe('HollwareError', () => {
   it('has the error codes of the operations', () => {
     expect(ERROR_CODES).toEqual([

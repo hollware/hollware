@@ -1,10 +1,5 @@
 import * as z from 'zod'
 
-/**
- * The prompts of the MCP endpoint: workflows that an agent's user picks by name, written once
- * here. A prompt only says what to do; every step is a tool, checked as any call is.
- */
-
 export const REFRESH_CONTENT = {
   name: 'refresh_content',
   title: 'Refresh what readers read',
@@ -19,7 +14,6 @@ export const REFRESH_CONTENT = {
   }),
 }
 
-/** The text of `refresh_content`: the steps, each with the tool that takes it. */
 export function refreshContentText(days: number): string {
   return [
     `Refresh the content that readers read most, from the last ${days} days.`,

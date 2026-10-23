@@ -4,17 +4,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import { installErrorHandling } from '../../src/http/errors.ts'
 import type { GatewayEnv, GatewayLogEntry } from '../../src/http/types.ts'
 
-// Fails when: the error handling of the gateway stops being the Hono 5 form (error middleware
-// `(c, next)` that reads `c.error`): the Hono 4 form `(error, c)` on this Hono answers a plain-text
-// 500 without a word of JSON, so the body, the `content-type` and the fix with the id of the
-// request are pinned. Also when an error that a route throws, of whatever kind (an `Error`, a
-// string, an object), stops being a JSON 500 with a fixed message that carries none of the cause;
-// the cause stops going to the log with the id, the method and the path (and no query string); or
-// a path with no route stops being the JSON 404.
-
 const HEADERS = { 'cache-control': 'no-store', 'content-type': 'application/json' }
 
-/** An app with one route that throws what the test says, behind the middleware that sets the id. */
 function appThatThrows(thrown: unknown) {
   const logs: GatewayLogEntry[] = []
   const app = new Hono<GatewayEnv>()

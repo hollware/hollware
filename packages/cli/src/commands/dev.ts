@@ -32,7 +32,6 @@ export const DEV_USAGE = [
   '  --help               Show this help',
 ].join('\n')
 
-/** The file that names the server `--detach` started, relative to the project. */
 export const DEV_STATE_FILE = join('.wrangler', 'hollware-dev.json')
 
 const DEFAULT_URL = 'http://localhost:5199'
@@ -122,7 +121,6 @@ export async function dev(argv: readonly string[], io: Io): Promise<number> {
       writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`)
       return 0
     }
-    // The foreground: until a signal, or until the server stops by itself.
     const settled = await Promise.race([asked, child.exited.then(() => 'exited' as const)])
     if (settled === 'exited') {
       throw new CliError(`the dev server stopped by itself.${detail(child)}`)
@@ -134,7 +132,6 @@ export async function dev(argv: readonly string[], io: Io): Promise<number> {
   }
 }
 
-/** Whether a URL is this machine's. */
 function isLoopback(url: string): boolean {
   const { hostname } = new URL(url)
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
@@ -185,7 +182,6 @@ function timeoutOf(value: string | undefined): number {
   return seconds
 }
 
-/** Polls /health until it answers, the server ends, a signal comes or the time is up. */
 async function waitUntilHealthy(
   host: DevHost,
   child: DevChild,
@@ -206,10 +202,8 @@ async function waitUntilHealthy(
   return 'timeout'
 }
 
-/** Stops the server: SIGTERM to its group, SIGKILL when it has not ended after a grace period. */
 async function terminate(host: DevHost, child: DevChild): Promise<void> {
   host.killGroup(child.pid, 'SIGTERM')
-  // The grace timer is cleared when the server ends first: it would hold the process open.
   const clear = new AbortController()
   const ended = await Promise.race([
     child.exited.then(() => true),
@@ -220,8 +214,6 @@ async function terminate(host: DevHost, child: DevChild): Promise<void> {
     host.killGroup(child.pid, 'SIGKILL')
     await child.exited
   }
-  // The leader is gone. What it started is in the same group, which SIGTERM reached already; one
-  // that ignored it gets a moment, then SIGKILL (nothing happens when the group is empty).
   await host.sleep(POLL_MS)
   host.killGroup(child.pid, 'SIGKILL')
 }
@@ -253,8 +245,6 @@ function readState(cwd: string): DevState | undefined {
           'startedAt' in parsed && typeof parsed.startedAt === 'string' ? parsed.startedAt : '',
       }
     }
-  } catch {
-    // Not JSON: treated as if it was not there, and replaced by the next --detach.
-  }
+  } catch {}
   return undefined
 }

@@ -6,11 +6,6 @@ import { file } from '../support/fixtures.ts'
 import { readRepoFiles, repoFiles } from '../support/repo.ts'
 import { listedTestFiles } from '../support/vitest-list.ts'
 
-// Fails when: a test file that a test project runs, or one under a directory with a runner of its own
-// (tests/acceptance/, tests/conformance/), calls `.skip`, `.todo`, `.only`, `.skipIf` or `.runIf` on
-// `it`, `test`, `describe`, `suite` or `bench`, or calls `xit`, `xtest` or `xdescribe`.
-
-/** The test files of the repository: what the projects list, and what has a runner of its own. */
 function testFiles() {
   const selected = new Set(
     testFilesToCheck({
@@ -25,7 +20,6 @@ function testFiles() {
 describe('disabled tests', () => {
   it('no test file skips, postpones, focuses or conditions a test', () => {
     const tests = testFiles()
-    // Both sides must be real: the files of the repo project, of packages and of the Worker apps.
     expect(tests.map((test) => test.path)).toEqual(
       expect.arrayContaining([
         'scripts/break-line.test.ts',
@@ -146,11 +140,9 @@ describe('disabled tests', () => {
         "const custom = test.extend({})\ncustom.skip('a', () => {})": 'disabled-tests/disabled',
         "const slow = it.concurrent\nconst slower = slow\nslower.only('a', () => {})":
           'disabled-tests/focused',
-        // The names may be declared in any order.
         "const alias = base\nconst base = it\nalias.skip('a', () => {})": 'disabled-tests/disabled',
       }
       for (const [text, rule] of Object.entries(forms)) {
-        // One violation per form, however many calls and members surround it.
         expect(rulesOf(text), text).toEqual([rule])
       }
     })
@@ -194,7 +186,6 @@ describe('disabled tests', () => {
         'tests/acceptance/f0/helper.ts',
         'tests/acceptance/f0/a.test.ts',
       ])
-      // A listing of a file that the repository does not have selects nothing.
       expect(select(['src/index.ts'], ['gone.test.ts'])).toEqual([])
     })
 

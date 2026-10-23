@@ -1,10 +1,3 @@
-/**
- * How the agents reach Hollware: as any agent does, over MCP, with a personal token. They call
- * only the tools of `ALLOWED_TOOLS`, which read, write drafts, comment and ask for reviews; the
- * tools that publish or decide (`publish`, `approve_review`, `request_changes`, `unpublish`) are
- * refused here, before any request, whatever the token holds.
- */
-
 /** The tools an agent may call. */
 export const ALLOWED_TOOLS = [
   'comment_review',
@@ -23,7 +16,6 @@ export const ALLOWED_TOOLS = [
 
 export type AllowedTool = (typeof ALLOWED_TOOLS)[number]
 
-/** A tool's structured output, as JSON. */
 export type ToolOutput = Readonly<Record<string, unknown>>
 
 /** Calls a tool of Hollware. */
@@ -50,12 +42,9 @@ export function allowOnly(
   }
 }
 
-/** What the MCP client needs: where Hollware is, how to reach it, and the token. */
 export interface McpOptions {
-  /** The public URL of Hollware: its guard answers only requests for its own host. */
   readonly url: string
   readonly token: string
-  /** `fetch` of a service binding to the Hollware Worker, or the global one. */
   readonly fetch: (request: Request) => Promise<Response>
 }
 
@@ -64,14 +53,12 @@ export interface McpOptions {
  * as JSON or as a server-sent event; the tool's output is its `structuredContent`.
  */
 export function mcpHollware(options: McpOptions): Hollware {
-  const endpoint = `${options.url.replace(/\/+$/, '')}/mcp`
+  const endpoint = `${withoutTrailingSlashes(options.url)}/mcp`
   return allowOnly(async (tool, input) => {
     const response = await options.fetch(
       new Request(endpoint, {
         method: 'POST',
         headers: {
-          // A request over a service binding carries no Host of its own, and Hollware's guard
-          // answers only its public host.
           host: new URL(endpoint).host,
           authorization: `Bearer ${options.token}`,
           'content-type': 'application/json',
@@ -111,4 +98,10 @@ export function mcpHollware(options: McpOptions): Hollware {
     }
     return output
   })
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

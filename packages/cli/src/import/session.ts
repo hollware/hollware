@@ -13,12 +13,10 @@ import type * as z from 'zod'
 import { CliError } from '../errors.ts'
 import { printable } from '../format.ts'
 
-/** A tool failed and said so in words, instead of answering with one of its outcomes. */
 export class ToolFailure extends CliError {
   override readonly name: string = 'ToolFailure'
 }
 
-/** The part of an operation spec that a call needs (`@hollware/core` has them all). */
 export interface ToolSpec<
   Input extends z.ZodType<Record<string, unknown>>,
   Output extends z.ZodType,
@@ -28,34 +26,20 @@ export interface ToolSpec<
   readonly output: Output
 }
 
-/** A connection to the MCP endpoint of a Hollware, authenticated with a personal token. */
 export interface Session {
-  /**
-   * Calls an operation. The input goes through the spec's schema first, and the answer comes
-   * back through its output schema: an outcome that is an error for the caller (`not_found`,
-   * `conflict`, `blocked`…) is a normal answer here. A `ToolFailure` is thrown when the tool
-   * answered in words only.
-   */
   call: <Input extends z.ZodType<Record<string, unknown>>, Output extends z.ZodType>(
     spec: ToolSpec<Input, Output>,
     input: z.input<Input>,
   ) => Promise<z.output<Output>>
-  /** Whether the server has a tool: an older Hollware may lack one this CLI knows. */
   has: (tool: string) => Promise<boolean>
   close: () => Promise<void>
 }
 
-/**
- * Connects to `endpoint` over MCP's Streamable HTTP, with `token` as a bearer token. A refusal
- * of the connection or a failure of the transport is thrown as a `CliError` that says what to
- * do. Nothing is sent to any other address: a redirect to another origin is not followed.
- */
 export async function openSession(endpoint: URL, token: string, version: string): Promise<Session> {
   const client = new Client({ name: 'hollware-cli', version })
   const transport = new StreamableHTTPClientTransport(endpoint, {
     authProvider: { token: () => Promise.resolve(token) },
     onInsufficientScope: 'throw',
-    // A redirect to another origin would carry the token there: it fails instead.
     redirectPolicy: 'same-origin',
   })
   try {
@@ -91,9 +75,7 @@ function payloadOf(result: CallToolResult): unknown {
     if (block.type !== 'text') continue
     try {
       return JSON.parse(block.text)
-    } catch {
-      // Words, not JSON: `wordsOf` reports them.
-    }
+    } catch {}
   }
   return undefined
 }
@@ -107,7 +89,6 @@ function wordsOf(result: CallToolResult): string {
   return printable(words === '' ? 'it gave neither an outcome nor a reason' : words.slice(0, 500))
 }
 
-/** What a failure of the transport means for the person who ran the command. */
 function explain(error: unknown, endpoint: URL): CliError | undefined {
   if (error instanceof CliError) return error
   if (error instanceof UnauthorizedError) return rejectedToken()

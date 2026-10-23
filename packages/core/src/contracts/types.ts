@@ -1,7 +1,7 @@
 import type { ProcessedMarkdown } from '../markdown/types.ts'
 
 /**
- * The shapes of the contracts (ADR-004): what a contract looks at, what it reports, and the
+ * The shapes of the contracts: what a contract looks at, what it reports, and the
  * verdict of a revision. Contract errors never block a draft; they block publishing.
  */
 
@@ -109,7 +109,7 @@ export interface ContractFinding {
   readonly line?: number
 }
 
-/** A rule with an id, a severity and a fix for every problem it finds (ADR-004). */
+/** A rule with an id, a severity and a fix for every problem it finds. */
 export interface Contract<Frontmatter = Record<string, unknown>> {
   /** Lowercase words joined by hyphens, unique within the collection: `seo-title-length`. */
   readonly id: string
@@ -119,7 +119,7 @@ export interface Contract<Frontmatter = Record<string, unknown>> {
   /** What the rule asks for, as `describe_site` shows it to agents. */
   readonly description: string
   /**
-   * The rule of the catalog this contract is, with its parameters (ADR-033): what a site's
+   * The rule of the catalog this contract is, with its parameters: what a site's
    * definition stores for it. A contract of the site's own code has none.
    */
   readonly rule?: { readonly name: string; readonly params: Readonly<Record<string, unknown>> }

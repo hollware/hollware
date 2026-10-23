@@ -1,5 +1,3 @@
-/** Narrowing helpers for parsed JSON and YAML. Tests build values without `as` casts. */
-
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -28,7 +26,6 @@ export function arrayAt(value: unknown, key: string): unknown[] | undefined {
 
 export type JsonResult = { ok: true; value: unknown } | { ok: false; error: string }
 
-/** `JSON.parse` that reports a syntax error instead of throwing. */
 export function parseJson(text: string): JsonResult {
   try {
     const value: unknown = JSON.parse(text)

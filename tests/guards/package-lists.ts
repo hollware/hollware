@@ -1,30 +1,12 @@
 import { inlineCodeSpans, sectionLines, tableCells } from '../support/markdown.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `package-lists`: the places that list the packages list the packages that exist. When a
- * package is added, these lists are what a reader trusts to find it.
- *
- * - The `## Layout` section of `AGENTS.md` has a bullet for every package directory of the
- *   workspace (`packages/core`, `apps/playground`, `templates/starter`).
- * - The package table under `## Packages` of `README.md` has one row for every published
- *   package, each linking to its directory, and no other.
- * - The `## Versions` section of `.changeset/README.md` names every published package, names
- *   no `@hollware/*` package that does not exist, and says how many there are.
- */
-
 export interface PackageListsInput {
-  /** The root `AGENTS.md`. */
   agents: TextFile
-  /** The root `README.md`. */
   readme: TextFile
-  /** `.changeset/README.md`. */
   changesetReadme: TextFile
-  /** The directories of the workspace packages, e.g. `packages/core`. */
   workspaceDirs: readonly string[]
-  /** The names of all workspace packages, published or not. */
   workspaceNames: readonly string[]
-  /** The published packages. */
   published: readonly { name: string; dir: string }[]
 }
 
@@ -51,7 +33,6 @@ export function checkPackageLists(input: PackageListsInput): Violation[] {
   }
   const countWord = NUMBER_WORDS[input.published.length] ?? String(input.published.length)
 
-  // AGENTS.md: a Layout bullet per package directory.
   const layout = sectionLines(input.agents.text, 'Layout')
   const cited = new Set(
     layout
@@ -79,7 +60,6 @@ export function checkPackageLists(input: PackageListsInput): Violation[] {
     }
   }
 
-  // README.md: the package table.
   const rows = sectionLines(input.readme.text, 'Packages')
     .map(({ line }) => tableCells(line))
     .flatMap((cells) => {
@@ -125,7 +105,6 @@ export function checkPackageLists(input: PackageListsInput): Violation[] {
     )
   }
 
-  // .changeset/README.md: the Versions section.
   const versions = sectionLines(input.changesetReadme.text, 'Versions')
     .map(({ line }) => line)
     .join('\n')

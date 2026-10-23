@@ -2,15 +2,7 @@ import { HollwareError } from '@hollware/core'
 
 import type { View } from '../ports.ts'
 
-/**
- * The cursor of a listing is opaque to callers: base64url of the JSON `{ v, k, i }`, the view the
- * page was listed in, and the sort key and id of its last entry. The next page is what comes
- * after that position, so a page never repeats or skips an entry that did not change.
- */
-
-/** Where a page ended. */
 export interface CursorPosition {
-  /** The value the view sorts by: `updated_at` of the `head` view, `published_sort_key` otherwise. */
   readonly key: string
   readonly id: string
 }
@@ -29,7 +21,6 @@ function encodeBase64Url(text: string): string {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
 
-/** The text a base64url string holds, or `null` when it is not base64url of UTF-8. */
 function decodeBase64Url(text: string): string | null {
   if (!/^[A-Za-z0-9_-]*$/.test(text)) return null
   try {
@@ -49,15 +40,10 @@ function parseJson(text: string): unknown {
   }
 }
 
-/** The cursor that continues a `view` listing after `position`. */
 export function encodeCursor(view: View, position: CursorPosition): string {
   return encodeBase64Url(JSON.stringify({ v: view, k: position.key, i: position.id }))
 }
 
-/**
- * The position a cursor stands for. A cursor that no listing of this view returned, whatever is
- * wrong with it, is the error `invalid_input` with a fix.
- */
 export function decodeCursor(cursor: string, view: View): CursorPosition {
   const text = decodeBase64Url(cursor)
   const value = text === null ? undefined : parseJson(text)

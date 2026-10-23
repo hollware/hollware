@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { decodeCursor, encodeCursor } from '../../src/db/cursor.ts'
 
-// Fails when: src/db/cursor.ts changes the format of a cursor (base64url of the JSON of the view,
-// the sort key and the id, which would invalidate every cursor a client holds), stops carrying the
-// view or the sort key or the id, stops being safe for non-ASCII keys, accepts a cursor that no
-// listing returned (not base64url, not UTF-8, not JSON, the wrong shape, another view's), or
-// raises it as anything but the error `invalid_input` with a fix.
-
 const HEAD_CURSOR = 'eyJ2IjoiaGVhZCIsImsiOiIyMDI2LTEwLTEyVDEwOjAwOjAwLjAwMFoiLCJpIjoiZW50XzEifQ'
 
 function base64Url(text: string): string {

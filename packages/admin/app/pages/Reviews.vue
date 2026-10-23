@@ -38,10 +38,6 @@ async function list() {
 
 onMounted(list)
 
-/**
- * Reviews chosen to be decided together: approved, each as approve_review approves it, or sent
- * back with one note for all. Those whose warnings have to be accepted come back together.
- */
 const reportBulk = useBulkReport()
 const picked = ref(new Set<string>())
 const pickedReviews = computed(() => reviews.value.filter((review) => picked.value.has(review.id)))
@@ -210,7 +206,6 @@ async function addComment() {
   }
 }
 
-/** Closes the review for good, with the note as the reason: it is not to be published. */
 async function reject() {
   if (chosen.value === null || note.value.trim() === '') return
   busy.value = true

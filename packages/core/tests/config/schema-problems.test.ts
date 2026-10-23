@@ -4,17 +4,6 @@ import * as z from 'zod'
 import type { ConfigProblem } from '../../src/config/config-error.ts'
 import { BLOG, blogConfig, brokenSchema, failingSchema, problemsOf, schemaOf } from './support.ts'
 
-// Fails when: resolveConfig stops reporting, with its path, its message and its fix, that the
-// schema of a collection or the props of a component are not a Standard Schema with JSON Schema
-// (and which of its three parts is missing), cannot be converted (the message of the library is
-// kept, on one line), do not describe an object, or (props) do not reject unknown keys; that
-// `translations.groupBy`, `tags` or `sortBy` is no field name, names no property of the schema, or
-// names a property of the wrong type (a nullable one included, and a string without the date or
-// date-time format for `sortBy`); that components is no object, a component's name breaks the
-// rule or it is no object, or that its description or example is no string; when it checks the
-// fields against a schema that did not convert; or when the problems of a collection come out in
-// another order than schema, translations, tags, sortBy, components.
-
 const SCHEMA_FIX =
   'Use a schema from a library that implements Standard Schema and Standard JSON Schema, such as zod 4.2 or later.'
 const CONVERT_FIX =

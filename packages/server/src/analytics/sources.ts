@@ -10,20 +10,10 @@ import { posthogSource } from './posthog.ts'
 import { ProviderError, type Fetch } from './request.ts'
 import type { Source, SourceInput } from './source.ts'
 
-/*
- * The analytics connections of the sites (ADR-040): one row of `site_analytics` per site, its
- * credential sealed under HOLLWARE_SECRET and bound to the site and the name `analytics` (T-71),
- * and the provider asked through its adapter. Answers are kept ten minutes, under a key that names
- * the provider and the row's last change, never the credential (T-109).
- */
-
-/** How long the counts of a provider are kept: they move slowly, and providers limit their APIs. */
 export const STATS_CACHE_SECONDS = 600
 
-/** The name a credential is sealed under: sealing binds it to the site and this name. */
 export const SEALED_NAME = 'analytics'
 
-/** How many days connecting asks the provider for, to check the credential before saving it. */
 export const CHECK_DAYS = 7
 
 const SOURCES: Record<AnalyticsProvider, (input: SourceInput) => Source> = {
@@ -47,7 +37,6 @@ interface Row {
 
 export interface AnalyticsSourcesOptions {
   readonly db: D1Like
-  /** HOLLWARE_SECRET; without it nothing can be sealed or opened. */
   readonly master: string | undefined
   readonly fetch: Fetch
   readonly cache: Pick<Cache, 'match' | 'put'> | null

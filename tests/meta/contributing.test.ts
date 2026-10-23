@@ -5,9 +5,6 @@ import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 import { isRecord } from '../support/values.ts'
 
-// Fails when: CONTRIBUTING.md names a Node.js version other than .node-version, a pnpm major other
-// than the packageManager one, or a commands table that lists other commands than AGENTS.md.
-
 const CONTRIBUTING = [
   '# Contributing',
   '',

@@ -5,16 +5,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { envOf, FILES, keepLive, planOf, probe } from './deploy.ts'
 
-// Fails when: a deployment of ours (scripts/deploy.ts, ADR-034) stops building the packages first
-// (the CMS takes the admin from their build), stops migrating a database before
-// the Worker that reads it is deployed, deploys a site before the CMS it reads, builds a Worker
-// for another environment than its own, or stops probing what it deployed, the admin included; or a probe passes a
-// URL that did not answer 200 thirty times in a row, or fails one that did within its budget; or a
-// deploy stops keeping the hashed files of the live version of the admin, the demo blog or
-// hollware.com in the build that replaces it (`keepLive`), keeps them for more than one deploy,
-// overwrites a file of the new build, or writes a file the live list names outside its directory;
-// or a step that only builds gets the Cloudflare token in its environment (T-90).
-
 const names = (target: 'staging' | 'production') => planOf(target).steps.map((step) => step.name)
 
 describe('the plan of a deployment', () => {
@@ -54,7 +44,6 @@ describe('the plan of a deployment', () => {
       expect(cms.map((step) => step.env?.['CLOUDFLARE_ENV'])).toEqual([environment, environment])
     }
     expect(planOf('production').probes).toContain('https://hollware.com/')
-    // The admin, which the CMS takes from the build of the packages: a deploy without it is a 404.
     expect(planOf('production').probes).toContain('https://cms.demo.hollware.com/admin/')
     expect(planOf('staging').probes).toEqual([
       'https://hollware-staging.sergioazoc.workers.dev/health',
@@ -85,7 +74,6 @@ describe('probe', () => {
 })
 
 describe('keepLive', () => {
-  /** A live site that serves its list and its files, and records what was asked. */
   const site = (files: Record<string, string>) => {
     const asked: string[] = []
     const fetcher = async (url: string) => {
@@ -121,9 +109,7 @@ describe('keepLive', () => {
       'index-old.js',
     ])
     expect(readFileSync(join(dir, 'index-old.js'), 'utf8')).toBe('old')
-    // A file of the new build is never replaced by the live one of the same name.
     expect(readFileSync(join(dir, 'Entries-same.js'), 'utf8')).toBe('mine')
-    // The next deploy keeps what this build made, not what it kept: one deploy, no more.
     expect(JSON.parse(readFileSync(join(dir, FILES), 'utf8'))).toEqual([
       'Entries-same.js',
       'index-new.js',

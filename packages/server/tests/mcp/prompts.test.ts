@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { connect, endpointWith } from './support.ts'
 
-// Fails when: the MCP endpoint (src/mcp/endpoint.ts) stops listing the prompt refresh_content, in
-// both eras, with its title and its optional days; or the prompt (src/mcp/prompts.ts) stops
-// asking for content_stats over the days it is given (30 when none), then get_entry with related,
-// search, update_draft and publish, in that order.
-
 const STEPS = ['content_stats', 'get_entry', 'search', 'update_draft', 'publish'] as const
 
 function order(text: string): number[] {

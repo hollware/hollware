@@ -4,10 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: a principle of the README is renamed, added, removed or reordered without the
-// "Related principle" dropdown of feature_request.yml following, or the dropdown loses its
-// closing "None of them" option.
-
 const readmeWith = (...names: string[]) =>
   file(
     'README.md',

@@ -5,10 +5,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { pageHeaders, plainPageHeaders, STYLE_HASH } from '../../src/identity/pages.ts'
 
-// Fails when: the pages of the Worker (src/identity/pages.ts) allow inline styles other than their
-// own stylesheet, whose hash STYLE_HASH must be, or stop saying that no other origin may hold,
-// embed or ask a device of them.
-
 const SOURCE = readFileSync(join(import.meta.dirname, '../../src/identity/pages.ts'), 'utf8')
 
 describe('the headers of the sign-in, setup and consent pages', () => {
@@ -20,6 +16,10 @@ describe('the headers of the sign-in, setup and consent pages', () => {
     expect(pageHeaders('n')['content-security-policy']).toContain(`style-src '${STYLE_HASH}';`)
     expect(plainPageHeaders()['content-security-policy']).toContain(`style-src '${STYLE_HASH}';`)
     expect(JSON.stringify([pageHeaders('n'), plainPageHeaders()])).not.toContain('unsafe-inline')
+  })
+
+  it('leave form-action open on the consent page, since a browser applies it to the redirect to the client', () => {
+    expect(plainPageHeaders()['content-security-policy']).not.toContain('form-action')
   })
 
   it('isolate the page from other origins and ask for no device', () => {

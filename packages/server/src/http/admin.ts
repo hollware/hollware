@@ -5,18 +5,6 @@ import { adminClient } from '../oauth/admin.ts'
 import type { OAuth } from '../oauth/server.ts'
 import type { GatewayEnv } from './types.ts'
 
-/**
- * The admin at `/admin/` (ADR-026). Its hashed files are static assets that never reach the
- * Worker (`run_worker_first` in wrangler.jsonc); its page does, so that it goes out with the
- * policy below, and so does every path of the single-page app, which all get the same page. The
- * page learns how to sign in from `/admin/config.json`.
- */
-
-/**
- * What the admin's page may do: its own scripts and styles (CodeMirror and Nuxt UI write style
- * elements and attributes, hence `unsafe-inline` for styles only), images of the content from
- * anywhere over https, and requests to this origin alone. Nothing frames it.
- */
 const POLICY = [
   "default-src 'self'",
   "script-src 'self'",
@@ -77,7 +65,6 @@ export function installAdmin(
   app.get('/admin', (c) => c.redirect('/admin/', 301))
   app.get('/admin/', page)
   app.get('/admin/*', async (c) => {
-    // A file of the build (outside `/admin/assets/`, which never gets here) is served as it is.
     if (/\.[a-z0-9]+$/i.test(c.req.path)) {
       const assets = c.env.ASSETS
       if (assets === undefined) return notInstalled()

@@ -20,16 +20,6 @@ import { parseWorkflow } from '../guards/workflow-model.ts'
 import { file } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Runs the shell of the `publish` job of release.yml on a fake artifact, with a stub `npm` first
-// on PATH. The job checks nothing out, so its shell cannot live in .github/scripts: the test reads
-// it from the workflow and runs that very text.
-//
-// Fails when: the job publishes before it has verified the plan and every tarball (hash, content,
-// unlisted files, hostile values), or publishes a version npm already has, or skips one it does
-// not have, or drops --provenance, --access, --tag or --registry from the publish, or goes on
-// after a failure or when it cannot tell what npm has, or takes an answer for another version as
-// proof that the version is on npm.
-
 const REGISTRY = 'https://registry.npmjs.org/'
 const STEP = 'Verify the tarballs and publish them'
 
@@ -47,7 +37,6 @@ interface Plan {
   plan: Release[][]
 }
 
-/** Built once: the tarballs of a good artifact and the plan that describes them. */
 let template: { dir: string; plan: Plan }
 
 let root: string
@@ -56,7 +45,6 @@ let summaryFile: string
 let logFile: string
 let scriptFile: string
 
-/** The `run` of the publish step of release.yml. */
 function publishShell(): string {
   const workflow = parseWorkflow(
     file('.github/workflows/release.yml', readText('.github/workflows/release.yml')),
@@ -69,8 +57,6 @@ function publishShell(): string {
   return step.run
 }
 
-// The job answers three questions of npm and one command. This stand-in answers them from the
-// environment, logs every `view` and `publish` call, and refuses anything else.
 const NPM_STUB = `#!/usr/bin/env bash
 case "$1" in
   --version)
@@ -117,14 +103,8 @@ function sha256(bytes: Buffer): { base64: string; hex: string } {
   return { base64: hash.copy().digest('base64'), hex: hash.digest('hex') }
 }
 
-/**
- * The `publishConfig` inside every tarball: `pnpm pack` moves the repository's
- * `publishConfig.exports` and `publishConfig.bin` into `exports` and `bin` (ADR-016), and leaves
- * the settings the guard `manifests` allows.
- */
 const PUBLISH_CONFIG = { access: 'public', provenance: true }
 
-/** A package tarball with the layout `npm pack` makes: everything under `package/`. */
 function makeTarball(
   into: string,
   name: string,
@@ -151,7 +131,6 @@ function integrityOf(path: string): string {
   return `sha256-${sha256(readFileSync(join(packDir, path))).base64}`
 }
 
-/** Replaces the tarball of a release with one whose package.json says `manifest`, and the hash. */
 function rebuildTarball(release: Release, manifest: Record<string, unknown>): void {
   makeTarball(packDir, release.name, release.version, release.tarball.path, manifest)
   release.tarball.integrity = integrityOf(release.tarball.path)
@@ -177,12 +156,10 @@ function writePlan(plan: Plan): void {
   writeFileSync(join(packDir, 'publish-plan.json'), JSON.stringify(plan, null, 2))
 }
 
-/** A plan in two waves, dependencies first: core, then server and the CLI. A copy to change. */
 function goodPlan(): Plan {
   return structuredClone(template.plan)
 }
 
-/** The releases of a plan, in order, whatever wave they are in. */
 function releasesOf(plan: Plan): Release[] {
   return plan.plan.flat()
 }
@@ -197,11 +174,8 @@ interface Outcome {
   status: number | null
   stdout: string
   stderr: string
-  /** The `::error::` annotations. */
   errors: string[]
-  /** The `view` and `publish` calls npm got, in order, with the artifact folder as `<pack>`. */
   calls: string[]
-  /** What the job wrote to its summary. */
   summary: string
 }
 
@@ -231,7 +205,6 @@ function runJob(env: Record<string, string> = {}): Outcome {
   }
 }
 
-/** The file names of the tarballs the job handed to `npm publish`, in order. */
 function publishedTarballs(outcome: Outcome): string[] {
   return outcome.calls
     .filter((call) => call.startsWith('publish '))
@@ -247,7 +220,6 @@ beforeAll(() => {
   }
   const dir = mkdtempSync(join(tmpdir(), 'verify-and-publish-template-'))
   mkdirSync(join(dir, 'packages'))
-  // The stub is made once: macOS scans every new executable the first time it runs.
   mkdirSync(join(dir, 'bin'))
   const stub = join(dir, 'bin', 'npm')
   writeFileSync(stub, NPM_STUB)
@@ -402,8 +374,6 @@ describe('the publish job of release.yml', () => {
       expect(result.summary).toBe('')
     })
 
-    // It runs the job seven times, each a few processes of a shell: under the load of the whole
-    // suite that takes more than the default 5 s (it timed out three times on 2026-10-16).
     test('an old npm cannot do trusted publishing', { timeout: 30_000 }, () => {
       writePlan(goodPlan())
       for (const old of ['11.5.0', '11.4.9', '10.9.2']) {
@@ -473,8 +443,6 @@ describe('the publish job of release.yml', () => {
         ],
         [{ tag: 'beta', access: 'public' }, '{"tag":"beta"}'],
         [{ 'provenance-file': '/tmp/bundle.json' }, '{"provenance-file":"/tmp/bundle.json"}'],
-        // What an `npm pack` of a repository manifest leaves behind: npm does not move
-        // `publishConfig.exports` into `exports` the way `pnpm pack` does (ADR-016).
         [
           { ...PUBLISH_CONFIG, exports: { '.': { default: './dist/index.mjs' } } },
           '{"exports":{".":{"default":"./dist/index.mjs"}}}',

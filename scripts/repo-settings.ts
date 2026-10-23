@@ -1,14 +1,3 @@
-/**
- * Whether the settings of the repository on GitHub are still those of `.github/settings.json`
- * (T-91 of docs/security/threat-model.md): its rulesets (the branches and tags no one may delete or
- * force-push, and the check `release` needs) and the branches each environment takes (only
- * `release` may publish to npm). Nothing in a workflow sets them, so they can only drift by hand;
- * the weekly job of security.yml runs this, with a token that reads them.
- *
- *   node scripts/repo-settings.ts
- *
- * It exits 1 and lists every difference when they drift, and 0 when they match.
- */
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -20,7 +9,6 @@ export interface RulesetSettings {
   readonly enforcement: string
   readonly include: readonly string[]
   readonly exclude: readonly string[]
-  /** How many actors may bypass it: none, for every ruleset of this repository. */
   readonly bypass: number
   readonly rules: readonly string[]
   readonly requiredChecks: readonly string[]
@@ -28,7 +16,6 @@ export interface RulesetSettings {
 
 export interface EnvironmentSettings {
   readonly name: string
-  /** The branches its deployment policy takes; `null` when it takes every branch. */
   readonly branches: readonly string[] | null
 }
 
@@ -41,7 +28,6 @@ const sorted = (values: readonly string[]) => [...values].sort()
 const same = (a: readonly string[] | null, b: readonly string[] | null) =>
   JSON.stringify(a === null ? null : sorted(a)) === JSON.stringify(b === null ? null : sorted(b))
 
-/** Every way `actual` differs from `expected`, one sentence each; none when they match. */
 export function settingsDrift(expected: RepoSettings, actual: RepoSettings): string[] {
   const drift: string[] = []
   for (const want of expected.rulesets) {
@@ -85,7 +71,6 @@ export function settingsDrift(expected: RepoSettings, actual: RepoSettings): str
   return drift
 }
 
-/** One call of the GitHub API through `gh`, which reads its token from `GH_TOKEN`. */
 type Api = (path: string) => unknown
 
 const gh: Api = (path) =>
@@ -109,7 +94,6 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
 }
 
-/** The settings of a repository as GitHub answers them, in the shape of `.github/settings.json`. */
 export function readSettings(repository: string, api: Api): RepoSettings {
   const rulesets = list(api(`repos/${repository}/rulesets`)).map((summary) => {
     const ruleset = record(api(`repos/${repository}/rulesets/${String(record(summary)['id'])}`))

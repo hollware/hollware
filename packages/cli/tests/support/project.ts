@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach } from 'vite-plus/test'
 
-/** A `wrangler.jsonc` like the starter's: comments, a trailing comma, the binding `DB`. */
 export const WRANGLER_JSONC = `{
   // Not a real project: the shape of the starter's configuration.
   "name": "my-hollware",
@@ -20,12 +19,14 @@ export const WRANGLER_JSONC = `{
 }
 `
 
+export function wranglerWithPublicUrl(url: string): string {
+  return `{ "vars": { "HOLLWARE_PUBLIC_URL": "${url}" },${WRANGLER_JSONC.slice(1)}`
+}
+
 export interface TempDirs {
-  /** A new directory holding these files, by path below it. It is removed after the test. */
   make: (files?: Record<string, string>) => string
 }
 
-/** Temporary directories that every test of the file gets rid of afterwards. */
 export function tempDirs(): TempDirs {
   const directories: string[] = []
   afterEach(() => {

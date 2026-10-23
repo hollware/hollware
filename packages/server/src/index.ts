@@ -43,24 +43,24 @@ export interface HollwareEnv {
   readonly HOLLWARE_PUBLIC_URL: string
   /**
    * The key that seals the secrets Hollware makes for the structure, such as those that sign
-   * webhooks (ADR-033): at least 32 characters, which `hollware deploy` makes when it is missing.
+   * webhooks: at least 32 characters, which `hollware deploy` makes when it is missing.
    */
   readonly HOLLWARE_SECRET?: string
   /**
-   * The KV namespace of the OAuth server (ADR-026): its clients, grants and tokens, all by hash.
+   * The KV namespace of the OAuth server: its clients, grants and tokens, all by hash.
    * Personal tokens work without it; OAuth does not.
    */
   readonly OAUTH_KV: KVNamespace
   /**
    * A Workers Rate Limiting binding (`ratelimits` in wrangler.jsonc): with it, the routes anyone
    * may call without a token (sign-in and passkeys, OAuth's token and registration)
-   * answer 429 past its limit, per address and route (T-10 of docs/security/threat-model.md).
+   * answer 429 past its limit, per address and route.
    * Without it, nothing is limited.
    */
   readonly HOLLWARE_RATE_LIMIT?: RateLimiter
   /** The static assets of the Worker, which hold the admin at `/admin/`; without them, no admin. */
   readonly ASSETS?: Fetcher
-  /** The Queue of publication events (ADR-025); without it, the cron trigger delivers them. */
+  /** The Queue of publication events; without it, the cron trigger delivers them. */
   readonly EVENTS?: EventQueue
   /**
    * Workers AI and a Vectorize index (v0.5): with both, every published entry is embedded and
@@ -72,7 +72,7 @@ export interface HollwareEnv {
   /** The embedding model of Workers AI, `@cf/baai/bge-m3` when not set; its index must match it. */
   readonly HOLLWARE_EMBEDDING_MODEL?: string
   /**
-   * The images of the sites (ADR-038): the R2 bucket that keeps them and, optionally, the Images
+   * The images of the sites: the R2 bucket that keeps them and, optionally, the Images
    * binding that converts each once when it arrives. Without the bucket, upload_asset answers
    * unavailable; without the binding, every file is kept as it came.
    */
@@ -102,7 +102,7 @@ export interface HollwareRpc {
     locale: string,
     options?: {
       readonly formats?: readonly ('markdown' | 'document' | 'html')[]
-      /** Also the published entries closest by meaning (ADR-030). */
+      /** Also the published entries closest by meaning. */
       readonly related?: boolean
       /** Also the published entries the reference rules of the collection name, by field. */
       readonly references?: boolean
@@ -184,7 +184,7 @@ export interface HollwareWorker {
 }
 
 /**
- * Builds the Worker. The sites live in D1 (ADR-033); a config of 0.x, when given, is moved there
+ * Builds the Worker. The sites live in D1; a config of 0.x, when given, is moved there
  * on the first request, for the sites that have no definition yet, and never read again.
  */
 export type CreateHollware = (config?: HollwareConfig) => HollwareWorker

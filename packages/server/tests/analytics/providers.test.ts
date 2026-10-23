@@ -14,28 +14,21 @@ import {
 } from '../../src/analytics/request.ts'
 import type { SourceInput } from '../../src/analytics/source.ts'
 
-// Fails when: an adapter of ADR-040 stops asking its provider as its API wants it (the endpoint,
-// the credential as a bearer token, the site's hosts, the days and the limit), stops reading the
-// answer into normalized paths and views, stops finding what the credential shows (Cloudflare's
-// one account, PostHog's region and project), stops turning a refusal into `refused` with the
-// permission to add or a bad setting into `invalid`, lets a provider's message repeat the
-// credential, GA4 stops signing its JWT with the service account's key, or a provider stops
-// getting 25 s, inside the 30 s of its operation, before it is `unreachable`.
-
 const NOW = () => new Date('2026-10-21T12:00:00.000Z')
 
-/** A provider that answers each request with the next of `answers`, and records what it was asked. */
+function jsonOrText(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 function provider(...answers: { status: number; body: unknown }[]) {
   const asked: { url: string; method: string; headers: Record<string, string>; body: unknown }[] =
     []
   const fetch: Fetch = async (url, init) => {
-    const text = typeof init?.body === 'string' ? init.body : ''
-    let body: unknown = text
-    try {
-      body = JSON.parse(text)
-    } catch {
-      // A form or no body: kept as text.
-    }
+    const body = jsonOrText(typeof init?.body === 'string' ? init.body : '')
     asked.push({
       url,
       method: init?.method ?? 'GET',

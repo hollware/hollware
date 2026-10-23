@@ -14,13 +14,6 @@ import { findEntryById } from './reads.ts'
 import { entries, schedules, unpublishes } from './schema.ts'
 import { actorColumns, valuesOf } from './statements.ts'
 
-/**
- * Scheduled publications (ADR-025). An entry waits in status `scheduled` with its `scheduled_at`,
- * and its row of `schedules` says what was acknowledged and by whom, for the cron trigger that
- * publishes it once the time has passed.
- */
-
-/** Statements that drop the schedule of an entry, in the batch of a write that ends it. */
 export function dropSchedule(db: Db, site: string, entryId: string) {
   return db.delete(schedules).where(and(eq(schedules.siteId, site), eq(schedules.entryId, entryId)))
 }
@@ -91,7 +84,6 @@ export async function schedule(
   return { outcome: 'scheduled', view }
 }
 
-/** The schedules of a site whose time has come, oldest first. */
 export async function dueSchedules(
   db: Db,
   site: string,
@@ -117,7 +109,6 @@ export async function dueSchedules(
   }))
 }
 
-/** Takes an entry out of `scheduled`, back to a draft, and drops its schedule. */
 export async function cancelSchedule(
   db: Db,
   clock: Clock,
@@ -155,7 +146,6 @@ export function parseAcknowledged(text: string): AcknowledgedWarning[] {
   )
 }
 
-/** The kind of an actor as the `*_actor_kind` checks allow it. */
 function actorKindOf(value: string): Actor['kind'] {
   if (value === 'token' || value === 'user' || value === 'oauth_client') return value
   throw new Error(`A schedule has the actor kind ${value}, which is no kind`)
@@ -168,19 +158,12 @@ function parseMeta(text: string): Record<string, unknown> | null {
     : null
 }
 
-/**
- * Unpublications at a time: one row of `unpublishes` per published entry. Scheduling one again
- * moves its time; an unpublish, now or at its time, drops it.
- */
-
-/** Statements that drop the unpublication of an entry, in the batch of a write that ends it. */
 export function dropUnpublish(db: Db, site: string, entryId: string) {
   return db
     .delete(unpublishes)
     .where(and(eq(unpublishes.siteId, site), eq(unpublishes.entryId, entryId)))
 }
 
-/** Schedules the unpublication of a published entry at `at`, or moves the one it has. */
 export async function scheduleUnpublish(
   db: Db,
   clock: Clock,
@@ -218,13 +201,11 @@ export async function scheduleUnpublish(
   return exists === undefined ? 'not_found' : 'not_published'
 }
 
-/** Drops the unpublication of an entry; `false` when it had none. */
 export async function cancelUnpublish(db: Db, site: string, entryId: string): Promise<boolean> {
   const dropped = await dropUnpublish(db, site, entryId).returning({ id: unpublishes.id })
   return dropped.length > 0
 }
 
-/** When an entry is to be unpublished, or `null`. */
 export async function unpublishOf(db: Db, site: string, entryId: string): Promise<string | null> {
   const [row] = await db
     .select({ at: unpublishes.unpublishAt })
@@ -233,7 +214,6 @@ export async function unpublishOf(db: Db, site: string, entryId: string): Promis
   return row?.at ?? null
 }
 
-/** The unpublications of a site whose time has come, oldest first. */
 export async function dueUnpublishes(
   db: Db,
   site: string,

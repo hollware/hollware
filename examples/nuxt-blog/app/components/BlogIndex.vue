@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// The blog in one locale, newest first: the routes of the playground's config.
 const props = defineProps<{ locale: 'es' | 'en' }>()
 const prefix = props.locale === 'en' ? '/en' : ''
 const { data } = await useHollwareEntries('blog', { locale: props.locale, limit: 20 })

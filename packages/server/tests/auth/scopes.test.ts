@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { missingScopes } from '../../src/auth/scopes.ts'
 import type { Principal } from '../../src/auth/types.ts'
 
-// Fails when: missingScopes (src/auth/scopes.ts) reports a scope the principal has, leaves out one
-// it lacks, reports them in another order than the operation lists them, or stops reading the
-// scopes of a principal of either kind.
-
 function tokenPrincipal(scopes: Principal['scopes']): Principal {
   return { kind: 'token', userId: 'usr_x', tokenId: 'tok_x', site: 'site-x', scopes }
 }

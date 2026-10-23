@@ -3,11 +3,6 @@ import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/sp
 import type { Contract } from '../contracts/types.ts'
 
 /**
- * The shapes of `hollware.config.ts`. The config holds the sites of the deployment, and each site
- * its collections; `describe_site` shows all of it to agents.
- */
-
-/**
  * A schema Hollware can validate with and show to agents: a Standard Schema that also converts to
  * JSON Schema. Zod 4.2 or later is one; any other library that implements both works too.
  */
@@ -19,7 +14,7 @@ export type SchemaOutput<Schema extends DescribedSchema> = StandardSchemaV1.Infe
 
 /** A component an entry may use in its body, such as `::callout{type="tip"}`. */
 export interface ComponentDefinition {
-  /** Validates the props. It should reject unknown keys (ADR-020). */
+  /** Validates the props. It should reject unknown keys. */
   readonly props: DescribedSchema
   /** What the component is for, as `describe_site` shows it. */
   readonly description?: string
@@ -56,7 +51,7 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
    * Nobody has to write them, and a site reads them filled.
    */
   readonly automatic?: Readonly<Record<string, AutomaticKind>>
-  /** The components the body may use. Any other component is an error (ADR-020). */
+  /** The components the body may use. Any other component is an error. */
   readonly components?: Readonly<Record<string, ComponentDefinition>>
   /**
    * Rules of the collection. The schema, the components, content safety and the size limit are
@@ -84,7 +79,7 @@ export interface SiteDefinition {
    * the read API with a read token (`hw_read_`). None by default.
    */
   readonly cors?: { readonly origins: readonly string[] }
-  /** Who hears about publications (ADR-025). */
+  /** Who hears about publications. */
   readonly events?: {
     /** Each gets every event, signed with HMAC-SHA256 by the Worker secret named in `secret`. */
     readonly webhooks?: readonly {
@@ -96,7 +91,7 @@ export interface SiteDefinition {
     /** Tells IndexNow the URLs that changed; `key` is the key itself, which is public. */
     readonly indexNow?: { readonly key: string }
   }
-  /** What the site's activity log keeps (ADR-037): no addresses, and forever, by default. */
+  /** What the site's activity log keeps: no addresses, and forever, by default. */
   readonly audit?: {
     /** `hashed` keeps a keyed hash of the address of each request; `off` keeps nothing of it. */
     readonly ipAddresses?: 'off' | 'hashed'
@@ -110,7 +105,7 @@ export interface SiteDefinition {
     /** How many days each backup is kept, 1 to 365. */
     readonly retentionDays?: number
   }
-  /** How the site converts the images it receives (ADR-038): WebP at 85, 2400 pixels wide. */
+  /** How the site converts the images it receives: WebP at 85, 2400 pixels wide. */
   readonly media?: {
     readonly format?: 'webp' | 'avif' | 'original'
     readonly quality?: number
@@ -125,12 +120,12 @@ export interface SiteDefinition {
 /** What `hollware.config.ts` exports. */
 export interface HollwareConfig {
   /**
-   * The sites of 0.x, by key: since ADR-033 the sites live in D1, and these move there on the
+   * The sites of 0.x, by key: the sites now live in D1, and these move there on the
    * first request of a deployment whose D1 has no definition for them. The key is the site's id
    * in the database, so it never changes once content exists.
    */
   readonly sites?: Readonly<Record<string, SiteDefinition>>
-  /** How MCP clients and the admin get tokens (ADR-026). */
+  /** How MCP clients and the admin get tokens. */
   readonly auth?: AuthDefinition
 }
 
@@ -184,49 +179,32 @@ export interface ResolvedBackups {
   readonly retentionDays: number
 }
 
-/** How a site converts the images it receives (ADR-038). */
 export interface ResolvedMedia {
-  /** `original` keeps every file as it came; the others convert JPEG, PNG and GIF. */
   readonly format: 'webp' | 'avif' | 'original'
-  /** The quality of photographs, 1 to 100; PNG is converted lossless whatever it says. */
   readonly quality: number
-  /** The widest an image is kept, in pixels; a wider one is scaled down, never up. */
   readonly maxWidth: number
-  /**
-   * The widths of the narrower copies of each image, smallest first, for `srcset`: an image gets
-   * those narrower than itself, made when it is uploaded. Empty makes none.
-   */
   readonly widths: readonly number[]
-  /**
-   * Whether the file as it was uploaded is kept in R2 besides the one served, never served itself:
-   * what a later change of format starts from. `false` keeps only what is served, and the copies.
-   */
   readonly keepOriginals: boolean
 }
 
-/** What the activity log of a site keeps (ADR-037). */
+/** What the activity log of a site keeps. */
 export interface ResolvedAudit {
   readonly ipAddresses: 'off' | 'hashed'
   readonly retentionDays: number | null
 }
 
-/**
- * A webhook of a site. `secret` names the Worker secret that signs its deliveries; `null` when the
- * secret is Hollware's own, made by `make_webhook_secret` and sealed in the database (ADR-033).
- */
 export interface ResolvedWebhook {
   readonly name: string
   readonly url: string
   readonly secret: string | null
 }
 
-/** Who hears about the publications of a site. */
 export interface ResolvedEvents {
   readonly webhooks: readonly ResolvedWebhook[]
   readonly indexNow: { readonly key: string } | null
 }
 
-/** The config once resolved, at the start of the Worker: one site or more (ADR-027). */
+/** The config once resolved, at the start of the Worker: one site or more. */
 export interface ResolvedConfig {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly auth: ResolvedAuth

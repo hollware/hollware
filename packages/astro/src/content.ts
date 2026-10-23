@@ -1,12 +1,6 @@
 import { imageOf as imageOfEntry, type ImageAttributes, type PageImage } from '@hollware/client'
 import { safeDocument, type EntryDocument } from '@hollware/core'
 
-/*
- * What the components of `@hollware/astro` (components/*.astro) render, apart from them so a test
- * can hold it: the nodes of an entry's document, through the same rules as the HTML Hollware
- * makes, and the `<img>` of an image of its frontmatter.
- */
-
 /** A node of a document: a text, or an element as `[tag, props, ...children]`. */
 export type ContentNode = string | readonly unknown[]
 
@@ -47,7 +41,6 @@ export function contentNodes(entry: HollwareEntryLike | null | undefined): Conte
   return nodes
 }
 
-/** The elements that hold no children, which a renderer closes on the spot. */
 const VOID = new Set(['img', 'br', 'hr', 'input', 'wbr', 'col', 'area'])
 
 /** An element to render: the site's component or the plain tag, its props, and its children. */
@@ -99,7 +92,6 @@ export function elementOf(
       ? components[pascal(tag)]
       : undefined
   if (mapped !== undefined) return { tag: mapped, component: true, props, children, empty: false }
-  // A plain tag takes attributes: text, numbers and switches, never an object it would print.
   const attributes = Object.fromEntries(
     Object.entries(props).filter(([, value]) =>
       ['string', 'number', 'boolean'].includes(typeof value),

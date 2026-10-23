@@ -4,13 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { readText } from '../support/repo.ts'
 
-// Fails when: pnpm-workspace.yaml lowers minimumReleaseAge below 1440, drops trustPolicy:
-// no-downgrade, lists an allowBuilds entry without a "# reason", lists a
-// minimumReleaseAgeExclude or trustPolicyExclude entry that is not exact, or an auditConfig.ignoreGhsas
-// entry that is no GHSA id, has no reason, has no "expires YYYY-MM-DD"
-// or has expired, pins a catalog version that is not exact, or leaves the catalog unsorted;
-// or the root packageManager loses its sha512 hash.
-
 const TODAY = '2026-10-11'
 const HASH = '0123456789abcdef'.repeat(8)
 const PNPM = `pnpm@12.11.2+sha512.${HASH}`

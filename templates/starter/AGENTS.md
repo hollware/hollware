@@ -21,3 +21,29 @@ of the sites live in D1; this repository holds only the Worker.
   content stays as it is. Guide: https://hollware.com/docs/upgrade/
 - Never commit a token. `hollware init` and `hollware token create` print one once.
 - Docs: https://hollware.com
+
+## wrangler.jsonc
+
+`pnpm exec hollware doctor` checks each of these and says the fix.
+
+- `no_nodejs_compat` and `no_nodejs_compat_v2` keep Node.js compatibility off: Hollware runs and
+  is tested without it. Remove both only if your own code needs Node.js APIs.
+- `global_fetch_strictly_public`: the OAuth server fetches the metadata documents of clients over
+  the public internet only, never through your zone.
+- The cron runs every minute: it publishes the scheduled entries and sends the events the queue
+  missed. The `EVENTS` queue carries the publication events; the Worker consumes them and keeps
+  what fails five times in the dead-letter queue. Queue names are unique in an account.
+- `assets` is the admin, at `/admin/`: its hashed files go straight to the browser, every other
+  request reaches the Worker first.
+- `HOLLWARE_PUBLIC_URL` is the only Host and Origin the Worker answers. `hollware deploy` sets it
+  to the workers.dev URL, or to `--url` (a domain of its own gets its route): commit it.
+  `pnpm dev` always serves `http://localhost:5199`, the port of `vite.config.ts`.
+- `DB` and `OAUTH_KV` have no id: the first `hollware deploy` creates them and writes the id here.
+  Local development needs none. The migrations are those `@hollware/server` ships; apply them with
+  `hollware migrate`, never by hand.
+- `HOLLWARE_RATE_LIMIT`: sign-in and the OAuth token endpoint take 60 requests a minute per address.
+- `MEDIA` (R2) keeps the images and the backups; without it `upload_asset` is unavailable. `IMAGES`
+  converts each image once; without it images are kept as they come.
+- `HOLLWARE_SECRET` seals the secrets Hollware keeps (webhooks, analytics keys) and signs preview
+  links. `pnpm dev` uses a fixed value; the first `hollware deploy` gives the Worker its own.
+  Never replace it: what it sealed is lost.

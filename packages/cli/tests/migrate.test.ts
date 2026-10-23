@@ -1,35 +1,3 @@
-// Fails when:
-// - "--check lists the pending migrations and exits 1": `--check` stops listing the names,
-//   exits 0 with migrations pending, applies them, or changes the arguments of the list call.
-// - "--check exits 0 when nothing is pending": the exit code of `--check` is wrong for none.
-// - "applies the pending migrations with wrangler and lists them": `migrate` stops calling
-//   `wrangler d1 migrations apply`, or applies without listing first, or the output changes.
-// - "does nothing when there is nothing to apply": `apply` (or a backup) runs when the list is
-//   empty, so a deploy that runs `migrate --remote` every time would lock the database for
-//   nothing.
-// - "says 1 migration, not 1 migrations": the plural is wrong.
-// - "backs up the remote database before it applies anything": the backup before `--remote` is
-//   removed, moved after `apply`, or its arguments or file name change.
-// - "stops when the backup fails": a failed `wrangler d1 export` does not stop `apply`.
-// - "takes a Time Travel bookmark" / "stops when no bookmark": a database D1 cannot export (its
-//   full-text index) is not backed up by a bookmark, or is migrated without one.
-// - "stops when wrangler says it exported but wrote nothing" rows: a missing or empty backup
-//   file does not stop `apply`.
-// - "takes no backup when nothing is pending" / "takes no backup to only check": the backup is
-//   taken before the list says there is something to apply, or in `--check`.
-// - "says what is left when applying fails": the failure of `apply` is not reported with its
-//   reason, or the backup path is not given for a remote run.
-// - "fails when wrangler cannot list the migrations": a failed `list` is taken for "up to date".
-// - "does not take an answer it does not know for up to date": an output that says neither
-//   "No migrations to apply!" nor lists names is read as nothing pending.
-// - "parsePendingMigrations" rows: the table of `wrangler d1 migrations list` is not read with
-//   its colors, ASCII borders, CRLF line ends, or skips the header row.
-// - "uses --database for every call": `--database` is not given to every wrangler command and
-//   the backup name.
-// - "rejects --local and --remote together": both flags are accepted.
-// - "takes no backup of a remote database that has none of the migrations yet": a new database
-//   is exported before its first migration (an export that can fail for want of a permission,
-//   with nothing in it to keep), or a database with a migration is not.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -41,14 +9,12 @@ import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 
 const temp = tempDirs()
 
-// What wrangler 4.149.0 printed, captured against the migrations of @hollware/server.
 const LIST_ALL_PENDING =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: local \n\nUse --remote if you want to access the remote instance.\n\nMigrations to be applied:\n┌──────────────────────┐\n│ Name                 │\n├──────────────────────┤\n│ 0000_init.sql        │\n├──────────────────────┤\n│ 0001_core.sql        │\n├──────────────────────┤\n│ 0002_append_only.sql │\n└──────────────────────┘\n'
 const LIST_NONE =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: local \n\nUse --remote if you want to access the remote instance.\n\n✅ No migrations to apply!\n'
 const LIST_ONE_PENDING =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: local \n\nUse --remote if you want to access the remote instance.\n\nMigrations to be applied:\n┌─────────────────┐\n│ Name            │\n├─────────────────┤\n│ 0003_notes.sql  │\n└─────────────────┘\n'
-// The same table, on a database that has its first migration: two of them are left.
 const LIST_LATER_PENDING =
   '\n ⛅️ wrangler 4.149.0\n────────────────────\nResource location: remote \n\nMigrations to be applied:\n┌──────────────────────┐\n│ Name                 │\n├──────────────────────┤\n│ 0001_core.sql        │\n├──────────────────────┤\n│ 0002_append_only.sql │\n└──────────────────────┘\n'
 const APPLIED = '🌀 Executing on local database DB ...\n🚣 10 commands executed successfully.\n'
@@ -218,7 +184,6 @@ describe('hollware migrate', () => {
     expect(wrangler.calls.map((call) => call.args[1])).toEqual(['migrations', 'export'])
   })
 
-  // What wrangler 4.150.0 answers for a database with the full-text index of 0008.
   const VIRTUAL_TABLES =
     '\u001B[31m✘ \u001B[41;31m[\u001B[41;97mERROR\u001B[41;31m]\u001B[0m \u001B[1mD1 Export error: cannot export databases with virtual tables (like FTS5)\u001B[0m\n'
 

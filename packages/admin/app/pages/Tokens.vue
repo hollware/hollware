@@ -41,11 +41,8 @@ const tokens = ref<Token[]>([])
 const failure = ref<string | null>(null)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
-/** The days the token lasts; empty for a token that never expires (T-26). */
 const days = ref<number | undefined>(undefined)
-/** A read token reads published content over the read API, and nothing else. */
 const read = ref(false)
-/** The secret of the token just made: shown once, never again. */
 const secret = ref<string | null>(null)
 const busy = ref(false)
 
@@ -96,7 +93,6 @@ async function revoke(token: Token) {
   }
 }
 
-/** Tokens chosen to be revoked together, while the person confirms. */
 const reportBulk = useBulkReport()
 const revoking = ref<Token[]>([])
 const revokeOpen = computed({

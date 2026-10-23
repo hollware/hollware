@@ -20,49 +20,33 @@ import type { Clock } from '../ports.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
 
-/** A call over RPC that failed in a way its caller does not get to see. */
 export interface RpcLogEntry {
   readonly kind: 'rpc_error'
-  /** Also in the fix of the `internal` error the caller got, so that the operator finds this line. */
   readonly requestId: string
-  /** The method of `HollwareRpc` that was called. */
   readonly method: string
   readonly errorCode: ErrorCode | null
-  /** The error and its causes: what the caller never sees. */
   readonly detail: string
 }
 
-/** What the six methods stand on, built once for the isolate. */
 export interface RpcDeps {
-  /** The sites this deployment serves, by key; a call names one of them. */
   readonly sites: ReadonlyMap<string, ResolvedSite>
-  /** Brings `sites` in line with D1 before a call reads it (ADR-033); none in tests of a fixed map. */
   readonly refresh?: (db: D1Database) => Promise<void>
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: RpcLogEntry) => void
 }
 
-/** What a call needs of the bindings of the invocation. */
 export type RpcEnv = Pick<
   HollwareEnv,
   'DB' | 'AI' | 'VECTORIZE' | 'HOLLWARE_SECRET' | 'MEDIA' | 'IMAGES'
 > &
   Partial<Pick<HollwareEnv, 'HOLLWARE_PUBLIC_URL'>>
 
-/**
- * Who calls over RPC: a Worker of the same account, which reads published content and nothing
- * else. Frozen, so that no handler can widen it for the calls that come after.
- */
 const BINDING_PRINCIPAL: Principal = Object.freeze({
   kind: 'binding',
   scopes: Object.freeze(['content:read'] as const),
 } as const)
 
-/**
- * The site of a call is none of the sites of this deployment. The message and the fix both say
- * which sites it serves, for a caller that only gets one of them.
- */
 function unknownSite(site: string, served: Iterable<string>): HollwareError {
   const keys = [...served].map((key) => `"${key}"`).join(', ')
   return new HollwareError(
@@ -72,7 +56,6 @@ function unknownSite(site: string, served: Iterable<string>): HollwareError {
   )
 }
 
-/** What a caller that presents a preview token that does not hold is told. */
 function previewRefused(message: string): HollwareError {
   return new HollwareError(
     'invalid_preview',
@@ -81,11 +64,6 @@ function previewRefused(message: string): HollwareError {
   )
 }
 
-/**
- * The entry a preview token names, once its signature, its site and its hour hold: the caller gets
- * an error, never the published version in its place, for a token that does not. The reason goes
- * to the log; the caller only learns that the link is not valid.
- */
 async function checkPreview(
   deps: RpcDeps,
   env: RpcEnv,
@@ -101,8 +79,6 @@ async function checkPreview(
   })
   if (checked.ok) return checked.entryId
   if (checked.reason === 'no_secret') {
-    // invalid_preview, as every refused preview: a site drops its preview cookie on it and shows
-    // the published page, where any other code would be an error of the page.
     throw new HollwareError(
       'invalid_preview',
       'This Hollware cannot check preview links: it has no HOLLWARE_SECRET of 32 characters or more.',
@@ -116,13 +92,6 @@ async function checkPreview(
   )
 }
 
-/**
- * The options object of a call, without the keys that hold `undefined`, so that the handler sees
- * the same input as over MCP. A key that is none of `allowed` is an error: the specs are strict
- * objects so that a misspelled field is not ignored, and a caller that writes `lcoale` would
- * otherwise get every locale. Only the keys of `HollwareRpc` get through, so an input the RPC
- * does not offer, such as the `status` of `list_entries`, can never be set.
- */
 function readOptions(
   options: object | null | undefined,
   allowed: readonly string[],
@@ -147,10 +116,6 @@ function readOptions(
   return Object.fromEntries(entries.filter(([, value]) => value !== undefined))
 }
 
-/**
- * The input of an operation, parsed by its spec: the defaults (`limit`, `formats`) apply and a
- * value that breaks the schema is `invalid_input` that says which.
- */
 function parseInput<Schema extends z.ZodType>(schema: Schema, raw: unknown): z.output<Schema> {
   const parsed = schema.safeParse(raw)
   if (parsed.success) return parsed.data
@@ -164,12 +129,6 @@ function parseInput<Schema extends z.ZodType>(schema: Schema, raw: unknown): z.o
   )
 }
 
-/**
- * What a caller gets of a failure: an error it can read and act on, and none of the cause, which
- * an error carries when a handler wraps a failure of D1 or of its own. A `HollwareError` goes as
- * it is, rebuilt without its cause, and anything else is `internal` with the id of the call. What
- * the caller does not get goes to the log, under that id.
- */
 function forCaller(
   deps: RpcDeps,
   requestId: string,
@@ -196,19 +155,6 @@ function forCaller(
   return new HollwareError(known.code, known.message, known.fix)
 }
 
-/**
- * One call of an operation over RPC. In this order: the site is one of this deployment, the
- * input is built and parsed by the spec's schema, and the handler runs with
- *
- * - `view: 'published'`, so a draft is never read, and the principal `{ kind: 'binding', scopes:
- *   ['content:read'] }`, which can read and nothing else;
- * - a store over `env.DB.withSession('first-unconstrained')`: published content, from the nearest
- *   replica, where MCP reads the primary;
- * - the clock, `client: null` (a binding says nothing about itself) and a request id of its own.
- *
- * `build` makes the raw input, so a wrong site is answered before anything else is looked at and
- * a call that fails never opens a session.
- */
 async function run<Schema extends z.ZodType, Output>(
   deps: RpcDeps,
   env: RpcEnv,
@@ -217,14 +163,12 @@ async function run<Schema extends z.ZodType, Output>(
   schema: Schema,
   build: () => unknown,
   handler: (input: z.output<Schema>, context: OperationContext) => Promise<Output>,
-  /** The view of the call: `published` unless the call proves it may read more (a preview). */
   viewOf: (site: string) => Promise<OperationContext['view']> = () => Promise.resolve('published'),
 ): Promise<Output> {
   const requestId = crypto.randomUUID()
   try {
     await deps.refresh?.(env.DB)
   } catch (error) {
-    // D1 down, say: the caller gets `internal` and a request id, as for a failed read.
     throw forCaller(deps, requestId, method, error)
   }
   const served = deps.sites.get(site)
@@ -255,17 +199,9 @@ async function run<Schema extends z.ZodType, Output>(
   }
 }
 
-/**
- * The read-only RPC surface (`HollwareRpc`) over the bindings of one invocation. It is a function
- * and not the entrypoint so that it runs in any test; `entrypoint.ts` is the class that calls it.
- * It has the six methods and nothing that writes, and none of them reaches a handler other than
- * the one that reads.
- */
 export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
   return {
     getEntry: (site, collection, slug, locale, options) => {
-      // A preview is not an input of the operation: it only widens the view of this one read. It
-      // is split off when the input is built, after the site has been checked.
       const read: { preview: unknown; entryId: string | null } = {
         preview: undefined,
         entryId: null,
@@ -288,9 +224,6 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         },
         async (input, context) => {
           const answer = await deps.handlers.get_entry(input, context)
-          // The token names one entry: what the slug found is read only if it is that one, and
-          // any other is answered as no entry at all, so a token tells nothing of the slugs of
-          // the site that its own entry does not have.
           if (
             read.entryId !== null &&
             answer.entry !== undefined &&

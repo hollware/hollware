@@ -11,33 +11,11 @@ import {
 } from 'drizzle-orm/sqlite-core'
 import { id, siteId, timestamps } from './columns.ts'
 
-/**
- * The D1 schema of Hollware v0.1. `drizzle-kit generate` turns it into the migrations of
- * `migrations/`, which ship with the package; `0002_append_only.sql` adds, by hand, the triggers
- * that keep revisions, their tags and publications append-only (ADR-021).
- *
- * Every site-scoped table has `site_id`, `UNIQUE(id, site_id)`, and composite foreign keys that
- * carry `site_id`, so a row can only point at rows of its own site. Entries point at their head
- * and published revisions without a foreign key: entries and revisions would reference each
- * other, and D1 cannot insert such a cycle, since it does not defer foreign keys.
- */
-
-/** Created by the shipped migration `0000_init.sql`, which is never edited. Deployment metadata. */
 export const hollwareMeta = sqliteTable('_hollware_meta', {
   key: text('key').primaryKey().notNull(),
   value: text('value').notNull(),
 })
 
-/**
- * The sites of the deployment, and their structure (ADR-033). The id is the site's key. Its
- * definition is the JSON that `siteDefinitionData` of `@hollware/core` checks, and `version` moves
- * with every change of it, which is what a Worker compares to know its copy is current. A row
- * without a definition is a site the deployment does not serve yet: the CLI made it before its
- * owner gave it one, or a 0.x deployment has not moved its config. A site in the trash has
- * `deleted_at`, and is served no more. The columns came by `ADD COLUMN`, with no CHECK: a CHECK
- * on them would rebuild the table, which D1 refuses while other tables point at it; the store
- * writes only definitions it has checked.
- */
 export const sites = sqliteTable('sites', {
   id: text('id').primaryKey(),
   definition: text('definition'),
@@ -46,14 +24,6 @@ export const sites = sqliteTable('sites', {
   ...timestamps(),
 })
 
-/**
- * People. A user belongs to the deployment; what they may do in a site is their row of `members`.
- *
- * `role` is the role of v0.1 and v0.2, kept with its CHECK of then: SQLite changes a CHECK only by
- * rebuilding the table, and D1, which never turns foreign keys off, refuses to drop a table that
- * other rows point at. Nothing reads it since v0.3. A new user gets the old name of their role
- * (`legacyRoleOf`), so that the column stays true to the CHECK.
- */
 export const users = sqliteTable(
   'users',
   {
@@ -65,7 +35,6 @@ export const users = sqliteTable(
   (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`)],
 )
 
-/** What a person may do in a site (ADR-026): one role per person and site. */
 export const members = sqliteTable(
   'members',
   {
@@ -84,7 +53,6 @@ export const members = sqliteTable(
   ],
 )
 
-/** Personal tokens (ADR-019): only the hash is stored. */
 export const tokens = sqliteTable(
   'tokens',
   {
@@ -93,14 +61,9 @@ export const tokens = sqliteTable(
     userId: text('user_id').notNull(),
     label: text('label').notNull(),
     hash: text('hash').notNull(),
-    /**
-     * `personal` (`hw_pat_`) or `read` (`hw_read_`), which reads the published content of the
-     * site over the read API and nothing else. Its CHECK is the column's own (migration 0007).
-     */
     kind: text('kind', { enum: ['personal', 'read'] })
       .notNull()
       .default('personal'),
-    /** A JSON array of scopes. */
     scopes: text('scopes').notNull(),
     expiresAt: text('expires_at'),
     revokedAt: text('revoked_at'),
@@ -116,7 +79,6 @@ export const tokens = sqliteTable(
   ],
 )
 
-/** One entry per site, collection, locale and slug; its content lives in `revisions`. */
 export const entries = sqliteTable(
   'entries',
   {
@@ -127,17 +89,12 @@ export const entries = sqliteTable(
     slug: text('slug').notNull(),
     translationGroup: text('translation_group'),
     status: text('status').notNull(),
-    /** Bumped by every change of the entry: the optimistic write compares it. */
     version: integer('version').notNull(),
     headRev: text('head_rev').notNull(),
     publishedRev: text('published_rev'),
     publishedAt: text('published_at'),
     publishedSortKey: text('published_sort_key'),
     scheduledAt: text('scheduled_at'),
-    /**
-     * When the entry went to the trash, or null. A trashed entry keeps its row, its slug and its
-     * translation group: only a draft goes there, and it comes back as the draft it was.
-     */
     deletedAt: text('deleted_at'),
     ...timestamps(),
   },
@@ -145,8 +102,6 @@ export const entries = sqliteTable(
     unique('entries_id_site').on(t.id, t.siteId),
     unique('entries_slug').on(t.siteId, t.collection, t.locale, t.slug),
     unique('entries_translation').on(t.siteId, t.collection, t.translationGroup, t.locale),
-    // Each listing reads its order from an index, the id breaking ties, so a page costs its own
-    // rows and not a sort of the whole collection.
     index('entries_head').on(t.siteId, t.collection, t.updatedAt, t.id),
     index('entries_head_locale').on(t.siteId, t.collection, t.locale, t.updatedAt, t.id),
     index('entries_published')
@@ -167,10 +122,6 @@ export const entries = sqliteTable(
   ],
 )
 
-/**
- * Every version of an entry, appended and never changed (ADR-021). `markdown` is the whole file,
- * frontmatter included; the derived columns are rebuilt by the reparse of the cron (`derived/reparse.ts`).
- */
 export const revisions = sqliteTable(
   'revisions',
   {
@@ -178,24 +129,16 @@ export const revisions = sqliteTable(
     siteId: siteId(),
     entryId: text('entry_id').notNull(),
     markdown: text('markdown').notNull(),
-    /** Derived: the frontmatter as JSON. */
     frontmatter: text('frontmatter').notNull(),
-    /** Derived: the Comark document as JSON. */
     document: text('document').notNull(),
     comarkVersion: text('comark_version').notNull(),
     pipelineVersion: text('pipeline_version').notNull(),
     wordCount: integer('word_count').notNull(),
-    /**
-     * The words of its code blocks, apart from `word_count`: a reading time counts them too.
-     * Derived, like `word_count`; 0 until the reparse of the cron reaches a revision of before.
-     */
     codeWords: integer('code_words').notNull().default(0),
-    /** The verdict of the contracts when the revision was written, as JSON. */
     verdict: text('verdict').notNull(),
     actorKind: text('actor_kind').notNull(),
     actorUserId: text('actor_user_id').notNull(),
     actorTokenId: text('actor_token_id'),
-    /** The client and, when it says, the model behind the write, as JSON. */
     actorMeta: text('actor_meta'),
     ...timestamps(),
   },
@@ -223,7 +166,6 @@ export const revisions = sqliteTable(
   ],
 )
 
-/** The tags of a revision, for listing published entries by tag. Append-only, like revisions. */
 export const revisionTags = sqliteTable(
   'revision_tags',
   {
@@ -246,10 +188,6 @@ export const revisionTags = sqliteTable(
   ],
 )
 
-/**
- * Every publish and unpublish, appended: the verdict of the publish phase and the warnings the
- * caller acknowledged (ADR-021).
- */
 export const publications = sqliteTable(
   'publications',
   {
@@ -259,7 +197,6 @@ export const publications = sqliteTable(
     action: text('action').notNull(),
     revisionId: text('revision_id'),
     verdict: text('verdict'),
-    /** A JSON array: the warnings the caller acknowledged to publish. */
     acknowledged: text('acknowledged').notNull(),
     actorKind: text('actor_kind').notNull(),
     actorUserId: text('actor_user_id').notNull(),
@@ -304,11 +241,6 @@ export const publications = sqliteTable(
   ],
 )
 
-/**
- * Scheduled publications (ADR-025): one per entry at most. The cron trigger publishes the entry when
- * `scheduled_at` has passed, if it is still at `version`, with the warnings that were acknowledged
- * when it was scheduled, and in the name of who scheduled it.
- */
 export const schedules = sqliteTable(
   'schedules',
   {
@@ -316,9 +248,7 @@ export const schedules = sqliteTable(
     siteId: siteId(),
     entryId: text('entry_id').notNull(),
     scheduledAt: text('scheduled_at').notNull(),
-    /** The version of the entry once scheduled: a later change cancels the schedule. */
     version: integer('version').notNull(),
-    /** A JSON array: the warnings acknowledged when the publication was scheduled. */
     acknowledged: text('acknowledged').notNull(),
     actorKind: text('actor_kind').notNull(),
     actorUserId: text('actor_user_id').notNull(),
@@ -350,11 +280,6 @@ export const schedules = sqliteTable(
   ],
 )
 
-/**
- * The slugs an entry had before it moved (`move_entry`): a site answers the old path with a 301 to
- * the entry's path now. One row per old slug; a slug a new entry takes, or the entry takes back,
- * leaves the table.
- */
 export const redirects = sqliteTable(
   'redirects',
   {
@@ -379,11 +304,6 @@ export const redirects = sqliteTable(
   ],
 )
 
-/**
- * Unpublications at a time: one per published entry at most. The cron trigger takes the entry off
- * the site once `unpublish_at` has passed, in the name of who scheduled it and only if they may
- * still publish (T-108); an unpublish before it drops it.
- */
 export const unpublishes = sqliteTable(
   'unpublishes',
   {
@@ -418,22 +338,13 @@ export const unpublishes = sqliteTable(
   ],
 )
 
-/**
- * The effects of a publication (ADR-025), written in the batch that publishes or unpublishes: one
- * row per event. The Queue consumer delivers each event to every subscriber, and records it in
- * `deliveries`; `sent_at` says that the event was put on the Queue. A change of the structure of
- * the site (ADR-033) is an event too, `site.changed`, about no entry.
- */
 export const outbox = sqliteTable(
   'outbox',
   {
     id: id('evt'),
     siteId: siteId(),
-    /** `entry.published`, `entry.unpublished`, or `site.changed`. */
     kind: text('kind').notNull(),
-    /** The entry of an event about one, and none for `site.changed`. */
     entryId: text('entry_id'),
-    /** A JSON object: what subscribers get. */
     payload: text('payload').notNull(),
     sentAt: text('sent_at'),
     ...timestamps(),
@@ -451,14 +362,12 @@ export const outbox = sqliteTable(
   ],
 )
 
-/** Each delivery of an event to a subscriber, so that a retry never delivers it twice. */
 export const deliveries = sqliteTable(
   'deliveries',
   {
     id: id('dlv'),
     siteId: siteId(),
     eventId: text('event_id').notNull(),
-    /** The subscriber, by its name in the config, such as `webhook:newsletter` or `indexnow`. */
     subscriber: text('subscriber').notNull(),
     attempts: integer('attempts').notNull(),
     deliveredAt: text('delivered_at'),
@@ -478,23 +387,15 @@ export const deliveries = sqliteTable(
   ],
 )
 
-/**
- * The passkeys of a person (ADR-026): WebAuthn credentials, by their id, with their public key. A
- * person is one across the sites of a deployment (v0.4), and so are their passkeys and sessions.
- */
 export const passkeys = sqliteTable(
   'passkeys',
   {
     id: id('pky'),
     userId: text('user_id').notNull(),
-    /** The credential id, base64url, as the authenticator gives it. */
     credentialId: text('credential_id').notNull(),
-    /** The COSE public key, base64url. */
     publicKey: text('public_key').notNull(),
     counter: integer('counter').notNull(),
-    /** A JSON array of the transports the authenticator reported. */
     transports: text('transports').notNull(),
-    /** What the person calls it, such as "MacBook". */
     label: text('label').notNull(),
     lastUsedAt: text('last_used_at'),
     ...timestamps(),
@@ -511,11 +412,6 @@ export const passkeys = sqliteTable(
   ],
 )
 
-/**
- * Links that let a person in, once: the owner's setup link that `hollware init` prints (it names
- * the owner) and invitations (they carry a role, and the person they make is new). Only the hash
- * of the link's secret is stored.
- */
 export const invitations = sqliteTable(
   'invitations',
   {
@@ -523,7 +419,6 @@ export const invitations = sqliteTable(
     siteId: siteId(),
     hash: text('hash').notNull(),
     role: text('role').notNull(),
-    /** The existing person the link is for, or null for an invitation that makes a new one. */
     userId: text('user_id'),
     expiresAt: text('expires_at').notNull(),
     usedAt: text('used_at'),
@@ -538,17 +433,13 @@ export const invitations = sqliteTable(
   ],
 )
 
-/** WebAuthn challenges, each used once and briefly (ADR-026). */
 export const authChallenges = sqliteTable(
   'auth_challenges',
   {
     id: id('chl'),
     challenge: text('challenge').notNull(),
-    /** `register` or `authenticate`. */
     purpose: text('purpose').notNull(),
-    /** The invitation a registration redeems, or null for a sign-in. */
     invitationId: text('invitation_id'),
-    /** The person a registration makes or adds a passkey to: the id the passkey is bound to. */
     userId: text('user_id'),
     expiresAt: text('expires_at').notNull(),
     ...timestamps(),
@@ -556,7 +447,6 @@ export const authChallenges = sqliteTable(
   (t) => [check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`)],
 )
 
-/** Signed-in people (ADR-026): the session cookie that `/authorize` reads, by its hash. */
 export const sessions = sqliteTable(
   'sessions',
   {
@@ -572,29 +462,19 @@ export const sessions = sqliteTable(
   ],
 )
 
-/**
- * Reviews (v0.3): a person who may write but not publish asks for a revision to be published, and
- * a person who may publish approves it, which publishes it, or asks for changes with a note. An
- * entry has at most one pending review; a new revision of the entry cancels it, and a publication
- * of the entry approves it, in the batch of that write.
- */
 export const reviews = sqliteTable(
   'reviews',
   {
     id: id('rvw'),
     siteId: siteId(),
     entryId: text('entry_id').notNull(),
-    /** The revision asked for: the head of the entry when the review was asked. */
     revisionId: text('revision_id').notNull(),
     status: text('status').notNull(),
-    /** A JSON array: the warnings the person who asked acknowledged. */
     acknowledged: text('acknowledged').notNull(),
     requestedBy: text('requested_by').notNull(),
-    /** What the client that asked said about itself, as JSON, or `null`. */
     requestedMeta: text('requested_meta'),
     decidedBy: text('decided_by'),
     decidedAt: text('decided_at'),
-    /** What the person who asked for changes wrote. */
     note: text('note'),
     ...timestamps(),
   },
@@ -632,12 +512,6 @@ export const reviews = sqliteTable(
   ],
 )
 
-/**
- * The vectors of an entry, as derived data (v0.5): the published revision they were made from,
- * with which model and which version of the chunker, and how many pieces there are. The vectors
- * live in Vectorize under `<entry id>:<piece>`; this row says which exist and whether they are
- * current. One row per entry: a new publication replaces it.
- */
 export const entryEmbeddings = sqliteTable(
   'entry_embeddings',
   {
@@ -647,12 +521,7 @@ export const entryEmbeddings = sqliteTable(
     revisionId: text('revision_id').notNull(),
     model: text('model').notNull(),
     chunkerVersion: text('chunker_version').notNull(),
-    /** How many pieces, so how many vectors: `<entry id>:0` to `<entry id>:<pieces - 1>`. */
     pieces: integer('pieces').notNull(),
-    /**
-     * The entries closest to this one by their summaries, in its collection and locale, closest
-     * first, as JSON: `[{ "id": "ent_…", "score": 0.91 }]`. Found when its vectors were made.
-     */
     related: text('related').notNull().default('[]'),
     ...timestamps(),
   },
@@ -674,16 +543,6 @@ export const entryEmbeddings = sqliteTable(
   ],
 )
 
-/**
- * Comments on a review (v0.6): what a person or an agent says about the revision a review asks
- * for, before someone decides. Only a pending review takes one; they stay after the decision.
- */
-/**
- * Every change of a site's structure (ADR-033), appended: the definition before and after, the
- * version it made, and who made it. `before` is null when the site was made; `after` when it was
- * put in the trash. `actor_user_id` is null for the move of a 0.x config, which the deployment
- * makes on its own.
- */
 export const siteChanges = sqliteTable(
   'site_changes',
   {
@@ -691,7 +550,6 @@ export const siteChanges = sqliteTable(
     siteId: siteId(),
     version: integer('version').notNull(),
     actorUserId: text('actor_user_id'),
-    /** What the client that made it said about itself, as JSON, or `null`. */
     actorMeta: text('actor_meta'),
     before: text('before'),
     after: text('after'),
@@ -709,11 +567,6 @@ export const siteChanges = sqliteTable(
   ],
 )
 
-/**
- * The secrets Hollware makes for the structure of a site (ADR-033), such as the key that signs a
- * webhook's deliveries: sealed with AES-GCM under the Worker secret `HOLLWARE_SECRET`, so that the
- * database alone never holds one in clear. One per name and site.
- */
 export const siteSecrets = sqliteTable(
   'site_secrets',
   {
@@ -730,11 +583,6 @@ export const siteSecrets = sqliteTable(
   ],
 )
 
-/**
- * The analytics a site reads its page views from (ADR-040): the provider, its settings (JSON,
- * nothing secret in them) and one read-only credential, sealed as the secrets of `site_secrets`
- * are, under the name `analytics`. One per site; `checked_at` is when the provider last answered.
- */
 export const siteAnalytics = sqliteTable(
   'site_analytics',
   {
@@ -765,7 +613,6 @@ export const reviewComments = sqliteTable(
     siteId: siteId(),
     reviewId: text('review_id').notNull(),
     authorId: text('author_id').notNull(),
-    /** What the client that wrote it said about itself, as JSON, or `null`. */
     authorMeta: text('author_meta'),
     body: text('body').notNull(),
     ...timestamps(),
@@ -788,35 +635,23 @@ export const reviewComments = sqliteTable(
   ],
 )
 
-/**
- * The activity log (ADR-037): one line for every change of a site and every refusal, with who
- * did it, through what, on what, and how it ended. Append-only, as revisions are: triggers refuse
- * an update, a replace and the delete of a line younger than the retention its site chose.
- * `actor_user_id` has no foreign key on purpose: a line outlives the person it names.
- */
 export const auditLog = sqliteTable(
   'audit_log',
   {
     id: id('aud'),
     siteId: siteId(),
-    /** One of `AUDIT_ACTIONS` of `@hollware/core`. */
     action: text('action').notNull(),
     outcome: text('outcome').notNull(),
-    /** The code of the error the caller got, when the outcome is not `ok`. */
     errorCode: text('error_code'),
     actorKind: text('actor_kind').notNull(),
     actorUserId: text('actor_user_id'),
     actorTokenId: text('actor_token_id'),
-    /** The OAuth client a person allowed: its metadata document URL, or its registered id. */
     actorClientId: text('actor_client_id'),
-    /** What the client said about itself (its MCP client, its model), as JSON: its own claim. */
     actorMeta: text('actor_meta'),
     targetType: text('target_type'),
     targetId: text('target_id'),
-    /** A small object about the change (a role, a label, scopes): never a secret or content. */
     detail: text('detail'),
     requestId: text('request_id'),
-    /** HMAC-SHA256 of the address under a key of the site, when the site keeps addresses. */
     ipHash: text('ip_hash'),
     ...timestamps(),
   },
@@ -842,34 +677,21 @@ export const auditLog = sqliteTable(
   ],
 )
 
-/**
- * The images of a site (ADR-038). The id comes from the SHA-256 of the file as it was uploaded,
- * so the same file is one asset and an export imported again makes the same ids. The file served
- * and the original live in R2 (`sites/<site>/<id>` and `originals/<site>/<id>`); this row says
- * what they are. Never deleted: a revision that names an asset must find it.
- */
 export const assets = sqliteTable(
   'assets',
   {
     id: id('ast'),
     siteId: siteId(),
     sha256: text('sha256').notNull(),
-    /** The media type of the file served: the converted one, or the original kept as it came. */
     format: text('format').notNull(),
-    /** In pixels; `null` for an SVG, which has no fixed size. */
     width: integer('width'),
     height: integer('height'),
     bytes: integer('bytes').notNull(),
-    /**
-     * The widths of the narrower copies made for `srcset`, smallest first, as a JSON array: each is
-     * served at `<url>/<width>`. `[]` for an image with none, and for those uploaded before 1.0.0-rc.3.
-     */
     widths: text('widths').notNull().default('[]'),
     originalFormat: text('original_format').notNull(),
     originalBytes: integer('original_bytes').notNull(),
     alt: text('alt').notNull(),
     filename: text('filename').notNull(),
-    /** The person whose token or session uploaded it. */
     createdBy: text('created_by').notNull(),
     ...timestamps(),
   },

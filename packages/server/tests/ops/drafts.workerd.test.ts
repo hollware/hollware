@@ -14,17 +14,6 @@ import {
   type World,
 } from './world.ts'
 
-// Fails when: create_draft or update_draft stop saving what the pipeline and the contracts made of
-// a file the way the specs say. create-draft.ts, update-draft.ts and draft.ts store the Markdown
-// as the caller sent it, derive the frontmatter, tags, translation group, word count and versions
-// from what the pipeline returned and from the fields the collection names (and from nothing
-// else), record the actor and what its client said (an OAuth client by its id, with no token), save a draft whose contracts fail, refuse
-// only what cannot be stored, put the version check of update_draft before everything else
-// (conflict wins over unchanged, over a refusal and over a save), answer unchanged for the file
-// the head already holds and write nothing then, hand the pipeline the components, the size limit
-// and the routes of the collection, and map each refusal of the store: a slug or a translation
-// that is taken, a row over the limit, and a conflict that a competing write caused.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -33,10 +22,8 @@ const HASH = expect.stringMatching(/^[0-9a-f]{64}$/)
 const english = { collection: 'blog', locale: 'en', slug: 'edge-caching-guide' }
 const T0 = '2026-10-13T10:00:00.000Z'
 
-/** The verdict of a file with nothing to fix. */
 const CLEAN = { ok: true, phase: 'write', errors: [], warnings: [], contractsHash: HASH }
 
-/** The refusal of a write: no contract ran, so the hash is empty. */
 function refusal(...errors: unknown[]) {
   return {
     outcome: 'refused',
@@ -44,7 +31,6 @@ function refusal(...errors: unknown[]) {
   }
 }
 
-/** The rows of a site that a write adds to, for the tests that say nothing was written. */
 async function rowsOf(world: World) {
   const { db, tenant } = world
   return {
@@ -87,7 +73,6 @@ describe('create_draft', () => {
           tags: ['cms', 'cloudflare', 'cms'],
           translationGroup: 'edge-caching-guide',
         },
-        // Each tag once and sorted, as the store keeps them.
         tags: ['cloudflare', 'cms'],
         hasUnpublishedChanges: true,
         publishedAt: null,
@@ -181,7 +166,6 @@ describe('create_draft', () => {
     const first = await note('first-note')
     const second = await note('second-note')
 
-    // `notes` names no field for either, so both entries are saved, in one locale, under one "group".
     expect([first.outcome, second.outcome]).toEqual(['saved', 'saved'])
     expect(first.entry).toMatchObject({ translationGroup: null, tags: [] })
     expect(second.entry).toMatchObject({ translationGroup: null, tags: [] })
@@ -246,7 +230,6 @@ describe('create_draft', () => {
 
   it('refuses a file over the size limit of its own collection, and accepts it where the limit is larger', async () => {
     const world = await newWorld(env.DB, 'size')
-    // 600,000 bytes: over the 524,288 of the blog, under the 786,432 of the notes.
     const file = 'x'.repeat(600_000)
 
     const blog = await world.agent.createDraft({ ...english, markdown: file })
@@ -343,8 +326,6 @@ describe('create_draft', () => {
 
   it('refuses a row over the limit of the database as size-limit, with the sizes the store counted, and writes nothing', async () => {
     const world = await newWorld(env.DB, 'too-large')
-    // The file is under the limit of the collection, but its row also holds the frontmatter and the
-    // document, which repeat it: about three times the file.
     const markdown = `---\ntitle: A note\nfiller: ${'a'.repeat(700_000)}\n---\n\nText\n`
 
     const created = await world.agent.createDraft({
@@ -431,7 +412,6 @@ describe('update_draft', () => {
     })
     const [first, second, ...others] = await revisionsOf(world.db, created.id)
     expect(others).toEqual([])
-    // The first revision is as it was, and the second carries what the update was written with.
     expect(first).toMatchObject({ actor_meta: null, created_at: T0 })
     expect(second).toMatchObject({
       markdown: edited,
@@ -462,7 +442,6 @@ describe('update_draft', () => {
 
     const again = await world.agent.updateDraft({ id, version: 1, markdown })
 
-    // The verdict says again what is wrong, because that is what is stored with the revision.
     expect(created.verdict?.ok).toBe(false)
     expect(again).toEqual({ outcome: 'unchanged', entry: created.entry, verdict: created.verdict })
     expect(await rowsOf(world)).toEqual(before)
@@ -495,17 +474,13 @@ describe('update_draft', () => {
     const before = await rowsOf(world)
 
     const answers = [
-      // The head's own file, which would be `unchanged` at the right version.
       await world.agent.updateDraft({ id: created.id, version: 1, markdown }),
-      // A file that cannot be stored, which would be `refused` at the right version.
       await world.agent.updateDraft({
         id: created.id,
         version: 1,
         markdown: '---\ntitle: [\n---\n',
       }),
-      // A new file, which would be saved.
       await world.agent.updateDraft({ id: created.id, version: 1, markdown: edited }),
-      // A version the entry has not reached yet.
       await world.agent.updateDraft({ id: created.id, version: 3, markdown: edited }),
     ]
 
@@ -630,7 +605,6 @@ describe('update_draft', () => {
       outcome: 'conflict',
       conflict: { currentVersion: 2, headRevision: rival },
     })
-    // The loser wrote nothing: its revision and its tags are not there.
     const revisions = await revisionsOf(world.db, created.id)
     expect(revisions.map((revision) => revision.id)).toHaveLength(2)
     expect((await entryColumns(world.db, created.id))?.head_rev).toBe(rival)

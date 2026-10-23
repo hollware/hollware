@@ -1,13 +1,3 @@
-/**
- * The breaks of the public API between a version and the code (ADR-036): reads `api/` as it was at
- * a git ref, such as the tag of the last release, and as the code makes it now, and lists what of
- * the change a minor version cannot carry (scripts/api-compat.ts).
- *
- *   node scripts/api-check.ts --against @hollware/core@1.0.0
- *
- * It exits 1 when there is a break, and 0 when there is none, when the ref has no `api/` yet, or
- * when a changeset made since the ref asks for a major version: the break is then the release's.
- */
 import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
@@ -15,7 +5,6 @@ import { pathToFileURL } from 'node:url'
 import { breakingChanges } from './api-compat.ts'
 import { surfaceOf } from './api.ts'
 
-/** The parts of `api/` at a ref, or `null` when the ref has none. */
 export function partsAt(root: string, ref: string, files: readonly string[]) {
   const parts: Record<string, Record<string, unknown>> = {}
   for (const file of files) {
@@ -33,18 +22,12 @@ export function partsAt(root: string, ref: string, files: readonly string[]) {
   return parts
 }
 
-/** The version of a release tag of `@hollware/core`, as `[major, minor, patch, prerelease]`. */
 function versionOf(tag: string): [number, number, number, string] | null {
   const match = /^@hollware\/core@(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(tag)
   if (match === null) return null
   return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] ?? '']
 }
 
-/**
- * The tag that holds the promise of ADR-036: the newest release of `@hollware/core` from
- * 1.0.0-rc.0 on, a release candidate included, or `null` before there is one. Among tags of one
- * version, a release outranks its candidates; candidates are ordered by their number.
- */
 export function promisedTag(tags: readonly string[]): string | null {
   const ranked = tags
     .map((tag) => ({ tag, version: versionOf(tag) }))
@@ -65,17 +48,11 @@ export function promisedTag(tags: readonly string[]): string | null {
   return ranked.at(-1)?.tag ?? null
 }
 
-/** Whether the front matter of a changeset bumps any package by a major version. */
 export function asksForMajor(changeset: string): boolean {
   const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(changeset)?.[1] ?? ''
   return front.split(/\r?\n/).some((line) => /^\s*['"]?[^'":]+['"]?\s*:\s*major\s*$/.test(line))
 }
 
-/**
- * The changesets that ask for a major version and were not released at the ref: the pending ones
- * in `.changeset/`, and those that a version commit of pre mode moved to `.changeset/pre/` after
- * the ref. `released` names the files `.changeset/pre/` held at the ref.
- */
 export function majorsSince(
   changesets: readonly { name: string; text: string }[],
   released: ReadonlySet<string>,
@@ -85,7 +62,6 @@ export function majorsSince(
     .map((changeset) => changeset.name)
 }
 
-/** The changesets of the working tree: pending, and those of pre mode, as name and text. */
 function changesetsOf(root: string): { name: string; text: string }[] {
   const read = (directory: string) => {
     try {
@@ -99,7 +75,6 @@ function changesetsOf(root: string): { name: string; text: string }[] {
   return [...read(join(root, '.changeset')), ...read(join(root, '.changeset', 'pre'))]
 }
 
-/** The changesets that `.changeset/pre/` held at a ref. */
 function releasedAt(root: string, ref: string): Set<string> {
   try {
     const list = execFileSync('git', ['ls-tree', '--name-only', `${ref}:.changeset/pre`], {
@@ -129,9 +104,7 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
       .filter((tag) => tag !== '')
     const promised = promisedTag(tags)
     if (promised === null) {
-      console.log(
-        'No release of 1.x yet: the public API promises nothing to compare with (ADR-036).',
-      )
+      console.log('No release of 1.x yet: the public API promises nothing to compare with.')
       return 0
     }
     ref = promised

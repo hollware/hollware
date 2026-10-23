@@ -7,17 +7,6 @@ import { runContracts } from '../../src/contracts/index.ts'
 import { compileSites } from '../../src/structure/compile.ts'
 import { markdownOf, NO_LOOKUPS } from '../contracts/support.ts'
 
-// Fails when (src/config/automatic.ts, src/structure/compile.ts):
-// - "fills the dates …": firstPublished overrides a date that was written, or stays out of an entry
-//   that was published; lastModified shows a revision written before the first publication, keeps
-//   an earlier written date over a later change, or loses the format of its field; the reading
-//   time is not the words and the words of code at 200 a minute, at least one, or the word count
-//   counts the code.
-// - "takes a field …": a definition names a field the schema lacks, a date kind on a field that is
-//   no date, a count on one that is no number, or a kind that is none, and compiles.
-// - "is never required …": a field Hollware fills stays required, so a draft without it is
-//   refused, or is not marked readOnly for agents.
-
 const fields = {
   date: { kind: 'firstPublished', format: 'date' },
   modified: { kind: 'lastModified', format: 'date' },
@@ -67,7 +56,6 @@ describe('withAutomaticFields', () => {
     ])
     expect([unchanged['modified'], 'changed' in unchanged]).toEqual(['2025-01-01', false])
     expect(draft).toEqual({ minutes: 1, words: 0 })
-    // The code a reader reads counts too: 150 words and 100 of code are two minutes, one without.
     const withCode = withAutomaticFields(fields, { ...facts, wordCount: 150, codeWords: 100 }, {})
     expect([withCode['minutes'], withCode['words']]).toEqual([2, 150])
   })

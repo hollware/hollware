@@ -4,10 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles, readTextUnlessBinary, repoFiles } from '../support/repo.ts'
 
-// Fails when: any file of the repository holds an email address at gmail.com, or an address
-// whose local part is the maintainer's GitHub handle (the GitHub no-reply form is fine).
-
-// The strings below are assembled so that this file does not contain what it forbids.
 const AT = '@'
 const handle = 'sergioazoc'
 

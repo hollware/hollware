@@ -1,21 +1,8 @@
 import type { ResolvedSite } from '@hollware/core'
 import type { Backups } from '../ports.ts'
 
-/**
- * The daily backup of a site to R2: one JSON file a day, `backups/<site>/<YYYY-MM-DD>.json`, with
- * the definition of the site and every entry, its latest Markdown and, when it differs, the one
- * that is published. The Markdown is the source of truth (ADR-001), so a backup is everything
- * needed to make the site again with `hollware backup get` and `hollware import`. D1 Time Travel
- * keeps 30 days of the database; this keeps the content apart from it, in the bucket of the
- * images, which the Worker never serves from `backups/`. Never the images themselves: they are in
- * the bucket already, and never change. Each site turns its backups off or keeps them longer
- * (`backups` of its definition).
- */
-
-/** The hour (UTC) from which the backup of the day is made, by the first run of the cron. */
 export const BACKUP_HOUR_UTC = 3
 
-/** The part of R2 a backup needs. */
 export interface BackupBucket {
   head(key: string): Promise<unknown>
   put(
@@ -35,7 +22,6 @@ export interface BackupBucket {
   delete(keys: string | string[]): Promise<unknown>
 }
 
-/** One entry as a backup holds it. */
 export interface BackupEntry {
   readonly id: string
   readonly collection: string
@@ -45,11 +31,9 @@ export interface BackupEntry {
   readonly translationGroup: string | null
   readonly deletedAt: string | null
   readonly markdown: string
-  /** The published Markdown when it is not the latest; `null` otherwise. */
   readonly published: string | null
 }
 
-/** What a backup file holds. */
 export interface Backup {
   readonly hollware: 'backup/1'
   readonly site: string
@@ -60,7 +44,6 @@ export interface Backup {
 
 export const backupKey = (site: string, date: string) => `backups/${site}/${date}.json`
 
-/** The backups of a site, newest first: the date of each and its size. */
 export async function listBackups(
   bucket: BackupBucket,
   site: string,
@@ -81,12 +64,10 @@ export async function listBackups(
   return found.sort((a, b) => b.date.localeCompare(a.date))
 }
 
-/** The backups of a bucket, as the operations see them. */
 export const backupsIn = (bucket: BackupBucket): Backups => ({
   list: (site) => listBackups(bucket, site),
 })
 
-/** The backups of a site past the retention it chose, deleted. */
 async function dropOld(
   bucket: BackupBucket,
   site: string,
@@ -98,12 +79,6 @@ async function dropOld(
   if (old.length > 0) await bucket.delete(old.map((backup) => backupKey(site, backup.date)))
 }
 
-/**
- * Makes the backup of the day once its hour has come and there is none yet, then drops the ones
- * past the retention the site chose. A site with its backups off gets none, and the ones it kept
- * go when their retention passes: the cron looks once, in the first minutes of the hour of the
- * backups, so that it does not list the bucket every minute. Answers what it did, for the log.
- */
 export async function backUpSite(
   db: D1Database,
   bucket: BackupBucket,

@@ -13,13 +13,6 @@ import {
   warmUpComark,
 } from './support.ts'
 
-// Fails when: `utf8ByteLength` in src/markdown/process.ts counts characters or UTF-16 units instead of
-// UTF-8 bytes (a two, three or four byte character, a lone surrogate); the comparison in `run`
-// stops refusing exactly the files over `maxMarkdownBytes`, or lets a file through when the limit
-// is not a number; the byte order mark is no longer removed before the frontmatter is read, or
-// shifts the lines; `processMarkdown` throws instead of answering for a string it cannot parse, or
-// for a value that is not a string.
-
 warmUpComark()
 
 const limit = (maxMarkdownBytes: number) => ({ ...BLOG_OPTIONS, maxMarkdownBytes })
@@ -39,12 +32,12 @@ describe('the size limit', () => {
   })
 
   it('counts UTF-8 bytes: two for é, three for 日, four for an emoji, three for a lone surrogate', async () => {
-    // 5 × 2, 3 × 3, 1 × 4 and 1 × 3 bytes.
     for (const [text, bytes] of [
       ['é'.repeat(5), 10],
       ['日'.repeat(3), 9],
       ['😀', 4],
       ['\ud800', 3],
+      ['\ud800a', 4],
       ['a😀b', 6],
     ] as const) {
       expect((await processMarkdown(text, limit(bytes))).ok).toBe(true)
@@ -75,7 +68,6 @@ describe('the size limit', () => {
   })
 
   it('checks the size before it parses, so a file over the limit never reaches Comark', async () => {
-    // The frontmatter does not parse; the size is what is reported.
     const violations = await refused('---\ntitle: [oops\n---\n' + 'a'.repeat(100), limit(50))
     expect(violations.map((violation) => violation.contract)).toStrictEqual(['size-limit'])
   })

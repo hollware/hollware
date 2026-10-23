@@ -9,12 +9,6 @@ import { boot, restoreLogs, SITE_KEY } from '../http/support.ts'
 import { warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, publishPost } from '../ops/world.ts'
 
-// Fails when: the daily backup (src/backup/run.ts) is made before its hour, more than once a day,
-// without an entry's latest Markdown or the published one when it differs, or keeps one past the
-// retention of the site (30 days by default); a site with its backups off gets one, or keeps one
-// past its retention, or the bucket is listed more than in the first minutes of 03:00; or list_backups stops listing them newest first, or answers without the bucket; or
-// GET /v1/backups/<date> serves one to anyone but a token with schema:admin of the site.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 afterEach(() => {
@@ -36,7 +30,6 @@ describe('the daily backup', () => {
       markdown:
         '---\ntitle: Changed\ndescription: d\ndate: 2026-10-01\ntags: [a]\ntranslationGroup: kept\n---\nChanged.\n',
     })
-    // A backup older than the retention, which the run of the day drops, and one within it.
     await env.MEDIA.put(backupKey(site, '2026-09-01'), '{}')
     await env.MEDIA.put(backupKey(site, '2026-09-20'), '{}')
 

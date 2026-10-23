@@ -12,11 +12,6 @@ import type {
   View,
 } from '../ports.ts'
 
-/**
- * The handlers of the operations (ADR-017): one per spec of `@hollware/core`, paired by type,
- * so that a missing handler or a handler for an unknown operation does not compile.
- */
-
 /** What a handler gets besides its input. Adapters build it; handlers never see a request. */
 export interface OperationContext {
   readonly site: ResolvedSite
@@ -30,19 +25,19 @@ export interface OperationContext {
   readonly requestId: string
   /**
    * Called with the ids of the events that a write committed to the outbox, so that they reach
-   * the Queue now rather than at the next sweep of the cron trigger (ADR-025). Absent in tests.
+   * the Queue now rather than at the next sweep of the cron trigger. Absent in tests.
    */
   readonly notify?: (eventIds: readonly string[]) => void
-  /** The model and the vector index, when the Worker has both (ADR-030); absent or `null` without. */
+  /** The model and the vector index, when the Worker has both; absent or `null` without. */
   readonly semantic?: Semantic | null
   /**
-   * The analytics connections of the sites (ADR-040), where an operation may read or change them;
+   * The analytics connections of the sites, where an operation may read or change them;
    * absent or `null` over RPC.
    */
   readonly analytics?: AnalyticsSources | null
-  /** The structure of the sites (ADR-033), where an operation may change it; absent over RPC. */
+  /** The structure of the sites, where an operation may change it; absent over RPC. */
   readonly structure?: Structure
-  /** The images of the site (ADR-038), when the Worker has their R2 bucket; absent or `null` without. */
+  /** The images of the site, when the Worker has their R2 bucket; absent or `null` without. */
   readonly media?: Media | null
   /**
    * A site reads: RPC and the read API, whatever the view, a preview of a draft included. A

@@ -6,10 +6,8 @@ import { parseJsonc } from './jsonc.ts'
 import { parseDatabase } from './sql.ts'
 import { failureReason, type RunWrangler, type WranglerResult } from './wrangler.ts'
 
-/** The database a command talks to: the one wrangler runs `--local`, or the one in Cloudflare. */
 export type Target = 'local' | 'remote'
 
-/** The two flags that choose a target. A command without either works on the local database. */
 export function chooseTarget(flags: {
   local?: boolean | undefined
   remote?: boolean | undefined
@@ -20,12 +18,10 @@ export function chooseTarget(flags: {
   return flags.remote === true ? 'remote' : 'local'
 }
 
-/** Where a command ran, for the messages: `the remote database "DB"`. */
 export function describeDatabase(target: Target, database: string): string {
   return `the ${target} database "${database}"`
 }
 
-/** The binding the Hollware starter gives its D1 database. */
 export const DEFAULT_BINDING = 'DB'
 
 const CONFIG_FILES = ['wrangler.jsonc', 'wrangler.json']
@@ -34,11 +30,6 @@ const WranglerConfig = z.looseObject({
   d1_databases: z.array(z.looseObject({ binding: z.string() })).optional(),
 })
 
-/**
- * The D1 database a command works on, as wrangler takes it (a name or a binding). `--database`
- * says it. Without it, it is the binding `DB` of the project's `wrangler.jsonc`, which the CLI
- * reads, as JSON with comments, and checks; it never loads `hollware.config.ts`.
- */
 export function resolveDatabase(cwd: string, database: string | undefined): string {
   if (database !== undefined) return parseDatabase(database)
   const file = CONFIG_FILES.map((name) => join(cwd, name)).find((path) => existsSync(path))
@@ -84,7 +75,6 @@ function readBindings(file: string): string[] {
   return (config.data.d1_databases ?? []).map((entry) => entry.binding)
 }
 
-/** One row of an answer, by column. */
 export type Row = Record<string, unknown>
 
 const Answer = z.array(
@@ -94,10 +84,6 @@ const Answer = z.array(
   }),
 )
 
-/**
- * Runs SQL through `wrangler d1 execute --json` and returns the rows of each statement, in
- * order. A database without the Hollware tables is reported with the command that creates them.
- */
 export async function query(
   wrangler: RunWrangler,
   database: string,
@@ -116,7 +102,6 @@ export async function query(
   return readAnswer(result, database, target)
 }
 
-/** Runs the SQL of a file in one `wrangler d1 execute --json`: all of it, or none. */
 export async function runFile(
   wrangler: RunWrangler,
   database: string,
@@ -160,12 +145,6 @@ function readAnswer(result: WranglerResult, database: string, target: Target): R
   return answer.data.map((statement) => statement.results)
 }
 
-/**
- * The JSON of an answer of `wrangler d1 execute --json`: all of stdout, or, when wrangler printed a
- * warning before it (a config it finds incomplete, an update that is out), what follows the first
- * line that opens the array. `undefined` when there is no JSON. Reading past a warning matters:
- * `hollware init` prints its token only after the SQL answered, so a failure here loses it.
- */
 function jsonOf(stdout: string): unknown {
   const attempts = [
     stdout,
@@ -178,9 +157,7 @@ function jsonOf(stdout: string): unknown {
   for (const text of attempts) {
     try {
       return JSON.parse(text)
-    } catch {
-      // Not JSON from here; try the next line that opens an array.
-    }
+    } catch {}
   }
   return undefined
 }

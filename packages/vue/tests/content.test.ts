@@ -4,13 +4,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { HollwareContent, HollwareImage } from '../src/index.ts'
 
-// Fails when: <HollwareContent> stops rendering the nodes of the entry's Comark document, stops
-// handing a component of the entry to the site's own mapping of that name (`callout`, as the
-// entry's `::callout`) with its props and its children, renders something for an entry that has
-// no document, or stops rendering the document when it is the only thing the entry has, or the
-// srcset, sizes and size of an image; or <HollwareImage> stops rendering a frontmatter image with
-// its alt, size and copies, or lets them win over an attribute the site gives.
-
 const document = {
   nodes: [
     ['h1', { id: 'hello' }, 'Hello'],

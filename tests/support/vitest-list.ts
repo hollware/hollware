@@ -3,20 +3,20 @@ import { join, relative } from 'node:path'
 import { REPO_ROOT } from './repo.ts'
 import { isRecord } from './values.ts'
 
-/**
- * The test files Vitest lists across all projects of the repository, repository-relative,
- * as `vp test list --filesOnly --json` prints them. Nothing is run. The project-local `vp`
- * is used: a global one of another version breaks the Cloudflare plugin.
- */
 export function listedTestFiles(): { file: string; project: string }[] {
-  // A child of a test run must not believe it is a test worker itself.
-  const env = Object.fromEntries(
+  const envOutsideThisTestRun = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !name.startsWith('VITEST')),
   )
   const result = spawnSync(
     join(REPO_ROOT, 'node_modules/.bin/vp'),
     ['test', 'list', '--filesOnly', '--json'],
-    { cwd: REPO_ROOT, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024, timeout: 60_000 },
+    {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: envOutsideThisTestRun,
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 60_000,
+    },
   )
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) {

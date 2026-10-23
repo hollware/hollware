@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { contentNodes, elementOf, imageOf } from '../src/index.ts'
 
-// Fails when the helpers of the Astro components (src/content.ts) stop passing a document through
-// the rules of the HTML Hollware makes (an element that runs, a handler, an unsafe URL), stop
-// rendering a marker of raw HTML as nothing, stop handing a component of the entry to the site's
-// component of its name (as written or in PascalCase) with its bound props as their values, pass
-// an object to a plain tag as an attribute, close a void element with children, or stop reading
-// the image of the frontmatter with its size and copies from what the loader kept.
-
 const entry = {
   data: { img: 'https://cms.test/assets/blog/ast_a' },
   rendered: {

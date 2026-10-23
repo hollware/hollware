@@ -16,17 +16,6 @@ import { seedSite } from '../support/sites.ts'
 import { seal, unseal } from '../../src/structure/seal.ts'
 import { createSecretStore } from '../../src/structure/store.ts'
 
-// Fails when: an operation on the structure (src/ops/structure.ts, src/structure/store.ts) stops
-// answering with the definition and its version; stops refusing a definition that does not
-// compile, with its problems, or one sent at a stale version, writing nothing; stops asking to
-// confirm a change that strands entries (a removed collection or locale) or that a new schema
-// refuses, with the counts and slugs; stops writing a confirmed change with its line of
-// site_changes, and making the Worker serve it at once; or stops creating a site with its maker
-// as owner, refusing a key that exists, and trashing and restoring only a site the caller owns; or
-// a written change stops leaving its `site.changed` event in the outbox, with the tags of the site
-// and of every list it had or has, for the Queue, while one that was not written leaves none; or
-// that event stops reaching the webhooks, or starts reaching IndexNow, which has no page to fetch.
-
 const NOW = new Date('2026-10-16T12:00:00.000Z')
 const MASTER = 'k'.repeat(40)
 
@@ -106,7 +95,7 @@ describe('get_structure', () => {
   })
 })
 
-describe('get_structure and the URLs of webhooks (T-70)', () => {
+describe('get_structure and the URLs of webhooks', () => {
   it('shows an owner the whole URL, and anyone else its origin only', async () => {
     const { key, context, seeded } = await setUp()
     const hook = 'https://api.vercel.com/v1/integrations/deploy/prj_1/s3cr3t?buildCache=false'
@@ -155,7 +144,6 @@ describe('update_site', () => {
       },
       context,
     )
-    // A stale version is a conflict before anything is weighed: this one would strand entries.
     const stale = await handlers.update_site(
       {
         version: 0,
@@ -362,7 +350,7 @@ describe('update_site', () => {
     expect(results.map((row) => row.id)).toEqual(['evt_first'])
   })
 
-  it('refuses a definition whose IndexNow or webhook would send a secret of the Worker out (T-69)', async () => {
+  it('refuses a definition whose IndexNow or webhook would send a secret of the Worker out', async () => {
     const { key, context } = await setUp()
     const leaking = siteDefinitionData.parse({
       ...BLOG,

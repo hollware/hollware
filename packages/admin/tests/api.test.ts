@@ -3,10 +3,6 @@ import { expect, it } from 'vite-plus/test'
 import { ApiError, createApi } from '../app/lib/api.ts'
 import type { Auth } from '../app/lib/auth.ts'
 
-// Fails when: the admin's calls (app/lib/api.ts) stop going to /v1/ops/{name} and /v1/admin/{path}
-// with the access token as a Bearer header; a 401 stops sending the person to sign in again, back
-// to where they were; or an answer in words stops arriving as an ApiError with its code and fix.
-
 function world(answer: () => Response) {
   const sent: { url: string; method: string; authorization: string | null; body: string }[] = []
   const signIns: string[] = []

@@ -5,15 +5,9 @@ import { file, json } from '../support/fixtures.ts'
 import { repoFiles } from '../support/repo.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: a wrangler.json, wrangler.jsonc or wrangler.toml belongs to no workspace package; the
-// package lacks a `build` or a `types:check` script; or the config is below the package directory
-// (such as apps/a/site/wrangler.jsonc) and the `types:check` script does not name its path.
-
 describe('Worker projects', () => {
   it('every Wrangler config sits in a package that builds it and checks its types', () => {
     const configs = repoFiles().filter(isWorkerConfig)
-    // Both sides must be real: the playground's Hollware Worker, the example site, the starter and
-    // the Worker of the conformance run. A Worker added later is judged like these.
     expect(configs).toEqual(
       expect.arrayContaining([
         'apps/playground/wrangler.jsonc',
@@ -30,7 +24,6 @@ describe('Worker projects', () => {
   describe('self-test: the guard fails on a bad fixture', () => {
     const SCRIPTS = { build: 'vp build', 'types:check': 'wrangler types --check' }
 
-    /** The package.json of a package: `@x/a` for `apps/a`, `root` for the repository root. */
     const manifest = (dir: string, scripts: unknown = SCRIPTS) =>
       file(
         dir === '' ? 'package.json' : `${dir}/package.json`,
@@ -145,11 +138,8 @@ describe('Worker projects', () => {
     })
 
     it('gives a config to the closest workspace package above it, and ignores a manifest outside the workspace', () => {
-      // The guard is handed the manifests of the workspace: a package.json that the workspace does
-      // not list, say in apps/a/site, owns nothing, so the config goes to apps/a.
       const scripts = { build: 'vp build', 'types:check': 'wrangler types -c site/wrangler.jsonc' }
       expect(check(['apps/a/site/wrangler.jsonc'], manifest('apps/a', scripts))).toEqual([])
-      // A package in a nested directory takes the config, not the one that encloses it.
       const bare = { build: 'vp build' }
       const result = check(
         ['packages/x/y/wrangler.jsonc'],

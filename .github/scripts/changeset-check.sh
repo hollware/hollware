@@ -1,35 +1,4 @@
 #!/usr/bin/env bash
-# The changeset gate: a change that touches a published package carries a
-# changeset. Run it from the repository root, after the dependencies are
-# installed and with the full history checked out (fetch-depth: 0).
-#
-# Inputs come from the environment. The workflow passes them through `env:` and
-# never interpolates them into a shell command.
-#
-#   EVENT_NAME  github.event_name (required)
-#   BASE_REF    github.base_ref, the branch a pull request targets
-#   HEAD_REF    github.head_ref, the branch a pull request comes from
-#   PR_AUTHOR   the login of the pull request's author
-#   BEFORE_SHA  github.event.before, the tip of the branch before a push
-#   HEAD_SHA    github.sha, the head commit of a push
-#
-# A pull request is compared with its base branch, except the Version Packages
-# pull request itself (branch changeset-release/<base>, opened by
-# github-actions[bot]): it consumes the changesets by design. A push is compared
-# with the tip the branch had before it. Any other event (a manual run) is compared
-# with the base branch of .changeset/config.json. A push is not checked when
-#
-#   - `before` is all zeros: the push created the branch, so there is nothing to
-#     compare with, or
-#   - the head is the merge of the "Version Packages" pull request. That commit
-#     consumes the changesets and bumps every version, so `changeset status`
-#     would always fail on it. A squash or rebase merge keeps the title "Version
-#     Packages"; a merge commit is titled "Merge pull request #N from
-#     <owner>/changeset-release/<branch>".
-#
-# A push whose `before` is not an ancestor of the head fails: the branch was
-# rewritten, or the clone does not hold the previous tip (a shallow checkout), and
-# either way the script cannot tell what the push changed. It never skips quietly.
 set -euo pipefail
 
 event="${EVENT_NAME:?EVENT_NAME is required}"

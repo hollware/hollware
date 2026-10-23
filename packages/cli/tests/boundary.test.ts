@@ -1,13 +1,3 @@
-// Fails when:
-// - "nothing but the entry point touches process": `process.cwd()`, `process.argv`, a stream or
-//   anything else of `process` is used in a command or a helper, or in `main` of `src/index.ts`
-//   above the entry-point block, so a test can no longer hand in a fake.
-// - "--help and --version do not load the commands": `src/index.ts` imports a command, a
-//   helper that needs `zod` or `@hollware/core`, or a dependency, at the top, so `--help` and
-//   `--version` load the MCP client.
-// - "never loads hollware.config.ts": a command reads or imports the config of the project
-//   (the CLI works through wrangler and MCP only); the file is made unreadable and its
-//   evaluation would leave a marker, so reading it fails the command and loading it is seen.
 import { chmodSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,7 +9,7 @@ import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 import { startStub, type StubServer } from './support/stub-hollware.ts'
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url))
-const ENTRY_POINT_MARKER = '// The entry point.'
+const ENTRY_POINT_MARKER = 'function isEntryPoint(): boolean {'
 const PROCESS_USE =
   /\bprocess\s*\.\s*(?:argv|env|cwd|stdout|stderr|stdin|exit|exitCode|platform|pid|on|once|emit|nextTick|kill|hrtime|umask|chdir)\b|\bglobalThis\s*\.\s*process\b/
 
@@ -53,7 +43,6 @@ describe('nothing but the entry point touches process', () => {
 describe('--help and --version do not load the commands', () => {
   it('src/index.ts imports no command and no dependency at the top', () => {
     const text = readFileSync(join(SRC, 'index.ts'), 'utf8')
-    // `import type` is erased, so it loads nothing.
     const specifiers = [
       ...text.matchAll(/^(?:import|export)\b(?!\s+type\b)(?:[^\n]*?\bfrom\b)?\s*'([^']+)'/gm),
     ].map((match) => match[1] ?? '')
@@ -86,7 +75,6 @@ describe('the CLI never loads hollware.config.ts', () => {
       'content/blog/en/a.md': '---\ntitle: A\n---\n\n# A\n',
     })
     const config = join(cwd, 'hollware.config.ts')
-    // Unreadable, so that reading it fails the command, and a loaded one leaves a marker.
     chmodSync(config, 0o000)
     const scratch = temp.make()
     const token = `hw_pat_${'a'.repeat(52)}`
@@ -116,7 +104,6 @@ describe('the CLI never loads hollware.config.ts', () => {
       readStdin: () => Promise.resolve(token),
     })
 
-    // `migrate --check` exits 1 on purpose: a migration is pending.
     expect(codes).toEqual([0, 1, 0, 0, 0])
     expect(imported.code).toBe(0)
     expect(existsSync(join(cwd, 'loaded.marker'))).toBe(false)

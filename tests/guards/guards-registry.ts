@@ -1,36 +1,18 @@
 import { inlineCodeSpans, sectionLines } from '../support/markdown.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `guards-registry`: the `## Guards` section of `tests/AGENTS.md` is the registry of what
- * each guard binds. Every file under `tests/conventions/` and `tests/meta/` is cited there, once,
- * on a line that says what it binds, and no line cites a file that does not exist. An agent that
- * opens the registry learns what is enforced and where, and a guard nobody can find is a guard
- * nobody keeps.
- *
- * The registry lives next to the tests because the root `AGENTS.md` has a size limit of its own.
- * The root keeps a `## Guards` section that points to it, so an agent that starts at the root
- * finds it, and that holds no registry line, so the two cannot drift apart.
- */
-
 export interface GuardsRegistryInput {
-  /** The `tests/AGENTS.md` that holds the registry. */
   registry: TextFile
-  /** The root `AGENTS.md`, whose `## Guards` section points to the registry. */
   root: TextFile
-  /** Every file under `tests/conventions/` and `tests/meta/`, repository-relative. */
   guardFiles: readonly string[]
 }
 
-/** The least number of words a registry line spends on what its guard binds. */
 export const MIN_DESCRIPTION_WORDS = 4
 
 const GUARD_PATH = /^tests\/(?:conventions|meta)\/[\w.-]+$/
 
-/** The path the root `## Guards` section must cite. */
 const REGISTRY_PATH = 'tests/AGENTS.md'
 
-/** A line of the registry cites a test, whichever folder of `tests/` it sits in. */
 const TEST_PATH = /^tests\/[\w./-]+$/
 
 export function checkGuardsRegistry(input: GuardsRegistryInput): Violation[] {

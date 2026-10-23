@@ -94,14 +94,11 @@ async function load(more: boolean) {
 
 onMounted(async () => {
   await load(false)
-  // The people to filter by: the log is the owner's, and so is the list of people.
   try {
     people.value = (
       await api.admin<{ people: { id: string; name: string | null }[] }>('people')
     ).people
-  } catch {
-    // Without the list the filter by person is left out; the log itself is shown.
-  }
+  } catch {}
 })
 watch(filters, () => void load(false))
 
@@ -112,7 +109,6 @@ function clearFilters() {
   to.value = ''
 }
 
-/** The CSV with the current filters, fetched with the token and saved as a file. */
 async function exportCsv() {
   exporting.value = true
   try {

@@ -5,17 +5,10 @@ import { legacyRoleOf } from '../auth/roles.ts'
 import { authChallenges, invitations, members, passkeys, sessions, users } from '../db/schema.ts'
 import { hashSecret, newSecret } from './secrets.ts'
 
-/**
- * The D1 side of identity (ADR-026). A person is one across the sites of a deployment (v0.4): their
- * passkeys, sessions and sign-in challenges have no site; an invitation does, and so does the role
- * a person has in a site (`members`). Each write that must happen once is one conditional statement.
- */
-
 export type Role = 'owner' | 'editor' | 'author'
 
 export interface Invitation {
   readonly id: string
-  /** The site the invitation lets a person into. */
   readonly site: string
   readonly role: Role
   readonly userId: string | null
@@ -26,7 +19,6 @@ function roleOf(value: string): Role {
   throw new Error(`A role of ${value} is no role the schema allows`)
 }
 
-/** Creates a link that lets one person in, and gives its secret, which is never stored. */
 export async function createInvitation(
   db: Db,
   input: { site: string; role: Role; userId: string | null; now: Date; days: number },
@@ -49,7 +41,6 @@ export async function createInvitation(
   return { id, secret, expiresAt }
 }
 
-/** The invitation of a secret, while it is unused and has not expired. */
 export async function findInvitation(
   db: Db,
   secret: string,
@@ -74,7 +65,6 @@ export async function findInvitation(
   return row === undefined ? null : { ...row, role: roleOf(row.role) }
 }
 
-/** Uses an invitation, once: `false` when it was used already or has expired. */
 export async function redeemInvitation(db: Db, id: string, now: Date): Promise<boolean> {
   const at = now.toISOString()
   const rows = await db
@@ -85,7 +75,6 @@ export async function redeemInvitation(db: Db, id: string, now: Date): Promise<b
   return rows.length === 1
 }
 
-/** Keeps a WebAuthn challenge for five minutes. */
 export async function saveChallenge(
   db: Db,
   input: {
@@ -111,7 +100,6 @@ export async function saveChallenge(
   return id
 }
 
-/** Takes a challenge, once, if it has the purpose asked and has not expired. */
 export async function takeChallenge(
   db: Db,
   input: { id: string; purpose: 'register' | 'authenticate'; now: Date },
@@ -135,7 +123,6 @@ export async function findPasskey(db: Db, credentialId: string) {
   return row ?? null
 }
 
-/** Records a sign-in with a passkey: its new counter, and when. */
 export async function touchPasskey(db: Db, id: string, counter: number, now: Date) {
   const at = now.toISOString()
   await db
@@ -144,7 +131,6 @@ export async function touchPasskey(db: Db, id: string, counter: number, now: Dat
     .where(eq(passkeys.id, id))
 }
 
-/** Makes the person of a new invitation, a member of the site with its role, in one batch. */
 export async function createUser(
   db: Db,
   input: { id: string; name: string; role: Role; site: string; now: Date },
@@ -196,7 +182,6 @@ export async function addPasskey(
   })
 }
 
-/** Opens a session for a person, and gives the secret of its cookie, which is never stored. */
 export async function createSession(
   db: Db,
   input: { userId: string; now: Date; hours: number },
@@ -215,7 +200,6 @@ export async function createSession(
   return { secret, expiresAt }
 }
 
-/** The person of a session cookie, while it lasts. */
 export async function findSession(db: Db, secret: string, now: Date) {
   const [row] = await db
     .select({ userId: sessions.userId, name: users.name })
@@ -228,7 +212,6 @@ export async function findSession(db: Db, secret: string, now: Date) {
   return row ?? null
 }
 
-/** A passkey as its person sees it: what they called it and when, never its key or credential. */
 export interface PasskeySummary {
   readonly id: string
   readonly label: string
@@ -236,7 +219,6 @@ export interface PasskeySummary {
   readonly lastUsedAt: string | null
 }
 
-/** The passkeys of a person, the oldest first. */
 export async function passkeySummaries(db: Db, userId: string): Promise<PasskeySummary[]> {
   return db
     .select({
@@ -250,13 +232,8 @@ export async function passkeySummaries(db: Db, userId: string): Promise<PasskeyS
     .orderBy(passkeys.createdAt, passkeys.id)
 }
 
-/** The longest name of a person, and the longest label of a passkey. */
 export const MAX_NAME_LENGTH = 100
 
-/**
- * A name or a label as a person types it: trimmed, its runs of spaces made one, and `null` when it
- * is empty, longer than `MAX_NAME_LENGTH`, or holds a control character.
- */
 export function cleanName(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const clean = value.trim().replace(/\s+/g, ' ')
@@ -267,12 +244,10 @@ export function cleanName(value: unknown): string | null {
   return clean
 }
 
-/** Changes the name a person shows: theirs alone, which the route makes sure of. */
 export async function renameUser(db: Db, userId: string, name: string): Promise<void> {
   await db.update(users).set({ name }).where(eq(users.id, userId))
 }
 
-/** Changes the label of one of a person's passkeys; `false` when they have no such passkey. */
 export async function renamePasskey(
   db: Db,
   input: { readonly userId: string; readonly id: string; readonly label: string },
@@ -287,10 +262,6 @@ export async function renamePasskey(
 
 export type PasskeyRemoval = 'removed' | 'not_found' | 'last'
 
-/**
- * Removes a passkey of a person (T-54), never their last one: the statement that deletes it counts
- * the person's passkeys in the same step, so two removals at once cannot leave them with none.
- */
 export async function removePasskey(
   db: D1Database,
   input: { readonly userId: string; readonly id: string },
@@ -310,7 +281,6 @@ export async function removePasskey(
   return mine === null ? 'not_found' : 'last'
 }
 
-/** Ends the session of a cookie, whoever's it is: the one browser that holds it signs out. */
 export async function endSession(db: Db, secret: string): Promise<string | null> {
   const [ended] = await db
     .delete(sessions)
@@ -319,7 +289,6 @@ export async function endSession(db: Db, secret: string): Promise<string | null>
   return ended?.userId ?? null
 }
 
-/** Ends every session of a person (T-44): each browser signs in with a passkey again. */
 export async function endSessions(db: Db, userId: string): Promise<number> {
   const ended = await db
     .delete(sessions)
@@ -328,7 +297,6 @@ export async function endSessions(db: Db, userId: string): Promise<number> {
   return ended.length
 }
 
-/** The sites a person is a member of, with their role in each, in the order they joined. */
 export async function membershipsOf(
   db: Db,
   userId: string,
@@ -341,11 +309,6 @@ export async function membershipsOf(
   return rows.map((row) => ({ site: row.site, role: roleOf(row.role) }))
 }
 
-/**
- * Drops what of sign-in has expired: the sessions, and the WebAuthn challenges that nobody took.
- * Anyone may ask for a challenge (`/auth/signin/options`), so without this the table would grow
- * by a row for every request (T-11 of docs/security/threat-model.md). The cron trigger calls it.
- */
 export async function dropExpired(db: Db, now: Date): Promise<void> {
   const at = now.toISOString()
   await db.batch([
@@ -354,7 +317,6 @@ export async function dropExpired(db: Db, now: Date): Promise<void> {
   ])
 }
 
-/** An invitation by its id, used or not: what a registration redeems. */
 export async function invitationById(db: Db, id: string): Promise<Invitation | null> {
   const [row] = await db
     .select({

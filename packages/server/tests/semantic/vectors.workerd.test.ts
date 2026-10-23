@@ -9,16 +9,6 @@ import { blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 import { fakeSemantic } from './fakes.ts'
 
-// Fails when: the vectors of an entry (src/semantic/index-entry.ts) stop following what it has
-// published: a published entry does not get one vector per piece (`<entry id>:<piece>`, with its
-// site, collection, locale and piece), a second sync of the same revision, model and chunker
-// embeds again, a new revision with fewer sections leaves the vectors of the sections it lost, an
-// entry with nothing published keeps its vectors or its row, or another model is taken as
-// current; or the cron's sweep (healVectors) stops finding the entries whose vectors are missing,
-// stale or of nothing published, keeping to its limit, or leaving an entry that failed for later;
-// or the `vectors` subscriber (src/events/deliver.ts) stops running on the events of a
-// site whose Worker has semantic search, or runs on one whose Worker has none.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -34,7 +24,6 @@ async function publishedPost(world: World, body = TWO_SECTIONS, slug = 'vectors'
     markdown: blogPost({ translationGroup: slug }, body),
   })
   if (created.entry === undefined) throw new Error(JSON.stringify(created))
-  // The blog publishes a post only with its translation.
   await world.agent.createDraft({
     collection: 'blog',
     locale: 'es',
@@ -202,14 +191,12 @@ describe('the sweep of the cron', () => {
     await sync(world, semantic, current)
     await sync(world, semantic, orphan)
     await sync(world, semantic, moved)
-    // Published again, with no event delivered: its vectors are of the revision before.
     await world.agent.updateDraft({
       id: moved,
       version: 2,
       markdown: blogPost({ translationGroup: 'moved' }, ONE_SECTION),
     })
     expect((await world.agent.publish({ id: moved, version: 3 })).outcome).toBe('published')
-    // Unpublished, with no event delivered: its vectors stay until the sweep.
     await world.agent.unpublish({ id: orphan })
     embedder.calls.length = 0
     const heal = (limit: number) =>
@@ -235,7 +222,6 @@ describe('the sweep of the cron', () => {
         .concat([`${moved}:0`, `${moved}:1`])
         .sort(),
     )
-    // Another model makes every published entry stale.
     const other = fakeSemantic('other-model').semantic
     expect(
       await healVectors(connect(world.db), other, {

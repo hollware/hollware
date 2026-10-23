@@ -5,13 +5,6 @@ import type { DescribedSchema } from '../../src/config/types.ts'
 import type { Contract } from '../../src/contracts/index.ts'
 import { collectionOf, markdownOf, run } from './support.ts'
 
-// Fails when: the `schema` contract stops validating the frontmatter with the collection's own
-// Standard Schema (`checkFrontmatter` in schema.ts); an issue path stops becoming a JSON Pointer
-// under /frontmatter, with `~` and `/` escaped (`pointer` in text.ts); a fix stops naming the
-// field and what the schema accepts there, or stops falling back to the library's message when
-// the schema does not convert (`fixForIssue` in schema-fix.ts); the schema's issues stop being
-// listed by path; or what the schema returns stops being what the collection's own contracts get.
-
 const schema = z.object({
   title: z.string().min(1),
   description: z.string().min(1).max(160),

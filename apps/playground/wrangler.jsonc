@@ -2,26 +2,15 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hollware-playground",
   "main": "src/index.ts",
-  // The latest compatibility date the workerd bundled with wrangler supports.
   "compatibility_date": "2026-10-06",
-  // From the 2026-08-04 compatibility date Workers turn Node.js compatibility on by default.
-  // Hollware runs without it, and so does everything that tests Hollware.
-  // global_fetch_strictly_public: the OAuth server fetches the metadata documents of clients
-  // (CIMD) over the public internet only, never through the zone (ADR-026).
   "compatibility_flags": [
     "no_nodejs_compat",
     "no_nodejs_compat_v2",
     "global_fetch_strictly_public",
   ],
-  // No anonymous wrangler telemetry from this repository.
   "send_metrics": false,
-  // Workers Logs: every invocation of a deployment, with the status it answered, so an answer a
-  // reader saw can be told from one Cloudflare gave before the Worker ran.
   "observability": { "enabled": true, "head_sampling_rate": 1 },
-  // Every minute: publishes the scheduled entries whose time has come (ADR-025).
   "triggers": { "crons": ["* * * * *"] },
-  // The publication events (ADR-025): the Worker sends them, consumes them, and keeps the ones it
-  // could not deliver after five tries in the dead-letter queue.
   "queues": {
     "producers": [{ "binding": "EVENTS", "queue": "hollware-playground-events" }],
     "consumers": [
@@ -32,23 +21,15 @@
       },
     ],
   },
-  // The admin, at /admin/ (ADR-026): its hashed files go straight to the browser, and every
-  // other request reaches the Worker first, which serves the admin's page with its policy.
   "assets": {
     "directory": "node_modules/@hollware/admin/dist/client",
     "binding": "ASSETS",
     "run_worker_first": ["/*", "!/admin/assets/*"],
   },
   "vars": {
-    // The only Host and Origin Hollware answers. This is the URL `vp dev` serves; the harness
-    // tests override it with http://localhost (test/harness/workers.ts).
     "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
-  // The OAuth server's clients, grants and tokens (ADR-026). Placeholder id: local development and
-  // tests never contact Cloudflare; a deploy needs the id of a namespace made with
-  // `wrangler kv namespace create`.
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
-  // The routes anyone may call without a token, limited per address (T-10).
   "ratelimits": [
     {
       "name": "HOLLWARE_RATE_LIMIT",
@@ -60,46 +41,30 @@
     {
       "binding": "DB",
       "database_name": "hollware-playground",
-      // Placeholder: local development, tests and dry runs never contact Cloudflare.
-      // A real deploy needs the id of a database created with `wrangler d1 create`.
       "database_id": "00000000-0000-0000-0000-000000000000",
-      // The server package ships its migrations; the playground applies them as they are.
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
-  // The images of the sites (ADR-038). Locally, wrangler keeps the bucket on disk.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-playground-media" }],
   "images": { "binding": "IMAGES" },
-  "services": [
-    // Only for the tests of this repository: a binding of the Worker to its own `Probe`
-    // entrypoint (src/probe.ts), which is how a Node.js test asks the isolate which Node.js
-    // globals it has. A Hollware project has neither the binding nor the class.
-    { "binding": "PROBE", "service": "hollware-playground", "entrypoint": "Probe" },
-  ],
-  // The demo on Cloudflare (v0.2): `CLOUDFLARE_ENV=demo vp build`, then `wrangler deploy` of the
-  // build. Bindings do not inherit, so each one is named again here.
+  "services": [{ "binding": "PROBE", "service": "hollware-playground", "entrypoint": "Probe" }],
   "env": {
     "demo": {
       "name": "hollware-demo",
-      // Next to D1's primary (ENAM), as staging measured (v0.5).
       "placement": { "mode": "smart", "hint": "enam" },
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com",
         "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
       },
-      // Semantic search (v0.5). The sites connect their own analytics in the admin (ADR-040).
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-demo-bge-m3" }],
       "routes": [{ "pattern": "cms.demo.hollware.com", "custom_domain": true }],
-      // The images of the demo's sites (ADR-038), in the bucket hollware-demo-media (ENAM).
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-demo-media" }],
       "images": { "binding": "IMAGES" },
       "triggers": { "crons": ["* * * * *"] },
-      // No test probe in the demo; its agents (examples/agents-worker), woken every ten minutes.
       "services": [
         { "binding": "AGENTS", "service": "hollware-agents-demo", "entrypoint": "HollwareAgents" },
       ],
-      // The namespace hollware-demo-oauth in the maintainer's account (created 2026-10-14).
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "f4b6a249127848139b0cb6c400ce0e0c" }],
       "ratelimits": [
         {
@@ -127,22 +92,15 @@
         ],
       },
     },
-    // Staging (v0.5): semantic search against the real Workers AI and Vectorize, with a synthetic
-    // corpus, before the demo gets it. `CLOUDFLARE_ENV=staging
-    // vp build`, then `wrangler deploy` of the build. A Vectorize index serves one model: another
-    // model is another index here and in HOLLWARE_EMBEDDING_MODEL.
     "staging": {
       "name": "hollware-staging",
       "workers_dev": true,
-      // Next to D1's primary (ENAM): a search makes several round trips to it, and from a colo
-      // far away each one costs what the whole answer should.
       "placement": { "mode": "smart", "hint": "enam" },
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://hollware-staging.sergioazoc.workers.dev",
         "HOLLWARE_EMBEDDING_MODEL": "@cf/baai/bge-m3",
       },
       "triggers": { "crons": ["* * * * *"] },
-      // Hollware's cron wakes the agents of examples/agents-worker every ten minutes (v0.6).
       "services": [
         {
           "binding": "AGENTS",
@@ -152,7 +110,6 @@
       ],
       "ai": { "binding": "AI" },
       "vectorize": [{ "binding": "VECTORIZE", "index_name": "hollware-staging-bge-m3" }],
-      // The images (ADR-038), in the bucket hollware-staging-media (ENAM).
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-staging-media" }],
       "images": { "binding": "IMAGES" },
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "e85a150e74794fd6a8d5d83625d6e0ed" }],

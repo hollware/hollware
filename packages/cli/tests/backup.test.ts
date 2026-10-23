@@ -1,14 +1,3 @@
-// Fails when:
-// - "lists the backups …": `backup list` stops calling list_backups, or prints other than the date
-//   and the size in KB, or says nothing when there are none.
-// - "writes the backup of a date as files …": `backup get` downloads another path, sends no token,
-//   writes a trashed entry, a path other than <collection>/<locale>/<slug>.md, changes the bytes
-//   of the Markdown, or leaves out site.json.
-// - "--published writes what was published …": --published writes drafts, or the latest
-//   revision of a published entry instead of the published one.
-// - "says when there is no backup of a date": a 404 is not told, or something is written.
-// - "refuses an entry that cannot be a file below the directory": the path check is dropped.
-// - "asks for a date as YYYY-MM-DD": a malformed date reaches the server.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
@@ -34,7 +23,6 @@ function runBackup(cwd: string, args: string[]) {
   return run(['backup', ...args], { cwd, readStdin: () => Promise.resolve(`${TOKEN}\n`) })
 }
 
-/** The files below a directory, as `a/b/c.md`, sorted. */
 function filesOf(root: string): string[] {
   if (!existsSync(root)) return []
   return readdirSync(root, { recursive: true, encoding: 'utf8' })
@@ -73,7 +61,6 @@ const BACKUP = {
   ],
 }
 
-/** A Hollware that serves `body` at /v1/backups/2026-10-18 to the token, and 404 for any other date. */
 function servingBackup(body: unknown, seen: string[] = []) {
   return serve({
     respond: (request) => {

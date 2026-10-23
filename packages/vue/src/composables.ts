@@ -20,15 +20,6 @@ import {
   type Ref,
 } from 'vue'
 
-/**
- * Composables for a browser-only Vue app (a Vite SPA). They read published content over HTTP
- * with a read token (`hw_read_`), which the browser holds: Hollware allows it from a page whose
- * origin is in the site's `cors.origins`. A token in a page is public, so it must be a read
- * token, never a personal one. There is no preview here: the preview cookie is `HttpOnly` on the
- * site's server, so a browser never has the token to send. A site that renders on a server reads
- * with `createHollware` there.
- */
-
 const HOLLWARE: InjectionKey<Hollware> = Symbol('hollware')
 
 /** Makes `app` read Hollware for the composables below. */
@@ -62,10 +53,6 @@ function hollwareOf(): Hollware {
   return hollware
 }
 
-/**
- * Reads again whenever a ref that `read` reads changes, and drops the answer of a read that a
- * newer one has replaced. `read` runs synchronously, so the refs it reads are the ones tracked.
- */
 function useRead<T>(read: (hollware: Hollware) => Promise<T>): HollwareState<T> {
   const hollware = hollwareOf()
   const data = shallowRef<T>()

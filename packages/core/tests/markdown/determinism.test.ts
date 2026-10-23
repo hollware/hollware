@@ -6,15 +6,6 @@ import { renderHtml } from '../../src/markdown/render.ts'
 import { getParser } from '../../src/markdown/parser.ts'
 import { accepted, BLOG_OPTIONS, tagsOf, warmUpComark } from './support.ts'
 
-// Fails when: the same Markdown gives another document, other extracted data or another HTML a
-// second time (the pipeline keeps something between two calls, or the order of what it finds
-// depends on the order of the keys of the config); two writes at the same time disturb each other
-// (the parser or the analysis shares a variable between calls); the parser is built again for
-// every call or for every set of components (src/markdown/parser.ts `getParser`); a document is
-// not plain JSON that reads back as it is, or keeps something the analysis should have taken off
-// (`$line`, `$open`, a `$` of raw HTML), or holds a tag that is neither Markdown's, a
-// component's nor a marker.
-
 warmUpComark()
 
 const NATIVE = new Set([
@@ -50,7 +41,6 @@ const NATIVE = new Set([
 ])
 const ALLOWED_TAGS = new Set([...NATIVE, 'callout', 'youtube', 'hollware-marker'])
 
-/** Every key of every props object in the nodes of a document. */
 function propKeys(nodes: readonly unknown[]): string[] {
   const keys: string[] = []
   for (const node of nodes) {

@@ -2,10 +2,6 @@ import { createError, defineEventHandler, getRequestURL, setResponseHeader } fro
 
 const MARKDOWN_PATH = /^(\/es)?\/docs\/([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/
 
-/**
- * `/docs/<slug>.md`, and `/es/docs/<slug>.md` in Spanish: a page of the docs as the Markdown it was
- * written in, for agents.
- */
 export default defineEventHandler(async (event) => {
   const match = MARKDOWN_PATH.exec(getRequestURL(event).pathname)
   const slug = match?.[2]

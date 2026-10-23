@@ -128,9 +128,7 @@ export interface HollwareReader {
 }
 
 export type ClientOptions =
-  /** A service binding to the `Hollware` entrypoint of a Hollware Worker. */
   | { readonly binding: HollwareReader }
-  /** The public URL of a Hollware, and a read token (`hw_read_`) or a personal token with `content:read`. */
   | {
       readonly url: string
       readonly token: string
@@ -158,7 +156,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function httpReader(url: string, token: string, send: (request: Request) => Promise<Response>) {
-  const base = url.replace(/\/+$/, '')
+  const base = withoutTrailingSlashes(url)
   async function get(
     path: string,
     query: Record<string, string | undefined> = {},
@@ -187,7 +185,6 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     )
   }
   const segment = encodeURIComponent
-  // The read API answers with the outputs of the operations, which the types above describe.
   const reader = {
     getEntry: (
       _site: string,
@@ -275,7 +272,6 @@ export function createClient(options: ClientOptions): HollwareReader {
   }
 }
 
-/** The body of an answer, which the read API builds from the output schema of its operation. */
 function narrow<T>(body: unknown): T {
   return body as T
 }
@@ -294,4 +290,10 @@ export function hollwareBinding(binding: unknown, name = 'HOLLWARE'): HollwareRe
   throw new Error(
     `Hollware: the Worker has no service binding ${name} to the Hollware entrypoint: add it to services in wrangler.jsonc.`,
   )
+}
+
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
 }

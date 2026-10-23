@@ -15,17 +15,8 @@ import type { Handlers } from '../../src/ops/types.ts'
 import type { Clock } from '../../src/ports.ts'
 import { fakeHandlers, type Overrides, type Seen } from '../mcp/support.ts'
 
-/**
- * What the tests of the gateway and of the RPC entrypoint stand on: a config of their own, fake
- * handlers (the real ones belong to another work package), a clock the test moves, an execution
- * context that keeps what is handed to `waitUntil`, and a view of D1 that records which handle
- * (the binding, or a replica session) every statement went through. D1 itself is the real one.
- */
-
-/** The one site of the test config. */
 export const SITE_KEY = 'gateway-tests'
 
-/** The site of another deployment: its tokens are in the same database and must not work here. */
 export const OTHER_SITE_KEY = 'other-site'
 
 export const HOST = 'hollware.test'
@@ -47,22 +38,18 @@ export const CONFIG = defineConfig({
   },
 })
 
-/** The site as the config resolves it. */
 export const SITE: ResolvedSite = (() => {
   const site = resolveConfig(CONFIG).sites.get(SITE_KEY)
   if (site === undefined) throw new Error('the test config has no site')
   return site
 })()
 
-/** The time the tests start at: every instant they check is written out next to it. */
 export const NOW = '2026-10-13T12:00:00.000Z'
 
 export interface TestClock extends Clock {
-  /** Moves the clock to this instant, ISO 8601 in UTC. */
   set(iso: string): void
 }
 
-/** A clock that tells the time the test says, and a new `Date` every time it is asked. */
 export function testClock(start: string = NOW): TestClock {
   let current = new Date(start)
   return {
@@ -73,10 +60,6 @@ export function testClock(start: string = NOW): TestClock {
   }
 }
 
-/**
- * An execution context that keeps the promises handed to `waitUntil`, so that a test can tell
- * that one was handed over, and wait for it. The rest is the runtime's own.
- */
 export function fakeContext() {
   const waited: Promise<unknown>[] = []
   const ctx: ExecutionContext = {
@@ -92,24 +75,17 @@ export function fakeContext() {
   return { ctx, waited }
 }
 
-// ---- D1, watched -----------------------------------------------------------------------------
-
-/** One statement and the handle it was prepared on. */
 export interface Query {
-  /** `primary` is the D1 binding itself; `session` is what `withSession` returned. */
   readonly via: 'primary' | 'session'
   readonly sql: string
 }
 
 export interface WatchedDb {
   readonly db: D1Database
-  /** Every statement prepared, in order. */
   readonly queries: Query[]
-  /** The constraint of every `withSession`, in order. */
   readonly sessions: string[]
 }
 
-/** The real D1, with a record of how it was reached. Everything is passed on as it came. */
 export function watchDb(db: D1Database): WatchedDb {
   const queries: Query[] = []
   const sessions: string[] = []
@@ -137,7 +113,6 @@ export function watchDb(db: D1Database): WatchedDb {
   return { db: watched, queries, sessions }
 }
 
-/** A database whose every statement fails, the way D1 fails when it is down: when it runs. */
 export function brokenDb(failure: Error): D1Database {
   const fail = async (): Promise<never> => {
     throw failure
@@ -158,17 +133,8 @@ export function brokenDb(failure: Error): D1Database {
   }
 }
 
-// ---- the log ---------------------------------------------------------------------------------
-
-/** The `console.log` a capture replaced, until `restoreLogs` puts it back. */
 let original: typeof console.log | null = null
 
-/**
- * Collects what the Worker writes with `console.log`, every call as the one JSON line it must be.
- * A line that is not JSON stays a string, so that a test sees it. The test file calls
- * `restoreLogs` after each test (`afterEach`): this file cannot import the test runner, which is
- * a different one in workerd.
- */
 export function captureLogs() {
   restoreLogs()
   original = console.log
@@ -189,16 +155,12 @@ export function captureLogs() {
   }
 }
 
-/** Puts back the `console.log` that `captureLogs` replaced; nothing to do when it did not. */
 export function restoreLogs(): void {
   if (original === null) return
   console.log = original
   original = null
 }
 
-// ---- the Worker --------------------------------------------------------------------------------
-
-/** An environment as a deployment can get it wrong: the variable missing, or not a URL. */
 export function envWith(db: D1Database, publicUrl: unknown): HollwareEnv {
   return {
     DB: db,
@@ -209,37 +171,24 @@ export function envWith(db: D1Database, publicUrl: unknown): HollwareEnv {
 
 export interface SendOptions {
   readonly method?: string
-  /** Sent as `Authorization: Bearer <token>`. */
   readonly token?: string
   readonly headers?: Readonly<Record<string, string>>
-  /** The Host header. The public URL's own by default, and none at all for `null`. */
   readonly host?: string | null
   readonly body?: string
 }
 
 export interface BootOptions {
-  /** The real handlers (or any) instead of the fake ones, for a test that reads what D1 holds. */
   readonly handlers?: Handlers
   readonly overrides?: Overrides
   readonly outcomes?: Parameters<typeof fakeHandlers>[1]
-  /** Instead of the real D1 (watched). */
   readonly db?: D1Database
-  /** The `HOLLWARE_PUBLIC_URL` of the environment; leave it out for the right one. */
   readonly publicUrl?: unknown
   readonly now?: string
-  /** Instead of the test config: one with `auth`, say. */
   readonly config?: HollwareConfig
-  /** The static assets of the Worker, which hold the admin; none by default. */
   readonly assets?: Fetcher
-  /** More bindings and variables of the Worker, such as `HOLLWARE_RATE_LIMIT`. */
   readonly bindings?: Partial<HollwareEnv>
 }
 
-/**
- * Makes the sites of `config` the sites of the database, and only those (ADR-033): each gets the
- * definition of the config, and every other site goes to the trash. Two Workers of a test that
- * share the one D1 of the test are two deployments this way, each with the sites of its config.
- */
 export async function defineSites(db: D1Database, config: HollwareConfig, now: string) {
   const definitions = definitionsFromConfig(config)
   const keys = Object.keys(definitions)
@@ -260,19 +209,16 @@ export async function defineSites(db: D1Database, config: HollwareConfig, now: s
   ])
 }
 
-/** The Worker of the test config over fake handlers and the real D1, and the means to drive it. */
 export function boot(options: BootOptions = {}) {
   const { handlers: fake, seen } = fakeHandlers(options.overrides, options.outcomes)
   const handlers = options.handlers ?? fake
   const clock = testClock(options.now)
   const config = options.config ?? CONFIG
-  // The options of the deployment come with the Worker; its sites, from D1.
   const worker: HollwareWorker = createHollwareWith(
     config.auth === undefined ? undefined : { auth: config.auth },
     handlers,
     { clock },
   )
-  // The sites of the config are in D1 before the first request, written by the test itself.
   let ready: Promise<void> | undefined
   const prepare = () => (ready ??= defineSites(env.DB, config, clock.now().toISOString()))
   const watched = watchDb(env.DB)
@@ -284,7 +230,6 @@ export function boot(options: BootOptions = {}) {
   }
   const { ctx, waited } = fakeContext()
 
-  /** One request through `fetch`, with the Host the runtime would put on it. */
   const sendRequest = (request: Request, send: Pick<SendOptions, 'host' | 'token'> = {}) => {
     const headers = new Headers(request.headers)
     const host = send.host === undefined ? HOST : send.host
@@ -303,7 +248,6 @@ export function boot(options: BootOptions = {}) {
       sending,
     )
 
-  /** The MCP endpoint as a client sees it, which is the Worker: the token goes in its headers. */
   const endpoint = (token?: string): McpEndpoint => ({
     fetch: (request) => sendRequest(request, token === undefined ? {} : { token }),
   })
@@ -320,9 +264,7 @@ export function boot(options: BootOptions = {}) {
     send,
     sendRequest,
     endpoint,
-    /** Writes the sites of the config to D1, which the first request does too. */
     ready: prepare,
-    /** Waits for everything the Worker handed to `waitUntil`. */
     settle: async () => {
       await Promise.all(waited)
     },
@@ -331,7 +273,6 @@ export function boot(options: BootOptions = {}) {
 
 export type Booted = ReturnType<typeof boot>
 
-/** What an answer looks like on the wire, whole. */
 export async function wire(response: Response) {
   return {
     status: response.status,
@@ -340,7 +281,6 @@ export async function wire(response: Response) {
   }
 }
 
-/** The error a promise rejects with; a promise that resolves is a failed test. */
 export async function failure(promise: Promise<unknown>): Promise<unknown> {
   try {
     await promise
@@ -350,7 +290,6 @@ export async function failure(promise: Promise<unknown>): Promise<unknown> {
   throw new Error('the call was expected to fail, and it answered')
 }
 
-/** The one call the handlers recorded; any other count is a failed test. */
 export function onlyCall(seen: readonly Seen[]): Seen {
   const [call, ...rest] = seen
   if (call === undefined || rest.length > 0) {

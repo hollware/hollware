@@ -1,15 +1,9 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
-/* The fonts travel in the bundle: the admin's policy lets it fetch nothing from another origin. */
 @import '@fontsource-variable/schibsted-grotesk';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* theme:start
- * The theme of Hollware, the same in hollware.com and the admin (ADR-039,
- * tests/conventions/brand.test.ts): the Carbón greys of the brand book as Nuxt UI's neutral, the
- * warm white of Carbón as the primary, its amber, flame, as the secondary (the main action of a
- * page and the accents, used sparingly), Schibsted Grotesk and JetBrains Mono. Dark only.
- */
+/* theme:start */
 @theme static {
   --font-sans:
     'Schibsted Grotesk Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;

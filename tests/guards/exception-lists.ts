@@ -2,21 +2,6 @@ import { parseSync, Visitor } from 'vite-plus'
 import type { ExceptionList } from './exceptions.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `exceptions`: an exception list may only shrink.
- *
- * Every list of `tests/guards/exceptions.ts` records its size in `max`. It fails when a list
- * is longer than `max` (an exception was added without raising the number on purpose, which a
- * reviewer then sees), and when it is shorter (an exception was removed and the recorded
- * number is stale, which would leave room for a silent addition later). Entries are unique
- * and each has a reason.
- *
- * Exceptions live in that file and nowhere else. The second check parses the guard sources
- * and reports a top-level constant that is named like an allowlist (`ALLOWED_X`, `IGNORES`,
- * `SKIP_LIST`, `KNOWN_EXCEPTIONS`) and holds an array, a Set or an object. It is a heuristic:
- * it finds the natural way to write an exception, not every way.
- */
-
 export function checkExceptionLists(lists: Readonly<Record<string, ExceptionList>>): Violation[] {
   const violations: Violation[] = []
   const report = (rule: string, name: string, message: string): void => {
@@ -62,7 +47,6 @@ export function checkExceptionLists(lists: Readonly<Record<string, ExceptionList
 const ALLOWLIST_NAME =
   /(?:^|_)(?:ALLOW(?:ED|LIST)?|EXCEPTIONS?|IGNORES?|SKIPS?|SKIPPED|WHITELIST|WAIVERS?)(?:_|$)/i
 
-/** Guard sources that may declare exceptions: none. They take them as arguments. */
 export function checkNoStrayExceptions(files: readonly TextFile[]): Violation[] {
   const violations: Violation[] = []
   for (const file of files) {

@@ -4,57 +4,9 @@ import type { TextFile, Violation } from './types.ts'
 import { describeStep, parseWorkflow } from './workflow-model.ts'
 import type { WorkflowJob, WorkflowStep } from './workflow-model.ts'
 
-/**
- * Guard `release-workflow`: the release pipeline of ADR-015 keeps its branch model and its
- * gates. `main` is for development and `release` is what ships.
- *
- * - `release.yml` runs on pushes to `main` and `release`, and on no other branch.
- * - Every job of `release.yml` is one this guard knows, gated to this repository and to the
- *   branch of its path: `select-mode` and `version` run on `main`; `promotion-check`, `pack`,
- *   `publish` and `finalize` run on `release`. Its `if:` holds
- *   `github.repository == 'hollware/hollware'` and `github.ref == 'refs/heads/<branch>'`, and
- *   never the other branch. A job the guard does not know is reported: a new job needs a
- *   decision on which branch it runs.
- * - The chain cannot be skipped: `version` needs `select-mode`, `pack` needs `promotion-check`,
- *   `publish` needs `pack` and `finalize` needs `publish`.
- * - The `publish` job, the only one that publishes, has `environment: npm` (the maintainer's
- *   approval and the npm trusted publisher are bound to it), holds exactly `contents: read` and
- *   `id-token: write`, checks nothing out, so no repository code runs next to the OIDC token, and
- *   sets up Node with an exact `node-version` equal to `.node-version` and without `registry-url`
- *   (it writes an `.npmrc` that stops npm from using the OIDC token).
- * - Runs of `release.yml` go one at a time per ref: its top-level `concurrency` is
- *   `group: release-${{ github.ref }}` with `cancel-in-progress: false`, and no job sets a
- *   `concurrency` of its own. A run that waits for the approval of `publish` is never replaced
- *   by a push to `main`, and nothing is cancelled half-way through a publish.
- * - The steps that run a script hand it what it reads. `promotion-check.sh` gets `PROMOTED_SHA`
- *   and `BEFORE_SHA`, which the fast-forward check cannot run without. `finalize-release.sh` gets
- *   `GH_TOKEN`, `RELEASE_SHA` and, optionally, `WAIT_SECONDS`. No step sets another key: a
- *   `DRY_RUN` would turn the release into a no-op. Both jobs check the repository out with
- *   `fetch-depth: 0`, because the scripts read its history.
- * - `finalize_only` is wired from the trigger to the script, so that a failed finalize can run
- *   again and nothing else runs with it. `workflow_dispatch` takes a boolean input
- *   `finalize_only`. `promotion-check` is skipped on a finalize-only run (`!inputs.finalize_only`),
- *   and so are `pack` and `publish`, which skip with it as long as their `if:` calls no status
- *   function (`always()`, `cancelled()`, `failure()`). `finalize` runs on a `workflow_dispatch`
- *   with `finalize_only`, and has a status function for that, because `publish` is skipped. Its
- *   `RELEASE_SHA` is empty on a finalize-only run, when the script looks for the latest "Version
- *   Packages" commit, unless the maintainer names the commit in a string input `release_sha`
- *   (empty by default), which the script uses as given. On every other run it is the head of
- *   `release`. A `RELEASE_SHA` that hands `inputs.release_sha` over needs that input.
- * - `promotion-check` audits the production dependencies of the published packages
- *   (`AUDIT_COMMAND`), so a known high vulnerability stops a release before anything is packed.
- * - `ci.yml` also runs on pushes to `release`, and skips its changeset check there: `release`
- *   only takes commits of `main` whose changesets are consumed. The job that runs the check
- *   checks the repository out with `fetch-depth: 0`, because the check fails on a push whose
- *   previous tip is not in the clone.
- */
-
 export interface ReleaseWorkflowInput {
-  /** `.github/workflows/release.yml`. */
   release: TextFile
-  /** `.github/workflows/ci.yml`. */
   ci: TextFile
-  /** The text of `.node-version`. */
   nodeVersion: string
 }
 
@@ -62,13 +14,10 @@ type Branch = 'main' | 'release'
 
 interface ReleaseJob {
   id: string
-  /** The branch the job runs on. */
   branch: Branch
-  /** The jobs it must wait for. */
   needs: readonly string[]
 }
 
-/** The jobs of `release.yml`, in pipeline order. */
 const RELEASE_JOBS: readonly ReleaseJob[] = [
   { id: 'select-mode', branch: 'main', needs: [] },
   { id: 'version', branch: 'main', needs: ['select-mode'] },
@@ -78,28 +27,18 @@ const RELEASE_JOBS: readonly ReleaseJob[] = [
   { id: 'finalize', branch: 'release', needs: ['publish'] },
 ]
 
-/** The group that serializes the runs of `release.yml`: one run at a time per ref. */
 const RELEASE_GROUP = 'release-${{ github.ref }}'
 
-/**
- * What `RELEASE_SHA` may be: the head of `release` on every run but a finalize-only one, and on
- * that one empty, or the commit named in the `release_sha` input (empty by default).
- */
 const RELEASE_SHA_EXPRESSIONS: readonly string[] = [
   "${{ inputs.finalize_only != true && github.sha || '' }}",
   '${{ inputs.finalize_only != true && github.sha || inputs.release_sha }}',
 ]
 
-/** A step that runs a script of `.github/scripts/`, and what it hands to the script. */
 interface ScriptStep {
-  /** The job that runs the script. */
   job: string
   script: string
-  /** The `env:` keys the step must set, each to exactly one of these texts. */
   env: Record<string, { values: readonly string[]; why: string; rule?: string }>
-  /** The keys it may set besides, each with the pattern its value must match. */
   optional: Record<string, RegExp>
-  /** What the script reads from the history, so that the checkout has to fetch it. */
   history: string
 }
 
@@ -136,19 +75,19 @@ const SCRIPT_STEPS: readonly ScriptStep[] = [
   },
 ]
 
-/** The audit of what is published: the packages, never the private apps and examples. */
+export const VERSION_PACKAGES_TITLE = 'Version Packages'
+
+const FINALIZE_DEFAULT_WAIT_SECONDS = 1800
+
 export const AUDIT_COMMAND = "pnpm --filter './packages/*' audit --prod --audit-level=high"
 
-/** A job that calls one runs after a job that was skipped. */
 const STATUS_FUNCTION = /\b(?:always|cancelled|failure)\(\)/
 
 const branchGate = (branch: string): string => `github.ref == 'refs/heads/${branch}'`
 
-/** An `if:` or an `env:` value, on one line. */
 const normalize = (value: unknown): string =>
   typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : ''
 
-/** The branches a workflow runs on for a `push`, as `on.push.branches`. */
 function pushBranches(triggers: unknown): string[] {
   if (!isRecord(triggers) || !isRecord(triggers.push)) return []
   const branches = triggers.push.branches
@@ -157,7 +96,6 @@ function pushBranches(triggers: unknown): string[] {
 
 type Report = (file: TextFile, rule: string, message: string) => void
 
-/** The checkout before the step that runs a script has to fetch the whole history. */
 function checkFullHistory(
   report: Report,
   file: TextFile,
@@ -322,7 +260,23 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     }
   }
 
-  // One run at a time per ref, and never cancelled: the workflow's group is the only one.
+  const versionJob = workflow.jobs.find((job) => job.id === 'version')
+  if (versionJob !== undefined) {
+    const versionStep = versionJob.steps.find(
+      (step) => step.uses?.value.startsWith('changesets/action/version@') === true,
+    )
+    for (const key of ['commit-message', 'pr-title']) {
+      const title = versionStep?.inputs[key]
+      if (title !== VERSION_PACKAGES_TITLE) {
+        report(
+          releaseFile,
+          'version-title',
+          `job "version": changesets/action/version must set "${key}: ${VERSION_PACKAGES_TITLE}", the title by which changeset-check.sh skips its merge and finalize-release.sh finds the release commit, found ${JSON.stringify(title)}`,
+        )
+      }
+    }
+  }
+
   const concurrency = workflow.concurrency
   const group = isRecord(concurrency) ? normalize(concurrency.group) : undefined
   if (
@@ -346,7 +300,6 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     }
   }
 
-  // No release with a known vulnerability of a published package's production dependencies (T-92).
   const auditing = workflow.jobs.find((job) => job.id === 'promotion-check')
   if (
     auditing !== undefined &&
@@ -359,7 +312,6 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     )
   }
 
-  // What the steps that run a script hand to it, and the history they check out.
   for (const spec of SCRIPT_STEPS) {
     const job = workflow.jobs.find((candidate) => candidate.id === spec.job)
     if (job === undefined) continue
@@ -399,7 +351,6 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     checkFullHistory(report, releaseFile, job, step, path, spec.history, 'fetch-depth')
   }
 
-  // `finalize_only`: how a failed finalize runs again, and the only job that runs with it.
   const dispatch = isRecord(workflow.triggers) ? workflow.triggers.workflow_dispatch : undefined
   const dispatchInputs = isRecord(dispatch) ? dispatch.inputs : undefined
   const finalizeOnly = isRecord(dispatchInputs) ? dispatchInputs.finalize_only : undefined
@@ -446,6 +397,15 @@ export function checkReleaseWorkflow(input: ReleaseWorkflowInput): Violation[] {
     }
   }
   if (finalize !== undefined) {
+    const waitSeconds = Number(finalizeStep?.env.WAIT_SECONDS ?? FINALIZE_DEFAULT_WAIT_SECONDS)
+    const timeout = finalize.timeoutMinutes
+    if (typeof timeout !== 'number' || timeout * 60 <= waitSeconds) {
+      report(
+        releaseFile,
+        'finalize-timeout',
+        `job "finalize": "timeout-minutes" must outlast the ${waitSeconds} s finalize-release.sh waits for npm, so the script, not the runner, ends a wait that fails and says why, found ${JSON.stringify(timeout)}`,
+      )
+    }
     const condition = normalize(finalize.condition)
     if (!condition.includes("github.event_name == 'workflow_dispatch' && inputs.finalize_only")) {
       report(

@@ -4,16 +4,6 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { blogPost, NO_ENTRY, warmUpComark } from './support.ts'
 import { createPost, newWorld, publishPost, snapshotOf, START, type World } from './world.ts'
 
-// Fails when: the trash of entries stops working the way the specs say. trash.ts answers published
-// to an entry that is published or scheduled, and conflict to a stale version, writing nothing;
-// writes.ts trashes only a draft out of the trash at its version, cancels its pending review in the same batch
-// (cancelPendingReview with the state of the trash), and restores only an entry in the trash, at
-// the next version; reads.ts leaves an entry in the trash out of every read of the head view (by
-// key, by id, listings, translations) and of the lookups the contracts read, lists only the
-// trash with trashed, and nothing for trashed in the published view; holderOfNewEntry answers in_trash for a slug or a translation that an entry
-// in the trash holds; list_reviews leaves out the reviews of an entry in the trash; and every
-// statement of the trash carries the site of the call. D1 is real.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -21,7 +11,6 @@ const T1 = '2026-10-13T11:00:00.000Z'
 const T2 = '2026-10-13T12:00:00.000Z'
 const LATER = '2026-10-14T12:00:00.000Z'
 
-/** An English post and its Spanish translation, both drafts, which the blog needs to publish. */
 async function pair(world: World) {
   const en = await createPost(world, { slug: 'edge-caching-guide', group: 'edge-caching-guide' })
   const es = await createPost(world, {
@@ -32,7 +21,6 @@ async function pair(world: World) {
   return { en, es }
 }
 
-/** The status of the reviews of an entry, oldest first. */
 async function reviewStatuses(world: World, entryId: string): Promise<string[]> {
   const { results } = await world.db
     .prepare('SELECT status FROM reviews WHERE entry_id = ? ORDER BY rowid')
@@ -63,7 +51,6 @@ describe('delete_entry', () => {
       },
     })
     expect(await reviewStatuses(world, en.id)).toEqual(['cancelled'])
-    // Nothing is deleted: the entry keeps its row and its revision.
     expect(
       await world.db
         .prepare('SELECT count(*) AS n FROM revisions WHERE entry_id = ?')
@@ -176,7 +163,6 @@ describe('an entry in the trash', () => {
   it('is left out of list_entries, and is all that trashed lists', async () => {
     const { world, en, es } = await trashed('trash-list')
 
-    // A published note, which no listing of the trash has: the trash holds drafts only.
     const note = await world.agent.createDraft({
       collection: 'notes',
       locale: 'en',

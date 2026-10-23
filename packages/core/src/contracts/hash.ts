@@ -3,11 +3,6 @@ import type { SchemaSnapshot } from './schema.ts'
 import { compareText } from './text.ts'
 
 /**
- * `contractsHash` (ADR-004): what a revision was checked against, in a short string. A stored
- * verdict says which rules it answered to, and a changed rule shows as another hash.
- */
-
-/**
  * JSON with the keys of every object in order and no spaces, so that equal values always give
  * the same text. Arrays keep their order, which means something there. An `undefined` member is
  * left out, as `JSON.stringify` does.
@@ -24,18 +19,11 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(value) ?? 'null'
 }
 
-/** The SHA-256 of a text, in lowercase hex. */
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/**
- * The hash of the rules of a run: the input JSON Schema of the frontmatter and of each
- * component's props (`null` for one that does not convert), and the id, severity and phases of
- * every contract that was to run. Contracts go by id, so the order of the config does not matter,
- * and their descriptions are left out, because wording is no rule.
- */
 export function hashContracts(
   snapshot: SchemaSnapshot,
   contracts: readonly (ContractDescription & {
@@ -51,8 +39,6 @@ export function hashContracts(
           id,
           phases,
           severity,
-          // The parameters of a rule of the catalog (ADR-033); none for a rule that takes none, so
-          // that the hash of a verdict made before parameters existed stays the same.
           params: params === undefined || Object.keys(params).length === 0 ? undefined : params,
         })),
       frontmatter: snapshot.frontmatter,

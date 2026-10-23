@@ -17,17 +17,6 @@ import {
   type Owner,
 } from './support.ts'
 
-// Fails when: src/db/writes.ts publish stops inserting the publication and updating the entry as
-// one batch, both only if the entry is still at the version the caller read (a stale publish then
-// lands, or lands half), stops publishing the head revision as it is when the statement runs,
-// keeps no first-publication time (`published_at` must stay when an entry is published again),
-// stops recording the verdict, the acknowledged warnings and the actor, moving the sort key,
-// bumping the version once, or telling `conflict` from `not_found`; unpublish stops taking only
-// an entry that is published (one that is not must stay as it is, with no publication appended),
-// keeps `published_at` or stops nulling `published_rev` and `published_sort_key`, stops answering
-// with the head view of the entry, or `not_found` for an entry that is not there; or lastPublication
-// stops returning the newest publication of the entry (by time, then by insertion order).
-
 const T1 = '2026-10-12T10:00:00.000Z'
 const T2 = '2026-10-12T11:00:00.000Z'
 const T3 = '2026-10-12T12:00:00.000Z'
@@ -55,7 +44,6 @@ const ACKNOWLEDGED: AcknowledgedWarning[] = [
 
 const ENTRY = { collection: 'blog', locale: 'en', slug: 'a' }
 
-/** A draft at version 1 with one revision, `rev_a`, and a store whose clock the test moves. */
 async function seedDraft(label: string) {
   const owner = await seedOwner(env.DB, siteKey(label))
   const id = idFactory()
@@ -150,7 +138,6 @@ describe('publish', () => {
       created_at: T1,
       updated_at: T3,
     })
-    // The publication, as the database holds it.
     const [row, ...others] = await publicationRows(entryId)
     expect(others).toEqual([])
     expect(row).toMatchObject({
@@ -167,7 +154,6 @@ describe('publish', () => {
       updated_at: T3,
     })
     expect(JSON.parse(String(row?.verdict))).toEqual(PUBLISH_VERDICT)
-    // And as the store reads it back.
     const last = await store.lastPublication(owner.site, entryId)
     expect(isId('pub', last?.id ?? '')).toBe(true)
     expect(last).toEqual({
@@ -180,7 +166,6 @@ describe('publish', () => {
       actor,
       createdAt: T3,
     })
-    // It is live: the published view reads it, and the published listing lists it.
     expect((await store.findEntry(owner.site, ENTRY, 'published'))?.revision.id).toBe(id('rev_a'))
     const page = await store.listEntries(owner.site, {
       collection: 'blog',
@@ -210,7 +195,6 @@ describe('publish', () => {
       revision: newRevision(owner.actor, { markdown: 'second', tags: ['u'] }),
     })
     if (edited.outcome !== 'saved') throw new Error('The edit was not saved')
-    // The live page still shows the first revision, and the entry says it has unpublished changes.
     expect((await store.findEntry(owner.site, ENTRY, 'published'))?.revision.markdown).toBe('first')
     expect(edited.view.entry).toMatchObject({
       headRevision: edited.view.revision.id,
@@ -260,7 +244,6 @@ describe('publish', () => {
       published_sort_key: 'k2',
       updated_at: T3,
     })
-    // Both publications are there, the first one as it was.
     const rows = await publicationRows(entryId)
     expect(rows.map((row) => [row.action, row.revision_id, row.created_at])).toEqual([
       ['publish', id('rev_a'), T1],
@@ -344,7 +327,6 @@ describe('publish', () => {
 })
 
 describe('unpublish', () => {
-  /** A published entry: `rev_a`, published at T1, sort key k1, at version 2. */
   async function seedPublished(label: string) {
     const seeded = await seedDraft(label)
     seeded.time.set(T1)
@@ -365,7 +347,6 @@ describe('unpublish', () => {
 
     if (result.outcome !== 'unpublished')
       throw new Error(`Not unpublished: ${JSON.stringify(result)}`)
-    // The answer is the head view of the entry, which is a draft now.
     expect(result.view.entry).toEqual({
       id: entryId,
       collection: 'blog',
@@ -416,7 +397,6 @@ describe('unpublish', () => {
       actor,
       createdAt: T3,
     })
-    // It is off the public site, and still there as a draft.
     expect(await store.findEntry(owner.site, ENTRY, 'published')).toBeNull()
     expect(
       (await store.listEntries(owner.site, { collection: 'blog', view: 'published', limit: 10 }))
@@ -602,13 +582,11 @@ describe('lastPublication', () => {
       revisionId: action === 'publish' ? id('rev_a') : null,
       createdAt,
     })
-    // Written newest first: the row written last is not the newest one.
     await insertPublication(owner, entryId, spec('pub_3', 'unpublish', T3))
     await insertPublication(owner, entryId, spec('pub_1', 'publish', T1))
     await insertPublication(owner, entryId, spec('pub_2', 'publish', T2))
     expect((await store.lastPublication(owner.site, entryId))?.id).toBe(id('pub_3'))
 
-    // Two at the same time: the one written after the other is the later one.
     await insertPublication(owner, entryId, spec('pub_4', 'publish', T4))
     await insertPublication(owner, entryId, spec('pub_0', 'unpublish', T4))
     expect((await store.lastPublication(owner.site, entryId))?.id).toBe(id('pub_0'))

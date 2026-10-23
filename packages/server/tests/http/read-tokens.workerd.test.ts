@@ -5,16 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { seedToken } from '../auth/support.ts'
 import { CONFIG, OTHER_SITE_KEY, SITE_KEY, boot } from './support.ts'
 
-// Fails when: a read token (`hw_read_`) reaches anything but the read API: `/mcp`, the operations
-// over HTTP or the admin's routes (`protectWrites` of src/http/gateway.ts); or the read API stops
-// letting a page of an origin that the site lists read it, with the CORS headers and its ETag
-// (`src/http/read-api.ts`), or lets a page of another origin read it: one that no site lists (the
-// guard, src/auth/guard.ts), or one that another site lists but the token's site does not; or the
-// guard lets a listed origin past the read API.
-
 const PAGE = 'https://site.example'
 
-/** Two sites: the first lets pages of PAGE read it, the second lets none. */
 const TWO_SITES = defineConfig({
   ...CONFIG,
   sites: Object.fromEntries(
@@ -100,7 +92,6 @@ describe('the read API from a page', () => {
       code: 'forbidden_origin',
       message: `The site "${OTHER_SITE_KEY}" does not let pages of ${PAGE} read it.`,
     })
-    // The page cannot read the refusal: only Hollware's own origin may.
     expect(elsewhere.headers.get('access-control-allow-origin')).toBe('https://hollware.test')
     expect(worker.seen).toEqual([])
   })

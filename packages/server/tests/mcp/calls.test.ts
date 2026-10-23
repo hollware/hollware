@@ -21,20 +21,9 @@ import {
   type Overrides,
 } from './support.ts'
 
-// Fails when: the answer of a handler stops reaching the caller as structured content and as the
-// same JSON in a text block, with `isError` as the spec says for its outcome; a field the schema
-// does not name gets through; the handler stops getting the site, the store, the clock, the
-// principal and the request id of the call, the head view, the parsed input with its defaults and
-// the client as the envelope names it; input that breaks the schema reaches a handler; a
-// HollwareError stops being `{ code, message, fix }` or an error of any other kind stops being
-// `internal` with a fixed message that tells nothing; an answer over the output cap, counted in
-// UTF-8 bytes, gets through or is cut; an operation that takes too long stops being a `timeout`;
-// or two calls at once see each other's principal.
-
 const ERAS = ['2026', '2025'] as const
 const RAW_ERAS = ['modern', 'legacy'] as const
 
-/** Every outcome of every operation, and whether the plan makes it an error for the caller. */
 const OUTCOMES = [
   ['create_draft', 'saved', false],
   ['create_draft', 'refused', true],
@@ -372,7 +361,6 @@ describe('an error', () => {
 })
 
 describe('the output cap', () => {
-  /** A `get_entry` answer whose JSON is the base of 523 bytes plus the bytes of the Markdown. */
   const entryWith = (markdown: string): Overrides => ({
     get_entry: async () => ({ outcome: 'ok', entry: { ...ENTRY, markdown } }),
   })

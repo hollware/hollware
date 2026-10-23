@@ -1,10 +1,3 @@
-/**
- * A software authenticator for the tests of the passkey ceremonies: an ES256 key pair made with
- * Web Crypto, and the CBOR and the signatures of WebAuthn built by hand, so that registration and
- * sign-in run through SimpleWebAuthn's real verification. It answers with what a browser's
- * `credential.toJSON()` gives: attestation `none`, user present and verified.
- */
-
 type Cbor = number | string | Uint8Array | Cbor[] | Map<Cbor, Cbor>
 
 function head(major: number, length: number): number[] {
@@ -49,7 +42,6 @@ function concat(...parts: Uint8Array[]): Uint8Array {
   return out
 }
 
-/** A raw ECDSA signature (r and s, 32 bytes each) as WebAuthn wants it: DER. */
 function der(raw: Uint8Array): Uint8Array {
   const integer = (bytes: Uint8Array) => {
     let start = 0
@@ -103,7 +95,6 @@ export async function softAuthenticator(origin: string) {
 
   return {
     credentialId,
-    /** What `navigator.credentials.create(options).toJSON()` gives. */
     async register(options: { challenge: string; user: { id: string } }, from = origin) {
       handle = options.user.id
       const exported = await crypto.subtle.exportKey('jwk', keys.publicKey)
@@ -147,11 +138,9 @@ export async function softAuthenticator(origin: string) {
         authenticatorAttachment: 'platform' as const,
       }
     },
-    /** What `navigator.credentials.get(options).toJSON()` gives. */
     async authenticate(
       options: { challenge: string },
       from = origin,
-      /** A clone's counter, or an assertion of a touch without the device unlocked. */
       how: { readonly counter?: number; readonly userVerified?: boolean } = {},
     ) {
       counter = how.counter ?? counter + 1

@@ -1,7 +1,6 @@
 import { COMARK_VERSION, PIPELINE_VERSION, type ResolvedSite } from '@hollware/core'
 import { processFor } from '../ops/draft.ts'
 
-/** How many revisions one run rebuilds: a few milliseconds of CPU each (`vp run bench`). */
 export const REPARSE_BATCH = 20
 
 interface Stale {
@@ -10,15 +9,6 @@ interface Stale {
   readonly collection: string
 }
 
-/**
- * Rebuilds the derived columns of the revisions of a site that an older Comark or pipeline
- * parsed (ADR-021): the frontmatter, the document and the word count, from the Markdown each keeps
- * byte for byte, and the versions that made them. The cron runs it each minute, a batch at a time,
- * so a release that changes what the same Markdown gives (a new PIPELINE_VERSION) reaches every
- * revision without a command. A revision the pipeline now refuses, or of a collection the site
- * no longer has, keeps its document and takes the versions, so it is not tried again each minute;
- * the log says which. Answers how many revisions it looked at.
- */
 export async function reparseRevisions(
   db: D1Database,
   site: ResolvedSite,

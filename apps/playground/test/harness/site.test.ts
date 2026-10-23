@@ -14,18 +14,6 @@ import {
 } from './support.ts'
 import { createPlaygroundHarness, SITE_URL, SITE_WORKER, siteFetch } from './workers.ts'
 
-// Fails when: the example site (examples/worker-site) stops serving what Hollware published over
-// its service binding, or serves what it did not: the HTML of a published entry rendered from its
-// stored document (src/index.ts `blogEntry`, `renderHtml`), or a 404 for a draft, for an entry that
-// was never there and for one that was unpublished (the `outcome` check there, and the published
-// view that `createRpc` in packages/server/src/rpc/methods.ts reads); the blog index of a locale,
-// newest first, with ?tag= and a cursor that takes it from one page to the next
-// (`blogIndex`, `listEntries` of the binding); the link to each translation from
-// `getTranslations`, and none for an entry that has no published one; the escaping of what authors
-// write (`escapeHtml` in src/pages.ts); and the redirects, the 405 and the headers of its answers.
-// Content is created through the MCP endpoint of the built Hollware Worker, with a personal token,
-// as an agent does; the one thing written to D1 directly is that token.
-
 const server = createPlaygroundHarness()
 let agent: Agent
 
@@ -40,7 +28,6 @@ const spanish = (slug: string): Draft => ({
   markdown: contentFixture(`blog/es/${slug}.md`),
 })
 
-/** A small post of the test's own, older than the corpus so that it never reaches a first page. */
 function post(title: string, tag: string, group: string): string {
   return `---
 title: ${title}
@@ -62,12 +49,10 @@ async function page(path: string, init?: Parameters<typeof siteFetch>[2]) {
   return { response, html: await response.text() }
 }
 
-/** The paths of the entries a listing shows, in the order it shows them. */
 function listed(html: string): string[] {
   return [...html.matchAll(/<h2><a href="([^"]+)">/g)].map((match) => match[1] ?? '')
 }
 
-/** The address behind "Older posts", as the browser would request it. */
 function nextPage(html: string): string | null {
   const match = /<a rel="next" href="([^"]+)">/.exec(html)
   return match?.[1] === undefined ? null : match[1].replaceAll('&amp;', '&')
@@ -77,7 +62,6 @@ beforeAll(async () => {
   await server.listen()
   await migrate(server)
   agent = agentWith(server, await seedOwnerToken(server))
-  // Four English entries and the Spanish translation of one are published; one is only a draft.
   for (const slug of [
     'from-draft-to-published',
     'one-deployment-many-sites',

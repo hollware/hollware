@@ -1,11 +1,6 @@
 import { HollwareClientError } from '@hollware/client'
 import { createError, setResponseHeader, type H3Event } from 'h3'
 
-/**
- * Hollware's answer as the site's own: a `not_found` outcome is a 404, a refusal of the read API
- * keeps its status, and the rest is the answer. Pages revalidate it: it is published content, and
- * a publication purges nothing on the site's side.
- */
 export async function answer<Value extends { outcome: string }>(
   event: H3Event,
   read: () => Promise<Value>,
@@ -26,7 +21,6 @@ export async function answer<Value extends { outcome: string }>(
   return value
 }
 
-/** The fields of an entry that a page shows: what a reader sees, and not how it was checked. */
 const PUBLIC_FIELDS = [
   'id',
   'collection',
@@ -38,14 +32,9 @@ const PUBLIC_FIELDS = [
   'publishedAt',
   'updatedAt',
   'document',
-  // The size, alt and srcset of the images of the frontmatter, for <HollwareImage>.
   'images',
 ] as const
 
-/**
- * An entry for a page: its verdict, its revision and its last publication stay on the server, as
- * the page sends what it read to the browser in its payload.
- */
 export function forPage(entry: unknown): Record<string, unknown> | undefined {
   if (typeof entry !== 'object' || entry === null) return undefined
   return Object.fromEntries(

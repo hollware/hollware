@@ -11,60 +11,39 @@ import type { OAuthErrorLog } from '../http/types.ts'
 import type { HollwareEnv } from '../index.ts'
 import type { Clock } from '../ports.ts'
 
-/** Access tokens live an hour, and a grant thirty days from its code, refreshed or not (ADR-026). */
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
 
-/** What a grant stores, encrypted, and what its access tokens unwrap: whose it is, and where. */
 export interface GrantProps {
   readonly userId: string
   readonly site: string
 }
 
-/** The two protected resources of a Hollware: MCP and the read API. */
 export type ResourceName = 'mcp' | 'v1'
 
-/** Why a token presented to a resource is refused: for the log, never for the answer. */
 export type Refusal = TokenRejection | 'no_user' | 'other_site'
 
-/** What a protected route does once its token is accepted. */
 export type Proceed = (principal: RequestPrincipal, auth: OAuthResourceAuth) => Promise<Response>
 
-/** The request of a protected route, as the gateway hands it to the resource server. */
 interface Pending {
   readonly proceed: Proceed
   readonly refused: (reason: Refusal) => void
-  /** Hands a write that must outlive the answer to `ctx.waitUntil`. */
   readonly defer: (promise: Promise<void>) => void
-  /**
-   * Keeps what the validator threw, such as a D1 failure. The library would answer it as a bare
-   * 503; the gateway throws it again, so it ends as every other failure does: a JSON 500 with the
-   * id of the request, and the cause in the log.
-   */
   readonly failed: (error: unknown) => void
 }
 
 export interface OAuthOptions {
-  /** The sites this deployment serves; a grant or a token of any other is refused. */
   readonly sites: ReadonlySet<string>
   readonly clock: Clock
-  /** Whether clients may register themselves (RFC 7591), from `auth` of the config. */
   readonly dynamicClientRegistration: boolean
   readonly log: (entry: OAuthErrorLog) => void
 }
 
-/** The OAuth server of one public URL, and its two resources. */
 export interface OAuth {
   readonly issuer: string
   readonly authorizationServer: OAuthAuthorizationServer<HollwareEnv>
-  /** The canonical URL of each resource: its tokens' audience. */
   readonly resources: Readonly<Record<ResourceName, string>>
-  /** The protected resource metadata of each resource (RFC 9728). */
   readonly metadataUrls: Readonly<Record<ResourceName, string>>
-  /**
-   * Runs a protected route: the resource server answers its metadata, a request without a token,
-   * and a token it refuses, and calls `proceed` with the principal of a token it accepts.
-   */
   readonly protect: (
     resource: ResourceName,
     request: Request,
@@ -74,7 +53,6 @@ export interface OAuth {
   ) => Promise<Response>
 }
 
-/** The role of a member of the site, read on every request: a change of role takes effect at once. */
 async function roleOf(db: D1Database, site: string, userId: string): Promise<string | null> {
   const row = await db
     .prepare('SELECT role FROM members WHERE site_id = ?1 AND user_id = ?2')
@@ -92,18 +70,6 @@ function isGrantProps(value: unknown): value is GrantProps {
   )
 }
 
-/**
- * Builds the OAuth server of a deployment (ADR-026), once for each public URL it is asked about:
- * the issuer and the resources are that URL's, and the Worker learns it from its environment, on
- * the first request. One Worker holds both roles: an `OAuthAuthorizationServer`, whose
- * `/authorize` is Hollware's own page (`authorize.ts`), and an `OAuthResourceServer` for `/mcp`
- * and for `/v1`.
- *
- * A resource accepts two kinds of token, told apart by their shape. A personal token
- * (`hw_pat_…`) is looked up in D1 as before, and never reaches the OAuth server; any other token
- * is the OAuth server's to validate, for that resource alone. Either way the principal's scopes
- * are what the token carries intersected with what the user's role allows now.
- */
 export function createOAuth(options: OAuthOptions): (publicUrl: string) => OAuth {
   const built = new Map<string, OAuth>()
   return (publicUrl) => {
@@ -135,7 +101,6 @@ function build(issuer: string, options: OAuthOptions): OAuth {
     },
   })
 
-  /** The protected routes in flight, by their request: the resource server hands it on as it is. */
   const pending = new WeakMap<Request, Pending>()
 
   const validate =
@@ -159,7 +124,6 @@ function build(issuer: string, options: OAuthOptions): OAuth {
         now: options.clock.now(),
       })
       if (!check.ok) return refuse(check.reason)
-      // At most once an hour, and it never rejects: after the answer, not before it.
       if (check.touch !== null) {
         const route = pending.get(request)
         if (route === undefined) await check.touch

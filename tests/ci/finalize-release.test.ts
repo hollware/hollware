@@ -13,29 +13,11 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'vite-plus/test'
 
-// Runs .github/scripts/finalize-release.sh in a throwaway git repository, with a stub `gh`, `npm`
-// and `sleep` first on PATH. Git is real: the script finds the release commit in the history and
-// reads that commit's manifests and changelogs, and a stub would only restate what we assume of
-// it. `gh` and `npm` are not ours. The stubs keep the state of GitHub (tag refs, annotated tag
-// objects, releases) and of the registry (what `npm view` answers, call by call) in a JSON file,
-// answer with the shape of the real APIs and let jq apply the script's `--jq` filters, log what
-// the script creates, and refuse any call the script is not meant to make.
-//
-// Fails when: the script tags or releases a package that the release commit did not bump, or a
-// private one; creates a tag or a release before every version is live on npm with its
-// provenance attestation, or waits less or longer than its bound; marks the wrong release as
-// Latest, or a prerelease as Latest; creates what exists already, or accepts a tag that points at
-// another commit, or takes an API error for "not found"; reads the working tree instead of the
-// release commit, or picks another release commit than RELEASE_SHA or the latest "Version
-// Packages" commit; settles on an older release when a later commit bumped the public versions
-// under a title it does not know, or refuses a run that is up to date or told the release commit;
-// cuts the notes at a heading inside a code fence; or tags in a dry run.
 const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'finalize-release.sh')
 
 const REPO = 'hollware/hollware'
 
-// No global or system git configuration: a developer's signing or hooks setup must not leak in.
-const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+const gitEnvWithoutUserConfig = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 const GH_STUB = `#!/usr/bin/env bash
 # The part of gh that finalize-release.sh uses, over the state file of the test.
@@ -170,9 +152,6 @@ case "$1" in
 esac
 `
 
-// `npm view <name>@<version> dist.attestations --json`: the answers a registry gives for a version
-// that is not published (a 404, exit 1), one that is published with no attestation (nothing, exit
-// 0), one whose attestation is no SLSA provenance, and one with its SLSA provenance.
 const NPM_STUB = `#!/usr/bin/env bash
 if [[ "$1" != view ]]; then
   echo "npm stub: unexpected call: $*" >&2
@@ -203,26 +182,19 @@ case "$answer" in
 esac
 `
 
-// The script sleeps between two looks at npm. The stand-in only records how long it was asked to.
 const SLEEP_STUB = `#!/usr/bin/env bash
 echo "$*" >>"$STUB_WORLD/sleep.log"
 `
 
 type NpmAnswer = '404' | 'none' | 'other' | 'slsa'
 
-/** The state the stubs keep in `state.json`: what GitHub and the registry know. */
 interface World {
-  /** The refs under refs/tags: the tag name, and what the ref points at. */
   tags: Record<string, { type: 'commit' | 'tag'; sha: string }>
-  /** The annotated tag objects: the object's sha, and the commit it points at. */
   tagObjects: Record<string, string>
-  /** The tags that have a GitHub Release. */
   releases: string[]
-  /** What `npm view` answers for `<name>@<version>`, one answer per call (the last one repeats). */
   npm: Record<string, NpmAnswer[]>
 }
 
-/** The registry has these versions live with their SLSA provenance. */
 function live(...specs: string[]): World['npm'] {
   return Object.fromEntries(specs.map((spec): [string, NpmAnswer[]] => [spec, ['slsa']]))
 }
@@ -237,7 +209,7 @@ function git(...args: string[]): string {
   const run = spawnSync('git', args, {
     cwd: root,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
   })
   if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
   return run.stdout.trim()
@@ -245,7 +217,6 @@ function git(...args: string[]): string {
 
 const identity = ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid']
 
-/** Commits `files` (and a change to file.txt, so that no commit is empty) and returns the commit. */
 function commit(
   subject: string,
   files: Record<string, string> = {},
@@ -266,7 +237,6 @@ function manifest(name: string, version: string, extra: Record<string, unknown> 
   return `${JSON.stringify({ name, version, ...extra }, null, 2)}\n`
 }
 
-/** The manifests of the packages at one version. `server` only when it moves with the others. */
 function manifests(version: string, withServer = true): Record<string, string> {
   return {
     'packages/cli/package.json': manifest('hollware', version),
@@ -277,8 +247,6 @@ function manifests(version: string, withServer = true): Record<string, string> {
   }
 }
 
-// What `changeset version` writes: one `## <version>` section per release, newest first. The
-// 0.0.2 section of core has headings inside code fences, which are not headings.
 const CLI_CHANGELOG = [
   '# hollware',
   '',
@@ -330,34 +298,11 @@ const CORE_CHANGELOG = [
 const FIRST_RELEASE_CHANGELOG = (name: string) =>
   [`# ${name}`, '', '## 0.0.1', '', '### Patch Changes', '', '- First release.', ''].join('\n')
 
-/** The core changelog after someone reworded it on a later commit. */
 const REWORDED_CORE_CHANGELOG = CORE_CHANGELOG.replace(
   'Fixes the changelog of the fixed group.',
   'REWORDED AFTER THE RELEASE.',
 )
 
-// A repository with the history of a project that releases through Changesets:
-//
-//   main:    first - v001 - work - v002 - docs               HEAD (detached) is `docs`
-//                                    /
-//            changeset-release/main: Version Packages
-//   rc:      docs - v010rc                                   a prerelease, on a side branch
-//   edited:  docs - edited - afterEdited                     a later release, merged under a title
-//                    /                                       the scan does not know
-//            changeset-release/next: Version Packages
-//   extras:  docs - extras                                   commits after a release that are not one
-//
-// `v001` is a squashed "Version Packages" commit that bumps cli, core and server to 0.0.1.
-// `v002` is the merge commit of the pull request: GitHub titles it after the branch. It bumps cli
-// and core to 0.0.2 and leaves server at 0.0.1, and moves a private package and a manifest that
-// is not at the top of a package too, which are never released. `docs` rewords the core changelog.
-// `v010rc` moves cli, core and server to 0.1.0-rc.1: cli has a changelog section, core a
-// changelog without one and server has no changelog.
-// `edited` is the merge commit of a later pull request that bumps cli and core to 0.0.3, with a
-// title edited by hand: no scan of titles finds it, and the commit titled "Version Packages" that
-// it merges sits on the side branch. `afterEdited` touches a manifest without changing a version.
-// `extras` changes a private package, adds a public one and touches a manifest of another, and no
-// version of a public package that exists at `v002`.
 interface History {
   first: string
   v001: string
@@ -379,7 +324,6 @@ beforeAll(() => {
       'tests/ci needs jq on PATH: install it with your package manager (CONTRIBUTING.md)',
     )
   }
-  // The stubs are made once: macOS scans every new executable the first time it runs.
   stubs = mkdtempSync(join(tmpdir(), 'finalize-release-stubs-'))
   mkdirSync(join(stubs, 'bin'))
   const programs: Record<string, string> = { gh: GH_STUB, npm: NPM_STUB, sleep: SLEEP_STUB }
@@ -485,7 +429,6 @@ afterEach(() => {
   rmSync(world, { recursive: true, force: true })
 })
 
-/** Sets what GitHub and the registry know before the script runs. */
 function seed(state: Partial<World>): void {
   const full: World = { tags: {}, tagObjects: {}, releases: [], npm: {}, ...state }
   writeFileSync(join(world, 'state.json'), JSON.stringify(full))
@@ -495,26 +438,17 @@ interface Outcome {
   status: number | null
   stdout: string
   stderr: string
-  /** The `::error::` annotations, which is what the maintainer reads. */
   errors: string[]
-  /** What the script created, in order: the tag refs, and the releases with their flags. */
   gh: string[]
-  /** The questions the script asked npm, in order. */
   npm: string[]
-  /** The pauses the script asked for, in seconds. */
   sleeps: string[]
-  /** The notes of each release created, by tag. */
   notes: Record<string, string>
-  /** What the script wrote to the step summary. */
   summary: string
 }
 
 interface Options {
-  /** The commit checked out when the script runs. Defaults to `docs`, the tip of main. */
   head?: string
-  /** Files of the working tree to overwrite after the checkout, without committing. */
   dirty?: Record<string, string>
-  /** Where the script runs. Defaults to the repository. */
   cwd?: string
 }
 
@@ -527,14 +461,13 @@ function finalize(env: Record<string, string | undefined> = {}, options: Options
   for (const [path, text] of Object.entries(options.dirty ?? {})) {
     writeFileSync(join(root, path), text)
   }
-  // Every run reports on its own: the state of GitHub and npm goes on from one run to the next.
   for (const name of ['gh.log', 'npm.log', 'sleep.log']) writeFileSync(join(world, name), '')
   writeFileSync(summaryFile, '')
   rmSync(join(world, 'notes'), { recursive: true, force: true })
 
   const environment: Record<string, string | undefined> = {
     PATH: `${join(stubs, 'bin')}:${process.env.PATH ?? ''}`,
-    ...gitEnv,
+    ...gitEnvWithoutUserConfig,
     GITHUB_REPOSITORY: REPO,
     GITHUB_STEP_SUMMARY: summaryFile,
     STUB_WORLD: world,
@@ -543,7 +476,6 @@ function finalize(env: Record<string, string | undefined> = {}, options: Options
   const run = spawnSync('bash', [script], {
     cwd: options.cwd ?? root,
     encoding: 'utf8',
-    // A script that never stops (a wait nobody bounds) must fail the test, not hang the run.
     timeout: 30_000,
     killSignal: 'SIGKILL',
     env: Object.fromEntries(
@@ -588,8 +520,6 @@ const viewCall = (spec: string) =>
 const giveUp = (seconds: number, notReady: string) =>
   `Gave up after ${seconds}s. Not ready on npm: ${notReady}. Check the publish job, then run the Release workflow again on the release branch with finalize_only.`
 
-// A run of the script starts dozens of processes, and the machine may be busy with other tests:
-// the 5 seconds of a test are too few. The script itself is killed after 30 seconds.
 describe('finalize-release.sh', { timeout: 120_000 }, () => {
   describe('a release whose versions are live on npm', () => {
     test('gets a tag at the release commit and then a release for each public package it bumped, and for no other', () => {
@@ -598,7 +528,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
       const result = finalize({ RELEASE_SHA: v002 })
       expect(result.status).toBe(0)
       expect(result.errors).toEqual([])
-      // Not server, which stayed at 0.0.1, nor the private package, nor the nested manifest.
       expect(result.gh).toEqual([
         refCall('hollware@0.0.2', v002),
         releaseCall('hollware@0.0.2', '--latest'),
@@ -622,7 +551,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
     test('leaves a summary with the tag, the short commit and the release of each', () => {
       const { v002 } = history
       seed({ npm: live(...PACKAGES_002) })
-      // The abbreviation comes from git, not from the substring the script cuts.
       const short = git('rev-parse', '--short=7', v002)
       expect(finalize({ RELEASE_SHA: v002 }).summary).toBe(
         [
@@ -686,7 +614,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
     test('do not end at a heading inside a code fence', () => {
       const { v002 } = history
       seed({ npm: live(...PACKAGES_002) })
-      // The fenced `## ` lines would cut the section short, and the notes would lose the rest.
       expect(finalize({ RELEASE_SHA: v002 }).notes['@hollware/core@0.0.2']).toBe(
         [
           '### Patch Changes',
@@ -736,7 +663,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
           `npm: https://www.npmjs.com/package/${name}/v/0.1.0-rc.1`,
           '',
         ].join('\n')
-      // core has a changelog without a 0.1.0-rc.1 section, server has no changelog at all.
       expect(notes['@hollware/core@0.1.0-rc.1']).toBe(nothing('@hollware/core'))
       expect(notes['@hollware/server@0.1.0-rc.1']).toBe(nothing('@hollware/server'))
     })
@@ -744,8 +670,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
     test('come from the release commit, never from the working tree or from a later commit', () => {
       const { v002 } = history
       seed({ npm: live(...PACKAGES_002) })
-      // HEAD is `docs`, whose core changelog is reworded, and the working tree has other versions
-      // and another changelog that nobody committed.
       const result = finalize(
         { RELEASE_SHA: v002 },
         {
@@ -847,7 +771,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
       { endpoint: 'git/ref/tags/', seeded: {} },
       { endpoint: 'releases/tags/', seeded: {} },
       {
-        // The annotated tag is resolved by a second request, which fails.
         endpoint: 'git/tags/',
         seeded: {
           tags: { 'hollware@0.0.2': { type: 'tag' as const, sha: 'c'.repeat(40) } },
@@ -927,7 +850,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
       const first = ['hollware@0.0.1', '@hollware/core@0.0.1', '@hollware/server@0.0.1']
       for (const empty of [{ RELEASE_SHA: '' }, { RELEASE_SHA: undefined }]) {
         seed({ npm: live(...PACKAGES_002, ...first) })
-        // The merge commit of the pull request, and not v001 before it.
         const merged = finalize(empty)
         expect(merged.stdout).toContain(`Release commit: ${v002}\n`)
         expect(merged.gh.filter((call) => call.startsWith('api '))).toEqual([
@@ -935,7 +857,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
           refCall('@hollware/core@0.0.2', v002),
         ])
       }
-      // With only the squashed commit in the history of HEAD.
       const squashed = finalize({ RELEASE_SHA: '' }, { head: work })
       expect(squashed.stdout).toContain(`Release commit: ${v001}\n`)
       expect(squashed.gh.filter((call) => call.startsWith('api '))).toEqual([
@@ -953,7 +874,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
       expect(older.stdout).toContain(`Release commit: ${v001}\n`)
       expect(older.gh).toContain(refCall('hollware@0.0.1', v001))
 
-      // `docs` is the head of release in the workflow, and it bumped nothing.
       const head = finalize({ RELEASE_SHA: docs })
       expect(head.stdout).toContain(`Release commit: ${v002}\n`)
     })
@@ -970,13 +890,8 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
       const { v002, edited, afterEdited } = history
       const refused = (latest: string) =>
         `The release commit cannot be told from the history: the latest "Version Packages" commit is ${v002} (Merge pull request #2 from hollware/changeset-release/main), but HEAD has other versions of the public packages (at that commit -> at HEAD): hollware 0.0.2 -> 0.0.3, @hollware/core 0.0.2 -> 0.0.3. A later commit bumped them under a title the scan does not know, such as a merge commit whose title was edited by hand. The latest commit that changed a public version is ${latest}. Name the release commit in RELEASE_SHA (the release_sha input of a finalize_only run of the Release workflow) and run it again.`
-      // Both releases are live on npm: only the history can tell which one to finalize. The side
-      // branch has a commit titled "Version Packages" too, but `release` carries the first-parent
-      // line, and the tag must point at the commit whose tree was published, not at that one.
       for (const [env, head, latest] of [
         [{ RELEASE_SHA: '' }, edited, edited],
-        // The promoted commit came after the release and bumped nothing: it is the head of
-        // release, but it is not the release commit, and touching a manifest does not make it one.
         [{ RELEASE_SHA: afterEdited }, afterEdited, edited],
       ] as const) {
         seed({ npm: live(...PACKAGES_002, ...PACKAGES_003) })
@@ -991,7 +906,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
     test('is the commit named in RELEASE_SHA when it bumped the versions, whatever its title and whatever HEAD has', () => {
       const { v002, edited } = history
       seed({ npm: live(...PACKAGES_002, ...PACKAGES_003) })
-      // The commit the failure points at: no scan of titles finds it, naming it settles the run.
       const named = finalize({ RELEASE_SHA: edited }, { head: edited })
       expect(named.status).toBe(0)
       expect(named.stdout).toContain(`Release commit: ${edited}\n`)
@@ -999,7 +913,6 @@ describe('finalize-release.sh', { timeout: 120_000 }, () => {
         refCall('hollware@0.0.3', edited),
         refCall('@hollware/core@0.0.3', edited),
       ])
-      // An older release can be finalized on purpose too: a commit that is named is not second-guessed.
       const older = finalize({ RELEASE_SHA: v002 }, { head: edited })
       expect(older.status).toBe(0)
       expect(older.stdout).toContain(`Release commit: ${v002}\n`)

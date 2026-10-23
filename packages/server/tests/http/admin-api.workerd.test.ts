@@ -5,17 +5,6 @@ import { seedToken } from '../auth/support.ts'
 import { adminPerson, adminToken, call } from './admin-session.ts'
 import { boot, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
 
-// Fails when: the admin's own routes (src/http/admin-api.ts) stop being the admin's alone: a
-// personal token, even an owner's with schema:admin, or an admin token without schema:admin,
-// reaches them; a token they make gets scopes its maker does not have, expires when no days were
-// given or does not when they were (T-26), is not shown once, does not
-// work, or still works once revoked; the list shows a hash; an invitation is made for an owner, or
-// stops giving a link to /setup that the list of people then counts as pending; or a read token
-// made there stops being an hw_read_ token with content:read alone; or an owner stops being able
-// to give a member another role or remove them, at once for their tokens, or can demote or remove
-// the last owner of the site; or /v1/admin/me stops listing the trashed sites the person owns, and
-// only those.
-
 describe("the admin's own routes", () => {
   it("refuse a personal token, even an owner's, and an admin token without schema:admin", async () => {
     const worker = boot()
@@ -33,7 +22,6 @@ describe("the admin's own routes", () => {
 
   it('say who is signed in to any role, with the sites of this deployment they may switch to', async () => {
     const worker = boot()
-    // A member of a site this deployment does not serve, too: the admin cannot switch to it.
     const author = await adminToken(worker, 'author', [OTHER_SITE_KEY])
 
     const me = await call(worker, author, '/v1/admin/me')
@@ -102,7 +90,7 @@ describe("the admin's own routes", () => {
     expect([before.status, after.status]).toEqual([200, 401])
   })
 
-  it('make a token that never expires when no days are given, and one that does when they are (T-26)', async () => {
+  it('make a token that never expires when no days are given, and one that does when they are', async () => {
     const worker = boot()
     const owner = await adminToken(worker, 'owner')
 
@@ -205,7 +193,6 @@ describe("the admin's own routes", () => {
     const worker = boot()
     const owner = await adminPerson(worker, 'owner')
     const editor = await seedToken(env.DB, SITE_KEY, { role: 'editor' })
-    // The one owner of the site from here on.
     await env.DB.prepare(
       "UPDATE members SET role = 'editor' WHERE site_id = ?1 AND role = 'owner' AND user_id <> ?2",
     )

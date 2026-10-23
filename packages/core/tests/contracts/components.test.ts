@@ -5,12 +5,6 @@ import type { Phase } from '../../src/contracts/index.ts'
 import type { ComponentUse } from '../../src/markdown/types.ts'
 import { collectionOf, markdownOf, run } from './support.ts'
 
-// Fails when: the `components` contract stops validating the props of a used component with the
-// schema of that component (`COMPONENTS` in components.ts); a violation stops pointing at /body
-// with the line of the use; a fix stops naming the prop and what the schema accepts there; a
-// component the collection does not allow starts being checked here; or the violations stop
-// coming by line.
-
 const components = {
   callout: { props: z.strictObject({ type: z.enum(['info', 'warning', 'tip']) }) },
   youtube: { props: z.strictObject({ id: z.string().regex(/^[\w-]{11}$/) }) },

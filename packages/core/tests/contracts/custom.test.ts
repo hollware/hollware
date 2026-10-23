@@ -5,13 +5,6 @@ import { defineCollection } from '../../src/config/define.ts'
 import { contracts } from '../../src/contracts/index.ts'
 import { collectionOf, fakeEntries, markdownOf, run } from './support.ts'
 
-// Fails when: `contracts.custom` stops returning a contract with the id, severity, description and
-// phases it is given (and no phases when it is given none); stops passing when `check` answers true
-// or reporting one finding when it answers false, also when `check` answers with a promise; stops
-// using the message, the fix and the path it is given, as a text or as a function of the context,
-// or the whole entry (the empty pointer) when it has no path; stops giving `check` what the schema
-// returned; or the factories stop fitting inside `defineCollection` (type errors under `vp check`).
-
 const titleSchema = z.object({ title: z.string(), cta: z.enum(['a', 'b']).default('a') })
 
 function titleLength(severity: 'error' | 'warning' = 'warning') {

@@ -29,7 +29,6 @@ const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
   { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
   { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
 ])
-/** The roles to pick, each with its name in the admin's language. */
 const roleItems = (roles: readonly string[]) =>
   roles.map((value) => ({ label: m.value.roles[value] ?? value, value }))
 
@@ -37,7 +36,6 @@ const toast = useToast()
 const data = ref<People | null>(null)
 const failure = ref<string | null>(null)
 const role = ref<'editor' | 'author'>('author')
-/** The link of the invitation just made: it holds the secret, so it is shown once. */
 const link = ref<string | null>(null)
 const busy = ref(false)
 
@@ -68,7 +66,6 @@ async function invite() {
   }
 }
 
-/** The member about to be removed, while the person confirms. */
 const removing = ref<People['people'][number] | null>(null)
 const removeOpen = computed({
   get: () => removing.value !== null,
@@ -100,10 +97,6 @@ async function remove() {
   await load()
 }
 
-/**
- * Members chosen to be acted on together: a new role for all of them, or out of the site, each
- * as the one-member action does it. The server keeps a site's last owner, whatever is chosen.
- */
 const reportBulk = useBulkReport()
 const removingMany = ref<Member[]>([])
 const removeManyOpen = computed({

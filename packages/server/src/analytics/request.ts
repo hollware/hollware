@@ -1,18 +1,7 @@
-/*
- * What every provider of analytics shares (ADR-040): one request with a timeout, and the error
- * that says why a provider gave nothing, without ever repeating the credential (T-109).
- */
-
-/**
- * How long a provider has to answer: content_stats and connect_analytics run inside the 30 s of an
- * open-world operation (`OPEN_WORLD_TIMEOUT_MS`), and PostHog's query API takes up to 15 s.
- */
 export const REQUEST_TIMEOUT_MS = 25_000
 
-/** `fetch`, injected so that tests answer for the provider. */
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
-/** Why a provider gave nothing: what it said, and what to do about it. */
 export class ProviderError extends Error {
   readonly kind: 'refused' | 'unreachable' | 'invalid'
   readonly fix: string
@@ -29,10 +18,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * What a provider said in an answer that failed, at most 300 characters, with every secret of
- * the request taken out: some providers repeat the key they were sent.
- */
+const MAX_MESSAGE_LENGTH = 300
+const MIN_REDACTED_SECRET_LENGTH = 8
+
+function jsonOrText(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 export function messageOf(body: unknown, secrets: readonly string[]): string {
   const candidates: unknown[] = []
   if (typeof body === 'string') candidates.push(body)
@@ -46,15 +42,13 @@ export function messageOf(body: unknown, secrets: readonly string[]): string {
   let text = candidates.find((item): item is string => typeof item === 'string' && item !== '')
   if (text === undefined) return 'No reason given.'
   for (const secret of secrets) {
-    if (secret.length >= 8) text = text.split(secret).join('[credential]')
+    if (secret.length >= MIN_REDACTED_SECRET_LENGTH) text = text.split(secret).join('[credential]')
   }
-  return text.length > 300 ? `${text.slice(0, 297)}...` : text
+  return text.length > MAX_MESSAGE_LENGTH
+    ? `${text.slice(0, MAX_MESSAGE_LENGTH - '...'.length)}...`
+    : text
 }
 
-/**
- * A request to a provider: its status and its body, parsed as JSON when it is. A network failure
- * or no answer within `REQUEST_TIMEOUT_MS` is `unreachable`.
- */
 export async function request(
   fetcher: Fetch,
   provider: string,
@@ -74,12 +68,5 @@ export async function request(
       'Try again in a minute. If it keeps failing, check that the provider is up.',
     )
   }
-  const text = await response.text()
-  let body: unknown = text
-  try {
-    body = JSON.parse(text)
-  } catch {
-    // A body that is not JSON stays text: its message is read as it is.
-  }
-  return { status: response.status, body }
+  return { status: response.status, body: jsonOrText(await response.text()) }
 }

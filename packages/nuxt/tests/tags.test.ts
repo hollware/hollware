@@ -9,11 +9,6 @@ import {
   tagsOf,
 } from '../src/runtime/tags.ts'
 
-// Fails when: the cache tags of a response (src/runtime/tags.ts) stop gathering on its request
-// what each read showed, once each, in the names of @hollware/core; a list stops naming its locale,
-// or every locale when it has none; or the edge is let keep an error, a write or a response that
-// read nothing, or the browser is let keep anything.
-
 describe('the tags of a response', () => {
   it('gather what each read showed, once each', () => {
     const event = { context: {} }

@@ -34,7 +34,6 @@ export interface RunContractsInput {
   readonly entries: EntryLookup
 }
 
-/** The contracts after `schema` that a run has to run: the always-on ones, then the collection's own. */
 function contractsFor(collection: ResolvedCollection, phase: Phase): readonly Contract<unknown>[] {
   const all = [...ALWAYS_ON_CONTRACTS, ...collection.contracts]
   return phase === 'publish'
@@ -42,16 +41,10 @@ function contractsFor(collection: ResolvedCollection, phase: Phase): readonly Co
     : all.filter((contract) => contractPhases(contract).includes('write'))
 }
 
-/** Findings by line, then by path; one without a line comes first. The sort is stable. */
 function compareFindings(left: ContractFinding, right: ContractFinding): number {
   return (left.line ?? 0) - (right.line ?? 0) || compareText(left.path, right.path)
 }
 
-/**
- * The findings of one contract as violations of it, in order. A finding whose fix is empty, which
- * the type cannot rule out, gets the description of the rule instead, so that no violation ever
- * reaches an agent without something to do.
- */
 function toViolations(
   contract: Omit<Contract<unknown>, 'check'>,
   findings: readonly ContractFinding[],
@@ -77,7 +70,6 @@ function describeError(error: unknown): string {
   }
 }
 
-/** What a contract that throws becomes: an error of that contract, and a fix for the maintainer. */
 function thrown(contract: Pick<Contract<unknown>, 'id'>, error: unknown): Violation {
   return {
     contract: contract.id,
@@ -99,7 +91,6 @@ async function settle(
   }
 }
 
-/** The schema's verdict on the frontmatter: whether it passed, what it returned and what it found. */
 async function validateFrontmatter(
   collection: ResolvedCollection,
   markdown: ProcessedMarkdown,
@@ -119,7 +110,7 @@ async function validateFrontmatter(
 }
 
 /**
- * Runs the contracts of a collection on one revision (ADR-004).
+ * Runs the contracts of a collection on one revision.
  *
  * The `schema` contract goes first. The collection's own contracts, which read the frontmatter,
  * run only when it passed, and get what the schema returned; the built-in ones that do not need

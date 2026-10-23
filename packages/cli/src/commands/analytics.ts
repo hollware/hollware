@@ -21,7 +21,7 @@ export const ANALYTICS_USAGE = [
   '       hollware analytics connect <provider> --credential-file <file> --url <hollware url> (--token-file <file> | token on stdin) [settings]',
   '       hollware analytics disconnect --url <hollware url> (--token-file <file> | token on stdin)',
   '',
-  'The analytics a site reads its page views from (ADR-040), so that content_stats and the admin',
+  'The analytics a site reads its page views from, so that content_stats and the admin',
   "say what readers read. Hollware never counts views itself: it reads the site's own analytics",
   'with a read-only key, which it tests before keeping it sealed, and never shows again.',
   '',
@@ -44,7 +44,6 @@ export const ANALYTICS_USAGE = [
   '  --help                     Show this help',
 ].join('\n')
 
-/** The key of a provider, from its file, trimmed; a missing or empty file is refused. */
 function readCredential(io: Io, file: string | undefined): string {
   if (file === undefined) {
     throw new UsageError(

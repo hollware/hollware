@@ -5,12 +5,6 @@ import { reparseRevisions } from '../../src/derived/reparse.ts'
 import { blogPost, warmUpComark } from '../ops/support.ts'
 import { newWorld, type World } from '../ops/world.ts'
 
-// Fails when: the cron's reparse (src/derived/reparse.ts) stops rebuilding the document of a
-// revision an older pipeline parsed, with its words and the words of its code, or rebuilds one of
-// another site, or keeps trying one the
-// pipeline now refuses (or of a collection that is gone) every minute, or takes more than its
-// batch in one run.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
@@ -35,7 +29,6 @@ async function draft(world: World, slug: string) {
   return created.entry.id
 }
 
-/** Makes the revisions of an entry look as an older pipeline left them. */
 async function age(entryId: string) {
   await env.DB.prepare(
     "UPDATE revisions SET pipeline_version = '1', document = '{}', word_count = 0, code_words = 0 WHERE entry_id = ?1",
@@ -65,7 +58,6 @@ describe('the reparse of the cron', () => {
 
     expect(looked).toBe(1)
     expect(await columns(mine)).toEqual(fresh)
-    // The words of its code block, which a reading time counts.
     expect(fresh?.code_words).toBe(3)
     expect(await columns(theirs)).toEqual({
       pipeline_version: '1',

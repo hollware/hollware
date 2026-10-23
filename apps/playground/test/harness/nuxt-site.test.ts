@@ -18,22 +18,9 @@ import {
 } from './workers.ts'
 import { EVENT_ID_HEADER, SIGNATURE_HEADER, signWebhook, TIMESTAMP_HEADER } from '@hollware/core'
 
-// Fails when: @hollware/nuxt (packages/nuxt) stops letting a Nuxt site on Cloudflare read
-// Hollware over its service binding: the page of a published entry rendered on the server from
-// its stored Comark document (`<HollwareContent>`, the `/_hollware/entry` route and
-// `useHollwareEntry`), the index from `useHollwareEntries`, the generator meta of every page; or
-// it serves a draft, or an entry that does not exist, as anything but a 404 (but for a preview token of that entry, which serves its latest revision with `no-store` and no cache tag, T-103; one that is expired, forged or for another entry serves nothing); or a page sends the
-// browser the verdict and the last publication of an entry (`forPage`); or a page gets the
-// server's config (its binding or its token); or a page
-// stops carrying the cache tags of what it showed for the edge to keep, or an error starts to;
-// or the webhook purges for an event whose signature does not hold, or of another site (S8). The site is
-// examples/nuxt-blog, built by Nuxt with the cloudflare_module preset and no Node.js
-// compatibility; content is published through MCP, as an agent does.
-
 const MANUAL = { redirect: 'manual' } as const
 const CLEARED = 'hollware_preview=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
 
-/** A request of a visitor whose browser holds the preview cookie. */
 function cookie(token: string) {
   return { headers: { cookie: `hollware_preview=${token}` } }
 }
@@ -73,10 +60,8 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     expect(page.status).toBe(200)
     expect(html).toContain('<title>From draft to published</title>')
     expect(html).toMatch(/<h1[^>]*>From draft to published<\/h1>/)
-    // The body comes from the document: its first heading, rendered by @comark/vue.
     expect(html).toMatch(/<h1 id="from-draft-to-published"[^>]*>From draft to published<\/h1>/)
     expect(html).toContain('<meta name="generator" content="Hollware">')
-    // The payload the page hands the browser holds what a reader sees, not how it was checked.
     expect(html).not.toContain('contractsHash')
     expect(html).not.toContain('lastPublication')
   })
@@ -132,9 +117,7 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     )
     const signed = await send(NUXT_HOLLWARE_WEBHOOK_SECRET)
 
-    // A forged signature, and an event of another site signed with this site's secret.
     expect([forged.status, elsewhere.status]).toEqual([401, 401])
-    // The harness has no Workers Cache to purge; the signature held, and the route says what it lacks.
     expect([200, 501]).toContain(signed.status)
   })
 
@@ -152,7 +135,6 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     const answer = await nuxtFetch(server, `${path}?a=1&hollware-preview=${token}&b=2`, MANUAL)
 
     expect(answer.status).toBe(303)
-    // The other parameters in order, then a value of no secret that keeps the page out of caches.
     expect(answer.headers.get('location')).toMatch(
       new RegExp(`^${path}\\?a=1&b=2&hollware-view=[A-Za-z0-9_-]{12}$`),
     )
@@ -204,16 +186,12 @@ describe('a Nuxt site with @hollware/nuxt', () => {
 
     expect(answers.map((answer) => answer.status)).toEqual([404, 404, 404, 404])
     expect(bodies.some((body) => body.includes('Markdown as the source of truth'))).toBe(false)
-    // The expired and the forged token clear the cookie; the one of another entry, which Hollware
-    // answers as no entry, and a value that is no token at all, change nothing.
     expect(answers.map((answer) => answer.headers.get('set-cookie'))).toEqual([
       CLEARED,
       CLEARED,
       null,
       null,
     ])
-    // Nuxt's error page says `no-cache`, as it did before: it holds none of the draft, and nothing
-    // tags it for the edge.
     expect(answers.map((answer) => answer.headers.get('cache-tag'))).toEqual([
       null,
       null,

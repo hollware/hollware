@@ -2,7 +2,7 @@ import type { Problems } from './config-error.ts'
 import type { ResolvedAudit } from './types.ts'
 import { isRecord, keyPath, wrongType } from './values.ts'
 
-/** The fewest days a site may keep its activity log for, when it sets a retention (ADR-037). */
+/** The fewest days a site may keep its activity log for, when it sets a retention. */
 export const AUDIT_RETENTION_MIN_DAYS = 30
 /** The most days a retention may be: ten years. Beyond that, keep it with no retention. */
 export const AUDIT_RETENTION_MAX_DAYS = 3650
@@ -10,7 +10,6 @@ export const AUDIT_RETENTION_MAX_DAYS = 3650
 /** What a site that says nothing keeps: no addresses, and the log for as long as the site exists. */
 export const DEFAULT_AUDIT: ResolvedAudit = { ipAddresses: 'off', retentionDays: null }
 
-/** What the activity log of a site keeps, as its owner chose (ADR-037). */
 export function readAudit(path: string, raw: unknown, problems: Problems): ResolvedAudit {
   if (raw === undefined || raw === null) return DEFAULT_AUDIT
   if (!isRecord(raw)) {

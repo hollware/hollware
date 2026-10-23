@@ -1,8 +1,3 @@
-/**
- * The images of a site (ADR-038), as far as they need no binding: what a file is, judged by its
- * bytes; whether an SVG is plainly safe; what a file becomes under the site's `media` setting; its
- * id; and the `asset:` references that content holds. Web platform only, as all of core.
- */
 import type { ResolvedMedia } from '../config/types.ts'
 
 /** The kinds of image Hollware takes, by media type. */
@@ -50,16 +45,23 @@ export function sniffImage(bytes: Uint8Array): ImageFormat | null {
     return 'image/gif'
   }
   const head = text(bytes.subarray(0, 512)).replace(BOM, '').trimStart()
-  if (
-    /^<svg[\s>/]/i.test(head) ||
-    /^<\?xml[^>]*\?>\s*(<!--[\s\S]*?-->\s*)*<svg[\s>/]/i.test(head)
-  ) {
-    return 'image/svg+xml'
-  }
-  return null
+  return opensOnSvg(head) ? 'image/svg+xml' : null
 }
 
-/** A byte order mark, which an editor may put before an SVG's first tag. */
+function opensOnSvg(head: string): boolean {
+  if (/^<svg[\s>/]/i.test(head)) return true
+  if (!/^<\?xml/i.test(head)) return false
+  const declarationEnd = head.indexOf('?>')
+  if (declarationEnd < 0 || head.slice(0, declarationEnd).includes('>')) return false
+  let rest = head.slice(declarationEnd + 2).trimStart()
+  while (rest.startsWith('<!--')) {
+    const commentEnd = rest.indexOf('-->', 4)
+    if (commentEnd < 0) return false
+    rest = rest.slice(commentEnd + 3).trimStart()
+  }
+  return /^<svg[\s>/]/i.test(rest)
+}
+
 const BOM = new RegExp(`^${String.fromCodePoint(0xfeff)}`)
 
 function text(bytes: Uint8Array): string {
@@ -77,9 +79,6 @@ const SVG_FIX =
 
 const SVG_REFUSALS: readonly { readonly pattern: RegExp; readonly reason: string }[] = [
   { pattern: /<!DOCTYPE|<!ENTITY/i, reason: 'it declares a DOCTYPE or an entity' },
-  // Read before the rules below, which see the text as written: `&#106;avascript:` is
-  // `javascript:` to a parser, and `@\69mport` is `@import` to CSS. The five entities of XML
-  // stand for characters no rule looks for.
   {
     pattern: /&(?!(?:amp|lt|gt|quot|apos);)/i,
     reason: 'it holds a character reference (&#…;) or an entity other than the five of XML',
@@ -116,7 +115,7 @@ export function checkSvg(source: string): SvgProblem | null {
 export interface Conversion {
   readonly format: 'image/webp' | 'image/avif'
   /**
-   * Always given: the binding's default is lossless, not 85 (ADR-038). 100 for PNG, which holds
+   * Always given: the binding's default is lossless, not 85. 100 for PNG, which holds
    * screenshots, diagrams and logos: lossless keeps their edges.
    */
   readonly quality: number
@@ -245,11 +244,6 @@ export function assetIdsIn(value: unknown): string[] {
   return [...ids]
 }
 
-/**
- * The props of an `img` element of a document whose `src` is an `asset:` reference, as a reader
- * gets them: the URL, the size the author did not give, and `srcset` and `sizes` when the image
- * has narrower copies.
- */
 function imageProps(
   props: Readonly<Record<string, unknown>>,
   url: string,
@@ -266,8 +260,6 @@ function imageProps(
     resolved['srcset'] = srcset
     resolved['sizes'] = sizesOf(image.width)
   }
-  // An author who sized an image keeps the size; one who did not gets the image's own, so the
-  // page keeps its room while it loads.
   if (props['width'] === undefined && props['height'] === undefined && image.height !== null) {
     resolved['width'] = String(image.width)
     resolved['height'] = String(image.height)

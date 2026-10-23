@@ -1,12 +1,6 @@
 import type { schemas } from '@hollware/core'
 import type * as z from 'zod'
 
-/**
- * The verdict of the contracts as diagnostics of the editor (`@codemirror/lint`): each violation
- * at its line when it has one; a violation of a frontmatter field at the line of that field; any
- * other at the first line. Ranges are offsets in the Markdown as it is, never a normalized copy.
- */
-
 type Violation = z.output<typeof schemas.violation>
 type Verdict = z.output<typeof schemas.verdict>
 
@@ -18,7 +12,6 @@ export interface Diagnostic {
   readonly source: string
 }
 
-/** The offsets where each line starts, and where the text ends. */
 function lineStarts(text: string): number[] {
   const starts = [0]
   for (let index = 0; index < text.length; index++) {
@@ -27,7 +20,6 @@ function lineStarts(text: string): number[] {
   return starts
 }
 
-/** The 1-based line of a frontmatter field, as `/frontmatter/<field>` names it, or `null`. */
 function frontmatterLine(text: string, path: string): number | null {
   const match = /^\/frontmatter\/([^/]+)/.exec(path)
   if (match === null) return null

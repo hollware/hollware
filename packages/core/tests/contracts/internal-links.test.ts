@@ -12,12 +12,6 @@ import {
   type StoredEntry,
 } from './support.ts'
 
-// Fails when: `internal-links-resolve` runs outside the publish phase, or asks the store about
-// links more than once, about the same target twice, about the entry itself or about a link that
-// is not an internal one, or at all when there is nothing to ask; stops accepting a published
-// entry or stops rejecting a missing, a draft or a scheduled one; stops saying which link, which
-// entry and what to do; stops pointing at the line of the link; or ignores the severity it is given.
-
 function link(slug: string, line: number, locale = 'es', collection = 'blog'): LinkRef {
   return {
     href: `/${collection}/${slug}/`,
@@ -127,7 +121,6 @@ describe('the internal-links-resolve contract', () => {
         ],
       },
     ])
-    // Both links to the missing target are reported, each on its own line.
     expect(verdict.errors.map((violation) => [violation.line, violation.message])).toStrictEqual([
       [2, 'The link "/blog/a/" points at the entry blog/es/a, which does not exist.'],
       [6, 'The link "/blog/a/" points at the entry blog/es/a, which does not exist.'],
@@ -204,9 +197,7 @@ describe('the internal-links-resolve contract', () => {
         { href: '/about/', kind: 'site', line: 1 },
         { href: '#intro', kind: 'anchor', line: 2 },
         { href: 'https://example.com/', kind: 'external', line: 3 },
-        // An internal link with no target cannot be looked up.
         { href: '/blog/x/', kind: 'internal', line: 4 },
-        // Only an internal link names an entry, whatever else a link carries.
         {
           href: '/blog/x/',
           kind: 'site',

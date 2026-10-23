@@ -4,12 +4,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { judge, p95, recall, type Run } from './eval-search.ts'
 
-// Fails when: the search evaluation (scripts/eval-search.ts) stops counting a hit only within the
-// first five, stops keeping the kinds of query apart, takes another percentile than the 95th by
-// nearest rank, or judges a mode against other gates than 0.85, 0.70 and 400 ms; or its labelled
-// queries stop being at least forty, a third across languages, each expecting a group the corpus
-// has in the locale it is asked in.
-
 const run = (kind: Run['kind'], place: number | null, ms = 100): Run => ({ kind, place, ms })
 
 describe('the scores of the search evaluation', () => {
@@ -53,7 +47,6 @@ describe('the scores of the search evaluation', () => {
 
 const EVAL = join(import.meta.dirname, '../tests/fixtures/eval')
 
-/** The translation groups that the corpus has in a locale. */
 function groupsIn(locale: string): Set<string> {
   return new Set(
     readdirSync(join(EVAL, 'corpus', locale)).map(

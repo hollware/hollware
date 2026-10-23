@@ -17,7 +17,6 @@ afterEach(() => {
   for (const installed of installs.splice(0)) installed.remove()
 })
 
-// Loads a copy of the module that sits next to a package.json the test controls.
 async function loadFrom(manifest: object): Promise<typeof main> {
   const installed = install(manifest)
   installs.push(installed)

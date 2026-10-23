@@ -1,15 +1,9 @@
-/**
- * What the end-to-end tests of the install and the upgrade do to a project of a user: run its
- * programs, start its dev server, and speak MCP to it. Nothing here blocks the event loop: the
- * local registry (registry.ts) answers from the same process.
- */
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-/** Where `vp dev` of a project serves: the starter's HOLLWARE_PUBLIC_URL. */
 export const PROJECT_URL = 'http://localhost:5199'
 
 export function step(message: string): void {
@@ -20,7 +14,6 @@ export function fail(message: string): never {
   throw new Error(message)
 }
 
-/** Runs a program and answers what it printed on stdout; a failure says what it printed. */
 export async function run(
   command: string,
   args: readonly string[],
@@ -44,21 +37,16 @@ export async function waitFor(url: string, seconds: number): Promise<void> {
   for (let tried = 0; tried < seconds; tried += 1) {
     try {
       if ((await fetch(url)).ok) return
-    } catch {
-      // Not up yet.
-    }
+    } catch {}
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
   fail(`${url} did not answer in ${seconds} s`)
 }
 
-/** The project's dev server, up and answering `/health`. `stop` takes all of it down. */
 export async function startDev(
   project: string,
   env: NodeJS.ProcessEnv,
 ): Promise<{ stop: () => void }> {
-  // Its own process group: vp dev starts the server through a launcher, and the group goes down
-  // as one.
   const server: ChildProcess = spawn(join(project, 'node_modules/.bin/vp'), ['dev'], {
     cwd: project,
     env,
@@ -69,9 +57,7 @@ export async function startDev(
     if (server.pid === undefined) return
     try {
       process.kill(-server.pid, 'SIGTERM')
-    } catch {
-      // Already gone.
-    }
+    } catch {}
   }
   try {
     await waitFor(`${PROJECT_URL}/health`, 120)
@@ -82,7 +68,6 @@ export async function startDev(
   return { stop }
 }
 
-/** One JSON-RPC request to the project's `/mcp`, in the 2026-07-28 revision. */
 export async function mcp(
   token: string,
   method: string,
@@ -119,7 +104,6 @@ export async function mcp(
   return message.result
 }
 
-/** A tool's structured output. */
 export async function call(
   token: string,
   tool: string,
@@ -131,7 +115,6 @@ export async function call(
   return output as Record<string, unknown>
 }
 
-/** A post of the starter's blog, by its slug. */
 export function post(title: string, group: string): string {
   return `---
 title: ${title}
@@ -148,7 +131,6 @@ Plain words, and nothing else.
 `
 }
 
-/** Creates a post of the blog and publishes it, acknowledging what it warns about. */
 export async function publishPost(token: string, slug: string, title: string): Promise<void> {
   const draft = await call(token, 'create_draft', {
     collection: 'blog',
@@ -172,7 +154,6 @@ export async function publishPost(token: string, slug: string, title: string): P
   if (published['outcome'] !== 'published') fail(`publish answered ${JSON.stringify(published)}`)
 }
 
-/** The published entry of the blog, as a token reads it over the read API. */
 export async function readPublished(token: string, slug: string): Promise<number> {
   const response = await fetch(`${PROJECT_URL}/v1/blog/en/${slug}`, {
     headers: { authorization: `Bearer ${token}` },

@@ -7,11 +7,6 @@ import { file, json } from '../support/fixtures.ts'
 import { readRepoFiles, repoFiles } from '../support/repo.ts'
 import { listedTestFiles } from '../support/vitest-list.ts'
 
-// Fails when: a file under packages/core/src imports cloudflare:*, @cloudflare/*, wrangler,
-// node:* or a Node built-in, or uses process, Buffer, __dirname, __filename or require; when
-// packages/core/tsconfig.json stops type-checking only src against the web platform (lib es2024
-// and webworker, no types); or when a test of core stops running both in Node and in workerd.
-
 const MANIFEST = file('packages/core/package.json', json({ name: '@hollware/core' }))
 const TSCONFIG = file(
   'packages/core/tsconfig.json',
@@ -104,7 +99,6 @@ describe('core purity', () => {
         'line 7 imports "node:path", a Node module: core must run anywhere',
         'line 8 imports "node:fs", a Node module: core must run anywhere',
         'line 9 imports "node:os", a Node module: core must run anywhere',
-        // `require` is itself a Node global, so the same line is reported twice.
         'line 9 uses the Node global "require": core must run anywhere',
       ])
     })
@@ -202,7 +196,7 @@ describe('core purity', () => {
         {
           rule: 'core-purity/types',
           file: 'packages/core/tsconfig.json',
-          message: `must type-check only src against the web platform, {"include":["src"],"lib":["es2024","webworker"],"types":[]}, so that a Node or browser global is a type error (ADR-018); found ${JSON.stringify(found)}`,
+          message: `must type-check only src against the web platform, {"include":["src"],"lib":["es2024","webworker"],"types":[]}, so that a Node or browser global is a type error; found ${JSON.stringify(found)}`,
         },
       ]
       expect(check({ lib: ['es2024', 'webworker'], types: ['node'] }, ['src'])).toEqual(
@@ -254,7 +248,7 @@ describe('core purity', () => {
           rule: 'core-purity/runtimes',
           file: TEST,
           message:
-            'runs in ["@hollware/core"]: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+            'runs in ["@hollware/core"]: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"]',
         },
       ])
       expect(runs([])).toEqual([
@@ -262,7 +256,7 @@ describe('core purity', () => {
           rule: 'core-purity/runtimes',
           file: TEST,
           message:
-            'runs in []: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"] (ADR-018)',
+            'runs in []: every test of core runs in Node and inside workerd, ["@hollware/core","core:workerd"]',
         },
       ])
       expect(runs(['core:workerd', '@hollware/core'])).toEqual([])

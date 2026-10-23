@@ -1,25 +1,3 @@
-/**
- * The size budget of the Hollware Worker, and its startup and write cost (AC-0.1-8):
- *
- *   node scripts/check-budgets.ts [--sizes-only]
- *
- * It builds the playground Worker (`apps/playground`, minified, with the Markdown parser behind
- * a dynamic import) into a directory of its own, so it never depends on a stale `dist/`, and:
- *
- * - measures every module of the output, gzipped one by one, and fails when the main module
- *   (with the chunks it imports statically, since those run at startup too) is over its ceiling
- *   in `budgets.json`, or when all modules together are. Both are hard;
- * - fails when Comark or `@comark/html` sits in the startup modules, or in no lazy chunk, which it
- *   reads from the source maps of the build (the build is made with hidden source maps; they
- *   change no byte of the modules);
- * - logs, without a ceiling, the startup time (the median of five runs of `wrangler check
- *   startup` on the build) and the time of one write of the 2,027-word fixture through the built
- *   Worker, cold and warm (see `measureWrites` for what that measures and what it does not).
- *
- * `--sizes-only` skips the two measurements that take a second or more each.
- *
- * Exits 0 when every ceiling holds, 1 when one does not or a measurement could not run.
- */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -31,20 +9,14 @@ import { generatePersonalToken, hashPersonalToken } from '../packages/core/src/t
 
 const KIB = 1024
 
-// ---- the budget --------------------------------------------------------------------------------
-
 export interface Ceiling {
-  /** The most the modules may weigh gzipped, in KiB (1024 bytes). */
   readonly gzipKiB: number
   readonly reason: string
 }
 
 export interface Budgets {
-  /** The main module and the chunks it imports statically: what a cold start evaluates. */
   readonly main: Ceiling
-  /** Every module of the build, the lazy chunks included. */
   readonly total: Ceiling
-  /** Packages that must stay out of the startup modules and in a lazy chunk. */
   readonly lazyPackages: { readonly packages: readonly string[]; readonly reason: string }
 }
 
@@ -68,7 +40,6 @@ function readCeiling(value: unknown, name: string): Ceiling {
   return { gzipKiB: value.gzipKiB, reason: value.reason }
 }
 
-/** Reads and checks `budgets.json`. */
 export function parseBudgets(text: string): Budgets {
   const json: unknown = JSON.parse(text)
   if (!isRecord(json)) throw new Error('budgets.json must hold an object')
@@ -94,36 +65,25 @@ export function parseBudgets(text: string): Budgets {
   }
 }
 
-// ---- what a build weighs -----------------------------------------------------------------------
-
 export interface ModuleSize {
-  /** Relative to the Worker's directory, with `/`. */
   readonly file: string
   readonly bytes: number
   readonly gzipBytes: number
-  /** Whether a cold start evaluates it: the main module, or a chunk it imports statically. */
   readonly startup: boolean
-  /** The packages whose source went into it, from its source map; none without one. */
   readonly packages: readonly string[]
 }
 
 export interface Measurement {
   readonly main: string
-  /** Sorted by name. */
   readonly modules: readonly ModuleSize[]
   readonly startupGzipBytes: number
   readonly totalGzipBytes: number
 }
 
-/** The gzipped size of a module, at the level wrangler and Vite use to report theirs. */
 export function gzipBytes(content: Uint8Array): number {
   return gzipSync(content).length
 }
 
-/**
- * The package a source path of a source map belongs to: what follows its last `node_modules/`,
- * one segment, or two for a scope. `null` for the project's own files.
- */
 export function packageOfSource(source: string): string | null {
   const marker = 'node_modules/'
   const at = source.lastIndexOf(marker)
@@ -133,7 +93,6 @@ export function packageOfSource(source: string): string | null {
   return first.startsWith('@') && second !== undefined ? `${first}/${second}` : first
 }
 
-/** The modules of a build: the `.js` and `.mjs` files, which is what the Worker's rules upload. */
 function moduleFiles(directory: string, base = directory): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name)
@@ -146,7 +105,6 @@ function readJson(path: string): unknown {
   return JSON.parse(readFileSync(path, 'utf8'))
 }
 
-/** The packages in the source map of a module, or none when it has no map. */
 function packagesIn(path: string): string[] {
   if (!existsSync(`${path}.map`)) return []
   const map = readJson(`${path}.map`)
@@ -159,11 +117,6 @@ function packagesIn(path: string): string[] {
   return [...names].sort()
 }
 
-/**
- * The files a cold start evaluates: the main module, then every chunk it imports statically,
- * through the manifest that Vite writes next to the build (`.vite/manifest.json`). A chunk that
- * the main module only imports dynamically is not one of them.
- */
 function startupFiles(directory: string, main: string): Set<string> {
   const manifestPath = join(directory, '.vite', 'manifest.json')
   if (!existsSync(manifestPath)) {
@@ -186,7 +139,6 @@ function startupFiles(directory: string, main: string): Set<string> {
   return files
 }
 
-/** Weighs a built Worker: the directory that holds its `wrangler.json`, `index.js` and chunks. */
 export function measureBuild(directory: string): Measurement {
   const config = readJson(join(directory, 'wrangler.json'))
   const main = isRecord(config) && typeof config.main === 'string' ? config.main : undefined
@@ -231,14 +183,13 @@ function kib(bytes: number): string {
   return `${(bytes / KIB).toFixed(2)} KiB`
 }
 
-/** What a measurement breaks of the budget. Every ceiling is hard: equal to it passes, over it fails. */
 export function checkBudgets(measurement: Measurement, budgets: Budgets): Violation[] {
   const violations: Violation[] = []
   const check = (rule: Violation['rule'], what: string, bytes: number, ceiling: Ceiling) => {
     if (bytes > ceiling.gzipKiB * KIB) {
       violations.push({
         rule,
-        message: `${what} is ${kib(bytes)} gzipped, over the ceiling of ${ceiling.gzipKiB} KiB in budgets.json. ${ceiling.reason} Make the build smaller; raising a ceiling needs a note in an ADR.`,
+        message: `${what} is ${kib(bytes)} gzipped, over the ceiling of ${ceiling.gzipKiB} KiB in budgets.json. ${ceiling.reason} Make the build smaller; raising a ceiling says why in its reason.`,
       })
     }
   }
@@ -272,9 +223,6 @@ export function checkBudgets(measurement: Measurement, budgets: Budgets): Violat
   return violations
 }
 
-// ---- startup -----------------------------------------------------------------------------------
-
-/** The middle value of an odd number of samples, and the mean of the two middle ones otherwise. */
 export function median(samples: readonly number[]): number {
   if (samples.length === 0) throw new RangeError('the median of nothing')
   const sorted = [...samples].sort((a, b) => a - b)
@@ -285,7 +233,6 @@ export function median(samples: readonly number[]): number {
   return sorted.length % 2 === 1 || low === undefined ? high : (low + high) / 2
 }
 
-/** The milliseconds of CPU that `wrangler check startup` reports as the active time of startup. */
 export function parseStartupActive(output: string): number {
   const match = /Active:\s+([\d.]+) ms/.exec(output)
   const active = match?.[1] === undefined ? Number.NaN : Number(match[1])
@@ -297,11 +244,9 @@ export function parseStartupActive(output: string): number {
 
 const RUNS = 5
 
-/** The cost of startup, in milliseconds of active time, one value for each run. */
 function measureStartup(root: string, workerDirectory: string, env: NodeJS.ProcessEnv): number[] {
   const samples: number[] = []
   for (let run = 0; run < RUNS; run++) {
-    // From the Worker's own directory: wrangler refuses to guess a project at the root of a workspace.
     const result = spawnSync(
       join(root, 'node_modules/.bin/wrangler'),
       ['check', 'startup', '-c', 'wrangler.json', '--outfile', `startup-${run}.cpuprofile`],
@@ -317,23 +262,15 @@ function measureStartup(root: string, workerDirectory: string, env: NodeJS.Proce
   return samples
 }
 
-// ---- the cost of a write ----------------------------------------------------------------------
-
-/** Fresh Workers the cold write is measured on, and the writes and health requests after each. */
 const COLD_RUNS = 3
 const WARM_WRITES = 10
 const FLOOR_REQUESTS = 5
 
 export interface WriteCost {
-  /** The fixture, relative to the repository. */
   readonly fixture: string
-  /** The median over fresh Workers of their first write, which is their first request, in milliseconds. */
   readonly cold: number
-  /** The median of the writes that follow, in milliseconds. */
   readonly warm: number
-  /** The slowest of those writes. */
   readonly warmMax: number
-  /** The median of GET /health on the same Workers: what any request costs through this harness. */
   readonly floor: number
 }
 
@@ -345,7 +282,6 @@ const MCP_HEADERS = {
   'mcp-name': 'create_draft',
 }
 
-/** The part of a D1 binding that the seed of a token uses. */
 interface SeedStatement {
   bind(...values: unknown[]): SeedStatement
 }
@@ -354,26 +290,6 @@ interface SeedDatabase {
   batch(statements: SeedStatement[]): Promise<unknown>
 }
 
-/**
- * The time of one `create_draft` of the 2,027-word post (`tests/fixtures/content/bench/long-post.md`)
- * through the built Worker, on a local D1 that has the shipped migrations. A call is timed from
- * outside, by the clock of this process, from the request to the whole answer.
- *
- * It is the time of a request, which is the CPU time of the write plus what a request has around
- * it: the harness's own hop (the floor, measured with GET /health on the same Worker), and the
- * local D1, which is SQLite in the same process and takes a fraction of a millisecond. A Worker's
- * CPU limit counts the write and not the wait for D1, so this is an upper bound on it. Nothing in
- * workerd gives a script the CPU time of a request: its clock moves in steps of a millisecond, and
- * `process.cpuUsage`, which the pipeline's benchmark reads, cannot see another process. The
- * measurement against Cloudflare's own CPU limit is the v0.2 demo's.
- *
- * Cold is the first request a fresh Worker gets, which is the post: the harness starts the Worker,
- * migrates D1 and writes a token from outside, and none of that runs the Worker's code. So it pays
- * what the first write of an isolate pays, loading the Markdown parser's chunks, building the
- * parser and warming up the engine, and not the evaluation of the main module, which the startup
- * measurement has. It is the median of `COLD_RUNS` fresh Workers. Each warm write has a slug and a
- * translation group of its own, since a post with the same ones would be refused.
- */
 async function measureWrites(root: string, workerDirectory: string): Promise<WriteCost> {
   const { createTestHarness } = await import('wrangler')
   const origin = 'http://localhost'
@@ -477,9 +393,6 @@ async function measureWrites(root: string, workerDirectory: string): Promise<Wri
   }
 }
 
-// ---- the run ---------------------------------------------------------------------------------
-
-/** The Worker's directory in a build output: the one that holds a `wrangler.json`. */
 function findWorkerDirectory(outDir: string): string {
   const found = readdirSync(outDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(join(outDir, entry.name, 'wrangler.json')))
@@ -491,7 +404,6 @@ function findWorkerDirectory(outDir: string): string {
   return only
 }
 
-/** Builds the playground Worker, minified, with hidden source maps, into `outDir`. */
 function buildPlayground(root: string, outDir: string, env: NodeJS.ProcessEnv): string {
   const result = spawnSync(
     join(root, 'node_modules/.bin/vp'),
@@ -552,8 +464,6 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
           `  cold  ${cost.cold.toFixed(1)} ms  (the first request of a fresh Worker, median of ${COLD_RUNS})`,
           `  warm  ${cost.warm.toFixed(1)} ms  (median of ${COLD_RUNS * WARM_WRITES}, slowest ${cost.warmMax.toFixed(1)} ms)`,
           `  floor ${cost.floor.toFixed(1)} ms  (GET /health, median of ${COLD_RUNS * FLOOR_REQUESTS}: what a request costs through the harness)`,
-          // Wall time, with the local D1 in it, which varies from one machine to another: the CPU of a
-          // write has its ceiling in `vp run bench`, which measures the Markdown pipeline's CPU.
           '  Request time seen from outside, an upper bound of the CPU time of the write; no ceiling: `vp run bench` holds the CPU of the pipeline.',
         ].join('\n'),
       )

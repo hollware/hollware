@@ -2,19 +2,11 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { makePreviewToken, verifyPreviewToken } from '../src/preview.ts'
 
-// Fails when: src/preview.ts stops making the token as `hw_prv_<base64url {s,e,x}>.<base64url
-// HMAC-SHA256 of the payload text>` under the HKDF-SHA256 key of the secret bound to the site
-// (info `hollware preview\n<site>`) with a lifetime of one hour; or verifyPreviewToken accepts a
-// token of another site, an expired one (at the second it expires, not one later), one whose
-// payload or signature was changed, a malformed one, or one without a secret of 32 characters; or
-// refuses a token that is in order (T-103).
-
 const SECRET = 's'.repeat(32)
 const SITE = 'playground'
 const ENTRY = 'ent_01'
-const NOW = new Date('2025-10-09T08:53:20.000Z') // 1760000000 seconds
+const NOW = new Date(1_760_000_000_000)
 
-/** Worked out with node:crypto's hkdfSync and createHmac, not with the code under test. */
 const TOKEN =
   'hw_prv_eyJzIjoicGxheWdyb3VuZCIsImUiOiJlbnRfMDEiLCJ4IjoxNzYwMDAzNjAwfQ.nVLhIGX_NQm0tpYSnlpVHXYQMHCSWlmMu2_z7xHlWws'
 

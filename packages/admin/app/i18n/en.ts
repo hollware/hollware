@@ -1,11 +1,5 @@
 import type { AuditAction } from '@hollware/core'
 
-/**
- * Every text of the admin in English, grouped by where it shows. A text with data in it is a
- * function of that data. The Spanish of `es.ts` has this exact shape (`Messages`), so a missing, an
- * extra or a mistyped key is a type error; `tests/conventions/admin-messages.test.ts` fails on a
- * text of a template that does not come from here.
- */
 export const en = {
   common: {
     loading: 'Loading…',
@@ -17,7 +11,6 @@ export const en = {
     remove: 'Remove',
     name: 'Name',
     startFrom: 'Start from',
-    /** No field, in a select that may name none. */
     none: '(none)',
     nothingWaits: 'Nothing waits for review.',
     savedApplies: 'Saved: it applies at once',
@@ -833,7 +826,6 @@ export const en = {
     markdown: 'Markdown of the entry',
     live: 'The Markdown that is live',
     asked: 'The Markdown asked for',
-    /** `$` is the number of lines, as CodeMirror's merge view phrases it. */
     unchangedLines: '$ unchanged lines: show them',
   },
   callback: {

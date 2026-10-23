@@ -3,16 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import { createD1Store } from '../../src/db/index.ts'
 import { ftsQuery } from '../../src/db/reads.ts'
-import type { ContentStore } from '../../src/ports.ts'
+import type { ContentStore, NewRevision } from '../../src/ports.ts'
 import { fixedClock, newRevision, seedOwner, siteKey, VERDICT, type Owner } from './support.ts'
-
-// Fails when: the full-text index (migrations/0008_search.sql) stops following what is published:
-// a published entry is not found by a word of its title, its tags or its text (the text taken from
-// the document's text nodes, never from its Markdown marks or attributes), a word without its
-// accent does not find it, a draft or an unpublished entry is found, or an entry of another site
-// is; or searchEntries (src/db/reads.ts) stops ranking a match in the title over one in the text,
-// narrowing to a collection and a locale, keeping to its limit, answering the entry's summary with
-// a snippet that marks the match, or keeping FTS5's own syntax out of what someone typed (ftsQuery).
 
 interface Page {
   readonly slug: string
@@ -21,6 +13,7 @@ interface Page {
   readonly tags?: readonly string[]
   readonly locale?: string
   readonly collection?: string
+  readonly headed?: boolean
 }
 
 async function world(label: string) {
@@ -29,7 +22,6 @@ async function world(label: string) {
   return { owner, store }
 }
 
-/** Creates a page and, unless `draft`, publishes it. */
 async function page(
   store: ContentStore,
   owner: Owner,
@@ -37,6 +29,8 @@ async function page(
   { draft = false }: { draft?: boolean } = {},
 ): Promise<string> {
   const frontmatter = { title: spec.title }
+  const heading: NewRevision['document']['nodes'] =
+    spec.headed === false ? [] : [['h1', { id: 'heading-attribute' }, spec.title]]
   const saved = await store.createEntry(owner.site, {
     collection: spec.collection ?? 'blog',
     locale: spec.locale ?? 'en',
@@ -45,14 +39,10 @@ async function page(
     revision: newRevision(owner.actor, {
       markdown: `---\ntitle: ${spec.title}\n---\n\n${spec.text}\n`,
       frontmatter,
-      // An attribute and a link target: words that are no text of the page.
       document: {
         frontmatter,
         meta: {},
-        nodes: [
-          ['h1', { id: 'heading-attribute' }, spec.title],
-          ['p', {}, spec.text, ['a', { href: '/hidden-target/' }, ' read more']],
-        ],
+        nodes: [...heading, ['p', {}, spec.text, ['a', { href: '/hidden-target/' }, ' read more']]],
       },
       tags: spec.tags ?? [],
     }),
@@ -90,7 +80,6 @@ describe('full-text search', () => {
     expect(await search('caching')).toEqual(['edge'])
     expect(await search('reader')).toEqual(['edge'])
     expect(await search('performance')).toEqual(['edge'])
-    // An attribute and a link target are not text of the page.
     expect(await search('attribute')).toEqual([])
     expect(await search('hidden')).toEqual([])
   })
@@ -174,7 +163,6 @@ describe('full-text search', () => {
     await page(store, owner, {
       slug: 'in-text',
       title: 'Other things',
-      // Three times in the text, against once in the title: only the weights put the title first.
       text: 'A word about passkeys, passkeys and passkeys.',
     })
     await page(store, owner, { slug: 'in-title', title: 'Passkeys', text: 'Nothing else.' })
@@ -187,6 +175,40 @@ describe('full-text search', () => {
     )
     expect(hits[1]?.entry.entry.status).toBe('published')
     expect((hits[0]?.score ?? 0) > (hits[1]?.score ?? 0)).toBe(true)
+  })
+
+  it('weighs a match in the title 10, in the tags 4 and in the text 1: the title over the tags and five in the text, the tags over three in the text', async () => {
+    const { owner, store } = await world('search-weights')
+    await page(store, owner, {
+      slug: 'text-only',
+      title: 'Garden diary',
+      text: 'Quokka quokka quokka on keeping a small garden of herbs.',
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'tags-only',
+      title: 'Window herbs',
+      text: 'Notes on keeping a small garden of herbs indoors.',
+      tags: ['quokka'],
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'tags-and-text',
+      title: 'Herb shelf',
+      text: 'Quokka quokka quokka quokka quokka by the herb shelf.',
+      tags: ['quokka'],
+      headed: false,
+    })
+    await page(store, owner, {
+      slug: 'title-only',
+      title: 'Quokka garden',
+      text: 'Notes on keeping a small garden of herbs by windows.',
+      headed: false,
+    })
+
+    const hits = await store.searchEntries(owner.site, { text: 'quokka', limit: 10 })
+
+    expect(slugs(hits)).toEqual(['title-only', 'tags-and-text', 'tags-only', 'text-only'])
   })
 
   it('narrows to a collection and a locale, and keeps to the limit', async () => {

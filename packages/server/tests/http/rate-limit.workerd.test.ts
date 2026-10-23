@@ -3,13 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { limitedRoute } from '../../src/http/gateway.ts'
 import { boot, wire } from './support.ts'
 
-// Fails when: the gateway (src/http/gateway.ts) stops limiting, per address and route, the routes
-// anyone may call without a token when the Worker has a rate limiting binding (T-10 of
-// docs/security/threat-model.md): it stops answering 429 with Retry-After past the limit, counts
-// two addresses or two routes as one, limits a route behind a token or a read, or limits anything
-// when the Worker has no binding.
-
-/** A binding that lets `allowed` requests through for each key, and records the keys. */
 function limiter(allowed: number) {
   const counts = new Map<string, number>()
   return {
@@ -31,7 +24,6 @@ const from = (address: string) => ({
 })
 
 describe('the rate limit of the routes without a token', () => {
-  // Seven requests, each through D1: under the load of the whole suite more than the default 5 s.
   it('answers 429 past the limit, per address and route', { timeout: 30_000 }, async () => {
     const limit = limiter(2)
     const worker = boot({ bindings: { HOLLWARE_RATE_LIMIT: limit.binding } })

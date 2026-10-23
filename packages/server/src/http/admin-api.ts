@@ -34,6 +34,7 @@ import {
   renamePasskey,
   renameUser,
 } from '../identity/store.ts'
+import { withoutTrailingSlashes } from '../analytics/normalize.ts'
 import { adminClient } from '../oauth/admin.ts'
 import {
   ACTIVITY_CSV_COLUMNS,
@@ -47,27 +48,13 @@ import type { Clock } from '../ports.ts'
 import type { GatewayEnv } from './types.ts'
 import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
-/**
- * What only a person in the admin may do (ADR-026): see, make and revoke personal tokens, and
- * invite people, on the site of their token; and learn who they are and which sites they may switch
- * to (`/v1/admin/me`), and manage their own sign-in (`/v1/admin/account`: their passkeys, the apps
- * they connected and their sessions), the routes for every role. These are no operations, so no agent sees them over MCP, and a request needs an
- * access token of the admin's own client with `schema:admin`: a personal token, or a token of
- * another client, never reaches them, even an owner's. A leaked token cannot mint the next one.
- */
-
 const INVITATION_DAYS = 7
-/** The lines of a page of the activity log, unless the admin asks for another number. */
 const ACTIVITY_PAGE = 50
-/** The most lines one CSV of the activity log holds. */
 const ACTIVITY_CSV_MAX = 10_000
 
 export interface AdminApiOptions {
-  /** The sites of the deployment: the person may switch among those they are a member of. */
   readonly sites: ReadonlySet<string>
-  /** A site of the deployment, or `undefined` when it serves none. */
   readonly site: (key: string) => ResolvedSite | undefined
-  /** The activity log of a request (ADR-037), for the person of the admin. */
   readonly audit: (c: Context<GatewayEnv>, principal: RequestPrincipal) => Promise<AuditLogFor>
   readonly clock: Clock
   readonly oauth: (publicUrl: string) => OAuth
@@ -79,7 +66,6 @@ function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'cache-control': 'no-store' } })
 }
 
-/** The code of each refusal: what the input breaks, who may not, what is not there, what clashes. */
 const REFUSAL_CODES = {
   400: 'invalid_input',
   403: 'forbidden',
@@ -87,26 +73,20 @@ const REFUSAL_CODES = {
   409: 'conflict',
 } as const
 
-/** The code of a refusal by its status, for the activity log. */
 function refusalCode(status: number): string {
   if (status === 503) return 'unavailable'
   return status === 403 || status === 404 || status === 409 ? REFUSAL_CODES[status] : 'internal'
 }
 
-/**
- * The page of an entry on its site, or `null` when the site has no URL or no route for the locale:
- * the origin and the route of the collection with its slug (the admin's `pageUrl` does the same).
- */
 function pageUrlOf(
   site: ResolvedSite,
   entry: { readonly collection: string; readonly locale: string; readonly slug: string },
 ): string | null {
   const route = site.collections.get(entry.collection)?.routes[entry.locale]
   if (site.url === null || route === undefined) return null
-  return `${site.url.replace(/\/+$/, '')}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
+  return `${withoutTrailingSlashes(site.url)}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
 }
 
-/** What a route that changed something says of it, for its line of the activity log. */
 interface AuditNote {
   target?: { readonly type: string; readonly id: string }
   detail?: Readonly<Record<string, unknown>>
@@ -127,7 +107,6 @@ function parseScopes(json: string): Scope[] {
   }
 }
 
-/** The days an invitation lasts: `fallback` when left out, a whole number from 1 to 365, or null. */
 function invitationDays(value: unknown, fallback: number): number | null {
   if (value === undefined) return fallback
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
@@ -135,10 +114,6 @@ function invitationDays(value: unknown, fallback: number): number | null {
     : null
 }
 
-/**
- * The days a token lasts: none (`null`) when they are left out, so it never expires (T-26: the
- * person chooses), or a whole number from 1 to 365; `undefined` for anything else.
- */
 function daysFrom(value: unknown): number | null | undefined {
   if (value === undefined || value === null) return null
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
@@ -146,10 +121,8 @@ function daysFrom(value: unknown): number | null | undefined {
     : undefined
 }
 
-/** At most this many grants of a person are read: pages of the library's listing, 100 each. */
 const GRANT_PAGES = 10
 
-/** Every grant of a person, across the sites of the deployment. */
 async function grantsOf(helpers: OAuthHelpers, userId: string): Promise<GrantSummary[]> {
   const grants: GrantSummary[] = []
   let cursor: string | undefined
@@ -165,12 +138,10 @@ async function grantsOf(helpers: OAuthHelpers, userId: string): Promise<GrantSum
   return grants
 }
 
-/** The name a client gave itself, or its id when it gave none or cannot be read now. */
 async function clientName(helpers: OAuthHelpers, clientId: string): Promise<string> {
   try {
     return (await helpers.lookupClient(clientId))?.clientName ?? clientId
   } catch {
-    // A client of a metadata document whose document cannot be fetched now: its id is a URL.
     return clientId
   }
 }
@@ -182,13 +153,6 @@ function siteOf(metadata: unknown): string | null {
 }
 
 export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions): void {
-  /**
-   * Runs `handle` for a person in the admin with `schema:admin`, or with any scope when `anyone`;
-   * anyone else is refused. A route that changes something names its `action`, and gets one line
-   * of the activity log for each answer but a 400 (ADR-037): `ok` with what `handle` noted, `denied`
-   * for a 403, `failed` for a 404 or a 409. A change of the person's own sign-in (`everySite`) is a
-   * line in each site they are a member of, since a person is of the deployment.
-   */
   const admin =
     (
       action: AuditAction | null,
@@ -250,8 +214,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       : {}
   }
 
-  // Who is signed in, the site of the token, and the sites of the deployment the person may switch
-  // to, with their role in each: what the admin needs to draw itself, for every role.
   app.get(
     '/v1/admin/me',
     admin(
@@ -264,7 +226,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           .where(eq(users.id, person.userId))
         const memberships = await membershipsOf(db, person.userId)
         const sites = memberships.filter((membership) => options.sites.has(membership.site))
-        // The sites in the trash the person owns, which they may bring back (ADR-033).
         const { results: trashed } = await c.env.DB.prepare(
           'SELECT id, deleted_at FROM sites WHERE deleted_at IS NOT NULL',
         ).all<{ id: string; deleted_at: string }>()
@@ -280,8 +241,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // A link that shows the latest revision of one entry on the site, for one hour (T-103). Any
-  // member of the site may ask for one: the token reads that entry and nothing else.
   app.post(
     '/v1/admin/preview',
     admin(
@@ -377,14 +336,12 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           'Leave it out for a personal token; "read" makes a token that reads published content.',
         )
       }
-      // A read token reads, whatever it asks for.
       const asked =
         kind === 'read'
           ? ['content:read']
           : Array.isArray(input['scopes'])
             ? input['scopes'].filter((s) => typeof s === 'string')
             : []
-      // A token gets no more than the person who makes it may do.
       const scopes = person.scopes.filter((scope) => asked.includes(scope))
       if (scopes.length === 0) {
         return refused(
@@ -471,7 +428,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }),
   )
 
-  /** What a change of a member answers, by what it did. */
   const answerOf = (change: PeopleChange): Response => {
     switch (change) {
       case 'changed':
@@ -492,7 +448,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }
   }
 
-  // Another role for a member of the site of the token: owner, editor or author.
   app.post(
     '/v1/admin/people/role',
     admin('member.role', async (c, person, note) => {
@@ -512,7 +467,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }),
   )
 
-  // A member out of the site of the token, with every token and grant they had of it.
   app.post(
     '/v1/admin/people/remove',
     admin('member.remove', async (c, person, note) => {
@@ -530,7 +484,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     admin('invitation.create', async (c, person, note) => {
       const input = await body(c)
       const role = input['role']
-      // An owner is made by `hollware init`; the admin invites editors and authors.
       if (typeof role !== 'string' || !isRole(role) || role === 'owner') {
         return refused(
           'An invitation is for an editor or an author.',
@@ -555,15 +508,12 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           id: made.id,
           role,
           expiresAt: made.expiresAt,
-          // In the fragment, which a browser never sends: no log of a request holds it (T-55).
           link: `${origin}/setup#invitation=${made.secret}`,
         },
         201,
       )
     }),
   )
-
-  // ---- the activity log of the site (ADR-037): for whoever holds schema:admin, its owners --------
 
   const filtersOf = (c: Context<GatewayEnv>): ActivityFilters => {
     const filters: Record<string, string> = {}
@@ -573,7 +523,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }
     return filters
   }
-  /** An answer of the log, or the refusal of a filter or a cursor that is not valid. */
   const reading = async (read: () => Promise<Response>): Promise<Response> => {
     try {
       return await read()
@@ -599,7 +548,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // The same lines as CSV, newest first, up to ACTIVITY_CSV_MAX of them.
   app.get(
     '/v1/admin/activity.csv',
     admin(null, async (c, person) =>
@@ -625,9 +573,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // ---- the person's own sign-in, for every role (T-44, T-45, T-54) ----------------------------
-
-  /** The OAuth helpers and the admin's own client, for the public URL of the request. */
   const grantsApi = async (c: Context<GatewayEnv>) => {
     const oauth = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
     return {
@@ -636,9 +581,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     }
   }
 
-  // The person's passkeys, without their keys or credential ids, and the apps they connected: each
-  // grant, with the name of its client, its scopes, its site and when. The grants of the admin are
-  // marked: they end by signing out, not here.
   app.get(
     '/v1/admin/account',
     admin(
@@ -675,7 +617,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // One of the person's passkeys out, never their last one: that one is refused, not removed.
   app.post(
     '/v1/admin/account/passkeys/remove',
     admin(
@@ -707,7 +648,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // One of the person's passkeys gets another label, such as "Phone": theirs only.
   app.post(
     '/v1/admin/account/passkeys/rename',
     admin(
@@ -736,8 +676,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // The name the person shows, on their revisions, reviews and comments: only they change it, so
-  // the route takes no user, only the person signed in.
   app.post(
     '/v1/admin/account/name',
     admin(
@@ -758,8 +696,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // An app the person connected loses its grant, and with it every token it holds. Only the
-  // person's own grants, and never the admin's: the admin ends by signing out.
   app.post(
     '/v1/admin/account/apps/revoke',
     admin(
@@ -790,8 +726,6 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
     ),
   )
 
-  // Every session of the person ends, and every grant of the admin with it: each browser, this one
-  // included, signs in with a passkey again. The apps they connected keep their grants.
   app.post(
     '/v1/admin/account/sessions/end',
     admin(

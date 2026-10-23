@@ -1,24 +1,3 @@
-// Fails when:
-// - "chooseTarget …": the default stops being the local database, `--remote` stops choosing the
-//   remote one, or both flags together are accepted.
-// - "resolveDatabase reads the binding DB …" (config rows): the CLI stops reading `wrangler.jsonc`
-//   or `wrangler.json` as JSON with comments, takes another binding than `DB`, or an error
-//   stops saying what to do (no file, `wrangler.toml`, no D1 database, another binding, a file
-//   that is not JSON, a shape that is not wrangler's).
-// - "resolveDatabase takes --database as it is and reads no file": `--database` stops winning
-//   over the config, or the config is read anyway.
-// - "resolveDatabase refuses a --database that wrangler would take for an option": the name is
-//   no longer validated.
-// - "query runs wrangler d1 execute with --json and returns the rows of each statement": the
-//   arguments given to wrangler change (the order, `--json`, `--command`), or the rows are not
-//   returned statement by statement.
-// - "query names the target in the arguments": `--remote` is not passed, or the database is not.
-// - "runFile runs a SQL file in one execute": the arguments of the file run change.
-// - "a failed query …" rows: the reason of a failure stops reaching the message, a missing
-//   table stops being reported with `hollware migrate`, or an answer that is not JSON, has
-//   another shape or says a statement did not succeed is accepted.
-// - "names the target and the database in the command that creates the tables": the hint to
-//   migrate forgets `--remote` or `--database`.
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 

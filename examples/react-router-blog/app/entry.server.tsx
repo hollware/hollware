@@ -2,9 +2,6 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { EntryContext } from 'react-router'
 import { ServerRouter } from 'react-router'
 
-// React Router's own web entry waits for the whole page for crawlers only, through `isbot`. A blog
-// page has nothing to stream, so this one always waits: the answer is the complete page, and its
-// status is the one of its route.
 export default async function handleRequest(
   request: Request,
   status: number,

@@ -35,21 +35,8 @@ import {
   revisionRow,
 } from './statements.ts'
 
-/**
- * The writes of the store. Each one is a single `db.batch` (a transaction: all of it or none of
- * it), where a revision or a publication is inserted `WHERE` the entry is still at the version
- * the caller read, and the entry is then updated with the same predicate and `RETURNING`. A write
- * that lost its race inserts nothing and updates nothing, so its `RETURNING` is empty, and one
- * read tells a `conflict` from a `not_found`.
- */
-
 type Taken = Extract<WriteRefusal, { outcome: 'taken' }>
 
-/**
- * Waits for a write batch. A batch that broke a unique key of `entries` has rolled back, and the
- * answer is `taken` by the entry that holds the key, found by `holder`. A unique violation nobody
- * holds the key for, and any other error, is not an outcome: it is thrown as it came.
- */
 async function attempt<Results, Refusal extends Taken | InTrash = Taken>(
   batch: Promise<Results>,
   holder: () => Promise<Refusal | null>,
@@ -63,10 +50,6 @@ async function attempt<Results, Refusal extends Taken | InTrash = Taken>(
   }
 }
 
-/**
- * The entry that holds the slug or the translation that a new entry asks for; the slug first. An
- * entry in the trash keeps both, and is named as `in_trash`, so that the caller restores it.
- */
 async function holderOfNewEntry(
   db: Db,
   site: string,
@@ -99,7 +82,6 @@ async function holderOfNewEntry(
     : { outcome: 'taken', field: 'translationGroup', by: holder.id }
 }
 
-/** The other entry of the collection and locale of `entryId` that is in `translationGroup`. */
 async function holderOfTranslation(
   db: Db,
   site: string,
@@ -126,7 +108,6 @@ async function holderOfTranslation(
   return row === undefined ? null : { outcome: 'taken', field: 'translationGroup', by: row.id }
 }
 
-/** Why an update touched nothing: the entry moved on (`conflict`) or it is not there. */
 export async function whyNothingChanged(
   db: Db,
   site: string,
@@ -142,7 +123,6 @@ export async function whyNothingChanged(
     : { outcome: 'conflict', currentVersion: row.version, headRevision: row.headRev }
 }
 
-/** The revision as a read of it would give it back, for the answer of a write that made it. */
 function storedRevision(input: {
   readonly id: string
   readonly entryId: string
@@ -307,8 +287,6 @@ export async function publish(
     entryId: write.entryId,
     now,
     actor: write.actor,
-    // The statement names `head_rev` as it is when it runs, so its id is not known here; every
-    // revision id has the same length, which is what the size of the row counts.
     publish: { revisionId: newId('rev'), verdict: write.verdict, acknowledged: write.acknowledged },
   })
   const refusal = tooLarge(row)
@@ -351,15 +329,8 @@ export async function publish(
   return { outcome: 'published', view: { entry, revision } }
 }
 
-/** The message of the statement that aborts a group publish: SQLite fails to parse it as JSON. */
 const GROUP_MOVED = 'hollware: an entry of the group is not at its version'
 
-/**
- * Publishes a group of entries in one batch, all or none (ADR-024). Each entry gets the two
- * statements of `publish`; a last statement fails the batch, which D1 then rolls back, when fewer
- * publications landed than the group has entries: `json()` of a text that is not JSON raises an
- * error, and it runs only then. A refusal names the entry.
- */
 export async function publishGroup(
   db: Db,
   clock: Clock,
@@ -371,7 +342,6 @@ export async function publishGroup(
 > {
   const now = clock.now().toISOString()
   const statements: BatchItem<'sqlite'>[] = []
-  // The publications this batch appends: each lands only if its entry was at its version.
   const appended: string[] = []
   for (const write of group) {
     const row = publicationRow({
@@ -415,7 +385,6 @@ export async function publishGroup(
         ),
     )
   }
-  // A select on the site's own row, which is there, so its condition is evaluated once.
   const guard = db
     .select({ moved: sql`json(${GROUP_MOVED})` })
     .from(sites)
@@ -470,8 +439,6 @@ export async function unpublish(
   })
   const refusal = tooLarge(row)
   if (refusal !== null) return refusal
-  // Both statements only touch an entry that is published when they run: one that is not
-  // stays as it is and gets no publication, and the answer below is its current view.
   await db.batch([
     insertUnpublishIfPublished(db, row),
     insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.unpublished', now, [
@@ -501,11 +468,6 @@ export async function unpublish(
   return view === null ? { outcome: 'not_found' } : { outcome: 'unpublished', view }
 }
 
-/**
- * Moves a draft to the trash in one batch: its pending review is cancelled, and the entry gets its
- * `deleted_at` and the next version, both only while it is a draft out of the trash at
- * `expectedVersion`. When the update touches nothing, one read tells why.
- */
 export async function trashEntry(
   db: Db,
   clock: Clock,
@@ -550,7 +512,6 @@ export async function trashEntry(
   return { outcome: 'trashed', view }
 }
 
-/** Brings an entry back from the trash as the draft it was, at the next version. */
 export async function restoreEntry(
   db: Db,
   clock: Clock,
@@ -571,7 +532,6 @@ export async function restoreEntry(
   return { outcome: updated.length === 0 ? 'not_trashed' : 'restored', view }
 }
 
-/** An entry in the trash with its head revision, which the reads of the store leave out. */
 async function findTrashed(db: Db, site: string, entryId: string): Promise<EntryView | null> {
   const [row] = await db
     .select({ entry: entryFields, headRev: entries.headRev })
@@ -584,7 +544,6 @@ async function findTrashed(db: Db, site: string, entryId: string): Promise<Entry
   return { entry: toEntry(row.entry), revision }
 }
 
-/** Drops the schedule of an entry in the batch that publishes it, if it is at `version`. */
 function dropScheduleAtVersion(db: Db, site: string, entryId: string, version: number) {
   return db
     .delete(schedules)
@@ -597,11 +556,6 @@ function dropScheduleAtVersion(db: Db, site: string, entryId: string, version: n
     )
 }
 
-/**
- * Writes the event of a write to the outbox in its batch, only where the entry is in the state the
- * write expects, so that an event is there exactly when its write is. Nothing when there is no
- * event: a statement that selects nothing, to keep the batch the same shape.
- */
 function insertEventWhere(
   db: Db,
   site: string,
@@ -628,13 +582,6 @@ function insertEventWhere(
     )
 }
 
-/**
- * Gives an entry another slug in one batch, while it is at `expectedVersion`: its old slug becomes
- * a redirect when `redirect` says so (an entry that was ever published), a redirect from the new
- * slug goes (the slug is an entry's again), an event tells the subscribers when it is published,
- * and the entry gets the slug and the next version. A slug another entry of the collection and
- * locale holds is `taken`, and nothing is written.
- */
 export async function moveEntry(
   db: Db,
   clock: Clock,
@@ -686,7 +633,6 @@ export async function moveEntry(
     updatedAt: now,
   }
   const statements: BatchItem<'sqlite'>[] = [
-    // The slug is an entry's again: a redirect from it would hide the entry.
     db
       .delete(redirects)
       .where(
@@ -727,7 +673,6 @@ export async function moveEntry(
   if (first !== undefined) await db.batch([first, ...rest])
   const view = await findEntryById(db, site, write.entryId, 'head')
   if (view === null) return { outcome: 'not_found' }
-  // Another write got in between: the entry is at another version, and keeps its slug.
   if (view.entry.version !== write.expectedVersion + 1 || view.entry.slug !== write.slug) {
     return {
       outcome: 'conflict',
@@ -738,7 +683,6 @@ export async function moveEntry(
   return { outcome: 'moved', view }
 }
 
-/** The redirects of a site, newest first, a page after `cursor`. */
 export async function listRedirects(
   db: Db,
   site: string,

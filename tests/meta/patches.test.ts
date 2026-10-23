@@ -5,10 +5,6 @@ import { file } from '../support/fixtures.ts'
 import { isTestFile } from '../guards/test-projects.ts'
 import { readRepoFiles, readText, repoFiles } from '../support/repo.ts'
 
-// Fails when: pnpm-workspace.yaml gets `patchedDependencies` and a patch file is missing, does not
-// start with a `PATCHED (<reason>)` line, or is mentioned by no test file; or a .patch file exists
-// that patchedDependencies does not list.
-
 const workspace = (patched: string) =>
   file('pnpm-workspace.yaml', `packages:\n  - packages/*\n${patched}`)
 

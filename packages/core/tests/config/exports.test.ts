@@ -20,16 +20,6 @@ import type { ContractDescription } from '../../src/contracts/index.ts'
 import * as operationsModule from '../../src/operations/index.ts'
 import * as entry from './entry.ts'
 
-// Fails when: the config module exports a name more or a name fewer than this list, which is what
-// the package entry re-exports; when a name it exports is also exported by the contracts or the
-// operations (the entry exports all three whole, so `entry.ts` fails `vp check` with TS2308 for a
-// type, and the names list below for a value); when one of its constants moves: the default size of
-// a Markdown file (512 KiB) and the largest a collection may set (768 KiB), and the site key rule
-// (a pattern, 64 characters and its predicate); or, as type errors under `vp check`, when a type of
-// the config stops being exported from the module or changes shape (a problem is
-// `{ path, message, fix }`, a resolved config maps sites to sites, a site maps names to collections,
-// and the contracts of a description are the `ContractDescription` of the contracts module).
-
 describe('the config module', () => {
   it('exports these values, and the package entry re-exports them', () => {
     expect(Object.keys(config).sort()).toEqual([

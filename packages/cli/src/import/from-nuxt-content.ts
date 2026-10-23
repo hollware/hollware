@@ -3,35 +3,17 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ContentFile, Corpus } from './corpus.ts'
 
-/**
- * The `content/` of a Nuxt Content site as Hollware's import reads it (`hollware import --from
- * nuxt-content`). Its pages are Markdown with MDC components, which Comark reads as they are, so
- * a file is imported byte for byte, but for a `title` it lacks: Nuxt Content takes a page's title
- * from its first heading, and Hollware reads it from the frontmatter, so it is written there, from
- * that heading or else the slug. Its path becomes the slug as Nuxt Content routes it: the
- * numeric prefixes that order files go (`1.guide/2.install.md` is `guide-install`), an `index.md`
- * is its folder, and the folders join with hyphens. With `localeDirs`, the first folder is the
- * locale (`content/en/…`, `content/es/…`), and the pages at the same path in each locale are one
- * translation group, written in the field `groupField` when the page has none. Partials (`_`),
- * hidden files and links are never read; data files (YAML, JSON, CSV) are skipped and reported.
- */
-
 export interface NuxtContentOptions {
   readonly collection: string
-  /** The locale of every page, when the folders do not say it. */
   readonly locale: string
-  /** Whether the first folder of each page is its locale. */
   readonly localeDirs: boolean
   readonly groupField: string
 }
 
-/** The byte order mark a file may start with, kept where it is. */
 const BOM = String.fromCharCode(0xfeff)
 
-/** A segment of a path as Nuxt Content routes it: its numeric prefix gone. */
 const routed = (segment: string) => segment.replace(/^\d+\./, '')
 
-/** The frontmatter of `markdown` with `field` set to `value`, unless the page sets it already. */
 function withField(markdown: string, field: string, value: string): string {
   const line = `${field}: ${JSON.stringify(value)}`
   const bom = markdown.startsWith(BOM) ? BOM : ''
@@ -53,7 +35,6 @@ export function corpusFromNuxtContent(root: string, options: NuxtContentOptions)
   const bySlug = new Map<string, string>()
 
   const walk = (directory: string, segments: string[]) => {
-    // In name order, so which of two pages that share a slug is kept never depends on the disk.
     const entries = readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
     )

@@ -2,20 +2,10 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { accepted, BLOG_OPTIONS, tagsOf, warmUpComark } from './support.ts'
 
-// Fails when: text that Comark's syntax takes and leaves out of the document is dropped without a
-// word again. Comark reads every `{...}` as attributes and keeps them only where an element takes
-// them as its own, so `Use {id} here` came out as `Use  here`, an unclosed `{` took the rest of
-// its paragraph, and `::callout{type="tip"} and this` lost `and this`. The markdown-it rule in
-// src/markdown/parser.ts (`rewriteTokens`, `keepPropsText`, `openTail`) lists each of them in a
-// node at the end of the document, and `analyzeDocument` (src/markdown/analyze.ts: `takeLeftOut`,
-// `takeProps` and the loop after the walk) reports the ones that no element took, the ones that
-// were not attributes at all, and the tails, once each, on their line.
-
 warmUpComark()
 
 const OPTIONS = { ...BLOG_OPTIONS, components: ['callout', 'badge'] }
 
-/** What was reported, as `[name, line]`. */
 async function reported(markdown: string): Promise<[string, number | undefined][]> {
   const { extracted } = await accepted(markdown, OPTIONS)
   expect(
@@ -89,7 +79,6 @@ describe('braces in prose', () => {
   })
 
   it('are reported on the line where the element that took them starts, when one took them', async () => {
-    // The `{y}` at the end of the paragraph is an attribute of the paragraph: Comark keeps it as one.
     expect(await reported('line one\nline two {x} here\nline three {y}')).toStrictEqual([
       ['p[y]', 1],
       ['p[{x}]', 2],

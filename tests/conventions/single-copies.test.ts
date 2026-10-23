@@ -5,14 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { readText } from '../support/repo.ts'
 import { isRecord } from '../support/values.ts'
 
-// Fails when: zod, hono, drizzle-orm or @modelcontextprotocol/server resolves to more than one
-// version among the dependencies (direct or transitive, dev included) of the workspace packages
-// and apps in pnpm-lock.yaml. The root's own tools are not walked.
-
-/**
- * The workspace's lockfile. pnpm 12 writes two YAML documents in `pnpm-lock.yaml`: first the
- * lockfile of pnpm itself, whose only importer is the root, then the workspace's.
- */
 function workspaceLockfile(): unknown {
   return parseAllDocuments(readText('pnpm-lock.yaml'))
     .map((document) => document.toJS())
@@ -25,7 +17,7 @@ function workspaceLockfile(): unknown {
 }
 
 describe('single copies', () => {
-  it('zod, hono, drizzle-orm and the MCP server SDK resolve to one version each', () => {
+  it('zod, hono, drizzle-orm, the MCP server SDK, vitest, and the h3 and nitropack of nuxt resolve to one version each', () => {
     const lockfile = workspaceLockfile()
     expect(isRecord(lockfile) && isRecord(lockfile.importers)).toBe(true)
     expect(describeViolations(checkSingleCopies({ lockfile }))).toEqual([])

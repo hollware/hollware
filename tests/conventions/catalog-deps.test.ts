@@ -4,10 +4,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: a dependency in any package.json (dependencies, devDependencies,
-// peerDependencies, optionalDependencies) is anything but `catalog:` or `workspace:*`, except a
-// caret range in peerDependencies whose package is also a devDependency from the catalog.
-
 describe('catalog dependencies', () => {
   it('every dependency of every package.json comes from the catalog or the workspace', () => {
     const manifests = workspaceManifests()

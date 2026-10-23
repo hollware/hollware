@@ -24,16 +24,13 @@ export const DOCTOR_USAGE = [
   '  --help    Show this help',
 ].join('\n')
 
-/** The flags of `compatibility_flags` that Hollware runs with (ADR-018, ADR-026). */
 export const REQUIRED_FLAGS = [
   'no_nodejs_compat',
   'no_nodejs_compat_v2',
   'global_fetch_strictly_public',
 ] as const
 
-/** One finding: what was checked, and what to do when it failed. */
 export interface Finding {
-  /** A stable name for scripts: it does not change with the wording of `what`. */
   readonly name: string
   readonly ok: boolean
   readonly what: string
@@ -53,7 +50,6 @@ function records(value: unknown): Json[] {
   return Array.isArray(value) ? value.filter(isRecord) : []
 }
 
-/** What `wrangler.jsonc` says, checked without reaching Cloudflare or the database. */
 export function checkConfig(cwd: string, config: Json): Finding[] {
   const findings: Finding[] = []
   const flags = Array.isArray(config['compatibility_flags']) ? config['compatibility_flags'] : []
@@ -121,7 +117,6 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
-  // The images of the sites (ADR-038): the bucket is needed; the binding only converts.
   const media = records(config['r2_buckets']).some((entry) => entry['binding'] === 'MEDIA')
   findings.push(
     media
@@ -142,7 +137,6 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
     ),
   )
 
-  // The cron publishes what was scheduled and sends the events the queue missed (ADR-025).
   const triggers = isRecord(config['triggers']) ? config['triggers'] : {}
   const crons = Array.isArray(triggers['crons']) ? triggers['crons'] : []
   findings.push(
@@ -155,7 +149,6 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
-  // The events of a publication: the Worker sends them to its queue and consumes them.
   const queues = isRecord(config['queues']) ? config['queues'] : {}
   const producer = records(queues['producers']).find((entry) => entry['binding'] === 'EVENTS')
   const consumed = records(queues['consumers']).some(
@@ -176,7 +169,6 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
-  // Sign-in and OAuth's token endpoint are limited per address.
   const limited = records(config['ratelimits']).some(
     (entry) => entry['name'] === 'HOLLWARE_RATE_LIMIT',
   )
@@ -205,7 +197,6 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
   return findings
 }
 
-/** What the database says: the migrations it lacks and whether it has an owner. */
 async function checkDatabase(io: Io, target: Target): Promise<Finding[]> {
   const listed = await io.wrangler(['d1', 'migrations', 'list', DEFAULT_BINDING, `--${target}`])
   if (listed.code !== 0) {

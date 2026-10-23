@@ -1,5 +1,5 @@
 /**
- * The signature of Hollware's webhooks (ADR-025), for the Worker that sends them and for whoever
+ * The signature of Hollware's webhooks, for the Worker that sends them and for whoever
  * receives them: HMAC-SHA256 of `<timestamp>.<body>` with the webhook's secret, sent as
  * `hollware-signature: v1=<hex>` with `hollware-timestamp` (seconds since the epoch) and
  * `hollware-event-id`. Web Crypto only, so it runs in any runtime.
@@ -9,7 +9,6 @@ export const SIGNATURE_HEADER = 'hollware-signature'
 export const TIMESTAMP_HEADER = 'hollware-timestamp'
 export const EVENT_ID_HEADER = 'hollware-event-id'
 
-/** How far a timestamp may be from the receiver's clock, by default: five minutes. */
 const TOLERANCE_SECONDS = 300
 
 const encoder = new TextEncoder()
@@ -35,7 +34,6 @@ export async function signWebhook(
   return `v1=${await hmac(secret, `${timestamp}.${body}`)}`
 }
 
-/** Compares two strings in time that does not depend on where they differ. */
 function sameText(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   let difference = 0
@@ -53,7 +51,7 @@ export interface WebhookCheck {
   readonly now?: number
   readonly toleranceSeconds?: number
   /**
-   * Whether the receiver sees this event for the first time, given its id, and records it (T-67):
+   * Whether the receiver sees this event for the first time, given its id, and records it:
    * a request captured and sent again within the tolerance is then refused. The id is read from
    * the signed body, never from `hollware-event-id`, which no signature covers. A retry of a
    * delivery carries the same id, so a receiver that records an id only once it has handled the
@@ -62,7 +60,6 @@ export interface WebhookCheck {
   readonly isNew?: (eventId: string) => boolean | Promise<boolean>
 }
 
-/** The id of the event a body holds, or `null` when it holds none. */
 function eventIdOf(body: string): string | null {
   try {
     const value: unknown = JSON.parse(body)
@@ -80,7 +77,6 @@ function eventIdOf(body: string): string | null {
  * `isNew`, also that its event was not received before, so it cannot be replayed sooner either.
  */
 export async function verifyWebhook(check: WebhookCheck): Promise<boolean> {
-  // A receiver whose secret was never set signs nothing: anyone could sign with an empty key.
   if (check.secret === '') return false
   const signature = check.headers.get(SIGNATURE_HEADER)
   const timestamp = Number(check.headers.get(TIMESTAMP_HEADER))

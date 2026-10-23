@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { previewCookieClear, previewHeaders, previewRedirect } from '../src/index.ts'
 
-// Fails when: the exchange of a preview link stops answering a GET or HEAD that carries
-// `?hollware-preview=` with a 303 to the URL without it, the cookie, `no-store` and
-// `Referrer-Policy: no-referrer` (`previewRedirect`), or starts answering any other request; or
-// the cookie is cleared for an error that is not Hollware's refusal of the token, or is not
-// cleared for one that is (`previewCookieClear`); or a page of a visitor with a token stops being
-// `no-store`, or one without a token stops being left to caches (`previewHeaders`).
-
 const TOKEN = 'hw_prv_AAAA.BBBB'
 const CLEARED = 'hollware_preview=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
 

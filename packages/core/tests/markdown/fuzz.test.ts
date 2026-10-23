@@ -11,17 +11,8 @@ import {
   warmUpComark,
 } from './support.ts'
 
-// Fails when: any file made of the pieces below (Markdown, MDC, HTML, hostile URLs and attributes,
-// control characters, lone surrogates) makes `processMarkdown` throw, comes back without a fix, or
-// is accepted with a document that holds a tag outside Markdown, the components and the marker, a
-// key of the analysis, an event handler, a URL that runs code or a heading id that is empty or
-// repeated; with a line outside the file; with HTML that holds a dangerous tag, a handler or an
-// unsafe URL; or with a JSON that does not read back as it is. The files come from a seeded
-// generator, so the same files are tried every time.
-
 warmUpComark()
 
-/** A small seeded generator (mulberry32): the same seed gives the same files in Node and in workerd. */
 function generator(seed: number): () => number {
   let state = seed >>> 0
   return () => {
@@ -184,7 +175,6 @@ function pieces(next: () => number, count: number): string {
   return text
 }
 
-/** A file: sometimes with frontmatter that is right, sometimes with frontmatter made of the same pieces. */
 function fileFrom(next: () => number): string {
   const kind = next()
   const frontmatter =
@@ -257,7 +247,6 @@ describe('files made of pieces of Markdown, HTML and hostile text', () => {
       const html = await renderHtml(document)
       expect(unsafeThingsIn(html), label).toStrictEqual([])
     }
-    // The pieces make both kinds of file.
     expect(accepted).toBeGreaterThan(300)
     expect(refused).toBeGreaterThan(0)
   })

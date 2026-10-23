@@ -13,11 +13,6 @@ import {
   type ForeignEntry,
 } from './support/harness.ts'
 
-// Fails when: a site reaches the entries of another site of the same database, the way AC-0.1-13
-// forbids: an operation of the playground's token, given the ids, slugs or translation group of
-// the other site's entries, finds them, lists them or changes them, or a method of the binding
-// finds them; or an entry of the other site keeps the playground from using the same slug.
-
 const server = createPlaygroundHarness()
 let agent: Agent
 let foreign: ForeignEntry[]
@@ -39,7 +34,6 @@ function entry(index: number): ForeignEntry {
   return found
 }
 
-/** What the other site's entries are now: nothing the playground does may change them. */
 async function foreignRows(harness: TestHarness): Promise<unknown> {
   const { DB } = await harness
     .getWorker<{

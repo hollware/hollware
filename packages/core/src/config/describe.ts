@@ -7,7 +7,6 @@ import type { ResolvedCollection, ResolvedSite } from './types.ts'
 /** A site as `describe_site` shows it to agents: the `site` of the operation's output. */
 export type SiteDescription = z.output<typeof siteDescription>
 
-/** What a call without built-in contracts memoizes under. */
 const NO_BUILT_IN: readonly ContractDescription[] = []
 
 function describeCollection(
@@ -34,15 +33,12 @@ function describeCollection(
       example: component.example ?? null,
       props: toJsonSchema(component.props),
     })),
-    // Every contract is described the way the contracts module describes one, so the phases of a
-    // rule read the same here as in its verdicts.
     contracts: [...builtIn, ...collection.contracts].map((contract) => describeContract(contract)),
     maxMarkdownBytes: collection.maxMarkdownBytes,
     styleGuide: collection.styleGuide,
   }
 }
 
-/** Freezes the value and everything inside it, so that a caller cannot change what is shared. */
 function deepFreeze<T>(value: T): T {
   if (typeof value === 'object' && value !== null && !Object.isFrozen(value)) {
     Object.freeze(value)
@@ -51,7 +47,6 @@ function deepFreeze<T>(value: T): T {
   return value
 }
 
-/** Descriptions by site, then by the array of built-in contracts they were made with. */
 const descriptions = new WeakMap<
   ResolvedSite,
   WeakMap<readonly ContractDescription[], SiteDescription>

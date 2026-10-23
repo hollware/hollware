@@ -1,17 +1,3 @@
-/**
- * The search evaluation of v0.5 (AC-0.5-2): how well `search` finds what it should, by mode.
- *
- *   node scripts/eval-search.ts --hollware <url> --token-file <file> [--seed] [--gate hybrid]
- *
- * With `--seed` it first writes the corpus of tests/fixtures/eval/corpus to the site of the token
- * (the playground's blog) over MCP (both locales of a group as drafts, then each published; an entry already there is
- * left as it is) and waits until semantic search finds each entry by its title. Then it asks every
- * labelled query of tests/fixtures/eval/queries.json in each mode, over the read API, with a limit
- * of five, and prints recall@5 by kind of query and the p95 of the time each answer took on the
- * server (its Server-Timing), and with the network. It exits
- * 1 when the gated mode is under 0.85 within a language, under 0.70 across languages, or over
- * 400 ms at p95.
- */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -31,28 +17,24 @@ export interface Query {
   readonly kind: 'same-language' | 'cross-language'
 }
 
-/** One query asked in one mode: where its expected entry came, or `null`, and how long it took. */
 export interface Run {
   readonly kind: Query['kind']
   readonly place: number | null
   readonly ms: number
 }
 
-/** The 95th percentile of a list of times, nearest rank. */
 export function p95(times: readonly number[]): number {
   if (times.length === 0) return 0
   const sorted = [...times].sort((a, b) => a - b)
   return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? 0
 }
 
-/** The share of runs of a kind whose expected entry is among the first `within` (five by default). */
 export function recall(runs: readonly Run[], kind: Query['kind'], within: number = LIMIT): number {
   const ofKind = runs.filter((run) => run.kind === kind)
   if (ofKind.length === 0) return 0
   return ofKind.filter((run) => run.place !== null && run.place < within).length / ofKind.length
 }
 
-/** Whether a mode's runs meet the gates, and the line that says so. */
 export function judge(mode: string, runs: readonly Run[]): { ok: boolean; line: string } {
   const same = recall(runs, 'same-language')
   const cross = recall(runs, 'cross-language')
@@ -60,7 +42,6 @@ export function judge(mode: string, runs: readonly Run[]): { ok: boolean; line: 
   const ok = same >= GATES.sameLanguage && cross >= GATES.crossLanguage && slow <= GATES.p95Ms
   return {
     ok,
-    // recall@1 tells models apart where recall@5 does not; it is no gate.
     line: `${mode.padEnd(8)} recall@5 same ${same.toFixed(2)}  cross ${cross.toFixed(2)}  recall@1 same ${recall(runs, 'same-language', 1).toFixed(2)}  cross ${recall(runs, 'cross-language', 1).toFixed(2)}  p95 ${Math.round(slow)} ms`,
   }
 }
@@ -96,7 +77,6 @@ async function callTool(hollware: string, token: string, tool: string, args: obj
     }),
   })
   const text = await response.text()
-  // An SSE answer carries the message on its data line.
   const json = text.startsWith('{') ? text : (/^data: (.*)$/m.exec(text)?.[1] ?? '{}')
   const message: unknown = JSON.parse(json)
   const result = isRecord(message) ? message['result'] : undefined
@@ -172,7 +152,6 @@ async function ask(hollware: string, token: string, q: string, locale: string, m
   const body: unknown = await response.json()
   const total = performance.now() - started
   if (!response.ok || !isRecord(body)) throw new Error(`search answered ${response.status}`)
-  // The server's own time, without the network: what the gate is about.
   const timing = /read;dur=(\d+)/.exec(response.headers.get('server-timing') ?? '')?.[1]
   const ms = timing === undefined ? total : Number(timing)
   const results = Array.isArray(body['results']) ? body['results'] : []
@@ -200,7 +179,6 @@ async function main(): Promise<void> {
   const token = readFileSync(values['token-file'], 'utf8').trim()
   if (values.seed) await seed(hollware, token)
   const queries: Query[] = JSON.parse(readFileSync(join(EVAL, 'queries.json'), 'utf8')).queries
-  // The slug that each group has in each locale.
   const slugOf = new Map(
     corpus().map((post) => {
       const group = /^translationGroup: (.*)$/m.exec(post.markdown)?.[1] ?? ''

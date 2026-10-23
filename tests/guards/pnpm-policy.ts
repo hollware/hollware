@@ -2,26 +2,9 @@ import { isMap, isScalar, isSeq, plain, readYaml, scalarString } from '../suppor
 import { isRecord, parseJson } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `pnpm-policy`: the supply-chain policy of `pnpm-workspace.yaml` stays what ADR-010
- * and `AGENTS.md` say it is.
- *
- * - `minimumReleaseAge` is at least 1440 minutes (24 hours) and `trustPolicy` is
- *   `no-downgrade`.
- * - Every `allowBuilds` entry carries a trailing `# reason`.
- * - Every `minimumReleaseAgeExclude` and `trustPolicyExclude` entry is one exact `name@version`
- *   with a trailing `# reason; expires YYYY-MM-DD` comment whose date has not passed; so is
- *   every advisory `auditConfig.ignoreGhsas` passes over, each one GHSA id.
- * - Every catalog version is exact: no `^`, `~`, `*` or range, `npm:` aliases included. The
- *   keys stay sorted, as the file says.
- * - The root `packageManager` pins pnpm with its `sha512` hash.
- */
-
 export interface PnpmPolicyInput {
   workspace: TextFile
-  /** The root `package.json`. */
   rootManifest: TextFile
-  /** Today, as `YYYY-MM-DD`. Injected so the guard stays pure. */
   today: string
 }
 
@@ -33,7 +16,6 @@ const EXACT_PACKAGE_VERSION = /^(?:@[^/@]+\/)?[^/@\s]+@\d+\.\d+\.\d+(?:-[0-9A-Za
 const GHSA_ID = /^GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}$/
 const PACKAGE_MANAGER = /^pnpm@\d+\.\d+\.\d+\+sha512\.[0-9a-f]{128}$/
 
-/** Whether a catalog value is an exact version, or an `npm:` alias of one. */
 export function isExactCatalogVersion(value: unknown): boolean {
   if (typeof value !== 'string') return false
   const alias = NPM_ALIAS.exec(value)
@@ -89,7 +71,6 @@ export function checkPnpmPolicy(input: PnpmPolicyInput): Violation[] {
     }
   }
 
-  // Each exception to a policy is one exact version, with why and until when.
   const exceptions = [
     {
       key: 'minimumReleaseAgeExclude',

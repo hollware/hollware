@@ -92,7 +92,7 @@ the trash are left out. `--collection` and `--locale` narrow it (repeat them for
 `init`, `migrate`, `deploy`, `doctor` and `token` run the project's own `wrangler` (the nearest
 `node_modules/.bin/wrangler`) against its D1 database, and read the binding from `wrangler.jsonc`.
 `import` and `export` speak MCP to `<url>/mcp` with the token as a bearer token. The structure of the sites
-lives in the database (ADR-033): `init` gives a new site its first definition from a preset, and
+lives in the database: `init` gives a new site its first definition from a preset, and
 its owner shapes it in the admin, or an agent over MCP.
 
 ## Links

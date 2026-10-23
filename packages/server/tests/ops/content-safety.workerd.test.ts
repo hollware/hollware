@@ -5,18 +5,11 @@ import { contentFixture } from '../../../../tests/fixtures/content.ts'
 import { blogPost, warmUpComark } from './support.ts'
 import { createPost, entryColumns, newWorld, revisionsOf } from './world.ts'
 
-// Fails when: a draft that content safety stops (ADR-020, AC-0.1-14) stops being saved with one
-// error for each thing, every one with a fix (create-draft.ts, draft.ts), stops being blocked from
-// publishing (publish.ts), or is stored as something else than the bytes that came in
-// (draft.ts revisionOf, which stores the file as given, not what the pipeline made of it); or
-// get_entry hands out the HTML of such a draft with what the pipeline kept out of it.
-
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
 const english = { collection: 'blog', locale: 'en', slug: 'a-hostile-post' }
 
-/** Each hostile post of the fixtures that has markers, and the contract and line of each one. */
 const WITH_MARKERS: readonly (readonly [string, readonly (readonly [string, number])[]])[] = [
   [
     'raw-html',
@@ -51,7 +44,6 @@ const WITH_MARKERS: readonly (readonly [string, readonly (readonly [string, numb
   ],
 ]
 
-/** What the HTML of an entry must never hold, whatever the tag or the attribute. */
 const ACTIVE_CONTENT =
   /<script|<iframe|<svg|<img[^>]*onerror|\sonclick|\sstyle=|javascript:|vbscript:|data:/i
 
@@ -75,7 +67,6 @@ describe('a draft that holds what content safety stops', () => {
       }
       expect(blocked.outcome).toBe('blocked')
       expect(blocked.verdict?.phase).toBe('publish')
-      // The same markers, and what publishing also asks (a translation, the links of the file).
       expect(
         blocked.verdict?.errors
           .filter((error) => markers.some(([contract]) => contract === error.contract))
@@ -106,7 +97,6 @@ describe('a draft that holds what content safety stops', () => {
       expect(revision?.markdown).toBe(markdown)
       expect(read.entry?.markdown).toBe(markdown)
       expect(bytes).toBe(new TextEncoder().encode(markdown).length)
-      // What is rendered holds none of it.
       expect(read.entry?.html).not.toMatch(ACTIVE_CONTENT)
     },
   )

@@ -6,12 +6,6 @@ import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
 
-/*
- * The analytics the site reads its page views from (ADR-040): which provider, connected when, and
- * a form to connect one with a read-only key that Hollware tests before it keeps it sealed.
- */
-
-/** Where each provider makes the read-only key the form asks for. */
 const KEY_PAGES: Record<AnalyticsProvider, string> = {
   cloudflare: 'https://dash.cloudflare.com/profile/api-tokens',
   posthog: 'https://us.posthog.com/settings/user-api-keys',
@@ -47,7 +41,6 @@ const ready = computed(
     (provider.value !== 'cloudflare' || /^[0-9a-f]{32}$/.test(accountId.value.trim())),
 )
 
-/** The settings the form names; empty fields are left for Hollware to find. */
 function settings(): AnalyticsSettings {
   const listed = hosts.value
     .split(',')

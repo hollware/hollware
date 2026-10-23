@@ -1,16 +1,9 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { corpusFromNuxtContent } from '../src/import/from-nuxt-content.ts'
-
-// Fails when: an import from Nuxt Content (src/import/from-nuxt-content.ts) stops making each
-// page the file Hollware imports: its slug as Nuxt Content routes it (numeric prefixes gone, an
-// index its folder, folders joined), its Markdown byte for byte, its locale from its first folder
-// with its translation group added where the page has none, its title from its first heading or
-// its slug where the frontmatter has none; or reads a partial or a hidden file,
-// takes a data file as a page, or lets two pages share a slug.
 
 function content(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'nuxt-content-'))
@@ -22,7 +15,7 @@ function content(files: Record<string, string>): string {
 }
 
 describe('a Nuxt Content directory', () => {
-  it('routes each page to its slug and keeps its Markdown as it is', () => {
+  it('routes each page to its slug, keeps its Markdown as it is, and follows no link', () => {
     const page = '---\ntitle: Install\n---\n\n::callout{type="tip"}\nRun it.\n::\n'
     const root = content({
       '1.guide/2.install.md': page,
@@ -32,6 +25,8 @@ describe('a Nuxt Content directory', () => {
       '.navigation.yml': 'title: Docs',
       'authors.yml': 'name: Ada',
     })
+    const outside = content({ 'secret.md': '# Secret\n' })
+    symlinkSync(join(outside, 'secret.md'), join(root, 'linked.md'))
 
     const corpus = corpusFromNuxtContent(root, {
       collection: 'docs',
@@ -98,7 +93,6 @@ describe('a Nuxt Content directory', () => {
     expect(corpus.files.map((file) => file.slug)).toEqual(['a-b-c'])
     expect(corpus.problems).toEqual([
       { path: 'Guide.md', reason: 'its route makes "Guide", which is not a slug' },
-      // In name order `a` comes before `a-b`, so a/b-c.md keeps the slug.
       { path: 'a-b/c.md', reason: 'its slug "a-b-c" is the slug of a/b-c.md too' },
     ])
   })

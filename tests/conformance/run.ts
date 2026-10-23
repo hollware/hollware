@@ -34,40 +34,16 @@ import {
 } from './results.ts'
 import { resetLocalState, seed } from './seed.ts'
 
-/**
- * The MCP conformance run (ADR-022), the task `test:conformance`:
- *
- *   node tests/conformance/run.ts [--revision <revision>]...
- *
- * It seeds the local database of the Worker under test (`worker/`) with the real CLI, starts
- * that Worker with `wrangler dev` and the proxy that gives the suite a token, runs
- * `conformance server --requirements <revision>` for each revision with its baseline as the
- * expected failures, probes what the suite cannot reach (`claims.ts`), and stops everything it
- * started, whatever happens. It exits 1 when:
- *
- * - the suite exits non-zero: a failure outside the baseline, or an entry that now passes;
- * - a check of the must-pass profile does not pass, or is not reported (`must-pass.yaml`), the
- *   probes of `claims.ts` included;
- * - a baseline entry excuses nothing, or a scored scenario did not run (`results.ts`).
- *
- * Results go to `tests/conformance/results/`, which git ignores: for each revision the output of
- * the suite, its `checks.json` per scenario, the probes as the scenario `hollware-claims`, the
- * baseline in the suite's own format and a summary; and the log of `wrangler dev` and of the proxy.
- */
-
 const HERE = import.meta.dirname
 const REPOSITORY = join(HERE, '..', '..')
 const WORKER = join(HERE, 'worker')
 const RESULTS = join(HERE, 'results')
 
-/** `wrangler dev` bundles the Worker and starts workerd: seconds on a laptop, more on a busy CI. */
 const WORKER_START_TIMEOUT_MS = 120_000
-/** The suite takes about a second for a revision; a scenario that hangs waits 30 s for itself. */
 const SUITE_TIMEOUT_MS = 300_000
 
 const REVISIONS: readonly string[] = CONFORMANCE_REVISIONS
 
-/** A change that breaks the wire fails hundreds of checks: the log shows the first of them. */
 const SHOWN_PROBLEMS = 20
 
 function read(path: string): string {
@@ -82,7 +58,6 @@ function say(line: string): void {
   process.stdout.write(`${line}\n`)
 }
 
-/** The data files, read and held to the rules of the guard before anything starts. */
 function loadData(revisions: readonly string[]): {
   profile: readonly ProfileEntry[]
   baselines: ReadonlyMap<string, Baseline>
@@ -108,19 +83,16 @@ function loadData(revisions: readonly string[]): {
   return { profile: profile.entries, baselines }
 }
 
-/** The binary of a package that is installed at the root, such as `conformance`. */
 function rootBin(name: string): string {
   const bin = join(REPOSITORY, 'node_modules', '.bin', name)
   if (!existsSync(bin)) throw new Error(`${bin} does not exist: run pnpm install`)
   return bin
 }
 
-/** The `server` section of the file of expected failures that the suite reads. */
 function expectedFailures(baseline: Baseline): string {
   return stringify({ server: baseline.entries.map((entry) => entry.check) })
 }
 
-/** The requirement set that the installed suite ships for a revision. */
 function requirementsFile(revision: string): string {
   const manifest = createRequire(import.meta.url).resolve(
     '@modelcontextprotocol/conformance/package.json',
@@ -131,22 +103,17 @@ function requirementsFile(revision: string): string {
 interface RevisionReport {
   readonly revision: string
   readonly ok: boolean
-  /** Everything that fails the revision, the profile's problems included. */
   readonly problems: readonly string[]
   readonly summary: Summary
-  /** The checks of the must-pass profile that passed, and those that did not. */
   readonly profile: { readonly passed: number; readonly failed: number }
-  /** The totals the suite printed, which count every occurrence of a check. */
   readonly suiteTotals: string | undefined
   readonly seconds: number
 }
 
-/** `Total: 99 passed, 70 failed`, the last line of the suite's own summary. */
 function suiteTotals(output: string): string | undefined {
   return /^Total: \d+ passed, \d+ failed$/m.exec(output)?.[0]
 }
 
-/** Saves the probes where the suite saves a scenario, so that they are read like one. */
 function saveClaims(directory: string, results: readonly ProbeResult[]): void {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   const folder = join(directory, `server-${CLAIMS_SCENARIO}-${stamp}`)
@@ -158,7 +125,6 @@ function saveClaims(directory: string, results: readonly ProbeResult[]): void {
 
 async function runRevision(options: {
   readonly revision: string
-  /** The origin of the proxy: the public URL of the Worker, and where the suite connects. */
   readonly url: string
   readonly workerPort: number
   readonly readOnlyToken: string
@@ -208,7 +174,6 @@ async function runRevision(options: {
   else if (code !== 0)
     problems.push(`the suite exited with ${code}: see its verdict in ${outputFile}`)
 
-  // The era that the requests of the probes speak: the one the revision names.
   const era: Era = revision === '2026-07-28' ? 'modern' : 'legacy'
   saveClaims(
     directory,
@@ -284,7 +249,6 @@ export async function main(argv: readonly string[]): Promise<number> {
   const total = performance.now()
   rmSync(RESULTS, { recursive: true, force: true })
   mkdirSync(RESULTS, { recursive: true })
-  // Wrangler asks nothing and sends nothing: no telemetry from this repository.
   const env: NodeJS.ProcessEnv = { ...process.env, WRANGLER_SEND_METRICS: 'false' }
 
   let proxy: Proxy | undefined
@@ -330,7 +294,6 @@ export async function main(argv: readonly string[]): Promise<number> {
         '--inspector-port',
         String(inspectorPort),
         '--show-interactive-dev-session=false',
-        // The only Host and Origin the Worker answers: the proxy, which passes them through.
         '--var',
         `HOLLWARE_PUBLIC_URL:${proxy.url}`,
       ],
@@ -375,7 +338,6 @@ export async function main(argv: readonly string[]): Promise<number> {
       )
     }
   } finally {
-    // The suite and the CLI are done; what is left is the Worker and the proxy.
     await stopAll()
     await proxy?.close()
   }
@@ -397,7 +359,6 @@ function isEntryPoint(): boolean {
 }
 
 if (isEntryPoint()) {
-  // A signal stops what the run started before it ends: break-line and CI both send SIGTERM.
   for (const [signal, number] of [
     ['SIGINT', 2],
     ['SIGTERM', 15],

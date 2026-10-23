@@ -4,21 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vite-plus/test'
 
-// Runs .github/scripts/changeset-check.sh inside a throwaway git repository with a
-// fake `pnpm` on PATH that records its arguments instead of running Changesets. Git is real: the
-// script's decisions are about commits and their ancestry.
-//
-// Fails when: the script checks what it should skip (the branch creation, the Version Packages
-// pull request and its merge, in the squash form and in the merge-commit form) or skips what it
-// should check (a push, a manual run, the merge of any other pull request); compares with the
-// wrong base; or skips quietly a push it cannot compare, whose previous tip is not an ancestor of
-// the head or is not in the clone.
 const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'changeset-check.sh')
 
 const ZEROS = '0000000000000000000000000000000000000000'
 
-// No global or system git configuration: a developer's signing or hooks setup must not leak in.
-const gitEnv = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+const gitEnvWithoutUserConfig = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
 
 let dir: string
 let calls: string
@@ -27,7 +17,7 @@ function git(...args: string[]): string {
   const run = spawnSync('git', args, {
     cwd: dir,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', ...gitEnv },
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
   })
   if (run.status !== 0) throw new Error(`git ${args.join(' ')}: ${run.stderr}`)
   return run.stdout.trim()
@@ -53,9 +43,7 @@ interface Outcome {
   status: number | null
   stdout: string
   stderr: string
-  /** The `::error::` annotations, which is what the maintainer reads. */
   errors: string[]
-  /** The arguments `pnpm` got, or an empty string when the script never reached it. */
   pnpm: string
 }
 
@@ -63,7 +51,11 @@ function check(env: Record<string, string>): Outcome {
   const run = spawnSync('bash', [script], {
     cwd: dir,
     encoding: 'utf8',
-    env: { PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`, ...gitEnv, ...env },
+    env: {
+      PATH: `${join(dir, 'bin')}:${process.env.PATH ?? ''}`,
+      ...gitEnvWithoutUserConfig,
+      ...env,
+    },
   })
   let pnpm = ''
   try {
@@ -83,7 +75,6 @@ function check(env: Record<string, string>): Outcome {
   }
 }
 
-/** The `.changeset/config.json` of the repository, as the script reads it on a manual run. */
 function writeChangesetConfig(config: Record<string, unknown>): void {
   mkdirSync(join(dir, '.changeset'), { recursive: true })
   writeFileSync(join(dir, '.changeset', 'config.json'), JSON.stringify(config))
@@ -158,7 +149,6 @@ describe('changeset-check.sh', () => {
   })
 
   test('skips the push of the Version Packages merge commit, titled by the pull request branch', () => {
-    // A merge commit has no "Version Packages" title: GitHub names it after the branch.
     const before = commit('feat: first')
     const head = commit('Merge pull request #2 from hollware/changeset-release/main')
     const result = check({ EVENT_NAME: 'push', BEFORE_SHA: before, HEAD_SHA: head })
@@ -167,13 +157,10 @@ describe('changeset-check.sh', () => {
     expect(result.pnpm).toBe('')
   })
 
-  // Six commits and three runs of the script: under the load of the whole suite that takes more
-  // than the default 5 s (it timed out twice on 2026-10-16).
   test(
     'checks a push whose head only looks like the Version Packages merge',
     { timeout: 30_000 },
     () => {
-      // The skip is for the merge of the branch changeset-release/<base> only.
       const subjects = [
         'Merge pull request #3 from someone/feature',
         'Merge pull request #4 from someone/my-changeset-release/x',

@@ -1,14 +1,3 @@
-/**
- * Our deployments (ADR-034): the Workers of this repository, built and deployed in an order, with
- * the migrations before the Worker that needs them and probes after, for one target:
- *
- *   node scripts/deploy.ts --target staging | production [--dry-run]
- *
- * `deploy.yml` runs it, staging on a push to `main` and production on a push to `release`, in the
- * environment `deploy` that holds the Cloudflare token; the maintainer may run it by hand. It
- * needs `CLOUDFLARE_ACCOUNT_ID` and wrangler logged in or `CLOUDFLARE_API_TOKEN`. A probe that
- * fails fails the run: the previous versions stay, to roll back to with `wrangler rollback`.
- */
 import { spawnSync } from 'node:child_process'
 import { readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -16,40 +5,24 @@ import { pathToFileURL } from 'node:url'
 
 export type Target = 'staging' | 'production'
 
-/** A command, in a directory of the repository, with the variables it needs besides the runner's. */
 export interface Step {
   readonly name: string
   readonly cwd: string
   readonly command: readonly string[]
   readonly env?: Readonly<Record<string, string>>
-  /** Instead of a command: keep the files of the live version in the build about to replace it. */
   readonly keep?: Keep
 }
 
-/**
- * The hashed files of a site, which a page loaded before a deploy still asks for after it: the
- * directory of the build (`dir`, its `prefix` inside it, as the site serves it) and the site's URL.
- */
 export interface Keep {
   readonly dir: string
   readonly prefix: string
   readonly url: string
 }
 
-/** The list of a build's own hashed files, served next to them, which the next deploy reads. */
 export const FILES = '_files.json'
 
-/** A file name of a build: no directory, nothing a list could use to write elsewhere. */
 const FILE_NAME = /^[\w-][\w.-]*$/
 
-/**
- * Keeps the previous version of a site working while the next one goes live: a page loaded before
- * the deploy asks for its own hashed files (the admin's pages, a Nuxt site's chunks), which a
- * deploy of assets would remove. The files the live version lists that the new build lacks are
- * copied into the build, so they are deployed with it; the build then lists its own files only, so
- * a file is kept for one deploy and no longer. A site with no list yet (its first deploy with
- * this) keeps nothing.
- */
 export async function keepLive(
   root: string,
   keep: Keep,
@@ -76,7 +49,6 @@ export async function keepLive(
 
 export interface Plan {
   readonly steps: readonly Step[]
-  /** What must answer 200, again and again, once every step is done. */
   readonly probes: readonly string[]
 }
 
@@ -85,18 +57,15 @@ const WRANGLER = './node_modules/.bin/wrangler'
 const NUXT = './node_modules/.bin/nuxt'
 const CLI = ['node', '../../packages/cli/src/index.ts']
 
-/** The public URL of the CMS of each target. */
 const CMS_URL = {
   staging: 'https://hollware-staging.sergioazoc.workers.dev',
   demo: 'https://cms.demo.hollware.com',
 } as const
 
-/** The step that keeps the live files of a site in its new build (`keepLive`). */
 function keepStep(what: string, keep: Keep): Step {
   return { name: `keep the files of the live ${what}`, cwd: '.', command: [], keep }
 }
 
-/** The Hollware of a target: build it, keep the live admin's files, migrate, deploy it. */
 function cms(env: 'staging' | 'demo'): Step[] {
   const vars = { CLOUDFLARE_ENV: env }
   return [
@@ -120,7 +89,6 @@ function cms(env: 'staging' | 'demo'): Step[] {
   ]
 }
 
-/** The agents of a target, which the CMS wakes over its service binding. */
 function agents(env: 'staging' | 'demo'): Step[] {
   return [
     {
@@ -137,10 +105,6 @@ function agents(env: 'staging' | 'demo'): Step[] {
   ]
 }
 
-/**
- * The packages, built first: the CMS takes the admin from the build of @hollware/admin, which a
- * fresh checkout does not have. Without it the CMS deploys with no admin, and /admin/ is a 404.
- */
 const PACKAGES: Step = { name: 'build the packages', cwd: '.', command: [VP, 'run', '-r', 'build'] }
 
 export function planOf(target: Target): Plan {
@@ -199,10 +163,8 @@ export function planOf(target: Target): Plan {
   }
 }
 
-/** How a probe judges a deploy: this many answers of 200 in a row, one a second, within the budget. */
 export const PROBE = { inARow: 30, budgetSeconds: 180 } as const
 
-/** Whether a URL answered 200 `inARow` times in a row within the budget, as `fetch` sees it. */
 export async function probe(
   url: string,
   fetcher: (url: string) => Promise<number>,
@@ -252,7 +214,11 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     plan.probes.map(async (url) => [url, await probe(url, fetcher, wait)] as const),
   )
   for (const [url, ok] of results) console.log(`${ok ? '✔' : '✘'} ${url}`)
-  return results.every(([, ok]) => ok) ? 0 : 1
+  if (results.every(([, ok]) => ok)) return 0
+  console.error(
+    '✘ A probe failed. The previous versions stay available: roll back with `wrangler rollback`.',
+  )
+  return 1
 }
 
 const invoked = process.argv[1]
@@ -266,16 +232,10 @@ if (invoked !== undefined && pathToFileURL(resolve(invoked)).href === import.met
   )
 }
 
-/** The steps that act on the Cloudflare account: the migrations and the deploys. */
 export function needsAccount(step: Step): boolean {
   return /^(migrate|deploy) /.test(step.name)
 }
 
-/**
- * The environment of a step: the runner's, without the Cloudflare token unless the step acts on
- * the account. A build runs the code of every dependency it compiles, which never needs the
- * token, so none of it can read it (T-90 of docs/security/threat-model.md).
- */
 export function envOf(step: Step, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const base: NodeJS.ProcessEnv = { ...env, WRANGLER_SEND_METRICS: 'false', ...step.env }
   if (!needsAccount(step)) delete base['CLOUDFLARE_API_TOKEN']

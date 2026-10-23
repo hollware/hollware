@@ -8,11 +8,6 @@ import { isRecord, recordAt } from '../support/values.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 import { isAgentsFile } from '../support/repo.ts'
 
-// Fails when: an AGENTS.md cites in backticks `vp run <task>` for a task that neither the root
-// vite.config.ts nor any package defines, `pnpm --filter <pkg> run <script>` for a script the
-// package lacks, `pnpm run <script>` for a script the root lacks, or `node <file>` for a file
-// that does not exist.
-
 function rootTasks(): Set<string> {
   const config: unknown = rootConfig
   return new Set(Object.keys(recordAt(recordAt(config, 'run'), 'tasks') ?? {}))
@@ -52,7 +47,6 @@ const messages = (text: string) =>
 describe('commands in AGENTS.md', () => {
   it('every vp run task, pnpm script and node file they cite exists', () => {
     const docs = readRepoFiles(isAgentsFile)
-    // The orientation of tests/ cites commands too: it is judged like the root file.
     expect(docs.map((doc) => doc.path)).toEqual(
       expect.arrayContaining(['AGENTS.md', 'tests/AGENTS.md']),
     )

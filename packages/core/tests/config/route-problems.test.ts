@@ -3,15 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { ConfigProblem } from '../../src/config/config-error.ts'
 import { BLOG, blogConfig, collectionWith, configWith, problemsOf } from './support.ts'
 
-// Fails when: resolveConfig stops reporting, with its path, its message and its fix, that the
-// routes of a collection are missing or no object, miss a locale of the site, have one it does not
-// have, hold something that is no string, a route that does not start with "/" or does not have
-// :slug exactly once (`:slugs` is no :slug), or two routes of the site, in any collection and any
-// locale, that are the same pattern (a trailing slash does not tell them apart); when a route
-// that is already wrong, or for a locale the site does not have, is also taken for a duplicate;
-// when the routes are checked against locales that are not valid; or when the problems of the
-// routes of a site come out in another order than the order of the config.
-
 const ROUTES_FIX =
   'Add one route per locale, such as routes: { es: "/blog/:slug/", en: "/en/blog/:slug/" }.'
 const PATH_FIX = 'Write the path from the root of the site, such as "/blog/:slug/".'

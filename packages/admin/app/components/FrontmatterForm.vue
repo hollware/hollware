@@ -3,11 +3,6 @@ import { computed } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { fieldsOf, readFrontmatter, writeFrontmatter, type Field } from '../lib/frontmatter.ts'
 
-/**
- * The frontmatter of the Markdown as a form, from the JSON Schema of its collection. The Markdown
- * stays the one source: a field reads its value from it, and a change writes the frontmatter back
- * into it, keeping the body and every key the form does not show.
- */
 const props = defineProps<{ modelValue: string; schema: Readonly<Record<string, unknown>> }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 

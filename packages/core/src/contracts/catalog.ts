@@ -3,13 +3,6 @@ import { contracts } from './opt-in.ts'
 import { bannedWords, fieldLength, fieldPattern, reference, requiredToPublish } from './rules.ts'
 import type { Contract, Severity } from './types.ts'
 
-/**
- * The catalog of rules (ADR-033): every rule a collection may list in its definition, by name,
- * with the JSON Schema of its parameters. A site's definition stores `{ rule, severity, params }`
- * and the Worker makes the contract from it here; `describe_site` shows the catalog, so an agent
- * or the admin knows what each rule takes.
- */
-
 const fieldName = z.string().min(1).describe('A field of the frontmatter, by its name.')
 
 const NO_PARAMS = z.strictObject({})

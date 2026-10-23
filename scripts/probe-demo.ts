@@ -1,14 +1,3 @@
-/**
- * The exit criterion of v0.2 (AC-0.2-7): a post published over MCP is live on the site in under
- * 60 seconds, with no CI.
- *
- *   node scripts/probe-demo.ts --hollware https://cms.demo.hollware.com \
- *     --site https://demo.hollware.com --token-file <file> [--runs 5]
- *
- * Each run creates a draft with a slug of its own, publishes it, and asks the site for its page
- * until it answers 200, then unpublishes it. It prints the time of each run, from the answer of
- * publish to the first 200, and exits 1 when one takes 60 seconds or more, or never comes.
- */
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -16,7 +5,6 @@ import { parseArgs } from 'node:util'
 const LIMIT_MS = 60_000
 const POLL_MS = 500
 
-/** The verdict of a series of runs: each time in milliseconds, or `null` for one never live. */
 export function verdict(times: readonly (number | null)[]): { ok: boolean; lines: string[] } {
   const lines = times.map((time, index) =>
     time === null

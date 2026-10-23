@@ -1,22 +1,11 @@
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `admin-parity`: what an agent does over MCP, a person does in the admin. Every operation
- * is called by name somewhere in the admin (`api.call('<name>', …)`), unless
- * `OPERATIONS_WITHOUT_ADMIN` says how a person does it there instead; an exception the admin
- * calls after all, or that names no operation, is reported too.
- */
-
 export interface AdminParityInput {
-  /** The names of the operations, as `OPERATIONS` of `@hollware/core` lists them. */
   operations: readonly string[]
-  /** The source files of the admin. */
   admin: readonly TextFile[]
-  /** The values of `OPERATIONS_WITHOUT_ADMIN`. */
   exceptions: readonly string[]
 }
 
-/** The operations a file calls by name through the client of the admin. */
 function calledIn(text: string): string[] {
   return [...text.matchAll(/\bcall\(\s*'([a-z_]+)'/g)].flatMap((match) =>
     match[1] === undefined ? [] : [match[1]],

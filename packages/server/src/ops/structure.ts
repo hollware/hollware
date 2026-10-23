@@ -12,17 +12,8 @@ import { internalError } from './errors.ts'
 import { siteEventFor } from './event.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
-/**
- * The operations that change the structure of the sites (ADR-033): read it, replace the
- * definition of the site of the call or one of its collections, and make, trash and restore
- * sites. A change is checked whole before anything is written, and one that would leave entries
- * out of reach, or that its schema refuses, asks to be confirmed first. Entries are never deleted.
- */
-
-/** How many entries of a collection a new schema is tried on, to tell what it refuses. */
 export const IMPACT_SAMPLE = 500
 
-/** How many slugs of refused entries an answer names. */
 const EXAMPLES = 3
 
 function structureOf(context: OperationContext): Structure {
@@ -42,7 +33,6 @@ function actor(context: OperationContext): StructureActor {
 
 type Problems = { path: string; message: string; fix: string }[]
 
-/** The problems of a definition for `key`, or none: it compiles as the registry will compile it. */
 function problemsOf(key: string, definition: SiteDefinitionData): Problems {
   try {
     compileSites({ [key]: definition })
@@ -88,7 +78,6 @@ async function impactOf(
   return { removedCollections, removedLocales, refused }
 }
 
-/** The definition of the site of the call, as stored, with its version. */
 async function currentOf(context: OperationContext) {
   const stored = await structureOf(context).store.read(context.site.key)
   if (stored === null) {
@@ -100,11 +89,6 @@ async function currentOf(context: OperationContext) {
   return { version: stored.version, definition: siteDefinitionData.parse(stored.definition) }
 }
 
-/**
- * A change sent at a version that is not the current one. It says which version is, and that the
- * change was not applied: whoever changed the structure since (often the caller's own earlier
- * update_site) made the definition that was read stale.
- */
 function conflict(sent: number, current: number) {
   return {
     outcome: 'conflict' as const,
@@ -114,7 +98,6 @@ function conflict(sent: number, current: number) {
   }
 }
 
-/** Replaces the definition of the site of the call with `next`, as update_site answers. */
 async function change(
   context: OperationContext,
   version: number,
@@ -133,8 +116,6 @@ async function change(
   const touches =
     impact.removedCollections.length + impact.removedLocales.length + impact.refused.length
   if (touches > 0 && !confirm) return { outcome: 'needs_confirmation' as const, impact }
-  // The sites that cache pages purge what the structure shows (ADR-033): the site, and the lists of
-  // every collection and locale it had or has.
   const event = siteEventFor({
     site: context.site.key,
     at: context.clock.now().toISOString(),
@@ -161,11 +142,6 @@ async function change(
   return { outcome: 'updated' as const, version: version + 1 }
 }
 
-/**
- * The URL of a webhook as a person who cannot change the structure sees it: its origin only. A
- * webhook's path and query often are its secret (a deploy hook), and `get_structure` asks only
- * for content:read, which authors have (T-70 of docs/security/threat-model.md).
- */
 function originOnly(url: string): string {
   try {
     return new URL(url).origin
@@ -224,7 +200,6 @@ export const createSite: OperationHandler<'create_site'> = async (input, context
   return { outcome: 'created', version: 1 }
 }
 
-/** Whether the person of the call owns `site`; a site they do not own is one they cannot see. */
 async function owns(context: OperationContext, site: string): Promise<boolean> {
   return (await structureOf(context).store.roleOf(site, actor(context).userId)) === 'owner'
 }
@@ -263,7 +238,6 @@ export const makeWebhookSecret: OperationHandler<'make_webhook_secret'> = async 
   const structure = structureOf(context)
   const { definition } = await currentOf(context)
   const webhook = definition.events.webhooks.find((candidate) => candidate.name === input.webhook)
-  // A webhook signed by a Worker secret of its own has nothing for Hollware to make.
   if (webhook === undefined || webhook.secret !== undefined) return { outcome: 'not_found' }
   const secret =
     (await structure.secrets?.make(context.site.key, `webhook:${webhook.name}`)) ?? null

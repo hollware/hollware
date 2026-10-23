@@ -2,11 +2,6 @@
 import { OPERATIONS } from '@hollware/core'
 import * as z from 'zod'
 
-/**
- * The MCP tools, generated from the operation specs of @hollware/core at build time: the same
- * names, descriptions, scopes and input schemas that tools/list answers, so this page never drifts
- * from the server.
- */
 const tools = OPERATIONS.map((operation) => ({
   name: operation.name,
   title: operation.title,

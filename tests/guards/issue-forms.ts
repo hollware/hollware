@@ -2,19 +2,7 @@ import { plain, readYaml } from '../support/yaml.ts'
 import { arrayAt, isRecord, recordAt } from '../support/values.ts'
 import type { TextFile, Violation } from './types.ts'
 
-/**
- * Guard `issue-forms`: the files of `.github/ISSUE_TEMPLATE/` are valid for GitHub, so a form
- * that does not load does not silently fall back to a blank issue.
- *
- * Each form is valid YAML with `name`, `description` and a `body` array; every element has a
- * known `type` and its `attributes`; ids are unique and use `[A-Za-z0-9_-]`; markdown
- * elements have no id and no validations; every other element has a unique label and at least
- * one of them exists. `config.yml` turns blank issues off and lists contact links with a
- * name, a url and an about. The two forms ask for what `CONTRIBUTING.md` says they ask for.
- */
-
 export interface IssueFormsInput {
-  /** The files of `.github/ISSUE_TEMPLATE/`. */
   templates: readonly TextFile[]
 }
 
@@ -48,7 +36,6 @@ const TOP_LEVEL = [
   'projects',
 ]
 
-/** What `CONTRIBUTING.md` says each form asks for. */
 export const REQUIRED_IDS: Readonly<Record<string, readonly string[]>> = {
   'bug_report.yml': ['version', 'runtime', 'reproduce', 'expected', 'actual', 'logs'],
   'feature_request.yml': ['problem', 'proposal', 'alternatives', 'principle'],

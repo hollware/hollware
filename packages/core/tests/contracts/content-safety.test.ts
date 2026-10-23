@@ -7,12 +7,6 @@ import { collectionOf, markdownOf, run } from './support.ts'
 
 const PHASES: Phase[] = ['write', 'publish']
 
-// Fails when: a content-safety contract (ADR-020) stops reporting one error for each marker of its
-// own kind, or starts reporting the markers of another kind (`markerContract` in safety.ts); a
-// violation stops pointing at /body with the line of the marker; a fix stops naming the allowed
-// components, sorted, or stops saying what to do when there are none; or what a message repeats from
-// the entry stops being clipped to 80 characters.
-
 const withComponents = collectionOf({
   components: {
     youtube: { props: z.strictObject({ id: z.string() }) },
@@ -148,7 +142,6 @@ describe('the content-safety contracts', () => {
       { kind: 'unknown-component', name: 'youtub', line: 4 },
       { kind: 'raw-html', name: 'iframe', line: 12 },
     ])
-    // The contracts run in a fixed order: raw-html, unknown-component, disallowed-attribute, unsafe-url.
     expect(verdict.errors.map((violation) => [violation.contract, violation.line])).toStrictEqual([
       ['raw-html', 2],
       ['raw-html', 12],

@@ -6,17 +6,9 @@ import { file, json } from '../support/fixtures.ts'
 import { readRepoFiles } from '../support/repo.ts'
 import { workspaceManifests } from '../support/workspace.ts'
 
-// Fails when: a .ts or .js file anywhere in the repository imports a package that the
-// package.json of its own package (the root one for scripts/, tests/ and vite.config.ts)
-// does not list in dependencies, devDependencies or peerDependencies, or imports a module no
-// package has (`virtual:x`) that VIRTUAL_IMPORTS does not allow for that file; or an entry of
-// VIRTUAL_IMPORTS is imported by no file.
-
 describe('declared imports', () => {
   it('every bare import of the repository is declared by the package that makes it', () => {
     const sources = readRepoFiles(isScannedSource)
-    // The scan must really see the code: these files cover a package, a root script, a root
-    // config and a Worker app.
     expect(sources.map((source) => source.path)).toEqual(
       expect.arrayContaining([
         'packages/core/src/index.ts',
@@ -113,7 +105,6 @@ describe('declared imports', () => {
     })
 
     it('judges a file by the closest package, and root files by the root manifest', () => {
-      // hono is declared by apps/playground, not by the root or by core.
       expect(check('apps/playground/site/src/index.ts', "import { Hono } from 'hono'\n")).toEqual(
         [],
       )

@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { insufficientScope, unauthorized } from '../../src/auth/responses.ts'
 import type { TokenRejection } from '../../src/auth/token.ts'
 
-// Fails when: unauthorized (src/auth/responses.ts) stops answering 401 with the realm challenge,
-// adds `invalid_token` when no token was presented or leaves it out when one was refused, or lets
-// the body say which of unknown, expired and revoked it was; insufficientScope stops answering
-// 403, names fewer scopes than are missing in the challenge or in the body, or changes their
-// order, or leaves out the protected resource metadata it was given; authErrorResponse stops sending JSON with `Cache-Control: no-store`.
-
 async function wire(response: Response) {
   return {
     status: response.status,

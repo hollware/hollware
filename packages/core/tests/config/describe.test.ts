@@ -15,19 +15,6 @@ import {
   thrownBy,
 } from './support.ts'
 
-// Fails when: describeResolvedSite stops describing a site as the `site` of describe_site is shaped
-// (key, locales, default locale, style guides, and for each collection the JSON Schema of the
-// frontmatter and of the props of each component as draft 2020-12 input, the routes in the order
-// of the locales, the group, tags and sorting fields, the contracts with the built-in ones first,
-// each described by `describeContract` of the contracts module: the phases of a contract that
-// names none are both, and any order of them reads as write, publish; the size limit), puts any
-// other key into a collection, writes undefined where it should write null, or lists collections,
-// components or contracts out of the order of the config; when it converts the schemas again
-// instead of handing back the one object it made for a site and a list of built-in contracts, or
-// hands one back for another site or another list; when the description can be changed by a caller
-// or freezes an object it was given (the config's arrays, the built-in contracts, the library's own
-// JSON Schema); or when two resolutions of the same config describe differently.
-
 const check = () => []
 const DRAFT = 'https://json-schema.org/draft/2020-12/schema'
 

@@ -28,7 +28,7 @@ export interface HollwarePreviewLocals {
 }
 
 /**
- * The middleware of previews (T-103), for `src/middleware.ts`: `export const onRequest =
+ * The middleware of previews, for `src/middleware.ts`: `export const onRequest =
  * hollwarePreview()`, or `sequence(hollwarePreview(), ...)`.
  *
  * - A GET with `?hollware-preview=<token>` (the link of the admin's "Preview on the site") is
@@ -58,14 +58,17 @@ export function hollwarePreview(): MiddlewareHandler {
     })
     const response = await next()
     if (token === undefined) return response
-    // The headers of a response a page got from somewhere else may be immutable: copy them.
-    const answer = new Response(response.body, response)
-    answer.headers.set('cache-control', 'no-store')
-    if (slot.hollwarePreviewRefused) {
-      answer.headers.append('set-cookie', clearedPreviewCookie({ secure: isSecureRequest(url) }))
-    }
-    return answer
+    return previewResponse(response, slot.hollwarePreviewRefused, url)
   }
+}
+
+export function previewResponse(page: Response, refused: boolean, url: URL): Response {
+  const answer = new Response(page.body, page)
+  answer.headers.set('cache-control', 'no-store')
+  if (refused) {
+    answer.headers.append('set-cookie', clearedPreviewCookie({ secure: isSecureRequest(url) }))
+  }
+  return answer
 }
 
 /**

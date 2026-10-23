@@ -5,17 +5,8 @@ import { renderHtml } from '../../src/markdown/render.ts'
 import type { EntryDocument } from '../../src/markdown/types.ts'
 import { accepted, file, unsafeThingsIn, warmUpComark } from './support.ts'
 
-// Fails when: `renderHtml` (src/markdown/render.ts) stops copying the document through its own
-// rules before `@comark/html` prints it, so that a stored document that no Markdown wrote prints a
-// dangerous tag (`script`, `iframe`, `svg`, `style`, a tag that is not a name), an event handler
-// under any of the names Comark and Vue give one, an unsafe URL or one that a character reference
-// hides, an element that `@comark/html` prints as raw text (the `$` of raw HTML), or a comment
-// that closes itself; or it changes what a document the pipeline wrote prints: the tags, the
-// props of a component, the ids of the headings, a `&` in an attribute.
-
 warmUpComark()
 
-/** A stored document with these nodes: the renderer has to be safe for it whoever wrote it. */
 function documentOf(nodes: unknown[], frontmatter: Record<string, unknown> = {}): EntryDocument {
   return JSON.parse(JSON.stringify({ frontmatter, meta: {}, nodes }))
 }
@@ -68,7 +59,6 @@ describe('the HTML of a document the pipeline wrote', () => {
   })
 
   it('says `&` once in an attribute, as `&amp;`, so that a browser reads the text that was written', async () => {
-    // The title is `Q&A and &#106; and &amp;` once Markdown has read its character references.
     const { document } = await accepted('[a](/search?q=1&p=2 "Q&A and &amp;#106; and &amp;amp;")')
     expect(await renderHtml(document)).toBe(
       '<p><a href="/search?q=1&amp;p=2" title="Q&amp;A and &amp;#106; and &amp;amp;">a</a></p>',
@@ -202,7 +192,6 @@ describe('the HTML of a document that no Markdown wrote', () => {
 
   it.each([
     ['a URL that runs code', 'javascript:alert(1)', '<a>x</a>'],
-    // Comark itself prints this one (T-59): the renderer reads the binding under its own rules.
     [
       'an SVG as a data URL, which Comark lets through',
       'data:image/svg+xml,<svg onload=x>',
@@ -210,6 +199,11 @@ describe('the HTML of a document that no Markdown wrote', () => {
     ],
     ['a value that is no text', { a: 1 }, '<a>x</a>'],
     ['a page of the site, with its query', '/ok/?a=1&b=2', '<a href="/ok/?a=1&amp;b=2">x</a>'],
+    [
+      'a page whose query holds a character reference, as written',
+      '/ok/?q=&#106;',
+      '<a href="/ok/?q=&amp;#106;">x</a>',
+    ],
   ])(
     'reads a link bound to the frontmatter under the rules of a link: %s',
     async (_name, url, html) => {

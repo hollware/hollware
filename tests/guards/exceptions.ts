@@ -1,45 +1,16 @@
-/**
- * Every exception a guard allows, in one place.
- *
- * An exception list may only shrink. Each list records its size in `max`, and the
- * `exceptions` meta-test fails when the list is longer than `max` (an exception was added
- * without anyone raising the number on purpose) and also when it is shorter (an exception
- * was removed and the number is stale, which would leave room for a silent addition later).
- * The guards that consume a list (`agents-paths`, `workflow-forbidden`) also fail on an
- * entry that no longer applies, so a fixed problem cannot leave its exception behind. The
- * directories of `OTHER_TEST_RUNNERS` are bound to the `exclude` of the `repo` project in
- * `vite.config.ts` instead, and each one names the task that runs its tests: `test-projects`
- * fails once a test file exists there and that task is not a task of the root `vite.config.ts`
- * that CI runs.
- *
- * Guards never hold exceptions of their own: they receive them as arguments, and the
- * `exceptions` meta-test reports a list declared anywhere else.
- */
-
 export interface Exception {
-  /** What is allowed, in the format the guard documents. */
   value: string
-  /** Why it is allowed. An exception without a reason is not accepted. */
   reason: string
 }
 
 export interface ExceptionList {
-  /** The recorded size of the list. Lower it when an exception goes away; never raise it. */
   max: number
   entries: readonly Exception[]
 }
 
-/**
- * Backticked paths in `AGENTS.md` and `README.md` files that do not exist in the repository
- * (guard `agents-paths`). The value is the text between the backticks.
- */
 export const MISSING_DOC_PATHS: ExceptionList = {
-  max: 5,
+  max: 4,
   entries: [
-    {
-      value: 'NNNN-kebab-case-title.md',
-      reason: 'The ADR file-name template in docs/adr/README.md.',
-    },
     {
       value: 'CLAUDE.md',
       reason: 'Named only to say that it must never exist (guard `no-claude-md`).',
@@ -59,10 +30,6 @@ export const MISSING_DOC_PATHS: ExceptionList = {
   ],
 }
 
-/**
- * Inline `zizmor: ignore[...]` directives allowed in workflows and scripts (guard
- * `workflow-forbidden`). The value is `<file>#<directive>`.
- */
 export const ZIZMOR_IGNORES: ExceptionList = {
   max: 1,
   entries: [
@@ -74,10 +41,6 @@ export const ZIZMOR_IGNORES: ExceptionList = {
   ],
 }
 
-/**
- * Imports of a module that a framework's Vite plugin makes at build time, so no package has it
- * (guard `declared-imports`). The value is `<file>#<specifier>`.
- */
 export const VIRTUAL_IMPORTS: ExceptionList = {
   max: 1,
   entries: [
@@ -89,29 +52,17 @@ export const VIRTUAL_IMPORTS: ExceptionList = {
   ],
 }
 
-/** A directory of tests that run through a task of their own, and not through `vp test`. */
 export interface TestRunner {
-  /** The directory, with a trailing `/`. The root `vite.config.ts` excludes it from `repo`. */
   dir: string
-  /** The task of the root `vite.config.ts` that runs it: `vp run <task>`. */
   task: string
-  /** Why it has a runner of its own. An exception without a reason is not accepted. */
   reason: string
 }
 
 export interface TestRunnerList {
-  /** The recorded size of the list. Lower it when a directory goes away; never raise it. */
   max: number
   entries: readonly TestRunner[]
 }
 
-/**
- * Directories whose `*.test.ts` files run through a task of their own and not through a project
- * of `vp test` (guard `test-projects`). The root `vite.config.ts` excludes the same directories
- * from the `repo` project. While a directory holds no test file, its task need not exist; once
- * it does, the task must be defined in the root `vite.config.ts` and run by CI, or the guard
- * fails: an exemption must not hide tests that nothing runs.
- */
 export const OTHER_TEST_RUNNERS: TestRunnerList = {
   max: 3,
   entries: [
@@ -134,10 +85,6 @@ export const OTHER_TEST_RUNNERS: TestRunnerList = {
   ],
 }
 
-/**
- * Tables of the D1 schema without `site_id` (guard `schema`). Every other table belongs to a
- * site, with `UNIQUE(id, site_id)` and composite foreign keys.
- */
 export const TABLES_WITHOUT_SITE: ExceptionList = {
   max: 6,
   entries: [
@@ -150,7 +97,7 @@ export const TABLES_WITHOUT_SITE: ExceptionList = {
     {
       value: 'users',
       reason:
-        'A user belongs to the deployment and may work on several sites; the tokens carry the site (ADR-019).',
+        'A user belongs to the deployment and may work on several sites; the tokens carry the site.',
     },
     {
       value: 'passkeys',
@@ -169,7 +116,6 @@ export const TABLES_WITHOUT_SITE: ExceptionList = {
   ],
 }
 
-/** Tables without the shared `id`, `created_at` and `updated_at` columns (guard `schema`). */
 export const TABLES_WITHOUT_SHARED_COLUMNS: ExceptionList = {
   max: 1,
   entries: [
@@ -181,7 +127,6 @@ export const TABLES_WITHOUT_SHARED_COLUMNS: ExceptionList = {
   ],
 }
 
-/** Files that hold an invisible character on purpose (guard `invisible-characters`). */
 export const INVISIBLE_CHARACTER_FILES: ExceptionList = {
   max: 1,
   entries: [
@@ -193,20 +138,11 @@ export const INVISIBLE_CHARACTER_FILES: ExceptionList = {
   ],
 }
 
-/**
- * Texts that a template of the admin may show as they are, outside its messages (guard
- * `admin-messages`). The value is the text, trimmed, as the template holds it. None is needed
- * today: a brand or a code identifier goes through the messages too.
- */
 export const ADMIN_TEXT_LITERALS: ExceptionList = {
   max: 0,
   entries: [],
 }
 
-/**
- * Texts that a template of hollware.com (`apps/web`) may show as they are, outside its messages
- * (guard `admin-messages`, run on the site too). The value is the text, trimmed, as it stands.
- */
 export const WEB_TEXT_LITERALS: ExceptionList = {
   max: 4,
   entries: [
@@ -229,10 +165,6 @@ export const WEB_TEXT_LITERALS: ExceptionList = {
   ],
 }
 
-/**
- * Operations of MCP that the admin does not call by name, because a person does the same thing
- * there another way (guard `admin-parity`). The value is the name of the operation.
- */
 export const OPERATIONS_WITHOUT_ADMIN: ExceptionList = {
   max: 2,
   entries: [
@@ -249,7 +181,36 @@ export const OPERATIONS_WITHOUT_ADMIN: ExceptionList = {
   ],
 }
 
-/** The list as `value` and `reason`, which is what the `exceptions` meta-test reads. */
+export const WORKERS_WITHOUT_EVENTS: ExceptionList = {
+  max: 2,
+  entries: [
+    {
+      value: 'packages/server/wrangler.jsonc',
+      reason:
+        'Never deployed: the tests of the server run under it and call its scheduled and queue handlers themselves.',
+    },
+    {
+      value: 'tests/conformance/worker/wrangler.jsonc',
+      reason:
+        'Never deployed: the MCP conformance suite runs against it under wrangler dev and calls no scheduled or queued work.',
+    },
+  ],
+}
+
+export const DOC_REF_FILES: ExceptionList = {
+  max: 2,
+  entries: [
+    {
+      value: '**/CHANGELOG.md',
+      reason: 'Generated release history: it keeps what each release said when it shipped.',
+    },
+    {
+      value: 'PLAN.md',
+      reason: 'The roadmap while 1.0 is built; it is deleted when 1.0 ships.',
+    },
+  ],
+}
+
 function byValue(list: TestRunnerList): ExceptionList {
   return {
     max: list.max,
@@ -257,7 +218,6 @@ function byValue(list: TestRunnerList): ExceptionList {
   }
 }
 
-/** Every list, by name, for the meta-test that keeps them honest. */
 export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   MISSING_DOC_PATHS,
   ZIZMOR_IGNORES,
@@ -269,6 +229,8 @@ export const EXCEPTION_LISTS: Readonly<Record<string, ExceptionList>> = {
   ADMIN_TEXT_LITERALS,
   WEB_TEXT_LITERALS,
   OPERATIONS_WITHOUT_ADMIN,
+  WORKERS_WITHOUT_EVENTS,
+  DOC_REF_FILES,
 }
 
 export function exceptionValues(list: ExceptionList): string[] {

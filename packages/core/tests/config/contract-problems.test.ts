@@ -15,21 +15,6 @@ import {
   thrownBy,
 } from './support.ts'
 
-// Fails when: resolveConfig stops reporting, with its path, its message and its fix, that the
-// contracts of a collection are no array, that a contract is no object, that its id is not
-// lowercase words joined by single hyphens, is the id of a built-in contract (each of the
-// fourteen of BUILT_IN_CONTRACT_IDS) without being one that Hollware made, such as a plain object
-// or a copy of `contracts.translationPair()`, or repeats the id of another contract of the
-// collection (a reserved or invalid id is reported for what it is, not also as a repeat), that
-// its severity is not error or warning, that its phases are no array, empty, hold something that
-// is neither write nor publish or repeat one, that its description is empty or blank, or that it
-// has no check function; that maxMarkdownBytes is not an integer from 1 to 786,432 (768 KiB); or
-// that a style guide is no string; when the contracts that Hollware made (`contracts.*`) stop
-// being let through, or let through twice; when a valid contract is not kept exactly as given;
-// when a config of the wrong types makes resolveConfig throw anything
-// but a ConfigError; or when the ConfigError stops carrying every problem as data and as one line
-// of its message, `<path>: <message>. <fix>`, in the order they were found.
-
 const CONTRACTS_FIX = 'Write it as [{ id, severity, description, check }, …].'
 const CONTRACT_FIX = 'Write it as { id, severity, description, check }.'
 const ID_FIX = 'Name the rule with lowercase words joined by hyphens.'
@@ -69,7 +54,6 @@ const contract = (overrides: Record<string, unknown> = {}) => ({
 const withContracts = (...contracts: unknown[]) => blogConfig({ contracts })
 const at = (index: number, field = '') => `${BLOG}.contracts[${index}]${field}`
 
-/** The problems of a contract that is only `{ id }`: no severity, no description, no check. */
 const bareProblems = (index: number): ConfigProblem[] => [
   {
     path: at(index, '.severity'),
@@ -452,7 +436,6 @@ const contractCases: readonly Case[] = [
   },
 ]
 
-/** A size that is wrong and how a message shows it. */
 const wrongSizes: readonly (readonly [unknown, string])[] = [
   [0, '0'],
   [-5, '-5'],

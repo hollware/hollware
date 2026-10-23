@@ -1,6 +1,6 @@
 import { defineConfig } from '@hollware/core'
 import { env } from 'cloudflare:workers'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import { createSession } from '../../src/identity/store.ts'
@@ -19,32 +19,17 @@ import {
   type Booted,
 } from '../http/support.ts'
 
-// Fails when: the OAuth server of ADR-026 stops letting an agent in the way it says. Its metadata
-// names the endpoints, takes Client ID Metadata Documents, and has no registration endpoint unless
-// the config turns it on; `/authorize` sends a person without a session to sign in and back, lets
-// the admin in with no consent page,
-// offers only the scopes the person's role allows of those asked, and redirects with a code, or
-// with `access_denied` when the person declines; the token endpoint trades the code, with PKCE,
-// for an access token that `/mcp` accepts as the person, through the client, with the scopes the
-// person allowed intersected with their role as it is at each request; and a token for `/mcp` is
-// refused at `/v1`, as a token of another site's deployment is refused everywhere; and a token of
-// another client, even for `/v1` with schema:admin, never reaches the admin's own routes (T-24); or a
-// person removed from the site keeps a token that works (T-20); or a spent refresh token works,
-// in whatever case its request names the media type,
-// again after a minute instead of revoking its grant (T-34); or a consent stops being a line of the activity log as the person (ADR-037). src/oauth/server.ts and src/oauth/authorize.ts; KV and D1 are the real ones.
-
 afterEach(() => {
   restoreLogs()
+  vi.useRealTimers()
 })
 
 const MCP = `${PUBLIC_URL}/mcp`
 const REDIRECT = 'https://agent.example.com/callback'
 const ALL = 'content:read content:write content:publish'
 
-/** The test config, with dynamic client registration on, so that a test can make a client. */
 const WITH_REGISTRATION = defineConfig({ ...CONFIG, auth: { dynamicClientRegistration: true } })
 
-/** Two sites, the second with the same collection, and registration on. */
 const TWO_SITES = defineConfig({
   ...WITH_REGISTRATION,
   sites: Object.fromEntries(
@@ -55,7 +40,6 @@ const TWO_SITES = defineConfig({
   ),
 })
 
-/** Makes the person a member of another site too, with this role. */
 async function memberOf(userId: string, site: string, role: 'owner' | 'editor' | 'author') {
   await env.DB.prepare(
     'INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)',
@@ -76,19 +60,16 @@ function base64url(bytes: Uint8Array): string {
     .replace(/=+$/, '')
 }
 
-/** A PKCE pair (RFC 7636, S256). */
 async function pkce() {
   const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)))
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
   return { verifier, challenge: base64url(new Uint8Array(digest)) }
 }
 
-/** The cookies a response sets, as a `Cookie` header sends them back. */
 function cookiesOf(response: Response): string[] {
   return response.headers.getSetCookie().map((cookie) => cookie.split(';')[0] ?? '')
 }
 
-/** A client that registered itself, as an MCP client without a metadata document does. */
 async function register(worker: Booted): Promise<string> {
   const response = await worker.send('/oauth/register', {
     method: 'POST',
@@ -104,7 +85,6 @@ async function register(worker: Booted): Promise<string> {
   return client_id
 }
 
-/** A person of the site with this role, signed in: the cookie of their session. */
 async function signedIn(role: 'owner' | 'editor' | 'author', site = SITE_KEY) {
   const { userId } = await seedToken(env.DB, site, { role })
   const session = await createSession(connect(env.DB), {
@@ -129,7 +109,6 @@ function authorizeUrl(clientId: string, challenge: string, scope = ALL, resource
   return `/authorize?${query.toString()}`
 }
 
-/** The consent page: the handle its form posts, the scopes it offers, and its binding cookies. */
 async function consent(
   worker: Booted,
   clientId: string,
@@ -148,7 +127,6 @@ async function consent(
   return { page, html, handle, offered, cookies: [cookie, ...cookiesOf(page)].join('; ') }
 }
 
-/** Allows the scopes given, and follows the redirect to the code. */
 async function allow(
   worker: Booted,
   handle: string,
@@ -189,10 +167,14 @@ async function exchange(
     }).toString(),
   })
   expect(response.status).toBe(200)
-  return await response.json<{ access_token: string; refresh_token: string; scope: string }>()
+  return await response.json<{
+    access_token: string
+    refresh_token: string
+    scope: string
+    expires_in: number
+  }>()
 }
 
-/** The whole flow, for a person of this role who allows what the page offers. */
 async function tokenFor(worker: Booted, role: 'owner' | 'editor' | 'author', site = SITE_KEY) {
   const person = await signedIn(role, site)
   const clientId = await register(worker)
@@ -295,7 +277,6 @@ describe('the authorization endpoint', () => {
       worker,
       again.handle,
       again.cookies,
-      // A forged form that asks for more than an editor may have.
       ['content:read', 'content:publish', 'schema:admin'],
       OTHER_SITE_KEY,
     )
@@ -305,7 +286,6 @@ describe('the authorization endpoint', () => {
 
     expect(html).toContain(`<input type="radio" name="site" value="${SITE_KEY}" checked>`)
     expect(html).toContain(`<input type="radio" name="site" value="${OTHER_SITE_KEY}">`)
-    // The union of what the roles allow: the editor of the other site may publish.
     expect(offered).toEqual(['content:read', 'content:write', 'content:publish'])
     expect(stranger.status).toBe(403)
     expect(tokens.scope).toBe('content:read content:publish')
@@ -363,7 +343,6 @@ describe('the authorization endpoint', () => {
         'content-type': 'application/x-www-form-urlencoded',
         origin: PUBLIC_URL,
       },
-      // A browser sends the boxes that are checked with whichever button was pressed.
       body: new URLSearchParams([
         ['handle', handle],
         ['scope', 'content:read'],
@@ -393,7 +372,6 @@ describe('an access token', () => {
 
     expect(tokens.scope).toBe('content:read content:write')
     expect(answer.status).toBe(200)
-    // The consent is a line of the site's activity log, as the person (ADR-037).
     const { results } = await env.DB.prepare(
       "SELECT action, actor_kind, target_type, target_id, detail FROM audit_log WHERE actor_user_id = ?1 AND action = 'app.allow'",
     )
@@ -435,7 +413,6 @@ describe('an access token', () => {
     })
   })
 
-  /** A refresh of the tokens of a client, at the time of the worker's clock. */
   const refreshWith = (
     worker: Booted,
     clientId: string,
@@ -453,7 +430,37 @@ describe('an access token', () => {
       }).toString(),
     })
 
-  it('takes a spent refresh token again within a minute, for an answer that was lost (T-34)', async () => {
+  it('lives an hour', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+
+    const { tokens } = await tokenFor(worker, 'author')
+
+    expect(tokens.expires_in).toBe(3600)
+  })
+
+  it('comes with a refresh token that is refused thirty days after the code, refreshed or not', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.parse(NOW) })
+    const worker = boot({ config: WITH_REGISTRATION })
+    const { clientId, tokens } = await tokenFor(worker, 'editor')
+    const at = (iso: string) => {
+      vi.setSystemTime(Date.parse(iso))
+      worker.clock.set(iso)
+    }
+
+    at('2026-11-12T11:58:00.000Z')
+    const early = await refreshWith(worker, clientId, tokens.refresh_token)
+    const rotated = await early.clone().json<{ refresh_token: string }>()
+    at('2026-11-12T12:00:00.000Z')
+    const late = await refreshWith(worker, clientId, rotated.refresh_token)
+
+    expect([early.status, late.status, (await late.json<{ error: string }>()).error]).toEqual([
+      200,
+      400,
+      'invalid_grant',
+    ])
+  })
+
+  it('takes a spent refresh token again within a minute, for an answer that was lost', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { clientId, tokens } = await tokenFor(worker, 'editor')
     const first = await refreshWith(worker, clientId, tokens.refresh_token)
@@ -464,7 +471,7 @@ describe('an access token', () => {
     expect([first.status, retried.status]).toEqual([200, 200])
   })
 
-  it('revokes the grant when a spent refresh token comes back after the grace (T-34)', async () => {
+  it('revokes the grant when a spent refresh token comes back after the grace', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { userId, clientId, tokens } = await tokenFor(worker, 'editor')
     const rotated = await (
@@ -488,7 +495,6 @@ describe('an access token', () => {
       400,
       'invalid_grant',
     ])
-    // The whole grant is gone: the token that replaced it, and its access token.
     expect([own.status, access.status]).toEqual([400, 401])
     const { results } = await env.DB.prepare(
       "SELECT action, outcome, actor_kind, target_type FROM audit_log WHERE actor_user_id = ?1 AND action = 'app.refresh_reused'",
@@ -505,7 +511,7 @@ describe('an access token', () => {
     ])
   })
 
-  it('revokes it too when the spent token comes with the media type in capitals (T-34)', async () => {
+  it('revokes it too when the spent token comes with the media type in capitals', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { clientId, tokens } = await tokenFor(worker, 'editor')
     const rotated = await (
@@ -513,7 +519,6 @@ describe('an access token', () => {
     ).json<{ refresh_token: string }>()
     worker.clock.set(new Date(Date.parse(NOW) + 61_000).toISOString())
 
-    // The library takes this type as it takes the lowercase one, so the check must see it too.
     const stolen = await refreshWith(
       worker,
       clientId,
@@ -525,7 +530,7 @@ describe('an access token', () => {
     expect([stolen.status, own.status]).toEqual([400, 400])
   })
 
-  it('is refused at once when the person is no longer a member of the site (T-20)', async () => {
+  it('is refused at once when the person is no longer a member of the site', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const { userId, tokens } = await tokenFor(worker, 'editor')
     const before = await callRaw(
@@ -584,7 +589,7 @@ describe('an access token', () => {
   })
 })
 
-describe("the admin's own routes and the tokens of other clients (T-24)", () => {
+describe("the admin's own routes and the tokens of other clients", () => {
   it('refuse a token of another client, even for /v1 with schema:admin, the admin alone may use', async () => {
     const worker = boot({ config: WITH_REGISTRATION })
     const person = await signedIn('owner')
@@ -607,7 +612,6 @@ describe("the admin's own routes and the tokens of other clients (T-24)", () => 
     const read = await worker.send('/v1/site', { token: tokens.access_token })
     const admin = await worker.send('/v1/admin/tokens', { token: tokens.access_token })
 
-    // The token is good at /v1, so only the check of the client keeps it out of the admin's routes.
     expect(read.status).toBe(200)
     expect(admin.status).toBe(403)
     expect(await admin.json()).toMatchObject({ message: 'Only the admin may do this.' })

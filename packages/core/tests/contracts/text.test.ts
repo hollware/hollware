@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { clip, compareText, count, pointer, quote } from '../../src/contracts/text.ts'
 
-// Fails when: `clip` stops cutting at 80 characters, stops adding the ellipsis or cuts a surrogate
-// pair in two; `quote` stops escaping control characters or stops clipping; `pointer` stops
-// escaping `~` as `~0` and `/` as `~1` (in that order); `compareText` stops ordering by UTF-16
-// code units; or `count` gets the singular wrong.
-
 describe('clip', () => {
   it('leaves a text of at most 80 characters alone', () => {
     expect(clip('a'.repeat(80))).toBe('a'.repeat(80))
@@ -23,9 +18,7 @@ describe('clip', () => {
   })
 
   it('never cuts a surrogate pair in two', () => {
-    // 😀 is two UTF-16 units; the cut at 80 would fall between them.
     expect(clip(`${'a'.repeat(79)}😀tail`)).toBe(`${'a'.repeat(79)}…`)
-    // The same emoji just inside the limit stays whole.
     expect(clip(`${'a'.repeat(78)}😀tail`)).toBe(`${'a'.repeat(78)}😀…`)
   })
 })
@@ -51,7 +44,6 @@ describe('pointer', () => {
   it('escapes ~ as ~0 and / as ~1', () => {
     expect(pointer(['a/b'])).toBe('/a~1b')
     expect(pointer(['c~d'])).toBe('/c~0d')
-    // The order matters: replacing `/` first would turn a literal "/" into `~01`.
     expect(pointer(['/'])).toBe('/~1')
     expect(pointer(['/~'])).toBe('/~1~0')
     expect(pointer(['~1'])).toBe('/~01')

@@ -3,11 +3,6 @@ import type { JsonProblem } from './json.ts'
 import { MAX_DEPTH } from './policy.ts'
 import type { Problem } from './analyze.ts'
 
-/*
- * The three ways a file is refused (ADR-020): the pipeline cannot store it, so the write comes
- * back `refused`. Each one says what is wrong and what to change, for the agent that wrote it.
- */
-
 function refusal(
   contract: 'size-limit' | 'frontmatter-syntax' | 'comark-parse',
   path: '/frontmatter' | '/body',
@@ -31,7 +26,6 @@ export function sizeLimit(bytes: number, limit: number): Violation {
 const YAML_FIX =
   'Put a space after every colon, indent nested keys with spaces (never tabs), quote any value that contains a colon, a hash or a bracket, and give each key only once.'
 
-/** YAML that does not parse. `line` is the line of the file, when the parser says where. */
 export function yamlSyntax(
   reason: string,
   line: number | undefined,
@@ -48,7 +42,6 @@ export function yamlSyntax(
   )
 }
 
-/** Frontmatter that parses to something other than a mapping, such as a list or a sentence. */
 export function frontmatterNotMapping(found: string): Violation {
   return refusal(
     'frontmatter-syntax',
@@ -66,7 +59,6 @@ const JSON_PROBLEMS: Readonly<Record<JsonProblem, string>> = {
   type: 'a value that is not text, a number, a boolean, null, a list or a mapping',
 }
 
-/** Frontmatter that cannot be stored as JSON. */
 export function frontmatterNotJson(problem: JsonProblem): Violation {
   return refusal(
     'frontmatter-syntax',
@@ -82,7 +74,6 @@ export function frontmatterNotJson(problem: JsonProblem): Violation {
 const PARSE_FIX =
   'Simplify the Markdown: flatten deep nesting of emphasis, lists, quotes and components, and balance every bracket and brace. If it still fails, split the entry to find the part that breaks.'
 
-/** Anything the parser or the analysis could not get through. */
 export function parseFailure(error: unknown): Violation {
   const detail =
     error instanceof Error ? `${error.name}: ${error.message.split('\n')[0] ?? ''}` : String(error)
@@ -103,7 +94,6 @@ export function notAString(): Violation {
   )
 }
 
-/** A document the parser accepted but the pipeline cannot store. */
 export function unstorable(problem: Problem): Violation {
   return refusal(
     'comark-parse',

@@ -2,16 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { checkHostAndOrigin } from '../../src/auth/guard.ts'
 
-// Fails when: checkHostAndOrigin (src/auth/guard.ts) lets a request through whose Host is not the
-// host of the public URL (case aside), port included, or refuses that host with the default port
-// of its scheme written out; or lets a request through whose Origin is present and is not its
-// origin, scheme and port included, `null` and empty ones with it; stops reading `Host` and
-// `Origin` as whole values (a prefix, a suffix, credentials or a path would pass); returns
-// something other than `null` for a request that may go on; skips the check, or answers anything
-// but 500, when HOLLWARE_PUBLIC_URL is missing or is not an absolute http(s) URL; takes the host
-// from X-Forwarded-Host or Forwarded, which a page after DNS rebinding can set; or repeats a header
-// of the request in an answer.
-
 const PUBLIC_URL = 'https://cms.example.com'
 
 function requestWith(headers: Record<string, string>): Request {
@@ -77,7 +67,6 @@ describe('checkHostAndOrigin: the Host', () => {
         origin: 'HTTPS://CMS.EXAMPLE.COM',
       },
     ],
-    // Some clients write the default port of the scheme out; it names the same server.
     ['the host with the default port of its scheme written out', { host: 'cms.example.com:443' }],
   ])('lets a request through with %s', async (_label, headers) => {
     expect(await wire(checkHostAndOrigin(requestWith(headers), PUBLIC_URL))).toBeNull()
@@ -91,10 +80,7 @@ describe('checkHostAndOrigin: the Host', () => {
       'the right host on a port, which the MCP SDK helper lets through',
       { host: 'cms.example.com:8443' },
     ],
-    // An https URL's default port is 443; port 80 written out is another server.
     ['the right host with the default port of the other scheme', { host: 'cms.example.com:80' }],
-    // After DNS rebinding the page is same-origin and may set any header a browser lets it set.
-    // `Host` and `Origin` it cannot; `X-Forwarded-Host` and `Forwarded` it can, so they count for nothing.
     [
       'a foreign host that says the right one in X-Forwarded-Host',
       { host: 'evil.example.com', 'x-forwarded-host': 'cms.example.com' },
@@ -237,7 +223,6 @@ describe('checkHostAndOrigin: the public URL', () => {
     ['a script', 'javascript:alert(1)'],
     ['a number', 8787],
     ['an object', { url: PUBLIC_URL }],
-    // Both would read as the public URL if they were turned into text.
     ['an array with the URL in it', [PUBLIC_URL]],
     ['a URL object', new URL(PUBLIC_URL)],
   ])('answers 500 when it is %s, whatever the request says', async (_label, publicUrl) => {

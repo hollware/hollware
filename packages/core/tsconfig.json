@@ -1,7 +1,4 @@
 {
-  // The type environment of src is the web platform, nothing else (ADR-018): no Node types
-  // and no DOM, so a Node or browser global in core is a type error. The tests and the
-  // configs of this package type-check through tests/tsconfig.json, which has Node.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["es2024", "webworker"],

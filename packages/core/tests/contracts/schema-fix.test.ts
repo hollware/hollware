@@ -10,12 +10,6 @@ import {
 } from '../../src/contracts/schema-fix.ts'
 import type { JsonObject } from '../../src/contracts/text.ts'
 
-// Fails when: `expectation` puts a JSON Schema into other words than the ones below (a bound, a
-// format, an enum, a union, an array or an object); an enum lists more than 20 values; `fragmentAt`
-// stops following `properties` and `items`; `fixForIssue` stops telling which keys a closed object
-// does not accept, stops naming the field, or stops falling back to the library's message; or an
-// issue path stops reading as plain strings.
-
 describe('expectation: what a schema accepts, in words', () => {
   const cases: [string, JsonObject, string | undefined][] = [
     ['a plain string', { type: 'string' }, 'a string'],
@@ -287,7 +281,6 @@ describe('fixForIssue', () => {
   })
 
   it('falls back to the message of the library where the schema cannot say', () => {
-    // The path is not in the schema.
     expect(
       fixForIssue({
         subject: frontmatter,
@@ -299,7 +292,6 @@ describe('fixForIssue', () => {
     ).toBe(
       'Change the field "links.a/b" to a value that the schema of the frontmatter accepts: Invalid input: expected number, received string',
     )
-    // The schema does not convert.
     expect(
       fixForIssue({
         subject: props,
@@ -311,7 +303,6 @@ describe('fixForIssue', () => {
     ).toBe(
       'Change the component "callout" to a value that the schema of the component "callout" accepts: must be a kind',
     )
-    // The schema describes the field with something it cannot put into words.
     expect(
       fixForIssue({
         subject: frontmatter,

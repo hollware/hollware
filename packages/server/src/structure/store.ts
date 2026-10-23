@@ -2,17 +2,10 @@ import { newId } from '@hollware/core'
 import type { D1Like } from '../db/d1.ts'
 import type { StructureActor, StructureStore } from '../ports.ts'
 
-/**
- * The structure of the sites on D1 (ADR-033). Each change is one batch: the row of `sites`, moved
- * only if it is where the caller saw it, and its line of `site_changes`, written only if the row
- * moved, at the version it moved to.
- */
-
 function metaOf(actor: StructureActor): string | null {
   return actor.meta === null ? null : JSON.stringify(actor.meta)
 }
 
-/** The change a statement before it made, at the site's version now, if that version is new. */
 function appendChange(
   db: D1Like,
   site: string,
@@ -59,8 +52,6 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
           )
           .bind(JSON.stringify(definition), at, site, expected),
         appendChange(db, site, actor, at, before ?? null, 'definition', change),
-        // The event lands only with the change it is about: the line of site_changes this write
-        // made, which a writer that lost a race does not make (its version is taken).
         ...(event === undefined
           ? []
           : [
@@ -169,7 +160,6 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
   }
 }
 
-/** The sealed secrets of the structure of a site (ADR-033), by name. */
 export function createSecretStore(db: D1Like, now: () => Date) {
   return {
     async read(site: string, name: string): Promise<string | null> {

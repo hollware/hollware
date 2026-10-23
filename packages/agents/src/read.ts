@@ -1,5 +1,3 @@
-/** Small readers of the JSON that tools answer with: a role checks what it uses. */
-
 export type Json = Readonly<Record<string, unknown>>
 
 export function record(value: unknown): Json {

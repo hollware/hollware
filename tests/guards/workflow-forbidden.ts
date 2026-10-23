@@ -1,36 +1,12 @@
 import type { TextFile, Violation } from './types.ts'
 import { parseWorkflow } from './workflow-model.ts'
 
-/**
- * Guard `workflow-forbidden`: nothing in a workflow or a workflow script can publish with a
- * token, publish from the wrong place or run code nobody pinned.
- *
- * Forbidden in `.github/workflows/*.yml` and `.github/scripts/*`:
- *
- * - `NPM_TOKEN` and `NODE_AUTH_TOKEN` (publishing is OIDC trusted publishing),
- * - `pnpm publish`, `yarn publish`, `changeset publish` and `npm stage` (the only command that
- *   publishes is `npm publish`),
- * - `npm publish` anywhere but in the `publish` job of `.github/workflows/release.yml`, and
- *   there without `--provenance` on the same line (ADR-015),
- * - `git push` (nothing pushes with git credentials; the API does), `npx`, `pnpx`, `bunx` and
- *   `dlx` (a command fetched at run time is not the one in the lockfile).
- *
- * `zizmor: ignore[...]` comments switch off a finding of the workflow linter. Each one must be
- * in the allowlist, which may only shrink, and so must be no zizmor config file, which would
- * switch findings off out of sight. The scan reads raw text, comments included, and never
- * reads `.github/AGENTS.md`, which has to name these words to forbid them.
- */
-
 export interface WorkflowForbiddenInput {
-  /** `.github/workflows/*.yml` and `.github/scripts/*`. */
   files: readonly TextFile[]
-  /** Allowed ignores, as `<file>#<directive>`. */
   zizmorIgnores: readonly string[]
-  /** Tracked files that configure zizmor (`zizmor.yml`, `.github/zizmor.yml`, ...). */
   zizmorConfigs: readonly string[]
 }
 
-/** The only place `npm publish` may appear: this job of this workflow. */
 export const PUBLISH_FILE = '.github/workflows/release.yml'
 export const PUBLISH_JOB = 'publish'
 
@@ -66,7 +42,6 @@ const NPM_PUBLISH = /\bnpm\s+(?:-\S+\s+)*publish\b/
 const PROVENANCE = /(?:^|\s)--provenance(?=\s|$)/
 const ZIZMOR_IGNORE = /zizmor:\s*ignore(?:\[[^\]]*\])?/g
 
-/** The 1-based lines of the publish job in `.github/workflows/release.yml`, if it has one. */
 function publishJobLines(file: TextFile): { start: number; end: number } | undefined {
   if (file.path !== PUBLISH_FILE) return undefined
   const workflow = parseWorkflow(file)

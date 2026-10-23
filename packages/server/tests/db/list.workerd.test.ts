@@ -14,23 +14,10 @@ import {
   type EntrySpec,
 } from './support.ts'
 
-// Fails when: src/db/reads.ts listEntries stops ordering the head view by updated_at and then id
-// (newest first) or the published view by published_sort_key and then id, loses the keyset
-// predicate (the sort key, or the id that breaks a tie, or its direction: a page then repeats or
-// skips an entry that shares its sort key with the last one of the previous page), stops asking for
-// one more entry than the page to know whether there is a next page (a last page that is exactly
-// full then has a cursor, or a page that is not the last has none), stops listing only published
-// entries in the published view, filters by the tags of the wrong revision (the view's revision,
-// not the head one), drops the locale, status or collection filter, accepts a limit that is not a
-// whole number of at least 1, stops answering a summary of each revision (its id, frontmatter and
-// tags) or lets a listing statement read another column of `revisions`, such as the Markdown, the
-// document or the verdict, or src/db/cursor.ts stops refusing a cursor of another view.
-
 const T1 = '2026-10-12T08:00:00.000Z'
 const T2 = '2026-10-12T09:00:00.000Z'
 const T3 = '2026-10-12T10:00:00.000Z'
 
-/** The slugs of a page, in order. */
 async function slugsOf(
   store: ContentStore,
   site: string,
@@ -40,7 +27,6 @@ async function slugsOf(
   return { slugs: page.entries.map((view) => view.entry.slug), nextCursor: page.nextCursor }
 }
 
-/** Every page of a listing, followed through its cursors, with the cursor each page gave. */
 async function allPages(
   store: ContentStore,
   site: string,
@@ -59,11 +45,6 @@ async function allPages(
   return pages
 }
 
-/**
- * Seven entries whose updated_at is not in the order of their ids, written in no order at all:
- *   T3: 6, 4, 2   T2: 5, 1   T1: 7, 3
- * so that newest first, and ties by id descending, is 6 4 2 5 1 7 3.
- */
 function headEntries(id: (name: string) => string): EntrySpec[] {
   const at: [string, string][] = [
     ['3', T1],
@@ -81,11 +62,6 @@ function headEntries(id: (name: string) => string): EntrySpec[] {
   }))
 }
 
-/**
- * Seven entries in the published view, whose updated_at has nothing to do with it:
- *   k3: 2, 4, 7   k2: 3, 5   k1: 1   and 6 is a draft
- * so that newest sort key first, and ties by id descending, is 7 4 2 5 3 1.
- */
 function publishedEntries(id: (name: string) => string): EntrySpec[] {
   const spec = (name: string, updatedAt: string, sortKey: string | null): EntrySpec => ({
     id: id(`ent_${name}`),
@@ -182,7 +158,6 @@ describe('listEntries in the head view', () => {
 
     const page = await store.listEntries(owner.site, { collection: 'blog', view: 'head', limit: 5 })
 
-    // Equal to this and to nothing more: no Markdown, no document, no verdict, no actor.
     expect(page.entries).toEqual([
       {
         entry: {
@@ -220,7 +195,6 @@ describe('listEntries in the published view', () => {
     const store = createD1Store(env.DB)
     const query: ListQuery = { collection: 'blog', view: 'published', limit: 2 }
 
-    // The last page holds exactly `limit` entries and is the last: it has no cursor.
     expect(await allPages(store, owner.site, query)).toEqual([
       { slugs: ['post-7', 'post-4'], hasCursor: true },
       { slugs: ['post-2', 'post-5'], hasCursor: true },
@@ -230,7 +204,6 @@ describe('listEntries in the published view', () => {
       { slugs: ['post-7', 'post-4', 'post-2', 'post-5'], hasCursor: true },
       { slugs: ['post-3', 'post-1'], hasCursor: false },
     ])
-    // The head view of the same entries is ordered by something else, and lists the draft too.
     expect(
       await allPages(store, owner.site, { collection: 'blog', view: 'head', limit: 10 }),
     ).toEqual([
@@ -288,7 +261,6 @@ describe('listEntries in the published view', () => {
       published: { revision: id(`rev_${name}`), sortKey: 'k', at: T1 },
     })
     await insertEntries(env.DB, owner, [spec('a'), spec('b')])
-    // A database that was tampered with: the checks are off for one statement.
     await env.DB.batch([
       env.DB.prepare('PRAGMA ignore_check_constraints = ON'),
       env.DB.prepare('UPDATE entries SET published_sort_key = NULL WHERE site_id = ?').bind(
@@ -305,11 +277,6 @@ describe('listEntries in the published view', () => {
 })
 
 describe('listEntries with filters', () => {
-  /**
-   * X: published at rev 1 (tag live), head rev 2 (tag wip).  Y: published, tags live and wip.
-   * Z: a draft with the tag wip.  Q: an English entry of another collection with the tag live.
-   * ES: a published entry in Spanish with the tag live.
-   */
   async function seedFilters() {
     const owner = await seedOwner(env.DB, siteKey('list-filter'))
     const id = idFactory()
@@ -362,10 +329,8 @@ describe('listEntries with filters', () => {
     const list = (view: ListQuery['view'], tag: string) =>
       slugsOf(store, owner.site, { collection: 'blog', view, tag, limit: 10 })
 
-    // Head: x has only `wip` now; y has both; z is a draft with `wip`; s has `live`.
     expect((await list('head', 'live')).slugs).toEqual(['y', 's'])
     expect((await list('head', 'wip')).slugs).toEqual(['z', 'y', 'x'])
-    // Published: x was published with `live`, whatever its head has since; z is not published.
     expect((await list('published', 'live')).slugs).toEqual(['s', 'y', 'x'])
     expect((await list('published', 'wip')).slugs).toEqual(['y'])
     expect((await list('published', 'nothing')).slugs).toEqual([])
@@ -464,7 +429,6 @@ describe('listEntries with input it refuses', () => {
   })
 })
 
-/** The columns of `revisions` that a statement names, sorted and each once. */
 function revisionColumns(statement: string): string[] {
   return [
     ...new Set([...statement.matchAll(/"revisions"\."(\w+)"/g)].map((match) => match[1] ?? '')),
@@ -473,10 +437,6 @@ function revisionColumns(statement: string): string[] {
     .toSorted()
 }
 
-/**
- * What every listing selects: the entry; the id, frontmatter, word count and date of the revision,
- * which the fields Hollware fills are made from; and its tags.
- */
 const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."code_words", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
 
 describe('the statements of a listing', () => {
@@ -504,8 +464,6 @@ describe('the statements of a listing', () => {
     await store.listTranslations(owner.site, 'blog', 'g', 'head')
     await store.listTranslations(owner.site, 'blog', 'g', 'published')
 
-    // One statement for each listing, and each reads the same columns of `revisions`: its id, its
-    // frontmatter, its word count and its date, and its site, which joins it to its entry.
     expect(prepared).toHaveLength(queries.length + 2)
     expect(prepared.map(revisionColumns)).toEqual(
       Array(queries.length + 2).fill([
@@ -538,8 +496,6 @@ describe('the statements of a listing', () => {
       locale: 'en',
     })
 
-    // The cursor is a row value, which an index seeks to; and the status of the published view is
-    // a literal, which the partial index needs.
     expect(prepared).toEqual([
       `${SELECT_A_SUMMARY} from "entries" inner join "revisions" on ("revisions"."id" = "entries"."head_rev" and "revisions"."site_id" = "entries"."site_id") where ("entries"."site_id" = ? and "entries"."collection" = ? and "entries"."locale" = ? and ("entries"."updated_at", "entries"."id") < (?, ?) and "entries"."deleted_at" is null) order by "entries"."updated_at" desc, "entries"."id" desc limit ?`,
       `${SELECT_A_SUMMARY} from "entries" inner join "revisions" on ("revisions"."id" = "entries"."published_rev" and "revisions"."site_id" = "entries"."site_id") where ("entries"."site_id" = ? and "entries"."collection" = ? and "entries"."locale" = ? and "entries"."status" = 'published') order by "entries"."published_sort_key" desc, "entries"."id" desc limit ?`,

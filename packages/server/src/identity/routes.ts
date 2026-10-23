@@ -16,47 +16,29 @@ import {
 } from '../audit/log.ts'
 import { writeForPerson } from '../audit/person.ts'
 
-/**
- * The ceremonies, with SimpleWebAuthn and its parsers, in a chunk of their own: only these four
- * routes use them, and a Worker that serves MCP never pays for them at startup (`budgets.json`).
- */
 const ceremonies = () => import('./ceremonies.ts')
 
-/**
- * The cookie of a signed-in person: only `/authorize` reads it (ADR-026), and the sign-out below
- * it, `/authorize/signout`, which the path of the cookie reaches too.
- */
 export const SESSION_COOKIE = 'hollware_session'
 
-/** Where sign-out is: below `/authorize`, the one path a browser sends the cookie to. */
 export const SIGN_OUT_PATH = '/authorize/signout'
 
 function sessionCookie(secret: string): string {
   return `${SESSION_COOKIE}=${secret}; HttpOnly; Secure; SameSite=Lax; Path=/authorize; Max-Age=43200`
 }
 
-/** The cookie as sign-out leaves it: empty, and gone at once. */
 const ENDED_COOKIE = `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/authorize; Max-Age=0`
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * The setup and sign-in pages, the four steps of the passkey ceremonies, and sign-out: the session
- * of this browser's cookie ends, and the cookie with it (T-44). The Origin guard of the gateway
- * refuses a sign-out posted from a page of another origin.
- */
 export interface IdentityOptions {
   readonly clock: Clock
-  /** A site of the deployment as the activity log needs it, current with D1, or `undefined`. */
   readonly site: (c: Context<GatewayEnv>, key: string) => Promise<AuditSite | undefined>
-  /** The activity log of a request, for a person signed in with their passkey (ADR-037). */
   readonly audit: (c: Context<GatewayEnv>, actor: AuditActor) => AuditLog
 }
 
 export function installIdentity(app: Hono<GatewayEnv>, options: IdentityOptions): void {
-  /** A line of the person's own sign-in, in each of their sites. */
   const audited = (c: Context<GatewayEnv>, userId: string, line: AuditLine) =>
     writeForPerson(
       c.env.DB,
@@ -126,7 +108,6 @@ export function installIdentity(app: Hono<GatewayEnv>, options: IdentityOptions)
         await ceremonies()
       ).verifyRegistration(ceremony(c), {
         challengeId: text(input['challengeId']),
-        // SimpleWebAuthn checks every field of the credential it reads.
         response: JSON.parse(JSON.stringify(response)),
         name: text(input['name']),
         label: text(input['label']),

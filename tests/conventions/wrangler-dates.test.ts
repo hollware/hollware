@@ -5,9 +5,6 @@ import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readRepoFiles, repoFiles } from '../support/repo.ts'
 
-// Fails when: a wrangler.jsonc has a compatibility_date newer than the workerd bundled with the
-// installed wrangler supports, has none, or a Worker config is written in another format.
-
 const isWranglerConfig = (path: string) => /(^|\/)wrangler\.jsonc$/.test(path)
 
 describe('wrangler compatibility dates', () => {

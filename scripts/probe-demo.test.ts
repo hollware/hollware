@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { verdict } from './probe-demo.ts'
 
-// Fails when: scripts/probe-demo.ts stops failing a series in which one run took 60 seconds or
-// more, or never went live, or an empty series, or stops passing one in which every run was live
-// in under 60 seconds.
-
 describe('the verdict of the probe', () => {
   it('passes when every run was live in under 60 seconds', () => {
     expect(verdict([1200, 59_999])).toEqual({

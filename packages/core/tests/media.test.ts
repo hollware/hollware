@@ -15,27 +15,6 @@ import {
 import { readMedia } from '../src/config/media.ts'
 import { Problems } from '../src/config/config-error.ts'
 
-// Fails when (src/media/index.ts, src/config/media.ts, src/markdown/policy.ts):
-// - "tells a file by its bytes": a format is read from anything but its magic numbers, or a text
-//   that only mentions <svg> passes for an SVG.
-// - "refuses an SVG …" and "takes a plain SVG": a script, an event handler, embedded HTML, an
-//   entity, a javascript: or data: URL, a reference outside the file, a character reference that
-//   spells one, a CSS escape, or an animation of a link gets through; or a
-//   gradient or a symbol referenced inside the file (#…) is refused.
-// - "converts by the site's setting": quality or anim is ever left to the binding's defaults (its
-//   default WebP is lossless and keeps one frame of a GIF: ADR-038), PNG is not lossless, a WebP
-//   or an AVIF is converted when it fits, an image is scaled up, or SVG or `original` is converted.
-// - "makes the copies narrower …": a copy as wide as the file, of an SVG or a JPEG, or under
-//   `original`, is asked for.
-// - "names an asset by its bytes": the id stops being `ast_` and the first 26 hex of the hash.
-// - "resolves asset: references": a value that is not exactly a reference changes, or one is
-//   missed inside an array or a nested object.
-// - "gives an img of a document its size and copies": an author's own size is replaced, an image
-//   without copies gets a srcset, one the site does not have or an SVG gets a size, or a `sizes`
-//   lets the image grow past its own width; or assetIdsIn misses a nested reference or repeats one.
-// - "keeps an asset: image": the Markdown pipeline drops `![alt](asset:…)` as an unsafe URL.
-// - "reads the media setting": a value out of range is taken, or a missing one is not the default.
-
 const bytes = (...values: number[]) => new Uint8Array(values)
 const ascii = (text: string) => new TextEncoder().encode(text)
 
@@ -77,6 +56,21 @@ describe('sniffImage', () => {
       null,
       null,
     ])
+  })
+
+  it('reads an SVG only after an XML declaration and its comments, in linear time', () => {
+    expect(
+      [
+        '<?xml version="1.0"?><!-- a --> <!-- b --><svg/>',
+        '<!-- a --><svg/>',
+        '<?xml version="1.0"?><!-- never closed <svg/>',
+        '<?xml version="1.0"?><html><svg/></html>',
+        '<?xml version="1.0" > ?><svg/>',
+      ].map((head) => sniffImage(ascii(head))),
+    ).toEqual(['image/svg+xml', null, null, null, null])
+    const started = performance.now()
+    expect(sniffImage(ascii(`<?xml?>${'<!---->'.repeat(28)}<!--`))).toBeNull()
+    expect(performance.now() - started).toBeLessThan(50)
   })
 })
 
@@ -181,7 +175,6 @@ describe('conversionOf', () => {
 describe('asset references', () => {
   it('names an asset by its site and its bytes, so two sites never share an id', async () => {
     const bytes = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
-    // ast_ and the first 26 hex of the SHA-256 of "blog:<hash>" and of "docs:<hash>".
     expect([await assetIdOf('blog', bytes), await assetIdOf('docs', bytes)]).toEqual([
       'ast_d00d6e7de2db11d072c51ee81a',
       'ast_07e2d3775ec24d9af807a6057c',

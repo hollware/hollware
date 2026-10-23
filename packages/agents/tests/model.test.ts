@@ -3,12 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import { kvMemory, mapMemory } from '../src/memory.ts'
 import { capped, DailyLimitReached, textOf, workersAiModel } from '../src/model.ts'
 
-// Fails when: the model of the agents (src/model.ts) stops counting its calls of the day and
-// refusing the one over the limit, starting again the next day; stops reading the text of the
-// answers of Workers AI in both of their shapes; stops sending the conversation to the model it
-// names, through the gateway when one is given; or the KV memory keeps a value for less than the
-// 60 seconds KV allows.
-
 describe('the daily limit', () => {
   it('refuses the call over the limit, and allows again the next day', async () => {
     const memory = mapMemory()

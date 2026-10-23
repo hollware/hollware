@@ -4,31 +4,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { migrate, SITE_KEY } from './support.ts'
 import { createPlaygroundHarness, HOLLWARE_URL, SITE_WORKER, siteFetch } from './workers.ts'
 
-// Fails when: the `Hollware` entrypoint of the built Worker (packages/server/src/rpc) stops being
-// what a site may call over a service binding, measured through the real binding of the built
-// example site: it has a method that writes (`createDraft` and the rest of the operations), or any
-// method other than the four of HollwareRpc, or `env`, `ctx` or `fetch()` become callable on it;
-// or a failure reaches the site with more than Hollware means it to: an error must arrive with its
-// `name`, `message`, `code` and `fix` and without its `cause`, whether it is the caller's
-// (`invalid_input` for a cursor that is none) or the server's (a D1 failure becomes `internal`,
-// with the request id in its fix, and the cause stays in Hollware's own log under that id).
-// What the site saw is read from the line it logs for every error it gets
-// (examples/worker-site/src/index.ts `failed`): the site is the calling Worker, so the error
-// crosses a binding between two Workers in workerd, which a Node.js caller does not reproduce (a
-// stub in Node folds the error's name into its message and drops `code` and `fix`).
-
 const server = createPlaygroundHarness()
 
-/** What a Node.js test calls the binding through: any name, to see which ones are there. */
 type Binding = Record<string, (...args: unknown[]) => Promise<unknown>>
 
-/** A call of the binding by name, as a promise that settles; the stub itself is no promise. */
 async function callBinding(name: string, ...args: unknown[]): Promise<void> {
   const { HOLLWARE } = await server.getWorker<{ HOLLWARE: Binding }>(SITE_WORKER).getEnv()
   await HOLLWARE[name]?.(...args)
 }
 
-/** The JSON lines that the Workers wrote with `console.log`, of one kind. */
 function logged(kind: string): Record<string, unknown>[] {
   return server.getLogs().flatMap(({ message }) => {
     try {
@@ -51,7 +35,6 @@ afterAll(async () => {
 })
 
 describe('a failure of the server', () => {
-  // The database has no tables yet: the first read fails inside D1, as a read does when D1 is down.
   it('reaches the site as `internal`, with a request id and without its cause', async () => {
     server.clearLogs()
 
@@ -71,10 +54,8 @@ describe('a failure of the server', () => {
       hasCause: false,
     })
     expect(JSON.stringify(seen)).not.toContain('no such table')
-    // What the site did not get went to Hollware's log, under the id the site was given.
     const [hidden] = logged('rpc_error')
     expect(hidden).toMatchObject({ method: 'listEntries', errorCode: null })
-    // The first read is of the sites (ADR-033).
     expect(hidden?.['detail']).toEqual(expect.stringContaining('D1_ERROR: no such table: sites'))
     expect(String(seen?.['fix'])).toContain(String(hidden?.['requestId']))
   })
@@ -126,7 +107,6 @@ describe('the binding of the site', () => {
       redirects: [],
       nextCursor: null,
     })
-    // The playground has no semantic search locally: the search is full text, and says so.
     expect(await HOLLWARE.search(SITE_KEY, 'nothing written yet')).toMatchObject({
       outcome: 'ok',
       mode: 'fulltext',

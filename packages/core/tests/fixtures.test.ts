@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { BLOG_CORPUS, CONTENT_FIXTURES, contentFixture } from '../../../tests/fixtures/content.ts'
 
-// Fails when: the fixture loader stops finding the Markdown of tests/fixtures/content in Node or
-// in workerd, loses bytes on the way (the byte order mark), or the corpus stops being ten entries
-// in five translation groups with one entry per locale.
-
 describe('the content fixtures', () => {
   it('load every file, in Node and in workerd', () => {
     expect(CONTENT_FIXTURES.map((fixture) => fixture.path)).toEqual([

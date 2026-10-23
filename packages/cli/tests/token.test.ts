@@ -1,42 +1,3 @@
-// Fails when:
-// - "create: asks for the site and the owner, inserts the token and prints it once": the
-//   statements or their arguments change (the context query, the INSERT, its columns), the hash
-//   stored is not the SHA-256 of the printed token, the token is stored, the default scopes or
-//   a token without --expires-in-days stops never expiring (T-26), or the token is printed more
-//   than once.
-// - "create makes a read token with --read …": `--read` stops making an `hw_read_` token, stored
-//   with the kind read and content:read alone, or lets --scopes widen it.
-// - "create takes the scopes, the expiry and the site from the flags" rows: `--scopes`,
-//   `--expires-in-days` or `--site` stop reaching the INSERT, the scopes are not kept in the
-//   order given without repeats, or "1 day" is written "1 days".
-// - "create chooses the site named when the database has several": `--site` is ignored in favor
-//   of the first site.
-// - "create writes the hostile label … as one string literal": the label is put in the SQL
-//   without `quote` (the validation lets a quote through, so only the quoting stops it).
-// - "create trims the label it stores": the label is stored with the white space around it.
-// - "create rejects … without touching wrangler" rows: a bad label, scope list, expiry, site, a
-//   repeated target flag or a stray argument reaches wrangler.
-// - "create says what is missing …" rows: a database without a site, without an owner, with
-//   several sites, or without the site named is not reported, or a token is inserted anyway.
-// - "create prints no token when wrangler fails": the token is printed before its INSERT
-//   succeeded.
-// - "list shows the tokens of the site as a table, and never a hash": `list` selects or prints
-//   `hash`, the table changes, or a status is wrong.
-// - "list says an expiry that is now is expired": `<=` of `statusOf` becomes `<`.
-// - "list says when the site has no tokens": the empty case is not said.
-// - "list shows a value from the database without its control characters": `printable` is not
-//   applied to what comes from the database.
-// - "list lists the site named": `--site` is ignored by `list`.
-// - "list rejects a bad --site without touching wrangler": `--site` of `list` is checked only
-//   after wrangler has been called.
-// - "revoke sets revoked_at and says so" / "… only touches a token of the site named": the
-//   UPDATE changes (columns, the `revoked_at IS NULL` guard, the site filter), or the answer is
-//   wrong.
-// - "revoke says when the token is already revoked" / "… when the id does not exist": the two
-//   cases are told apart wrongly, or a missing id exits 0.
-// - "revoke rejects … without touching wrangler" rows: an id of another shape reaches SQL.
-// - "the token commands pass --remote and --database to every wrangler call": a call of a token
-//   command ignores the target or the database.
 import { describe, expect, it } from 'vite-plus/test'
 
 import { d1, d1Failed, fakeWrangler, type FakeWrangler } from './support/fake-wrangler.ts'
@@ -46,8 +7,6 @@ import { tempDirs, WRANGLER_JSONC } from './support/project.ts'
 const temp = tempDirs()
 
 const OWNER_ID = 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
-// The first call of the random source is the id of the token, the second its secret: bytes of 1
-// and bytes of 2, which give these (the hash is `shasum -a 256` of the secret).
 const TOKEN_ID = 'tok_01M4QZQSG0040G2081040G2081'
 const SECRET = `hw_pat_${'2'.repeat(52)}`
 const HASH = '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429'
@@ -63,7 +22,6 @@ function setup(
   return { cwd, run: (argv: string[]) => run(argv, { cwd, wrangler: wrangler.run }) }
 }
 
-/** The answers of a database with one site and its owner, then of the INSERT. */
 function createAnswers() {
   return [d1([{ id: 'blog' }], [{ id: OWNER_ID }]), d1([])]
 }

@@ -3,13 +3,6 @@ import { softAuthenticator } from '../../../../packages/server/tests/support/aut
 import { HOLLWARE_WORKER } from '../../../../apps/playground/test/harness/workers.ts'
 import { HOLLWARE_URL } from '../../v0.1/support/harness.ts'
 
-/**
- * People of the acceptance suite of v0.3, who get in the way a person gets in: a passkey made by a
- * software authenticator, registered through a link, then the admin's OAuth client with PKCE. The
- * one thing written behind the Worker's back is the owner's setup link, which `hollware init`
- * writes into D1 the same way.
- */
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -34,7 +27,6 @@ function post(server: TestHarness, path: string, body: object) {
   })
 }
 
-/** The owner's setup link, as `hollware init` writes it: the secret of an owner invitation. */
 export async function ownerSetupLink(server: TestHarness, site: string): Promise<string> {
   const { DB } = await server
     .getWorker<{
@@ -61,7 +53,6 @@ export async function ownerSetupLink(server: TestHarness, site: string): Promise
   return secret
 }
 
-/** Registers a passkey through an invitation, as the setup page does: the session cookie. */
 export async function register(server: TestHarness, invitation: string, name: string) {
   const authenticator = await softAuthenticator(HOLLWARE_URL)
   const started: unknown = await (
@@ -92,10 +83,6 @@ export async function register(server: TestHarness, invitation: string, name: st
   return cookie
 }
 
-/**
- * An access token of the admin's own client for the person of a session cookie, for a resource of
- * Hollware: `/v1` as the admin uses it, or `/mcp`, as an agent of that person would hold one.
- */
 export async function accessToken(
   server: TestHarness,
   cookie: string,
@@ -145,7 +132,6 @@ export async function accessToken(
   return tokens['access_token']
 }
 
-/** What the admin sends: one of its routes or an operation over `/v1`, with its token. */
 export async function adminCall(
   server: TestHarness,
   token: string,
@@ -161,7 +147,6 @@ export async function adminCall(
   return { status: response.status, body: isRecord(answer) ? answer : {} }
 }
 
-/** The id and the version of the entry an answer names. */
 export function entryOf(output: Record<string, unknown>): { id: string; version: number } {
   const entry = output['entry']
   if (!isRecord(entry) || typeof entry['id'] !== 'string' || typeof entry['version'] !== 'number') {
@@ -170,7 +155,6 @@ export function entryOf(output: Record<string, unknown>): { id: string; version:
   return { id: entry['id'], version: entry['version'] }
 }
 
-/** The ids and the names of who asked, of the reviews a listing answers. */
 export function reviewsOf(
   output: Record<string, unknown>,
 ): { id: string; requestedByName: unknown }[] {

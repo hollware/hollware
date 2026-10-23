@@ -2,8 +2,6 @@ import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin'
 import { defineConfig } from 'vite-plus'
 import { unstable_readConfig as readWranglerConfig } from 'wrangler'
 
-// The test database gets the migrations that wrangler.jsonc points at, so the tests cannot
-// drift from what `wrangler d1 migrations apply` would run.
 const wranglerConfig = readWranglerConfig({ config: `${import.meta.dirname}/wrangler.jsonc` })
 const migrationsDir: unknown = wranglerConfig.d1_databases.find(
   (database: { binding: string }) => database.binding === 'DB',
@@ -17,7 +15,6 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
-        // Read here in Node, applied inside workerd by the setup file.
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations({
             projectPath: import.meta.dirname,
@@ -31,8 +28,6 @@ export default defineConfig({
     name: 'playground:workerd',
     include: ['test/workerd/**/*.workerd.test.ts'],
     setupFiles: ['test/workerd/apply-migrations.ts'],
-    // Off: @cloudflare/vitest-plugin reads Vitest's module cache from workerd since 1.4.3
-    // (cloudflare/workers-sdk#15618), but it saved no time here (server:workerd, 13 s either way).
     fsModuleCache: false,
   },
 })

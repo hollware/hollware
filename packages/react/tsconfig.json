@@ -1,8 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // React and its renderers declare their types for bundlers, as the apps that use this
-    // package resolve them.
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",

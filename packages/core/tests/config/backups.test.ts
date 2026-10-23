@@ -4,10 +4,6 @@ import { readBackups } from '../../src/config/backups.ts'
 import { Problems } from '../../src/config/config-error.ts'
 import { DEFAULT_BACKUPS } from '../../src/index.ts'
 
-// Fails when readBackups (src/config/backups.ts) stops defaulting to a backup each day kept 30
-// days, takes a retention that is no whole number of days from 1 to 365 or an `enabled` that is
-// no boolean, or reports one without its path and a fix.
-
 describe('readBackups', () => {
   it('reads the backup setting, and refuses what is out of range with a fix', () => {
     const problems = new Problems()

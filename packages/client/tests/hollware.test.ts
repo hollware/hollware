@@ -2,17 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { createHollware, hollwareBinding, type HollwareReader } from '../src/index.ts'
 
-// Fails when: getEntry stops reading the Comark document, or stops passing the preview token of
-// the request's cookie (or of `options.preview`, which wins) to the reader, or marks an answer a
-// preview that was not read with one, or lets the verdict, the revision or the last publication
-// of an entry reach the page, or answers an entry that is not found as anything but `undefined`;
-// or listEntries stops passing the site, the collection and its filters through, or lets a field
-// beyond a summary reach the page, or drops the images of its frontmatter; or getTranslations stops answering `{ locale, slug }` pairs;
-// or search stops passing the site, the query and its options, or lets more than a summary of an
-// entry reach the page, or describeSite stops reading the site of the reader; or a reader given
-// as a function is called once, at import time, instead of on each read; or
-// something that is no service binding passes for one.
-
 type Found = NonNullable<Awaited<ReturnType<HollwareReader['getEntry']>>['entry']>
 const AT = '2026-10-01T00:00:00.000Z'
 const TOKEN = 'hw_prv_AAAA.BBBB'
@@ -41,7 +30,6 @@ function entry(slug: string): Found {
   }
 }
 
-// The images of a frontmatter, as a site reads them: by URL, with their size and srcset.
 const COVER = {
   'https://cms.test/assets/s/ast_0123456789abcdef0123456789': {
     width: 1600,
@@ -51,7 +39,6 @@ const COVER = {
 }
 
 type Described = Awaited<ReturnType<HollwareReader['describeSite']>>['site']
-// A site as describe_site answers it, with no collection.
 const SITE: Described = {
   key: 's',
   locales: ['en'],

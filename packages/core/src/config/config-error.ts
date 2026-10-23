@@ -25,7 +25,6 @@ export class ConfigError extends Error {
   }
 }
 
-/** The problems found so far, in the order they were found. */
 export class Problems {
   readonly list: ConfigProblem[] = []
 

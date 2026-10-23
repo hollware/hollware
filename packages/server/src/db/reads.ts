@@ -30,40 +30,18 @@ import {
 } from './rows.ts'
 import { entries, entryEmbeddings, publications, revisions, revisionTags } from './schema.ts'
 
-/**
- * The reads of the store. Every query carries the `site_id` of the site it was asked for, so a
- * natural key, an id or a translation group of another site finds nothing.
- */
-
-/**
- * Whether an entry is published, as the partial index of published listings says it
- * (`entries_published` covers `status = 'published'`). It is a literal and not a bound value:
- * the index serves a query that says what the index says, and SQLite can tell that of a `?` only
- * by looking at the value bound to it when it plans, which is for the engine to do or not.
- */
 const publishedOnly = sql`${entries.status} = 'published'`
 
-/** How an entry reaches the revision of a view: the head revision, or the published one. */
 function revisionOf(view: View) {
   const revisionId = view === 'head' ? entries.headRev : entries.publishedRev
   return and(eq(revisions.id, revisionId), eq(revisions.siteId, entries.siteId))
 }
 
-/**
- * What picks the entries of a view: the caller's conditions, and in the published view only
- * published ones. The head view leaves out the entries in the trash, or lists only them when
- * `trashed` asks for the trash. The published view needs no such condition: only a draft goes to
- * the trash, and it stays a draft there.
- */
 function viewWhere(view: View, conditions: readonly (SQL | undefined)[], trashed = false) {
   if (view === 'published') return and(...conditions, publishedOnly)
   return and(...conditions, trashed ? isNotNull(entries.deletedAt) : isNull(entries.deletedAt))
 }
 
-/**
- * The entries of a site with the whole revision of a view, for the reads of one entry. The caller
- * adds the conditions that pick the entries and what limits them.
- */
 function viewQuery(db: Db, view: View, conditions: readonly (SQL | undefined)[]) {
   return db
     .select({ entry: entryFields, revision: revisionFields, tags: tagsOf(revisions) })
@@ -78,11 +56,6 @@ function toEntryView(row: ViewRow): EntryView {
   return { entry: toEntry(row.entry), revision: toRevision(row.revision, row.tags) }
 }
 
-/**
- * The entries of a site with a summary of the revision of a view, for listings: the entry, and of
- * the revision only its id, its frontmatter and its tags. The sort key of the published view
- * comes along for the cursor.
- */
 function summaryQuery(
   db: Db,
   view: View,
@@ -132,7 +105,6 @@ export async function findEntryById(
   return row === undefined ? null : toEntryView(row)
 }
 
-/** A revision of the site by its id, with its tags: what a publish answers with. */
 export async function findRevision(
   db: Db,
   site: string,
@@ -146,7 +118,6 @@ export async function findRevision(
   return row === undefined ? null : toRevision(row.revision, row.tags)
 }
 
-/** Whether the revision a view joined has the tag. */
 function hasTag(site: string, tag: string): SQL {
   return sql`exists (select 1 from ${revisionTags} where ${and(
     eq(revisionTags.revisionId, revisions.id),
@@ -155,20 +126,6 @@ function hasTag(site: string, tag: string): SQL {
   )})`
 }
 
-/**
- * The statement of a page of a listing: the entries newest first by the sort key of the view and
- * then by id, after the position of a cursor if there is one, and one more than the page holds,
- * which only tells whether there is a next page.
- *
- * It is shaped for the indexes of `entries`, so that a page costs its own rows and not a sort of
- * the collection (`tests/db/list-plans.workerd.test.ts` reads the plans). The head view reads
- * `entries_head`, or `entries_head_locale` when it names a locale. The published view of a locale
- * reads the partial `entries_published`, whose status is the literal the index says. The cursor
- * is a row value, `(sort key, id) < (?, ?)`, which the index seeks to; the same condition written
- * with `OR` is read from the first row of the collection. The published view with no locale
- * named is the exception: the index has the locale before the sort key, so SQLite sorts the
- * published entries of the collection.
- */
 export function listEntriesQuery(
   db: Db,
   site: string,
@@ -183,7 +140,6 @@ export function listEntriesQuery(
       eq(entries.siteId, site),
       eq(entries.collection, query.collection),
       query.locale === undefined ? undefined : eq(entries.locale, query.locale),
-      // The published view holds published entries only, which `viewWhere` already says.
       query.view === 'head' && query.status !== undefined
         ? eq(entries.status, query.status)
         : undefined,
@@ -198,17 +154,11 @@ export function listEntriesQuery(
     .limit(query.limit + 1)
 }
 
-/**
- * The FTS5 query of what someone typed: each of its words as a quoted string, so that FTS5's own
- * syntax (`AND`, `NEAR`, `*`, quotes) is never read from it, and every word must match. Empty when
- * it holds no word.
- */
 export function ftsQuery(text: string): string {
   const words = text.match(/[\p{L}\p{N}_]+/gu) ?? []
   return words.map((word) => `"${word}"`).join(' ')
 }
 
-/** The weights of the columns of `entries_fts` in bm25: title, tags, then the text. */
 const BM25 = sql.raw('bm25(entries_fts, 10.0, 4.0, 1.0)')
 
 export async function searchEntries(
@@ -238,12 +188,10 @@ export async function searchEntries(
   const byId = new Map(rows.map((row) => [row.entry.id, toEntrySummaryView(row)]))
   return hits.flatMap((hit) => {
     const entry = byId.get(hit.entry_id)
-    // bm25 is lower for a better match; the answer says higher.
     return entry === undefined ? [] : [{ entry, snippet: hit.snippet, score: -hit.rank }]
   })
 }
 
-/** The entries of those ids that the view has, in the order of the ids; the others are left out. */
 export async function findSummaries(
   db: Db,
   site: string,
@@ -262,7 +210,6 @@ export async function findSummaries(
   })
 }
 
-/** The entries closest to one, closest first, as its vectors found them (ADR-030); `[]` without. */
 export async function relatedOf(
   db: Db,
   site: string,
@@ -301,8 +248,6 @@ export async function listEntries(
     )
   }
   const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor, query.view)
-  // The published view lists published entries only: any other status asks for none, and so
-  // does the trash, which holds drafts only.
   if (
     query.view === 'published' &&
     (query.trashed === true || (query.status !== undefined && query.status !== 'published'))
@@ -317,8 +262,6 @@ export async function listEntries(
   }
   const key = query.view === 'head' ? last.entry.updatedAt : last.sortKey
   if (key === null) {
-    // The checks of `entries` require a sort key of a published entry: a database that has none
-    // is corrupt, and a page that skipped its entries would hide it.
     throw new Error(`The published entry ${last.entry.id} has no published_sort_key`)
   }
   return {
@@ -327,10 +270,6 @@ export async function listEntries(
   }
 }
 
-/**
- * The statement of the entries of a translation group: the unique key of the group ends in the
- * locale, so the index gives them in order of locale with no sort.
- */
 export function listTranslationsQuery(
   db: Db,
   site: string,
@@ -356,10 +295,6 @@ export async function listTranslations(
   return rows.map(toEntrySummaryView)
 }
 
-/**
- * The latest publish or unpublish of an entry. Rows are never deleted, so the insertion order
- * (`rowid`) breaks a tie between two written in the same millisecond.
- */
 export async function lastPublication(
   db: Db,
   site: string,
@@ -395,13 +330,8 @@ function refMatches(ref: EntryRef): SQL | undefined {
   )
 }
 
-/** What cross-entry contracts read, scoped to one site; an entry in the trash is not there. */
 export function lookup(db: Db, site: string): EntryLookup {
   return {
-    /**
-     * One query per chunk of refs, in one batch: each ref binds three values and the site one
-     * more, under D1's limit of bound values. A ref asked twice is asked once.
-     */
     async lookupMany(refs) {
       const distinct = new Map(refs.map((ref) => [refKey(ref), ref]))
       const [first, ...rest] = chunk([...distinct.values()], rowsPerStatement(1, 3)).map((group) =>

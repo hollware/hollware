@@ -4,13 +4,6 @@ import { readBearerToken } from '../../src/auth/bearer.ts'
 import { checkHostAndOrigin } from '../../src/auth/guard.ts'
 import { insufficientScope, unauthorized } from '../../src/auth/responses.ts'
 
-// Fails when: workerd stops doing what the Node tests of bearer.ts, guard.ts and responses.ts cannot
-// see it do, and the code relies on: a `Host` header set on a Request and read back as written (the
-// guard reads it with `headers.get('host')`), an Authorization value trimmed before the code sees
-// it, the join of two Authorization headers, `Response.json` setting `content-type`, the lowercase
-// names of the headers, and `new URL` making the same host and origin of a public URL (and the same
-// refusal of one that is not usable) as Node does. It is the runtime the gateway runs in.
-
 const TOKEN = `hw_pat_${'0'.repeat(52)}`
 const PUBLIC_URL = 'https://cms.example.com'
 

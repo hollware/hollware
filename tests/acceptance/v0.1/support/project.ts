@@ -20,60 +20,31 @@ import {
 } from '../../../conformance/processes.ts'
 import { cliCommand, readToken } from '../../../conformance/seed.ts'
 
-/**
- * A user's project made of the built playground: a directory that holds the Worker as `vp build`
- * wrote it (`apps/playground/dist/hollware_playground`, which the global setup builds), where the
- * CLI and wrangler run as they run in a project, on a local D1 of its own. `start()` serves it with
- * `wrangler dev` on a free port of the loopback address, and that address is the Worker's
- * `HOLLWARE_PUBLIC_URL`, so an agent reaches it over HTTP the way it reaches a deployment.
- *
- * The directory is a temporary one, outside the repository. Its `node_modules` is a link to the
- * repository's, which is where the CLI finds wrangler, as it finds it in a project. Whatever else
- * a test writes (the log of `wrangler dev`, a token file, content to import) goes in the directory
- * above it: `wrangler dev` watches the project and restarts the Worker when a file changes there.
- */
-
 const REPOSITORY = join(import.meta.dirname, '..', '..', '..', '..')
 const BUILT = join(REPOSITORY, 'apps', 'playground', 'dist', 'hollware_playground')
 const MIGRATIONS = join(REPOSITORY, 'packages', 'server', 'migrations')
 const ASSETS = join(REPOSITORY, 'apps', 'playground', 'dist', 'client')
 
-/** The site of the playground: its key in apps/playground/hollware.config.ts. */
 export const SITE_KEY = 'playground'
 
-/** `wrangler dev` bundles nothing here, but starting workerd takes seconds on a busy machine. */
 const START_TIMEOUT_MS = 120_000
 
 export interface CommandResult {
-  /** The exit code, or `null` when a signal ended the command. */
   readonly code: number | null
-  /** What it wrote, stdout and stderr together. */
   readonly output: string
 }
 
 export interface Project {
-  /** The project: the built Worker, its wrangler.json and its local D1. */
   readonly directory: string
-  /** A directory beside the project, for the files of a test. */
   readonly scratch: string
-  /** Runs `hollware <args>` in the project, as its owner would. */
   hollware(...args: string[]): Promise<CommandResult>
-  /** Runs SQL on the local D1 through wrangler, and gives the rows of each statement. */
   query(sql: string): Promise<Row[][]>
-  /** Writes a file beside the project that only its owner can read, and gives its path. */
   writeSecret(name: string, content: string): string
-  /**
-   * Serves the Worker with `wrangler dev`, and gives its URL: its public URL. A test that needs a
-   * name and not an address there, as WebAuthn does, asks for `localhost`; the port is a free one
-   * unless it says which.
-   */
   start(options?: {
     readonly hostname?: 'localhost'
     readonly port?: number
-    /** More variables of the Worker, such as HOLLWARE_SECRET. */
     readonly vars?: Readonly<Record<string, string>>
   }): Promise<string>
-  /** Stops what the project started and deletes its directories. */
   close(): Promise<void>
 }
 
@@ -81,12 +52,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * The build's wrangler.json names the migrations, and the static assets that hold the admin,
- * relative to the playground. The copy names them by their absolute paths: the server's
- * migrations are the files `hollware migrate` applies in a project, from
- * `node_modules/@hollware/server/migrations`, and the assets are the build's own.
- */
 function pointAtMigrations(directory: string): void {
   const path = join(directory, 'wrangler.json')
   const config: unknown = JSON.parse(readFileSync(path, 'utf8'))
@@ -101,17 +66,13 @@ function pointAtMigrations(directory: string): void {
   writeFileSync(path, JSON.stringify(config))
 }
 
-/** A copy of the built playground, ready for `hollware migrate`. */
 export function createProject(): Project {
   const scratch = mkdtempSync(join(tmpdir(), 'hollware-acceptance-'))
   const directory = join(scratch, 'project')
   cpSync(BUILT, directory, { recursive: true })
-  // What the build directory may hold of an earlier run: never the state of this project.
   rmSync(join(directory, '.wrangler'), { recursive: true, force: true })
   symlinkSync(join(REPOSITORY, 'node_modules'), join(directory, 'node_modules'))
   pointAtMigrations(directory)
-  // The playground is a project with a config, which its Worker moves into the database (ADR-033):
-  // `hollware init` sees it there, as in apps/playground, and leaves the structure to the move.
   cpSync(
     join(REPOSITORY, 'apps', 'playground', 'hollware.config.ts'),
     join(directory, 'hollware.config.ts'),
@@ -177,10 +138,6 @@ export function createProject(): Project {
   }
 }
 
-/**
- * Migrates the project's database and runs `hollware init` for the playground's site, as the
- * owner of a new project does, and gives the owner's token, which init prints once.
- */
 export async function setUpProject(project: Project): Promise<string> {
   const migrated = await project.hollware('migrate', '--local')
   if (migrated.code !== 0) throw new Error(`hollware migrate failed:\n${migrated.output}`)

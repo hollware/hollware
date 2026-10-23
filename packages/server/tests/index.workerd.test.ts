@@ -4,10 +4,6 @@ import * as z from 'zod'
 
 import { createHollware, name } from '../src/index.ts'
 
-// Fails when: the package entry stops exporting its name, or createHollware stops building, from a
-// config, a Worker whose `fetch` serves requests and whose `Hollware` entrypoint has the six read
-// methods of HollwareRpc and nothing more. It runs in workerd: the entry imports `cloudflare:workers`.
-
 const config = defineConfig({
   sites: {
     acme: {

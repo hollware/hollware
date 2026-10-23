@@ -12,20 +12,13 @@ import {
 import { join, relative } from 'node:path'
 import { afterAll, describe, expect, it } from 'vite-plus/test'
 
-// Fails when: src/db/schema.ts changes and no migration is generated for it (the first test then
-// finds a new file); a hand-written migration stops carrying the snapshot drizzle-kit chains
-// through, so the next generated migration would start from a stale schema (the second test then
-// finds more than the one ALTER TABLE); or drizzle-kit changes what it prints with nothing to do.
-
 const packageDir = join(import.meta.dirname, '..')
 const drizzleKit = join(packageDir, 'node_modules/.bin/drizzle-kit')
 
-// Under the package, so the schema's imports resolve; `.vitest/` is ignored by git.
 mkdirSync(join(packageDir, '.vitest'), { recursive: true })
 const scratch = mkdtempSync(join(packageDir, '.vitest', 'drizzle-kit-'))
 afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 
-/** The files under `root`, as paths relative to it. */
 function listFiles(root: string, directory = root): string[] {
   return readdirSync(directory)
     .flatMap((name) => {
@@ -35,18 +28,12 @@ function listFiles(root: string, directory = root): string[] {
     .sort()
 }
 
-/**
- * Runs `drizzle-kit generate` over a copy of migrations/, so the committed folder is never touched,
- * and returns the files of the copy before and after.
- */
 function generateOnCopy(name: string, schemaFile: string, extraArgs: string[] = []) {
   const workdir = join(scratch, name)
   const out = join(workdir, 'migrations')
   mkdirSync(workdir)
   cpSync(join(packageDir, 'migrations'), out, { recursive: true })
   const config = join(workdir, 'drizzle.config.ts')
-  // drizzle-kit prefixes `out` with './' (an absolute path would read ".//abs/..."), so `out` is
-  // relative to the directory the CLI runs in.
   writeFileSync(
     config,
     `import { defineConfig } from 'drizzle-kit'\n` +
@@ -60,8 +47,6 @@ function generateOnCopy(name: string, schemaFile: string, extraArgs: string[] = 
   return { out, before, after: listFiles(out), stdout }
 }
 
-// Each test starts drizzle-kit, a CLI that takes seconds on a busy machine: the default 5 s
-// timeout failed under load (2026-10-12) while the test itself passed.
 describe('migrations/ and src/db/schema.ts', { timeout: 60_000 }, () => {
   it('describe the same schema: drizzle-kit finds nothing to migrate', () => {
     const run = generateOnCopy('no-change', join(packageDir, 'src/db/schema.ts'))

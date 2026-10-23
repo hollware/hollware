@@ -4,21 +4,13 @@
  * are outcomes, not errors (`operations/specs.ts`).
  */
 export const ERROR_CODES = [
-  /** The input breaks a rule the input schema cannot express. */
   'invalid_input',
-  /** The input names a collection the site does not have. */
   'unknown_collection',
-  /** The input names a locale the site does not have. */
   'unknown_locale',
-  /** A preview link that has expired, or is not one Hollware made for this site (T-103). */
   'invalid_preview',
-  /** The token lacks a scope the operation requires; the message names every missing scope. */
   'insufficient_scope',
-  /** The answer would exceed the output cap. Hollware never truncates content. */
   'output_too_large',
-  /** The operation ran out of time. */
   'timeout',
-  /** Anything else. The message says nothing about the cause, which goes to the log. */
   'internal',
 ] as const
 

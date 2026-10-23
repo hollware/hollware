@@ -5,20 +5,6 @@ import { d1Catalog, imagesConverter } from '../../src/media/cloudflare.ts'
 import { seedToken } from '../auth/support.ts'
 import { boot, restoreLogs, SITE_KEY } from './support.ts'
 
-// Fails when (src/http/gateway.ts, src/media/cloudflare.ts, migrations/0017_assets.sql):
-// - "serves an image to anyone": GET /assets/<site>/<id> stops answering the file of R2 with its
-//   type, a year of immutable cache and a policy that lets any page show it; an SVG loses its
-//   sandbox; a missing or malformed one is anything but the JSON 404.
-// - "serves the copies of an image …": GET /assets/<site>/<id>/<width> stops answering the copy of
-//   R2 under its key, or answers a width that is no number of pixels from R2.
-// - "gives the original to a person of the site": the original is served without a token, to a
-//   read token, or to a token of another site; or with a cache a shared proxy may keep.
-// - "gives the file it serves": the original route answers 404 for a site that keeps no
-//   originals instead of the file served.
-// - "keeps an asset as it is": a delete of a row, or a change of anything but its alt, goes through.
-// - "asks the binding with quality and anim": the adapter leaves either to the binding's defaults,
-//   or scales without being asked.
-
 const LATER = '2026-11-11T12:00:00.000Z'
 const ID = 'ast_00112233445566778899aabbcc'
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1])
@@ -194,7 +180,6 @@ describe('GET /v1/assets/<id>/original', () => {
     expect(mine.status).toBe(200)
     expect(new Uint8Array(await mine.arrayBuffer())).toEqual(PNG)
     expect(mine.headers.get('cache-control')).toBe('private, no-store')
-    // A token of a site this deployment does not serve is no token here.
     expect([none.status, read.status, theirs.status, unscoped.status]).toEqual([401, 403, 401, 403])
     expect(unscoped.headers.get('www-authenticate')).toContain('scope="content:read"')
   })

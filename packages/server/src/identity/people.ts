@@ -1,16 +1,7 @@
 import type { Role } from '../auth/roles.ts'
 
-/**
- * The members of a site, changed by its owners in the admin (0.8.0): another role, or out of the
- * site. A site always keeps one owner: the statement that would demote or remove its last one
- * changes nothing, in the same step that counts them, so two owners demoting each other at once
- * cannot both succeed. A member removed from a site loses at once every token and grant of it,
- * which find their role through `members` on each request.
- */
-
 export type PeopleChange = 'changed' | 'unchanged' | 'not_member' | 'last_owner'
 
-/** The owners of the site besides `userId`, counted in the statement that changes `userId`. */
 const OTHER_OWNERS =
   "(SELECT count(*) FROM members WHERE site_id = ?1 AND role = 'owner' AND user_id <> ?2) > 0"
 
