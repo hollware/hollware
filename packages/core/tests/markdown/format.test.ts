@@ -95,6 +95,27 @@ describe('formatting a write', () => {
     expect((await formatMarkdown(unstable, BLOG_OPTIONS)).markdown).toBe(unstable)
   })
 
+  it('writes the bytes the editor writes', async () => {
+    for (const source of sources) {
+      const { markdown } = await formatMarkdown(source, BLOG_OPTIONS)
+      if (markdown !== source) expect(markdown, source).toBe(await canonicalMarkdown(source))
+    }
+  })
+
+  it('keeps the text as written when Hollware leaves part of it out, and says so', async () => {
+    const options = { ...BLOG_OPTIONS, components: ['card', 'badge'] }
+    const tail = await formatMarkdown('::card{a="1"} junk\nx\n::\n', options)
+    expect(tail.markdown).toBe('::card{a="1"} junk\nx\n::\n')
+    expect(tail.processed.ok && tail.processed.value.extracted.disallowed).toEqual([
+      { kind: 'disallowed-attribute', name: 'card[junk]', line: 1 },
+    ])
+    const braces = 'Text with {braces} and :badge[x]{color="red"}\n'
+    expect((await formatMarkdown(braces, options)).markdown).toBe(braces)
+    expect((await formatMarkdown('A [l](/x){ target="_blank" } and *b*\n', options)).markdown).toBe(
+      'A [l](/x){target="_blank"} and *b*\n',
+    )
+  })
+
   it('keeps the text as written when its canonical form would mean something else', async () => {
     const odd = ' => [!NOTE]\n{<?x ?>'
     expect(await canonicalMarkdown(odd)).toBe('=> [!NOTE]\n')

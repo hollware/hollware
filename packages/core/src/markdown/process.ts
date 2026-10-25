@@ -57,7 +57,6 @@ function isYamlError(error: unknown): error is Error {
 }
 
 function linesBeforeBody(source: string, body: string): number {
-  if (!source.endsWith(body)) return 0
   const end = source.length - body.length
   let lines = 0
   for (let at = 0; at < end; at++) {
@@ -80,12 +79,24 @@ function yamlViolation(error: Error, source: string) {
   )
 }
 
-async function run(markdown: unknown, options: ProcessMarkdownOptions): Promise<ProcessResult> {
+export interface ReadMarkdown {
+  readonly frontmatter: Record<string, unknown>
+  readonly document: MarkdownDocument
+  readonly lineOffset: number
+}
+
+type Refusal = Extract<ProcessResult, { ok: false }>
+
+export type ReadResult = { readonly ok: true; readonly value: ReadMarkdown } | Refusal
+
+async function read(markdown: unknown, options: ProcessMarkdownOptions): Promise<ReadResult> {
   if (typeof markdown !== 'string') return { ok: false, violations: [notAString()] }
 
-  const bytes = utf8ByteLength(markdown)
-  if (!(bytes <= options.maxMarkdownBytes)) {
-    return { ok: false, violations: [sizeLimit(bytes, options.maxMarkdownBytes)] }
+  if (!(markdown.length * 3 <= options.maxMarkdownBytes)) {
+    const bytes = utf8ByteLength(markdown)
+    if (!(bytes <= options.maxMarkdownBytes)) {
+      return { ok: false, violations: [sizeLimit(bytes, options.maxMarkdownBytes)] }
+    }
   }
 
   const source = markdown.charCodeAt(0) === BYTE_ORDER_MARK ? markdown.slice(1) : markdown
@@ -107,10 +118,18 @@ async function run(markdown: unknown, options: ProcessMarkdownOptions): Promise<
 
   const document: MarkdownDocument = await parser.parseBody(split.content)
   document.frontmatter = frontmatter
+  return {
+    ok: true,
+    value: { frontmatter, document, lineOffset: linesBeforeBody(source, split.content) },
+  }
+}
+
+function finish(read: ReadMarkdown, options: ProcessMarkdownOptions): ProcessResult {
+  const { frontmatter, document } = read
   const analysis = analyzeDocument(document, {
     components: new Set(options.components),
     routes: compileRoutes(options.routes),
-    lineOffset: linesBeforeBody(source, split.content),
+    lineOffset: read.lineOffset,
   })
   if (analysis.problem !== undefined) {
     return { ok: false, violations: [unstorable(analysis.problem)] }
@@ -127,15 +146,31 @@ async function run(markdown: unknown, options: ProcessMarkdownOptions): Promise<
   }
 }
 
+export async function readMarkdown(
+  markdown: unknown,
+  options: ProcessMarkdownOptions,
+): Promise<ReadResult> {
+  try {
+    return await read(markdown, options)
+  } catch (error) {
+    return { ok: false, violations: [parseFailure(error)] }
+  }
+}
+
+export function finishMarkdown(read: ReadMarkdown, options: ProcessMarkdownOptions): ProcessResult {
+  try {
+    return finish(read, options)
+  } catch (error) {
+    return { ok: false, violations: [parseFailure(error)] }
+  }
+}
+
 /**
  * Processes a Markdown file for a collection: the frontmatter and the body
  * are parsed once and the contracts get what they need from the result. It answers for any
  * string and never throws: a file it cannot store comes back as violations.
  */
 export const processMarkdown: ProcessMarkdown = async (markdown, options) => {
-  try {
-    return await run(markdown, options)
-  } catch (error) {
-    return { ok: false, violations: [parseFailure(error)] }
-  }
+  const read = await readMarkdown(markdown, options)
+  return read.ok ? finishMarkdown(read.value, options) : read
 }

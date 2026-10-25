@@ -95,7 +95,7 @@ describe('AC-0.1-14: content safety', () => {
     })
     for (const kept of [
       '<span>raw</span>',
-      '::youtub{#dQw4w9WgXcQ}',
+      '::youtub{id="dQw4w9WgXcQ"}',
       '{onclick="alert(1)"}',
       '[script link](javascript:alert(1))',
     ]) {

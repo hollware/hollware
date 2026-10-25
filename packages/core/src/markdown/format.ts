@@ -1,6 +1,7 @@
-import type { ElementNode, MarkdownDocument } from 'comark'
+import type { ElementNode, ElementNodeAttributes, MarkdownDocument, Node } from 'comark'
 import { getFormatParser } from './parser.ts'
-import { processMarkdown } from './process.ts'
+import { LEFT_OUT_TAG, LINE_KEY, OPEN_KEY, PROPS_KEY } from './policy.ts'
+import { finishMarkdown, readMarkdown, type ReadMarkdown } from './process.ts'
 import type { ProcessMarkdownOptions, ProcessResult } from './types.ts'
 
 export interface FormattedMarkdown {
@@ -85,22 +86,51 @@ export async function canonicalMarkdown(markdown: string): Promise<string> {
   return document === undefined ? markdown : (await getFormatter()).file(document)
 }
 
+interface Written {
+  readonly nodes: Node[]
+  readonly meaning: string
+}
+
+function plainProps(props: ElementNodeAttributes): ElementNodeAttributes {
+  const plain: ElementNodeAttributes = {}
+  for (const [key, value] of Object.entries(props)) {
+    if (key !== LINE_KEY && key !== OPEN_KEY && !PROPS_KEY.test(key)) plain[key] = value
+  }
+  return plain
+}
+
+function plainNode(node: Node): Node {
+  if (typeof node === 'string' || node[0] === null) return node
+  const [tag, props, ...children] = node
+  return [tag, plainProps(props), ...children.map(plainNode)]
+}
+
+function written(read: ReadMarkdown): Written {
+  const all = read.document.nodes
+  const last = all.at(-1)
+  const leftOut =
+    last !== undefined && typeof last !== 'string' && last[0] === LEFT_OUT_TAG
+      ? Object.keys(last[1]).length
+      : 0
+  const nodes = all.slice(0, leftOut > 0 ? -1 : all.length).map(plainNode)
+  return { nodes, meaning: JSON.stringify([nodes, leftOut]) }
+}
+
 export async function formatMarkdown(
   markdown: string,
   options: ProcessMarkdownOptions,
 ): Promise<FormattedMarkdown> {
-  const document = await readCanonical(markdown)
-  if (document === undefined)
-    return { markdown, processed: await processMarkdown(markdown, options) }
-  const tree = JSON.stringify(document)
-  const canonical = await (await getFormatter()).file(document)
-  if (canonical === markdown)
-    return { markdown, processed: await processMarkdown(markdown, options) }
-  const again = await readCanonical(canonical)
-  if (again === undefined || JSON.stringify(again) !== tree) {
-    return { markdown, processed: await processMarkdown(markdown, options) }
+  const read = await readMarkdown(markdown, options)
+  if (!read.ok) return { markdown, processed: read }
+  const plain = written(read.value)
+  const canonical = await (
+    await getFormatter()
+  ).file({ frontmatter: read.value.frontmatter, meta: {}, nodes: plain.nodes })
+  if (canonical !== markdown) {
+    const again = await readMarkdown(canonical, options)
+    if (again.ok && written(again.value).meaning === plain.meaning) {
+      return { markdown: canonical, processed: finishMarkdown(again.value, options) }
+    }
   }
-  const processed = await processMarkdown(canonical, options)
-  if (processed.ok) return { markdown: canonical, processed }
-  return { markdown, processed: await processMarkdown(markdown, options) }
+  return { markdown, processed: finishMarkdown(read.value, options) }
 }
