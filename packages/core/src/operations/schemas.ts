@@ -57,6 +57,14 @@ export const violation = z.object({
   message: z.string(),
   fix: z.string().describe('What to change so that the problem goes away.'),
   line: z.number().int().min(1).optional(),
+  code: z
+    .string()
+    .optional()
+    .describe('Which problem of its contract this is, when the contract finds more than one kind.'),
+  params: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional()
+    .describe('The values the message names, for a client that says it in another language.'),
 })
 
 export const verdict = z.object({

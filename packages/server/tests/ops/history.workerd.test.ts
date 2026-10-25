@@ -8,7 +8,7 @@ vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
 const markdownOf = (title: string) =>
-  blogPost({ title, date: '2026-10-01', tags: '[cloudflare]', translationGroup: 'history' })
+  blogPost({ title, date: '2026-10-01', tags: '\n  - cloudflare', translationGroup: 'history' })
 
 async function threeRevisions(label: string) {
   const world = await newWorld(env.DB, label)

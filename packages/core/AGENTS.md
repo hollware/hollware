@@ -46,6 +46,10 @@ Where things are:
 - Comark and `@comark/html` are imported lazily, the first time a file is processed or rendered,
   so a Worker that only reads never loads them (`tests/markdown/lazy.test.ts`, which lists the
   files of the folder: a new module must be added there).
+- `src/markdown/format.ts`: Comark's own writer is the one style of Markdown. `formatMarkdown` gives a
+  write its canonical form only when it means the same document and formatting it again changes
+  nothing, else the text as written (`tests/markdown/format.test.ts`); the admin's editor writes
+  with `stringifyBody`, so a person and an agent produce the same bytes.
 - `src/markdown/analyze.ts` is the one walk that judges a document and extracts its headings,
   links, images, components, words and `disallowed`; `src/markdown/policy.ts` holds the tags, the
   attributes each tag may carry and the URL schemes. Nothing Comark cannot represent is dropped

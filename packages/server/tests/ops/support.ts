@@ -304,12 +304,12 @@ export function blogFrontmatter(overrides: Readonly<Record<string, string | null
     title: 'Edge caching guide',
     description: 'How to cache at the edge.',
     date: '2026-10-01',
-    tags: '[cloudflare, cms]',
+    tags: '\n  - cloudflare\n  - cms',
     translationGroup: 'edge-caching-guide',
     ...overrides,
   }
   const lines = Object.entries(fields).flatMap(([key, value]) =>
-    value === null ? [] : [`${key}: ${value}`],
+    value === null ? [] : [value.startsWith('\n') ? `${key}:${value}` : `${key}: ${value}`],
   )
   return `---\n${lines.join('\n')}\n---\n`
 }

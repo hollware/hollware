@@ -2,6 +2,7 @@
 import type { schemas } from '@hollware/core'
 import type * as z from 'zod'
 import { useMessages } from '../i18n/index.ts'
+import { explain } from '../lib/verdict-text.ts'
 
 defineProps<{ verdict: z.output<typeof schemas.verdict> | null }>()
 const m = useMessages()
@@ -32,8 +33,8 @@ const m = useMessages()
         <span v-if="violation.line !== undefined" class="ml-1 text-xs text-muted">
           {{ m.verdict.line(violation.line) }}
         </span>
-        <p class="mt-1">{{ violation.message }}</p>
-        <p class="text-muted">{{ violation.fix }}</p>
+        <p class="mt-1">{{ explain(violation, m.verdictTexts).message }}</p>
+        <p class="text-muted">{{ explain(violation, m.verdictTexts).fix }}</p>
       </li>
     </ul>
   </section>

@@ -46,6 +46,7 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     expect(created).toEqual({
       outcome: 'saved',
       entry: expect.objectContaining({ id: ENTRY_ID, version: 1, status: 'draft' }),
+      markdown: FIRST_DRAFT,
       verdict: {
         ok: false,
         phase: 'write',
@@ -56,6 +57,8 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
             path: '/frontmatter/description',
             message: 'Invalid input: expected string, received undefined',
             fix: 'Set the field "description" to a string of 1 to 160 characters.',
+            code: 'schema.missing',
+            params: { expected: 'string', field: 'description' },
           },
           {
             contract: 'images-have-alt',
@@ -63,7 +66,8 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
             path: '/body',
             message: 'The image "/images/edge.png" has no alt text.',
             fix: 'Add alt text that describes the image, as in ![a short description](/images/edge.png).',
-            line: 10,
+            params: { src: '/images/edge.png' },
+            line: 12,
           },
         ],
         warnings: [],
@@ -94,6 +98,7 @@ describe('an agent writes and publishes a post, from an invalid draft to a publi
     expect(fixed).toEqual({
       outcome: 'saved',
       entry: expect.objectContaining({ id, version: 2, status: 'draft' }),
+      markdown: FIXED_DRAFT,
       verdict: {
         ok: true,
         phase: 'write',

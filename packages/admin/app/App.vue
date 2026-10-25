@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { CommandPaletteGroup, DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { defineShortcuts } from '@nuxt/ui/composables'
+import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i18n/index.ts'
 import type { Output } from './lib/api.ts'
 import { entryPath, titleOf } from './lib/entries.ts'
@@ -38,37 +40,52 @@ const siteItems = useSiteMenu()
 const links = computed<NavigationMenuItem[][]>(() => [
   [
     { label: m.value.nav.home, icon: 'i-lucide-house', to: '/', exact: true },
-    { label: m.value.nav.entries, icon: 'i-lucide-file-text', to: '/entries' },
-    { label: m.value.nav.images, icon: 'i-lucide-image', to: '/images' },
     {
       label: m.value.nav.reviews,
       icon: 'i-lucide-inbox',
       to: '/reviews',
       ...(pending.value > 0 ? { badge: String(pending.value) } : {}),
     },
-  ],
-  [
-    { label: m.value.nav.structure, type: 'label' },
     {
-      label: m.value.nav.collections,
-      icon: 'i-lucide-layers',
-      defaultOpen: true,
-      children: [
-        { label: m.value.nav.allCollections, to: '/collections', exact: true },
-        ...collections.value.map((name) => ({ label: name, to: `/collections/${name}` })),
-      ],
+      label: m.value.nav.entries,
+      icon: 'i-lucide-file-text',
+      to: '/entries',
+      active: route.path === '/entries' && route.query['collection'] === undefined,
     },
-    { label: m.value.nav.site, icon: 'i-lucide-globe', to: '/site' },
+    { label: m.value.nav.images, icon: 'i-lucide-image', to: '/images' },
   ],
   [
-    { label: m.value.nav.settings, type: 'label' },
-    { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
-    { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
-    ...(roleKey.value === 'owner'
-      ? [{ label: m.value.nav.activity, icon: 'i-lucide-scroll-text', to: '/activity' }]
-      : []),
+    { label: m.value.nav.collections, type: 'label' },
+    ...collections.value.map((name) => ({
+      label: name,
+      icon: 'i-lucide-layers',
+      to: { path: '/entries', query: { collection: name } },
+      active: route.path === '/entries' && route.query['collection'] === name,
+    })),
+  ],
+  [
+    {
+      label: m.value.nav.settings,
+      icon: 'i-lucide-settings',
+      to: '/settings/site',
+      active: route.path.startsWith('/settings'),
+    },
   ],
 ])
+
+const shortcutsOpen = ref(false)
+const router = useRouter()
+defineShortcuts({
+  c: () => void router.push('/entries/new'),
+  'g-h': () => void router.push('/'),
+  'g-e': () => void router.push('/entries'),
+  'g-r': () => void router.push('/reviews'),
+  'g-i': () => void router.push('/images'),
+  'g-s': () => void router.push('/settings'),
+  '?': () => {
+    shortcutsOpen.value = true
+  },
+})
 
 const searchOpen = ref(false)
 const term = ref('')
@@ -157,11 +174,12 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
               ? []
               : [{ label: String(item.label), icon: item.icon, to: item.to }],
           ),
-        { label: m.value.nav.collections, icon: 'i-lucide-layers', to: '/collections' },
+        { label: m.value.nav.settings, icon: 'i-lucide-settings', to: '/settings' },
+        { label: m.value.nav.collections, icon: 'i-lucide-layers', to: '/settings/collections' },
         ...collections.value.map((name) => ({
           label: m.value.search.collection(name),
           icon: 'i-lucide-layers',
-          to: `/collections/${name}`,
+          to: `/settings/collections/${name}`,
         })),
       ],
     },
@@ -170,10 +188,14 @@ const searchGroups = computed<CommandPaletteGroup[]>(() => {
       label: m.value.search.create,
       items: [
         { label: m.value.search.newEntry, icon: 'i-lucide-plus', to: '/entries/new' },
-        { label: m.value.search.newCollection, icon: 'i-lucide-plus', to: '/collections' },
-        { label: m.value.search.newSite, icon: 'i-lucide-plus', to: '/site' },
-        { label: m.value.search.invite, icon: 'i-lucide-user-plus', to: '/people' },
-        { label: m.value.search.newToken, icon: 'i-lucide-key-round', to: '/tokens' },
+        {
+          label: m.value.search.newCollection,
+          icon: 'i-lucide-plus',
+          to: '/settings/collections',
+        },
+        { label: m.value.search.newSite, icon: 'i-lucide-plus', to: '/settings/site#sites' },
+        { label: m.value.search.invite, icon: 'i-lucide-user-plus', to: '/settings/people' },
+        { label: m.value.search.newToken, icon: 'i-lucide-key-round', to: '/settings/tokens' },
       ],
     },
     {
@@ -200,9 +222,16 @@ const personItems = computed<DropdownMenuItem[][]>(() => [
     },
   ],
   [
-    { label: m.value.nav.tokens, icon: 'i-lucide-key-round', to: '/tokens' },
-    { label: m.value.nav.people, icon: 'i-lucide-users', to: '/people' },
-    { label: m.value.person.account, icon: 'i-lucide-circle-user', to: '/account' },
+    { label: m.value.person.account, icon: 'i-lucide-circle-user', to: '/settings/account' },
+    { label: m.value.nav.settings, icon: 'i-lucide-settings', to: '/settings' },
+    {
+      label: m.value.shortcuts.title,
+      icon: 'i-lucide-keyboard',
+      kbds: ['?'],
+      onSelect: () => {
+        shortcutsOpen.value = true
+      },
+    },
     {
       label: m.value.person.language,
       icon: 'i-lucide-languages',
@@ -273,6 +302,21 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
 
         <template #default="{ collapsed }">
           <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+          <UButton
+            :label="collapsed ? undefined : m.entries.newEntry"
+            :aria-label="collapsed ? m.entries.newEntry : undefined"
+            icon="i-lucide-square-pen"
+            color="neutral"
+            variant="ghost"
+            :square="collapsed"
+            block
+            class="justify-start"
+            to="/entries/new"
+          >
+            <template v-if="!collapsed" #trailing>
+              <UKbd value="C" class="ms-auto" />
+            </template>
+          </UButton>
           <UNavigationMenu
             v-for="(group, index) in links"
             :key="index"
@@ -317,6 +361,7 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
       />
 
       <RouterView />
+      <ShortcutsHelp v-model:open="shortcutsOpen" />
     </UDashboardGroup>
   </UApp>
 </template>

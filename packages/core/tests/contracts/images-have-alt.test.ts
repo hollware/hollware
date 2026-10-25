@@ -42,6 +42,7 @@ describe('the images-have-alt contract', () => {
           path: '/body',
           message: 'The image "/b.png" has no alt text.',
           fix: 'Add alt text that describes the image, as in ![a short description](/b.png).',
+          params: { src: '/b.png' },
           line: 4,
         },
         {
@@ -50,6 +51,7 @@ describe('the images-have-alt contract', () => {
           path: '/body',
           message: 'The image "/a.png" has no alt text.',
           fix: 'Add alt text that describes the image, as in ![a short description](/a.png).',
+          params: { src: '/a.png' },
           line: 9,
         },
       ])
@@ -77,6 +79,7 @@ describe('the images-have-alt contract', () => {
         path: '/body',
         message: 'The image "/a.png" has no alt text.',
         fix: 'Add alt text that describes the image, as in ![a short description](/a.png).',
+        params: { src: '/a.png' },
       },
     ])
   })

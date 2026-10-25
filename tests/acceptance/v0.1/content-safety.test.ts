@@ -89,7 +89,18 @@ describe('AC-0.1-14: content safety', () => {
       ['unknown-component', true],
       ['unsafe-url', true],
     ])
-    expect(stored.output['entry']).toMatchObject({ markdown: HOSTILE, status: 'draft' })
+    expect(stored.output['entry']).toMatchObject({
+      markdown: created.output['markdown'],
+      status: 'draft',
+    })
+    for (const kept of [
+      '<span>raw</span>',
+      '::youtub{#dQw4w9WgXcQ}',
+      '{onclick="alert(1)"}',
+      '[script link](javascript:alert(1))',
+    ]) {
+      expect(created.output['markdown']).toContain(kept)
+    }
   })
 
   it('publishes HTML that a post quotes as text, never as markup', async () => {

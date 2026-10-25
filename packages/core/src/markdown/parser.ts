@@ -222,23 +222,39 @@ function keepPropsText(md: MarkdownIt): void {
   })
 }
 
-function hollwareMarkdownIt(md: MarkdownIt): void {
+function readAsHollware(md: MarkdownIt): void {
   md.set({ html: true })
   md.validateLink = () => true
   md.linkify.set({ fuzzyLink: false })
   md.block.ruler.disable('comark_block_yaml')
+}
+
+function hollwareMarkdownIt(md: MarkdownIt): void {
+  readAsHollware(md)
   keepPropsText(md)
   md.core.ruler.push('hollware', rewriteTokens)
 }
 
+function formattingMarkdownIt(md: MarkdownIt): void {
+  readAsHollware(md)
+  md.core.ruler.push('hollware_references', (state) => {
+    state.tokens = state.tokens.filter((token) => token.type !== 'reference')
+  })
+}
+
 const hollware: ComarkPlugin = { name: 'hollware', markdownItPlugins: [hollwareMarkdownIt] }
+
+const formatting: ComarkPlugin = {
+  name: 'hollware-format',
+  markdownItPlugins: [formattingMarkdownIt],
+}
 
 export interface Parser {
   splitFrontmatter(markdown: string): { content: string; data: unknown }
   parseBody(markdown: string): Promise<MarkdownDocument>
 }
 
-async function createParser(): Promise<Parser> {
+async function createParser(own: ComarkPlugin): Promise<Parser> {
   const [comark, components, attributes, taskList, alert] = await Promise.all([
     import('comark'),
     import('comark/plugins/components'),
@@ -250,13 +266,7 @@ async function createParser(): Promise<Parser> {
     autoClose: false,
     registerDefaultPlugins: false,
     headingIds: false,
-    plugins: [
-      components.default(),
-      attributes.default(),
-      taskList.default(),
-      hollware,
-      alert.default(),
-    ],
+    plugins: [components.default(), attributes.default(), taskList.default(), own, alert.default()],
   })
   return {
     splitFrontmatter: (markdown) => comark.parseFrontmatter(markdown),
@@ -265,11 +275,20 @@ async function createParser(): Promise<Parser> {
 }
 
 let parser: Promise<Parser> | undefined
+let formatParser: Promise<Parser> | undefined
 
 export function getParser(): Promise<Parser> {
-  parser ??= createParser().catch((error: unknown) => {
+  parser ??= createParser(hollware).catch((error: unknown) => {
     parser = undefined
     throw error
   })
   return parser
+}
+
+export function getFormatParser(): Promise<Parser> {
+  formatParser ??= createParser(formatting).catch((error: unknown) => {
+    formatParser = undefined
+    throw error
+  })
+  return formatParser
 }

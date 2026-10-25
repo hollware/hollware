@@ -46,7 +46,8 @@
     "@cfworker/json-schema": "catalog:",
     "@comark/html": "catalog:",
     "@standard-schema/spec": "catalog:",
-    "comark": "catalog:"
+    "comark": "catalog:",
+    "js-yaml": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "catalog:",

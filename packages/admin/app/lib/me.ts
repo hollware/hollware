@@ -24,6 +24,6 @@ export function useSiteMenu() {
         if (membership.site !== me.value?.site) void auth.switchSite(membership.site, '/admin/')
       },
     })),
-    [{ label: m.value.nav.newSite, icon: 'i-lucide-plus', to: '/site' }],
+    [{ label: m.value.nav.newSite, icon: 'i-lucide-plus', to: '/settings/site#sites' }],
   ])
 }

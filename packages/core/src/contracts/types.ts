@@ -30,6 +30,10 @@ export interface Violation {
   readonly fix: string
   /** The line of the Markdown file, from 1, when the problem has one. */
   readonly line?: number
+  /** A stable name of the problem when its contract finds more than one kind, for a UI in another language. */
+  readonly code?: string
+  /** The values the message names, for a UI in another language. */
+  readonly params?: Readonly<Record<string, string | number>>
 }
 
 /** The result of running the contracts of a collection on one revision. */
@@ -107,6 +111,8 @@ export interface ContractFinding {
   readonly message: string
   readonly fix: string
   readonly line?: number
+  readonly code?: string
+  readonly params?: Readonly<Record<string, string | number>>
 }
 
 /** A rule with an id, a severity and a fix for every problem it finds. */

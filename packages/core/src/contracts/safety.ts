@@ -8,6 +8,7 @@ import type { Contract } from './types.ts'
 interface Wording {
   readonly message: string
   readonly fix: string
+  readonly params: Readonly<Record<string, string>>
 }
 
 function allowedComponents(collection: ResolvedCollection): string[] {
@@ -46,6 +47,7 @@ export const RAW_HTML = markerContract(
     const components = allowedComponents(collection)
     return {
       message: `Raw HTML is not allowed: the body has a <${clip(marker.name)}> tag.`,
+      params: { tag: clip(marker.name), components: components.join(', ') },
       fix: `Remove the HTML and use Markdown${components.length === 0 ? '' : ` or one of the allowed components: ${components.join(', ')}`}.`,
     }
   },
@@ -58,6 +60,7 @@ export const UNKNOWN_COMPONENT = markerContract(
     const components = allowedComponents(collection)
     return {
       message: `The component ${quote(marker.name)} does not exist in this collection.`,
+      params: { name: clip(marker.name), components: components.join(', ') },
       fix:
         components.length === 0
           ? 'This collection allows no components: remove it and use Markdown.'
@@ -71,6 +74,7 @@ export const DISALLOWED_ATTRIBUTE = markerContract(
   'Links, images and code carry only the attributes Markdown produces, and a component only the props its schema declares.',
   (marker) => ({
     message: `The attribute ${quote(marker.name)} is not allowed.`,
+    params: { name: clip(marker.name) },
     fix: `Remove the attribute ${quote(marker.name)}. Links keep href and title, images keep src, alt, title, width and height, and a component takes only the props its schema declares.`,
   }),
 )
@@ -80,6 +84,7 @@ export const UNSAFE_URL = markerContract(
   'Links and images use an https:, http: or mailto: URL, a path of the site or an anchor.',
   (marker) => ({
     message: `The URL ${quote(marker.name)} is not allowed.`,
+    params: { url: clip(marker.name) },
     fix: 'Use an https: or http: URL, a mailto: address, a path of this site that starts with /, or an anchor that starts with #.',
   }),
 )

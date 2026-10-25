@@ -34,6 +34,8 @@ describe('validate', () => {
             path: '/frontmatter/translationGroup',
             message: 'The es version of the translation group "edge-caching-guide" does not exist.',
             fix: 'Create the entry in es with translationGroup: "edge-caching-guide" in its frontmatter before publishing.',
+            code: 'translation-pair.missing',
+            params: { field: 'translationGroup', group: 'edge-caching-guide', locale: 'es' },
           },
         ],
         warnings: [],
@@ -68,31 +70,31 @@ describe('validate', () => {
       [
         'internal-links-resolve',
         'The link "/en/notes/my-note/" points at the entry notes/en/my-note, which does not exist.',
-        9,
+        11,
       ],
       [
         'internal-links-resolve',
         'The link "/en/blog/other-post/" points at the entry blog/en/other-post, which does not exist.',
-        9,
+        11,
       ],
     ])
     expect(links(draft)).toEqual([
       [
         'internal-links-resolve',
         'The link "/en/notes/my-note/" points at the entry notes/en/my-note, which is not published yet (draft).',
-        9,
+        11,
       ],
       [
         'internal-links-resolve',
         'The link "/en/blog/other-post/" points at the entry blog/en/other-post, which does not exist.',
-        9,
+        11,
       ],
     ])
     expect(links(published)).toEqual([
       [
         'internal-links-resolve',
         'The link "/en/blog/other-post/" points at the entry blog/en/other-post, which does not exist.',
-        9,
+        11,
       ],
     ])
   })

@@ -8,9 +8,18 @@ function refusal(
   path: '/frontmatter' | '/body',
   message: string,
   fix: string,
+  explained: { readonly code: string; readonly params?: Record<string, string | number> },
   line?: number,
 ): Violation {
-  const violation: Violation = { contract, severity: 'error', path, message, fix }
+  const violation: Violation = {
+    contract,
+    severity: 'error',
+    path,
+    message,
+    fix,
+    code: `${contract}.${explained.code}`,
+    params: explained.params ?? {},
+  }
   return line === undefined ? violation : { ...violation, line }
 }
 
@@ -20,6 +29,7 @@ export function sizeLimit(bytes: number, limit: number): Violation {
     '/body',
     `The Markdown file is ${bytes} bytes and this collection accepts at most ${limit}.`,
     `Shorten the file to ${limit} bytes or fewer, counting the frontmatter, or split the content into several entries.`,
+    { code: 'file', params: { bytes, limit } },
   )
 }
 
@@ -38,6 +48,7 @@ export function yamlSyntax(
     '/frontmatter',
     `The frontmatter is not valid YAML: ${reason}${where}.`,
     `Fix the YAML between the two --- lines at the top of the file${line === undefined ? '' : `, at line ${line}`}. ${YAML_FIX}`,
+    { code: 'yaml', params: { reason, line: line ?? '' } },
     line,
   )
 }
@@ -48,6 +59,7 @@ export function frontmatterNotMapping(found: string): Violation {
     '/frontmatter',
     `The frontmatter must be a YAML mapping of keys to values, but the file starts with ${found}.`,
     'Start the file with a line of three dashes, one "key: value" line for each field and a closing line of three dashes. If the dashes at the top were meant as a horizontal rule, remove them or write *** instead.',
+    { code: 'not-mapping', params: { found } },
     1,
   )
 }
@@ -67,6 +79,7 @@ export function frontmatterNotJson(problem: JsonProblem): Violation {
     problem === 'shared'
       ? 'Remove the &anchor and *alias markers and write every value out in full.'
       : 'Replace the value with plain text, a number, a boolean, null, a list or a mapping of them.',
+    { code: `not-json.${problem}` },
     1,
   )
 }
@@ -82,6 +95,7 @@ export function parseFailure(error: unknown): Violation {
     '/body',
     `Comark could not parse the Markdown (${detail.slice(0, 200)}).`,
     PARSE_FIX,
+    { code: 'failed' },
   )
 }
 
@@ -91,6 +105,7 @@ export function notAString(): Violation {
     '/body',
     'The Markdown is not a string.',
     'Send the whole file, frontmatter and body, as one string.',
+    { code: 'not-a-string' },
   )
 }
 
@@ -104,5 +119,6 @@ export function unstorable(problem: Problem): Violation {
     problem === 'nesting'
       ? 'Flatten the nesting of emphasis, lists, quotes and components.'
       : 'Give the component a smaller, flatter value, written as JSON.',
+    { code: problem },
   )
 }

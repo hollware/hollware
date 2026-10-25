@@ -42,7 +42,10 @@ async function rowsOf(world: World) {
 }
 
 describe('create_draft', () => {
-  it('saves a draft at version 1: the Markdown as it came, and everything else derived from it', async () => {
+  const CANONICAL =
+    '---\ntitle: Edge caching guide\ndescription: How to cache at the edge.\ndate: 2026-10-01\ntags:\n  - cms\n  - cloudflare\n  - cms\ntranslationGroup: edge-caching-guide\n---\n\n# Edge caching guide\n\nWhat an edge cache keeps.\n'
+
+  it('saves a draft at version 1: the canonical Markdown of what came, and everything else derived from it', async () => {
     const world = await newWorld(env.DB, 'create')
     world.time.set(T0)
     const client = { name: 'claude-code', version: '1.2.3' }
@@ -80,13 +83,14 @@ describe('create_draft', () => {
         deletedAt: null,
         updatedAt: T0,
       },
+      markdown: CANONICAL,
       verdict: CLEAN,
     })
     const id = created.entry?.id ?? ''
     const [revision, ...others] = await revisionsOf(world.db, id)
     expect(others).toEqual([])
     expect(revision).toMatchObject({
-      markdown,
+      markdown: CANONICAL,
       comark_version: COMARK_VERSION,
       pipeline_version: PIPELINE_VERSION,
       word_count: 8,
@@ -247,6 +251,8 @@ describe('create_draft', () => {
         path: '/body',
         message: 'The Markdown file is 600000 bytes and this collection accepts at most 524288.',
         fix: 'Shorten the file to 524288 bytes or fewer, counting the frontmatter, or split the content into several entries.',
+        code: 'size-limit.file',
+        params: { bytes: 600000, limit: 524288 },
       }),
     )
     expect(notes.outcome).toBe('saved')
@@ -295,6 +301,7 @@ describe('create_draft', () => {
         path: '',
         message: `Another entry of this collection and locale, ${first.id}, already has this slug.`,
         fix: `Choose another slug, or change the entry ${first.id} with update_draft.`,
+        params: { holder: first.id },
       }),
     )
     expect(await rowsOf(world)).toEqual(before)
@@ -319,6 +326,7 @@ describe('create_draft', () => {
         path: '/frontmatter/translationGroup',
         message: `Another entry of this collection and locale, ${first.id}, already belongs to this translation group.`,
         fix: `Give "translationGroup" another value, or change the entry ${first.id} with update_draft: a translation group holds one entry per locale.`,
+        params: { field: 'translationGroup', holder: first.id },
       }),
     )
     expect(await rowsOf(world)).toEqual(before)
@@ -349,6 +357,8 @@ describe('create_draft', () => {
         path: '',
         message: `The entry takes ${bytes} bytes and the limit is 1900000 bytes.`,
         fix: `Cut at least ${bytes - 1_900_000} bytes: shorten the text, drop what is not essential or split it into several entries.`,
+        code: 'size-limit.row',
+        params: { bytes, limit: 1900000 },
       }),
     )
     expect(created.outcome).toBe('refused')
@@ -362,6 +372,8 @@ describe('update_draft', () => {
     tags: '[agents]',
     translationGroup: 'guide-2',
   })
+  const editedCanonical =
+    '---\ntitle: A better title\ndescription: How to cache at the edge.\ndate: 2026-10-01\ntags:\n  - agents\ntranslationGroup: guide-2\n---\n\n# Edge caching guide\n\nWhat an edge cache keeps.\n'
 
   async function entryAtVersion1(world: World) {
     return createPost(world, {
@@ -408,13 +420,14 @@ describe('update_draft', () => {
         deletedAt: null,
         updatedAt: '2026-10-13T11:00:00.000Z',
       },
+      markdown: editedCanonical,
       verdict: CLEAN,
     })
     const [first, second, ...others] = await revisionsOf(world.db, created.id)
     expect(others).toEqual([])
     expect(first).toMatchObject({ actor_meta: null, created_at: T0 })
     expect(second).toMatchObject({
-      markdown: edited,
+      markdown: editedCanonical,
       word_count: 8,
       actor_kind: 'token',
       actor_user_id: world.tenant.userId,
@@ -432,9 +445,9 @@ describe('update_draft', () => {
     })
   })
 
-  it('answers unchanged, with the verdict that is stored, for the file the head already holds, and writes nothing', async () => {
+  it('answers unchanged, with the verdict that is stored, for a file whose canonical form the head already holds, and writes nothing', async () => {
     const world = await newWorld(env.DB, 'unchanged')
-    const markdown = blogPost({ description: null })
+    const markdown = blogPost({ description: null, tags: '[cloudflare, cms]' })
     const created = await world.agent.createDraft({ ...english, markdown })
     const id = created.entry?.id ?? ''
     world.time.set('2026-10-13T12:00:00.000Z')
@@ -443,7 +456,14 @@ describe('update_draft', () => {
     const again = await world.agent.updateDraft({ id, version: 1, markdown })
 
     expect(created.verdict?.ok).toBe(false)
-    expect(again).toEqual({ outcome: 'unchanged', entry: created.entry, verdict: created.verdict })
+    expect(markdown).toContain('tags: [cloudflare, cms]')
+    expect(created.markdown).toContain('tags:\n  - cloudflare\n  - cms\n')
+    expect(again).toEqual({
+      outcome: 'unchanged',
+      entry: created.entry,
+      markdown: created.markdown,
+      verdict: created.verdict,
+    })
     expect(await rowsOf(world)).toEqual(before)
     expect(await entryColumns(world.db, id)).toMatchObject({ version: 1, updated_at: T0 })
   })
@@ -541,6 +561,7 @@ describe('update_draft', () => {
         path: '/frontmatter/translationGroup',
         message: `Another entry of this collection and locale, ${first.id}, already belongs to this translation group.`,
         fix: `Give "translationGroup" another value, or change the entry ${first.id} with update_draft: a translation group holds one entry per locale.`,
+        params: { field: 'translationGroup', holder: first.id },
       }),
     )
     expect(await rowsOf(world)).toEqual(before)

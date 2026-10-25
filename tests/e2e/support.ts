@@ -60,9 +60,29 @@ export async function expectAccessible(page: Page): Promise<void> {
 
 export async function writeMarkdown(page: Page, markdown: string): Promise<void> {
   const editor = page.locator('.cm-content').first()
+  await expect(
+    page.getByRole('textbox', {
+      name: /^(Body of the entry|Cuerpo de la entrada|Markdown of the entry|Markdown de la entrada)$/,
+    }),
+  ).toBeVisible()
+  if (!(await editor.isVisible())) {
+    await page.getByRole('button', { name: /^(View Markdown|Ver Markdown)$/ }).click()
+  }
   await editor.click()
   await page.keyboard.press('ControlOrMeta+A')
   await page.keyboard.insertText(markdown)
+}
+
+export async function saveNow(page: Page): Promise<void> {
+  await page.keyboard.press('ControlOrMeta+S')
+  await expect(
+    page.getByRole('status').filter({ hasText: /^\s*(Saved|Guardado)\s*$/ }),
+  ).toBeVisible()
+}
+
+export async function entryAction(page: Page, name: string | RegExp): Promise<void> {
+  await page.getByRole('button', { name: /^(More actions|Más acciones)$/ }).click()
+  await page.getByRole('menuitem', { name, exact: true }).click()
 }
 
 export function post(title: string, group: string): string {
@@ -76,7 +96,7 @@ export function post(title: string, group: string): string {
     `translationGroup: ${group}`,
     '---',
     '',
-    `# ${title}`,
+    `## In short`,
     '',
     'Plain words, one idea, and nothing that links anywhere.',
     '',

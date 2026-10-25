@@ -1,6 +1,15 @@
 import { Buffer } from 'node:buffer'
 import { expect, test, type Page } from '@playwright/test'
-import { expectAccessible, post, setUp, shot, target, writeMarkdown } from './support.ts'
+import {
+  entryAction,
+  expectAccessible,
+  post,
+  saveNow,
+  setUp,
+  shot,
+  target,
+  writeMarkdown,
+} from './support.ts'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -19,8 +28,7 @@ async function newEntry(page: Page, locale: 'es' | 'en', title: string, slug: st
   await page.getByRole('button', { name: 'Create the draft' }).click()
   await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
   await writeMarkdown(page, post(title, 'hello-world'))
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await saveNow(page)
   await shot(page, `editor-${locale}`)
 }
 
@@ -39,7 +47,7 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
 
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
   await owner.goto('/admin/entries')
-  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toContainText('published')
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toContainText('published')
   await expectAccessible(owner)
   await shot(owner, 'entries')
 })
@@ -48,9 +56,7 @@ test('the owner reads the history of an entry and goes back to an earlier versio
   await owner.goto('/admin/entries/blog/en/hello-world')
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
   await writeMarkdown(owner, post('Hello again', 'hello-world'))
-  await owner.getByRole('button', { name: 'Save' }).click()
-  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
-
+  await saveNow(owner)
   await owner.getByRole('tab', { name: 'History' }).click()
   const history = owner.getByRole('list', { name: 'History of the entry' })
   await expect(history.getByRole('button').first()).toContainText('Latest')
@@ -82,12 +88,9 @@ test('a diff folds the lines that did not change into a flat band of the admin',
   await owner.getByRole('button', { name: 'Create the draft' }).click()
   await expect(owner.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
   await writeMarkdown(owner, long('The last paragraph, first.'))
-  await owner.getByRole('button', { name: 'Save' }).click()
-  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await saveNow(owner)
   await writeMarkdown(owner, long('The last paragraph, changed.'))
-  await owner.getByRole('button', { name: 'Save' }).click()
-  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
-
+  await saveNow(owner)
   await owner.getByRole('tab', { name: 'History' }).click()
   await owner.getByRole('list', { name: 'History of the entry' }).getByRole('button').nth(1).click()
   const band = owner.getByRole('dialog').locator('.cm-collapsedLines').first()
@@ -100,10 +103,45 @@ test('a diff folds the lines that did not change into a flat band of the admin',
   await owner.keyboard.press('Escape')
 })
 
+test('the owner writes in the visual editor, and finds the Markdown an agent writes', async () => {
+  await owner.goto('/admin/entries/blog/en/a-long-post')
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  await body.getByText('The last paragraph, changed.').click()
+  await expect(body).toBeFocused()
+  await owner.keyboard.press('End')
+  await owner.waitForTimeout(150)
+  await owner.keyboard.press('Enter')
+  await owner.keyboard.type('/')
+  await owner.getByRole('option', { name: /Heading 2/ }).click()
+  await owner.keyboard.type('Written in the editor')
+  await owner.keyboard.press('Enter')
+  await owner.keyboard.type('One word')
+  for (let step = 0; step < 4; step++) await owner.keyboard.press('Shift+ArrowLeft')
+  await owner.getByRole('button', { name: 'Bold' }).click()
+
+  await expect(body.getByRole('heading', { name: 'Written in the editor', level: 2 })).toBeVisible()
+  await expect(body.locator('strong')).toHaveText('word')
+  await expectAccessible(owner)
+  await shot(owner, 'editor-write')
+
+  await body.getByText('The last paragraph, changed.').hover()
+  await owner.getByRole('button', { name: 'Actions of the block' }).click()
+  await expect(owner.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
+  await owner.keyboard.press('Escape')
+
+  await saveNow(owner)
+  await owner.getByRole('button', { name: 'View Markdown' }).click()
+  const markdown = owner.locator('.cm-content').first()
+  await expect(markdown).toContainText('## Written in the editor')
+  await expect(markdown).toContainText('One **word**')
+  await shot(owner, 'editor-markdown')
+  await owner.getByRole('button', { name: 'Edit visually' }).click()
+})
+
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({
   browser,
 }) => {
-  await owner.goto('/admin/people')
+  await owner.goto('/admin/settings/people')
   await expect(owner.getByRole('heading', { name: 'Members' })).toBeVisible()
   await expectAccessible(owner)
   await owner.getByRole('button', { name: 'Invite' }).click()
@@ -114,8 +152,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await author.goto('/admin/entries/blog/es/hola-mundo')
   await expect(author.getByRole('heading', { name: 'Hola mundo', level: 1 }).first()).toBeVisible()
   await writeMarkdown(author, post('Hola mundo, otra vez', 'hello-world'))
-  await author.getByRole('button', { name: 'Save' }).click()
-  await expect(author.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await saveNow(author)
   await author.getByRole('button', { name: 'Publish', exact: true }).click()
   await expect(author.getByText('Sent for review').first()).toBeVisible()
 
@@ -136,8 +173,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
 
   await author.reload()
   await writeMarkdown(author, post('Hola mundo, rechazado', 'hello-world'))
-  await author.getByRole('button', { name: 'Save' }).click()
-  await expect(author.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await saveNow(author)
   await author.getByRole('button', { name: 'Publish', exact: true }).click()
   await expect(author.getByText('Sent for review').first()).toBeVisible()
   await owner.goto('/admin/reviews')
@@ -161,7 +197,7 @@ test('the owner schedules the end of an entry, unpublishes it, then schedules it
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
   await expect(owner.getByRole('navigation', { name: 'Translations' })).toContainText('en')
-  await owner.getByRole('button', { name: 'Unpublish later' }).click()
+  await entryAction(owner, 'Unpublish later')
   await expect(owner.getByRole('dialog')).toContainText('Take it off the site at a time')
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish later' }).click()
   await expect(owner.getByText('It will leave the site at that time').first()).toBeVisible()
@@ -170,26 +206,28 @@ test('the owner schedules the end of an entry, unpublishes it, then schedules it
   await expect(owner.getByText('It stays published').first()).toBeVisible()
   await expect(owner.getByText(/^Leaves the site on /)).toHaveCount(0)
 
-  await owner.getByRole('button', { name: 'Unpublish', exact: true }).click()
+  await entryAction(owner, 'Unpublish')
   await expect(owner.getByRole('dialog')).toContainText('Unpublish this entry?')
   await expectAccessible(owner)
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish', exact: true }).click()
   await expect(owner.getByText('Unpublished', { exact: true }).first()).toBeVisible()
 
-  await owner.getByRole('button', { name: 'Schedule', exact: true }).click()
+  await entryAction(owner, 'Schedule')
   await owner.getByRole('dialog').getByRole('button', { name: 'Schedule', exact: true }).click()
   await expect(owner.getByText('Scheduled', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('button', { name: 'Cancel schedule' })).toBeVisible()
+  await owner.getByRole('button', { name: 'More actions' }).click()
+  await expect(owner.getByRole('menuitem', { name: 'Cancel schedule' })).toBeVisible()
+  await owner.keyboard.press('Escape')
   await shot(owner, 'scheduled')
 
   await owner.goto('/admin/entries?status=scheduled')
-  await expect(owner.getByRole('row', { name: /^Select Hola mundo, otra vez/ })).toContainText(
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo, otra vez/ })).toContainText(
     'scheduled',
   )
 })
 
 test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no deploy', async () => {
-  await owner.goto('/admin/collections')
+  await owner.goto('/admin/settings/collections')
   await expect(owner.getByRole('heading', { name: 'Collections', level: 1 })).toBeVisible()
   await expectAccessible(owner)
   await owner.getByRole('textbox', { name: 'Name', exact: true }).fill('talks')
@@ -217,14 +255,13 @@ test('AC-0.8-2: the owner shapes the site in the admin, and it applies with no d
   await expect(owner.getByText('Blocked', { exact: true }).first()).toBeVisible()
 
   await writeMarkdown(owner, '---\ntitle: A talk\n---\n\nShort and plain.\n')
-  await owner.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(owner.getByText('Saved', { exact: true }).first()).toBeVisible()
+  await saveNow(owner)
   await owner.getByRole('button', { name: 'Publish', exact: true }).click()
   await expect(owner.getByText('Published', { exact: true }).first()).toBeVisible()
 })
 
 test('the owner lets Hollware fill the date of the blog, which nobody writes then', async () => {
-  await owner.goto('/admin/collections/blog')
+  await owner.goto('/admin/settings/collections/blog')
   await expect(owner.getByRole('heading', { name: 'blog', level: 1 })).toBeVisible()
   const who = owner.getByRole('combobox', { name: 'Who writes it' }).first()
   await who.click()
@@ -239,7 +276,7 @@ test('the owner lets Hollware fill the date of the blog, which nobody writes the
 })
 
 test('the owner adds a webhook, whose secret Hollware makes and shows once', async () => {
-  await owner.goto('/admin/site')
+  await owner.goto('/admin/settings/site')
   await expect(owner.getByRole('heading', { name: 'Webhooks' })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Name', exact: true }).last().fill('site')
   await owner.getByLabel('URL', { exact: true }).fill('https://example.com/_hollware/webhook')
@@ -273,21 +310,17 @@ test('the owner connects analytics in Site, and the provider is asked before any
 
 test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.goto('/admin/entries')
-  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toBeVisible()
-  await expect(owner.getByText(/^1–\d+ of \d+$/)).toBeVisible()
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('hello')
-  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
-  await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toBeVisible()
-  await expect(owner.getByText(/^1–1 of 1, filtered from \d+$/)).toBeVisible()
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('')
-  await owner.getByRole('combobox', { name: 'Status' }).click()
-  await owner.getByRole('option', { name: 'Translations behind their source' }).click()
-  await expect(owner.getByRole('row', { name: /^Select Hello world/ })).toContainText(
+  await owner.getByRole('tab', { name: 'Behind their source' }).click()
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toContainText(
     'behind its source',
   )
-  await expect(owner.getByRole('row', { name: /^Select Hola mundo/ })).toHaveCount(0)
-  await owner.getByRole('combobox', { name: 'Status' }).click()
-  await owner.getByRole('option', { name: 'Any status' }).click()
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
+  await owner.getByRole('tab', { name: 'All', exact: true }).click()
 
   await owner.getByRole('button', { name: /^Search/ }).click()
   await owner.getByPlaceholder('Search entries, or go anywhere…').fill('hello')
@@ -301,9 +334,9 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
     ['/admin/', 'Home'],
-    ['/admin/site', 'Site'],
-    ['/admin/tokens', 'Tokens'],
-    ['/admin/activity', 'Activity'],
+    ['/admin/settings/site', 'Site'],
+    ['/admin/settings/tokens', 'Tokens'],
+    ['/admin/settings/activity', 'Activity'],
     ['/signin', 'Sign in'],
   ] as const) {
     await owner.goto(path)
@@ -349,7 +382,7 @@ test('the owner uploads an image, sees it in the library and copies its referenc
 })
 
 test('the owner reads the activity log: what was done, by whom, and the detail of a line', async () => {
-  await owner.goto('/admin/activity')
+  await owner.goto('/admin/settings/activity')
   await expect(owner.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible()
   const published = owner.getByRole('row', { name: /Published an entry/ }).first()
   await expect(published).toContainText('Olga')
@@ -390,7 +423,7 @@ test('the owner switches the admin to Spanish from the person menu, and it stays
   await expect(
     owner.getByRole('textbox', { name: 'Filtrar por título, slug o etiqueta' }),
   ).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo, otra vez/ })).toContainText(
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo, otra vez/ })).toContainText(
     'programada',
   )
   await expectAccessible(owner)
@@ -407,24 +440,16 @@ test('the owner publishes and unpublishes several entries at once, from the tabl
 
   await bar.getByRole('button', { name: 'Publicar 2' }).click()
   await expect(owner.getByText('2 publicadas', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
-    'publicada',
-  )
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toContainText(
-    'publicada',
-  )
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toContainText('publicada')
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toContainText('publicada')
   await shot(owner, 'bulk-es')
 
   await bar.getByRole('button', { name: 'Despublicar 2' }).click()
   await expectAccessible(owner)
   await owner.getByRole('dialog').getByRole('button', { name: 'Despublicar 2' }).click()
   await expect(owner.getByText('2 despublicadas', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
-    'borrador',
-  )
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toContainText(
-    'borrador',
-  )
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toContainText('borrador')
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toContainText('borrador')
 })
 
 test('a page loaded before a deploy loads the new version when a file of its own is gone', async () => {
@@ -438,6 +463,7 @@ test('a page loaded before a deploy loads the new version when a file of its own
     else await route.continue()
   })
 
+  await owner.getByRole('link', { name: 'Configuración', exact: true }).click()
   await owner.getByRole('link', { name: 'Tokens', exact: true }).click()
   await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
   expect(asked).toBe(2)
@@ -447,32 +473,28 @@ test('a page loaded before a deploy loads the new version when a file of its own
 test('the owner moves a draft to the trash from the editor, finds it there and restores it', async () => {
   await owner.goto('/admin/entries/blog/en/hello-world')
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
-  await owner.getByRole('button', { name: 'Mover a la papelera' }).click()
+  await entryAction(owner, 'Mover a la papelera')
   await expect(owner.getByRole('dialog')).toContainText('¿Mover este borrador a la papelera?')
   await expectAccessible(owner)
   await owner.getByRole('dialog').getByRole('button', { name: 'Mover a la papelera' }).click()
 
   await expect(owner.getByText('Movida a la papelera', { exact: true }).first()).toBeVisible()
   await expect(owner.getByRole('heading', { name: 'Entradas', level: 1 })).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toHaveCount(0)
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toBeVisible()
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toHaveCount(0)
 
-  await owner.getByRole('combobox', { name: 'Estado' }).click()
-  await owner.getByRole('option', { name: 'En la papelera' }).click()
-  const trashed = owner.getByRole('row', { name: /^Seleccionar Hello world/ })
+  await owner.getByRole('tab', { name: 'Papelera' }).click()
+  const trashed = owner.getByRole('listitem', { name: /^Hello world/ })
   await expect(trashed).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
   await expectAccessible(owner)
   await shot(owner, 'trash-es')
 
   await trashed.getByRole('button', { name: 'Restaurar Hello world' }).click()
   await expect(owner.getByText('1 restaurada', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toHaveCount(0)
-  await owner.getByRole('combobox', { name: 'Estado' }).click()
-  await owner.getByRole('option', { name: 'Cualquier estado' }).click()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hello world/ })).toContainText(
-    'borrador',
-  )
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toHaveCount(0)
+  await owner.getByRole('tab', { name: 'Todas' }).click()
+  await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toContainText('borrador')
 
   await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
   await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
@@ -481,19 +503,18 @@ test('the owner moves a draft to the trash from the editor, finds it there and r
   await expect(owner.getByRole('dialog')).toContainText('¿Mover 2 borradores a la papelera?')
   await owner.getByRole('dialog').getByRole('button', { name: 'Mover 2 a la papelera' }).click()
   await expect(owner.getByText('2 movidas a la papelera', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
 
-  await owner.getByRole('combobox', { name: 'Estado' }).click()
-  await owner.getByRole('option', { name: 'En la papelera' }).click()
+  await owner.getByRole('tab', { name: 'Papelera' }).click()
   await owner.getByRole('checkbox', { name: 'Seleccionar Hello world' }).click()
   await owner.getByRole('checkbox', { name: 'Seleccionar Hola mundo, otra vez' }).click()
   await bar.getByRole('button', { name: 'Restaurar 2' }).click()
   await expect(owner.getByText('2 restauradas', { exact: true }).first()).toBeVisible()
-  await expect(owner.getByRole('row', { name: /^Seleccionar Hola mundo/ })).toHaveCount(0)
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
 })
 
 test('the bar of every page names the site it is of, with the menu to switch to another', async () => {
-  await owner.goto('/admin/collections')
+  await owner.goto('/admin/settings/collections')
   const site = owner.getByRole('button', { name: 'Sitio playground: cambiar a otro' })
   await expect(site).toBeVisible()
   await expectAccessible(owner)
@@ -503,9 +524,9 @@ test('the bar of every page names the site it is of, with the menu to switch to 
 })
 
 test('signing in goes back to a page of this Hollware, and never to another host', async () => {
-  await owner.goto('/signin?return_to=%2Fadmin%2Ftokens')
+  await owner.goto('/signin?return_to=%2Fadmin%2Fsettings%2Ftokens')
   await owner.getByRole('button', { name: 'Sign in with a passkey' }).click()
-  await expect(owner).toHaveURL(/\/admin\/tokens$/)
+  await expect(owner).toHaveURL(/\/admin\/settings\/tokens$/)
   await expect(owner.getByRole('heading', { name: 'Tokens', level: 1 })).toBeVisible()
 
   await owner.goto('/signin?return_to=%2F%5Cevil.example')
@@ -527,7 +548,7 @@ test('the owner changes the URL of a published entry, and the site keeps the old
     .click()
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-de-nuevo$/)
 
-  await owner.goto('/admin/site')
+  await owner.goto('/admin/settings/site')
   await expect(owner.getByText(/hola-mundo/).first()).toBeVisible()
   await expect(owner.getByText(/hola-de-nuevo/).first()).toBeVisible()
 
@@ -542,7 +563,7 @@ test('the owner changes the URL of a published entry, and the site keeps the old
 })
 
 test('the owner sets the narrower copies the images of the site get, in Site', async () => {
-  await owner.goto('/admin/site')
+  await owner.goto('/admin/settings/site')
   const widths = owner.getByRole('textbox', { name: /^(Narrower copies|Copias más angostas)/ })
   await expect(widths).toHaveValue('640, 1280')
   await widths.fill('1600 480')
@@ -568,7 +589,7 @@ test('the owner sets the narrower copies the images of the site get, in Site', a
 })
 
 test('the owner finds the daily backups of the site in Site, keeps them a week, then turns them off', async () => {
-  await owner.goto('/admin/site')
+  await owner.goto('/admin/settings/site')
   await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()
   await expect(
     owner.getByText(/^(No backup yet: the first comes after 03:00 UTC\.|Todavía no hay respaldos)/),

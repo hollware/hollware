@@ -50,7 +50,7 @@ const validName = computed(
 
 const change = useStructureChange(async () => {
   toast.add({ title: m.value.collections.created(name.value), color: 'success' })
-  await router.push(`/collections/${name.value}`)
+  await router.push(`/settings/collections/${name.value}`)
 })
 
 async function create() {
@@ -92,7 +92,7 @@ const PRESETS = computed(() => [
       >
         <template #name-cell="{ row }">
           <RouterLink
-            :to="`/collections/${row.original.name}`"
+            :to="`/settings/collections/${row.original.name}`"
             class="font-medium hover:underline"
             >{{ row.original.name }}</RouterLink
           >

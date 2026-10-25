@@ -22,9 +22,14 @@ export type {
   RenderHtml,
 } from './markdown/types.ts'
 export {
+  canonicalMarkdown,
   COMARK_VERSION,
+  formatMarkdown,
+  type FormattedMarkdown,
+  parseForEditing,
   PIPELINE_VERSION,
   processMarkdown,
+  stringifyBody,
   renderHtml,
   safeDocument,
 } from './markdown/index.ts'

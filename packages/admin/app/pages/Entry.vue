@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import Page from '../components/Page.vue'
+import type { DropdownMenuItem } from '@nuxt/ui'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
-import RevisionHistory from '../components/RevisionHistory.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import RevisionHistory from '../components/RevisionHistory.vue'
 import VerdictList from '../components/VerdictList.vue'
+import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { ApiError, type Output } from '../lib/api.ts'
 import { diagnosticsOf } from '../lib/diagnostics.ts'
-import { formatDateTime, useMessages } from '../i18n/index.ts'
+import type { ComponentDefinition } from '../lib/editor/components.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
+import { bodyOf, readFrontmatter, setField, withBody } from '../lib/frontmatter.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
-import { previewDocument } from '../lib/preview.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
 
@@ -23,9 +25,11 @@ type Entry = NonNullable<Output<'get_entry'>['entry']>
 type Summary = Output<'list_entries'>['entries'][number]
 type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
+type SaveState = 'saved' | 'saving' | 'unsaved' | 'failed'
 
 const toast = useToast()
 const m = useMessages()
+const route = useRoute()
 const router = useRouter()
 const site = ref<Site | null>(null)
 const entry = ref<Entry | null>(null)
@@ -36,6 +40,8 @@ const text = ref('')
 const saved = ref('')
 const verdict = ref<Verdict | null>(null)
 const busy = ref(false)
+const saveState = ref<SaveState>('saved')
+const lossy = ref(false)
 const conflictOpen = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
@@ -49,6 +55,17 @@ const scheduleMode = ref<'publish' | 'unpublish'>('publish')
 const publishAt = ref('')
 let pendingAt: string | undefined
 
+const source = computed(() => lossy.value || route.query['view'] === 'markdown')
+const panel = computed(() => (route.query['panel'] === 'history' ? 'history' : 'properties'))
+const panelOpen = computed(() => route.query['panel'] !== 'none')
+
+function setQuery(key: string, value: string | null) {
+  const query = { ...route.query }
+  if (value === null) delete query[key]
+  else query[key] = value
+  void router.replace({ query })
+}
+
 const ref_ = computed(() => ({
   collection: props.collection,
   locale: props.locale,
@@ -57,6 +74,29 @@ const ref_ = computed(() => ({
 const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === props.collection),
 )
+const components = computed<ComponentDefinition[]>(() =>
+  (definition.value?.components ?? []).map(({ name, description, example, props: schema }) => ({
+    name,
+    description,
+    example,
+    props: schema,
+  })),
+)
+const hasTitle = computed(() => {
+  const properties = definition.value?.schema['properties']
+  return typeof properties === 'object' && properties !== null && 'title' in properties
+})
+const values = computed(() => readFrontmatter(text.value))
+const title = computed({
+  get: () => {
+    const value = values.value?.['title']
+    return typeof value === 'string' ? value : ''
+  },
+  set: (value: string) => {
+    text.value = setField(text.value, 'title', value)
+  },
+})
+const body = computed(() => bodyOf(text.value))
 const dirty = computed(() => text.value !== saved.value)
 const diagnostics = computed(() =>
   verdict.value === null ? [] : diagnosticsOf(text.value, verdict.value),
@@ -66,7 +106,7 @@ const liveUrl = computed(() =>
     ? pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug)
     : null,
 )
-const canPreview = computed(
+const canPreviewOnSite = computed(
   () =>
     definition.value !== undefined &&
     pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug) !== null,
@@ -81,14 +121,17 @@ const untranslated = computed(() =>
 const canPublish = computed(
   () =>
     entry.value !== null &&
-    !dirty.value &&
-    (entry.value.status !== 'published' || entry.value.hasUnpublishedChanges),
+    (dirty.value || entry.value.status !== 'published' || entry.value.hasUnpublishedChanges),
 )
+const checks = computed(() => ({
+  errors: verdict.value?.errors.length ?? 0,
+  warnings: verdict.value?.warnings.length ?? 0,
+}))
 
 async function load() {
   const [described, read] = await Promise.all([
     site.value === null ? api.call('describe_site', {}) : null,
-    api.call('get_entry', { ...ref_.value, formats: ['markdown', 'html'], related: true }),
+    api.call('get_entry', { ...ref_.value, formats: ['markdown'], related: true }),
   ])
   if (described !== null) site.value = described.site
   if (read.outcome === 'not_found' || read.entry === undefined) {
@@ -96,11 +139,13 @@ async function load() {
     return
   }
   missing.value = false
+  lossy.value = false
   entry.value = read.entry
   related.value = read.related ?? []
   text.value = read.entry.markdown ?? ''
   saved.value = text.value
   verdict.value = read.entry.verdict
+  saveState.value = 'saved'
   translations.value =
     read.entry.translationGroup === null
       ? []
@@ -114,42 +159,91 @@ async function load() {
 
 watch(ref_, load, { immediate: true })
 
-let timer: ReturnType<typeof setTimeout> | undefined
+function report(error: unknown, heading: string) {
+  const description = error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
+  toast.add({ title: heading, description, color: 'error' })
+}
+
+let saving: Promise<boolean> | null = null
+
+async function persist(): Promise<boolean> {
+  if (entry.value === null || !dirty.value) return true
+  const sent = text.value
+  saveState.value = 'saving'
+  try {
+    const answer = await api.call('update_draft', {
+      id: entry.value.id,
+      version: entry.value.version,
+      markdown: sent,
+    })
+    switch (answer.outcome) {
+      case 'saved':
+      case 'unchanged': {
+        const stored = answer.markdown ?? sent
+        if (answer.entry !== undefined) entry.value = { ...entry.value, ...answer.entry }
+        if (answer.verdict !== undefined) verdict.value = answer.verdict
+        saved.value = stored
+        if (text.value === sent) text.value = stored
+        saveState.value = text.value === saved.value ? 'saved' : 'unsaved'
+        return true
+      }
+      case 'conflict':
+        saveState.value = 'failed'
+        conflictOpen.value = true
+        return false
+      case 'refused':
+        saveState.value = 'failed'
+        verdict.value = answer.verdict ?? verdict.value
+        toast.add({
+          title: m.value.entry.notSaved,
+          description: m.value.entry.seeContracts,
+          color: 'error',
+        })
+        return false
+      case 'not_found':
+        missing.value = true
+        return false
+    }
+  } catch (error) {
+    saveState.value = 'failed'
+    report(error, m.value.entry.notSaved)
+    return false
+  }
+}
+
+function save(): Promise<boolean> {
+  saving ??= persist().finally(() => {
+    saving = null
+  })
+  return saving
+}
+
+let autosave: ReturnType<typeof setTimeout> | undefined
+let validation: ReturnType<typeof setTimeout> | undefined
 watch(text, (markdown) => {
-  clearTimeout(timer)
+  clearTimeout(autosave)
+  clearTimeout(validation)
   if (markdown === saved.value) return
-  timer = setTimeout(async () => {
+  saveState.value = 'unsaved'
+  autosave = setTimeout(() => void save(), 1500)
+  validation = setTimeout(async () => {
     verdict.value = (await api.call('validate', { ...ref_.value, markdown })).verdict
   }, 600)
 })
 
-function report(error: unknown, title: string) {
-  const description = error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
-  toast.add({ title, description, color: 'error' })
-}
+onBeforeRouteLeave(async () => {
+  clearTimeout(autosave)
+  if (dirty.value) await save()
+  return true
+})
 
-async function check() {
-  busy.value = true
-  try {
-    verdict.value = (await api.call('validate', { ...ref_.value, markdown: text.value })).verdict
-    const { errors, warnings: found } = verdict.value
-    toast.add({
-      title:
-        errors.length === 0 && found.length === 0
-          ? m.value.entry.allPass
-          : m.value.entry.counts(errors.length, found.length),
-      color: errors.length > 0 ? 'error' : found.length > 0 ? 'warning' : 'success',
-    })
-  } catch (error) {
-    report(error, m.value.entry.notChecked)
-  } finally {
-    busy.value = false
-  }
+function setBody(next: string) {
+  text.value = withBody(text.value, next)
 }
 
 async function previewOnSite() {
   if (entry.value === null) return
-  busy.value = true
+  if (dirty.value && !(await save())) return
   const tabOpenedBeforeAnyAwait = window.open('', '_blank')
   if (tabOpenedBeforeAnyAwait !== null) tabOpenedBeforeAnyAwait.opener = null
   try {
@@ -174,58 +268,15 @@ async function previewOnSite() {
   } catch (error) {
     tabOpenedBeforeAnyAwait?.close()
     report(error, m.value.entry.notPreviewed)
-  } finally {
-    busy.value = false
   }
 }
-
-async function save() {
-  if (entry.value === null || !dirty.value) return
-  busy.value = true
-  try {
-    const answer = await api.call('update_draft', {
-      id: entry.value.id,
-      version: entry.value.version,
-      markdown: text.value,
-    })
-    switch (answer.outcome) {
-      case 'saved':
-      case 'unchanged':
-        await load()
-        toast.add({
-          title: answer.outcome === 'saved' ? m.value.entry.saved : m.value.entry.nothingChanged,
-          color: 'success',
-        })
-        break
-      case 'conflict':
-        conflictOpen.value = true
-        break
-      case 'refused':
-        verdict.value = answer.verdict ?? verdict.value
-        toast.add({
-          title: m.value.entry.notSaved,
-          description: m.value.entry.seeContracts,
-          color: 'error',
-        })
-        break
-      case 'not_found':
-        missing.value = true
-        break
-    }
-  } catch (error) {
-    report(error, m.value.entry.notSaved)
-  } finally {
-    busy.value = false
-  }
-}
-
-defineShortcuts({ meta_s: () => void save() })
 
 async function publish(acknowledged: readonly Warning[] = [], at?: string) {
   if (entry.value === null) return
-  busy.value = true
   acknowledgeOpen.value = false
   scheduleOpen.value = false
+  if (dirty.value && !(await save())) return
+  busy.value = true
   try {
     const answer = await api.call('publish', {
       id: entry.value.id,
@@ -262,6 +313,7 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
         break
       case 'blocked':
         verdict.value = answer.verdict ?? verdict.value
+        setQuery('panel', null)
         toast.add({
           title: m.value.entry.blocked,
           description: m.value.entry.fixErrors,
@@ -282,7 +334,8 @@ async function publish(acknowledged: readonly Warning[] = [], at?: string) {
   }
 }
 
-function openSchedule(mode: 'publish' | 'unpublish' = 'publish') {
+async function openSchedule(mode: 'publish' | 'unpublish' = 'publish') {
+  if (mode === 'publish' && dirty.value && !(await save())) return
   scheduleMode.value = mode
   const soon = new Date(Date.now() + 3_600_000)
   soon.setSeconds(0, 0)
@@ -297,6 +350,13 @@ const scheduleError = computed(() => {
   if (Number.isNaN(at)) return m.value.entry.pickDateTime
   return at <= Date.now() ? m.value.entry.pickFuture : null
 })
+
+async function openMove() {
+  if (entry.value === null) return
+  if (dirty.value && !(await save())) return
+  newSlug.value = entry.value.slug
+  moveOpen.value = true
+}
 
 async function move() {
   if (entry.value === null) return
@@ -390,6 +450,7 @@ async function trash() {
     })
     switch (answer.outcome) {
       case 'trashed':
+        saved.value = text.value
         toast.add({
           title: m.value.entry.trashed,
           description: m.value.entry.trashedBody,
@@ -418,99 +479,381 @@ async function reloadTheirs() {
   await load()
 }
 
-const tabs = computed(() => [
-  { label: m.value.entry.tabs.fields, slot: 'fields' as const, value: 'fields' },
-  { label: m.value.entry.tabs.checks, slot: 'checks' as const, value: 'checks' },
-  { label: m.value.entry.tabs.preview, slot: 'preview' as const, value: 'preview' },
-  { label: m.value.entry.tabs.related, slot: 'related' as const, value: 'related' },
-  { label: m.value.entry.tabs.history, slot: 'history' as const, value: 'history' },
-])
+async function check() {
+  verdict.value = (await api.call('validate', { ...ref_.value, markdown: text.value })).verdict
+  setQuery('panel', null)
+}
+
+function toggleSource() {
+  if (!lossy.value) setQuery('view', source.value ? null : 'markdown')
+}
+
+function showPanel(next: 'properties' | 'history') {
+  setQuery(
+    'panel',
+    panelOpen.value && panel.value === next ? 'none' : next === 'history' ? 'history' : null,
+  )
+}
+
+defineShortcuts({
+  meta_s: { usingInput: true, handler: () => void save() },
+  meta_shift_m: { usingInput: true, handler: toggleSource },
+  meta_shift_i: { usingInput: true, handler: () => showPanel('properties') },
+  meta_shift_h: { usingInput: true, handler: () => showPanel('history') },
+})
+
+const more = computed<DropdownMenuItem[][]>(() => {
+  const current = entry.value
+  if (current === null) return []
+  return [
+    [
+      ...(current.status === 'draft'
+        ? [
+            {
+              label: m.value.entry.schedule,
+              icon: 'i-lucide-calendar-clock',
+              onSelect: () => void openSchedule('publish'),
+            },
+          ]
+        : []),
+      ...(current.status === 'published' && current.unpublishAt === null
+        ? [
+            {
+              label: m.value.entry.unpublishLater,
+              icon: 'i-lucide-calendar-x',
+              onSelect: () => void openSchedule('unpublish'),
+            },
+          ]
+        : []),
+      ...(current.status !== 'draft'
+        ? [
+            {
+              label:
+                current.status === 'scheduled'
+                  ? m.value.entry.cancelSchedule
+                  : m.value.entry.unpublish,
+              icon: 'i-lucide-eye-off',
+              onSelect: () => {
+                unpublishOpen.value = true
+              },
+            },
+          ]
+        : []),
+    ],
+    [
+      {
+        label: m.value.entry.changeUrl,
+        icon: 'i-lucide-link',
+        onSelect: () => void openMove(),
+      },
+      {
+        label: m.value.entry.previewOnSite,
+        icon: 'i-lucide-eye',
+        disabled: !canPreviewOnSite.value,
+        onSelect: () => void previewOnSite(),
+      },
+      ...(liveUrl.value !== null
+        ? [
+            {
+              label: m.value.entry.viewOnSite,
+              icon: 'i-lucide-external-link',
+              to: liveUrl.value,
+              target: '_blank',
+            },
+          ]
+        : []),
+      {
+        label: m.value.entry.validate,
+        icon: 'i-lucide-list-checks',
+        onSelect: () => void check(),
+      },
+      {
+        label: source.value ? m.value.entry.editVisually : m.value.entry.viewMarkdown,
+        icon: source.value ? 'i-lucide-pen-line' : 'i-lucide-code',
+        kbds: ['meta', 'shift', 'm'],
+        disabled: lossy.value,
+        onSelect: toggleSource,
+      },
+    ],
+    ...(current.status === 'draft'
+      ? [
+          [
+            {
+              label: m.value.entry.moveToTrash,
+              icon: 'i-lucide-trash-2',
+              color: 'error' as const,
+              onSelect: () => {
+                trashOpen.value = true
+              },
+            },
+          ],
+        ]
+      : []),
+  ]
+})
+
+const stateLabel = computed(
+  () =>
+    ({
+      saved: m.value.entry.savedState,
+      saving: m.value.entry.saving,
+      unsaved: m.value.entry.unsavedState,
+      failed: m.value.entry.notSaved,
+    })[saveState.value],
+)
 </script>
 
 <template>
-  <Page :title="entry === null ? m.entry.title : titleOf(entry)">
-    <template v-if="entry !== null" #actions>
-      <UButton
-        v-if="liveUrl !== null"
-        :to="liveUrl"
-        target="_blank"
-        :label="m.entry.viewOnSite"
-        icon="i-lucide-external-link"
-        variant="ghost"
-      />
-      <span :title="canPreview ? undefined : m.entry.previewNoUrl">
-        <UButton
-          :label="m.entry.previewOnSite"
-          icon="i-lucide-eye"
-          variant="outline"
-          :loading="busy"
-          :disabled="!canPreview"
-          :aria-describedby="canPreview ? undefined : 'preview-unavailable'"
-          @click="previewOnSite"
-        />
-      </span>
-      <span v-if="!canPreview" id="preview-unavailable" class="sr-only">{{
-        m.entry.previewNoUrl
-      }}</span>
-      <UButton :label="m.entry.validate" variant="outline" :loading="busy" @click="check" />
-      <UButton :label="m.entry.save" :loading="busy" :disabled="!dirty" @click="save" />
-      <UButton
-        :label="m.entry.publish"
-        color="secondary"
-        :loading="busy"
-        :disabled="!canPublish"
-        @click="publish()"
-      />
-      <UButton
-        v-if="entry.status === 'draft'"
-        :label="m.entry.schedule"
-        icon="i-lucide-calendar-clock"
-        variant="outline"
-        :disabled="dirty"
-        @click="openSchedule('publish')"
-      />
-      <UButton
-        v-if="entry.status === 'published' && entry.unpublishAt === null"
-        :label="m.entry.unpublishLater"
-        icon="i-lucide-calendar-x"
-        variant="outline"
-        @click="openSchedule('unpublish')"
-      />
-      <UButton
-        v-if="entry.status !== 'draft'"
-        :label="entry.status === 'scheduled' ? m.entry.cancelSchedule : m.entry.unpublish"
-        color="error"
-        variant="outline"
-        :loading="busy"
-        @click="unpublishOpen = true"
-      />
-      <UButton
-        v-if="entry.status === 'draft'"
-        :label="m.entry.moveToTrash"
-        icon="i-lucide-trash-2"
-        color="error"
-        variant="ghost"
-        :disabled="busy"
-        @click="trashOpen = true"
-      />
+  <UDashboardPanel id="entry" :ui="{ body: 'p-0 sm:p-0' }">
+    <template #header>
+      <UDashboardNavbar
+        :title="entry === null ? m.entry.title : titleOf(entry)"
+        :ui="{ title: 'text-sm font-medium truncate' }"
+      >
+        <template #leading>
+          <UDashboardSidebarCollapse />
+          <nav
+            :aria-label="m.nav.breadcrumb"
+            class="flex min-w-0 items-center gap-1 text-sm text-muted"
+          >
+            <ULink to="/entries" class="hover:text-highlighted">{{ m.nav.entries }}</ULink>
+            <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
+            <ULink
+              :to="{ path: '/entries', query: { collection } }"
+              class="font-mono hover:text-highlighted"
+              >{{ collection }}</ULink
+            >
+            <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
+            <span class="font-mono">{{ locale }}</span>
+            <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
+          </nav>
+        </template>
+        <template v-if="entry !== null" #right>
+          <span
+            class="hidden items-center gap-1.5 text-xs sm:flex"
+            :class="
+              saveState === 'failed'
+                ? 'text-error'
+                : saveState === 'unsaved'
+                  ? 'text-warning'
+                  : 'text-muted'
+            "
+            role="status"
+          >
+            <UIcon
+              :name="
+                saveState === 'saving'
+                  ? 'i-lucide-loader-circle'
+                  : saveState === 'saved'
+                    ? 'i-lucide-cloud-check'
+                    : 'i-lucide-circle-dot'
+              "
+              :class="['size-3.5', saveState === 'saving' ? 'animate-spin' : '']"
+            />
+            {{ stateLabel }}
+          </span>
+          <UTooltip
+            :text="source ? m.entry.editVisually : m.entry.viewMarkdown"
+            :kbds="['meta', 'shift', 'm']"
+          >
+            <UButton
+              :icon="source ? 'i-lucide-pen-line' : 'i-lucide-code'"
+              color="neutral"
+              variant="ghost"
+              :aria-label="source ? m.entry.editVisually : m.entry.viewMarkdown"
+              :aria-pressed="source"
+              :disabled="lossy"
+              @click="toggleSource"
+            />
+          </UTooltip>
+          <UTooltip :text="m.entry.properties" :kbds="['meta', 'shift', 'i']">
+            <UButton
+              icon="i-lucide-panel-right"
+              color="neutral"
+              :variant="panelOpen && panel === 'properties' ? 'soft' : 'ghost'"
+              :aria-label="m.entry.properties"
+              :aria-pressed="panelOpen && panel === 'properties'"
+              @click="showPanel('properties')"
+            />
+          </UTooltip>
+          <UDropdownMenu :items="more" :content="{ align: 'end' }">
+            <UButton
+              icon="i-lucide-ellipsis"
+              color="neutral"
+              variant="ghost"
+              :aria-label="m.entry.more"
+            />
+          </UDropdownMenu>
+          <UButton
+            :label="m.entry.publish"
+            color="secondary"
+            :loading="busy"
+            :disabled="!canPublish"
+            @click="publish()"
+          />
+        </template>
+      </UDashboardNavbar>
     </template>
-    <p v-if="missing" class="text-muted">{{ m.entry.missing }}</p>
-    <div v-else-if="entry !== null" class="space-y-5">
-      <div class="space-y-3">
-        <div class="flex flex-wrap items-start gap-3">
-          <div class="min-w-0 flex-1 space-y-1">
-            <p class="flex flex-wrap items-center gap-2 text-sm text-muted">
+    <template #body>
+      <p v-if="missing" class="p-8 text-muted">{{ m.entry.missing }}</p>
+      <div v-else-if="entry !== null" class="mx-auto w-full max-w-3xl py-10 pe-6">
+        <UAlert
+          v-if="lossy"
+          :description="m.editor.lossy"
+          icon="i-lucide-file-code-2"
+          color="warning"
+          variant="subtle"
+          class="mb-6 ms-16"
+        />
+        <textarea
+          v-if="hasTitle"
+          v-model="title"
+          rows="1"
+          :aria-label="m.entry.titleLabel"
+          :placeholder="m.entry.untitled"
+          class="field-sizing-content w-full resize-none ps-16 bg-transparent text-3xl leading-tight font-semibold text-highlighted outline-none placeholder:text-dimmed"
+          @keydown.enter.prevent
+        />
+        <div class="mt-4">
+          <MarkdownEditor v-if="source" v-model="text" :diagnostics="diagnostics" />
+          <EntryEditor
+            v-else
+            :body="body"
+            :components="components"
+            @update:body="setBody"
+            @lossy="lossy = true"
+          />
+        </div>
+      </div>
+      <p v-else class="p-8 text-muted">{{ m.common.loading }}</p>
+    </template>
+  </UDashboardPanel>
+
+  <UDashboardPanel
+    v-if="entry !== null && panelOpen"
+    id="entry-panel"
+    :default-size="26"
+    :min-size="20"
+    :max-size="40"
+    resizable
+    class="border-l border-default"
+    :ui="{ body: 'gap-6' }"
+  >
+    <template #header>
+      <UDashboardNavbar :ui="{ title: 'text-sm' }">
+        <template #title>
+          <UTabs
+            :model-value="panel"
+            :items="[
+              { label: m.entry.properties, value: 'properties' },
+              { label: m.entry.tabs.history, value: 'history' },
+            ]"
+            :content="false"
+            variant="link"
+            size="sm"
+            @update:model-value="
+              (value) => setQuery('panel', value === 'history' ? 'history' : null)
+            "
+          />
+        </template>
+      </UDashboardNavbar>
+    </template>
+    <template #body>
+      <RevisionHistory
+        v-if="panel === 'history'"
+        :entry-id="entry.id"
+        :version="entry.version"
+        :latest="saved"
+        :dirty="dirty"
+        @restored="load"
+        @conflict="conflictOpen = true"
+      />
+      <template v-else>
+        <dl class="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 text-sm">
+          <dt class="text-muted">{{ m.entry.status }}</dt>
+          <dd class="flex flex-wrap items-center gap-1.5">
+            <UBadge
+              :label="m.status[entry.status]"
+              :color="STATUS_COLOR[entry.status]"
+              variant="subtle"
+            />
+            <UBadge
+              v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
+              :label="m.entry.unpublishedChanges"
+              color="warning"
+              variant="outline"
+            />
+            <span v-if="entry.scheduledAt !== null" class="text-xs text-muted">{{
+              m.entry.publishes(formatDateTime(entry.scheduledAt))
+            }}</span>
+          </dd>
+          <template v-if="entry.unpublishAt !== null">
+            <dt class="text-muted">{{ m.entry.leavesLabel }}</dt>
+            <dd class="flex flex-wrap items-center gap-1.5">
               <UBadge
-                :label="m.status[entry.status]"
-                :color="STATUS_COLOR[entry.status]"
-                variant="subtle"
-              />
-              <UBadge
-                v-if="entry.status === 'published' && entry.hasUnpublishedChanges"
-                :label="m.entry.unpublishedChanges"
+                :label="m.entry.leaves(formatDateTime(entry.unpublishAt))"
                 color="warning"
                 variant="outline"
+                icon="i-lucide-calendar-x"
               />
+              <UButton
+                :label="m.entry.keepPublished"
+                size="xs"
+                variant="ghost"
+                :loading="busy"
+                @click="scheduleUnpublish(null)"
+              />
+            </dd>
+          </template>
+          <dt class="text-muted">{{ m.entry.url }}</dt>
+          <dd class="flex min-w-0 items-center gap-1">
+            <span class="truncate font-mono text-xs">{{ entry.slug }}</span>
+            <UButton
+              icon="i-lucide-pencil"
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              :aria-label="m.entry.changeUrl"
+              @click="openMove"
+            />
+          </dd>
+          <dt class="text-muted">{{ m.entry.translations }}</dt>
+          <dd>
+            <nav :aria-label="m.entry.translations" class="flex flex-wrap items-center gap-1.5">
+              <template v-if="entry.translationGroup !== null">
+                <template v-for="other in translations" :key="other.id">
+                  <span
+                    v-if="other.id === entry.id"
+                    aria-current="page"
+                    class="rounded-md bg-elevated px-2 py-0.5 font-mono text-xs text-highlighted"
+                    >{{ other.locale }}</span
+                  >
+                  <RouterLink
+                    v-else
+                    :to="entryPath(other)"
+                    :aria-label="`${other.locale} · ${titleOf(other)}`"
+                    class="rounded-md border border-default px-2 py-0.5 font-mono text-xs hover:bg-elevated"
+                    >{{ other.locale }}</RouterLink
+                  >
+                </template>
+                <UButton
+                  v-for="other in untranslated"
+                  :key="other"
+                  :to="{
+                    path: '/entries/new',
+                    query: {
+                      collection: entry.collection,
+                      locale: other,
+                      group: entry.translationGroup,
+                    },
+                  }"
+                  :label="m.entry.translateTo(other)"
+                  icon="i-lucide-plus"
+                  size="xs"
+                  variant="ghost"
+                />
+              </template>
+              <span v-else class="font-mono text-xs">{{ entry.locale }}</span>
               <UBadge
                 v-if="entry.translationOutdated === true"
                 :label="m.entry.translationBehind"
@@ -518,231 +861,169 @@ const tabs = computed(() => [
                 variant="outline"
                 icon="i-lucide-languages"
               />
-              <span v-if="entry.scheduledAt !== null">{{
-                m.entry.publishes(formatDateTime(entry.scheduledAt))
-              }}</span>
-              <template v-if="entry.unpublishAt !== null">
-                <UBadge
-                  :label="m.entry.leaves(formatDateTime(entry.unpublishAt))"
-                  color="warning"
-                  variant="outline"
-                  icon="i-lucide-calendar-x"
-                />
-                <UButton
-                  :label="m.entry.keepPublished"
-                  size="xs"
-                  variant="ghost"
-                  :loading="busy"
-                  @click="scheduleUnpublish(null)"
-                />
-              </template>
-              <span class="font-mono"
-                >{{ entry.collection }}/{{ entry.slug }} ·
-                {{ m.entry.version(entry.version) }}</span
-              >
-              <UButton
-                :label="m.entry.changeUrl"
-                icon="i-lucide-link"
-                size="xs"
-                variant="ghost"
-                :disabled="dirty"
-                @click="((newSlug = entry.slug), (moveOpen = true))"
-              />
-              <span v-if="dirty" class="text-warning">{{ m.entry.unsaved }}</span>
-            </p>
-          </div>
-        </div>
-        <nav
-          v-if="entry.translationGroup !== null"
-          :aria-label="m.entry.translations"
-          class="flex flex-wrap items-center gap-2 text-sm"
-        >
-          <span class="text-muted">{{ m.entry.translations }}</span>
-          <template v-for="other in translations" :key="other.id">
-            <span
-              v-if="other.id === entry.id"
-              aria-current="page"
-              class="rounded-md bg-elevated px-2 py-0.5 font-mono text-highlighted"
-              >{{ other.locale }}</span
-            >
-            <RouterLink
-              v-else
-              :to="entryPath(other)"
-              :aria-label="`${other.locale} · ${titleOf(other)}`"
-              class="rounded-md border border-default px-2 py-0.5 font-mono hover:bg-elevated"
-              >{{ other.locale }}</RouterLink
-            >
-          </template>
-          <UButton
-            v-for="locale in untranslated"
-            :key="locale"
-            :to="{
-              path: '/entries/new',
-              query: { collection: entry.collection, locale, group: entry.translationGroup },
-            }"
-            :label="m.entry.translateTo(locale)"
-            icon="i-lucide-plus"
-            size="xs"
-            variant="ghost"
+            </nav>
+          </dd>
+          <dt class="text-muted">{{ m.entry.versionLabel }}</dt>
+          <dd class="font-mono text-xs text-muted">{{ m.entry.version(entry.version) }}</dd>
+        </dl>
+
+        <section :aria-labelledby="'fields'" class="space-y-3">
+          <h2 id="fields" class="text-xs font-semibold tracking-wide text-muted uppercase">
+            {{ m.entry.tabs.fields }}
+          </h2>
+          <FrontmatterForm
+            v-model="text"
+            :schema="definition?.schema ?? {}"
+            :omit="hasTitle ? ['title'] : []"
           />
-        </nav>
-      </div>
+        </section>
 
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <MarkdownEditor v-model="text" :diagnostics="diagnostics" />
-        <UTabs :items="tabs" default-value="fields" class="min-w-0" variant="link">
-          <template #fields>
-            <div class="pt-3">
-              <FrontmatterForm v-model="text" :schema="definition?.schema ?? {}" />
-            </div>
-          </template>
-          <template #checks>
-            <div class="pt-3">
-              <VerdictList :verdict="verdict" />
-            </div>
-          </template>
-          <template #preview>
-            <iframe
-              sandbox=""
-              referrerpolicy="no-referrer"
-              :title="m.entry.preview"
-              :srcdoc="previewDocument(entry.html ?? '', locale)"
-              class="mt-3 h-[70vh] w-full rounded border border-default"
-            />
-          </template>
-          <template #related>
-            <div class="space-y-2 pt-3 text-sm">
-              <p v-if="related.length === 0" class="text-muted">
-                {{ m.entry.noRelated }}
-              </p>
-              <RouterLink
-                v-for="other in related"
-                :key="other.id"
-                :to="entryPath(other)"
-                class="block rounded border border-default px-3 py-2 hover:bg-elevated"
-              >
-                <span class="font-medium">{{ titleOf(other) }}</span>
-                <span class="block font-mono text-xs text-muted">{{ other.slug }}</span>
-              </RouterLink>
-            </div>
-          </template>
-          <template #history>
-            <RevisionHistory
-              :entry-id="entry.id"
-              :version="entry.version"
-              :latest="saved"
-              :dirty="dirty"
-              @restored="load"
-              @conflict="conflictOpen = true"
-            />
-          </template>
-        </UTabs>
-      </div>
-
-      <UModal v-model:open="moveOpen" :title="m.entry.moveTitle">
-        <template #body>
-          <UFormField :label="m.entry.newSlug" :help="m.entry.moveHelp">
-            <UInput v-model="newSlug" class="w-full font-mono" />
-          </UFormField>
-        </template>
-        <template #footer>
-          <UButton :label="m.common.cancel" variant="ghost" @click="moveOpen = false" />
-          <UButton
-            :label="m.entry.changeUrl"
-            :loading="busy"
-            :disabled="!slugValid || newSlug === entry.slug"
-            @click="move"
-          />
-        </template>
-      </UModal>
-
-      <UModal v-model:open="conflictOpen" :title="m.entry.conflictTitle">
-        <template #body>
-          <p>{{ m.entry.conflictBody }}</p>
-        </template>
-        <template #footer>
-          <UButton :label="m.entry.keepEditing" variant="ghost" @click="conflictOpen = false" />
-          <UButton :label="m.entry.loadNewer" color="warning" @click="reloadTheirs" />
-        </template>
-      </UModal>
-
-      <UModal v-model:open="acknowledgeOpen" :title="m.entry.acknowledgeTitle">
-        <template #body>
-          <ul class="space-y-2 text-sm">
-            <li v-for="(warning, index) in warnings" :key="index">
-              <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
-              <p>{{ warning.message }}</p>
-              <p class="text-muted">{{ warning.fix }}</p>
-            </li>
-          </ul>
-        </template>
-        <template #footer>
-          <UButton :label="m.common.cancel" variant="ghost" @click="acknowledgeOpen = false" />
-          <UButton
-            :label="pendingAt === undefined ? m.entry.publishAnyway : m.entry.scheduleAnyway"
-            color="warning"
-            @click="publish(warnings, pendingAt)"
-          />
-        </template>
-      </UModal>
-
-      <UModal
-        v-model:open="unpublishOpen"
-        :title="entry.status === 'scheduled' ? m.entry.cancelScheduleTitle : m.entry.unpublishTitle"
-      >
-        <template #body>
-          <p v-if="entry.status === 'scheduled'">
-            {{ m.entry.notPublishedAt(formatDateTime(entry.scheduledAt ?? '')) }}
-          </p>
-          <p v-else>{{ m.entry.unpublishBody }}</p>
-        </template>
-        <template #footer>
-          <UButton :label="m.common.keepIt" variant="ghost" @click="unpublishOpen = false" />
-          <UButton
-            :label="entry.status === 'scheduled' ? m.entry.cancelTheSchedule : m.entry.unpublish"
-            color="error"
-            @click="unpublish"
-          />
-        </template>
-      </UModal>
-
-      <UModal v-model:open="trashOpen" :title="m.entry.trashTitle">
-        <template #body>
-          <p>{{ m.entry.trashBody }}</p>
-        </template>
-        <template #footer>
-          <UButton :label="m.common.keepIt" variant="ghost" @click="trashOpen = false" />
-          <UButton :label="m.entry.moveToTrash" color="error" @click="trash" />
-        </template>
-      </UModal>
-
-      <UModal
-        v-model:open="scheduleOpen"
-        :title="scheduleMode === 'publish' ? m.entry.scheduleTitle : m.entry.unpublishAtTitle"
-      >
-        <template #body>
-          <UFormField
-            :label="scheduleMode === 'publish' ? m.entry.publishAt : m.entry.unpublishAt"
-            :help="scheduleMode === 'publish' ? m.entry.publishAtHelp : m.entry.unpublishAtHelp"
-            :error="scheduleError ?? undefined"
+        <section :aria-labelledby="'checks'" class="space-y-3">
+          <h2
+            id="checks"
+            class="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase"
           >
-            <UInput v-model="publishAt" type="datetime-local" class="w-full" />
-          </UFormField>
-        </template>
-        <template #footer>
-          <UButton :label="m.common.cancel" variant="ghost" @click="scheduleOpen = false" />
-          <UButton
-            :label="scheduleMode === 'publish' ? m.entry.schedule : m.entry.unpublishLater"
-            :disabled="scheduleError !== null"
-            @click="
-              scheduleMode === 'publish'
-                ? publish([], new Date(publishAt).toISOString())
-                : scheduleUnpublish(new Date(publishAt).toISOString())
-            "
-          />
-        </template>
-      </UModal>
-    </div>
-    <p v-else class="text-muted">{{ m.common.loading }}</p>
-  </Page>
+            {{ m.entry.tabs.checks }}
+            <UBadge
+              v-if="checks.errors > 0"
+              :label="String(checks.errors)"
+              color="error"
+              variant="subtle"
+              size="sm"
+            />
+            <UBadge
+              v-if="checks.warnings > 0"
+              :label="String(checks.warnings)"
+              color="warning"
+              variant="subtle"
+              size="sm"
+            />
+          </h2>
+          <VerdictList :verdict="verdict" />
+        </section>
+
+        <section :aria-labelledby="'related'" class="space-y-2">
+          <h2 id="related" class="text-xs font-semibold tracking-wide text-muted uppercase">
+            {{ m.entry.tabs.related }}
+          </h2>
+          <p v-if="related.length === 0" class="text-sm text-muted">{{ m.entry.noRelated }}</p>
+          <RouterLink
+            v-for="other in related"
+            :key="other.id"
+            :to="entryPath(other)"
+            class="block rounded-md border border-default px-3 py-2 text-sm hover:bg-elevated"
+          >
+            <span class="font-medium">{{ titleOf(other) }}</span>
+            <span class="block font-mono text-xs text-muted">{{ other.slug }}</span>
+          </RouterLink>
+        </section>
+      </template>
+    </template>
+  </UDashboardPanel>
+
+  <template v-if="entry !== null">
+    <UModal v-model:open="moveOpen" :title="m.entry.moveTitle">
+      <template #body>
+        <UFormField :label="m.entry.newSlug" :help="m.entry.moveHelp">
+          <UInput v-model="newSlug" class="w-full font-mono" />
+        </UFormField>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="moveOpen = false" />
+        <UButton
+          :label="m.entry.changeUrl"
+          :loading="busy"
+          :disabled="!slugValid || newSlug === entry.slug"
+          @click="move"
+        />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="conflictOpen" :title="m.entry.conflictTitle">
+      <template #body>
+        <p>{{ m.entry.conflictBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.entry.keepEditing" variant="ghost" @click="conflictOpen = false" />
+        <UButton :label="m.entry.loadNewer" color="warning" @click="reloadTheirs" />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="acknowledgeOpen" :title="m.entry.acknowledgeTitle">
+      <template #body>
+        <ul class="space-y-2 text-sm">
+          <li v-for="(warning, index) in warnings" :key="index">
+            <span class="font-mono text-xs text-muted">{{ warning.contract }}</span>
+            <p>{{ warning.message }}</p>
+            <p class="text-muted">{{ warning.fix }}</p>
+          </li>
+        </ul>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="acknowledgeOpen = false" />
+        <UButton
+          :label="pendingAt === undefined ? m.entry.publishAnyway : m.entry.scheduleAnyway"
+          color="warning"
+          @click="publish(warnings, pendingAt)"
+        />
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="unpublishOpen"
+      :title="entry.status === 'scheduled' ? m.entry.cancelScheduleTitle : m.entry.unpublishTitle"
+    >
+      <template #body>
+        <p v-if="entry.status === 'scheduled'">
+          {{ m.entry.notPublishedAt(formatDateTime(entry.scheduledAt ?? '')) }}
+        </p>
+        <p v-else>{{ m.entry.unpublishBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.keepIt" variant="ghost" @click="unpublishOpen = false" />
+        <UButton
+          :label="entry.status === 'scheduled' ? m.entry.cancelTheSchedule : m.entry.unpublish"
+          color="error"
+          @click="unpublish"
+        />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="trashOpen" :title="m.entry.trashTitle">
+      <template #body>
+        <p>{{ m.entry.trashBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.keepIt" variant="ghost" @click="trashOpen = false" />
+        <UButton :label="m.entry.moveToTrash" color="error" @click="trash" />
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="scheduleOpen"
+      :title="scheduleMode === 'publish' ? m.entry.scheduleTitle : m.entry.unpublishAtTitle"
+    >
+      <template #body>
+        <UFormField
+          :label="scheduleMode === 'publish' ? m.entry.publishAt : m.entry.unpublishAt"
+          :help="scheduleMode === 'publish' ? m.entry.publishAtHelp : m.entry.unpublishAtHelp"
+          :error="scheduleError ?? undefined"
+        >
+          <UInput v-model="publishAt" type="datetime-local" class="w-full" />
+        </UFormField>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="scheduleOpen = false" />
+        <UButton
+          :label="scheduleMode === 'publish' ? m.entry.schedule : m.entry.unpublishLater"
+          :disabled="scheduleError !== null"
+          @click="
+            scheduleMode === 'publish'
+              ? publish([], new Date(publishAt).toISOString())
+              : scheduleUnpublish(new Date(publishAt).toISOString())
+          "
+        />
+      </template>
+    </UModal>
+  </template>
 </template>

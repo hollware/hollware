@@ -1,4 +1,5 @@
 import type { AuditAction } from '@hollware/core'
+import { type Explained, type Params, param, type VerdictTexts } from '../lib/verdict-text.ts'
 import type { Messages } from './en.ts'
 
 const entradas = (count: number) => (count === 1 ? '1 entrada' : `${count} entradas`)
@@ -25,6 +26,7 @@ export const es: Messages = {
   roles: { owner: 'dueño', editor: 'editor', author: 'autor' },
   severity: { error: 'error', warning: 'advertencia' },
   nav: {
+    breadcrumb: 'Dónde estás',
     siteOfPage: (site: string) => `Sitio ${site}: cambiar a otro`,
     site: 'Sitio',
     newSite: 'Crear sitio',
@@ -158,6 +160,14 @@ export const es: Messages = {
     written: (at: string) => `Escrito el ${at}`,
   },
   entries: {
+    views: {
+      all: 'Todas',
+      drafts: 'Borradores',
+      scheduled: 'Programadas',
+      published: 'Publicadas',
+      outdated: 'Atrasadas',
+      trash: 'Papelera',
+    },
     title: 'Entradas',
     newEntry: 'Crear entrada',
     filter: 'Filtrar por título, slug o etiqueta',
@@ -225,6 +235,19 @@ export const es: Messages = {
     notRestored: 'No se restauró',
   },
   entry: {
+    properties: 'Propiedades',
+    more: 'Más acciones',
+    saving: 'Guardando…',
+    savedState: 'Guardado',
+    unsavedState: 'Cambios sin guardar',
+    viewMarkdown: 'Ver Markdown',
+    editVisually: 'Editar visualmente',
+    titleLabel: 'Título',
+    untitled: 'Sin título',
+    status: 'Estado',
+    url: 'URL',
+    versionLabel: 'Versión',
+    leavesLabel: 'Sale',
     title: 'Entrada',
     viewOnSite: 'Ver en el sitio',
     previewOnSite: 'Vista previa en el sitio',
@@ -262,7 +285,6 @@ export const es: Messages = {
       related: 'Relacionadas',
       history: 'Historial',
     },
-    preview: 'Vista previa de la revisión guardada',
     noRelated:
       'Todavía no hay nada relacionado. Las entradas relacionadas vienen de la búsqueda semántica del despliegue, para las entradas publicadas.',
     conflictTitle: 'Alguien cambió esta entrada',
@@ -845,16 +867,341 @@ export const es: Messages = {
     noFields:
       'La colección no describe ningún campo que este formulario pueda mostrar. Edita el frontmatter en el Markdown.',
   },
+  verdictTexts: ((): VerdictTexts => {
+    const q = (text: string | number) => `«${text}»`
+    const kinds: Readonly<Record<string, string>> = {
+      string: 'un texto',
+      number: 'un número',
+      int: 'un número entero',
+      boolean: 'sí o no',
+      array: 'una lista',
+      object: 'un objeto',
+      date: 'una fecha',
+    }
+    const units = (p: Params, count: string) => {
+      const items = p['origin'] === 'array' || p['origin'] === 'set'
+      if (count === '1') return items ? 'elemento' : 'carácter'
+      return items ? 'elementos' : 'caracteres'
+    }
+    const schema = (p: Params, where = ''): Readonly<Record<string, Explained>> => {
+      const field = q(param(p, 'field'))
+      return {
+        missing: {
+          message: `Falta ${field}${where}.`,
+          fix: `Completa ${field}${where}.`,
+        },
+        too_small:
+          p['origin'] === 'number'
+            ? {
+                message: `${field}${where} es menor que ${param(p, 'minimum')}.`,
+                fix: `Usa un número de al menos ${param(p, 'minimum')}.`,
+              }
+            : {
+                message: `${field}${where} tiene ${param(p, 'length')} ${units(p, param(p, 'length'))}; el mínimo es ${param(p, 'minimum')}.`,
+                fix: `${p['origin'] === 'array' || p['origin'] === 'set' ? 'Agrega' : 'Escribe'} al menos ${param(p, 'minimum')} ${units(p, param(p, 'minimum'))} en ${field}.`,
+              },
+        too_big:
+          p['origin'] === 'number'
+            ? {
+                message: `${field}${where} es mayor que ${param(p, 'maximum')}.`,
+                fix: `Usa un número de ${param(p, 'maximum')} o menos.`,
+              }
+            : {
+                message: `${field}${where} tiene ${param(p, 'length')} ${units(p, param(p, 'length'))}; el máximo es ${param(p, 'maximum')}.`,
+                fix: `Acorta ${field} a ${param(p, 'maximum')} ${units(p, param(p, 'maximum'))} o menos.`,
+              },
+        invalid_type: {
+          message: `${field}${where} no es ${kinds[param(p, 'expected')] ?? param(p, 'expected')}.`,
+          fix: `Escribe ${field} como ${kinds[param(p, 'expected')] ?? param(p, 'expected')}.`,
+        },
+        invalid_value: {
+          message: `${field}${where} no es uno de los valores permitidos.`,
+          fix: `Usa uno de estos: ${param(p, 'values')}.`,
+        },
+        invalid_format: {
+          message: `${field}${where} no tiene el formato ${param(p, 'format')}.`,
+          fix: `Escribe ${field} en el formato ${param(p, 'format')}.`,
+        },
+        unrecognized_keys: {
+          message: `Hay campos${where} que el esquema no define: ${param(p, 'keys')}.`,
+          fix: `Quita ${param(p, 'keys')}: el esquema de la colección no los tiene.`,
+        },
+      }
+    }
+    const fromSchema = (p: Params, where = ''): Explained => {
+      const kind = param(p, 'kind')
+      return (
+        schema(p, where)[kind] ?? {
+          message: `${q(param(p, 'field'))}${where} no es válido.`,
+          fix: 'Revísalo según el esquema de la colección.',
+        }
+      )
+    }
+    const text = (code: string) => (p: Params) =>
+      fromSchema({ ...p, kind: code.slice(code.indexOf('.') + 1) })
+    const component = (code: string) => (p: Params) =>
+      fromSchema(
+        { ...p, kind: code.slice(code.indexOf('.') + 1) },
+        ` del componente ${q(param(p, 'component'))}`,
+      )
+    const kindsOf = [
+      'missing',
+      'too_small',
+      'too_big',
+      'invalid_type',
+      'invalid_value',
+      'invalid_format',
+      'unrecognized_keys',
+    ]
+    return {
+      ...Object.fromEntries(kindsOf.map((kind) => [`schema.${kind}`, text(`schema.${kind}`)])),
+      ...Object.fromEntries(
+        kindsOf.map((kind) => [`component.${kind}`, component(`component.${kind}`)]),
+      ),
+      'schema.*': (p) => fromSchema({ ...p, kind: '' }),
+      'component.*': (p) =>
+        fromSchema({ ...p, kind: '' }, ` del componente ${q(param(p, 'component'))}`),
+      'raw-html': (p) => ({
+        message: `No se permite HTML: el cuerpo tiene una etiqueta <${param(p, 'tag')}>.`,
+        fix:
+          param(p, 'components') === ''
+            ? 'Quita el HTML y usa Markdown.'
+            : `Quita el HTML y usa Markdown o uno de los componentes permitidos: ${param(p, 'components')}.`,
+      }),
+      'unknown-component': (p) => ({
+        message: `El componente ${q(param(p, 'name'))} no existe en esta colección.`,
+        fix:
+          param(p, 'components') === ''
+            ? 'Esta colección no permite componentes: quítalo y usa Markdown.'
+            : `Usa uno de los componentes permitidos: ${param(p, 'components')}.`,
+      }),
+      'disallowed-attribute': (p) => ({
+        message: `No se permite el atributo ${q(param(p, 'name'))}.`,
+        fix: `Quita el atributo ${q(param(p, 'name'))}. Los enlaces conservan href y title, las imágenes src, alt, title, width y height, y un componente solo las props que define su esquema.`,
+      }),
+      'unsafe-url': (p) => ({
+        message: `No se permite la URL ${q(param(p, 'url'))}.`,
+        fix: 'Usa una URL https: o http:, una dirección mailto:, una ruta del sitio que empiece con / o un ancla que empiece con #.',
+      }),
+      'unique-slug': (p) => ({
+        message: `Otra entrada de esta colección e idioma, ${param(p, 'holder')}, ya tiene este slug.`,
+        fix: `Elige otro slug, o cambia la entrada ${param(p, 'holder')}.`,
+      }),
+      'unique-translation': (p) => ({
+        message: `Otra entrada de esta colección e idioma, ${param(p, 'holder')}, ya pertenece a este grupo de traducción.`,
+        fix: `Dale otro valor a ${q(param(p, 'field'))}: un grupo de traducción tiene una entrada por idioma.`,
+      }),
+      'size-limit.row': (p) => ({
+        message: `La entrada ocupa ${param(p, 'bytes')} bytes y el límite es ${param(p, 'limit')}.`,
+        fix: 'Acorta el texto, quita lo que no sea esencial o divídelo en varias entradas.',
+      }),
+      'size-limit.file': (p) => ({
+        message: `El archivo Markdown ocupa ${param(p, 'bytes')} bytes y esta colección acepta hasta ${param(p, 'limit')}.`,
+        fix: 'Acorta el archivo, frontmatter incluido, o divide el contenido en varias entradas.',
+      }),
+      'frontmatter-syntax.yaml': (p) => ({
+        message: `El frontmatter no es YAML válido: ${param(p, 'reason')}.`,
+        fix: 'Pon un espacio después de cada dos puntos, indenta con espacios (nunca tabulaciones), pon entre comillas los valores con dos puntos, almohadillas o corchetes, y no repitas claves.',
+      }),
+      'frontmatter-syntax.not-mapping': (p) => ({
+        message: `El frontmatter debe ser un mapa YAML de claves y valores, pero el archivo empieza con ${
+          {
+            text: 'texto',
+            'a list': 'una lista',
+            'a number': 'un número',
+            'a boolean': 'un sí o no',
+          }[param(p, 'found')] ?? 'otra cosa'
+        }.`,
+        fix: 'Empieza el archivo con una línea de tres guiones, una línea «clave: valor» por campo y otra línea de tres guiones.',
+      }),
+      'frontmatter-syntax.*': () => ({
+        message: 'El frontmatter tiene un valor que Hollware no guarda.',
+        fix: 'Usa texto, números, sí o no, null, listas o mapas, sin anclas ni alias de YAML.',
+      }),
+      'comark-parse.*': () => ({
+        message: 'Comark no pudo leer el Markdown.',
+        fix: 'Simplifica el Markdown: reduce el anidamiento y cierra cada corchete y llave.',
+      }),
+      'field-length.max.character': (p) => ({
+        message: `${q(param(p, 'field'))} tiene ${param(p, 'length')} caracteres; el máximo es ${param(p, 'max')}.`,
+        fix: `Acorta ${q(param(p, 'field'))} a ${param(p, 'max')} caracteres o menos${param(p, 'unless') === '' ? '' : `, o agrega ${q(param(p, 'unless'))}`}.`,
+      }),
+      'field-length.max.item': (p) => ({
+        message: `${q(param(p, 'field'))} tiene ${param(p, 'length')} elementos; el máximo es ${param(p, 'max')}.`,
+        fix: `Deja ${param(p, 'max')} elementos o menos en ${q(param(p, 'field'))}.`,
+      }),
+      'field-length.min.character': (p) => ({
+        message: `${q(param(p, 'field'))} tiene ${param(p, 'length')} caracteres; el mínimo es ${param(p, 'min')}.`,
+        fix: `Alarga ${q(param(p, 'field'))} a ${param(p, 'min')} caracteres o más.`,
+      }),
+      'field-length.min.item': (p) => ({
+        message: `${q(param(p, 'field'))} tiene ${param(p, 'length')} elementos; el mínimo es ${param(p, 'min')}.`,
+        fix: `Agrega elementos a ${q(param(p, 'field'))} hasta tener ${param(p, 'min')} o más.`,
+      }),
+      'field-pattern': (p) => ({
+        message: `${q(param(p, 'field'))} no es ${param(p, 'description')}.`,
+        fix: `Escribe ${q(param(p, 'field'))} como ${param(p, 'description')}.`,
+      }),
+      'required-to-publish': (p) => ({
+        message: `${q(param(p, 'field'))} está vacío y la entrada no se puede publicar sin él.`,
+        fix: `Dale un valor a ${q(param(p, 'field'))} y publica.`,
+      }),
+      'banned-words.field': (p) => ({
+        message: `${q(param(p, 'field'))} usa ${q(param(p, 'word'))}.`,
+        fix: `Escribe ${q(param(p, 'field'))} sin ${q(param(p, 'word'))}.`,
+      }),
+      'banned-words.body': (p) => ({
+        message: `El cuerpo usa ${q(param(p, 'word'))}.`,
+        fix: `Reescribe el cuerpo sin ${q(param(p, 'word'))}.`,
+      }),
+      'reference.missing': (p) => ({
+        message: `${q(param(p, 'field'))} nombra ${q(param(p, 'slug'))}, y ${q(param(p, 'collection'))} no tiene esa entrada en ${param(p, 'locale')}.`,
+        fix: `Usa el slug de una entrada de ${q(param(p, 'collection'))}, o crea ${q(param(p, 'slug'))} primero.`,
+      }),
+      'reference.unpublished': (p) => ({
+        message: `${q(param(p, 'field'))} nombra ${q(param(p, 'slug'))} de ${q(param(p, 'collection'))}, que no está publicada.`,
+        fix: `Publica ${q(param(p, 'slug'))} primero, o publica ambas juntas.`,
+      }),
+      'translation-pair.no-group': (p) => ({
+        message: `La entrada no tiene grupo de traducción: su campo ${q(param(p, 'field'))} está vacío.`,
+        fix: `Pon en ${q(param(p, 'field'))} la clave que comparten todas sus traducciones y crea las entradas de los idiomas del sitio: ${param(p, 'locales')}.`,
+      }),
+      'translation-pair.missing': (p) => ({
+        message: `No existe la versión en ${param(p, 'locale')} del grupo de traducción ${q(param(p, 'group'))}.`,
+        fix: `Crea la entrada en ${param(p, 'locale')} con ${param(p, 'field')}: ${q(param(p, 'group'))} antes de publicar.`,
+      }),
+      'internal-links-resolve.missing': (p) => ({
+        message: `El enlace ${q(param(p, 'href'))} apunta a la entrada ${param(p, 'entry')}, que no existe.`,
+        fix: 'Crea y publica esa entrada, apunta el enlace a una publicada o quita el enlace.',
+      }),
+      'internal-links-resolve.unpublished': (p) => ({
+        message: `El enlace ${q(param(p, 'href'))} apunta a la entrada ${param(p, 'entry')}, que aún no está publicada.`,
+        fix: 'Publica esa entrada primero, apunta el enlace a una publicada o quita el enlace.',
+      }),
+      'images-have-alt': (p) => ({
+        message: `La imagen ${q(param(p, 'src'))} no tiene texto alternativo.`,
+        fix: 'Agrega un texto alternativo que describa la imagen, como en ![una descripción breve](…).',
+      }),
+      'contract-failed': (p) => ({
+        message: `El contrato ${q(param(p, 'contract'))} falló al revisar esta entrada.`,
+        fix: `Es un problema de la configuración del sitio, no de la entrada: avísale a quien la mantiene, nombrando el contrato ${q(param(p, 'contract'))}.`,
+      }),
+    }
+  })(),
   verdict: {
     label: 'Contratos',
     allPass: 'Todos los contratos se cumplen.',
     line: (line: number) => `línea ${line}`,
+  },
+  shortcuts: {
+    title: 'Atajos de teclado',
+    everywhere: 'En todas partes',
+    lists: 'Listas',
+    entry: 'Una entrada',
+    search: 'Buscar, o ejecutar un comando',
+    newEntry: 'Nueva entrada',
+    goHome: 'Ir a Inicio',
+    goEntries: 'Ir a Entradas',
+    goReviews: 'Ir a Revisiones',
+    goImages: 'Ir a Imágenes',
+    goSettings: 'Ir a Configuración',
+    help: 'Mostrar estos atajos',
+    next: 'Fila siguiente',
+    previous: 'Fila anterior',
+    select: 'Seleccionar la fila',
+    clear: 'Quitar la selección',
+    save: 'Guardar ahora',
+    markdown: 'Markdown o edición visual',
+    history: 'Historial',
+    properties: 'Propiedades',
+    blocks: 'Insertar un bloque',
+    bold: 'Negrita',
+    italic: 'Cursiva',
+  },
+  settings: {
+    sections: {
+      site: 'Sitio',
+      collections: 'Colecciones',
+      people: 'Personas',
+      tokens: 'Tokens',
+      activity: 'Actividad',
+      account: 'Cuenta',
+    },
   },
   editor: {
     markdown: 'Markdown de la entrada',
     live: 'El Markdown publicado',
     asked: 'El Markdown pedido',
     unchangedLines: '$ líneas sin cambios: mostrarlas',
+    body: 'Cuerpo de la entrada',
+    placeholder: 'Escribe, o presiona / para insertar bloques',
+    apply: 'Aplicar',
+    raw: 'Markdown que el editor conserva tal cual: cámbialo en la vista Markdown',
+    lossy:
+      'Esta entrada tiene Markdown que el editor visual no puede conservar byte a byte, así que se abre en la vista Markdown.',
+    calloutKind: 'Tipo de destacado',
+    callouts: {
+      note: 'Nota',
+      tip: 'Consejo',
+      important: 'Importante',
+      warning: 'Advertencia',
+      caution: 'Precaución',
+    },
+    blocks: {
+      text: 'Texto',
+      heading1: 'Título 1',
+      heading2: 'Título 2',
+      heading3: 'Título 3',
+      bullets: 'Lista con viñetas',
+      numbered: 'Lista numerada',
+      todo: 'Lista de tareas',
+      quote: 'Cita',
+      callout: 'Destacado',
+      code: 'Bloque de código',
+      image: 'Imagen',
+      table: 'Tabla',
+      divider: 'Separador',
+    },
+    groups: { basics: 'Bloques', media: 'Medios', components: 'Componentes de la colección' },
+    toolbar: {
+      label: 'Formato',
+      turnInto: 'Convertir en',
+      bold: 'Negrita',
+      italic: 'Cursiva',
+      strike: 'Tachado',
+      code: 'Código',
+      link: 'Enlace',
+      linkPlaceholder: 'Pega un enlace, o déjalo vacío para quitarlo',
+    },
+    block: {
+      insert: 'Insertar un bloque debajo',
+      actions: 'Acciones del bloque',
+      duplicate: 'Duplicar',
+      moveUp: 'Subir',
+      moveDown: 'Bajar',
+      delete: 'Eliminar',
+    },
+    component: {
+      props: 'Props',
+      noProps: 'Este componente no recibe props.',
+      unknown: 'No está en la colección',
+      insert: 'Un componente que la colección permite',
+    },
+    componentNamed: (name: string) => `Componente ${name}`,
+    image: {
+      title: 'Insertar una imagen',
+      library: 'Biblioteca',
+      url: 'Desde una URL',
+      addressPlaceholder: 'https://…',
+      address: 'Dirección de la imagen',
+      alt: 'Qué muestra',
+      insert: 'Insertar',
+      insertNamed: (name: string) => `Insertar ${name}`,
+      empty: 'Aún no hay imágenes: sube una en Imágenes.',
+    },
+    modes: 'Vista del editor',
+    write: 'Escribir',
+    source: 'Markdown',
   },
   callback: {
     notSignedIn: 'No iniciaste sesión',

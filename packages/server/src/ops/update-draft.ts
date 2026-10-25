@@ -1,7 +1,7 @@
 import { actorOf } from './actor.ts'
 import { conflictAt, entrySummary, refusalVerdict, verdictView, violationOf } from './answers.ts'
 import { collectionOfEntry } from './collections.ts'
-import { judge, processFor, revisionOf, translationGroupOf } from './draft.ts'
+import { formatFor, judge, revisionOf, translationGroupOf } from './draft.ts'
 import type { OperationHandler } from './types.ts'
 
 export const updateDraft: OperationHandler<'update_draft'> = async (input, context) => {
@@ -13,14 +13,15 @@ export const updateDraft: OperationHandler<'update_draft'> = async (input, conte
   if (entry.version !== input.version) {
     return { outcome: 'conflict', conflict: conflictAt(entry.version, entry.headRevision) }
   }
-  if (input.markdown === revision.markdown) {
-    return {
-      outcome: 'unchanged',
-      entry: entrySummary(found),
-      verdict: verdictView(revision.verdict),
-    }
-  }
-  const processed = await processFor(context.site, collection, input.markdown)
+  const unchanged = {
+    outcome: 'unchanged',
+    entry: entrySummary(found),
+    markdown: revision.markdown,
+    verdict: verdictView(revision.verdict),
+  } as const
+  if (input.markdown === revision.markdown) return unchanged
+  const { markdown, processed } = await formatFor(context.site, collection, input.markdown)
+  if (markdown === revision.markdown) return unchanged
   if (!processed.ok) {
     return { outcome: 'refused', verdict: refusalVerdict('write', processed.violations) }
   }
@@ -36,7 +37,7 @@ export const updateDraft: OperationHandler<'update_draft'> = async (input, conte
     expectedVersion: input.version,
     translationGroup: translationGroupOf(collection, processed.value.frontmatter),
     revision: revisionOf({
-      markdown: input.markdown,
+      markdown,
       processed: processed.value,
       collection,
       verdict,
@@ -45,7 +46,12 @@ export const updateDraft: OperationHandler<'update_draft'> = async (input, conte
   })
   switch (written.outcome) {
     case 'saved':
-      return { outcome: 'saved', entry: entrySummary(written.view), verdict: verdictView(verdict) }
+      return {
+        outcome: 'saved',
+        entry: entrySummary(written.view),
+        markdown,
+        verdict: verdictView(verdict),
+      }
     case 'conflict':
       return {
         outcome: 'conflict',

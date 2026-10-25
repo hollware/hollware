@@ -21,6 +21,8 @@ function violation(locale: string, field = 'translationGroup', group = GROUP) {
     path: `/frontmatter/${field}`,
     message: `The ${locale} version of the translation group "${group}" does not exist.`,
     fix: `Create the entry in ${locale} with ${field}: "${group}" in its frontmatter before publishing.`,
+    code: 'translation-pair.missing',
+    params: { field, group, locale },
   }
 }
 
@@ -104,6 +106,8 @@ describe('the translation-pair contract', () => {
         message:
           'The entry has no translation group: its frontmatter field translationGroup is empty.',
         fix: 'Set translationGroup in the frontmatter to the key that all the translations of this entry share, then create the entries for the locales of the site: es, en.',
+        code: 'translation-pair.no-group',
+        params: { field: 'translationGroup', locales: 'es, en' },
       },
     ])
     expect(calls).toStrictEqual([])

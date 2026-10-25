@@ -21,9 +21,26 @@ function runWith(uses: readonly ComponentUse[], phase: Phase = 'write') {
   })
 }
 
-function violation(message: string, fix: string, line: number) {
-  return { contract: 'components', severity: 'error', path: '/body', message, fix, line }
+function violation(
+  message: string,
+  fix: string,
+  line: number,
+  code: string,
+  params: Record<string, string | number>,
+) {
+  return {
+    contract: 'components',
+    severity: 'error',
+    path: '/body',
+    message,
+    fix,
+    line,
+    code,
+    params,
+  }
 }
+
+const CALLOUT_TYPES = '"info", "warning", "tip"'
 
 describe('the components contract', () => {
   it('passes the components whose props match their schema', async () => {
@@ -45,6 +62,8 @@ describe('the components contract', () => {
           'The prop "type" of the component "callout" is invalid: Invalid option: expected one of "info"|"warning"|"tip"',
           'Set the prop "type" to one of "info", "warning", "tip".',
           7,
+          'component.invalid_value',
+          { component: 'callout', field: 'type', length: 4, values: CALLOUT_TYPES },
         ),
       ],
     ],
@@ -56,6 +75,8 @@ describe('the components contract', () => {
           'The props of the component "callout" are invalid: Unrecognized key: "color"',
           'Remove the prop "color" from the component "callout"; the props allowed there are: type.',
           3,
+          'component.unrecognized_keys',
+          { component: 'callout', field: '', keys: 'color' },
         ),
       ],
     ],
@@ -67,6 +88,8 @@ describe('the components contract', () => {
           'The props of the component "callout" are invalid: Unrecognized keys: "color", "size"',
           'Remove the props "color", "size" from the component "callout"; the props allowed there are: type.',
           3,
+          'component.unrecognized_keys',
+          { component: 'callout', field: '', keys: 'color, size' },
         ),
       ],
     ],
@@ -78,6 +101,8 @@ describe('the components contract', () => {
           'The prop "id" of the component "youtube" is invalid: Invalid input: expected string, received undefined',
           'Set the prop "id" to a string matching the pattern ^[\\w-]{11}$.',
           14,
+          'component.missing',
+          { component: 'youtube', field: 'id', expected: 'string' },
         ),
       ],
     ],
@@ -89,6 +114,8 @@ describe('the components contract', () => {
           'The prop "id" of the component "youtube" is invalid: Invalid string: must match pattern /^[\\w-]{11}$/',
           'Set the prop "id" to a string matching the pattern ^[\\w-]{11}$.',
           2,
+          'component.invalid_format',
+          { component: 'youtube', field: 'id', format: 'regex', origin: 'string', length: 5 },
         ),
       ],
     ],
@@ -100,6 +127,8 @@ describe('the components contract', () => {
           'The props of the component "divider" are invalid: Unrecognized key: "style"',
           'Remove the prop "style" from the component "divider"; no props are allowed there.',
           5,
+          'component.unrecognized_keys',
+          { component: 'divider', field: '', keys: 'style' },
         ),
       ],
     ],
@@ -114,11 +143,15 @@ describe('the components contract', () => {
           'The prop "type" of the component "callout" is invalid: Invalid option: expected one of "info"|"warning"|"tip"',
           'Set the prop "type" to one of "info", "warning", "tip".',
           5,
+          'component.invalid_value',
+          { component: 'callout', field: 'type', length: 1, values: CALLOUT_TYPES },
         ),
         violation(
           'The prop "type" of the component "callout" is invalid: Invalid option: expected one of "info"|"warning"|"tip"',
           'Set the prop "type" to one of "info", "warning", "tip".',
           20,
+          'component.invalid_value',
+          { component: 'callout', field: 'type', length: 1, values: CALLOUT_TYPES },
         ),
       ],
     ],
@@ -142,6 +175,8 @@ describe('the components contract', () => {
         message:
           'The prop "type" of the component "callout" is invalid: Invalid option: expected one of "info"|"warning"|"tip"',
         fix: 'Set the prop "type" to one of "info", "warning", "tip".',
+        code: 'component.invalid_value',
+        params: { component: 'callout', field: 'type', length: 1, values: CALLOUT_TYPES },
       },
     ])
   })

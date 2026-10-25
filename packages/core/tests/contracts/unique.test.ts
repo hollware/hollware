@@ -12,6 +12,7 @@ describe('the unique-slug and unique-translation violations', () => {
       message:
         'Another entry of this collection and locale, ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW, already has this slug.',
       fix: 'Choose another slug, or change the entry ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW with update_draft.',
+      params: { holder: 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW' },
     })
   })
 
@@ -25,6 +26,7 @@ describe('the unique-slug and unique-translation violations', () => {
       message:
         'Another entry of this collection and locale, ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW, already belongs to this translation group.',
       fix: 'Give "i18n/group" another value, or change the entry ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW with update_draft: a translation group holds one entry per locale.',
+      params: { field: 'i18n/group', holder: 'ent_01JAB3XQ8ZK4M6N2P5R7S9T0VW' },
     })
   })
 

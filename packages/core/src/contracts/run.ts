@@ -59,6 +59,8 @@ function toViolations(
         ? `Change the entry so that the rule ${quote(contract.id)} passes: ${contract.description}`
         : finding.fix,
     ...(finding.line === undefined ? {} : { line: finding.line }),
+    ...(finding.code === undefined ? {} : { code: finding.code }),
+    ...(finding.params === undefined ? {} : { params: finding.params }),
   }))
 }
 
@@ -77,6 +79,8 @@ function thrown(contract: Pick<Contract<unknown>, 'id'>, error: unknown): Violat
     path: '',
     message: `The contract ${quote(contract.id)} failed with an error while it checked this entry: ${clip(describeError(error), 200)}`,
     fix: `This is a problem in the config of the site, not in the entry: report it to whoever maintains the config, naming the contract ${quote(contract.id)}.`,
+    code: 'contract-failed',
+    params: { contract: contract.id },
   }
 }
 

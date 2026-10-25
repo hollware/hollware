@@ -69,12 +69,29 @@ export function readFrontmatter(markdown: string): Record<string, unknown> | nul
   return isRecord(values) ? { ...values } : {}
 }
 
-export function writeFrontmatter(
-  markdown: string,
-  values: Readonly<Record<string, unknown>>,
-): string {
-  const yaml = stringify(values, { lineWidth: 0 }).trimEnd()
+export function setField(markdown: string, key: string, value: unknown): string {
   const block = FENCE.exec(markdown)
-  if (block === null) return `---\n${yaml}\n---\n\n${markdown}`
+  if (block === null) {
+    if (value === undefined) return markdown
+    const yaml = stringify({ [key]: value }, { lineWidth: 0 }).trimEnd()
+    return `---\n${yaml}\n---\n\n${markdown}`
+  }
+  const document = parseDocument(block[1] ?? '')
+  if (document.errors.length > 0) return markdown
+  if (value === undefined) document.delete(key)
+  else document.set(key, value)
+  const yaml = document.toString({ lineWidth: 0, flowCollectionPadding: false }).trimEnd()
   return `---\n${yaml}\n---${block[2] ?? '\n'}${markdown.slice(block[0].length)}`
+}
+
+export function bodyOf(markdown: string): string {
+  const block = FENCE.exec(markdown)
+  return block === null ? markdown : markdown.slice(block[0].length).replace(/^\r?\n/, '')
+}
+
+export function withBody(markdown: string, body: string): string {
+  const block = FENCE.exec(markdown)
+  if (block === null) return body
+  const fence = block[0].endsWith('\n') ? block[0] : `${block[0]}\n`
+  return `${fence}\n${body}`
 }

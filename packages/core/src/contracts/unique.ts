@@ -9,6 +9,7 @@ export function uniqueSlugViolation(holder: string): Violation {
     path: '',
     message: `Another entry of this collection and locale, ${holder}, already has this slug.`,
     fix: `Choose another slug, or change the entry ${holder} with update_draft.`,
+    params: { holder },
   }
 }
 
@@ -20,5 +21,6 @@ export function uniqueTranslationViolation(holder: string, field: string): Viola
     path: `/frontmatter${pointer([field])}`,
     message: `Another entry of this collection and locale, ${holder}, already belongs to this translation group.`,
     fix: `Give ${quote(field)} another value, or change the entry ${holder} with update_draft: a translation group holds one entry per locale.`,
+    params: { holder, field },
   }
 }

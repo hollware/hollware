@@ -43,7 +43,15 @@ async function runLinks(
   return { verdict, calls }
 }
 
-function error(href: string, entry: string, why: string, fix: string, line: number) {
+function error(
+  href: string,
+  entry: string,
+  why: string,
+  fix: string,
+  line: number,
+  code: string,
+  status: string,
+) {
   return {
     contract: 'internal-links-resolve',
     severity: 'error',
@@ -51,6 +59,8 @@ function error(href: string, entry: string, why: string, fix: string, line: numb
     message: `The link "${href}" points at the entry ${entry}, ${why}.`,
     fix,
     line,
+    code,
+    params: { href, entry, status },
   }
 }
 
@@ -88,6 +98,8 @@ describe('the internal-links-resolve contract', () => {
         'which does not exist',
         'Create and publish the entry blog/es/missing, point the link at an entry that is published, or remove the link.',
         3,
+        'internal-links-resolve.missing',
+        '',
       ),
       error(
         '/blog/draft/',
@@ -95,6 +107,8 @@ describe('the internal-links-resolve contract', () => {
         'which is not published yet (draft)',
         'Publish the entry blog/es/draft first, point the link at an entry that is published, or remove the link.',
         5,
+        'internal-links-resolve.unpublished',
+        'draft',
       ),
       error(
         '/blog/later/',
@@ -102,6 +116,8 @@ describe('the internal-links-resolve contract', () => {
         'which is not published yet (scheduled)',
         'Publish the entry blog/es/later first, point the link at an entry that is published, or remove the link.',
         8,
+        'internal-links-resolve.unpublished',
+        'scheduled',
       ),
     ])
     expect(verdict.ok).toBe(false)

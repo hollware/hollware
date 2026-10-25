@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useMessages } from '../i18n/index.ts'
-import { fieldsOf, readFrontmatter, writeFrontmatter, type Field } from '../lib/frontmatter.ts'
+import { fieldsOf, readFrontmatter, setField, type Field } from '../lib/frontmatter.ts'
 
-const props = defineProps<{ modelValue: string; schema: Readonly<Record<string, unknown>> }>()
+const props = defineProps<{
+  modelValue: string
+  schema: Readonly<Record<string, unknown>>
+  omit?: readonly string[]
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const m = useMessages()
-const fields = computed(() => fieldsOf(props.schema))
+const fields = computed(() =>
+  fieldsOf(props.schema).filter((field) => !(props.omit ?? []).includes(field.key)),
+)
 const values = computed(() => readFrontmatter(props.modelValue))
 
 function set(key: string, value: unknown) {
   if (values.value === null) return
-  emit('update:modelValue', writeFrontmatter(props.modelValue, { ...values.value, [key]: value }))
+  emit('update:modelValue', setField(props.modelValue, key, value))
 }
 
 function text(field: Field): string {
