@@ -1,7 +1,7 @@
 import type { ElementNode, MarkdownDocument } from 'comark'
 import { getFormatParser } from './parser.ts'
 import { processMarkdown } from './process.ts'
-import type { ProcessedMarkdown, ProcessMarkdownOptions, ProcessResult } from './types.ts'
+import type { ProcessMarkdownOptions, ProcessResult } from './types.ts'
 
 export interface FormattedMarkdown {
   readonly markdown: string
@@ -64,53 +64,43 @@ export async function stringifyBody(document: MarkdownDocument): Promise<string>
   return (await getFormatter()).body(document)
 }
 
-export async function canonicalMarkdown(markdown: string): Promise<string> {
+async function readCanonical(markdown: string): Promise<MarkdownDocument | undefined> {
   const parser = await getFormatParser()
   let split: { content: string; data: unknown }
   try {
     split = parser.splitFrontmatter(withoutMark(markdown))
   } catch {
-    return markdown
+    return undefined
   }
   if (typeof split.data !== 'object' || split.data === null || Array.isArray(split.data)) {
-    return markdown
+    return undefined
   }
   const document = await parser.parseBody(split.content)
   document.frontmatter = { ...split.data }
-  return (await getFormatter()).file(document)
+  return document
 }
 
-function withoutLines(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutLines)
-  if (typeof value !== 'object' || value === null) return value
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => key !== 'line')
-      .map(([key, inner]) => [key, withoutLines(inner)]),
-  )
-}
-
-function sameMeaning(a: ProcessedMarkdown, b: ProcessedMarkdown): boolean {
-  const meaning = (processed: ProcessedMarkdown) =>
-    JSON.stringify(withoutLines([processed.frontmatter, processed.document, processed.extracted]))
-  return meaning(a) === meaning(b)
+export async function canonicalMarkdown(markdown: string): Promise<string> {
+  const document = await readCanonical(markdown)
+  return document === undefined ? markdown : (await getFormatter()).file(document)
 }
 
 export async function formatMarkdown(
   markdown: string,
   options: ProcessMarkdownOptions,
 ): Promise<FormattedMarkdown> {
-  const processed = await processMarkdown(markdown, options)
-  if (!processed.ok) return { markdown, processed }
-  const canonical = await canonicalMarkdown(markdown)
-  if (canonical === markdown) return { markdown, processed }
-  const reprocessed = await processMarkdown(canonical, options)
-  if (
-    !reprocessed.ok ||
-    !sameMeaning(processed.value, reprocessed.value) ||
-    (await canonicalMarkdown(canonical)) !== canonical
-  ) {
-    return { markdown, processed }
+  const document = await readCanonical(markdown)
+  if (document === undefined)
+    return { markdown, processed: await processMarkdown(markdown, options) }
+  const tree = JSON.stringify(document)
+  const canonical = await (await getFormatter()).file(document)
+  if (canonical === markdown)
+    return { markdown, processed: await processMarkdown(markdown, options) }
+  const again = await readCanonical(canonical)
+  if (again === undefined || JSON.stringify(again) !== tree) {
+    return { markdown, processed: await processMarkdown(markdown, options) }
   }
-  return { markdown: canonical, processed: reprocessed }
+  const processed = await processMarkdown(canonical, options)
+  if (processed.ok) return { markdown: canonical, processed }
+  return { markdown, processed: await processMarkdown(markdown, options) }
 }

@@ -26,7 +26,7 @@ interface InlineState {
 interface MarkdownIt {
   set(options: { html: boolean }): unknown
   validateLink: (url: string) => boolean
-  linkify: { set(options: { fuzzyLink: boolean }): unknown }
+  linkify: { set(options: { fuzzyLink: boolean }): unknown; pretest: (text: string) => boolean }
   block: { ruler: { disable(name: string): unknown } }
   inline: {
     ruler: { at(name: string, rule: (state: InlineState, silent: boolean) => boolean): unknown }
@@ -222,10 +222,14 @@ function keepPropsText(md: MarkdownIt): void {
   })
 }
 
+const LINK_HINT = /@|\/\//
+
 function readAsHollware(md: MarkdownIt): void {
   md.set({ html: true })
   md.validateLink = () => true
   md.linkify.set({ fuzzyLink: false })
+  const pretest = md.linkify.pretest.bind(md.linkify)
+  md.linkify.pretest = (text) => LINK_HINT.test(text) && pretest(text)
   md.block.ruler.disable('comark_block_yaml')
 }
 
