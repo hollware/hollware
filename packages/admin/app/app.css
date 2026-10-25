@@ -50,3 +50,87 @@
 body {
   -webkit-font-smoothing: antialiased;
 }
+
+.hw-editor .tiptap a {
+  color: var(--ui-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li::marker {
+  content: '';
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li > label {
+  margin-top: 0.35em;
+  user-select: none;
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li > label input {
+  accent-color: var(--ui-secondary);
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.hw-editor .tiptap ul[data-type='taskList'] > li[data-checked='true'] > div {
+  color: var(--ui-text-muted);
+  text-decoration: line-through;
+}
+
+.hw-editor .tiptap table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.hw-editor .tiptap th,
+.hw-editor .tiptap td {
+  border: 1px solid var(--ui-border);
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+}
+
+.hw-editor .tiptap th {
+  background: var(--ui-bg-elevated);
+  font-weight: 600;
+  text-align: start;
+}
+
+.hw-editor .tiptap .selectedCell {
+  background: color-mix(in oklab, var(--ui-secondary) 15%, transparent);
+}
+
+.hw-editor .tiptap img {
+  border-radius: 0.5rem;
+  display: inline-block;
+  max-height: 28rem;
+  max-width: 100%;
+}
+
+.hw-editor .tiptap img.ProseMirror-selectednode {
+  outline: 2px solid var(--ui-secondary);
+}
+
+.hw-editor .tiptap .hw-raw-inline {
+  background: var(--ui-bg-elevated);
+  border: 1px dashed var(--ui-border-accented);
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0 0.25rem;
+}

@@ -172,3 +172,25 @@ export function fixForIssue({ subject, schema, input, segments, message }: FixIn
     ? `Change ${target} to a value that the schema of ${subject.container} accepts: ${message}`
     : `Set ${target} to ${expected}.`
 }
+
+export function issueParams(
+  issue: StandardSchemaV1.Issue,
+  segments: readonly string[],
+  input: unknown,
+): { readonly kind: string; readonly params: Record<string, string | number> } {
+  const value = valueAt(input, segments)
+  const params: Record<string, string | number> = { field: label(segments) }
+  for (const key of ['minimum', 'maximum', 'expected', 'origin', 'format']) {
+    const given: unknown = Reflect.get(issue, key)
+    if (typeof given === 'string' || typeof given === 'number') params[key] = given
+    else if (typeof given === 'bigint') params[key] = Number(given)
+  }
+  const values: unknown = Reflect.get(issue, 'values')
+  if (Array.isArray(values)) params['values'] = listValues(values)
+  const keys: unknown = Reflect.get(issue, 'keys')
+  if (Array.isArray(keys)) params['keys'] = keys.map(String).join(', ')
+  if (typeof value === 'string' || Array.isArray(value)) params['length'] = value.length
+  const code: unknown = Reflect.get(issue, 'code')
+  const kind = value === undefined ? 'missing' : typeof code === 'string' ? code : 'invalid'
+  return { kind, params }
+}

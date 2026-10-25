@@ -79,6 +79,8 @@ serve them. Boundary rules for this package:
   asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
   closes its pending review in the same batch: a new revision cancels it, a publication approves
   it. `approve_review` publishes through the `publish` handler itself, in the approver's name.
+- Drafts store and answer what `formatMarkdown` gives; `unchanged` compares that canonical form
+  (`tests/ops/drafts.workerd.test.ts`).
 - The trash of entries: `delete_entry` sets `entries.deleted_at` on a draft, and every read of the
   store (the contracts' lookups included) leaves a trashed entry out but `listEntries` with
   `trashed`; it keeps its slug and translation, so `create_draft` answers `in_trash`

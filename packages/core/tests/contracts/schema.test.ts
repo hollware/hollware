@@ -16,9 +16,17 @@ const schema = z.object({
 
 const VALID = { title: 'Edge caching', description: 'How.', date: '2026-10-12', tags: ['cdn'] }
 
-function violation(path: string, message: string, fix: string) {
-  return { contract: 'schema', severity: 'error', path, message, fix }
+function violation(
+  path: string,
+  message: string,
+  fix: string,
+  code: string,
+  params: Record<string, string | number>,
+) {
+  return { contract: 'schema', severity: 'error', path, message, fix, code, params }
 }
+
+const CTA_VALUES = '"newsletter", "docs", "github"'
 
 describe('the schema contract', () => {
   it('passes a frontmatter that the schema accepts', async () => {
@@ -40,6 +48,8 @@ describe('the schema contract', () => {
           '/frontmatter/description',
           'Too big: expected string to have <=160 characters',
           'Set the field "description" to a string of 1 to 160 characters.',
+          'schema.too_big',
+          { field: 'description', length: 184, maximum: 160, origin: 'string' },
         ),
       ],
     ],
@@ -51,6 +61,8 @@ describe('the schema contract', () => {
           '/frontmatter/title',
           'Invalid input: expected string, received undefined',
           'Set the field "title" to a string of at least 1 character.',
+          'schema.missing',
+          { field: 'title', expected: 'string' },
         ),
       ],
     ],
@@ -62,6 +74,8 @@ describe('the schema contract', () => {
           '/frontmatter/tags/0',
           'Too small: expected string to have >=1 characters',
           'Set the field "tags[0]" to a string of at least 1 character.',
+          'schema.too_small',
+          { field: 'tags[0]', length: 0, minimum: 1, origin: 'string' },
         ),
       ],
     ],
@@ -73,6 +87,8 @@ describe('the schema contract', () => {
           '/frontmatter/tags/1',
           'Too small: expected string to have >=1 characters',
           'Set the field "tags[1]" to a string of at least 1 character.',
+          'schema.too_small',
+          { field: 'tags[1]', length: 0, minimum: 1, origin: 'string' },
         ),
       ],
     ],
@@ -84,6 +100,8 @@ describe('the schema contract', () => {
           '/frontmatter/tags',
           'Too small: expected array to have >=1 items',
           'Set the field "tags" to an array of at least 1 item, each a string of at least 1 character.',
+          'schema.too_small',
+          { field: 'tags', length: 0, minimum: 1, origin: 'array' },
         ),
       ],
     ],
@@ -95,6 +113,8 @@ describe('the schema contract', () => {
           '/frontmatter/cta',
           'Invalid option: expected one of "newsletter"|"docs"|"github"',
           'Set the field "cta" to one of "newsletter", "docs", "github".',
+          'schema.invalid_value',
+          { field: 'cta', length: 3, values: CTA_VALUES },
         ),
       ],
     ],
@@ -106,6 +126,8 @@ describe('the schema contract', () => {
           '/frontmatter/date',
           'Invalid ISO date',
           'Set the field "date" to a string in the format "date".',
+          'schema.invalid_format',
+          { field: 'date', format: 'date', length: 8, origin: 'string' },
         ),
       ],
     ],
@@ -117,6 +139,8 @@ describe('the schema contract', () => {
           '/frontmatter/author',
           'Unrecognized key: "role"',
           'Remove the field "role" from the field "author"; the fields allowed there are: name, links.',
+          'schema.unrecognized_keys',
+          { field: 'author', keys: 'role' },
         ),
       ],
     ],
@@ -128,6 +152,8 @@ describe('the schema contract', () => {
           '/frontmatter/author/links/1',
           'Invalid URL',
           'Set the field "author.links[1]" to a string in the format "uri".',
+          'schema.invalid_format',
+          { field: 'author.links[1]', format: 'url', length: 4 },
         ),
       ],
     ],
@@ -139,11 +165,15 @@ describe('the schema contract', () => {
           '/frontmatter/cta',
           'Invalid option: expected one of "newsletter"|"docs"|"github"',
           'Set the field "cta" to one of "newsletter", "docs", "github".',
+          'schema.invalid_value',
+          { field: 'cta', length: 1, values: CTA_VALUES },
         ),
         violation(
           '/frontmatter/title',
           'Too small: expected string to have >=1 characters',
           'Set the field "title" to a string of at least 1 character.',
+          'schema.too_small',
+          { field: 'title', length: 0, minimum: 1, origin: 'string' },
         ),
       ],
     ],
@@ -171,11 +201,15 @@ describe('the schema contract', () => {
         '/frontmatter/links/a~1b',
         'Invalid input: expected number, received string',
         'Change the field "links.a/b" to a value that the schema of the frontmatter accepts: Invalid input: expected number, received string',
+        'schema.invalid_type',
+        { field: 'links.a/b', expected: 'number', length: 1 },
       ),
       violation(
         '/frontmatter/links/c~0d',
         'Invalid input: expected number, received string',
         'Change the field "links.c~d" to a value that the schema of the frontmatter accepts: Invalid input: expected number, received string',
+        'schema.invalid_type',
+        { field: 'links.c~d', expected: 'number', length: 1 },
       ),
     ])
   })
@@ -205,6 +239,8 @@ describe('the schema contract', () => {
         '/frontmatter/kind',
         'must be a kind',
         'Change the field "kind" to a value that the schema of the frontmatter accepts: must be a kind',
+        'schema.invalid',
+        { field: 'kind' },
       ),
     ])
   })
@@ -226,7 +262,15 @@ describe('the schema contract', () => {
       markdown: markdownOf({ frontmatter: { never: 'an object' } }),
     })
     expect(verdict.errors).toStrictEqual([
-      violation('/frontmatter', 'must be ok', 'Set the frontmatter to exactly "ok".'),
+      violation(
+        '/frontmatter',
+        'must be ok',
+        'Set the frontmatter to exactly "ok".',
+        'schema.invalid',
+        {
+          field: '',
+        },
+      ),
     ])
   })
 

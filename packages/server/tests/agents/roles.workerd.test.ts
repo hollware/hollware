@@ -223,7 +223,14 @@ describe('the auditor', () => {
 
     expect(answer.findings).toBeGreaterThanOrEqual(2)
     expect(report.entry?.status).toBe('draft')
-    expect(report.entry?.markdown).toBe(posted[0])
+    expect(report.entry?.markdown).toBe(
+      posted[0]
+        ?.replace('title: "Content audit of 2027-06-01"', 'title: Content audit of 2027-06-01')
+        .replace(
+          'description: "What the weekly audit of 2027-06-01 found: read but old, and failing contracts."',
+          "description: 'What the weekly audit of 2027-06-01 found: read but old, and failing contracts.'",
+        ),
+    )
     expect(posted[0]).toContain(
       '- /en/blog/edge-guide/ (blog/en/edge-guide): 120 views in 30 days, last updated 2026-10-13',
     )

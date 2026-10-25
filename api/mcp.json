@@ -240,6 +240,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -255,6 +259,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -282,6 +296,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -297,6 +315,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -899,6 +927,10 @@
             ],
             "type": "object"
           },
+          "markdown": {
+            "description": "With saved, the Markdown stored: the canonical form of the file that was sent.",
+            "type": "string"
+          },
           "outcome": {
             "enum": ["saved", "refused", "in_trash"],
             "type": "string"
@@ -914,6 +946,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -929,6 +965,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -956,6 +1002,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -971,6 +1021,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -2283,6 +2343,10 @@
                             "items": {
                               "additionalProperties": false,
                               "properties": {
+                                "code": {
+                                  "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                                  "type": "string"
+                                },
                                 "contract": {
                                   "description": "The id of the contract.",
                                   "type": "string"
@@ -2298,6 +2362,16 @@
                                 },
                                 "message": {
                                   "type": "string"
+                                },
+                                "params": {
+                                  "additionalProperties": {
+                                    "type": ["string", "number"]
+                                  },
+                                  "description": "The values the message names, for a client that says it in another language.",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "type": "object"
                                 },
                                 "path": {
                                   "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -2325,6 +2399,10 @@
                             "items": {
                               "additionalProperties": false,
                               "properties": {
+                                "code": {
+                                  "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                                  "type": "string"
+                                },
                                 "contract": {
                                   "description": "The id of the contract.",
                                   "type": "string"
@@ -2340,6 +2418,16 @@
                                 },
                                 "message": {
                                   "type": "string"
+                                },
+                                "params": {
+                                  "additionalProperties": {
+                                    "type": ["string", "number"]
+                                  },
+                                  "description": "The values the message names, for a client that says it in another language.",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "type": "object"
                                 },
                                 "path": {
                                   "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -2426,6 +2514,10 @@
                     "items": {
                       "additionalProperties": false,
                       "properties": {
+                        "code": {
+                          "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                          "type": "string"
+                        },
                         "contract": {
                           "description": "The id of the contract.",
                           "type": "string"
@@ -2441,6 +2533,16 @@
                         },
                         "message": {
                           "type": "string"
+                        },
+                        "params": {
+                          "additionalProperties": {
+                            "type": ["string", "number"]
+                          },
+                          "description": "The values the message names, for a client that says it in another language.",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
                         },
                         "path": {
                           "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -2468,6 +2570,10 @@
                     "items": {
                       "additionalProperties": false,
                       "properties": {
+                        "code": {
+                          "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                          "type": "string"
+                        },
                         "contract": {
                           "description": "The id of the contract.",
                           "type": "string"
@@ -2483,6 +2589,16 @@
                         },
                         "message": {
                           "type": "string"
+                        },
+                        "params": {
+                          "additionalProperties": {
+                            "type": ["string", "number"]
+                          },
+                          "description": "The values the message names, for a client that says it in another language.",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
                         },
                         "path": {
                           "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -4990,6 +5106,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -5005,6 +5125,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -5032,6 +5162,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -5047,6 +5181,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -5529,6 +5673,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -5544,6 +5692,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -5571,6 +5729,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -5586,6 +5748,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -5964,6 +6136,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -5979,6 +6155,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -6006,6 +6192,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -6021,6 +6211,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -7300,6 +7500,10 @@
             ],
             "type": "object"
           },
+          "markdown": {
+            "description": "With saved or unchanged, the Markdown stored: the canonical form of the file that was sent.",
+            "type": "string"
+          },
           "outcome": {
             "enum": ["saved", "unchanged", "conflict", "not_found", "refused"],
             "type": "string"
@@ -7315,6 +7519,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -7330,6 +7538,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -7357,6 +7575,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -7372,6 +7594,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -8146,6 +8378,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -8161,6 +8397,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",
@@ -8188,6 +8434,10 @@
                 "items": {
                   "additionalProperties": false,
                   "properties": {
+                    "code": {
+                      "description": "Which problem of its contract this is, when the contract finds more than one kind.",
+                      "type": "string"
+                    },
                     "contract": {
                       "description": "The id of the contract.",
                       "type": "string"
@@ -8203,6 +8453,16 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "params": {
+                      "additionalProperties": {
+                        "type": ["string", "number"]
+                      },
+                      "description": "The values the message names, for a client that says it in another language.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
                     },
                     "path": {
                       "description": "A JSON Pointer into { frontmatter, body }: /frontmatter/title, or /body with a line.",

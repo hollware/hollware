@@ -156,7 +156,7 @@ async function remove() {
       collection: null,
       confirm,
     })
-    if (answer.outcome === 'updated') await router.push('/collections')
+    if (answer.outcome === 'updated') await router.push('/settings/collections')
     return answer
   })
 }

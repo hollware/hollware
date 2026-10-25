@@ -27,6 +27,8 @@ describe('the size limit', () => {
         path: '/body',
         message: 'The Markdown file is 11 bytes and this collection accepts at most 10.',
         fix: 'Shorten the file to 10 bytes or fewer, counting the frontmatter, or split the content into several entries.',
+        code: 'size-limit.file',
+        params: { bytes: 11, limit: 10 },
       },
     ])
   })
@@ -125,6 +127,8 @@ describe('input of any shape', () => {
             path: '/body',
             message: 'The Markdown is not a string.',
             fix: 'Send the whole file, frontmatter and body, as one string.',
+            code: 'comark-parse.not-a-string',
+            params: {},
           },
         ],
       })

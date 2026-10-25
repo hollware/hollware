@@ -46,6 +46,8 @@ function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
               path,
               message: `The entry has no translation group: its frontmatter field ${field} is empty.`,
               fix: `Set ${field} in the frontmatter to the key that all the translations of this entry share, then create the entries for the locales of the site: ${site.locales.join(', ')}.`,
+              code: 'translation-pair.no-group',
+              params: { field, locales: site.locales.join(', ') },
             },
           ]
         }
@@ -57,6 +59,8 @@ function translationPair(options: BuiltInOptions = {}): Contract<unknown> {
             path,
             message: `The ${locale} version of the translation group ${quote(group)} does not exist.`,
             fix: `Create the entry in ${locale} with ${field}: ${quote(group)} in its frontmatter before publishing.`,
+            code: 'translation-pair.missing',
+            params: { locale, group, field },
           }))
       },
     },
@@ -110,6 +114,15 @@ function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
                 ? `Create and publish ${entry}, point the link at an entry that is published, or remove the link.`
                 : `Publish ${entry} first, point the link at an entry that is published, or remove the link.`,
             line: link.line,
+            code:
+              found === null
+                ? 'internal-links-resolve.missing'
+                : 'internal-links-resolve.unpublished',
+            params: {
+              href: link.href,
+              entry: `${target.collection}/${target.locale}/${target.slug}`,
+              status: found?.status ?? '',
+            },
           })
         }
         return findings
@@ -148,6 +161,7 @@ function imagesHaveAlt(options: BuiltInOptions = {}): Contract<unknown> {
             path: '/body',
             message: `The image ${quote(image.src)} has no alt text.`,
             fix: `Add alt text that describes the image, as in ![a short description](${clip(image.src)}).`,
+            params: { src: image.src },
             line: image.line,
           })),
     },

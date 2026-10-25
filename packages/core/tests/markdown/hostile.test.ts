@@ -454,6 +454,8 @@ describe('a document that is too deep to store', () => {
         path: '/body',
         message: 'The document nests elements more than 100 levels deep.',
         fix: 'Flatten the nesting of emphasis, lists, quotes and components.',
+        code: 'comark-parse.nesting',
+        params: {},
       },
     ])
   })
@@ -477,6 +479,8 @@ describe('a document that is too deep to store', () => {
         message:
           'A component prop holds a value that nests more than 100 levels deep or is not JSON.',
         fix: 'Give the component a smaller, flatter value, written as JSON.',
+        code: 'comark-parse.props',
+        params: {},
       },
     ])
   })

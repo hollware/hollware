@@ -89,6 +89,8 @@ describe('frontmatter YAML does not parse', () => {
           'The frontmatter is not valid YAML: unexpected end of the stream within a flow collection (line 3, column 16).',
         fix: `Fix the YAML between the two --- lines at the top of the file, at line 3. ${YAML_FIX}`,
         line: 3,
+        code: 'frontmatter-syntax.yaml',
+        params: { line: 3, reason: 'unexpected end of the stream within a flow collection' },
       },
     ])
   })
@@ -111,6 +113,8 @@ describe('frontmatter YAML does not parse', () => {
         message: 'The frontmatter is not valid YAML: deficient indentation (line 3, column 1).',
         fix: `Fix the YAML between the two --- lines at the top of the file, at line 3. ${YAML_FIX}`,
         line: 3,
+        code: 'frontmatter-syntax.yaml',
+        params: { line: 3, reason: 'deficient indentation' },
       },
     ])
   })
@@ -168,6 +172,8 @@ describe('frontmatter that is not a mapping', () => {
         'The frontmatter must be a YAML mapping of keys to values, but the file starts with text.',
       fix: MAPPING_FIX,
       line: 1,
+      code: 'frontmatter-syntax.not-mapping',
+      params: { found: 'text' },
     })
   })
 
@@ -203,6 +209,8 @@ describe('frontmatter that cannot be stored as JSON', () => {
         message: ALIAS_MESSAGE,
         fix: ALIAS_FIX,
         line: 1,
+        code: 'frontmatter-syntax.not-json.shared',
+        params: {},
       },
     ])
   })

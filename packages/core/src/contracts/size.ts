@@ -16,5 +16,7 @@ export function sizeLimitViolation(bytes: number, limit: number): Violation {
     path: '',
     message: `The entry takes ${bytes} bytes and the limit is ${limit} bytes.`,
     fix: `Cut at least ${bytes - limit} bytes: shorten the text, drop what is not essential or split it into several entries.`,
+    code: 'size-limit.row',
+    params: { bytes, limit },
   }
 }

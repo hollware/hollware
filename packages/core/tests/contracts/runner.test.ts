@@ -248,6 +248,8 @@ describe('the schema as a gate', () => {
         message:
           'The contract "schema" failed with an error while it checked this entry: TypeError: the schema is broken',
         fix: 'This is a problem in the config of the site, not in the entry: report it to whoever maintains the config, naming the contract "schema".',
+        code: 'contract-failed',
+        params: { contract: 'schema' },
       },
     ])
   })
@@ -451,6 +453,8 @@ describe('a contract that fails', () => {
         message:
           'The contract "boom" failed with an error while it checked this entry: Error: boom',
         fix: `${FIX} "boom".`,
+        code: 'contract-failed',
+        params: { contract: 'boom' },
       },
     ])
     expect(verdict.ok).toBe(false)
@@ -471,6 +475,8 @@ describe('a contract that fails', () => {
         message:
           'The contract "soft" failed with an error while it checked this entry: RangeError: too far',
         fix: `${FIX} "soft".`,
+        code: 'contract-failed',
+        params: { contract: 'soft' },
       },
     ])
   })
@@ -544,6 +550,8 @@ describe('a contract that fails', () => {
         message:
           'The contract "components" failed with an error while it checked this entry: Error: props schema is broken',
         fix: `${FIX} "components".`,
+        code: 'contract-failed',
+        params: { contract: 'components' },
       },
     ])
   })

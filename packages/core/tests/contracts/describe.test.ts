@@ -246,6 +246,8 @@ describe('sizeLimitViolation', () => {
       path: '',
       message: 'The entry takes 600000 bytes and the limit is 524288 bytes.',
       fix: 'Cut at least 75712 bytes: shorten the text, drop what is not essential or split it into several entries.',
+      code: 'size-limit.row',
+      params: { bytes: 600000, limit: 524288 },
     })
     expect(sizeLimitViolation(2_000_000, 1_900_000)).toStrictEqual({
       contract: 'size-limit',
@@ -253,6 +255,8 @@ describe('sizeLimitViolation', () => {
       path: '',
       message: 'The entry takes 2000000 bytes and the limit is 1900000 bytes.',
       fix: 'Cut at least 100000 bytes: shorten the text, drop what is not essential or split it into several entries.',
+      code: 'size-limit.row',
+      params: { bytes: 2000000, limit: 1900000 },
     })
   })
 })

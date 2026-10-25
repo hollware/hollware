@@ -216,13 +216,16 @@ export const createDraft = defineOperation({
   name: 'create_draft',
   title: 'Create a draft',
   description:
-    'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back.',
+    'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back. Hollware stores the canonical Markdown of Comark, which means what you wrote: keep editing from the markdown of the answer.',
   input: z.strictObject({ collection: collectionName, locale, slug, markdown }),
   output: z.object({
     outcome: z.enum(['saved', 'refused', 'in_trash']),
     entry: entrySummary
       .optional()
       .describe('With saved, the new draft; with in_trash, the entry in the trash that holds it.'),
+    markdown: markdown
+      .optional()
+      .describe('With saved, the Markdown stored: the canonical form of the file that was sent.'),
     verdict: verdict.optional(),
   }),
   scopes: ['content:write'],
@@ -234,11 +237,16 @@ export const updateDraft = defineOperation({
   name: 'update_draft',
   title: 'Update a draft',
   description:
-    'Saves a new revision of an entry from the whole Markdown file, if the entry is still at the version you read; otherwise it answers conflict with the current version, and nothing is saved. A file identical to the latest revision answers unchanged. Contract errors do not stop the save; the verdict says what to fix.',
+    'Saves a new revision of an entry from the whole Markdown file, if the entry is still at the version you read; otherwise it answers conflict with the current version, and nothing is saved. A file whose canonical form is the latest revision answers unchanged. Contract errors do not stop the save; the verdict says what to fix. Hollware stores the canonical Markdown of Comark, which means what you wrote: keep editing from the markdown of the answer.',
   input: z.strictObject({ id: entryId, version, markdown }),
   output: z.object({
     outcome: z.enum(['saved', 'unchanged', 'conflict', 'not_found', 'refused']),
     entry: entrySummary.optional(),
+    markdown: markdown
+      .optional()
+      .describe(
+        'With saved or unchanged, the Markdown stored: the canonical form of the file that was sent.',
+      ),
     verdict: verdict.optional(),
     conflict: conflict.optional(),
   }),

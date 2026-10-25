@@ -1,5 +1,5 @@
 import type { DescribedSchema, ResolvedCollection } from '../config/types.ts'
-import { fixForIssue, type FixSubject, issueSegments } from './schema-fix.ts'
+import { fixForIssue, type FixSubject, issueParams, issueSegments } from './schema-fix.ts'
 import { type JsonObject, pointer } from './text.ts'
 import type { ContractFinding } from './types.ts'
 
@@ -52,9 +52,12 @@ export async function checkFrontmatter(
     passed: false,
     findings: result.issues.map((issue) => {
       const segments = issueSegments(issue)
+      const { kind, params } = issueParams(issue, segments, frontmatter)
       return {
         path: `/frontmatter${pointer(segments)}`,
         message: issue.message,
+        code: `schema.${kind}`,
+        params,
         fix: fixForIssue({
           subject: FRONTMATTER,
           schema: json,

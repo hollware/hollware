@@ -1,4 +1,6 @@
 import {
+  formatMarkdown,
+  type FormattedMarkdown,
   processMarkdown,
   type EntryLookup,
   runContracts,
@@ -27,6 +29,14 @@ export function processFor(
   markdown: string,
 ): Promise<ProcessResult> {
   return processMarkdown(markdown, optionsFor(site, collection))
+}
+
+export function formatFor(
+  site: ResolvedSite,
+  collection: ResolvedCollection,
+  markdown: string,
+): Promise<FormattedMarkdown> {
+  return formatMarkdown(markdown, optionsFor(site, collection))
 }
 
 export interface Target {

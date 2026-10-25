@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { fieldsOf, readFrontmatter, writeFrontmatter } from '../app/lib/frontmatter.ts'
+import { bodyOf, fieldsOf, readFrontmatter, setField, withBody } from '../app/lib/frontmatter.ts'
 import { pageUrl } from '../app/lib/site.ts'
 
 const SCHEMA = {
@@ -44,24 +44,27 @@ describe('the frontmatter of a file', () => {
     expect(readFrontmatter('No frontmatter.')).toBeNull()
   })
 
-  it('writes the values back and keeps the body byte for byte', () => {
-    const written = writeFrontmatter(FILE, {
-      title: 'Hello: world',
-      tags: ['a', 'b'],
-      date: '2026-10-16',
-    })
+  it('changes the one field it is given and keeps every other byte, comments included', () => {
+    const file =
+      '---\ntitle: "Hello: world"\n# the date it was written\ndate: 2026-10-15\ntags: [a, b]\n---\n\n# Hello\n\nBody, kept.\n'
 
-    expect(written).toBe(
-      '---\ntitle: "Hello: world"\ntags:\n  - a\n  - b\ndate: 2026-10-16\n---\n\n# Hello\n\nBody, kept.\n',
+    expect(setField(file, 'date', '2026-10-16')).toBe(
+      '---\ntitle: "Hello: world"\n# the date it was written\ndate: 2026-10-16\ntags: [a, b]\n---\n\n# Hello\n\nBody, kept.\n',
     )
-    expect(readFrontmatter(written)).toEqual({
-      title: 'Hello: world',
-      tags: ['a', 'b'],
-      date: '2026-10-16',
-    })
-    expect(writeFrontmatter('Just a body.\n', { title: 'T' })).toBe(
-      '---\ntitle: T\n---\n\nJust a body.\n',
+    expect(setField(file, 'tags', undefined)).toBe(
+      '---\ntitle: "Hello: world"\n# the date it was written\ndate: 2026-10-15\n---\n\n# Hello\n\nBody, kept.\n',
     )
+    expect(setField('Just a body.\n', 'title', 'T')).toBe('---\ntitle: T\n---\n\nJust a body.\n')
+    expect(setField('---\ntitle: [\n---\nBody', 'title', 'T')).toBe('---\ntitle: [\n---\nBody')
+  })
+
+  it('gives the body apart, and puts a new body under the same frontmatter', () => {
+    expect(bodyOf(FILE)).toBe('# Hello\n\nBody, kept.\n')
+    expect(withBody(FILE, 'New body.\n')).toBe(
+      '---\ntitle: "Hello: world"\ntags:\n  - a\n---\n\nNew body.\n',
+    )
+    expect(bodyOf('No frontmatter.\n')).toBe('No frontmatter.\n')
+    expect(withBody('Old.\n', 'New.\n')).toBe('New.\n')
   })
 })
 

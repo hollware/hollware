@@ -19,8 +19,22 @@ function runMarkers(markers: readonly DisallowedMarker[], collection = withCompo
   return run({ collection, markdown: markdownOf({ disallowed: markers }) })
 }
 
-function error(contract: string, message: string, fix: string, line?: number) {
-  return { contract, severity: 'error', path: '/body', message, fix, ...(line ? { line } : {}) }
+function error(
+  contract: string,
+  message: string,
+  fix: string,
+  params: Record<string, string>,
+  line?: number,
+) {
+  return {
+    contract,
+    severity: 'error',
+    path: '/body',
+    message,
+    fix,
+    params,
+    ...(line ? { line } : {}),
+  }
 }
 
 const CALLOUT_AND_YOUTUBE = 'callout, youtube'
@@ -44,6 +58,7 @@ describe('the content-safety contracts', () => {
           'raw-html',
           'Raw HTML is not allowed: the body has a <script> tag.',
           MARKDOWN_OR_COMPONENTS,
+          { tag: 'script', components: CALLOUT_AND_YOUTUBE },
           2,
         ),
       ],
@@ -56,6 +71,7 @@ describe('the content-safety contracts', () => {
           'raw-html',
           'Raw HTML is not allowed: the body has a <div> tag.',
           'Remove the HTML and use Markdown.',
+          { tag: 'div', components: '' },
           6,
         ),
       ],
@@ -69,6 +85,7 @@ describe('the content-safety contracts', () => {
           'unknown-component',
           'The component "youtub" does not exist in this collection.',
           `Use one of the allowed components: ${CALLOUT_AND_YOUTUBE}.`,
+          { name: 'youtub', components: CALLOUT_AND_YOUTUBE },
           4,
         ),
       ],
@@ -81,6 +98,7 @@ describe('the content-safety contracts', () => {
           'unknown-component',
           'The component "callout" does not exist in this collection.',
           'This collection allows no components: remove it and use Markdown.',
+          { name: 'callout', components: '' },
           4,
         ),
       ],
@@ -94,6 +112,7 @@ describe('the content-safety contracts', () => {
           'disallowed-attribute',
           'The attribute "onerror" is not allowed.',
           `Remove the attribute "onerror". ${ATTRIBUTE_FIX}`,
+          { name: 'onerror' },
           7,
         ),
       ],
@@ -101,17 +120,39 @@ describe('the content-safety contracts', () => {
     [
       'an unsafe URL',
       { kind: 'unsafe-url', name: 'javascript:alert(1)', line: 8 },
-      [error('unsafe-url', 'The URL "javascript:alert(1)" is not allowed.', URL_FIX, 8)],
+      [
+        error(
+          'unsafe-url',
+          'The URL "javascript:alert(1)" is not allowed.',
+          URL_FIX,
+          {
+            url: 'javascript:alert(1)',
+          },
+          8,
+        ),
+      ],
     ],
     [
       'a marker without a line',
       { kind: 'unsafe-url', name: 'data:text/html,x' },
-      [error('unsafe-url', 'The URL "data:text/html,x" is not allowed.', URL_FIX)],
+      [
+        error('unsafe-url', 'The URL "data:text/html,x" is not allowed.', URL_FIX, {
+          url: 'data:text/html,x',
+        }),
+      ],
     ],
     [
       'a URL that is long, clipped to 80 characters',
       { kind: 'unsafe-url', name: `javascript:${'a'.repeat(300)}`, line: 1 },
-      [error('unsafe-url', `The URL "javascript:${'a'.repeat(69)}…" is not allowed.`, URL_FIX, 1)],
+      [
+        error(
+          'unsafe-url',
+          `The URL "javascript:${'a'.repeat(69)}…" is not allowed.`,
+          URL_FIX,
+          { url: `javascript:${'a'.repeat(69)}…` },
+          1,
+        ),
+      ],
     ],
     [
       'a tag name that is long, clipped to 80 characters',
@@ -121,6 +162,7 @@ describe('the content-safety contracts', () => {
           'raw-html',
           `Raw HTML is not allowed: the body has a <${'t'.repeat(80)}…> tag.`,
           MARKDOWN_OR_COMPONENTS,
+          { tag: `${'t'.repeat(80)}…`, components: CALLOUT_AND_YOUTUBE },
           1,
         ),
       ],

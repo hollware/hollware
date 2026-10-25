@@ -154,7 +154,7 @@ export async function createPost(world: World, options: PostOptions): Promise<Su
     markdown: blogPost({
       title: options.title ?? `Post ${options.slug}`,
       date: options.date ?? '2026-10-01',
-      tags: options.tags ?? '[cloudflare]',
+      tags: options.tags ?? '\n  - cloudflare',
       translationGroup: options.group ?? options.slug,
     }),
   })

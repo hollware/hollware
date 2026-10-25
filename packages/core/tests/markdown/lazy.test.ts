@@ -18,6 +18,7 @@ describe('the modules of the Markdown pipeline', () => {
   it('are the files of the pipeline, so that a new module is read too', () => {
     expect(files.map(([name]) => name).sort()).toStrictEqual([
       'analyze.ts',
+      'format.ts',
       'index.ts',
       'json.ts',
       'parser.ts',
@@ -37,7 +38,7 @@ describe('the modules of the Markdown pipeline', () => {
     expect(text).not.toMatch(STATIC_BARE_IMPORT)
   })
 
-  it('import Comark where the parser is built and `@comark/html` where HTML is rendered, and nowhere else', () => {
+  it('import Comark where the parser is built, `@comark/html` where HTML is rendered and the Markdown writer where it is formatted, and nowhere else', () => {
     const dynamic = (text: string) =>
       [...text.matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((match) => match[1])
     const byFile = Object.fromEntries(files.map(([name, text]) => [name, dynamic(text)]))
@@ -49,8 +50,11 @@ describe('the modules of the Markdown pipeline', () => {
       'comark/plugins/alert',
     ])
     expect(byFile['render.ts']).toStrictEqual(['@comark/html'])
+    expect(byFile['format.ts']).toStrictEqual(['comark/render', 'js-yaml'])
     for (const [name, imports] of Object.entries(byFile)) {
-      if (name !== 'parser.ts' && name !== 'render.ts') expect(imports, name).toStrictEqual([])
+      if (!['parser.ts', 'render.ts', 'format.ts'].includes(name)) {
+        expect(imports, name).toStrictEqual([])
+      }
     }
   })
 })

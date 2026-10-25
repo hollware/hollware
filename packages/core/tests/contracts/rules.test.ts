@@ -27,6 +27,8 @@ describe('field-length', () => {
         path: '/frontmatter/title',
         message: '"title" has 12 characters; the most is 5.',
         fix: 'Shorten "title" to 5 characters or fewer, or add "seoTitle".',
+        code: 'field-length.max.character',
+        params: { field: 'title', length: 12, max: 5, unless: 'seoTitle' },
       },
     ])
     expect(
@@ -103,6 +105,8 @@ describe('banned-words', () => {
         path: '/body',
         message: 'The body uses "holloware".',
         fix: 'Rewrite the body without "holloware" (the brand is Hollware).',
+        code: 'banned-words.body',
+        params: { word: 'holloware' },
       },
       {
         contract: 'banned-words',
@@ -110,6 +114,8 @@ describe('banned-words', () => {
         path: '/frontmatter/title',
         message: '"title" uses "Holloware".',
         fix: 'Write "title" without "Holloware" (the brand is Hollware).',
+        code: 'banned-words.field',
+        params: { field: 'title', word: 'Holloware' },
       },
     ])
   })

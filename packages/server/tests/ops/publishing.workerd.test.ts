@@ -355,6 +355,8 @@ describe('publish', () => {
             path: '',
             message: `The entry takes ${bytes} bytes and the limit is 1900000 bytes.`,
             fix: `Cut at least ${bytes - 1_900_000} bytes: shorten the text, drop what is not essential or split it into several entries.`,
+            code: 'size-limit.row',
+            params: { bytes, limit: 1900000 },
           },
         ],
         warnings: [],

@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import DataTable from '../components/DataTable.vue'
+import EntryList from '../components/EntryList.vue'
 import Page from '../components/Page.vue'
 import type { Output } from '../lib/api.ts'
 import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
-import { sortable } from '../lib/columns.ts'
-import { formatDateTime, useMessages } from '../i18n/index.ts'
-import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
+import { useMessages } from '../i18n/index.ts'
+import { entryPath, titleOf } from '../lib/entries.ts'
+import { matches } from '../lib/entry-list.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 
@@ -39,6 +38,7 @@ function queried(name: string, fallback: string): string {
 const collection = ref(queried('collection', ''))
 const locale = ref(queried('locale', ALL))
 const status = ref(queried('status', ALL))
+const selected = ref<string[]>([])
 
 const inTrash = computed(() => status.value === TRASH)
 
@@ -82,7 +82,17 @@ async function load() {
   }
 }
 
+watch(
+  () => route.query,
+  () => {
+    collection.value = queried('collection', collection.value)
+    locale.value = queried('locale', ALL)
+    status.value = queried('status', ALL)
+  },
+)
+
 watch([collection, locale, status], async () => {
+  selected.value = []
   await router.replace({
     query: Object.fromEntries(
       [
@@ -95,11 +105,14 @@ watch([collection, locale, status], async () => {
   await load()
 })
 
+const filter = ref(queried('q', ''))
 const rows = computed<Row[]>(() =>
   entries.value
     .filter((entry) => status.value !== OUTDATED || entry.translationOutdated === true)
-    .map((entry) => ({ ...entry, title: titleOf(entry) })),
+    .map((entry) => ({ ...entry, title: titleOf(entry) }))
+    .filter((row) => matches(row, filter.value)),
 )
+const chosen = computed(() => rows.value.filter((row) => selected.value.includes(row.id)))
 
 const siblings = computed(() => {
   const groups = new Map<string, Entry[]>()
@@ -118,14 +131,6 @@ function liveUrl(entry: Entry): string | null {
   if (entry.status !== 'published' || definition.value === undefined) return null
   return pageUrl(site.value?.url ?? null, definition.value.routes, entry.locale, entry.slug)
 }
-
-const columns = computed<TableColumn<Row>[]>(() => [
-  { accessorKey: 'title', header: sortable(m.value.entries.columns.title) },
-  { accessorKey: 'locale', header: sortable(m.value.entries.columns.locale) },
-  { accessorKey: 'status', header: sortable(m.value.entries.columns.status) },
-  { accessorKey: 'updatedAt', header: sortable(m.value.entries.columns.updated) },
-  { id: 'site', header: '' },
-])
 
 const reportBulk = useBulkReport()
 const busy = ref(false)
@@ -249,13 +254,13 @@ async function restoreMany(rows: readonly Row[]) {
   }
 }
 
-const statuses = computed(() => [
-  { label: m.value.entries.anyStatus, value: ALL },
-  { label: m.value.entries.draft, value: 'draft' },
-  { label: m.value.entries.scheduled, value: 'scheduled' },
-  { label: m.value.entries.published, value: 'published' },
-  { label: m.value.entries.outdated, value: OUTDATED },
-  { label: m.value.entries.trash, value: TRASH },
+const views = computed(() => [
+  { label: m.value.entries.views.all, value: ALL },
+  { label: m.value.entries.views.drafts, value: 'draft' },
+  { label: m.value.entries.views.scheduled, value: 'scheduled' },
+  { label: m.value.entries.views.published, value: 'published' },
+  { label: m.value.entries.views.outdated, value: OUTDATED },
+  { label: m.value.entries.views.trash, value: TRASH },
 ])
 const locales = computed(() => [
   { label: m.value.entries.anyLocale, value: ALL },
@@ -264,159 +269,151 @@ const locales = computed(() => [
 </script>
 
 <template>
-  <Page :title="m.entries.title">
+  <Page :title="m.entries.title" flush>
     <template #actions>
       <UButton
         :label="m.entries.newEntry"
         icon="i-lucide-plus"
+        size="sm"
         :to="{ path: '/entries/new', query: collection === '' ? {} : { collection } }"
       />
     </template>
-    <DataTable
-      :data="rows"
-      :columns="columns"
-      :loading="loading"
-      :filter-label="m.entries.filter"
-      :empty="m.entries.empty"
-      selectable
-      :row-label="(row: Row) => row.title"
-    >
-      <template #bulk="{ selected }">
-        <UButton
-          v-if="selected.some(publishable)"
-          :label="m.bulk.publish(selected.filter(publishable).length)"
-          icon="i-lucide-send"
-          size="sm"
-          :loading="busy"
-          @click="publishMany(selected.filter(publishable))"
-        />
-        <UButton
-          v-if="selected.some(publishable)"
-          :label="m.bulk.schedule(selected.filter(publishable).length)"
-          icon="i-lucide-calendar-clock"
-          variant="outline"
-          size="sm"
-          :disabled="busy"
-          @click="openSchedule(selected.filter(publishable))"
-        />
-        <UButton
-          v-if="selected.some(unpublishable)"
-          :label="m.bulk.unpublish(selected.filter(unpublishable).length)"
-          icon="i-lucide-eye-off"
-          color="error"
-          variant="outline"
-          size="sm"
-          :disabled="busy"
-          @click="unpublishing = selected.filter(unpublishable)"
-        />
-        <UButton
-          v-if="selected.some(trashable)"
-          :label="m.bulk.trash(selected.filter(trashable).length)"
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="outline"
-          size="sm"
-          :disabled="busy"
-          @click="trashing = selected.filter(trashable)"
-        />
-        <UButton
-          v-if="selected.some(restorable)"
-          :label="m.bulk.restore(selected.filter(restorable).length)"
-          icon="i-lucide-undo-2"
-          size="sm"
-          :loading="busy"
-          @click="restoreMany(selected.filter(restorable))"
-        />
-      </template>
-      <template #filters>
+    <template #toolbar>
+      <UTabs
+        v-model="status"
+        :items="views"
+        :content="false"
+        :aria-label="m.entries.status"
+        variant="pill"
+        size="xs"
+        class="shrink-0"
+        :ui="{ trigger: 'transition-none', indicator: 'transition-none' }"
+      />
+      <div class="ms-auto flex items-center gap-2">
         <template v-if="site !== null">
           <USelect
             v-model="collection"
             :items="site.collections.map((c) => c.name)"
             :aria-label="m.entries.collection"
-            class="w-40"
+            icon="i-lucide-layers"
+            size="sm"
+            class="w-36"
           />
-          <USelect v-model="locale" :items="locales" :aria-label="m.entries.locale" class="w-44" />
-          <USelect v-model="status" :items="statuses" :aria-label="m.entries.status" class="w-44" />
+          <USelect
+            v-model="locale"
+            :items="locales"
+            :aria-label="m.entries.locale"
+            icon="i-lucide-languages"
+            size="sm"
+            class="w-36"
+          />
         </template>
-      </template>
-      <template #title-cell="{ row }">
-        <span v-if="row.original.deletedAt !== null" class="block max-w-md truncate font-medium">
-          {{ row.original.title }}
-        </span>
+        <UInput
+          v-model="filter"
+          icon="i-lucide-search"
+          size="sm"
+          :placeholder="m.entries.filter"
+          :aria-label="m.entries.filter"
+          class="w-56"
+        />
+      </div>
+    </template>
+    <EntryList v-model:selected="selected" :rows="rows" :loading="loading" :empty="m.entries.empty">
+      <template #locales="{ row }">
         <RouterLink
-          v-else
-          :to="entryPath(row.original)"
-          class="block max-w-md truncate font-medium hover:underline"
-        >
-          {{ row.original.title }}
-        </RouterLink>
-        <span class="block truncate font-mono text-xs text-muted">{{ row.original.slug }}</span>
-      </template>
-      <template #locale-cell="{ row }">
-        <span class="font-mono">{{ row.original.locale }}</span>
-        <RouterLink
-          v-for="other in translationsOf(row.original)"
+          v-for="other in translationsOf(row)"
           :key="other.id"
           :to="entryPath(other)"
           :aria-label="`${other.locale} · ${titleOf(other)}`"
-          class="ml-1.5 font-mono text-xs text-muted hover:text-highlighted"
+          class="text-muted underline-offset-2 hover:text-highlighted hover:underline"
           >{{ other.locale }}</RouterLink
         >
       </template>
-      <template #status-cell="{ row }">
-        <UBadge
-          :label="m.status[row.original.status]"
-          :color="STATUS_COLOR[row.original.status]"
-          variant="subtle"
-        />
-        <UBadge
-          v-if="row.original.status === 'published' && row.original.hasUnpublishedChanges"
-          :label="m.entries.changes"
-          color="warning"
+      <template #trailing="{ row }">
+        <UButton
+          v-if="row.deletedAt !== null"
+          :label="m.entries.restore"
+          :aria-label="m.entries.restoreOne(row.title)"
+          icon="i-lucide-undo-2"
           variant="outline"
-          class="ml-1"
+          size="xs"
+          :disabled="busy"
+          @click="restoreMany([row])"
         />
-        <UBadge
-          v-if="row.original.translationOutdated === true"
-          :label="m.entries.behind"
-          color="warning"
-          variant="outline"
-          icon="i-lucide-languages"
-          class="ml-1"
+        <UButton
+          v-if="liveUrl(row) !== null"
+          :to="liveUrl(row) ?? undefined"
+          target="_blank"
+          icon="i-lucide-external-link"
+          variant="ghost"
+          color="neutral"
+          size="xs"
+          :aria-label="m.entries.onSite(row.title)"
         />
-        <span v-if="row.original.scheduledAt !== null" class="block text-xs text-muted">{{
-          formatDateTime(row.original.scheduledAt)
-        }}</span>
       </template>
-      <template #updatedAt-cell="{ row }">
-        <span class="text-muted">{{ formatDateTime(row.original.updatedAt) }}</span>
-      </template>
-      <template #site-cell="{ row }">
-        <div class="text-right">
-          <UButton
-            v-if="row.original.deletedAt !== null"
-            :label="m.entries.restore"
-            :aria-label="m.entries.restoreOne(row.original.title)"
-            icon="i-lucide-undo-2"
-            variant="outline"
-            size="sm"
-            :disabled="busy"
-            @click="restoreMany([row.original])"
-          />
-          <UButton
-            v-if="liveUrl(row.original) !== null"
-            :to="liveUrl(row.original) ?? undefined"
-            target="_blank"
-            icon="i-lucide-external-link"
-            variant="ghost"
-            size="sm"
-            :aria-label="m.entries.onSite(row.original.title)"
-          />
-        </div>
-      </template>
-    </DataTable>
-    <p v-if="truncated" class="text-sm text-muted">
+    </EntryList>
+    <div
+      v-if="chosen.length > 0"
+      role="toolbar"
+      :aria-label="m.table.bulk"
+      class="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-default bg-elevated px-3 py-2 shadow-lg"
+    >
+      <span class="px-1 text-sm text-muted">{{ m.table.selected(chosen.length) }}</span>
+      <UButton
+        v-if="chosen.some(publishable)"
+        :label="m.bulk.publish(chosen.filter(publishable).length)"
+        icon="i-lucide-send"
+        size="sm"
+        :loading="busy"
+        @click="publishMany(chosen.filter(publishable))"
+      />
+      <UButton
+        v-if="chosen.some(publishable)"
+        :label="m.bulk.schedule(chosen.filter(publishable).length)"
+        icon="i-lucide-calendar-clock"
+        variant="outline"
+        size="sm"
+        :disabled="busy"
+        @click="openSchedule(chosen.filter(publishable))"
+      />
+      <UButton
+        v-if="chosen.some(unpublishable)"
+        :label="m.bulk.unpublish(chosen.filter(unpublishable).length)"
+        icon="i-lucide-eye-off"
+        color="error"
+        variant="outline"
+        size="sm"
+        :disabled="busy"
+        @click="unpublishing = chosen.filter(unpublishable)"
+      />
+      <UButton
+        v-if="chosen.some(trashable)"
+        :label="m.bulk.trash(chosen.filter(trashable).length)"
+        icon="i-lucide-trash-2"
+        color="error"
+        variant="outline"
+        size="sm"
+        :disabled="busy"
+        @click="trashing = chosen.filter(trashable)"
+      />
+      <UButton
+        v-if="chosen.some(restorable)"
+        :label="m.bulk.restore(chosen.filter(restorable).length)"
+        icon="i-lucide-undo-2"
+        size="sm"
+        :loading="busy"
+        @click="restoreMany(chosen.filter(restorable))"
+      />
+      <UButton
+        icon="i-lucide-x"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        :aria-label="m.table.clear"
+        @click="selected = []"
+      />
+    </div>
+    <p v-if="truncated" class="px-6 pb-6 text-sm text-muted">
       {{ m.entries.truncated(MOST) }}
     </p>
 

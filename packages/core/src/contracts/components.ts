@@ -1,6 +1,6 @@
 import { registerBuiltIn } from './registry.ts'
 import { runtimeOf } from './runtime.ts'
-import { fixForIssue, type FixSubject, issueSegments, label } from './schema-fix.ts'
+import { fixForIssue, type FixSubject, issueParams, issueSegments, label } from './schema-fix.ts'
 import { schemaSnapshot } from './schema.ts'
 import { quote } from './text.ts'
 import type { Contract, ContractFinding } from './types.ts'
@@ -23,7 +23,10 @@ export const COMPONENTS: Contract<unknown> = registerBuiltIn(
         for (const issue of result.issues) {
           const segments = issueSegments(issue)
           const which = segments.length === 0 ? 'The props' : `The prop ${quote(label(segments))}`
+          const { kind, params } = issueParams(issue, segments, use.props)
           findings.push({
+            code: `component.${kind}`,
+            params: { ...params, component: use.name },
             path: '/body',
             message: `${which} of the component ${quote(use.name)} ${segments.length === 0 ? 'are' : 'is'} invalid: ${issue.message}`,
             fix: fixForIssue({

@@ -94,6 +94,8 @@ describe('the playground config', () => {
       {
         path: '/frontmatter/title',
         message: '"title" has 61 characters; the most is 60.',
+        code: 'field-length.max.character',
+        params: { field: 'title', length: 61, max: 60, unless: 'seoTitle' },
         fix: 'Shorten "title" to 60 characters or fewer, or add "seoTitle".',
       },
     ])

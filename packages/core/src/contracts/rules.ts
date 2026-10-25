@@ -55,6 +55,8 @@ export function fieldLength(
               path,
               message: `${quote(params.field)} has ${count(length, unit)}; the most is ${params.max}.`,
               fix: `Shorten ${quote(params.field)} to ${count(params.max, unit)} or fewer${params.unless === undefined ? '' : `, or add ${quote(params.unless)}`}.`,
+              code: `field-length.max.${unit}`,
+              params: { field: params.field, length, max: params.max, unless: params.unless ?? '' },
             },
           ]
         }
@@ -64,6 +66,8 @@ export function fieldLength(
               path,
               message: `${quote(params.field)} has ${count(length, unit)}; the least is ${params.min}.`,
               fix: `Lengthen ${quote(params.field)} to ${count(params.min, unit)} or more.`,
+              code: `field-length.min.${unit}`,
+              params: { field: params.field, length, min: params.min },
             },
           ]
         }
@@ -99,6 +103,8 @@ export function fieldPattern(
             path: `/frontmatter/${params.field}`,
             message: `${quote(params.field)} is not ${params.description}.`,
             fix: `Write ${quote(params.field)} as ${params.description}.`,
+            code: 'field-pattern',
+            params: { field: params.field, description: params.description },
           },
         ]
       },
@@ -134,6 +140,8 @@ export function requiredToPublish(
             path: `/frontmatter/${field}`,
             message: `${quote(field)} is empty, and the entry cannot be published without it.`,
             fix: `Give ${quote(field)} a value, then publish.`,
+            code: 'required-to-publish',
+            params: { field },
           })),
     },
     { readsFrontmatter: true },
@@ -179,6 +187,8 @@ export function bannedWords(
               path: `/frontmatter/${field}`,
               message: `${quote(field)} uses ${quote(word)}.`,
               fix: `Write ${quote(field)} without ${quote(word)}${because}.`,
+              code: 'banned-words.field',
+              params: { field, word },
             })
           }
         }
@@ -187,6 +197,8 @@ export function bannedWords(
             path: '/body',
             message: `The body uses ${quote(word)}.`,
             fix: `Rewrite the body without ${quote(word)}${because}.`,
+            code: 'banned-words.body',
+            params: { word },
           })
         }
         return findings
@@ -237,12 +249,16 @@ export function reference(params: ReferenceParams, options: RuleOptions = {}): C
               path,
               message: `${quote(params.field)} names ${quote(slug)}, and ${quote(params.collection)} has no entry ${quote(slug)}${where === '' ? ` in ${locale}` : where}.`,
               fix: `Use the slug of an entry of ${quote(params.collection)} (list_entries lists them), or create ${quote(slug)} first.`,
+              code: 'reference.missing',
+              params: { field: params.field, slug, collection: params.collection, locale },
             })
           } else if (context.phase === 'publish' && entry.status !== 'published') {
             findings.push({
               path,
               message: `${quote(params.field)} names ${quote(slug)} of ${quote(params.collection)}, which is not published.`,
               fix: `Publish ${quote(slug)} of ${quote(params.collection)} first, or publish both in one group.`,
+              code: 'reference.unpublished',
+              params: { field: params.field, slug, collection: params.collection },
             })
           }
         })

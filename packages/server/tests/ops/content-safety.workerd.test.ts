@@ -79,8 +79,17 @@ describe('a draft that holds what content safety stops', () => {
     },
   )
 
+  const KEPT: Readonly<Record<string, string>> = {
+    'raw-html': 'Inline HTML: <script>alert(1)</script> and <img src="x" onerror="alert(1)">.',
+    'block-html':
+      '<iframe src="https://evil.example/"></iframe>\n\n<svg><script>alert(1)</script></svg>',
+    'unknown-component': '::youtub{#dQw4w9WgXcQ}\n::',
+    'disallowed-attribute': '{onclick="alert(1)"}',
+    'unsafe-url': '[script link](javascript:alert(1))',
+  }
+
   it.each(WITH_MARKERS)(
-    'is stored as the bytes that came in, and %s is never rewritten to make it safe',
+    'is stored as written, in canonical form, and %s is never rewritten to make it safe',
     async (name) => {
       const world = await newWorld(env.DB, 'safety')
       const markdown = contentFixture(`hostile/${name}.md`)
@@ -94,9 +103,10 @@ describe('a draft that holds what content safety stops', () => {
         .bind(id)
         .first<number>('bytes')
 
-      expect(revision?.markdown).toBe(markdown)
-      expect(read.entry?.markdown).toBe(markdown)
-      expect(bytes).toBe(new TextEncoder().encode(markdown).length)
+      expect(revision?.markdown).toContain(KEPT[name])
+      expect(created.markdown).toBe(revision?.markdown)
+      expect(read.entry?.markdown).toBe(revision?.markdown)
+      expect(bytes).toBe(new TextEncoder().encode(revision?.markdown).length)
       expect(read.entry?.html).not.toMatch(ACTIVE_CONTENT)
     },
   )
@@ -117,7 +127,7 @@ describe('a draft that holds what content safety stops', () => {
   })
 
   it.each(['nested-emphasis', 'bom'])(
-    'is saved with nothing to fix, byte for byte, when it is only strange: %s',
+    'is saved with nothing to fix, as the answer says it was stored, when it is only strange: %s',
     async (name) => {
       const world = await newWorld(env.DB, 'safety')
       const markdown = contentFixture(`hostile/${name}.md`)
@@ -127,11 +137,11 @@ describe('a draft that holds what content safety stops', () => {
       expect(created.outcome).toBe('saved')
       expect(created.verdict?.errors).toEqual([])
       const [revision] = await revisionsOf(world.db, created.entry?.id ?? '')
-      expect(revision?.markdown).toBe(markdown)
+      expect(revision?.markdown).toBe(created.markdown)
     },
   )
 
-  it('keeps the byte order mark of a file that has one', async () => {
+  it('drops the byte order mark of a file that has one, and keeps the rest of it', async () => {
     const world = await newWorld(env.DB, 'safety')
     const markdown = contentFixture('hostile/bom.md')
     expect(markdown.codePointAt(0)).toBe(0xfeff)
@@ -139,8 +149,7 @@ describe('a draft that holds what content safety stops', () => {
     const created = await world.agent.createDraft({ ...english, markdown })
 
     const [revision] = await revisionsOf(world.db, created.entry?.id ?? '')
-    expect(revision?.markdown.codePointAt(0)).toBe(0xfeff)
-    expect(revision?.markdown).toHaveLength(markdown.length)
+    expect(revision?.markdown).toBe(markdown.slice(1))
   })
 
   it('can be published once what the errors name is fixed, and the page that readers get holds plain HTML', async () => {

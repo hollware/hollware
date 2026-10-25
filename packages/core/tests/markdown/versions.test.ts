@@ -43,7 +43,7 @@ describe('the version of the pipeline', () => {
       'blog/es/un-despliegue-muchos-sitios.md': '12082c258d2a1a25',
       'hostile/block-html.md': '5ec1e4033bc2d6a4',
       'hostile/bom.md': 'c3fec3d259e9babd',
-      'hostile/broken-frontmatter.md': '1ccd7e3dd1b09ff8',
+      'hostile/broken-frontmatter.md': '7f3db387730837cb',
       'hostile/disallowed-attribute.md': '316809864dfba7a3',
       'hostile/nested-emphasis.md': '28b2decbf40cb3cd',
       'hostile/raw-html.md': '3e8563c556711104',
