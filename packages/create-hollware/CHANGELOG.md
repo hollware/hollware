@@ -1,5 +1,11 @@
 # create-hollware
 
+## 1.0.0-rc.9
+
+### Patch Changes
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The packages carry no comments but the TSDoc of their public API, and the help of the CLI and the descriptions of the MCP tools no longer cite decision records the repository does not have. The starter's `AGENTS.md` now says what each setting of its `wrangler.jsonc` is for.
+
 ## 1.0.0-rc.8
 
 No changes in this release.

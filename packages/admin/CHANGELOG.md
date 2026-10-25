@@ -1,5 +1,21 @@
 # @hollware/admin
 
+## 1.0.0-rc.9
+
+### Minor Changes
+
+- [#26](https://github.com/hollware/hollware/pull/26) [`4fd2a54`](https://github.com/hollware/hollware/commit/4fd2a54a0426ee128403febc89d45e127c7fa5ac) Thanks [@sergioazoc](https://github.com/sergioazoc)! - One style of Markdown for people and agents. `create_draft` and `update_draft` store the canonical Markdown of Comark (`formatMarkdown` in `@hollware/core`) whenever it means the same document, and answer it as `markdown`; the same file in another style answers `unchanged`. Older revisions keep their bytes; an entry takes the canonical form at its next write.
+
+  The admin is laid out like Linear. An entry is a page with its title and its body in a visual editor (TipTap through Nuxt UI): `/` inserts blocks and the components of the collection, a selection gets a bar of formats, blocks drag and move, Comark components are cards with their props, and anything the editor does not know stays a Markdown block. It saves by itself, writes with the same Comark writer the server uses, and opens a file it cannot keep byte for byte in the Markdown view (⌘⇧M). Properties, checks and a live preview, rendered with the pipeline of `@hollware/core`, sit in a side panel; history sits under the body; Publish is the one action of the bar and the rest is in the `⋯` menu. Entries are a list grouped by status with views, filters, keyboard moves (J, K, X) and a floating bar for many at once. Settings (site, collections, people, tokens, activity, account) have their own section at `/settings`; the old paths are gone. `?` lists the shortcuts.
+
+  A violation may carry `code`, which kind of problem of its contract it is, and `params`, the values its message names, so a client can say it in another language; the admin shows the checks in Spanish from them, and the English `message` and `fix` stay as they were. The entry's side panel holds Properties and History; the live preview is gone, since the editor shows the page as it reads.
+
+### Patch Changes
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An upload that opens on an XML declaration and many comments no longer stalls the check of its format, and a URL or a path with thousands of trailing slashes no longer takes seconds to trim: both are read in linear time.
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The packages carry no comments but the TSDoc of their public API, and the help of the CLI and the descriptions of the MCP tools no longer cite decision records the repository does not have. The starter's `AGENTS.md` now says what each setting of its `wrangler.jsonc` is for.
+
 ## 1.0.0-rc.8
 
 No changes in this release.
