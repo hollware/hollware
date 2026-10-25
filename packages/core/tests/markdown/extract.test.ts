@@ -153,11 +153,12 @@ describe('links', () => {
 
   it('include a bare URL and an address, which Markdown makes links of, and leave README.md alone', async () => {
     const { extracted } = await accepted(
-      'See https://example.com/x, write to a@b.co, and read README.md or www.example.com.',
+      'See https://example.com/x, write to a@b.co, and read README.md or www.example.com.\n\nThe CDN is //cdn.example.com/y',
     )
     expect(extracted.links.map((link) => [link.href, link.kind])).toStrictEqual([
       ['https://example.com/x', 'external'],
       ['mailto:a@b.co', 'external'],
+      ['//cdn.example.com/y', 'external'],
     ])
   })
 
