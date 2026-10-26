@@ -5,6 +5,10 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { invalidSubjects, main, readSubjects } from './commit-subjects.ts'
 
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith('GIT_')) delete process.env[name]
+}
+
 const roots: string[] = []
 
 afterEach(() => {
