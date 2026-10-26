@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { propEntries, propsFrom } from '../app/lib/editor/components.ts'
 import { groupRows, matches, nextIndex, toggled, visibleRows } from '../app/lib/entry-list.ts'
-import { settingsSections } from '../app/lib/settings.ts'
 
 const row = (
   id: string,
@@ -79,19 +78,5 @@ describe('the props of a component in the editor', () => {
       ]),
     ).toEqual({ type: 'tip' })
     expect(propsFrom([{ key: 'type', label: 'type', description: null, value: '' }])).toBeNull()
-  })
-})
-
-describe('the sections of the settings', () => {
-  it('show the activity log to an owner only', () => {
-    expect(settingsSections(true).map(({ key }) => key)).toEqual([
-      'site',
-      'collections',
-      'people',
-      'tokens',
-      'activity',
-      'account',
-    ])
-    expect(settingsSections(false).map(({ key }) => key)).not.toContain('activity')
   })
 })

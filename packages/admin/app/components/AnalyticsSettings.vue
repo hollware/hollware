@@ -117,9 +117,7 @@ onMounted(load)
 </script>
 
 <template>
-  <section aria-labelledby="analytics" class="max-w-2xl space-y-4">
-    <h2 id="analytics" class="font-semibold">{{ m.analytics.title }}</h2>
-    <p class="text-sm text-muted">{{ m.analytics.help }}</p>
+  <div class="max-w-2xl space-y-4">
     <p v-if="status === null" class="text-sm text-muted">{{ m.common.loading }}</p>
     <div
       v-else-if="status.outcome === 'connected' && status.provider !== undefined"
@@ -234,5 +232,5 @@ onMounted(load)
         />
       </div>
     </form>
-  </section>
+  </div>
 </template>

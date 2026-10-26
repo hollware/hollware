@@ -61,7 +61,7 @@ const totalViews = computed(() =>
           <p v-if="stats === null" class="text-sm text-muted">{{ m.common.loading }}</p>
           <div v-else-if="stats.outcome === 'unavailable'" class="space-y-2 text-sm text-muted">
             <p>{{ m.home.noAnalytics }}</p>
-            <RouterLink to="/settings/site#analytics" class="text-highlighted underline">{{
+            <RouterLink to="/settings/site/analytics" class="text-highlighted underline">{{
               m.home.connectAnalytics
             }}</RouterLink>
           </div>

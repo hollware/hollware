@@ -487,7 +487,6 @@ export const es: Messages = {
       `El nuevo esquema de "${collection}" rechaza ${entradas(entries)} de las suyas (${examples}): se conservan, y cada una se revisa contra él en su próximo guardado.`,
   },
   analytics: {
-    title: 'Analíticas',
     help: 'Conecta las analíticas que el sitio ya tiene, para que el inicio y los agentes vean qué leen los lectores. Hollware las lee con una clave de solo lectura y no guarda nada de los lectores.',
     reading: (provider: string) => `Leyendo de ${provider}.`,
     since: (date: string) => `Conectadas el ${date}.`,
@@ -533,7 +532,6 @@ export const es: Messages = {
       'Este despliegue no tiene HOLLWARE_SECRET para guardar la clave sellada. hollware deploy crea uno.',
   },
   site: {
-    title: 'Sitio',
     version: (version: number) =>
       `versión ${version} de su estructura. Un cambio se aplica de inmediato; no se despliega nada.`,
     settings: 'Configuración',
@@ -566,7 +564,6 @@ export const es: Messages = {
     retentionInvalid: (min: number, max: number) =>
       `Escribe un número entero de días entre ${min} y ${max}, o conserva el registro siempre.`,
     saveActivity: 'Guardar la configuración del registro',
-    imagesTitle: 'Imágenes',
     imagesNote:
       'Cómo se guardan las imágenes que se suban desde ahora. Las que ya están no cambian.',
     imageFormat: 'Formato',
@@ -588,8 +585,6 @@ export const es: Messages = {
     keepOriginals: 'Guardar el original de cada imagen',
     keepOriginalsHelp:
       'El archivo tal como se subió, que nunca se sirve, desde el que parte un cambio de formato posterior. Desactivado, solo ocupan espacio el archivo servido y sus copias; la descarga de un original y hollware export entregan el archivo servido.',
-    webhooks: 'Webhooks',
-    backupsTitle: 'Respaldos',
     backupsHelp:
       'Una copia del contenido de este sitio cada día, después de las 03:00 UTC, guardada en tu bucket de R2 los días que elijas: la definición del sitio y el Markdown de cada entrada. "hollware backup get" escribe uno como archivos que "hollware import" vuelve a cargar.',
     noBackups: 'Todavía no hay respaldos: el primero llega después de las 03:00 UTC.',
@@ -605,7 +600,6 @@ export const es: Messages = {
     downloadOne: (date: string) => `Descargar el respaldo del ${date}`,
     kilobytes: (size: string) => `${size} KB`,
     notDownloaded: 'No se descargó',
-    redirectsTitle: 'Redirecciones',
     redirectsHelp:
       'Las rutas anteriores de las entradas cuyo slug cambió, y adónde va cada una ahora. Tu sitio responde la ruta anterior con un 301 (list_redirects, o redirects.json de una exportación).',
     noRedirects: 'Ninguna entrada ha cambiado de URL todavía.',
@@ -1119,9 +1113,17 @@ export const es: Messages = {
     italic: 'Cursiva',
   },
   settings: {
+    back: 'Volver al admin',
+    groups: { site: 'Sitio', access: 'Acceso', you: 'Tú' },
     sections: {
-      site: 'Sitio',
+      general: 'General',
       collections: 'Colecciones',
+      images: 'Imágenes',
+      webhooks: 'Webhooks',
+      analytics: 'Analíticas',
+      backups: 'Respaldos',
+      redirects: 'Redirecciones',
+      danger: 'Zona de peligro',
       people: 'Personas',
       tokens: 'Tokens',
       activity: 'Actividad',
