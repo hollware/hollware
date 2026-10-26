@@ -276,8 +276,12 @@ test('the owner lets Hollware fill the date of the blog, which nobody writes the
 })
 
 test('the owner adds a webhook, whose secret Hollware makes and shows once', async () => {
-  await owner.goto('/admin/settings/site')
-  await expect(owner.getByRole('heading', { name: 'Webhooks' })).toBeVisible()
+  await owner.goto('/admin/settings')
+  await expect(owner).toHaveURL(/\/admin\/settings\/site$/)
+  const settings = owner.getByRole('navigation').filter({ hasText: 'Danger zone' })
+  await settings.getByRole('link', { name: 'Webhooks', exact: true }).click()
+  await expect(owner).toHaveURL(/\/admin\/settings\/site\/webhooks$/)
+  await expect(owner.getByRole('heading', { name: 'Webhooks', level: 1 })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Name', exact: true }).last().fill('site')
   await owner.getByLabel('URL', { exact: true }).fill('https://example.com/_hollware/webhook')
   await owner.getByRole('button', { name: 'Add', exact: true }).click()
@@ -290,7 +294,7 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expectAccessible(owner)
 })
 
-test('the owner connects analytics in Site, and the provider is asked before anything is kept', async () => {
+test('the owner connects analytics in Analytics, and the provider is asked before anything is kept', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByText('No analytics connected.')).toBeVisible()
   await owner.getByRole('link', { name: 'Connect analytics' }).click()
@@ -334,7 +338,9 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
   for (const [path, heading] of [
     ['/admin/', 'Home'],
-    ['/admin/settings/site', 'Site'],
+    ['/admin/settings/site', 'General'],
+    ['/admin/settings/site/redirects', 'Redirects'],
+    ['/admin/settings/site/danger', 'Danger zone'],
     ['/admin/settings/tokens', 'Tokens'],
     ['/admin/settings/activity', 'Activity'],
     ['/signin', 'Sign in'],
@@ -548,7 +554,7 @@ test('the owner changes the URL of a published entry, and the site keeps the old
     .click()
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-de-nuevo$/)
 
-  await owner.goto('/admin/settings/site')
+  await owner.goto('/admin/settings/site/redirects')
   await expect(owner.getByText(/hola-mundo/).first()).toBeVisible()
   await expect(owner.getByText(/hola-de-nuevo/).first()).toBeVisible()
 
@@ -562,8 +568,8 @@ test('the owner changes the URL of a published entry, and the site keeps the old
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
 })
 
-test('the owner sets the narrower copies the images of the site get, in Site', async () => {
-  await owner.goto('/admin/settings/site')
+test('the owner sets the narrower copies the images of the site get, in Images', async () => {
+  await owner.goto('/admin/settings/site/images')
   const widths = owner.getByRole('textbox', { name: /^(Narrower copies|Copias más angostas)/ })
   await expect(widths).toHaveValue('640, 1280')
   await widths.fill('1600 480')
@@ -588,8 +594,8 @@ test('the owner sets the narrower copies the images of the site get, in Site', a
   await expectAccessible(owner)
 })
 
-test('the owner finds the daily backups of the site in Site, keeps them a week, then turns them off', async () => {
-  await owner.goto('/admin/settings/site')
+test('the owner finds the daily backups of the site in Backups, keeps them a week, then turns them off', async () => {
+  await owner.goto('/admin/settings/site/backups')
   await expect(owner.getByRole('heading', { name: /^(Backups|Respaldos)$/ })).toBeVisible()
   await expect(
     owner.getByText(/^(No backup yet: the first comes after 03:00 UTC\.|Todavía no hay respaldos)/),

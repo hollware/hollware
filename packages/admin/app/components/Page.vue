@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
 import { computed } from 'vue'
 import { type RouteLocationRaw, useRoute } from 'vue-router'
 import { useMessages } from '../i18n/index.ts'
 import { me, useSiteMenu } from '../lib/me.ts'
-import { settingsSections } from '../lib/settings.ts'
 
 const props = defineProps<{
   title: string
@@ -17,16 +15,6 @@ const route = useRoute()
 const siteMenu = useSiteMenu()
 
 const inSettings = computed(() => route.path.startsWith('/settings'))
-const owner = computed(
-  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
-)
-const settingsNav = computed<NavigationMenuItem[]>(() =>
-  settingsSections(owner.value).map((section) => ({
-    label: m.value.settings.sections[section.key],
-    icon: section.icon,
-    to: section.to,
-  })),
-)
 const trail = computed(
   () =>
     props.crumbs ?? (inSettings.value ? [{ label: m.value.nav.settings, to: '/settings' }] : []),
@@ -70,9 +58,6 @@ const trail = computed(
           <slot name="actions" />
         </template>
       </UDashboardNavbar>
-      <UDashboardToolbar v-if="inSettings">
-        <UNavigationMenu :items="settingsNav" highlight class="-mx-1 flex-1" />
-      </UDashboardToolbar>
       <UDashboardToolbar v-if="$slots.toolbar" :ui="{ root: 'gap-2 overflow-x-auto' }">
         <slot name="toolbar" />
       </UDashboardToolbar>

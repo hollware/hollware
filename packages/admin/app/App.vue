@@ -8,6 +8,7 @@ import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i1
 import type { Output } from './lib/api.ts'
 import { entryPath, titleOf } from './lib/entries.ts'
 import { me, useSiteMenu, type Me } from './lib/me.ts'
+import { settingsGroups } from './lib/settings.ts'
 import { api, auth } from './lib/session.ts'
 
 const route = useRoute()
@@ -36,6 +37,19 @@ const roleKey = computed(
 const role = computed(() => m.value.roles[roleKey.value] ?? roleKey.value)
 
 const siteItems = useSiteMenu()
+
+const inSettings = computed(() => route.path.startsWith('/settings'))
+const settingsLinks = computed<NavigationMenuItem[][]>(() =>
+  settingsGroups(roleKey.value === 'owner').map((group) => [
+    { label: m.value.settings.groups[group.key], type: 'label' },
+    ...group.sections.map((section) => ({
+      label: m.value.settings.sections[section.key],
+      icon: section.icon,
+      to: section.to,
+      exact: section.exact,
+    })),
+  ]),
+)
 
 const links = computed<NavigationMenuItem[][]>(() => [
   [
@@ -67,8 +81,7 @@ const links = computed<NavigationMenuItem[][]>(() => [
     {
       label: m.value.nav.settings,
       icon: 'i-lucide-settings',
-      to: '/settings/site',
-      active: route.path.startsWith('/settings'),
+      to: '/settings',
     },
   ],
 ])
@@ -301,32 +314,56 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
         </template>
 
         <template #default="{ collapsed }">
-          <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
-          <UButton
-            :label="collapsed ? undefined : m.entries.newEntry"
-            :aria-label="collapsed ? m.entries.newEntry : undefined"
-            icon="i-lucide-square-pen"
-            color="neutral"
-            variant="ghost"
-            :square="collapsed"
-            block
-            class="justify-start"
-            to="/entries/new"
-          >
-            <template v-if="!collapsed" #trailing>
-              <UKbd value="C" class="ms-auto" />
-            </template>
-          </UButton>
-          <UNavigationMenu
-            v-for="(group, index) in links"
-            :key="index"
-            :collapsed="collapsed"
-            :items="group"
-            orientation="vertical"
-            tooltip
-            popover
-            :class="index === links.length - 1 ? 'mt-auto' : undefined"
-          />
+          <template v-if="inSettings">
+            <UButton
+              :label="collapsed ? undefined : m.settings.back"
+              :aria-label="collapsed ? m.settings.back : undefined"
+              icon="i-lucide-arrow-left"
+              color="neutral"
+              variant="ghost"
+              :square="collapsed"
+              block
+              class="justify-start"
+              to="/"
+            />
+            <UNavigationMenu
+              v-for="(group, index) in settingsLinks"
+              :key="index"
+              :collapsed="collapsed"
+              :items="group"
+              orientation="vertical"
+              tooltip
+              popover
+            />
+          </template>
+          <template v-else>
+            <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+            <UButton
+              :label="collapsed ? undefined : m.entries.newEntry"
+              :aria-label="collapsed ? m.entries.newEntry : undefined"
+              icon="i-lucide-square-pen"
+              color="neutral"
+              variant="ghost"
+              :square="collapsed"
+              block
+              class="justify-start"
+              to="/entries/new"
+            >
+              <template v-if="!collapsed" #trailing>
+                <UKbd value="C" class="ms-auto" />
+              </template>
+            </UButton>
+            <UNavigationMenu
+              v-for="(group, index) in links"
+              :key="index"
+              :collapsed="collapsed"
+              :items="group"
+              orientation="vertical"
+              tooltip
+              popover
+              :class="index === links.length - 1 ? 'mt-auto' : undefined"
+            />
+          </template>
         </template>
 
         <template #footer="{ collapsed }">

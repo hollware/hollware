@@ -470,7 +470,6 @@ export const en = {
       `The new schema of "${collection}" refuses ${entries} of its entries (${examples}): they stay, and each is checked against it at its next save.`,
   },
   analytics: {
-    title: 'Analytics',
     help: 'Connect the analytics the site already has, so the home and the agents see what readers read. Hollware reads it with a read-only key and keeps nothing about readers.',
     reading: (provider: string) => `Reading from ${provider}.`,
     since: (date: string) => `Connected on ${date}.`,
@@ -515,7 +514,6 @@ export const en = {
       'This deployment has no HOLLWARE_SECRET to keep the key sealed. hollware deploy makes one.',
   },
   site: {
-    title: 'Site',
     version: (version: number) =>
       `version ${version} of its structure. A change applies at once; nothing is deployed.`,
     settings: 'Settings',
@@ -547,7 +545,6 @@ export const en = {
     retentionInvalid: (min: number, max: number) =>
       `Enter a whole number of days from ${min} to ${max}, or keep the log forever.`,
     saveActivity: 'Save the activity log settings',
-    imagesTitle: 'Images',
     imagesNote:
       'How the images uploaded from now on are kept. Those already uploaded stay as they are.',
     imageFormat: 'Format',
@@ -569,8 +566,6 @@ export const en = {
     keepOriginals: 'Keep the original of each image',
     keepOriginalsHelp:
       'The file as it was uploaded, never served, from which a later change of format starts. Off, only the file served and its copies take storage; the downloads of an original and hollware export give the file served instead.',
-    webhooks: 'Webhooks',
-    backupsTitle: 'Backups',
     backupsHelp:
       'A copy of the content of this site each day, after 03:00 UTC, kept in your R2 bucket for the days you choose: the definition of the site and the Markdown of every entry. "hollware backup get" writes one as files that "hollware import" takes back.',
     noBackups: 'No backup yet: the first comes after 03:00 UTC.',
@@ -586,7 +581,6 @@ export const en = {
     downloadOne: (date: string) => `Download the backup of ${date}`,
     kilobytes: (size: string) => `${size} KB`,
     notDownloaded: 'Not downloaded',
-    redirectsTitle: 'Redirects',
     redirectsHelp:
       'The old paths of entries whose slug changed, and where each goes now. Your site answers the old path with a 301 (list_redirects, or redirects.json of an export).',
     noRedirects: 'No entry has moved yet.',
@@ -871,9 +865,17 @@ export const en = {
     italic: 'Italic',
   },
   settings: {
+    back: 'Back to the admin',
+    groups: { site: 'Site', access: 'Access', you: 'You' },
     sections: {
-      site: 'Site',
+      general: 'General',
       collections: 'Collections',
+      images: 'Images',
+      webhooks: 'Webhooks',
+      analytics: 'Analytics',
+      backups: 'Backups',
+      redirects: 'Redirects',
+      danger: 'Danger zone',
       people: 'People',
       tokens: 'Tokens',
       activity: 'Activity',
