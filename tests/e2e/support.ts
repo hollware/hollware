@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 export function target(): { url: string; setup: string } {
   const url = process.env['HOLLWARE_E2E_URL']
@@ -78,6 +78,20 @@ export async function saveNow(page: Page): Promise<void> {
   await expect(
     page.getByRole('status').filter({ hasText: /^\s*(Saved|Guardado)\s*$/ }),
   ).toBeVisible()
+}
+
+export async function openImagePicker(page: Page, after: string): Promise<Locator> {
+  const body = page.getByRole('textbox', { name: /^(Body of the entry|Cuerpo de la entrada)$/ })
+  await body.getByText(after).click()
+  await expect(body).toBeFocused()
+  await page.waitForTimeout(150)
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/')
+  await page.getByRole('option', { name: /^(Image|Imagen)/ }).click()
+  const picker = page.getByRole('dialog', { name: /^(Insert an image|Insertar una imagen)$/ })
+  await expect(picker).toBeVisible()
+  return picker
 }
 
 export async function entryAction(page: Page, name: string | RegExp): Promise<void> {

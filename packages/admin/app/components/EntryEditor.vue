@@ -26,6 +26,7 @@ import { api } from '../lib/session.ts'
 import CalloutView from './editor/CalloutView.vue'
 import ComponentView from './editor/ComponentView.vue'
 import ImagePicker from './editor/ImagePicker.vue'
+import { needsAssets } from '../lib/images.ts'
 import RawView from './editor/RawView.vue'
 
 type Asset = Output<'list_assets'>['assets'][number]
@@ -60,7 +61,7 @@ const extensions = [
 
 async function open(body: string) {
   const loading = ++version
-  if (assets.size === 0 && body.includes('asset:')) {
+  if (needsAssets(body, assets)) {
     const listed: Asset[] = (await api.call('list_assets', { limit: 100 })).assets
     for (const asset of listed) assets.set(asset.reference, asset.url)
   }
@@ -122,7 +123,8 @@ const handlers = customHandlers(() => {
   pickerOpen.value = true
 })
 
-function insertImage(image: { src: string; alt: string }) {
+function insertImage(image: { src: string; alt: string; url: string }) {
+  if (image.url !== image.src) assets.set(image.src, image.url)
   editorRef.value?.chain().focus().setImage({ src: image.src, alt: image.alt }).run()
 }
 

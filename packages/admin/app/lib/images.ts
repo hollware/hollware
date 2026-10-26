@@ -15,3 +15,7 @@ export function sizeOf(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+export function needsAssets(body: string, known: ReadonlyMap<string, string>): boolean {
+  return [...body.matchAll(/asset:ast_[0-9a-f]{26}/g)].some(([reference]) => !known.has(reference))
+}
