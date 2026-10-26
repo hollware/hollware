@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import {
   entryAction,
   expectAccessible,
+  openImagePicker,
   post,
   saveNow,
   setUp,
@@ -408,6 +409,56 @@ test('the owner uploads an image, sees it in the library and copies its referenc
   await owner.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   await expect(
     owner.getByRole('listitem').getByRole('img', { name: 'A single red pixel' }),
+  ).toBeVisible()
+})
+
+test('the owner inserts an image of the library and uploads another, from the editor', async () => {
+  const blue = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYPgPAAEDAQAIicLsAAAAAElFTkSuQmCC',
+    'base64',
+  )
+  await owner.goto('/admin/entries/blog/en/hello-world')
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  const last = 'Plain words, one idea, and nothing that links anywhere.'
+
+  const library = await openImagePicker(owner, last)
+  await expectAccessible(owner)
+  await library.getByRole('button', { name: 'Insert A single red pixel' }).click()
+  await expect(library).toBeHidden()
+  await expect(body.getByRole('img', { name: 'A single red pixel' })).toHaveAttribute(
+    'src',
+    /\/assets\/[a-z0-9-]+\/ast_[0-9a-f]{26}$/,
+  )
+
+  const upload = await openImagePicker(owner, last)
+  await upload.getByRole('tab', { name: 'Upload' }).click()
+  await upload.locator('input[type="file"]').setInputFiles({
+    name: 'blue.png',
+    mimeType: 'image/png',
+    buffer: blue,
+  })
+  await upload.getByLabel('What it shows').fill('One blue pixel')
+  await expectAccessible(owner)
+  await upload.getByRole('button', { name: 'Upload and insert' }).click()
+  await expect(upload).toBeHidden()
+  await expect(body.getByRole('img', { name: 'One blue pixel' })).toHaveAttribute(
+    'src',
+    /\/assets\/[a-z0-9-]+\/ast_[0-9a-f]{26}$/,
+  )
+
+  await saveNow(owner)
+  await owner.getByRole('button', { name: 'View Markdown' }).click()
+  const markdown = owner.locator('.cm-content').first()
+  await expect(markdown).toContainText(
+    /## In shortPlain words, one idea, and nothing that links anywhere\.!\[One blue pixel\]\(asset:ast_[0-9a-f]{26}\)!\[A single red pixel\]\(asset:ast_[0-9a-f]{26}\)$/,
+  )
+  await expectAccessible(owner)
+  await shot(owner, 'editor-images')
+  await owner.getByRole('button', { name: 'Edit visually' }).click()
+
+  await owner.goto('/admin/images')
+  await expect(
+    owner.getByRole('listitem').getByRole('img', { name: 'One blue pixel' }),
   ).toBeVisible()
 })
 
