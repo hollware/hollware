@@ -61,6 +61,9 @@ export const en = {
     invite: 'Invite someone',
     newToken: 'New token',
     switchSite: 'Switch site',
+    thisEntry: 'This entry',
+    entriesOf: (collection: string) => `Entries of ${collection}`,
+    inSettings: (section: string) => `Settings: ${section}`,
   },
   table: {
     filter: 'Filter',

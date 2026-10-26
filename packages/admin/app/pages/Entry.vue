@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
@@ -14,6 +14,7 @@ import { diagnosticsOf } from '../lib/diagnostics.ts'
 import type { ComponentDefinition } from '../lib/editor/components.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { bodyOf, readFrontmatter, setField, withBody } from '../lib/frontmatter.ts'
+import { openEntry } from '../lib/open-entry.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
@@ -500,6 +501,27 @@ defineShortcuts({
   meta_shift_m: { usingInput: true, handler: toggleSource },
   meta_shift_i: { usingInput: true, handler: () => showPanel('properties') },
   meta_shift_h: { usingInput: true, handler: () => showPanel('history') },
+})
+
+watchEffect(() => {
+  const current = entry.value
+  openEntry.value =
+    current === null
+      ? null
+      : {
+          status: current.status,
+          canPublish: canPublish.value,
+          source: source.value,
+          lossy: lossy.value,
+          canPreview: canPreviewOnSite.value,
+          publish: () => void publish(),
+          schedule: () => void openSchedule('publish'),
+          toggleSource,
+          preview: () => void previewOnSite(),
+        }
+})
+onBeforeUnmount(() => {
+  openEntry.value = null
 })
 
 const more = computed<DropdownMenuItem[][]>(() => {

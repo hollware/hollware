@@ -64,6 +64,9 @@ export const es: Messages = {
     invite: 'Invitar a alguien',
     newToken: 'Crear token',
     switchSite: 'Cambiar de sitio',
+    thisEntry: 'Esta entrada',
+    entriesOf: (collection: string) => `Entradas de ${collection}`,
+    inSettings: (section: string) => `Configuración: ${section}`,
   },
   table: {
     filter: 'Filtrar',
