@@ -360,6 +360,9 @@ export const en = {
     notApproved: 'Not approved',
     notSent: 'Not sent',
     changesRequested: 'Changes requested',
+    choose: 'Choose a review to read its changes.',
+    back: 'Back to the reviews',
+    noteTitle: 'A note for the author',
   },
   collections: {
     title: 'Collections',
@@ -866,6 +869,11 @@ export const en = {
     blocks: 'Insert a block',
     bold: 'Bold',
     italic: 'Italic',
+    reviews: 'Reviews',
+    nextReview: 'Next review',
+    previousReview: 'Previous review',
+    approve: 'Approve and publish',
+    askChanges: 'Ask for changes, or reject',
   },
   settings: {
     back: 'Back to the admin',

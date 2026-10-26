@@ -376,6 +376,9 @@ export const es: Messages = {
     notApproved: 'No se aprobó',
     notSent: 'No se envió',
     changesRequested: 'Cambios pedidos',
+    choose: 'Elige una revisión para leer sus cambios.',
+    back: 'Volver a las revisiones',
+    noteTitle: 'Una nota para el autor',
   },
   collections: {
     title: 'Colecciones',
@@ -1114,6 +1117,11 @@ export const es: Messages = {
     blocks: 'Insertar un bloque',
     bold: 'Negrita',
     italic: 'Cursiva',
+    reviews: 'Revisiones',
+    nextReview: 'Revisión siguiente',
+    previousReview: 'Revisión anterior',
+    approve: 'Aprobar y publicar',
+    askChanges: 'Pedir cambios, o rechazar',
   },
   settings: {
     back: 'Volver al admin',

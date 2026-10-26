@@ -31,6 +31,15 @@ const groups = computed(() => {
       ],
     },
     {
+      label: s.reviews,
+      items: [
+        { label: s.nextReview, keys: ['j'] },
+        { label: s.previousReview, keys: ['k'] },
+        { label: s.approve, keys: ['a'] },
+        { label: s.askChanges, keys: ['r'] },
+      ],
+    },
+    {
       label: s.entry,
       items: [
         { label: s.save, keys: ['meta', 's'] },

@@ -158,15 +158,29 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
 
   await owner.goto('/admin/reviews')
   await expect(owner.getByRole('heading', { name: 'Reviews', level: 1 })).toBeVisible()
-  await owner.getByRole('button', { name: /Hola mundo, otra vez.*asked by Ana/ }).click()
-  await expect(owner.getByText('Hola mundo, otra vez').first()).toBeVisible()
+  await expect(
+    owner.getByRole('button', { name: /Hola mundo, otra vez.*asked by Ana/ }),
+  ).toBeVisible()
+  await expect(owner.getByText('Choose a review to read its changes.')).toBeVisible()
+  await owner.keyboard.press('?')
+  const help = owner.getByRole('dialog', { name: 'Keyboard shortcuts' })
+  await expect(help.getByRole('region', { name: 'Reviews' })).toContainText(
+    'Ask for changes, or reject',
+  )
+  await owner.keyboard.press('Escape')
+  await expect(help).toBeHidden()
+  await owner.keyboard.press('j')
+  const review = owner.getByRole('region', { name: 'The review' })
+  await expect(
+    review.getByRole('heading', { name: 'Hola mundo, otra vez', level: 2 }),
+  ).toBeVisible()
   await expect(owner.getByText('No comments yet.')).toBeVisible()
   await owner.getByRole('textbox', { name: 'Comment' }).fill('The title reads well.')
   await owner.getByRole('button', { name: 'Comment', exact: true }).click()
   await expect(owner.getByText('The title reads well.')).toBeVisible()
   await shot(owner, 'review')
   await expectAccessible(owner)
-  await owner.getByRole('button', { name: 'Approve and publish' }).click()
+  await owner.keyboard.press('a')
 
   await expect(owner.getByText('Approved and published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
@@ -178,8 +192,11 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(author.getByText('Sent for review').first()).toBeVisible()
   await owner.goto('/admin/reviews')
   await owner.getByRole('button', { name: /Hola mundo, rechazado.*asked by Ana/ }).click()
-  await owner.getByRole('textbox', { name: 'Note for the author' }).fill('Not this one.')
-  await owner.getByRole('button', { name: 'Reject', exact: true }).click()
+  await owner.keyboard.press('r')
+  const note = owner.getByRole('dialog', { name: 'A note for the author' })
+  await note.getByRole('textbox', { name: 'Note for the author' }).fill('Not this one.')
+  await expectAccessible(owner)
+  await note.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(owner.getByText('Rejected: it will not be published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
   await owner.goto('/admin/entries/blog/es/hola-mundo')
