@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import Page from '../components/Page.vue'
-import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { defineShortcuts, useToast } from '@nuxt/ui/composables'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import DiffView from '../components/DiffView.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
+import { titleOf } from '../lib/entries.ts'
 import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
+import { nextIndex } from '../lib/entry-list.ts'
+import { indexAfterReload } from '../lib/reviews.ts'
 import { api } from '../lib/session.ts'
 
 type Review = Output<'list_reviews'>['reviews'][number]
@@ -27,12 +30,29 @@ const busy = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
 
+const focused = ref(-1)
+const listEl = ref<HTMLElement | null>(null)
+const noteOpen = ref(false)
+
 async function list() {
+  const previous = focused.value
   reviews.value = (await api.call('list_reviews', {})).reviews
   const open = new Set(reviews.value.map((review) => review.id))
   picked.value = new Set([...picked.value].filter((id) => open.has(id)))
-  if (chosen.value !== null && !reviews.value.some((review) => review.id === chosen.value?.id)) {
+  const index = indexAfterReload(
+    chosen.value?.id ?? null,
+    previous,
+    reviews.value.map((review) => review.id),
+  )
+  const next = reviews.value[index]
+  if (next === undefined) {
+    focused.value = -1
     chosen.value = null
+  } else if (next.id !== chosen.value?.id) {
+    await choose(next, index)
+  } else {
+    focused.value = index
+    chosen.value = next
   }
 }
 
@@ -57,8 +77,7 @@ function pick(id: string, on: boolean | 'indeterminate') {
 function pickAll(on: boolean | 'indeterminate') {
   picked.value = new Set(on === true ? reviews.value.map((review) => review.id) : [])
 }
-const titleOfReview = (review: Review) =>
-  String(review.entry.frontmatter['title'] ?? review.entry.slug)
+const titleOfReview = (review: Review) => titleOf(review.entry)
 
 const warnedMany = ref<{ review: Review; warnings: Warning[] }[]>([])
 const warnedManyOpen = computed({
@@ -126,9 +145,11 @@ async function askChangesMany() {
   }
 }
 
-async function choose(review: Review) {
+async function choose(review: Review, index = reviews.value.indexOf(review)) {
   chosen.value = review
+  focused.value = index
   note.value = ''
+  comment.value = ''
   const ref_ = {
     collection: review.entry.collection,
     locale: review.entry.locale,
@@ -208,6 +229,7 @@ async function addComment() {
 
 async function reject() {
   if (chosen.value === null || note.value.trim() === '') return
+  noteOpen.value = false
   busy.value = true
   try {
     const answer = await api.call('reject_review', { id: chosen.value.id, reason: note.value })
@@ -225,6 +247,7 @@ async function reject() {
 
 async function requestChanges() {
   if (chosen.value === null || note.value.trim() === '') return
+  noteOpen.value = false
   busy.value = true
   try {
     const answer = await api.call('request_changes', { id: chosen.value.id, note: note.value })
@@ -242,25 +265,77 @@ async function requestChanges() {
     busy.value = false
   }
 }
+
+async function move(step: 1 | -1) {
+  const index = nextIndex(focused.value, reviews.value.length, step)
+  const review = reviews.value[index]
+  if (review === undefined) return
+  await choose(review, index)
+  await nextTick()
+  listEl.value?.querySelector<HTMLElement>(`[data-index="${index}"] button`)?.focus()
+}
+
+const dialogOpen = computed(
+  () => noteOpen.value || acknowledgeOpen.value || askingMany.value || warnedManyOpen.value,
+)
+
+defineShortcuts(
+  computed(() =>
+    dialogOpen.value
+      ? {}
+      : {
+          j: () => void move(1),
+          k: () => void move(-1),
+          arrowdown: () => void move(1),
+          arrowup: () => void move(-1),
+          x: () => {
+            const review = reviews.value[focused.value]
+            if (review !== undefined) pick(review.id, !picked.value.has(review.id))
+          },
+          escape:
+            picked.value.size > 0
+              ? () => {
+                  picked.value = new Set()
+                }
+              : undefined,
+          a: () => {
+            if (chosen.value !== null && !busy.value) void approve()
+          },
+          r: () => {
+            if (chosen.value !== null) noteOpen.value = true
+          },
+        },
+  ),
+)
 </script>
 
 <template>
-  <Page :title="m.reviews.title">
-    <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
-      <section :aria-label="m.reviews.pending" class="space-y-2">
-        <p v-if="reviews.length === 0" class="text-muted">{{ m.common.nothingWaits }}</p>
-        <UCheckbox
-          v-else
-          :model-value="allPicked"
-          :label="m.bulk.selectReviews"
-          class="px-2"
-          @update:model-value="pickAll"
-        />
+  <Page :title="m.reviews.title" flush>
+    <div class="flex min-h-0 flex-1">
+      <section
+        ref="listEl"
+        :aria-label="m.reviews.pending"
+        class="w-full shrink-0 overflow-y-auto border-e border-default sm:w-80 lg:w-96"
+        :class="chosen !== null ? 'max-sm:hidden' : undefined"
+      >
+        <h2
+          class="sticky top-0 z-10 flex items-center gap-2 border-b border-default bg-elevated/70 px-4 py-1.5 text-xs font-medium text-toned backdrop-blur"
+        >
+          <UCheckbox
+            v-if="reviews.length > 0"
+            :model-value="allPicked"
+            :aria-label="m.bulk.selectReviews"
+            @update:model-value="pickAll"
+          />
+          <UIcon name="i-lucide-inbox" class="size-3.5 text-secondary" />
+          <span>{{ m.reviews.pending }}</span>
+          <span class="text-muted">{{ reviews.length }}</span>
+        </h2>
         <div
           v-if="pickedReviews.length > 0"
           role="toolbar"
           :aria-label="m.table.bulk"
-          class="flex flex-wrap items-center gap-2 rounded-lg border border-default bg-elevated p-2"
+          class="flex flex-wrap items-center gap-2 border-b border-default bg-elevated px-4 py-2"
         >
           <span class="w-full text-sm font-medium tabular-nums">{{
             m.table.selected(pickedReviews.length)
@@ -281,92 +356,170 @@ async function requestChanges() {
             @click="askingMany = true"
           />
         </div>
-        <div v-for="review in reviews" :key="review.id" class="flex items-start gap-2">
-          <UCheckbox
-            :model-value="picked.has(review.id)"
-            :aria-label="m.table.selectRow(titleOfReview(review))"
-            class="mt-2.5"
-            @update:model-value="(on: boolean | 'indeterminate') => pick(review.id, on)"
-          />
-          <button
-            type="button"
-            class="block min-w-0 flex-1 rounded border p-2 text-left text-sm"
-            :class="chosen?.id === review.id ? 'border-primary' : 'border-default'"
-            @click="choose(review)"
-          >
-            <span class="font-medium">{{
-              review.entry.frontmatter['title'] ?? review.entry.slug
-            }}</span>
-            <span class="block text-muted">
-              {{
-                m.reviews.requested(
-                  review.entry.locale,
-                  review.requestedByName ?? review.requestedBy,
-                  formatDateTime(review.requestedAt),
-                )
-              }}
-            </span>
-          </button>
-        </div>
-      </section>
-      <section v-if="chosen !== null" :aria-label="m.reviews.review" class="space-y-4">
-        <p class="text-sm text-muted">
-          {{ m.reviews.sides(live !== '') }}
+        <p v-if="reviews.length === 0" class="px-4 py-10 text-sm text-muted">
+          {{ m.common.nothingWaits }}
         </p>
-        <DiffView :original="live" :modified="asked" />
-        <VerdictList :verdict="verdict" />
-        <section :aria-label="m.reviews.comments" class="space-y-2">
-          <h2 class="text-sm font-semibold">{{ m.reviews.comments }}</h2>
-          <p v-if="chosen.comments.length === 0" class="text-sm text-muted">
-            {{ m.reviews.noComments }}
-          </p>
-          <article
-            v-for="item in chosen.comments"
-            :key="item.id"
-            class="rounded border border-default p-3 text-sm"
+        <ul v-else role="list">
+          <li
+            v-for="(review, index) in reviews"
+            :key="review.id"
+            :data-index="index"
+            class="group flex items-start gap-3 border-b border-default/60 px-4 py-2.5 text-sm hover:bg-elevated/50"
+            :class="{
+              'bg-elevated/60': chosen?.id === review.id,
+              'bg-secondary/5': picked.has(review.id),
+            }"
           >
-            <p class="text-muted">
-              {{ item.authorName ?? item.author }}
-              <UBadge
-                v-if="item.client !== null && item.client !== 'hollware-admin'"
-                :label="item.client"
-                variant="subtle"
-                size="sm"
-              />
-              · {{ formatDateTime(item.at) }}
-            </p>
-            <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
-          </article>
-          <div class="flex items-end gap-3">
-            <UFormField :label="m.reviews.comment" class="flex-1">
-              <UTextarea v-model="comment" class="w-full" :rows="2" />
-            </UFormField>
-            <UButton
-              :label="m.reviews.comment"
-              variant="outline"
-              :loading="busy"
-              :disabled="comment.trim() === ''"
-              @click="addComment"
+            <UCheckbox
+              :model-value="picked.has(review.id)"
+              :aria-label="m.table.selectRow(titleOfReview(review))"
+              class="mt-0.5 transition-opacity"
+              :class="
+                picked.size > 0 || chosen?.id === review.id
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+              "
+              @update:model-value="(on: boolean | 'indeterminate') => pick(review.id, on)"
             />
-          </div>
-        </section>
-        <div class="flex flex-wrap items-end gap-3">
-          <UButton :label="m.reviews.approve" color="success" :loading="busy" @click="approve()" />
-          <UFormField
-            :label="m.reviews.whatToChange"
-            :help="m.reviews.whatToChangeHelp"
-            class="min-w-64 flex-1"
-          >
-            <UTextarea v-model="note" class="w-full" :rows="2" />
-          </UFormField>
+            <button
+              type="button"
+              class="block min-w-0 flex-1 text-left focus:outline-none"
+              :aria-current="chosen?.id === review.id ? 'true' : undefined"
+              @click="choose(review, index)"
+            >
+              <span class="flex items-baseline gap-2">
+                <span class="min-w-0 flex-1 truncate font-medium text-highlighted">{{
+                  titleOfReview(review)
+                }}</span>
+                <span
+                  v-if="review.comments.length > 0"
+                  class="flex shrink-0 items-center gap-1 text-xs text-muted tabular-nums"
+                >
+                  <UIcon name="i-lucide-message-square" class="size-3" aria-hidden="true" />
+                  {{ review.comments.length }}
+                </span>
+              </span>
+              <span class="mt-0.5 block truncate text-xs text-muted">
+                {{ review.entry.collection }} ·
+                {{
+                  m.reviews.requested(
+                    review.entry.locale,
+                    review.requestedByName ?? review.requestedBy,
+                    formatDateTime(review.requestedAt),
+                  )
+                }}
+              </span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        v-if="chosen !== null"
+        :aria-label="m.reviews.review"
+        class="min-w-0 flex-1 overflow-y-auto"
+      >
+        <div
+          class="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-default bg-default/90 px-4 py-2.5 backdrop-blur sm:px-6"
+        >
+          <UButton
+            icon="i-lucide-arrow-left"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            class="sm:hidden"
+            :aria-label="m.reviews.back"
+            @click="chosen = null"
+          />
+          <h2 class="min-w-0 flex-1 truncate font-semibold">{{ titleOfReview(chosen) }}</h2>
           <UButton
             :label="m.reviews.askChanges"
-            color="warning"
+            color="neutral"
             variant="outline"
+            size="sm"
+            :disabled="busy"
+            @click="noteOpen = true"
+          >
+            <template #trailing><UKbd value="r" /></template>
+          </UButton>
+          <UButton
+            :label="m.reviews.approve"
+            color="success"
+            size="sm"
             :loading="busy"
-            :disabled="note.trim() === ''"
-            @click="requestChanges"
-          />
+            @click="approve()"
+          >
+            <template #trailing><UKbd value="a" /></template>
+          </UButton>
+        </div>
+        <div class="space-y-6 px-4 py-6 sm:px-6">
+          <p class="text-sm text-muted">
+            {{
+              m.reviews.requested(
+                chosen.entry.locale,
+                chosen.requestedByName ?? chosen.requestedBy,
+                formatDateTime(chosen.requestedAt),
+              )
+            }}
+          </p>
+          <p class="text-sm text-muted">{{ m.reviews.sides(live !== '') }}</p>
+          <DiffView :original="live" :modified="asked" />
+          <VerdictList :verdict="verdict" />
+          <section aria-labelledby="comments" class="space-y-3">
+            <h3 id="comments" class="text-sm font-semibold">{{ m.reviews.comments }}</h3>
+            <p v-if="chosen.comments.length === 0" class="text-sm text-muted">
+              {{ m.reviews.noComments }}
+            </p>
+            <ol v-else class="space-y-3">
+              <li
+                v-for="item in chosen.comments"
+                :key="item.id"
+                class="rounded-lg border border-default bg-elevated/30 p-3 text-sm"
+              >
+                <p class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                  <span class="font-medium text-toned">{{ item.authorName ?? item.author }}</span>
+                  <UBadge
+                    v-if="item.client !== null && item.client !== 'hollware-admin'"
+                    :label="item.client"
+                    variant="subtle"
+                    size="sm"
+                  />
+                  · {{ formatDateTime(item.at) }}
+                </p>
+                <p class="mt-1 whitespace-pre-wrap">{{ item.body }}</p>
+              </li>
+            </ol>
+            <form class="space-y-2" @submit.prevent="addComment">
+              <UFormField :label="m.reviews.comment">
+                <UTextarea v-model="comment" class="w-full" :rows="2" autoresize />
+              </UFormField>
+              <UButton
+                type="submit"
+                :label="m.reviews.comment"
+                variant="outline"
+                size="sm"
+                :loading="busy"
+                :disabled="comment.trim() === ''"
+              />
+            </form>
+          </section>
+        </div>
+      </section>
+      <div
+        v-else-if="reviews.length > 0"
+        class="hidden min-w-0 flex-1 items-center justify-center p-8 text-sm text-muted sm:flex"
+      >
+        {{ m.reviews.choose }}
+      </div>
+
+      <UModal v-model:open="noteOpen" :title="m.reviews.noteTitle">
+        <template #body>
+          <UFormField :label="m.reviews.whatToChange" :help="m.reviews.whatToChangeHelp">
+            <UTextarea v-model="note" class="w-full" :rows="3" autofocus />
+          </UFormField>
+        </template>
+        <template #footer>
+          <UButton :label="m.common.cancel" variant="ghost" @click="noteOpen = false" />
           <UButton
             :label="m.reviews.reject"
             color="error"
@@ -375,8 +528,15 @@ async function requestChanges() {
             :disabled="note.trim() === ''"
             @click="reject"
           />
-        </div>
-      </section>
+          <UButton
+            :label="m.reviews.askChanges"
+            color="warning"
+            :loading="busy"
+            :disabled="note.trim() === ''"
+            @click="requestChanges"
+          />
+        </template>
+      </UModal>
 
       <UModal v-model:open="warnedManyOpen" :title="m.bulk.approveTitle(warnedMany.length)">
         <template #body>
