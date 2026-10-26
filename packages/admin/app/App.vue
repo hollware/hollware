@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type { CommandPaletteGroup, DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineShortcuts } from '@nuxt/ui/composables'
 import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i18n/index.ts'
 import type { Output } from './lib/api.ts'
-import { entryPath, titleOf } from './lib/entries.ts'
+import { commandGroups } from './lib/commands.ts'
 import { me, useSiteMenu, type Me } from './lib/me.ts'
+import { openEntry } from './lib/open-entry.ts'
 import { settingsGroups } from './lib/settings.ts'
 import { api, auth } from './lib/session.ts'
 
@@ -136,95 +137,23 @@ watch(term, (query) => {
   }, 250)
 })
 
-const searchGroups = computed<CommandPaletteGroup[]>(() => {
-  const query = term.value.trim().toLowerCase()
-  const matches = (text: string) => query.length >= 2 && text.toLowerCase().includes(query)
-  return [
+const searchGroups = computed(() =>
+  commandGroups(
     {
-      id: 'published',
-      label: m.value.search.published,
-      ignoreFilter: true,
-      items: found.value.map(({ entry, snippet }) => ({
-        label: titleOf(entry),
-        suffix: `${entry.collection} · ${entry.locale}`,
-        description: snippet.replace(/[[\]]/g, ''),
-        icon: 'i-lucide-file-text',
-        to: entryPath(entry),
-      })),
+      query: term.value,
+      site: me.value?.site ?? null,
+      role: roleKey.value === '' ? null : roleKey.value,
+      sites: me.value?.sites ?? [],
+      collections: collections.value,
+      entry: openEntry.value,
+      found: found.value,
+      drafts: drafts.value ?? [],
+      waiting: waiting.value,
+      switchSite: (site) => void auth.switchSite(site, '/admin/'),
     },
-    {
-      id: 'drafts',
-      label: m.value.search.drafts,
-      ignoreFilter: true,
-      items: (drafts.value ?? [])
-        .filter((entry) => matches(titleOf(entry)) || matches(entry.slug))
-        .slice(0, 8)
-        .map((entry) => ({
-          label: titleOf(entry),
-          suffix: `${entry.collection} · ${entry.locale}`,
-          icon: 'i-lucide-file-pen-line',
-          to: entryPath(entry),
-        })),
-    },
-    {
-      id: 'reviews',
-      label: m.value.search.waiting,
-      items: waiting.value.map((review) => ({
-        label: titleOf(review.entry),
-        suffix: m.value.search.askedBy(review.requestedByName ?? review.requestedBy),
-        icon: 'i-lucide-inbox',
-        to: '/reviews',
-      })),
-    },
-    {
-      id: 'go',
-      label: m.value.search.goTo,
-      items: [
-        ...links.value
-          .flat()
-          .flatMap((item) =>
-            item.type === 'label' || item.to === undefined
-              ? []
-              : [{ label: String(item.label), icon: item.icon, to: item.to }],
-          ),
-        { label: m.value.nav.settings, icon: 'i-lucide-settings', to: '/settings' },
-        { label: m.value.nav.collections, icon: 'i-lucide-layers', to: '/settings/collections' },
-        ...collections.value.map((name) => ({
-          label: m.value.search.collection(name),
-          icon: 'i-lucide-layers',
-          to: `/settings/collections/${name}`,
-        })),
-      ],
-    },
-    {
-      id: 'create',
-      label: m.value.search.create,
-      items: [
-        { label: m.value.search.newEntry, icon: 'i-lucide-plus', to: '/entries/new' },
-        {
-          label: m.value.search.newCollection,
-          icon: 'i-lucide-plus',
-          to: '/settings/collections',
-        },
-        { label: m.value.search.newSite, icon: 'i-lucide-plus', to: '/settings/site#sites' },
-        { label: m.value.search.invite, icon: 'i-lucide-user-plus', to: '/settings/people' },
-        { label: m.value.search.newToken, icon: 'i-lucide-key-round', to: '/settings/tokens' },
-      ],
-    },
-    {
-      id: 'sites',
-      label: m.value.search.switchSite,
-      items: (me.value?.sites ?? [])
-        .filter((membership) => membership.site !== me.value?.site)
-        .map((membership) => ({
-          label: membership.site,
-          suffix: m.value.roles[membership.role] ?? membership.role,
-          icon: 'i-lucide-globe',
-          onSelect: () => void auth.switchSite(membership.site, '/admin/'),
-        })),
-    },
-  ]
-})
+    m.value,
+  ),
+)
 
 const personItems = computed<DropdownMenuItem[][]>(() => [
   [

@@ -333,6 +333,13 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
     .first()
     .click()
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+
+  await owner.getByRole('button', { name: /^Search/ }).click()
+  await owner.getByPlaceholder('Search entries, or go anywhere…').fill('markdown')
+  await expect(owner.getByRole('group', { name: 'This entry' })).toBeVisible()
+  await owner.getByRole('option', { name: /^View Markdown/ }).click()
+  await expect(owner).toHaveURL(/[?&]view=markdown/)
+  await expect(owner.locator('.cm-content').first()).toBeVisible()
 })
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
