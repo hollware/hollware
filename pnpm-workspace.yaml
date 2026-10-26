@@ -70,6 +70,7 @@ catalog:
   react-router: 8.4.0
   tailwindcss: 4.3.3
   typescript: 7.0.2
+  undici: 7.30.1
   vite: npm:@voidzero-dev/vite-plus-core@1.3.0
   vite-plus: 1.3.0
   vitest: 5.0.5
@@ -80,6 +81,7 @@ catalog:
   zod: 4.6.7
 
 overrides:
+  undici@7.29.1: 'catalog:'
   vite@*: 'catalog:'
   zod@4.6.5: 'catalog:'
 
@@ -94,7 +96,6 @@ trustPolicy: no-downgrade
 auditConfig:
   ignoreGhsas:
     - GHSA-86w9-cpqp-85rv # node-forge <=1.4.0, through listhen, Nuxt's dev server, in apps/web and examples/nuxt-blog only; fix in review, digitalbazaar/forge#1152; expires 2026-11-17
-    - GHSA-xjj6-f33q-929c # undici >=7.18.0 <7.30.1, through miniflare 5.20261019.2-beta of wrangler and @cloudflare/vite-plugin, dev and test only; wrangler 4.153.0 brings undici 7.30.1 but was published 2026-10-26, under the release age; expires 2026-11-02
     - GHSA-vfj7-8cjw-p6xm # braces <=3.0.3, through nitropack's globs of the build config, in apps/web and examples/nuxt-blog only; fix in review, micromatch/braces#70; expires 2026-11-17
 trustPolicyExclude:
   - semver@6.3.1 # @babel/core 7 (through nuxt's vite-builder) pins the semver 6 line, published before npm had provenance; expires 2026-11-15
