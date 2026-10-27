@@ -174,7 +174,18 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
     replaceIn(join(target, file), [['my-site', choices.site]])
   }
   if (choices.pm === 'pnpm') writeFileSync(join(target, 'pnpm-workspace.yaml'), PNPM_WORKSPACE)
+  else for (const file of ['AGENTS.md', 'README.md']) replaceIn(join(target, file), NPM_COMMANDS)
 }
+
+export const NPM_COMMANDS: readonly (readonly [string, string])[] = [
+  ['pnpm exec ', 'npx '],
+  ['pnpm add -E ', 'npm install -E '],
+  ['pnpm run ', 'npm run '],
+  ['pnpm types', 'npm run types'],
+  ['pnpm test', 'npm test'],
+  ['pnpm dev', 'npm run dev'],
+  ['pnpm build', 'npm run build'],
+]
 
 export const PNPM_WORKSPACE = `allowBuilds:
   esbuild: true
