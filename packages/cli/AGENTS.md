@@ -38,8 +38,8 @@ The `hollware` command. Boundary rules for this package:
   Bound by `tests/init.test.ts` and by `tests/integration.test.ts`, where a script that fails on its
   last statement leaves the earlier ones unwritten.
 - The first token has every scope and 90 days (`PERSONAL_TOKEN_TTL_DAYS`). `token create` has
-  `content:read,content:write` by default, never expires without `--expires-in-days` (the person
-  chooses), and lives at most 365 days (`MAX_EXPIRES_IN_DAYS`).
+  `content:read,content:write` by default and 90 days too, unless `--expires-in-days` (at most 365,
+  `MAX_EXPIRES_IN_DAYS`) or `--no-expiry` says otherwise; a read token never expires without days.
 - `src/d1.ts` reads the D1 binding `DB` of `wrangler.jsonc` (JSON with comments, `src/jsonc.ts`)
   unless `--database` names one, and turns the `--json` answer of wrangler into rows.
 - Every command defaults to the local database, and always passes `--local` or `--remote` to

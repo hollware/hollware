@@ -167,6 +167,7 @@ describe("the admin's changes of identity", () => {
       await call(worker, owner.access, '/v1/admin/tokens', {
         label: 'CI reader',
         scopes: ['content:read'],
+        expiresInDays: null,
       })
     ).json<{ id: string; secret: string }>()
 

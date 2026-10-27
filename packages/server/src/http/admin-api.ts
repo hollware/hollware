@@ -7,6 +7,7 @@ import {
   isScope,
   makePreviewToken,
   newId,
+  PERSONAL_TOKEN_TTL_DAYS,
   PREVIEW_QUERY_PARAM,
   type ResolvedSite,
   type Scope,
@@ -114,8 +115,9 @@ function invitationDays(value: unknown, fallback: number): number | null {
     : null
 }
 
-function daysFrom(value: unknown): number | null | undefined {
-  if (value === undefined || value === null) return null
+function daysFrom(value: unknown, fallback: number | null): number | null | undefined {
+  if (value === undefined) return fallback
+  if (value === null) return null
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
     ? value
     : undefined
@@ -349,11 +351,14 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           `Choose among ${person.scopes.join(', ')}.`,
         )
       }
-      const days = daysFrom(input['expiresInDays'])
+      const days = daysFrom(
+        input['expiresInDays'],
+        kind === 'personal' ? PERSONAL_TOKEN_TTL_DAYS : null,
+      )
       if (days === undefined)
         return refused(
-          'expiresInDays is a whole number from 1 to 365.',
-          'Leave it out for a token that never expires.',
+          'expiresInDays is a whole number from 1 to 365, or null.',
+          `Leave it out for ${PERSONAL_TOKEN_TTL_DAYS} days (a read token: never), or send null for a token that never expires.`,
         )
       const now = options.clock.now()
       const secret = kind === 'read' ? generateReadToken() : generatePersonalToken()

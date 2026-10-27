@@ -90,12 +90,22 @@ describe("the admin's own routes", () => {
     expect([before.status, after.status]).toEqual([200, 401])
   })
 
-  it('make a token that never expires when no days are given, and one that does when they are', async () => {
+  it('make a personal token that expires after 90 days when no days are given, one that never does when asked, a read token that never expires, and one with its days', async () => {
     const worker = boot()
     const owner = await adminToken(worker, 'owner')
 
-    const forever = await (
+    const standard = await (
       await call(worker, owner, '/v1/admin/tokens', { label: 'CI', scopes: ['content:read'] })
+    ).json<{ expiresAt: string | null }>()
+    const forever = await (
+      await call(worker, owner, '/v1/admin/tokens', {
+        label: 'Pipeline',
+        scopes: ['content:read'],
+        expiresInDays: null,
+      })
+    ).json<{ expiresAt: string | null }>()
+    const site = await (
+      await call(worker, owner, '/v1/admin/tokens', { label: 'Site', kind: 'read' })
     ).json<{ expiresAt: string | null }>()
     const month = await (
       await call(worker, owner, '/v1/admin/tokens', {
@@ -110,7 +120,9 @@ describe("the admin's own routes", () => {
       expiresInDays: 0,
     })
 
+    expect(standard.expiresAt).toBe('2027-01-11T12:00:00.000Z')
     expect(forever.expiresAt).toBe(null)
+    expect(site.expiresAt).toBe(null)
     expect(month.expiresAt).toBe(new Date(Date.parse(NOW) + 30 * 86_400_000).toISOString())
     expect(wrong.status).toBe(400)
   })

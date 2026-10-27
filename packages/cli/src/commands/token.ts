@@ -1,4 +1,4 @@
-import { hashPersonalToken, type Scope } from '@hollware/core'
+import { hashPersonalToken, PERSONAL_TOKEN_TTL_DAYS, type Scope } from '@hollware/core'
 import { parseFlags } from '../args.ts'
 import { chooseTarget, query, resolveDatabase, type Row } from '../d1.ts'
 import { inDays, newId, newPersonalToken, newReadToken } from '../entropy.ts'
@@ -40,7 +40,8 @@ export const TOKEN_USAGE = [
 ].join('\n')
 
 export const TOKEN_CREATE_USAGE = [
-  'Usage: hollware token create --label <text> [--scopes <list> | --read] [--expires-in-days <n>]',
+  'Usage: hollware token create --label <text> [--scopes <list> | --read]',
+  '                             [--expires-in-days <n> | --no-expiry]',
   '                             [--token-file <path> [--force]] [--json]',
   '                             [--site <key>] [--local | --remote] [--database <name>]',
   '',
@@ -53,7 +54,8 @@ export const TOKEN_CREATE_USAGE = [
   '  --read                  A read token: content:read, published content, the read API only',
   '  --scopes <list>         Comma-separated: content:read, content:write, content:publish, schema:admin',
   '                          (default: content:read,content:write)',
-  '  --expires-in-days <n>   Days until it expires, 1 to 365; without it, the token never expires',
+  `  --expires-in-days <n>   Days until it expires, 1 to 365 (default: ${PERSONAL_TOKEN_TTL_DAYS}; a read token never expires)`,
+  '  --no-expiry             A token that never expires, until "hollware token revoke"',
   '  --token-file <path>     Write the token to this file (mode 0600) and print its path instead of the',
   '                          token; it refuses a file that exists, unless --force',
   '  --force                 Replace the file of --token-file',
@@ -121,6 +123,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       scopes: { type: 'string' },
       read: { type: 'boolean' },
       'expires-in-days': { type: 'string' },
+      'no-expiry': { type: 'boolean' },
       'token-file': { type: 'string' },
       force: { type: 'boolean' },
       json: { type: 'boolean' },
@@ -146,8 +149,15 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
     : values.scopes === undefined
       ? DEFAULT_SCOPES
       : parseScopes(values.scopes)
+  if (values['no-expiry'] === true && values['expires-in-days'] !== undefined) {
+    throw new UsageError('--expires-in-days and --no-expiry cannot be used together.')
+  }
   const days =
-    values['expires-in-days'] === undefined ? null : parseExpiresInDays(values['expires-in-days'])
+    values['expires-in-days'] !== undefined
+      ? parseExpiresInDays(values['expires-in-days'])
+      : values['no-expiry'] === true || read
+        ? null
+        : PERSONAL_TOKEN_TTL_DAYS
   const tokenFile = tokenFileOf(io, values['token-file'], values.force)
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)

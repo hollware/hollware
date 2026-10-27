@@ -253,7 +253,7 @@ describe('hollware on a real local D1', () => {
         label,
         hash: sha256(token),
         scopes: index === 0 ? '["content:read"]' : '["content:read","content:write"]',
-        expires_at: index === 0 ? '2026-11-11T12:00:00.000Z' : null,
+        expires_at: index === 0 ? '2026-11-11T12:00:00.000Z' : '2027-01-10T12:00:00.000Z',
         revoked_at: null,
         last_used_at: null,
         created_at: NOW,
