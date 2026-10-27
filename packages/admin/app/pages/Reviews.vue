@@ -2,6 +2,7 @@
 import Page from '../components/Page.vue'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import DiffView from '../components/DiffView.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
@@ -19,6 +20,8 @@ type Warning = Verdict['warnings'][number]
 
 const toast = useToast()
 const m = useMessages()
+const route = useRoute()
+const wanted = typeof route.query['review'] === 'string' ? route.query['review'] : null
 const reviews = ref<Review[]>([])
 const chosen = ref<Review | null>(null)
 const live = ref('')
@@ -40,7 +43,7 @@ async function list() {
   const open = new Set(reviews.value.map((review) => review.id))
   picked.value = new Set([...picked.value].filter((id) => open.has(id)))
   const index = indexAfterReload(
-    chosen.value?.id ?? null,
+    chosen.value?.id ?? wanted,
     previous,
     reviews.value.map((review) => review.id),
   )

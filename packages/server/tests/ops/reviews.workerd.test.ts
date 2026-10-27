@@ -238,6 +238,23 @@ describe('list_reviews', () => {
     ])
   })
 
+  it('lists only the reviews of the entry it names', async () => {
+    const world = await newWorld(env.DB, 'review-of-entry')
+    const first = await asked(world)
+    const other = await createPost(world, { slug: 'another-post', group: 'another-post' })
+    await createPost(world, { slug: 'otro-post', locale: 'es', group: 'another-post' })
+    world.time.set(T2)
+    await first.writer.publish({ id: other.id, version: other.version })
+
+    const listed = await world.agent.listReviews({ entryId: first.en.id })
+    const none = await world.agent.listReviews({ entryId: newId('ent') })
+
+    expect(listed.reviews.map((review) => [review.id, review.entry.slug])).toEqual([
+      [first.answer.review?.id, 'edge-caching-guide'],
+    ])
+    expect(none.reviews).toEqual([])
+  })
+
   it('never shows the reviews of another site, nor approves or closes them', async () => {
     const world = await newWorld(env.DB, 'review-mine')
     const { answer } = await asked(world)

@@ -9,6 +9,7 @@ export const listReviews: OperationHandler<'list_reviews'> = async (input, conte
   const found = await context.store.listReviews(context.site.key, {
     status: input.status,
     limit: input.limit,
+    ...(input.entryId === undefined ? {} : { entryId: input.entryId }),
   })
   const comments = await context.store.reviewComments(
     context.site.key,

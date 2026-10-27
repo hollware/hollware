@@ -15,6 +15,7 @@ import type { ComponentDefinition } from '../lib/editor/components.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { bodyOf, readFrontmatter, setField, withBody } from '../lib/frontmatter.ts'
 import { openEntry } from '../lib/open-entry.ts'
+import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
@@ -44,6 +45,9 @@ const busy = ref(false)
 const saveState = ref<SaveState>('saved')
 const lossy = ref(false)
 const conflictOpen = ref(false)
+const pendingReview = ref<PendingReview | null>(null)
+const overrideReview = ref(false)
+const heldOpen = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
 const unpublishOpen = ref(false)
@@ -147,15 +151,18 @@ async function load() {
   saved.value = text.value
   verdict.value = read.entry.verdict
   saveState.value = 'saved'
-  translations.value =
+  overrideReview.value = false
+  const [asked, grouped] = await Promise.all([
+    api.call('list_reviews', { status: 'pending', entryId: read.entry.id, limit: 1 }),
     read.entry.translationGroup === null
-      ? []
-      : ((
-          await api.call('get_translations', {
-            collection: props.collection,
-            translationGroup: read.entry.translationGroup,
-          })
-        ).entries ?? [])
+      ? null
+      : api.call('get_translations', {
+          collection: props.collection,
+          translationGroup: read.entry.translationGroup,
+        }),
+  ])
+  pendingReview.value = asked.reviews[0] ?? null
+  translations.value = grouped?.entries ?? []
 }
 
 watch(ref_, load, { immediate: true })
@@ -169,6 +176,10 @@ let saving: Promise<boolean> | null = null
 
 async function persist(): Promise<boolean> {
   if (entry.value === null || !dirty.value) return true
+  if (holdsSave(pendingReview.value, overrideReview.value)) {
+    heldOpen.value = true
+    return false
+  }
   const sent = text.value
   saveState.value = 'saving'
   try {
@@ -237,6 +248,26 @@ onBeforeRouteLeave(async () => {
   if (dirty.value) await save()
   return true
 })
+
+function discardChange() {
+  clearTimeout(autosave)
+  heldOpen.value = false
+  text.value = saved.value
+  saveState.value = 'saved'
+}
+
+async function saveOverReview() {
+  overrideReview.value = true
+  heldOpen.value = false
+  if (await save()) pendingReview.value = null
+}
+
+function openReview() {
+  if (pendingReview.value === null) return
+  const link = reviewLink(pendingReview.value)
+  discardChange()
+  void router.push(link)
+}
 
 function setBody(next: string) {
   text.value = withBody(text.value, next)
@@ -727,6 +758,21 @@ const stateLabel = computed(
           variant="subtle"
           class="mb-6 ms-16"
         />
+        <UAlert
+          v-if="pendingReview !== null"
+          :title="
+            m.entry.reviewPending(
+              pendingReview.requestedByName ?? m.entry.someone,
+              formatDateTime(pendingReview.requestedAt),
+            )
+          "
+          :description="m.entry.reviewPendingNote"
+          icon="i-lucide-inbox"
+          color="neutral"
+          variant="subtle"
+          class="mb-6 ms-16"
+          :actions="[{ label: m.entry.reviewIt, variant: 'outline', onClick: openReview }]"
+        />
         <textarea
           v-if="hasTitle"
           v-model="title"
@@ -958,6 +1004,17 @@ const stateLabel = computed(
           :disabled="!slugValid || newSlug === entry.slug"
           @click="move"
         />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="heldOpen" :title="m.entry.heldTitle" :dismissible="false">
+      <template #body>
+        <p>{{ m.entry.heldBody(pendingReview?.requestedByName ?? m.entry.someone) }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.entry.discardChange" variant="ghost" @click="discardChange" />
+        <UButton :label="m.entry.reviewIt" variant="outline" @click="openReview" />
+        <UButton :label="m.entry.saveOverReview" color="warning" @click="saveOverReview" />
       </template>
     </UModal>
 

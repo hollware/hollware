@@ -4155,6 +4155,11 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "entryId": {
+            "description": "Only the requests for this entry.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "limit": {
             "default": 50,
             "maximum": 100,

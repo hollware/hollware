@@ -211,6 +211,57 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
 })
 
+test('the owner who changes an entry that waits for review is asked first, and the request stays until they choose', async ({
+  browser,
+}) => {
+  await owner.goto('/admin/settings/people')
+  await owner.getByRole('button', { name: 'Invite' }).click()
+  const link = (await owner.getByText(/\/setup#invitation=/).textContent()) ?? ''
+  const author = await (await browser.newContext({ baseURL: target().url })).newPage()
+  await setUp(author, link.trim(), 'Bea')
+  await author.goto('/admin/entries/blog/es/hola-mundo')
+  await writeMarkdown(author, post('Hola mundo, de Bea', 'hello-world'))
+  await saveNow(author)
+  await author.getByRole('button', { name: 'Publish', exact: true }).click()
+  await expect(author.getByText('Sent for review').first()).toBeVisible()
+
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await expect(owner.getByText(/^Bea asked to publish this version/)).toBeVisible()
+  await writeMarkdown(owner, post('Hola mundo, de la dueña', 'hello-world'))
+  const held = owner.getByRole('dialog', { name: 'This version waits for review' })
+  await expect(held).toBeVisible()
+  await expectAccessible(owner)
+  await held.getByRole('button', { name: 'Discard my change' }).click()
+  await expect(held).toBeHidden()
+  await expect(owner.locator('.cm-content').first()).toContainText('title: Hola mundo, de Bea')
+  await owner.goto('/admin/reviews')
+  await expect(
+    owner.getByRole('button', { name: /Hola mundo, de Bea.*asked by Bea/ }),
+  ).toBeVisible()
+
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await writeMarkdown(owner, post('Hola mundo, de paso', 'hello-world'))
+  await owner.getByRole('link', { name: 'Reviews' }).first().click()
+  await expect(
+    owner.getByRole('button', { name: /Hola mundo, de Bea.*asked by Bea/ }),
+  ).toBeVisible()
+
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await owner.getByRole('button', { name: 'Review it' }).click()
+  await expect(
+    owner
+      .getByRole('region', { name: 'The review' })
+      .getByRole('heading', { name: 'Hola mundo, de Bea', level: 2 }),
+  ).toBeVisible()
+
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await writeMarkdown(owner, post('Hola mundo, otra vez', 'hello-world'))
+  await held.getByRole('button', { name: 'Save and cancel the request' }).click()
+  await expect(owner.getByRole('status').filter({ hasText: /^\s*Saved\s*$/ })).toBeVisible()
+  await owner.goto('/admin/reviews')
+  await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
+})
+
 test('the owner schedules the end of an entry, unpublishes it, then schedules it', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()

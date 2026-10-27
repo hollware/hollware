@@ -559,10 +559,11 @@ export const listReviews = defineOperation({
   name: 'list_reviews',
   title: 'List the reviews',
   description:
-    'Lists the requests to publish, newest first, with the entry each one is for: the pending ones unless you name another status.',
+    'Lists the requests to publish, newest first, with the entry each one is for: the pending ones unless you name another status, and those of one entry when you name it.',
   input: z.strictObject({
     status: reviewStatus.default('pending'),
     limit: z.number().int().min(1).max(100).default(50),
+    entryId: entryId.optional().describe('Only the requests for this entry.'),
   }),
   output: z.object({
     outcome: z.enum(['ok']),
