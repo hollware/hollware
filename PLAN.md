@@ -52,7 +52,7 @@ before the first feature.
 - [x] First local commit
 - [x] Repo-local git identity uses the GitHub noreply address (`6147546+sergioazoc@users.noreply.github.com`); the local commits were re-authored before the first push, so no personal email reaches the public history
 - [x] **Maintainer:** reserve the six npm names before the repo is public (placeholders `0.0.0`)
-- [ ] **Maintainer:** DNS for hollware.com. The zone is empty, so the `homepage` of every published manifest and the Code of Conduct contact (`conduct@hollware.com`) lead nowhere. Needed: Cloudflare Email Routing (`conduct@`, plus an address for the npm account) and a redirect to the repository until the site exists (F0-7 review S6/P3)
+- [x] **Maintainer:** DNS for hollware.com. Settled 2026-10-27: hollware.com serves the site, and there is no email for now; the Code of Conduct sends reports to the issues of the repository. Was: the zone is empty, so the `homepage` of every published manifest and the Code of Conduct contact (`conduct@hollware.com`) lead nowhere. Needed: Cloudflare Email Routing (`conduct@`, plus an address for the npm account) and a redirect to the repository until the site exists (F0-7 review S6/P3)
 - [x] **Maintainer:** org setting "Allow GitHub Actions to create and approve pull requests" (the Version Packages PRs #1 and #2 were opened by the bot)
 - [x] **Maintainer:** require 2FA for the `hollware` GitHub org; install the pkg.pr.new GitHub App on it (review H1, M2)
 - [x] `gh repo create hollware/hollware --public` and the first push
@@ -194,9 +194,9 @@ contracts validated at write time, and an example site reads what was published 
 ### Maintainer actions (open)
 
 - [ ] Before the `0.1.0` release (AC-0.1-13), no credential an agent can reach may approve the `npm` environment (F0-7 P1): a fine-grained token for Hollware sessions without Administration, Deployments, Environments or Secrets; GitHub CLI denied in the org's OAuth app policy; `deny`/`ask` rules for `gh api` on `pending_deployments`, `environments` and `rulesets`
-- [ ] DNS for hollware.com: Email Routing (`conduct@`, `npm@`) and a 302 redirect to the repository
-- [ ] The npm account's email moves to an `@hollware.com` address once routing works
-- [ ] Optional: deprecate the `0.0.0-stage` and `0.0.0` placeholders; read the "Alternatives considered" the F0-2 writer inferred (ADR 006, 008–011, 013 and parts of 002, 004, 005, 007)
+- [x] DNS for hollware.com: the site is live at the apex; no Email Routing for now (2026-10-27), reports go to GitHub issues
+- [x] The npm account's email stays as it is: there is no `@hollware.com` mail for now (2026-10-27)
+- [ ] Optional: deprecate the `0.0.0-stage` and `0.0.0` placeholders; asked npm, waiting for an answer (2026-10-27). The ADRs were deleted in #24, so there is nothing left to read
 - Deferred: limiting the creation of `*@*` tags to the workflows needs the Actions bot as a ruleset bypass actor, tested outside a release
 
 ### Spikes (orchestrator, before dispatch)
@@ -471,8 +471,8 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 
 ### Maintainer actions
 
-- [ ] Confirm the split.
-- [ ] Before P4: `wrangler login`, confirm the subdomains (`demo.hollware.com`, `cms.demo.hollware.com`), and OK each first deploy.
+- [x] Confirm the split (2026-10-14, above).
+- [x] Before P4: `wrangler login`, confirm the subdomains (`demo.hollware.com`, `cms.demo.hollware.com`), and OK each first deploy. On 2026-10-27 `demo.hollware.com` answers 200 and `cms.demo.hollware.com/mcp` 401.
 
 ### Verification log (v0.2)
 
@@ -566,7 +566,7 @@ The original v0.2 holds about twelve work packages. Only the publishing path is 
 - [x] The placeholder and the trusted publisher of `@hollware/nuxt` on npm (2FA), when block 4 is ready.
 - [x] The OK for each first deploy (hollware.com at the apex).
 - [x] Approve the docs drafts in the admin.
-- [ ] An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7). Open: the maintainer will arrange it later.
+- [x] An external person installs from the docs and opens an "Installation report" issue (AC-0.4-7). Done (2026-10-27): the maintainer installed Hollware from the docs for their personal site.
 
 ### Verification log (v0.4)
 
