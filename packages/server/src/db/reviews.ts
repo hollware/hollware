@@ -175,13 +175,19 @@ export async function findReview(db: Db, site: string, id: string): Promise<Stor
 export async function listReviews(
   db: Db,
   site: string,
-  query: { readonly status: ReviewStatus; readonly limit: number },
+  query: { readonly status: ReviewStatus; readonly limit: number; readonly entryId?: string },
 ): Promise<readonly StoredReview[]> {
   const rows = await db
     .select(COLUMNS)
     .from(reviews)
     .innerJoin(users, eq(users.id, reviews.requestedBy))
-    .where(and(eq(reviews.siteId, site), eq(reviews.status, query.status)))
+    .where(
+      and(
+        eq(reviews.siteId, site),
+        eq(reviews.status, query.status),
+        query.entryId === undefined ? undefined : eq(reviews.entryId, query.entryId),
+      ),
+    )
     .orderBy(desc(reviews.createdAt), desc(reviews.id))
     .limit(query.limit)
   return rows.map(toReview)

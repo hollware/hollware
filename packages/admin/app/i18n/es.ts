@@ -291,6 +291,15 @@ export const es: Messages = {
     noRelated:
       'Todavía no hay nada relacionado. Las entradas relacionadas vienen de la búsqueda semántica del despliegue, para las entradas publicadas.',
     conflictTitle: 'Alguien cambió esta entrada',
+    reviewPending: (who: string, when: string) => `${who} pidió publicar esta versión, ${when}`,
+    reviewPendingNote: 'Guardar un cambio cancela el pedido.',
+    reviewIt: 'Revisarla',
+    someone: 'Alguien',
+    heldTitle: 'Esta versión espera revisión',
+    heldBody: (who: string) =>
+      `Tu cambio todavía no se guardó. Guardarlo cancela el pedido de ${who} de publicar esta versión.`,
+    discardChange: 'Descartar mi cambio',
+    saveOverReview: 'Guardar y cancelar el pedido',
     conflictBody:
       'La entrada está en una versión más nueva que la que editaste. Copia lo que escribiste si lo necesitas y luego carga la versión más nueva.',
     keepEditing: 'Seguir editando',

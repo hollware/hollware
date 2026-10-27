@@ -277,6 +277,15 @@ export const en = {
     noRelated:
       'Nothing related yet. Related entries come from the semantic search of the deployment, for published entries.',
     conflictTitle: 'Someone changed this entry',
+    reviewPending: (who: string, when: string) => `${who} asked to publish this version, ${when}`,
+    reviewPendingNote: 'Saving a change cancels the request.',
+    reviewIt: 'Review it',
+    someone: 'Someone',
+    heldTitle: 'This version waits for review',
+    heldBody: (who: string) =>
+      `Your change is not saved yet. Saving it cancels the request of ${who} to publish this version.`,
+    discardChange: 'Discard my change',
+    saveOverReview: 'Save and cancel the request',
     conflictBody:
       'The entry is at a newer version than the one you edited. Copy what you wrote if you need it, then load the newer version.',
     keepEditing: 'Keep editing',

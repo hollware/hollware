@@ -466,10 +466,10 @@ export interface ContentStore {
   ): Promise<{ readonly outcome: 'pending_review'; readonly review: StoredReview } | WriteRefusal>
   /** A review of the site, by its id, or `null`. */
   findReview(site: string, id: string): Promise<StoredReview | null>
-  /** The reviews of the site with this status, newest first. */
+  /** The reviews of the site with this status, newest first, of one entry when it is given. */
   listReviews(
     site: string,
-    query: { readonly status: ReviewStatus; readonly limit: number },
+    query: { readonly status: ReviewStatus; readonly limit: number; readonly entryId?: string },
   ): Promise<readonly StoredReview[]>
   /** Adds a comment to a review, if it is still pending. */
   commentReview(
