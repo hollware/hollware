@@ -13,6 +13,7 @@ import { OPEN_WORLD_TIMEOUT_MS, OPERATION_TIMEOUT_MS } from '../limits.ts'
 import type { OperationContext } from '../ops/types.ts'
 import { annotationsOf, OPEN_WORLD } from './annotations.ts'
 import { askToAcknowledge, replyTo, warningsOf, withAcknowledged } from './acknowledge.ts'
+import { INSTRUCTIONS } from './instructions.ts'
 import { canElicitForm, declaredClient } from './envelope.ts'
 import { describeError, internalError, timeoutError } from './errors.ts'
 import { answerResult, errorResult, readAnswer, type Answer } from './result.ts'
@@ -165,6 +166,7 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
     const personal = call.principal.kind === 'token'
     const server = new McpServer(options.serverInfo, {
       capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } },
+      instructions: INSTRUCTIONS,
       cacheHints: { 'tools/list': personal ? OWN_TOOLS_LIST_CACHE_HINT : TOOLS_LIST_CACHE_HINT },
     })
     for (const tool of tools) {
