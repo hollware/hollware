@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Page from '../components/Page.vue'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import DiffView from '../components/DiffView.vue'
 import VerdictList from '../components/VerdictList.vue'
@@ -13,8 +13,13 @@ import { useBulkReport } from '../lib/bulk-report.ts'
 import { nextIndex } from '../lib/entry-list.ts'
 import { indexAfterReload } from '../lib/reviews.ts'
 import { api } from '../lib/session.ts'
+import { pageUrl } from '../lib/site.ts'
+import { openPreview } from '../lib/site-preview.ts'
+
+const ReviewPreview = defineAsyncComponent(() => import('../components/ReviewPreview.vue'))
 
 type Review = Output<'list_reviews'>['reviews'][number]
+type Site = Output<'describe_site'>['site']
 type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
 
@@ -23,6 +28,9 @@ const m = useMessages()
 const route = useRoute()
 const wanted = typeof route.query['review'] === 'string' ? route.query['review'] : null
 const reviews = ref<Review[]>([])
+const site = ref<Site | null>(null)
+const view = ref<'changes' | 'preview'>('changes')
+const askedDocument = ref<unknown>(null)
 const chosen = ref<Review | null>(null)
 const live = ref('')
 const asked = ref('')
@@ -59,7 +67,39 @@ async function list() {
   }
 }
 
-onMounted(list)
+onMounted(async () => {
+  const [described] = await Promise.all([api.call('describe_site', {}), list()])
+  site.value = described.site
+})
+
+const views = computed(() => [
+  { label: m.value.reviews.changes, value: 'changes', slot: 'changes' as const },
+  { label: m.value.reviews.preview, value: 'preview', slot: 'preview' as const },
+])
+
+const onSite = computed(() => {
+  const review = chosen.value
+  const routes = site.value?.collections.find(
+    (collection) => collection.name === review?.entry.collection,
+  )?.routes
+  return review === null || routes === undefined
+    ? null
+    : pageUrl(site.value?.url ?? null, routes, review.entry.locale, review.entry.slug)
+})
+
+async function openOnSite() {
+  if (chosen.value === null) return
+  try {
+    const result = await openPreview(api, chosen.value.entry.id, (url) => {
+      window.open(url, '_blank', 'noopener')
+    })
+    if (result === 'no_url') {
+      toast.add({ title: m.value.entry.notPreviewed, description: m.value.entry.previewNoUrl })
+    }
+  } catch (error) {
+    report(error, m.value.entry.notPreviewed)
+  }
+}
 
 const reportBulk = useBulkReport()
 const picked = ref(new Set<string>())
@@ -160,10 +200,11 @@ async function choose(review: Review, index = reviews.value.indexOf(review)) {
   }
   const [published, head] = await Promise.all([
     api.call('get_entry', { ...ref_, published: true }),
-    api.call('get_entry', ref_),
+    api.call('get_entry', { ...ref_, formats: ['markdown', 'document'] }),
   ])
   live.value = published.entry?.markdown ?? ''
   asked.value = head.entry?.markdown ?? ''
+  askedDocument.value = head.entry?.document ?? null
   verdict.value = head.entry?.verdict ?? null
 }
 
@@ -465,8 +506,32 @@ defineShortcuts(
               )
             }}
           </p>
-          <p class="text-sm text-muted">{{ m.reviews.sides(live !== '') }}</p>
-          <DiffView :original="live" :modified="asked" />
+          <UTabs v-model="view" :items="views" variant="link">
+            <template #changes>
+              <div class="space-y-3 pt-4">
+                <p class="text-sm text-muted">{{ m.reviews.sides(live !== '') }}</p>
+                <DiffView :original="live" :modified="asked" />
+              </div>
+            </template>
+            <template #preview>
+              <div class="space-y-4 pt-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-sm text-muted">{{ m.reviews.previewHelp }}</p>
+                  <UButton
+                    v-if="onSite !== null"
+                    :label="m.reviews.openOnSite"
+                    icon="i-lucide-external-link"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    @click="openOnSite"
+                  />
+                </div>
+                <ReviewPreview v-if="askedDocument !== null" :document="askedDocument" />
+                <p v-else class="text-sm text-muted">{{ m.reviews.nothingToShow }}</p>
+              </div>
+            </template>
+          </UTabs>
           <VerdictList :verdict="verdict" />
           <section aria-labelledby="comments" class="space-y-3">
             <h3 id="comments" class="text-sm font-semibold">{{ m.reviews.comments }}</h3>

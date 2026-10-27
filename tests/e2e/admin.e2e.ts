@@ -176,6 +176,15 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
     review.getByRole('heading', { name: 'Hola mundo, otra vez', level: 2 }),
   ).toBeVisible()
   await expect(owner.getByText('No comments yet.')).toBeVisible()
+  await review.getByRole('tab', { name: 'Preview' }).click()
+  await expect(review.getByRole('heading', { name: 'In short' })).toBeVisible()
+  await expectAccessible(owner)
+  await owner.evaluate(
+    'window.open = (url) => { document.body.dataset.opened = String(url); return null }',
+  )
+  await review.getByRole('button', { name: 'Open on the site' }).click()
+  await expect(owner.locator('body')).toHaveAttribute('data-opened', /\?hollware-preview=hw_prv_/)
+  await review.getByRole('tab', { name: 'Changes' }).click()
   await owner.getByRole('textbox', { name: 'Comment' }).fill('The title reads well.')
   await owner.getByRole('button', { name: 'Comment', exact: true }).click()
   await expect(owner.getByText('The title reads well.')).toBeVisible()

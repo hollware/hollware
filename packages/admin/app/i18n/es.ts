@@ -388,6 +388,11 @@ export const es: Messages = {
     choose: 'Elige una revisión para leer sus cambios.',
     back: 'Volver a las revisiones',
     noteTitle: 'Una nota para el autor',
+    changes: 'Cambios',
+    preview: 'Vista previa',
+    previewHelp: 'La revisión pedida, como se lee su cuerpo.',
+    openOnSite: 'Abrir en el sitio',
+    nothingToShow: 'Todavía no hay nada que mostrar.',
   },
   collections: {
     title: 'Colecciones',
