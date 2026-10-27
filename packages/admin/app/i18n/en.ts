@@ -812,6 +812,7 @@ export const en = {
     label: 'Label',
     labelPlaceholder: 'What the token is for',
     days: 'Days',
+    defaultDays: (days: number) => `${days} by default`,
     read: 'Read token',
     readDescription: 'Reads published content over the read API, and nothing else',
     scopes: 'Scopes',

@@ -840,6 +840,7 @@ export const es: Messages = {
     label: 'Etiqueta',
     labelPlaceholder: 'Para qué es el token',
     days: 'Días',
+    defaultDays: (days: number) => `${days} por defecto`,
     read: 'Token de lectura',
     readDescription: 'Lee el contenido publicado por la API de lectura, y nada más',
     scopes: 'Permisos',

@@ -191,7 +191,7 @@ describe('AC-0.1-16: init and tokens', () => {
         'never',
         'content:read content:write content:publish schema:admin',
       ],
-      ['<tok>', 'acceptance reader', 'active', 'never', usedOrNot, 'content:read'],
+      ['<tok>', 'acceptance reader', 'active', '<time>', usedOrNot, 'content:read'],
     ])
 
     const revoked = await project.hollware('token', 'revoke', '--local', String(id))

@@ -296,6 +296,9 @@
         "label": {
           "type": "string"
         },
+        "no-expiry": {
+          "type": "boolean"
+        },
         "read": {
           "type": "boolean"
         },

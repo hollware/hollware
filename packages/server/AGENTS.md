@@ -137,7 +137,7 @@ Do not "fix" these: each is a decision of the maintainer.
 
 - A preflight answers for the origins of every site; the read that follows checks the token's.
 - A read token is public once a browser has it: it reads only what the site publishes.
-- A personal token may never expire, when its maker gives no days.
+- A personal token may never expire, when its maker asks for that; given no days, it lasts 90.
 - `GET /authorize` with a URL `client_id` fetches that URL: public addresses only, cached, capped.
 - OAuth lifetimes are sized to the 1,000 KV writes a day of the Free plan.
 - A draft's preview loads its images from their hosts (sandboxed, no referrer, no cookie).

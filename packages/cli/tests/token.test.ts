@@ -13,6 +13,7 @@ const HASH = '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429'
 const CONTEXT_QUERY =
   "SELECT id FROM sites ORDER BY id; SELECT user_id AS id FROM members WHERE role = 'owner' ORDER BY created_at, user_id LIMIT 1;"
 const NOW = '2026-10-12T12:00:00.000Z'
+const IN_90_DAYS = '2027-01-10T12:00:00.000Z'
 
 function setup(
   wrangler: FakeWrangler,
@@ -49,7 +50,7 @@ describe('hollware token create', () => {
         '--local',
         '--json',
         '--command',
-        insertSql("'ci'", '["content:read","content:write"]', null),
+        insertSql("'ci'", '["content:read","content:write"]', IN_90_DAYS),
       ],
     ])
     expect(wrangler.calls[1]?.args[6]).not.toContain(SECRET)
@@ -59,7 +60,7 @@ describe('hollware token create', () => {
         '',
         'Label    ci',
         'Scopes   content:read content:write',
-        'Expires  never (revoke it with hollware token revoke)',
+        `Expires  ${IN_90_DAYS} (in 90 days)`,
         '',
         'The token. It is shown only once: Hollware keeps just its hash.',
         '',
@@ -111,9 +112,10 @@ describe('hollware token create', () => {
     [
       ['--scopes', 'content:publish, schema:admin'],
       '["content:publish","schema:admin"]',
-      null,
-      'never',
+      IN_90_DAYS,
+      '90 days',
     ],
+    [['--no-expiry'], '["content:read","content:write"]', null, 'never'],
     [
       ['--expires-in-days', '1'],
       '["content:read","content:write"]',
@@ -160,7 +162,7 @@ describe('hollware token create', () => {
 
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql("'ci'", '["content:read","content:write"]', null, 'docs'),
+      insertSql("'ci'", '["content:read","content:write"]', IN_90_DAYS, 'docs'),
     )
     expect(out[0]?.split('\n')[0]).toBe(`Created token ${TOKEN_ID} for the site "docs".`)
   })
@@ -178,7 +180,7 @@ describe('hollware token create', () => {
 
     expect(code).toBe(0)
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql(literal, '["content:read","content:write"]', null),
+      insertSql(literal, '["content:read","content:write"]', IN_90_DAYS),
     )
     expect(out[0]).toContain(`Label    ${label}\n`)
   })
@@ -190,7 +192,7 @@ describe('hollware token create', () => {
     await project.run(['token', 'create', '--label', '  ci  '])
 
     expect(wrangler.calls[1]?.args[6]).toBe(
-      insertSql("'ci'", '["content:read","content:write"]', null),
+      insertSql("'ci'", '["content:read","content:write"]', IN_90_DAYS),
     )
   })
 
@@ -217,6 +219,10 @@ describe('hollware token create', () => {
     [
       ['--label', 'ci', '--expires-in-days', 'soon'],
       /^hollware token create: invalid --expires-in-days "soon": /,
+    ],
+    [
+      ['--label', 'ci', '--expires-in-days', '30', '--no-expiry'],
+      /^hollware token create: --expires-in-days and --no-expiry cannot be used together\./,
     ],
     [['--label', 'ci', '--site', 'Blog'], /^hollware token create: invalid --site "Blog": /],
     [

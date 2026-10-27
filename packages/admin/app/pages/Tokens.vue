@@ -10,6 +10,8 @@ import { formatDate, useMessages } from '../i18n/index.ts'
 import { runAll, countOutcomes } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
+import { tokenRequest } from '../lib/tokens.ts'
+import { PERSONAL_TOKEN_TTL_DAYS } from '@hollware/core'
 
 type Token = {
   id: string
@@ -42,6 +44,7 @@ const failure = ref<string | null>(null)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
 const days = ref<number | undefined>(undefined)
+const never = ref(false)
 const read = ref(false)
 const secret = ref<string | null>(null)
 const busy = ref(false)
@@ -68,11 +71,16 @@ function toggle(scope: string, on: boolean) {
 async function make() {
   busy.value = true
   try {
-    const made = await api.admin<{ secret: string }>('tokens', {
-      label: label.value,
-      ...(read.value ? { kind: 'read' } : { scopes: chosen.value }),
-      ...(typeof days.value === 'number' && days.value > 0 ? { expiresInDays: days.value } : {}),
-    })
+    const made = await api.admin<{ secret: string }>(
+      'tokens',
+      tokenRequest({
+        label: label.value,
+        read: read.value,
+        scopes: chosen.value,
+        days: days.value,
+        never: never.value,
+      }),
+    )
     secret.value = made.secret
     label.value = ''
     await list()
@@ -146,10 +154,12 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
               type="number"
               :min="1"
               :max="365"
-              :placeholder="m.tokens.never"
+              :placeholder="read ? m.tokens.never : m.tokens.defaultDays(PERSONAL_TOKEN_TTL_DAYS)"
+              :disabled="never && !read"
               class="w-40"
             />
           </UFormField>
+          <UCheckbox v-if="!read" v-model="never" :label="m.tokens.never" />
           <UCheckbox
             v-model="read"
             :label="m.tokens.read"
