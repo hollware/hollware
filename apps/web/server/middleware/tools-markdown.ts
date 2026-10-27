@@ -8,7 +8,7 @@ export default defineEventHandler((event) => {
   const lines = [
     '# MCP tools',
     '',
-    `The ${tools.length} tools of \`/mcp\`, as \`tools/list\` describes them. A tool checks its scopes when it runs: a token without them gets a 403 that names what is missing.`,
+    `The ${tools.length} tools of \`/mcp\`, as \`tools/list\` describes them to a client with every scope. A personal token lists only the tools its scopes allow, and an OAuth client lists them all; a call without the scope gets a 403 that names what is missing.`,
     '',
     ...tools.flatMap((tool) => [
       `## ${tool.name}`,

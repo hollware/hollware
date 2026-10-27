@@ -102,6 +102,16 @@ export function tokenPrincipal(scopes: readonly Scope[] = ALL_SCOPES): Principal
   }
 }
 
+export function oauthPrincipal(scopes: readonly Scope[] = ALL_SCOPES): Principal {
+  return {
+    kind: 'oauth',
+    userId: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+    clientId: 'https://client.example/oauth/metadata.json',
+    site: 'playground',
+    scopes,
+  }
+}
+
 export function makeCall(overrides: { principal?: Principal; requestId?: string } = {}): McpCall {
   return {
     principal: overrides.principal ?? tokenPrincipal(),

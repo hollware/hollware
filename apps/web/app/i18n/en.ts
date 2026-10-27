@@ -289,7 +289,7 @@ export const en = {
     description:
       'Every tool of the Hollware MCP server: what it does, the scopes it needs and its input.',
     intro: (tools: number) =>
-      `The ${tools} tools of /mcp, as tools/list describes them. A tool checks its scopes when it runs: a token without them gets a 403 that names what is missing.`,
+      `The ${tools} tools of /mcp, as tools/list describes them to a client with every scope. A personal token lists only the tools its scopes allow, and an OAuth client lists them all; a call without the scope gets a 403 that names what is missing.`,
     untranslated: '',
     input: 'Input schema',
   },

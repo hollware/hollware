@@ -291,7 +291,7 @@ export const es: Messages = {
     description:
       'Cada herramienta del servidor MCP de Hollware: qué hace, los scopes que necesita y su entrada.',
     intro: (tools: number) =>
-      `Las ${tools} herramientas de /mcp, tal como las describe tools/list. Cada herramienta revisa sus scopes al ejecutarse: un token que no los tiene recibe un 403 que dice cuáles faltan.`,
+      `Las ${tools} herramientas de /mcp, tal como tools/list se las describe a un cliente con todos los scopes. Un token personal lista solo las que sus scopes permiten, y un cliente OAuth las lista todas; una llamada sin el scope recibe un 403 que dice cuál falta.`,
     untranslated:
       'Las descripciones de las herramientas son las que entrega el servidor, en inglés.',
     input: 'Esquema de entrada',
