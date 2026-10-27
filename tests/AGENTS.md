@@ -26,7 +26,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/schema.test.ts`: every D1 table has an `id` primary key and timestamps; a table outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to site tables carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration of a `@hollware/server@*` release tag is edited or removed, and the tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
-- `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), the sign-in pages its ground and accent, every logo one mark.
+- `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed) with text at 4.5:1 contrast; the sign-in pages its ground and accent; every logo one mark.
 - `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: its files, the catalog's exact versions, `HOLLWARE_VERSION`, a standalone tsconfig.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
 - `tests/conventions/single-copies.test.ts`: each of `SINGLE_COPY_PACKAGES` resolves to one version.
