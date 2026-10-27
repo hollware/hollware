@@ -193,7 +193,7 @@ contracts validated at write time, and an example site reads what was published 
 
 ### Maintainer actions (open)
 
-- [ ] Before the `0.1.0` release (AC-0.1-13), no credential an agent can reach may approve the `npm` environment (F0-7 P1): a fine-grained token for Hollware sessions without Administration, Deployments, Environments or Secrets; GitHub CLI denied in the org's OAuth app policy; `deny`/`ask` rules for `gh api` on `pending_deployments`, `environments` and `rulesets`
+- [x] Agent credentials and the `npm` environment (F0-7 P1). Settled 2026-10-27: the maintainer wants no manual approval in CI, and an agent may publish when asked; a push or merge to `release` publishes on its own. The environment `npm` has no required reviewer, and `scripts/repo-settings.ts` reports one if it is added
 - [x] DNS for hollware.com: the site is live at the apex; no Email Routing for now (2026-10-27), reports go to GitHub issues
 - [x] The npm account's email stays as it is: there is no `@hollware.com` mail for now (2026-10-27)
 - [ ] Optional: deprecate the `0.0.0-stage` and `0.0.0` placeholders; asked npm, waiting for an answer (2026-10-27). The ADRs were deleted in #24, so there is nothing left to read

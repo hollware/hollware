@@ -16,4 +16,4 @@ The eleven published packages (`@hollware/core`, `@hollware/server`, `@hollware/
 
 ## Releasing
 
-Never run `changeset version` or `changeset publish` by hand. Merging to `main` makes the Release workflow open a "Version Packages" pull request. Merging that pull request versions the packages on `main` and publishes nothing: the maintainer promotes the merge commit to the `release` branch, and approving the `npm` environment publishes the packages. The whole flow is in `.github/AGENTS.md`.
+Never run `changeset version` or `changeset publish` by hand. Merging to `main` makes the Release workflow open a "Version Packages" pull request. Merging that pull request versions the packages on `main` and publishes nothing: the maintainer promotes the merge commit to the `release` branch, and that push publishes the packages, with no approval. The whole flow is in `.github/AGENTS.md`.
