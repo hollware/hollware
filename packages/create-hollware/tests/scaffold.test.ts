@@ -80,6 +80,27 @@ describe('create-hollware <dir>', () => {
     expect(existsSync(join(cwd, 'blog-cms', 'pnpm-workspace.yaml'))).toBe(false)
   })
 
+  it('writes the commands of npm in the guides for agents and people, unless pnpm installs', async () => {
+    const npm = world()
+    const pnpm = world()
+
+    await create(['blog-cms', '--no-install', '--no-git'], npm.io)
+    await create(['blog-cms', '--pm', 'pnpm', '--no-install', '--no-git'], pnpm.io)
+
+    for (const file of ['AGENTS.md', 'README.md']) {
+      expect(npm.read(file), file).not.toContain('pnpm')
+      expect(pnpm.read(file), file).toMatch(/`pnpm (exec|run) /)
+    }
+    expect(npm.read('AGENTS.md')).toContain(
+      'Run `npm test` and `npx wrangler types --check` after a change of `wrangler.jsonc`, and `npx hollware doctor` when something does not work.',
+    )
+    expect(npm.read('AGENTS.md')).toContain(
+      '(`npm install -E hollware@X @hollware/core@X @hollware/server@X @hollware/admin@X`)',
+    )
+    expect(npm.read('README.md')).toContain('| `npm run types:check` |')
+    expect(npm.read('README.md')).toContain('npm run deploy')
+  })
+
   it('tells pnpm which build scripts to run, when pnpm installs', async () => {
     const { io, cwd } = world()
 
