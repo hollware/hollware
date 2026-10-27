@@ -18,13 +18,14 @@ import { describeError, internalError, timeoutError } from './errors.ts'
 import { answerResult, errorResult, readAnswer, type Answer } from './result.ts'
 import { scopeChallenge } from './scopes.ts'
 import { within } from './timeout.ts'
-import { createToolTable } from './tools.ts'
+import { createToolTable, listedTool, toolsFor } from './tools.ts'
 import { operationLine } from '../audit/operations.ts'
 import type { McpCall, McpEndpoint, McpEndpointOptions, McpLogEntry } from './types.ts'
 import { REFRESH_CONTENT, refreshContentText } from './prompts.ts'
 import { invoke } from '../ops/invoke.ts'
 
 const TOOLS_LIST_CACHE_HINT = { ttlMs: 300_000, cacheScope: 'public' } as const
+const OWN_TOOLS_LIST_CACHE_HINT = { ttlMs: 300_000, cacheScope: 'private' } as const
 
 type Era = McpRequestContext['era']
 
@@ -161,9 +162,10 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
     if (call === undefined) {
       throw new Error('A request reached the MCP server without the call the gateway made for it')
     }
+    const personal = call.principal.kind === 'token'
     const server = new McpServer(options.serverInfo, {
       capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } },
-      cacheHints: { 'tools/list': TOOLS_LIST_CACHE_HINT },
+      cacheHints: { 'tools/list': personal ? OWN_TOOLS_LIST_CACHE_HINT : TOOLS_LIST_CACHE_HINT },
     })
     for (const tool of tools) {
       server.registerTool(
@@ -195,6 +197,10 @@ export function createMcpEndpoint(options: McpEndpointOptions): McpEndpoint {
         },
         (input, mcp) => runTool(tool.spec, input, mcp, call, request.era),
       )
+    }
+    if (personal) {
+      const listed = toolsFor(tools, call.principal.scopes).map(listedTool)
+      server.server.setRequestHandler('tools/list', () => ({ tools: listed }))
     }
     server.registerPrompt(
       REFRESH_CONTENT.name,

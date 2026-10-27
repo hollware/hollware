@@ -10,9 +10,47 @@ import {
   ENTRY_ID,
   INPUTS,
   makeCall,
+  oauthPrincipal,
   rpc,
   tokenPrincipal,
 } from './support.ts'
+
+const WRITER_TOOLS = [
+  'comment_review',
+  'content_stats',
+  'create_draft',
+  'delete_entry',
+  'describe_site',
+  'get_asset',
+  'get_entry',
+  'get_revision',
+  'get_structure',
+  'get_translations',
+  'list_assets',
+  'list_entries',
+  'list_redirects',
+  'list_reviews',
+  'list_revisions',
+  'move_entry',
+  'publish',
+  'request_review',
+  'restore_entry',
+  'restore_revision',
+  'search',
+  'update_asset',
+  'update_draft',
+  'upload_asset',
+  'validate',
+]
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+function toolsOf(raw: { result: Record<string, unknown> }): readonly Record<string, unknown>[] {
+  const tools: unknown = raw.result.tools
+  if (!Array.isArray(tools)) throw new Error('tools/list answered no list of tools')
+  return tools.filter(isRecord)
+}
 
 const READ = {
   readOnlyHint: true,
@@ -205,13 +243,13 @@ describe('tools/list', () => {
   })
 
   it.each(['modern', 'legacy'] as const)(
-    'is the same bytes for every call, principal and endpoint (%s)',
+    'is the same bytes for every OAuth client, whatever its scopes, and every endpoint (%s)',
     async (era) => {
       const first = endpointWith().endpoint
       const second = endpointWith().endpoint
-      const reader = makeCall({ principal: tokenPrincipal(['content:read']), requestId: 'req_a' })
-      const nobody = makeCall({ principal: tokenPrincipal([]), requestId: 'req_b' })
-      const everything = makeCall({ principal: tokenPrincipal(ALL_SCOPES), requestId: 'req_c' })
+      const reader = makeCall({ principal: oauthPrincipal(['content:read']), requestId: 'req_a' })
+      const nobody = makeCall({ principal: oauthPrincipal([]), requestId: 'req_b' })
+      const everything = makeCall({ principal: oauthPrincipal(ALL_SCOPES), requestId: 'req_c' })
 
       const answers = [
         await rpc(first, era, 'tools/list', {}, { call: reader }),
@@ -228,11 +266,49 @@ describe('tools/list', () => {
     },
   )
 
-  it('says that the lists of tools and prompts never change, and that anyone may keep the tools for five minutes', async () => {
-    const { endpoint } = endpointWith()
+  it.each(['modern', 'legacy'] as const)(
+    'lists to a personal token only the tools its scopes allow, each as the whole list shows it, and still answers a call of another with the challenge (%s)',
+    async (era) => {
+      const { endpoint } = endpointWith()
+      const writer = makeCall({
+        principal: tokenPrincipal(['content:read', 'content:write']),
+        requestId: 'req_writer',
+      })
+      const owner = makeCall({ principal: oauthPrincipal(ALL_SCOPES), requestId: 'req_owner' })
 
-    const modern = await rpc(endpoint, 'modern', 'tools/list')
-    const legacy = await rpc(endpoint, 'legacy', 'tools/list')
+      const own = toolsOf(await rpc(endpoint, era, 'tools/list', {}, { call: writer }))
+      const whole = toolsOf(await rpc(endpoint, era, 'tools/list', {}, { call: owner }))
+      const none = toolsOf(
+        await rpc(
+          endpoint,
+          era,
+          'tools/list',
+          {},
+          { call: makeCall({ principal: tokenPrincipal([]) }) },
+        ),
+      )
+      const refused = await callRaw(endpoint, era, 'unpublish', INPUTS.unpublish, { call: writer })
+
+      expect(own.map((tool) => tool.name)).toEqual(WRITER_TOOLS)
+      expect(whole).toHaveLength(40)
+      for (const tool of own) {
+        expect(tool, String(tool.name)).toEqual(whole.find((other) => other.name === tool.name))
+      }
+      expect(none).toEqual([])
+      expect([refused.status, refused.headers.get('www-authenticate')]).toEqual([
+        403,
+        'Bearer error="insufficient_scope", error_description="unpublish requires: content:publish", scope="content:publish"',
+      ])
+    },
+  )
+
+  it('says that the lists of tools and prompts never change, that a client may share an OAuth list for five minutes, and that a personal token keeps its own', async () => {
+    const { endpoint } = endpointWith()
+    const viaOauth = { call: makeCall({ principal: oauthPrincipal() }) }
+
+    const modern = await rpc(endpoint, 'modern', 'tools/list', {}, viaOauth)
+    const personal = await rpc(endpoint, 'modern', 'tools/list')
+    const legacy = await rpc(endpoint, 'legacy', 'tools/list', {}, viaOauth)
     const discover = await rpc(endpoint, 'modern', 'server/discover')
     const initialize = await rpc(endpoint, 'legacy', 'initialize', {
       protocolVersion: '2025-11-25',
@@ -240,8 +316,8 @@ describe('tools/list', () => {
       clientInfo: { name: 'raw-client', version: '0.0.0' },
     })
 
-    expect(modern.result.ttlMs).toBe(300_000)
-    expect(modern.result.cacheScope).toBe('public')
+    expect([modern.result.ttlMs, modern.result.cacheScope]).toEqual([300_000, 'public'])
+    expect([personal.result.ttlMs, personal.result.cacheScope]).toEqual([300_000, 'private'])
     expect(Object.keys(legacy.result)).toEqual(['tools'])
     expect(discover.result.capabilities).toEqual({
       tools: { listChanged: false },

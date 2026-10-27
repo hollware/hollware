@@ -1,5 +1,6 @@
 import { OPERATIONS, type Operation, type Scope } from '@hollware/core'
-import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server'
+import type { StandardSchemaWithJSON, Tool as ListedTool } from '@modelcontextprotocol/server'
+import { annotationsOf } from './annotations.ts'
 
 type Converter = StandardSchemaWithJSON['~standard']['jsonSchema']
 type ConverterOptions = Parameters<Converter['input']>[0]
@@ -37,6 +38,26 @@ export interface Tool {
 
 const byCodeUnitsOfName = (a: Operation, b: Operation) =>
   a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+
+export function toolsFor(tools: readonly Tool[], scopes: readonly Scope[]): readonly Tool[] {
+  const granted = new Set(scopes)
+  return tools.filter((tool) => tool.scopes.every((scope) => granted.has(scope)))
+}
+
+export function listedTool(tool: Tool): ListedTool {
+  return {
+    name: tool.spec.name,
+    title: tool.spec.title,
+    description: tool.spec.description,
+    inputSchema: tool.input['~standard'].jsonSchema.input({
+      target: 'draft-2020-12',
+    }) as ListedTool['inputSchema'],
+    annotations: annotationsOf(tool.spec.name, tool.spec.effect),
+    outputSchema: tool.output['~standard'].jsonSchema.output({
+      target: 'draft-2020-12',
+    }) as ListedTool['outputSchema'],
+  }
+}
 
 export function createToolTable(operations: readonly Operation[] = OPERATIONS): readonly Tool[] {
   return operations.toSorted(byCodeUnitsOfName).map((spec) => {
