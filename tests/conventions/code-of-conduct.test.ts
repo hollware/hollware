@@ -16,12 +16,14 @@ describe('code of conduct', () => {
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
-    it('accepts the contact in a mailto link', () => {
-      expect(check('Report to [conduct@hollware.com](mailto:conduct@hollware.com).')).toEqual([])
+    it('accepts the issues of the repository as the contact', () => {
+      expect(check('Report it in <https://github.com/hollware/hollware/issues>.')).toEqual([])
     })
 
     it('reports the template placeholder', () => {
-      expect(check('Report to [INSERT CONTACT METHOD]. Also conduct@hollware.com.')).toEqual([
+      expect(
+        check('Report to [INSERT CONTACT METHOD] or https://github.com/hollware/hollware/issues.'),
+      ).toEqual([
         {
           rule: 'code-of-conduct/placeholder',
           file: 'CODE_OF_CONDUCT.md',
@@ -36,22 +38,25 @@ describe('code of conduct', () => {
         {
           rule: 'code-of-conduct/contact',
           file: 'CODE_OF_CONDUCT.md',
-          message: 'the enforcement contact must be conduct@hollware.com',
+          message:
+            'the enforcement contact must be the issues of the repository, https://github.com/hollware/hollware/issues',
         },
       ])
     })
 
-    it('reports another address, alone or next to the right one', () => {
-      expect(check('Report to someone@example.com.').map((violation) => violation.message)).toEqual(
-        [
-          'the enforcement contact must be conduct@hollware.com',
-          'someone@example.com is not the enforcement contact conduct@hollware.com: it is the only address the file may hold',
-        ],
-      )
+    it('reports an email address, alone or next to the issues', () => {
       expect(
-        check('conduct@hollware.com or other@hollware.com').map((violation) => violation.message),
+        check('Report to conduct@hollware.com.').map((violation) => violation.message),
       ).toEqual([
-        'other@hollware.com is not the enforcement contact conduct@hollware.com: it is the only address the file may hold',
+        'the enforcement contact must be the issues of the repository, https://github.com/hollware/hollware/issues',
+        'conduct@hollware.com is an email address: reports go to https://github.com/hollware/hollware/issues, and the file holds no address',
+      ])
+      expect(
+        check('https://github.com/hollware/hollware/issues or someone@example.com').map(
+          (violation) => violation.message,
+        ),
+      ).toEqual([
+        'someone@example.com is an email address: reports go to https://github.com/hollware/hollware/issues, and the file holds no address',
       ])
     })
   })

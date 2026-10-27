@@ -17,6 +17,7 @@ export interface RulesetSettings {
 export interface EnvironmentSettings {
   readonly name: string
   readonly branches: readonly string[] | null
+  readonly reviewers: number
 }
 
 export interface RepoSettings {
@@ -65,6 +66,11 @@ export function settingsDrift(expected: RepoSettings, actual: RepoSettings): str
     } else if (!same(have.branches, want.branches)) {
       drift.push(
         `the environment "${want.name}" takes ${have.branches === null ? 'every branch' : JSON.stringify(sorted(have.branches))}, not ${want.branches === null ? 'every branch' : JSON.stringify(sorted(want.branches))}`,
+      )
+    }
+    if (have !== undefined && have.reviewers !== want.reviewers) {
+      drift.push(
+        `the environment "${want.name}" waits for ${have.reviewers} required reviewers, not ${want.reviewers}`,
       )
     }
   }
@@ -118,12 +124,15 @@ export function readSettings(repository: string, api: Api): RepoSettings {
     .map(record)
     .map((environment) => {
       const name = String(environment['name'])
+      const reviewers = list(environment['protection_rules'])
+        .map(record)
+        .reduce((count, rule) => count + list(rule['reviewers']).length, 0)
       const policy = record(environment['deployment_branch_policy'])
       if (
         environment['deployment_branch_policy'] === null ||
         policy['custom_branch_policies'] !== true
       ) {
-        return { name, branches: null }
+        return { name, branches: null, reviewers }
       }
       const branches = list(
         record(api(`repos/${repository}/environments/${name}/deployment-branch-policies`))[
@@ -133,7 +142,7 @@ export function readSettings(repository: string, api: Api): RepoSettings {
         .map(record)
         .filter((branch) => branch['type'] === 'branch')
         .map((branch) => String(branch['name']))
-      return { name, branches }
+      return { name, branches, reviewers }
     })
   return { rulesets, environments }
 }

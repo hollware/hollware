@@ -21,8 +21,19 @@ const ANSWERS: Record<string, unknown> = {
   },
   'repos/o/r/environments': {
     environments: [
-      { name: 'npm', deployment_branch_policy: { custom_branch_policies: true } },
-      { name: 'preview', deployment_branch_policy: null },
+      {
+        name: 'npm',
+        deployment_branch_policy: { custom_branch_policies: true },
+        protection_rules: [{ type: 'branch_policy' }],
+      },
+      {
+        name: 'preview',
+        deployment_branch_policy: null,
+        protection_rules: [
+          { type: 'wait_timer', wait_timer: 5 },
+          { type: 'required_reviewers', reviewers: [{ type: 'User' }, { type: 'Team' }] },
+        ],
+      },
     ],
   },
   'repos/o/r/environments/npm/deployment-branch-policies': {
@@ -52,8 +63,8 @@ const EXPECTED: RepoSettings = {
     },
   ],
   environments: [
-    { name: 'npm', branches: ['release'] },
-    { name: 'preview', branches: null },
+    { name: 'npm', branches: ['release'], reviewers: 0 },
+    { name: 'preview', branches: null, reviewers: 2 },
   ],
 }
 
@@ -75,8 +86,8 @@ describe('the settings of the repository', () => {
         { ...release, name: 'extra' },
       ],
       environments: [
-        { name: 'npm', branches: ['release', 'main'] },
-        { name: 'preview', branches: null },
+        { name: 'npm', branches: ['release', 'main'], reviewers: 0 },
+        { name: 'preview', branches: null, reviewers: 2 },
       ],
     }
     const expected: RepoSettings = {
@@ -99,10 +110,22 @@ describe('the settings of the repository', () => {
       settingsDrift(EXPECTED, {
         ...EXPECTED,
         environments: [
-          { name: 'npm', branches: null },
-          EXPECTED.environments[1] ?? { name: 'preview', branches: null },
+          { name: 'npm', branches: null, reviewers: 0 },
+          EXPECTED.environments[1] ?? { name: 'preview', branches: null, reviewers: 2 },
         ],
       }),
     ).toEqual(['the environment "npm" takes every branch, not ["release"]'])
+  })
+
+  it('report an approval added to an environment that publishes on its own', () => {
+    expect(
+      settingsDrift(EXPECTED, {
+        ...EXPECTED,
+        environments: [
+          { name: 'npm', branches: ['release'], reviewers: 1 },
+          EXPECTED.environments[1] ?? { name: 'preview', branches: null, reviewers: 2 },
+        ],
+      }),
+    ).toEqual(['the environment "npm" waits for 1 required reviewers, not 0'])
   })
 })

@@ -1,4 +1,4 @@
-import { CONDUCT_EMAIL } from './project.ts'
+import { ISSUES_URL } from './project.ts'
 import type { TextFile, Violation } from './types.ts'
 
 export interface CodeOfConductInput {
@@ -18,22 +18,19 @@ export function checkCodeOfConduct(input: CodeOfConductInput): Violation[] {
         'the file still holds a "[INSERT ...]" placeholder of the Contributor Covenant template',
     })
   }
-  const emails = new Set(text.match(EMAIL) ?? [])
-  if (!emails.has(CONDUCT_EMAIL)) {
+  if (!text.includes(ISSUES_URL)) {
     violations.push({
       rule: 'code-of-conduct/contact',
       file: path,
-      message: `the enforcement contact must be ${CONDUCT_EMAIL}`,
+      message: `the enforcement contact must be the issues of the repository, ${ISSUES_URL}`,
     })
   }
-  for (const email of emails) {
-    if (email !== CONDUCT_EMAIL) {
-      violations.push({
-        rule: 'code-of-conduct/contact',
-        file: path,
-        message: `${email} is not the enforcement contact ${CONDUCT_EMAIL}: it is the only address the file may hold`,
-      })
-    }
+  for (const email of new Set(text.match(EMAIL) ?? [])) {
+    violations.push({
+      rule: 'code-of-conduct/contact',
+      file: path,
+      message: `${email} is an email address: reports go to ${ISSUES_URL}, and the file holds no address`,
+    })
   }
   return violations
 }

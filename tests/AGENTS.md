@@ -49,7 +49,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
-- `tests/conventions/code-of-conduct.test.ts`: no template placeholder, one contact address.
+- `tests/conventions/code-of-conduct.test.ts`: no template placeholder, the issues as contact.
 - `tests/conventions/personal-email.test.ts`: no personal email address in any file.
 - `tests/conventions/invisible-characters.test.ts`: no text file but `INVISIBLE_CHARACTER_FILES` holds a bidirectional control, zero-width mark, byte order mark or line or paragraph separator.
 - `tests/conventions/drizzle-api.test.ts`: `packages/server/src` uses neither `db.query` nor drizzle's `relations`.

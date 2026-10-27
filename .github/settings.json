@@ -34,11 +34,13 @@
   "environments": [
     {
       "name": "deploy",
-      "branches": ["main", "release"]
+      "branches": ["main", "release"],
+      "reviewers": 0
     },
     {
       "name": "npm",
-      "branches": ["release"]
+      "branches": ["release"],
+      "reviewers": 0
     }
   ]
 }
