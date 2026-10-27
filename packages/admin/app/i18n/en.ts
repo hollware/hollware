@@ -372,6 +372,11 @@ export const en = {
     choose: 'Choose a review to read its changes.',
     back: 'Back to the reviews',
     noteTitle: 'A note for the author',
+    changes: 'Changes',
+    preview: 'Preview',
+    previewHelp: 'The revision asked for, as its body reads.',
+    openOnSite: 'Open on the site',
+    nothingToShow: 'Nothing to show yet.',
   },
   collections: {
     title: 'Collections',
