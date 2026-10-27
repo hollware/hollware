@@ -355,7 +355,7 @@ export const outbox = sqliteTable(
     foreignKey({ name: 'outbox_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     check(
       'outbox_kind',
-      sql`${t.kind} IN ('entry.published', 'entry.unpublished', 'site.changed')`,
+      sql`${t.kind} IN ('entry.published', 'entry.unpublished', 'site.changed', 'review.requested', 'review.decided')`,
     ),
     check('outbox_entry', sql`(${t.kind} = 'site.changed') = (${t.entryId} IS NULL)`),
     check('outbox_json', sql`json_valid(${t.payload}) AND json_type(${t.payload}) = 'object'`),

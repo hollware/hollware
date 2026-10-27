@@ -169,6 +169,13 @@
       "when": 1792638027150,
       "tag": "0023_site_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1793136657852,
+      "tag": "0024_review_events",
+      "breakpoints": true
     }
   ]
 }
