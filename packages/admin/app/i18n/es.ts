@@ -497,6 +497,7 @@ export const es: Messages = {
       number: 'Número',
       integer: 'Número entero',
       switch: 'Sí o no',
+      image: 'Imagen de la biblioteca',
       other: 'Otro (JSON Schema)',
     },
     problems: {
@@ -908,6 +909,11 @@ export const es: Messages = {
     notRevoked: 'No se revocó',
   },
   frontmatter: {
+    markdownOnly: (fields: string) =>
+      `El formulario no muestra ${fields}: edítalos en el Markdown de la entrada.`,
+    openMarkdown: 'Abrir el Markdown',
+    chooseImage: 'Elegir una imagen',
+    pickEntry: 'Elegir entradas',
     notYamlBefore: 'El frontmatter no se lee como YAML entre dos líneas ',
     notYamlAfter: '. Corrígelo en el Markdown y sus campos volverán aquí.',
     noFields:

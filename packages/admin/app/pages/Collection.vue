@@ -46,6 +46,7 @@ const KIND_ORDER: readonly BuilderKind[] = [
   'number',
   'integer',
   'switch',
+  'image',
   'other',
 ]
 const KINDS = computed(() =>

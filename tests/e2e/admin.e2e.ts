@@ -589,6 +589,50 @@ test('the owner inserts an image of the library and uploads another, from the ed
   ).toBeVisible()
 })
 
+test('the owner gives a collection an image, a reference and a field of JSON, and edits each in the editor', async () => {
+  await owner.goto('/admin/settings/collections/talks')
+  await expect(owner.getByRole('heading', { name: 'talks', level: 1 })).toBeVisible()
+  for (const [key, kind] of [
+    ['cover', 'Image of the library'],
+    ['related', 'List of texts'],
+    ['extra', 'Other (JSON Schema)'],
+  ] as const) {
+    await owner.getByRole('button', { name: 'Add a field' }).click()
+    await owner.getByRole('textbox', { name: 'Name', exact: true }).last().fill(key)
+    await owner.getByRole('combobox', { name: 'Kind' }).last().click()
+    await owner.getByRole('option', { name: kind, exact: true }).click()
+  }
+  await owner.getByRole('button', { name: 'Add a rule' }).click()
+  await owner.getByRole('combobox', { name: 'Rule' }).last().click()
+  await owner.getByRole('option', { name: 'reference', exact: true }).click()
+  await owner.getByRole('combobox', { name: 'field*', exact: true }).last().click()
+  await owner.getByRole('option', { name: 'related', exact: true }).click()
+  await owner.getByRole('textbox', { name: 'collection*', exact: true }).fill('blog')
+  await owner.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(owner.getByText('Saved: it applies at once').first()).toBeVisible()
+
+  await owner.goto('/admin/entries/talks/en/a-long-talk')
+  const fields = owner.getByRole('region', { name: 'Fields' })
+  await expect(
+    fields.getByText('The form does not show extra: edit them in the Markdown of the entry.'),
+  ).toBeVisible()
+  await fields.getByRole('button', { name: 'Choose an image' }).click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Insert A single red pixel' }).click()
+  await expect(fields.getByRole('textbox', { name: 'cover' })).toHaveValue(
+    /^asset:ast_[0-9a-f]{26}$/,
+  )
+  await fields.getByRole('button', { name: 'related' }).click()
+  await owner.getByRole('option').first().click()
+  await owner.keyboard.press('Escape')
+  await expect(owner.locator('[data-reka-popper-content-wrapper]')).toHaveCount(0)
+  await expectAccessible(owner)
+  await saveNow(owner)
+  await fields.getByRole('button', { name: 'Open the Markdown' }).click()
+  await expect(owner.locator('.cm-content').first()).toContainText(
+    /cover: asset:ast_[0-9a-f]{26}related:\s*- [a-z0-9-]+/,
+  )
+})
+
 test('the owner reads the activity log: what was done, by whom, and the detail of a line', async () => {
   await owner.goto('/admin/settings/activity')
   await expect(owner.getByRole('heading', { name: 'Activity', level: 1 })).toBeVisible()

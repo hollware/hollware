@@ -6,7 +6,7 @@ function isRecord(value: unknown): value is JsonSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export type FieldKind = 'text' | 'long' | 'date' | 'choice' | 'list' | 'number' | 'switch'
+export type FieldKind = 'text' | 'long' | 'date' | 'choice' | 'list' | 'number' | 'switch' | 'image'
 
 export interface Field {
   readonly key: string
@@ -42,6 +42,9 @@ export function fieldsOf(schema: JsonSchema): Field[] {
     switch (value['type']) {
       case 'string':
         if (value['format'] === 'date') return [{ ...base, kind: 'date' }]
+        if (typeof value['pattern'] === 'string' && value['pattern'].startsWith('^asset:')) {
+          return [{ ...base, kind: 'image' }]
+        }
         return [{ ...base, kind: maxLength !== null && maxLength > LONG_TEXT ? 'long' : 'text' }]
       case 'number':
       case 'integer':
@@ -56,6 +59,34 @@ export function fieldsOf(schema: JsonSchema): Field[] {
         return []
     }
   })
+}
+
+export interface Reference {
+  readonly collection: string
+  readonly locale: string
+}
+
+export function referencesOf(
+  rules: readonly { readonly rule: string; readonly params: Readonly<Record<string, unknown>> }[],
+  locale: string,
+): Record<string, Reference> {
+  return Object.fromEntries(
+    rules.flatMap((use) => {
+      const { field, collection } = use.params
+      const named = use.params['locale']
+      return use.rule === 'reference' && typeof field === 'string' && typeof collection === 'string'
+        ? [[field, { collection, locale: typeof named === 'string' ? named : locale }]]
+        : []
+    }),
+  )
+}
+
+export function markdownOnly(schema: JsonSchema): string[] {
+  const properties = isRecord(schema['properties']) ? schema['properties'] : {}
+  const shown = new Set(fieldsOf(schema).map((field) => field.key))
+  return Object.entries(properties)
+    .filter(([key, value]) => !shown.has(key) && !(isRecord(value) && value['readOnly'] === true))
+    .map(([key]) => key)
 }
 
 const FENCE = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/

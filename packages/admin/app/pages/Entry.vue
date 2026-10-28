@@ -13,7 +13,14 @@ import { ApiError, type Output } from '../lib/api.ts'
 import { diagnosticsOf } from '../lib/diagnostics.ts'
 import type { ComponentDefinition } from '../lib/editor/components.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
-import { bodyOf, readFrontmatter, setField, withBody } from '../lib/frontmatter.ts'
+import {
+  bodyOf,
+  readFrontmatter,
+  referencesOf,
+  setField,
+  withBody,
+  type Reference,
+} from '../lib/frontmatter.ts'
 import { openEntry } from '../lib/open-entry.ts'
 import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
 import { api } from '../lib/session.ts'
@@ -36,6 +43,7 @@ const m = useMessages()
 const route = useRoute()
 const router = useRouter()
 const site = ref<Site | null>(null)
+const references = ref<Record<string, Reference> | null>(null)
 const entry = ref<Entry | null>(null)
 const related = ref<Summary[]>([])
 const translations = ref<Summary[]>([])
@@ -142,11 +150,18 @@ const checks = computed(() => ({
 }))
 
 async function load() {
-  const [described, read] = await Promise.all([
+  const [described, structure, read] = await Promise.all([
     site.value === null ? api.call('describe_site', {}) : null,
+    references.value === null ? api.call('get_structure', {}) : null,
     api.call('get_entry', { ...ref_.value, formats: ['markdown'], related: true }),
   ])
   if (described !== null) site.value = described.site
+  if (structure !== null) {
+    references.value = referencesOf(
+      structure.definition.collections[props.collection]?.rules ?? [],
+      props.locale,
+    )
+  }
   if (read.outcome === 'not_found' || read.entry === undefined) {
     missing.value = true
     return
@@ -526,6 +541,10 @@ async function check() {
 
 function toggleSource() {
   if (!lossy.value) setQuery('view', source.value ? null : 'markdown')
+}
+
+function openMarkdown() {
+  if (!source.value) toggleSource()
 }
 
 function showPanel(next: 'properties' | 'history') {
@@ -972,6 +991,8 @@ const stateLabel = computed(
             v-model="text"
             :schema="definition?.schema ?? {}"
             :omit="hasTitle ? ['title'] : []"
+            :references="references ?? {}"
+            @markdown="openMarkdown"
           />
         </section>
 
