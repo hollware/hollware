@@ -26,6 +26,12 @@ async function throughEditor(
   return stringifyBody({ ...document, nodes: fromEditor(edited) })
 }
 
+async function lossless(body: string): Promise<boolean> {
+  const document = await parseForEditing(body)
+  const opened: JSONContent = Node.fromJSON(schema, toEditor(document.nodes)).toJSON()
+  return editsLosslessly(document.nodes, opened, (nodes) => stringifyBody({ ...document, nodes }))
+}
+
 const COMARK_CASES: readonly string[] = [
   '::card{title="A"}\nOuter\n\n:::note\nInner **b**\n:::\n\n#footer\nFoot\n::\n',
   'A [link](/x){target="_blank"} and **b**{.big} and :badge[New]{color="red"}\n',
@@ -48,14 +54,21 @@ const COMARK_CASES: readonly string[] = [
 ]
 
 describe('the editor', () => {
-  it('writes back every file it opens as Comark writes it, so opening and saving changes no byte', async () => {
-    for (const source of [
-      ...CONTENT_FIXTURES.map(({ markdown }) => bodyOf(markdown)),
-      ...COMARK_CASES,
+  it('writes back every file it opens as Comark writes it, so opening and saving changes no byte Comark keeps', async () => {
+    const unstable: string[] = []
+    for (const { path, markdown } of [
+      ...CONTENT_FIXTURES.map((fixture) => ({
+        path: fixture.path,
+        markdown: bodyOf(fixture.markdown),
+      })),
+      ...COMARK_CASES.map((markdown) => ({ path: markdown, markdown })),
     ]) {
-      const body = await stringifyBody(await parseForEditing(source))
-      expect(await throughEditor(body), source).toBe(body)
+      const body = await stringifyBody(await parseForEditing(markdown))
+      const again = await stringifyBody(await parseForEditing(body))
+      if (again !== body) unstable.push(path)
+      expect(await throughEditor(body), path).toBe(again)
     }
+    expect(unstable).toEqual(['hostile/block-html.md'])
   })
 
   it('writes an edit as the canonical Markdown of what changed', async () => {
@@ -87,14 +100,8 @@ describe('the editor', () => {
 })
 
 describe('an entry the editor cannot keep byte for byte', () => {
-  async function lossless(body: string): Promise<boolean> {
-    const document = await parseForEditing(body)
-    const opened: JSONContent = Node.fromJSON(schema, toEditor(document.nodes)).toJSON()
-    return editsLosslessly(document.nodes, opened, (nodes) => stringifyBody({ ...document, nodes }))
-  }
-
   it('is told apart from one it keeps, so it opens as Markdown', async () => {
     expect(await lossless('Some **text**, [sic] and a [link](/x).\n')).toBe(true)
-    expect(await lossless('<!-- c -->/en/blog/x/}/blog/y/[x][r]\r<- [ ] \t')).toBe(false)
+    expect(await lossless('See [one](/x)[two](/x).\n')).toBe(false)
   })
 })

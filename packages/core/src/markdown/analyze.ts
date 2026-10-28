@@ -6,6 +6,7 @@ import {
   LINE_KEY,
   MARKER_TAG,
   MAX_DEPTH,
+  MAX_ELEMENT_DEPTH,
   NATIVE_TAGS,
   OPEN_KEY,
   PROPS_KEY,
@@ -313,7 +314,7 @@ function visit(
   depth: number,
   inPre: boolean,
 ): number {
-  if (depth > MAX_DEPTH) {
+  if (depth > MAX_ELEMENT_DEPTH) {
     state.problem ??= 'nesting'
     return cursor
   }

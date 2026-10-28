@@ -94,7 +94,7 @@ describe('an entry', () => {
     )
     expect(html).toContain('<callout type="tip">')
     expect(html).toContain(
-      '<pre language="ts"><code class="language-ts">const verdict = await validate(markdown)</code></pre>',
+      '<pre data-language="ts"><code class="language-ts">const verdict = await validate(markdown)</code></pre>',
     )
     expect(html).toContain(
       '<img src="/images/edge-caching-basics.png" alt="A diagram of the flow">',

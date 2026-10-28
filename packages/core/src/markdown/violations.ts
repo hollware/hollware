@@ -1,6 +1,6 @@
 import type { Violation } from '../contracts/types.ts'
 import type { JsonProblem } from './json.ts'
-import { MAX_DEPTH } from './policy.ts'
+import { MAX_DEPTH, MAX_ELEMENT_DEPTH } from './policy.ts'
 import type { Problem } from './analyze.ts'
 
 function refusal(
@@ -114,7 +114,7 @@ export function unstorable(problem: Problem): Violation {
     'comark-parse',
     '/body',
     problem === 'nesting'
-      ? `The document nests elements more than ${MAX_DEPTH} levels deep.`
+      ? `The document nests elements more than ${MAX_ELEMENT_DEPTH} levels deep.`
       : `A component prop holds a value that nests more than ${MAX_DEPTH} levels deep or is not JSON.`,
     problem === 'nesting'
       ? 'Flatten the nesting of emphasis, lists, quotes and components.'

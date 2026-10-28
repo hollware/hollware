@@ -30,7 +30,7 @@ describe('the HTML of a document the pipeline wrote', () => {
         '  <li>a</li>',
         '  <li>b</li>',
         '</ul>',
-        '<pre language="ts"><code class="language-ts">const a = 1</code></pre>',
+        '<pre data-language="ts"><code class="language-ts">const a = 1</code></pre>',
         '<p><img src="/i.png" alt="alt"></p>',
       ].join('\n'),
     )

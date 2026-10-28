@@ -441,18 +441,18 @@ describe('the YAML block of a component', () => {
 describe('a document that is too deep to store', () => {
   const nested = (pairs: number) => '*a '.repeat(pairs) + 'a* '.repeat(pairs)
 
-  it('is accepted down to 100 levels, with the paragraph that holds them', async () => {
-    const { extracted } = await accepted(nested(99))
-    expect(extracted.words).toBe(198)
+  it('is accepted down to 49 levels, with the paragraph that holds them, and every word', async () => {
+    const { extracted } = await accepted(nested(48))
+    expect(extracted.words).toBe(96)
   })
 
-  it('is refused one level deeper, with a fix', async () => {
-    expect(await refused(nested(100))).toStrictEqual([
+  it('is refused one level deeper, where Comark would drop the words, with a fix', async () => {
+    expect(await refused(nested(49))).toStrictEqual([
       {
         contract: 'comark-parse',
         severity: 'error',
         path: '/body',
-        message: 'The document nests elements more than 100 levels deep.',
+        message: 'The document nests elements more than 49 levels deep.',
         fix: 'Flatten the nesting of emphasis, lists, quotes and components.',
         code: 'comark-parse.nesting',
         params: {},

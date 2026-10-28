@@ -11,7 +11,7 @@ warmUpComark()
 
 describe('the version of Comark', () => {
   it('is the version of the comark that is installed', () => {
-    expect(comarkManifest.version).toBe('0.7.0')
+    expect(comarkManifest.version).toBe('0.8.1')
     expect(COMARK_VERSION).toBe(comarkManifest.version)
   })
 
@@ -22,38 +22,38 @@ describe('the version of Comark', () => {
 
   it('is stored with every result, next to the version of the pipeline', async () => {
     const { comarkVersion, pipelineVersion } = await accepted('Hello.')
-    expect(comarkVersion).toBe('0.7.0')
+    expect(comarkVersion).toBe('0.8.1')
     expect(pipelineVersion).toBe('3')
   })
 })
 
 describe('the version of the pipeline', () => {
   const PINNED: Record<string, Record<string, string>> = {
-    '0.7.0/3': {
-      'bench/long-post.md': '423a9a836a51e0f6',
-      'blog/en/agents-write-with-contracts.md': 'f73e954211628290',
-      'blog/en/edge-caching-basics.md': '06a64160608f053a',
-      'blog/en/from-draft-to-published.md': '6e43d363254052ae',
-      'blog/en/markdown-as-source-of-truth.md': 'fe0e72c9949bfad9',
-      'blog/en/one-deployment-many-sites.md': '9b4a91126a21f641',
-      'blog/es/agentes-que-escriben-con-contratos.md': '009b3047b665b7c9',
-      'blog/es/cache-en-el-borde.md': '3708bac4fa9b3468',
-      'blog/es/del-borrador-a-publicado.md': '3a7dc958cc8411d6',
-      'blog/es/markdown-como-fuente-de-verdad.md': '9cd353d3e96ea2fa',
-      'blog/es/un-despliegue-muchos-sitios.md': '12082c258d2a1a25',
-      'hostile/block-html.md': '5ec1e4033bc2d6a4',
-      'hostile/bom.md': 'c3fec3d259e9babd',
+    '0.8.1/3': {
+      'bench/long-post.md': '65dbc307701e8156',
+      'blog/en/agents-write-with-contracts.md': 'ad59a3763bcec0dc',
+      'blog/en/edge-caching-basics.md': '79369e2894ec3dce',
+      'blog/en/from-draft-to-published.md': '5c33f234489d3f45',
+      'blog/en/markdown-as-source-of-truth.md': 'ba7262c034ed2334',
+      'blog/en/one-deployment-many-sites.md': 'e0b4f423ccbc646a',
+      'blog/es/agentes-que-escriben-con-contratos.md': '6fb82f0c10a75ac2',
+      'blog/es/cache-en-el-borde.md': 'ea6be00ec37800f7',
+      'blog/es/del-borrador-a-publicado.md': '5a55028c21877217',
+      'blog/es/markdown-como-fuente-de-verdad.md': '992674d49d5cf8b5',
+      'blog/es/un-despliegue-muchos-sitios.md': '04b56e00fff5e13d',
+      'hostile/block-html.md': 'a665b458d1c689be',
+      'hostile/bom.md': '13a10758c854fc19',
       'hostile/broken-frontmatter.md': '7f3db387730837cb',
-      'hostile/disallowed-attribute.md': '316809864dfba7a3',
-      'hostile/nested-emphasis.md': '28b2decbf40cb3cd',
-      'hostile/raw-html.md': '3e8563c556711104',
-      'hostile/unknown-component.md': '108c3186a0a9d892',
-      'hostile/unsafe-url.md': 'ea84e42256426098',
-      'invalid/broken-internal-link.md': '76719abc5380bd96',
-      'invalid/description-too-long.md': 'fab22609313f3847',
-      'invalid/image-without-alt.md': '22396cc8bb95a435',
-      'invalid/missing-translation.md': 'a38eee811fc5e3fe',
-      'invalid/seo-title-too-long.md': 'f97ccd1db1838a3b',
+      'hostile/disallowed-attribute.md': '6e813dc0a9298722',
+      'hostile/nested-emphasis.md': 'f463e7b4084f6403',
+      'hostile/raw-html.md': '47c868f54d4158ad',
+      'hostile/unknown-component.md': 'ace791d284770582',
+      'hostile/unsafe-url.md': '7c26a31c2755759b',
+      'invalid/broken-internal-link.md': 'af20988cd9fdeacb',
+      'invalid/description-too-long.md': '6e55aaa4b040ce5f',
+      'invalid/image-without-alt.md': '3b36d12bed3bd114',
+      'invalid/missing-translation.md': '944cf9e320293308',
+      'invalid/seo-title-too-long.md': '6bcbabd397d720c1',
     },
   }
 

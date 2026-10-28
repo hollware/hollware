@@ -93,14 +93,14 @@ describe('a document that no Markdown wrote', () => {
     expect(JSON.stringify(document.nodes)).not.toContain('$')
   })
 
-  it('refuses a tree deeper than 100 levels and accepts one of exactly 100', () => {
+  it('refuses a tree deeper than 49 levels, which Comark would cut, and accepts one of exactly 49', () => {
     const nested = (levels: number): unknown => {
       let node: unknown = 'leaf'
       for (let level = 0; level < levels; level++) node = ['em', {}, node]
       return node
     }
-    expect(analyzeDocument(documentOf(nested(100)), OPTIONS).problem).toBeUndefined()
-    expect(analyzeDocument(documentOf(nested(101)), OPTIONS).problem).toBe('nesting')
+    expect(analyzeDocument(documentOf(nested(49)), OPTIONS).problem).toBeUndefined()
+    expect(analyzeDocument(documentOf(nested(50)), OPTIONS).problem).toBe('nesting')
   })
 
   it('refuses a prop that holds a value nested more than 100 levels, or a number JSON cannot hold', () => {
