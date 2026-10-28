@@ -11,7 +11,10 @@ const STARTER = `{
   "assets": { "directory": "node_modules/@hollware/admin/dist/client" },
   "vars": { "HOLLWARE_PUBLIC_URL": "http://localhost:5199" },
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "my-hollware-media" },
+    { "binding": "BACKUPS", "bucket_name": "my-hollware-backups" },
+  ],
   "images": { "binding": "IMAGES" },
   "triggers": { "crons": ["* * * * *"] },
   "queues": {
@@ -51,6 +54,7 @@ describe('hollware doctor', () => {
         'ok    the D1 binding "DB" has 1 migrations',
         'ok    the KV binding "OAUTH_KV" is there',
         'ok    the R2 bucket "MEDIA" keeps the images of the sites',
+        'ok    the R2 bucket "BACKUPS" keeps the daily backups, apart from the images',
         'ok    the Images binding "IMAGES" converts each image once, by the media setting of its site',
         'ok    the cron runs * * * * *',
         'ok    the queue "hollware-events" carries the events of publications',
@@ -84,6 +88,7 @@ describe('hollware doctor', () => {
       '      Add { "binding": "OAUTH_KV" } to kv_namespaces in wrangler.jsonc.',
       'FAIL  there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
       '      Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
+      'ok    there is no R2 bucket "BACKUPS": the daily backups share the bucket of the images (add { "binding": "BACKUPS", "bucket_name": "<name>-backups" } to r2_buckets to keep them apart)',
       'ok    there is no Images binding "IMAGES": images are kept as they come, unconverted (add "images": { "binding": "IMAGES" } to convert them)',
       'FAIL  there is no cron trigger, so scheduled entries are never published',
       '      Add "triggers": { "crons": ["* * * * *"] } to wrangler.jsonc, as the starter has it.',

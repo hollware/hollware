@@ -78,6 +78,8 @@ export interface HollwareEnv {
    */
   readonly MEDIA?: R2Bucket
   readonly IMAGES?: ImagesBinding
+  /** The R2 bucket of the daily backups, apart from the images; without it, they go to MEDIA. */
+  readonly BACKUPS?: R2Bucket
   /**
    * The agents of @hollware/agents (v0.6), over a service binding to their named entrypoint: the
    * cron trigger of Hollware wakes them every ten minutes, so they need no cron trigger of their

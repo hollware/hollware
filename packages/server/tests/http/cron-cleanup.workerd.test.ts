@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers'
 import { afterEach, describe, expect, it } from 'vitest'
 import * as z from 'zod'
 
+import { backupKey } from '../../src/backup/run.ts'
 import { handlers } from '../../src/ops/index.ts'
 import { seedSite, type SeededSite } from '../support/sites.ts'
 import { boot, captureLogs, NOW, restoreLogs, SITE_KEY } from './support.ts'
@@ -224,6 +225,24 @@ describe('the cron trigger, step by step', () => {
       .first<{ id: string; sent_at: string | null }>()
     expect(event?.sent_at).not.toBeNull()
     expect(sent).toEqual([{ site: site.site, id: event?.id }])
+  })
+})
+
+describe('the daily backup of the cron', () => {
+  it('goes to BACKUPS when the Worker binds it, and not to MEDIA', async () => {
+    const worker = boot({ bindings: { MEDIA: env.MEDIA, BACKUPS: env.BACKUPS } })
+    await worker.ready()
+    const key = backupKey(SITE_KEY, NOW.slice(0, 10))
+    await Promise.all([env.BACKUPS.delete(key), env.MEDIA.delete(key)])
+
+    await worker.worker.scheduled(
+      { scheduledTime: Date.parse(NOW), cron: '* * * * *', noRetry: () => undefined },
+      worker.env,
+      worker.ctx,
+    )
+    await worker.settle()
+
+    expect([(await env.BACKUPS.head(key))?.key, await env.MEDIA.head(key)]).toEqual([key, null])
   })
 })
 

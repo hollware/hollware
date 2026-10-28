@@ -10,7 +10,10 @@
   ],
   "send_metrics": false,
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-server-tests" }],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "hollware-server-tests" },
+    { "binding": "BACKUPS", "bucket_name": "hollware-server-tests-backups" },
+  ],
   "d1_databases": [
     {
       "binding": "DB",

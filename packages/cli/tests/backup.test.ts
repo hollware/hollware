@@ -44,8 +44,30 @@ const row = (fields: Record<string, unknown>) => ({
   ...fields,
 })
 
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+const KEPT = `ast_${'a'.repeat(26)}`
+const LOST = `ast_${'b'.repeat(26)}`
+
+const asset = (id: string, alt: string) => ({
+  id,
+  sha256: 'c'.repeat(64),
+  format: 'image/webp',
+  width: 1,
+  height: 1,
+  bytes: 10,
+  widths: [],
+  originalFormat: 'image/png',
+  originalBytes: PNG.length,
+  alt,
+  filename: `${alt}.png`,
+  createdAt: '2026-10-02T00:00:00.000Z',
+})
+
 const BACKUP = {
-  hollware: 'backup/1',
+  hollware: 'backup/2',
   site: 'blog',
   at: '2026-10-18T03:05:00.000Z',
   definition: DEFINITION,
@@ -59,12 +81,35 @@ const BACKUP = {
     row({ locale: 'es', slug: 'borrador', markdown: '---\ntitle: Borrador\n---\n' }),
     row({ slug: 'gone', markdown: '# Gone\n', deletedAt: '2026-10-17T10:00:00.000Z' }),
   ],
+  redirects: [
+    {
+      collection: 'blog',
+      locale: 'en',
+      from: 'hi',
+      to: 'hello',
+      fromPath: '/en/blog/hi/',
+      toPath: '/en/blog/hello/',
+      entryId: 'ent_00000000000000000000000001',
+    },
+    {
+      collection: 'gone',
+      locale: 'en',
+      from: 'a',
+      to: 'b',
+      fromPath: null,
+      toPath: null,
+      entryId: 'ent_00000000000000000000000002',
+    },
+  ],
+  assets: [asset(KEPT, 'kept'), asset(LOST, 'lost')],
 }
 
 function servingBackup(body: unknown, seen: string[] = []) {
   return serve({
     respond: (request) => {
       const path = new URL(request.url).pathname
+      if (path === `/v1/assets/${KEPT}/original`) return new Response(PNG)
+      if (path.startsWith('/v1/assets/')) return new Response(null, { status: 404 })
       if (!path.startsWith('/v1/backups/')) return undefined
       seen.push(`${path} ${request.headers.get('authorization')}`)
       return path === '/v1/backups/2026-10-18'
@@ -103,13 +148,28 @@ describe('hollware backup', () => {
     expect(code).toBe(0)
     expect(seen).toEqual([`/v1/backups/2026-10-18 Bearer ${TOKEN}`])
     const root = join(cwd, 'out')
-    expect(filesOf(root)).toEqual(['blog/en/hello.md', 'blog/es/borrador.md', 'site.json'])
+    expect(filesOf(root)).toEqual([
+      '_assets/assets.json',
+      `_assets/${KEPT}.png`,
+      'blog/en/hello.md',
+      'blog/es/borrador.md',
+      'redirects.json',
+      'site.json',
+    ])
     expect(readFileSync(join(root, 'blog/en/hello.md'), 'utf8')).toBe(
       '---\ntitle: Hello again\n---\n\nEdited.\r\n',
     )
     expect(JSON.parse(readFileSync(join(root, 'site.json'), 'utf8'))).toEqual(DEFINITION)
+    expect(JSON.parse(readFileSync(join(root, 'redirects.json'), 'utf8'))).toEqual([
+      { from: '/en/blog/hi/', to: '/en/blog/hello/', status: 301 },
+    ])
+    expect(readFileSync(join(root, `_assets/${KEPT}.png`))).toEqual(PNG)
+    expect(JSON.parse(readFileSync(join(root, '_assets/assets.json'), 'utf8'))).toEqual({
+      [`${KEPT}.png`]: { alt: 'kept', filename: 'kept.png' },
+    })
     expect(out).toEqual([
-      'Wrote 2 entries of the backup of 2026-10-18 to out, with site.json. "hollware import out" takes them back.',
+      'Wrote 2 entries of the backup of 2026-10-18 to out, with site.json, 1 redirect, 1 image. "hollware import out" takes them back.',
+      `The deployment kept no original of ${LOST}: it is left out.`,
     ])
   })
 
@@ -128,7 +188,13 @@ describe('hollware backup', () => {
 
     expect(code).toBe(0)
     const root = join(cwd, 'out')
-    expect(filesOf(root)).toEqual(['blog/en/hello.md', 'site.json'])
+    expect(filesOf(root)).toEqual([
+      '_assets/assets.json',
+      `_assets/${KEPT}.png`,
+      'blog/en/hello.md',
+      'redirects.json',
+      'site.json',
+    ])
     expect(readFileSync(join(root, 'blog/en/hello.md'), 'utf8')).toBe(
       '---\ntitle: Hello\n---\n\nFirst.\n',
     )

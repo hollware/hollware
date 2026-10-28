@@ -15,7 +15,7 @@ import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
 import { analyticsSourcesOf } from '../analytics/env.ts'
-import { backupsIn } from '../backup/run.ts'
+import { backupsOf } from '../backup/run.ts'
 import { invoke } from '../ops/invoke.ts'
 
 export interface OpsApiOptions {
@@ -99,7 +99,7 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         semantic: semanticOfEnv(c.env),
         analytics: analyticsSourcesOf(c.env, () => options.clock.now()),
         media: mediaOfEnv(c.env),
-        backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
+        backups: backupsOf(c.env),
         ...(options.structure === undefined
           ? {}
           : { structure: options.structure(c.env.DB, c.env.HOLLWARE_SECRET) }),

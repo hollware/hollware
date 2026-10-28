@@ -472,7 +472,7 @@ export const listBackups = defineOperation({
   name: 'list_backups',
   title: 'List the backups of the site',
   description:
-    "Lists the daily backups of the site, newest first: one JSON file a day, made by the cron after 03:00 UTC and kept 30 days in the deployment's R2 bucket, with the definition of the site and the Markdown of every entry. Download one at GET /v1/backups/<date> with a token of an owner, or with hollware backup get, which writes it as files that hollware import takes back. unavailable without the bucket.",
+    "Lists the daily backups of the site, newest first: one JSON file a day, made by the cron after 03:00 UTC and kept 30 days in the deployment's R2 bucket BACKUPS, or MEDIA without it, with the definition of the site, the Markdown of every entry, its redirects and the list of its images. Download one at GET /v1/backups/<date> with a token of an owner, or with hollware backup get, which writes it as files, the images included, that hollware import takes back. unavailable without a bucket.",
   input: z.strictObject({}),
   output: z.object({
     outcome: z.enum(['ok', 'unavailable']),

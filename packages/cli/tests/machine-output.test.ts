@@ -242,6 +242,13 @@ describe('--json', () => {
         fix: 'Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
       },
       {
+        name: 'backups-bucket',
+        ok: true,
+        message:
+          'there is no R2 bucket "BACKUPS": the daily backups share the bucket of the images (add { "binding": "BACKUPS", "bucket_name": "<name>-backups" } to r2_buckets to keep them apart)',
+        fix: '',
+      },
+      {
         name: 'images-binding',
         ok: true,
         message:
