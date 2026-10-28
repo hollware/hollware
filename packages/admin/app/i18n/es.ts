@@ -691,6 +691,14 @@ export const es: Messages = {
     roleChanged: 'Rol cambiado',
     notChanged: 'No se cambió',
     out: (name: string) => `${name} ya no está en este sitio`,
+    revoke: (role: string) => `Revocar la invitación de ${role}`,
+    revokeTitle: '¿Revocar esta invitación?',
+    revokeBody:
+      'Su link deja de funcionar de inmediato. Invita de nuevo a la persona para mandarle otro.',
+    keepIt: 'Conservarla',
+    revokeIt: 'Revocar',
+    revoked: 'Invitación revocada',
+    notRevoked: 'No se revocó',
     notRemoved: 'No se quitó',
   },
   account: {
@@ -804,6 +812,7 @@ export const es: Messages = {
       'member.role': 'Cambió el rol de una persona',
       'member.remove': 'Eliminó a una persona',
       'invitation.create': 'Invitó a una persona',
+      'invitation.revoke': 'Revocó una invitación',
       'invitation.accept': 'Aceptó una invitación',
       'session.sign_in': 'Inició sesión',
       'session.sign_out': 'Cerró sesión',

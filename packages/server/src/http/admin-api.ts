@@ -33,6 +33,7 @@ import {
   passkeySummaries,
   removePasskey,
   renamePasskey,
+  revokeInvitation,
   renameUser,
 } from '../identity/store.ts'
 import { withoutTrailingSlashes } from '../analytics/normalize.ts'
@@ -517,6 +518,26 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         },
         201,
       )
+    }),
+  )
+
+  app.post(
+    '/v1/admin/invitations/:id/revoke',
+    admin('invitation.revoke', async (c, person, note) => {
+      const id = c.req.param('id') ?? ''
+      note.target = { type: 'invitation', id }
+      const revoked = await revokeInvitation(connect(c.env.DB), {
+        site: person.site,
+        id,
+        now: options.clock.now(),
+      })
+      return revoked
+        ? json({ outcome: 'revoked' })
+        : refused(
+            'There is no waiting invitation with that id.',
+            'List the people of the site and pick an invitation that waits.',
+            404,
+          )
     }),
   )
 

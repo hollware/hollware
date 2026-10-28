@@ -213,6 +213,23 @@ export function insertInvitation(invitation: NewInvitation): string {
   return `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
 }
 
+export function parseInvitationId(value: string): string {
+  if (!isId('inv', value)) {
+    throw new UsageError(
+      `invalid invitation id ${shown(value)}: an invitation id is inv_ followed by 26 characters. "hollware invite list" shows them.`,
+    )
+  }
+  return value
+}
+
+export function listInvitations(site: string, now: string): string {
+  return `SELECT id, role, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
+}
+
+export function revokeInvitation(id: string, site: string, now: string): string {
+  return `UPDATE invitations SET expires_at = ${quote(now)}, updated_at = ${quote(now)} WHERE id = ${quote(id)} AND site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} RETURNING id;`
+}
+
 export function listTokens(site: string): string {
   return `SELECT id, label, scopes, expires_at, revoked_at, last_used_at, created_at FROM tokens WHERE site_id = ${quote(site)} ORDER BY created_at, id;`
 }

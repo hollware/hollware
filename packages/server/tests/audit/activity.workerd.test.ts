@@ -213,6 +213,7 @@ describe("the admin's changes of identity", () => {
     const invited = await (
       await call(worker, owner.access, '/v1/admin/invitations', { role: 'author' })
     ).json<{ id: string }>()
+    await call(worker, owner.access, `/v1/admin/invitations/${invited.id}/revoke`, {})
     await call(worker, owner.access, '/v1/admin/people/role', {
       userId: editor.userId,
       role: 'author',
@@ -233,6 +234,7 @@ describe("the admin's changes of identity", () => {
       ['token.create', 'ok', true, 'token', made.id, expect.any(String)],
       ['token.revoke', 'ok', true, 'token', made.id, null],
       ['invitation.create', 'ok', true, 'invitation', invited.id, '{"role":"author","days":7}'],
+      ['invitation.revoke', 'ok', true, 'invitation', invited.id, null],
       ['member.role', 'ok', true, 'user', editor.userId, '{"role":"author"}'],
       ['member.remove', 'ok', true, 'user', editor.userId, null],
       ['session.end_all', 'ok', true, 'user', owner.userId, '{"sessions":1,"adminGrants":1}'],

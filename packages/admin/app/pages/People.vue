@@ -28,6 +28,7 @@ const memberColumns = computed<TableColumn<Member>[]>(() => [
 const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
   { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
   { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
+  { id: 'actions', header: '' },
 ])
 const roleItems = (roles: readonly string[]) =>
   roles.map((value) => ({ label: m.value.roles[value] ?? value, value }))
@@ -63,6 +64,27 @@ async function invite() {
     toast.add({ title: m.value.people.notInvited, description: describe(error), color: 'error' })
   } finally {
     busy.value = false
+  }
+}
+
+const revoking = ref<Invitation | null>(null)
+const revokeOpen = computed({
+  get: () => revoking.value !== null,
+  set: (value: boolean) => {
+    if (!value) revoking.value = null
+  },
+})
+
+async function revoke() {
+  const invitation = revoking.value
+  revoking.value = null
+  if (invitation === null) return
+  try {
+    await api.admin(`invitations/${invitation.id}/revoke`, {})
+    toast.add({ title: m.value.people.revoked, color: 'success' })
+    await load()
+  } catch (error) {
+    toast.add({ title: m.value.people.notRevoked, description: describe(error), color: 'error' })
   }
 }
 
@@ -236,9 +258,30 @@ async function copy() {
             <template #expiresAt-cell="{ row }">{{
               formatDateTime(row.original.expiresAt)
             }}</template>
+            <template #actions-cell="{ row }">
+              <div class="text-right">
+                <UButton
+                  icon="i-lucide-link-2-off"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="m.people.revoke(m.roles[row.original.role] ?? row.original.role)"
+                  @click="revoking = row.original"
+                />
+              </div>
+            </template>
           </DataTable>
         </section>
       </template>
+      <UModal v-model:open="revokeOpen" :title="m.people.revokeTitle">
+        <template #body>
+          <p>{{ m.people.revokeBody }}</p>
+        </template>
+        <template #footer>
+          <UButton :label="m.people.keepIt" variant="ghost" @click="revoking = null" />
+          <UButton :label="m.people.revokeIt" color="error" @click="revoke" />
+        </template>
+      </UModal>
       <UModal v-model:open="removeManyOpen" :title="m.bulk.removeTitle(removingMany.length)">
         <template #body>
           <p>{{ m.bulk.removeBody }}</p>
