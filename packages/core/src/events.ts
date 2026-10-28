@@ -30,11 +30,36 @@ export const siteEvent = z.object({
   kind: z.literal('site.changed'),
 })
 
+/**
+ * A request to publish, made or decided: who asked, what became of it, and the entry. No tag to
+ * purge: nothing on the site changed.
+ */
+export const reviewEvent = z.object({
+  ...base,
+  kind: z.enum(['review.requested', 'review.decided']),
+  review: z.object({
+    id: z.string(),
+    status: z.enum(['pending', 'approved', 'changes_requested', 'rejected', 'cancelled']),
+    requestedBy: z.string().nullable(),
+    note: z.string().nullable(),
+  }),
+  entry: z.object({
+    id: z.string(),
+    collection: z.string(),
+    locale: z.string(),
+    slug: z.string(),
+    translationGroup: z.string().nullable(),
+  }),
+  /** Where a person reads the review in the admin, under the URL of this Hollware. */
+  adminPath: z.string(),
+})
+
 /** Every event a webhook gets. */
-export const hollwareEvent = z.discriminatedUnion('kind', [entryEvent, siteEvent])
+export const hollwareEvent = z.discriminatedUnion('kind', [entryEvent, siteEvent, reviewEvent])
 
 export type EntryEvent = z.infer<typeof entryEvent>
 export type SiteEvent = z.infer<typeof siteEvent>
+export type ReviewEvent = z.infer<typeof reviewEvent>
 export type HollwareEvent = z.infer<typeof hollwareEvent>
 
 /**

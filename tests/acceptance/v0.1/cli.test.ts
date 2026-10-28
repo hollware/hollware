@@ -94,6 +94,8 @@ describe('AC-0.1-10: migrations', () => {
       'publications_immutable',
       'publications_no_delete',
       'publications_no_replace',
+      'reviews_decided_event',
+      'reviews_requested_event',
       'revision_tags_immutable',
       'revision_tags_no_delete',
       'revision_tags_no_replace',

@@ -80,6 +80,77 @@
       },
       "required": ["id", "site", "at", "cacheTags", "kind"],
       "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "adminPath": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        },
+        "cacheTags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "entry": {
+          "additionalProperties": false,
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "locale": {
+              "type": "string"
+            },
+            "slug": {
+              "type": "string"
+            },
+            "translationGroup": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["id", "collection", "locale", "slug", "translationGroup"],
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["review.requested", "review.decided"],
+          "type": "string"
+        },
+        "review": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": ["string", "null"]
+            },
+            "requestedBy": {
+              "type": ["string", "null"]
+            },
+            "status": {
+              "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
+              "type": "string"
+            }
+          },
+          "required": ["id", "status", "requestedBy", "note"],
+          "type": "object"
+        },
+        "site": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "site", "at", "cacheTags", "kind", "review", "entry", "adminPath"],
+      "type": "object"
     }
   ]
 }

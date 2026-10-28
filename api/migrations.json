@@ -22,5 +22,6 @@
   "0020_asset_widths.sql": "866df1508f8416fa2b63d5387aeea7fad4d1c0b48332c2fb82473218ef70b1c8",
   "0021_review_rejected.sql": "75473f89cb03efd1a4a808e36153470d51185f3387d0a4b77b66e1526d0c7a30",
   "0022_revision_code_words.sql": "973d2d959fc2c76c0f37ae3332cf9733dbcf408a2766c720d3280b8795f7e64f",
-  "0023_site_analytics.sql": "1d247a75dbcc92a8aa19674d7cf7d77fddeb6bbc941ddcf242a35fb1145154b2"
+  "0023_site_analytics.sql": "1d247a75dbcc92a8aa19674d7cf7d77fddeb6bbc941ddcf242a35fb1145154b2",
+  "0024_review_events.sql": "78943291fd372a3d4eec3d3ae659bc64ba088caa9d1910eb50c0a32ba15dc4ac"
 }

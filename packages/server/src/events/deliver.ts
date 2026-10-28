@@ -68,7 +68,7 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
     subscribers.push({
       name: 'indexnow',
       async send(payload) {
-        if (payload.kind === 'site.changed' || payload.url === null) return
+        if (!('url' in payload) || payload.url === null) return
         const key = indexNow.key
         const request = new Request(INDEXNOW_ENDPOINT, {
           method: 'POST',

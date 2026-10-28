@@ -62,9 +62,11 @@ export {
   entryEvent,
   hollwareEvent,
   parseHollwareEvent,
+  reviewEvent,
   siteEvent,
   type EntryEvent,
   type HollwareEvent,
+  type ReviewEvent,
   type SiteEvent,
 } from './events.ts'
 export { CHUNK_LIMITS, CHUNKER_VERSION, chunksOf, type Chunk } from './search/chunks.ts'
