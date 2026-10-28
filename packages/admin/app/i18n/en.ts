@@ -24,6 +24,8 @@ export const en = {
   severity: { error: 'error', warning: 'warning' },
   nav: {
     breadcrumb: 'Where you are',
+    admin: 'Admin',
+    skip: 'Skip to content',
     siteOfPage: (site: string) => `Site ${site}: switch to another`,
     site: 'Site',
     newSite: 'New site',

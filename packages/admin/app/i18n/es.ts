@@ -27,6 +27,8 @@ export const es: Messages = {
   severity: { error: 'error', warning: 'advertencia' },
   nav: {
     breadcrumb: 'Dónde estás',
+    admin: 'Administración',
+    skip: 'Saltar al contenido',
     siteOfPage: (site: string) => `Sitio ${site}: cambiar a otro`,
     site: 'Sitio',
     newSite: 'Crear sitio',

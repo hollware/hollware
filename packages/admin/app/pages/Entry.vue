@@ -659,7 +659,13 @@ const stateLabel = computed(
 </script>
 
 <template>
-  <UDashboardPanel id="entry" :ui="{ body: 'p-0 sm:p-0' }">
+  <UDashboardPanel
+    id="main"
+    role="main"
+    tabindex="-1"
+    class="focus:outline-none"
+    :ui="{ body: 'p-0 sm:p-0' }"
+  >
     <template #header>
       <UDashboardNavbar
         :title="entry === null ? m.entry.title : titleOf(entry)"
@@ -802,6 +808,8 @@ const stateLabel = computed(
   <UDashboardPanel
     v-if="entry !== null && panelOpen"
     id="entry-panel"
+    role="complementary"
+    :aria-label="panel === 'history' ? m.entry.tabs.history : m.entry.properties"
     :default-size="26"
     :min-size="20"
     :max-size="40"
