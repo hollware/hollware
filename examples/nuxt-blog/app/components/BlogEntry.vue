@@ -9,6 +9,12 @@ if (error.value !== undefined && error.value !== null) {
 useHead({
   htmlAttrs: { lang: props.locale },
   title: () => String(data.value?.entry?.frontmatter['title'] ?? ''),
+  meta: [
+    {
+      name: 'description',
+      content: () => String(data.value?.entry?.frontmatter['description'] ?? ''),
+    },
+  ],
 })
 </script>
 

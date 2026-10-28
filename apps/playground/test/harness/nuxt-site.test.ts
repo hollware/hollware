@@ -59,6 +59,9 @@ describe('a Nuxt site with @hollware/nuxt', () => {
 
     expect(page.status).toBe(200)
     expect(html).toContain('<title>From draft to published</title>')
+    expect(html).toContain(
+      '<meta name="description" content="The steps between a saved draft and a page that readers can open.">',
+    )
     expect(html).toMatch(/<h1[^>]*>From draft to published<\/h1>/)
     expect(html).toMatch(/<h1 id="from-draft-to-published"[^>]*>From draft to published<\/h1>/)
     expect(html).toContain('<meta name="generator" content="Hollware">')
@@ -69,6 +72,11 @@ describe('a Nuxt site with @hollware/nuxt', () => {
   it('lists the published entries, and not the draft', async () => {
     const html = await (await nuxtFetch(server, '/en/')).text()
 
+    expect(html).toMatch(/<html[^>]* lang="en"/)
+    expect(html).toContain('<title>Blog · Hollware demo</title>')
+    expect(html).toContain(
+      '<meta name="description" content="This blog is a Nuxt site that reads Hollware over a service binding.',
+    )
     expect(html).toContain('href="/en/blog/from-draft-to-published/"')
     expect(html).not.toContain('markdown-as-source-of-truth')
   })
