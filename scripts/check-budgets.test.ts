@@ -71,6 +71,7 @@ describe('budgets.json', () => {
       'comark',
       '@comark/html',
       '@simplewebauthn/server',
+      '@modelcontextprotocol/server',
     ])
   })
 

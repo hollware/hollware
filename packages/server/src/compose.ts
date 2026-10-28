@@ -7,7 +7,7 @@ import {
 import manifest from '../package.json' with { type: 'json' }
 import { createGateway } from './http/index.ts'
 import type { HollwareEnv, HollwareWorker } from './index.ts'
-import { createMcpEndpoint } from './mcp/index.ts'
+import type { McpEndpoint } from './mcp/types.ts'
 import type { Handlers } from './ops/types.ts'
 import type { Actor, Clock } from './ports.ts'
 import { connect } from './db/d1.ts'
@@ -61,7 +61,15 @@ export function createHollwareWith(
   const { sites } = registry
   const refresh = (db: D1Database, options?: { readonly force?: boolean }) =>
     registry.refresh(db, options)
-  const mcp = createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog })
+  let endpoint: Promise<McpEndpoint> | undefined
+  const mcp: McpEndpoint = {
+    async fetch(request, call) {
+      endpoint ??= import('./mcp/endpoint.ts').then(({ createMcpEndpoint }) =>
+        createMcpEndpoint({ handlers, serverInfo: SERVER_INFO, log: writeLog }),
+      )
+      return (await endpoint).fetch(request, call)
+    },
+  }
   const deliveryDeps = (env: HollwareEnv, site: ResolvedSite): DeliveryDeps => ({
     db: connect(env.DB),
     site,
