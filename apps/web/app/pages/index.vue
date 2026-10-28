@@ -33,10 +33,12 @@ const benefits = computed(() => {
 const different = computed(() => {
   const words = m.value.home.different.items
   return [
-    { ...words.agents, description: words.agents.description(OPERATIONS.length) },
-    words.rules,
-    words.operate,
+    words.fix,
+    words.review,
+    words.markdown,
     words.reads,
+    words.rules,
+    { ...words.agents, description: words.agents.description(OPERATIONS.length) },
   ]
 })
 
@@ -199,6 +201,26 @@ const shaping = computed(() =>
     </UPageHero>
 
     <UPageSection
+      :headline="m.home.different.headline"
+      :title="m.home.different.title"
+      :description="m.home.different.description"
+    >
+      <div
+        class="grid gap-px overflow-hidden rounded-lg border border-default bg-(--ui-border) sm:grid-cols-2"
+      >
+        <div
+          v-for="(item, index) in different"
+          :key="item.title"
+          class="flex flex-col gap-3 bg-default p-6 sm:p-8"
+        >
+          <span class="font-mono text-sm text-secondary">0{{ index + 1 }}</span>
+          <h3 class="text-lg font-semibold text-balance text-highlighted">{{ item.title }}</h3>
+          <p class="text-muted">{{ item.description }}</p>
+        </div>
+      </div>
+    </UPageSection>
+
+    <UPageSection
       id="how-it-works"
       :headline="m.home.flow.headline"
       :title="m.home.flow.title"
@@ -247,26 +269,6 @@ const shaping = computed(() =>
       :description="m.home.cases.description"
     >
       <HomeUseCases />
-    </UPageSection>
-
-    <UPageSection
-      :headline="m.home.different.headline"
-      :title="m.home.different.title"
-      :description="m.home.different.description"
-    >
-      <div
-        class="grid gap-px overflow-hidden rounded-lg border border-default bg-(--ui-border) sm:grid-cols-2"
-      >
-        <div
-          v-for="(item, index) in different"
-          :key="item.title"
-          class="flex flex-col gap-3 bg-default p-6 sm:p-8"
-        >
-          <span class="font-mono text-sm text-secondary">0{{ index + 1 }}</span>
-          <h3 class="text-lg font-semibold text-balance text-highlighted">{{ item.title }}</h3>
-          <p class="text-muted">{{ item.description }}</p>
-        </div>
-      </div>
     </UPageSection>
 
     <UPageSection

@@ -81,7 +81,7 @@ export const en = {
         yours: {
           title: 'Your content stays yours',
           description:
-            'Markdown goes in and comes out byte for byte. Export it at any time, and run it on your own account under the MIT license.',
+            'Export every entry as Markdown at any time, and run Hollware on your own account under the MIT license.',
         },
         free: {
           title: 'Free to start',
@@ -96,20 +96,30 @@ export const en = {
       description:
         'Hollware was designed from the first line for a world where most writes come from an agent and a person has the last word.',
       items: {
+        fix: {
+          title: 'Every refusal carries its fix',
+          description:
+            'A write that breaks a rule of its collection comes back in milliseconds with what to change, so the agent fixes its own draft before a person spends time on it.',
+        },
+        review: {
+          title: 'Review with a diff, in every install',
+          description:
+            'An agent without the right to publish asks for review. A person reads the diff of the revision, sees it on the site, and approves it or asks for changes.',
+        },
+        markdown: {
+          title: 'Markdown in, the same bytes out',
+          description:
+            'What an agent or a person writes is kept byte for byte, with every revision of it. Nothing turns it into a format of Hollware’s: you export it as it was written.',
+        },
         agents: {
-          title: 'Agents are first-class users',
+          title: 'Scopes on every tool',
           description: (tools: number) =>
-            `MCP is the main door, not a plugin: ${tools} tools, scopes on each of them, OAuth or personal tokens, and errors that say how to fix them.`,
+            `${tools} MCP tools, each with the scopes it needs. A personal token sees only the tools it may call, and every error says how to fix it.`,
         },
         rules: {
           title: 'The rules live with the content',
           description:
             'Collections, fields and rules are data, not code. Change them in the admin or over MCP with no deploy, and an agent learns them with one call.',
-        },
-        operate: {
-          title: 'Nothing to operate',
-          description:
-            'No server, no container and no database to patch. It is one Worker on your account, and Cloudflare runs it in every region.',
         },
         reads: {
           title: 'Sites read it without a network hop',
