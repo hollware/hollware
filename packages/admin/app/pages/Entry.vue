@@ -19,6 +19,7 @@ import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
+import { useNarrow } from '../lib/narrow.ts'
 import { usePageTitle } from '../lib/title.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
@@ -63,7 +64,12 @@ let pendingAt: string | undefined
 
 const source = computed(() => lossy.value || route.query['view'] === 'markdown')
 const panel = computed(() => (route.query['panel'] === 'history' ? 'history' : 'properties'))
-const panelOpen = computed(() => route.query['panel'] !== 'none')
+const narrow = useNarrow()
+const panelOpen = computed(() =>
+  narrow.value
+    ? route.query['panel'] === 'properties' || route.query['panel'] === 'history'
+    : route.query['panel'] !== 'none',
+)
 
 function setQuery(key: string, value: string | null) {
   const query = { ...route.query }
@@ -523,10 +529,9 @@ function toggleSource() {
 }
 
 function showPanel(next: 'properties' | 'history') {
-  setQuery(
-    'panel',
-    panelOpen.value && panel.value === next ? 'none' : next === 'history' ? 'history' : null,
-  )
+  const closing = panelOpen.value && panel.value === next
+  if (narrow.value) setQuery('panel', closing ? null : next)
+  else setQuery('panel', closing ? 'none' : next === 'history' ? 'history' : null)
 }
 
 defineShortcuts({
@@ -664,6 +669,7 @@ const stateLabel = computed(
     role="main"
     tabindex="-1"
     class="focus:outline-none"
+    :class="entry !== null && panelOpen ? 'max-sm:hidden' : undefined"
     :ui="{ body: 'p-0 sm:p-0' }"
   >
     <template #header>
@@ -675,7 +681,7 @@ const stateLabel = computed(
           <UDashboardSidebarCollapse />
           <nav
             :aria-label="m.nav.breadcrumb"
-            class="flex min-w-0 items-center gap-1 text-sm text-muted"
+            class="flex min-w-0 items-center gap-1 text-sm text-muted max-sm:hidden"
           >
             <ULink to="/entries" class="hover:text-highlighted">{{ m.nav.entries }}</ULink>
             <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
@@ -830,8 +836,19 @@ const stateLabel = computed(
             variant="link"
             size="sm"
             @update:model-value="
-              (value) => setQuery('panel', value === 'history' ? 'history' : null)
+              (value) =>
+                setQuery('panel', value === 'history' ? 'history' : narrow ? 'properties' : null)
             "
+          />
+        </template>
+        <template #right>
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            class="sm:hidden"
+            :aria-label="m.entry.closePanel"
+            @click="showPanel(panel)"
           />
         </template>
       </UDashboardNavbar>
@@ -938,6 +955,8 @@ const stateLabel = computed(
                 color="warning"
                 variant="outline"
                 icon="i-lucide-languages"
+                class="max-w-full"
+                :ui="{ label: 'whitespace-normal' }"
               />
             </nav>
           </dd>

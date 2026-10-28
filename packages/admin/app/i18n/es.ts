@@ -260,6 +260,7 @@ export const es: Messages = {
   },
   entry: {
     properties: 'Propiedades',
+    closePanel: 'Cerrar el panel',
     more: 'Más acciones',
     saving: 'Guardando…',
     savedState: 'Guardado',

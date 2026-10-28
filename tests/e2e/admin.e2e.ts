@@ -264,6 +264,39 @@ test('the owner who changes an entry that waits for review is asked first, and t
       .getByRole('heading', { name: 'Hola mundo, de Bea', level: 2 }),
   ).toBeVisible()
 
+  await owner.setViewportSize({ width: 390, height: 844 })
+  const review = owner.getByRole('region', { name: 'The review' })
+  const reviewTitle = await review
+    .getByRole('heading', { name: 'Hola mundo, de Bea', level: 2 })
+    .boundingBox()
+  expect(reviewTitle?.width ?? 0).toBeGreaterThan(300)
+  await expect(review.locator('.cm-mergeView')).toHaveCount(0)
+  await expect(review.locator('.cm-editor')).toHaveCount(1)
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  const publish = owner.getByRole('button', { name: 'Publish', exact: true })
+  await expect(publish).toBeVisible()
+  await expect(owner.getByRole('complementary')).toHaveCount(0)
+  await expect(owner.getByRole('navigation', { name: 'Where you are' })).toBeHidden()
+  const [title, button] = [
+    await owner.getByRole('heading', { level: 1 }).boundingBox(),
+    await publish.boundingBox(),
+  ]
+  expect(
+    title !== null &&
+      button !== null &&
+      title.x < button.x + button.width &&
+      button.x < title.x + title.width &&
+      title.y < button.y + button.height &&
+      button.y < title.y + title.height,
+  ).toBe(false)
+  await owner.getByRole('button', { name: 'Properties' }).click()
+  await expect(owner.getByRole('complementary', { name: 'Properties' })).toBeVisible()
+  await expect(publish).toBeHidden()
+  await owner.getByRole('button', { name: 'Close the panel' }).click()
+  await expect(owner.getByRole('complementary')).toHaveCount(0)
+  await expect(publish).toBeVisible()
+  await owner.setViewportSize({ width: 1280, height: 720 })
+
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await writeMarkdown(owner, post('Hola mundo, otra vez', 'hello-world'))
   await held.getByRole('button', { name: 'Save and cancel the request' }).click()

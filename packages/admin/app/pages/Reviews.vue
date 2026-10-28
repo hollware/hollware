@@ -475,7 +475,9 @@ defineShortcuts(
             :aria-label="m.reviews.back"
             @click="chosen = null"
           />
-          <h2 class="min-w-0 flex-1 truncate font-semibold">{{ titleOfReview(chosen) }}</h2>
+          <h2 class="min-w-0 flex-1 truncate font-semibold max-sm:order-first max-sm:basis-full">
+            {{ titleOfReview(chosen) }}
+          </h2>
           <UButton
             :label="m.reviews.askChanges"
             color="neutral"
@@ -484,7 +486,7 @@ defineShortcuts(
             :disabled="busy"
             @click="noteOpen = true"
           >
-            <template #trailing><UKbd value="r" /></template>
+            <template #trailing><UKbd value="r" class="max-sm:hidden" /></template>
           </UButton>
           <UButton
             :label="m.reviews.approve"
@@ -493,7 +495,7 @@ defineShortcuts(
             :loading="busy"
             @click="approve()"
           >
-            <template #trailing><UKbd value="a" /></template>
+            <template #trailing><UKbd value="a" class="max-sm:hidden" /></template>
           </UButton>
         </div>
         <div class="space-y-6 px-4 py-6 sm:px-6">

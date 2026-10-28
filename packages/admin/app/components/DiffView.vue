@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { markdown } from '@codemirror/lang-markdown'
-import { MergeView } from '@codemirror/merge'
+import { MergeView, unifiedMergeView } from '@codemirror/merge'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
+import { useNarrow } from '../lib/narrow.ts'
 import { theme } from './editor-theme.ts'
 
 const props = defineProps<{
@@ -16,7 +17,8 @@ const props = defineProps<{
 
 const host = ref<HTMLElement | null>(null)
 const m = useMessages()
-let view: MergeView | null = null
+const narrow = useNarrow()
+let view: MergeView | EditorView | null = null
 
 const band = {
   display: 'flex',
@@ -56,6 +58,25 @@ const readOnly = [
 function mount() {
   view?.destroy()
   if (host.value === null) return
+  if (narrow.value) {
+    view = new EditorView({
+      doc: props.modified,
+      extensions: [
+        readOnly,
+        unifiedMergeView({
+          original: props.original,
+          mergeControls: false,
+          collapseUnchanged: { margin: 3, minSize: 6 },
+        }),
+        EditorState.phrases.of({ '$ unchanged lines': m.value.editor.unchangedLines }),
+        EditorView.contentAttributes.of({
+          'aria-label': props.modifiedLabel ?? m.value.editor.asked,
+        }),
+      ],
+      parent: host.value,
+    })
+    return
+  }
   view = new MergeView({
     a: {
       doc: props.original,
@@ -84,7 +105,7 @@ function mount() {
 
 onMounted(mount)
 onBeforeUnmount(() => view?.destroy())
-watch(() => [props.original, props.modified], mount)
+watch(() => [props.original, props.modified, narrow.value], mount)
 </script>
 
 <template>

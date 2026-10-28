@@ -247,6 +247,7 @@ export const en = {
   },
   entry: {
     properties: 'Properties',
+    closePanel: 'Close the panel',
     more: 'More actions',
     saving: 'Saving…',
     savedState: 'Saved',
