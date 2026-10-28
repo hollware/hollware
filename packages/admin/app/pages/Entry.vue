@@ -192,6 +192,15 @@ async function load() {
   verdict.value = read.entry.verdict
   saveState.value = 'saved'
   overrideReview.value = false
+  if (me.value === null) {
+    await new Promise<void>((resolve) => {
+      const stop = watch(me, (value) => {
+        if (value === null) return
+        stop()
+        resolve()
+      })
+    })
+  }
   restored.value = restoreOf(
     copyKey.value === null ? null : readWorkingCopy(storage, copyKey.value),
     { version: read.entry.version, markdown: saved.value },
@@ -287,6 +296,8 @@ watch(text, (markdown) => {
   clearTimeout(autosave)
   clearTimeout(validation)
   if (markdown === saved.value) {
+    if (saveState.value === 'unsaved') saveState.value = 'saved'
+    firstChange = null
     if (
       copyKey.value !== null &&
       entry.value !== null &&

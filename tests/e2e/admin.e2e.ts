@@ -183,6 +183,9 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
   await owner.waitForTimeout(600)
   expect(await keptCopies(owner)).toEqual([])
   await owner.getByRole('button', { name: 'Edit visually' }).click()
+  await owner.waitForTimeout(600)
+  expect(await keptCopies(owner)).toEqual([])
+  await expect(owner.getByRole('status').filter({ hasText: /^\s*Saved\s*$/ })).toBeVisible()
 
   await owner.evaluate(
     ([name, markdown, version]) =>
@@ -197,6 +200,7 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
   await owner.getByRole('button', { name: 'Discard', exact: true }).click()
   await expect(restored).toBeHidden()
   await expect(body).not.toContainText('Four.')
+  await owner.waitForTimeout(600)
   expect(await keptCopies(owner)).toEqual([])
 
   await owner.evaluate(
@@ -204,9 +208,14 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
       localStorage.setItem(String(name), JSON.stringify({ markdown, version })),
     [key, `${copy.markdown.trimEnd()} Five.\n`, copy.version],
   )
+  await owner.route('**/v1/admin/me', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
+    await route.continue()
+  })
   await owner.reload()
   const offered = owner.getByText(/^This browser kept changes made to version \d+/)
   await expect(offered).toBeVisible()
+  await owner.unroute('**/v1/admin/me')
   await expect(body).not.toContainText('Five.')
   expect(await keptCopies(owner)).toHaveLength(1)
   const elsewhere = await browser.newContext({
