@@ -17,6 +17,8 @@ export default defineEventHandler(async (event) => {
       (doc) => `- [${doc.title}](https://hollware.com/docs/${doc.slug}.md): ${doc.description}`,
     ),
     '- [MCP tools](https://hollware.com/reference/mcp-tools.md): every tool of the MCP server, its scopes and its input schema',
+    '- [Read API](https://hollware.com/reference/read-api.md): every endpoint of /v1, what it answers and its parameters',
+    '- [Webhook events](https://hollware.com/reference/events.md): every event a webhook gets, its fields, and how to verify it',
     '',
   ]
   setResponseHeader(event, 'content-type', 'text/plain; charset=utf-8')

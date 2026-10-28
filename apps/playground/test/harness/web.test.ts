@@ -99,6 +99,28 @@ describe('hollware.com', () => {
     )
   })
 
+  it('generates the references of the read API and of the webhook events, as pages and as Markdown', async () => {
+    const api = await (await webFetch(server, '/reference/read-api/')).text()
+    const events = await (await webFetch(server, '/reference/events/')).text()
+    const apiMarkdown = await (await webFetch(server, '/reference/read-api.md')).text()
+    const eventsMarkdown = await (await webFetch(server, '/reference/events.md')).text()
+    const llms = await (await webFetch(server, '/llms.txt')).text()
+
+    expect(api).toContain('id="get_entry"')
+    expect(api).toContain('/v1/{collection}/{locale}/{slug}')
+    expect(api).toContain('href="/reference/events/"')
+    expect(apiMarkdown.match(/^## GET /gm)).toHaveLength(6)
+    expect(apiMarkdown).toContain('## GET /v1/search')
+    expect(events).toContain('id="review.requested"')
+    expect(events).toContain('hollware-signature')
+    expect(eventsMarkdown).toContain('## review.requested, review.decided')
+    expect(eventsMarkdown).toContain(
+      '- `adminPath` (string): Where a person reads the review in the admin, under the URL of this Hollware.',
+    )
+    expect(llms).toContain('- [Read API](https://hollware.com/reference/read-api.md)')
+    expect(llms).toContain('- [Webhook events](https://hollware.com/reference/events.md)')
+  })
+
   it('lists every page for language models, in reading order', async () => {
     const llms = await webFetch(server, '/llms.txt')
     const text = await llms.text()

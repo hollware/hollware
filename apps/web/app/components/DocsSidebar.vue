@@ -12,7 +12,11 @@ const groups = computed(() =>
         .filter((page) => page.section === section)
         .map((page) => ({ label: page.title, to: page.to })),
       ...(section === 'reference'
-        ? [{ label: m.value.tools.title, to: to('/reference/mcp-tools/') }]
+        ? [
+            { label: m.value.tools.title, to: to('/reference/mcp-tools/') },
+            { label: m.value.readApi.title, to: to('/reference/read-api/') },
+            { label: m.value.events.title, to: to('/reference/events/') },
+          ]
         : []),
     ],
   })).filter((group) => group.items.length > 0),
