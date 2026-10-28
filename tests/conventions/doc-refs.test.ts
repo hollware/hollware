@@ -5,6 +5,7 @@ import { DOC_REF_FILES, exceptionValues } from '../guards/exceptions.ts'
 import { describeViolations } from '../guards/types.ts'
 import { file } from '../support/fixtures.ts'
 import { readTextUnlessBinary, REPO_ROOT, repoFiles } from '../support/repo.ts'
+import { RETIRED_THREATS, THREATS } from '../security/threats.ts'
 
 const MIGRATIONS = 'packages/server/migrations'
 
@@ -36,7 +37,14 @@ describe('references to removed documents', { timeout: 60_000 }, () => {
     const frozen = shippedMigrations()
     expect(frozen).toContain(`${MIGRATIONS}/0000_init.sql`)
     expect(
-      describeViolations(checkDocRefs({ files, allowed: exceptionValues(DOC_REF_FILES), frozen })),
+      describeViolations(
+        checkDocRefs({
+          files,
+          allowed: exceptionValues(DOC_REF_FILES),
+          frozen,
+          threats: [...THREATS.map((threat) => threat.id), ...RETIRED_THREATS],
+        }),
+      ),
     ).toEqual([])
   })
 
@@ -53,6 +61,7 @@ describe('references to removed documents', { timeout: 60_000 }, () => {
           ],
           allowed: ['**/CHANGELOG.md'],
           frozen: ['packages/server/migrations/0000_init.sql'],
+          threats: [`${'T'}-41`],
         }).map((violation) => violation.message),
       ).toEqual([
         `line 3 cites "${adr}", a document that no longer exists: say what it says, or drop it`,
@@ -64,9 +73,27 @@ describe('references to removed documents', { timeout: 60_000 }, () => {
       ])
     })
 
+    it('takes the id of a threat of the registry, and reports one it has not', () => {
+      expect(
+        checkDocRefs({
+          files: [file('README.md', `Both ${'T'}-41 and ${'T'}-42.\n`)],
+          allowed: [],
+          frozen: [],
+          threats: [`${'T'}-41`],
+        }).map((violation) => violation.message),
+      ).toEqual([
+        `line 1 cites "${'T'}-42", a document that no longer exists: say what it says, or drop it`,
+      ])
+    })
+
     it('reports an allowed glob that no file needs any more', () => {
       expect(
-        checkDocRefs({ files: [file('PLAN.md', '# Plan\n')], allowed: ['PLAN.md'], frozen: [] }),
+        checkDocRefs({
+          files: [file('PLAN.md', '# Plan\n')],
+          allowed: ['PLAN.md'],
+          frozen: [],
+          threats: [],
+        }),
       ).toEqual([
         {
           rule: 'doc-refs/stale-exception',
