@@ -1370,4 +1370,26 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-115',
+    area: 'Content',
+    threat:
+      'Someone rewrites who did what in a site, or erases a person who is still a member, through the anonymization that takes the name of a former member out of the rows append-only keeps',
+    mitigation:
+      'Only an owner, in the admin, and only a person removed from the site and no member of it; the triggers let a row change only while that anonymization is open, only to name the former person in place of that one, and nothing else of the row; the line in the activity log names no one',
+    guards: [
+      {
+        file: 'packages/server/tests/http/account.workerd.test.ts',
+        test: 'is anonymized by an owner once removed, listed until then, and the apps they had end',
+      },
+      {
+        file: 'packages/server/tests/identity/anonymize.workerd.test.ts',
+        test: 'names the former person wherever the site named them, keeps what they did, and forgets them once no site keeps them',
+      },
+      {
+        file: 'packages/server/tests/append-only.workerd.test.ts',
+        test: 'let an anonymization that is open name the former person where a line named the one it anonymizes, and change nothing else',
+      },
+    ],
+  },
 ]

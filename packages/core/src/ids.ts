@@ -3,6 +3,7 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 /** The kinds of ids and their prefixes. A new kind adds its prefix here. */
 export const ID_PREFIXES = {
   analytics: 'ana',
+  anonymization: 'anm',
   asset: 'ast',
   auditLine: 'aud',
   challenge: 'chl',
@@ -30,6 +31,9 @@ export const ID_PREFIXES = {
 } as const
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES]
+
+/** Who a site names where it named a person its owner anonymized: who they were is gone. */
+export const FORMER_PERSON = 'usr_00000000000000000000000000'
 
 const LARGEST_TIME = 2 ** 48 - 1
 

@@ -1,5 +1,6 @@
 import type { Messages } from '../i18n/en.ts'
 import { entryPath, titleOf } from './entries.ts'
+import { personName } from './people.ts'
 import { settingsGroups } from './settings.ts'
 
 export interface Command {
@@ -139,7 +140,9 @@ export function commandGroups(input: CommandInput, m: Messages): CommandGroup[] 
       label: m.search.waiting,
       items: input.waiting.map((review) => ({
         label: titleOf(review.entry),
-        suffix: m.search.askedBy(review.requestedByName ?? review.requestedBy),
+        suffix: m.search.askedBy(
+          personName(review.requestedBy, review.requestedByName ?? null, m.people.formerPerson),
+        ),
         icon: 'i-lucide-inbox',
         to: '/reviews',
       })),

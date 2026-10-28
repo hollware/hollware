@@ -6,6 +6,7 @@ import { connect } from '../../src/db/d1.ts'
 import { addPasskey, createSession } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { callRaw, INPUTS } from '../mcp/support.ts'
+import { adminToken } from './admin-session.ts'
 import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from './support.ts'
 
 const REDIRECT = 'https://agent.example.com/callback'
@@ -447,5 +448,43 @@ describe("a person's name and the labels of their passkeys", () => {
     expect(me2.user.name).toBe('Ada Lovelace')
     expect(await nameOf(other.userId)).toBe(before)
     expect(await auditOf(me.userId, 'account.rename')).toEqual([['ok', null, me.userId]])
+  })
+})
+
+describe('a former member', () => {
+  it('is anonymized by an owner once removed, listed until then, and the apps they had end', async () => {
+    const worker = boot({ config: WITH_REGISTRATION })
+    const owner = await person(worker)
+    const leaving = await person(worker)
+    const app = await connectApp(worker, leaving.cookie, 'Their agent')
+    const editor = await adminToken(worker, 'editor')
+    const former = async () =>
+      (
+        await (
+          await call(worker, owner.access, '/v1/admin/people')
+        ).json<{ former: { id: string; name: string | null }[] }>()
+      ).former
+    const anonymize = (token: string) =>
+      call(worker, token, '/v1/admin/people/anonymize', { userId: leaving.userId })
+
+    const early = await anonymize(owner.access)
+    const listedEarly = await former()
+    await call(worker, owner.access, '/v1/admin/people/remove', { userId: leaving.userId })
+    const listed = await former()
+    const refused = await anonymize(editor)
+    const done = await anonymize(owner.access)
+    const again = await anonymize(owner.access)
+
+    expect([early.status, refused.status, done.status, again.status]).toEqual([409, 403, 200, 404])
+    expect(await done.json()).toEqual({ outcome: 'gone' })
+    expect(listedEarly.map((one) => one.id)).not.toContain(leaving.userId)
+    expect(listed).toContainEqual({ id: leaving.userId, name: 'Test user' })
+    expect((await former()).map((one) => one.id)).not.toContain(leaving.userId)
+    expect(await refreshStatus(worker, app.clientId, app.refresh)).toBe(400)
+    expect(await auditOf(owner.userId, 'member.anonymize')).toEqual([
+      ['failed', 'conflict', null],
+      ['ok', null, null],
+      ['failed', 'not_found', null],
+    ])
   })
 })

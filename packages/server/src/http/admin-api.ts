@@ -17,6 +17,7 @@ import { and, desc, eq, gt, isNull } from 'drizzle-orm'
 import type { Context, Hono } from 'hono'
 import { insufficientScope } from '../auth/index.ts'
 import { isRole, ROLE_SCOPES } from '../auth/roles.ts'
+import { anonymizePerson, formerPeople } from '../identity/anonymize.ts'
 import { removeMember, setRole, type PeopleChange } from '../identity/people.ts'
 import type { Principal, RequestPrincipal } from '../auth/types.ts'
 import type { AuditAction } from '@hollware/core'
@@ -452,7 +453,11 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           ),
         )
         .orderBy(desc(invitations.createdAt))
-      return json({ people, invitations: pending })
+      return json({
+        people,
+        invitations: pending,
+        former: await formerPeople(c.env.DB, person.site),
+      })
     }),
   )
 
@@ -504,6 +509,42 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       }
       note.target = { type: 'user', id: userId }
       return answerOf(await removeMember(c.env.DB, { site: person.site, userId }))
+    }),
+  )
+
+  app.post(
+    '/v1/admin/people/anonymize',
+    admin('member.anonymize', async (c, person) => {
+      const userId = (await body(c))['userId']
+      if (typeof userId !== 'string') {
+        return refused('Give the userId of a former member.', 'Send { "userId": "usr_…" }.')
+      }
+      const outcome = await anonymizePerson(c.env.DB, {
+        site: person.site,
+        userId,
+        now: options.clock.now().toISOString(),
+      })
+      if (outcome === 'member') {
+        return refused(
+          'That person is still a member of this site.',
+          'Remove them from the site first, then anonymize them.',
+          409,
+        )
+      }
+      if (outcome === 'not_found') {
+        return refused(
+          'No former member of this site has that id.',
+          'Pick someone from the former members of the site.',
+          404,
+        )
+      }
+      const { helpers } = await grantsApi(c)
+      for (const grant of await grantsOf(helpers, userId)) {
+        if (outcome === 'gone' || siteOf(grant.metadata) === person.site) {
+          await helpers.revokeGrant(grant.id, userId)
+        }
+      }
+      return json({ outcome })
     }),
   )
 

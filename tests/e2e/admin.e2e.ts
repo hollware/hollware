@@ -472,6 +472,48 @@ test('the owner revokes an invitation, whose link then works no more', async ({ 
   )
 })
 
+test('the owner anonymizes a person they removed, whose name then leaves what they wrote', async ({
+  browser,
+}) => {
+  await owner.goto('/admin/settings/people')
+  await owner.getByRole('button', { name: 'Invite' }).click()
+  const link = (await owner.getByText(/\/setup#invitation=/).textContent()) ?? ''
+  const leaving = await (await browser.newContext({ baseURL: target().url })).newPage()
+  await setUp(leaving, link.trim(), 'Carla')
+  await leaving.goto('/admin/entries/new')
+  await leaving.getByRole('combobox', { name: 'Locale' }).click()
+  await leaving.getByRole('option', { name: 'en' }).click()
+  await leaving.getByLabel('Title').fill('A post that stays')
+  await leaving.getByLabel('Slug').fill('a-post-that-stays')
+  await leaving.getByRole('button', { name: 'Create the draft' }).click()
+  await writeMarkdown(leaving, post('A post that stays', 'a-post-that-stays'))
+  await saveNow(leaving)
+
+  await owner.goto('/admin/settings/people')
+  await owner
+    .getByRole('region', { name: 'Members' })
+    .getByRole('button', { name: 'Remove Carla' })
+    .click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click()
+  await expect(owner.getByText('Carla is out of this site', { exact: true }).first()).toBeVisible()
+  const former = owner.getByRole('region', { name: 'Former members' })
+  await expect(former).toContainText('Carla')
+  await expectAccessible(owner)
+  await former.getByRole('button', { name: 'Anonymize Carla' }).click()
+  await expect(owner.getByRole('dialog')).toContainText('Nothing brings their name back.')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Anonymize', exact: true }).click()
+  await expect(owner.getByText('Carla is anonymized', { exact: true }).first()).toBeVisible()
+  await expect(former).toHaveCount(0)
+
+  await owner.goto('/admin/entries/blog/en/a-post-that-stays?panel=history')
+  const history = owner.getByRole('list', { name: 'History of the entry' })
+  await expect(history.getByRole('button').first()).toContainText('A former member')
+  await expect(history).not.toContainText('Carla')
+  await owner.goto('/admin/settings/activity')
+  await expect(owner.getByRole('row', { name: /Anonymized a former member/ }).first()).toBeVisible()
+  await expect(owner.getByRole('row', { name: /A former member/ }).first()).toBeVisible()
+})
+
 test('the owner schedules the end of an entry, unpublishes it, then schedules it', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()

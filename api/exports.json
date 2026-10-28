@@ -194,6 +194,7 @@
       "EntryRef": "type",
       "ErrorCode": "type",
       "ExtractedContent": "type",
+      "FORMER_PERSON": "value",
       "FormattedMarkdown": "type",
       "Heading": "type",
       "HollwareConfig": "type",

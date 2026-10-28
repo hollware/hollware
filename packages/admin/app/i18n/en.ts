@@ -727,6 +727,17 @@ export const en = {
     revoked: 'Invitation revoked',
     notRevoked: 'Not revoked',
     notRemoved: 'Not removed',
+    former: 'Former members',
+    formerHelp:
+      'People removed from this site. What they wrote stays; anonymizing one takes their name out of it.',
+    formerPerson: 'A former member',
+    anonymize: (name: string) => `Anonymize ${name}`,
+    anonymizeTitle: (name: string) => `Anonymize ${name}?`,
+    anonymizeBody:
+      'Their revisions, reviews, comments and lines of the activity log stay, and name a former member instead of them. Their tokens and invitations of this site go, with what their apps said of themselves, and the person goes from this Hollware once no site keeps them. Nothing brings their name back.',
+    anonymizeIt: 'Anonymize',
+    anonymized: (name: string) => `${name} is anonymized`,
+    notAnonymized: 'Not anonymized',
   },
   account: {
     title: 'Account',
@@ -837,6 +848,7 @@ export const en = {
       'token.revoke': 'Revoked a token',
       'member.role': "Changed a person's role",
       'member.remove': 'Removed a person',
+      'member.anonymize': 'Anonymized a former member',
       'invitation.create': 'Invited a person',
       'invitation.revoke': 'Revoked an invitation',
       'invitation.accept': 'Accepted an invitation',

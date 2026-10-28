@@ -11,6 +11,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
 
   expect(results.map((row) => row.name)).toEqual([
     '_hollware_meta',
+    'anonymizations',
     'assets',
     'audit_log',
     'auth_challenges',

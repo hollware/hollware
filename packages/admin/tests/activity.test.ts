@@ -1,3 +1,4 @@
+import { FORMER_PERSON } from '@hollware/core'
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
@@ -60,14 +61,28 @@ describe('the query of the activity log', () => {
   })
 })
 
+const FORMER = 'A former member'
+
 describe('who a line names', () => {
+  it('is the former member, whatever it acted through, once its owner anonymized them', () => {
+    expect(
+      [
+        line({ kind: 'user', userId: FORMER_PERSON, name: 'Former member' }),
+        line({ kind: 'token', userId: FORMER_PERSON }),
+      ].map((anonymized) => whoOf(anonymized, FORMER)),
+    ).toEqual([
+      { kind: 'user', name: 'A former member', via: null },
+      { kind: 'token', name: 'A former member', via: null },
+    ])
+  })
+
   it('is the name of the person, else their id', () => {
-    expect(whoOf(line({ kind: 'user', userId: 'usr_1', name: 'Olga' }))).toEqual({
+    expect(whoOf(line({ kind: 'user', userId: 'usr_1', name: 'Olga' }), FORMER)).toEqual({
       kind: 'user',
       name: 'Olga',
       via: null,
     })
-    expect(whoOf(line({ kind: 'user', userId: 'usr_1' })).name).toBe('usr_1')
+    expect(whoOf(line({ kind: 'user', userId: 'usr_1' }), FORMER).name).toBe('usr_1')
   })
 
   it('is the label of the token, else its id, and what the client declared as via', () => {
@@ -81,23 +96,32 @@ describe('who a line names', () => {
           tokenLabel: 'agent',
           declared: { name: 'Claude Code', model: 'x' },
         }),
+        FORMER,
       ),
     ).toEqual({ kind: 'token', name: 'agent', via: 'Claude Code' })
-    expect(whoOf(line({ kind: 'token', tokenId: 'tok_1' })).name).toBe('tok_1')
+    expect(whoOf(line({ kind: 'token', tokenId: 'tok_1' }), FORMER).name).toBe('tok_1')
   })
 
   it('is the id of the app, and no name for the deployment', () => {
-    expect(whoOf(line({ kind: 'oauth_client', clientId: 'client-9' }))).toEqual({
+    expect(whoOf(line({ kind: 'oauth_client', clientId: 'client-9' }), FORMER)).toEqual({
       kind: 'oauth_client',
       name: 'client-9',
       via: null,
     })
-    expect(whoOf(line({ kind: 'system' }))).toEqual({ kind: 'system', name: null, via: null })
+    expect(whoOf(line({ kind: 'system' }), FORMER)).toEqual({
+      kind: 'system',
+      name: null,
+      via: null,
+    })
   })
 
   it('ignores a declared name that is no text', () => {
-    expect(whoOf(line({ kind: 'token', tokenLabel: 'a', declared: { name: 3 } })).via).toBeNull()
-    expect(whoOf(line({ kind: 'token', tokenLabel: 'a', declared: { name: '' } })).via).toBeNull()
+    expect(
+      whoOf(line({ kind: 'token', tokenLabel: 'a', declared: { name: 3 } }), FORMER).via,
+    ).toBeNull()
+    expect(
+      whoOf(line({ kind: 'token', tokenLabel: 'a', declared: { name: '' } }), FORMER).via,
+    ).toBeNull()
   })
 })
 

@@ -7,6 +7,7 @@ import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { databaseSize } from '../lib/database.ts'
 import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
 import { me } from '../lib/me.ts'
+import { personName } from '../lib/people.ts'
 import { api } from '../lib/session.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
@@ -200,7 +201,7 @@ const totalViews = computed(() =>
               <p class="text-muted">
                 {{
                   m.home.askedBy(
-                    item.requestedByName ?? item.requestedBy,
+                    personName(item.requestedBy, item.requestedByName, m.people.formerPerson),
                     formatDateTime(item.requestedAt),
                   )
                 }}
