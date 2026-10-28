@@ -3,6 +3,7 @@ import { OPERATIONS } from '@hollware/core'
 import hollwarePackage from '@hollware/core/package.json'
 
 const { m, to } = useLocale()
+const INSTALL = 'npm create hollware@rc my-cms'
 
 useSeoMeta({
   title: '',
@@ -104,7 +105,7 @@ const diagram = computed(() => {
 const steps = computed(() => {
   const words = m.value.home.steps
   return [
-    { ...words.create, code: 'npm create hollware my-cms' },
+    { ...words.create, code: INSTALL },
     {
       ...words.connect,
       code: 'claude mcp add --transport http hollware http://localhost:5199/mcp --header "Authorization: Bearer hw_pat_…"',
@@ -161,7 +162,7 @@ const shaping = computed(() =>
       <template #description>{{ m.home.description }}</template>
       <template #links>
         <div class="flex flex-col items-start gap-4">
-          <CopyCommand command="npm create hollware my-cms" />
+          <CopyCommand :command="INSTALL" />
           <div class="flex flex-wrap gap-3">
             <UButton
               :to="to('/docs/')"
@@ -396,7 +397,7 @@ const shaping = computed(() =>
           {{ m.home.cta.description }}
         </p>
         <div class="relative mt-8 flex flex-col items-center gap-4">
-          <CopyCommand command="npm create hollware my-cms" />
+          <CopyCommand :command="INSTALL" />
           <UButton
             :to="to('/docs/')"
             color="neutral"

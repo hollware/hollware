@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
     '',
     '> An open-source headless CMS for the agent era, native to Cloudflare Workers. Agents write Markdown over MCP, contracts validate every write, D1 is the single source of truth, and sites read published content over Workers RPC.',
     '',
-    'Install with `npm create hollware <dir>`. Each page below is Markdown.',
+    'Install with `npm create hollware@rc <dir>`. Each page below is Markdown.',
     '',
     '## Docs',
     '',
