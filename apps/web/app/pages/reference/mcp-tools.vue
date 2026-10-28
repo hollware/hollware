@@ -17,6 +17,8 @@ const pages = await useDocsPages(locale.value)
 useSeoMeta({
   title: () => m.value.tools.title,
   description: () => m.value.tools.description,
+  ogTitle: () => `${m.value.tools.title} · Hollware`,
+  ogDescription: () => m.value.tools.description,
 })
 </script>
 

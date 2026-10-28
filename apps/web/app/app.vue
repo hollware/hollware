@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { en as uiEn, es as uiEs } from '@nuxt/ui/locale'
 
+const OG_IMAGE = 'https://hollware.com/og.png'
 const route = useRoute()
 const { locale, m } = useLocale()
 
@@ -8,7 +9,13 @@ useSeoMeta({
   titleTemplate: (title) => (title ? `${title} · Hollware` : m.value.seo.home),
   ogSiteName: 'Hollware',
   ogLocale: () => (locale.value === 'es' ? 'es' : 'en'),
+  ogType: 'website',
+  ogImage: OG_IMAGE,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: () => m.value.seo.home,
   twitterCard: 'summary_large_image',
+  twitterImage: OG_IMAGE,
 })
 useHead({
   htmlAttrs: { lang: locale },

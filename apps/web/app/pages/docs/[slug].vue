@@ -31,6 +31,8 @@ const markdown = computed(
 useSeoMeta({
   title: () => page.value?.title ?? m.value.docs.label,
   description: () => page.value?.description ?? '',
+  ogTitle: () => `${page.value?.title ?? m.value.docs.label} · Hollware`,
+  ogDescription: () => page.value?.description ?? '',
 })
 useHead({
   link: [{ rel: 'alternate', type: 'text/markdown', href: markdown.value }],

@@ -123,6 +123,18 @@ describe('hollware.com', () => {
     expect(text).toContain('## create_draft')
     expect(home).toContain('npm create hollware@rc my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
+    expect(home).toContain('<meta property="og:image" content="https://hollware.com/og.png">')
+    expect(home).toContain(
+      '<meta property="og:title" content="Hollware: the CMS your agents write to">',
+    )
+    expect(home).toMatch(
+      /<meta property="og:description" content="Hollware is an open-source headless CMS/,
+    )
+    expect(tools).toContain('<meta property="og:title" content="MCP tools · Hollware">')
+    const page = await (await webFetch(server, '/docs/first-steps/')).text()
+    expect(page).toContain('<meta property="og:title" content="First steps · Hollware">')
+    const image = await webFetch(server, '/og.png')
+    expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/png'])
     expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
     expect(home).toContain('Docs that follow the code')
     expect(home).toContain('40 MCP tools, each with the scopes it needs.')
