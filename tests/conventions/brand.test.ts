@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { readText } from '../support/repo.ts'
+import { readText, REPO_ROOT } from '../support/repo.ts'
 
 const SITE_CSS = 'apps/web/app/assets/css/main.css'
 const ADMIN_CSS = 'packages/admin/app/app.css'
@@ -18,6 +21,59 @@ export function markOf(svg: string): string | null {
 }
 
 const COLORS = "colors: { primary: 'carbon', secondary: 'flame', neutral: 'carbon' }"
+const SCALES: Readonly<Record<string, string>> = { primary: 'carbon', neutral: 'carbon' }
+const TEXTS = [
+  '--ui-text-dimmed',
+  '--ui-text-muted',
+  '--ui-text-toned',
+  '--ui-text',
+  '--ui-text-highlighted',
+  '--ui-primary',
+]
+const GROUNDS = ['--ui-bg', '--ui-bg-muted', '--ui-bg-elevated']
+
+function declarationsOf(css: string, block: RegExp): [string, string][] {
+  return [...css.matchAll(block)].flatMap((found) =>
+    [...(found[1] ?? '').matchAll(/(--[\w-]+)\s*:\s*([^;]+)/g)].map(
+      ([, name, value]): [string, string] => [name ?? '', (value ?? '').trim()],
+    ),
+  )
+}
+
+function darkTones(): Map<string, string> {
+  const theme = themeOf(readText(SITE_CSS)) ?? ''
+  const nuxtUi = readFileSync(
+    createRequire(join(REPO_ROOT, 'packages/admin/package.json')).resolve(
+      '@nuxt/ui/runtime/index.css',
+    ),
+    'utf8',
+  )
+  const palette = new Map(declarationsOf(theme, /@theme static \{([^}]*)\}/g))
+  const hexOf = (value: string): string => {
+    const step = /^var\(--ui-color-(\w+)-(\d+)\)$/.exec(value)
+    const hex = step === null ? value : palette.get(`--color-${SCALES[step[1] ?? '']}-${step[2]}`)
+    return hex === '#fff' ? '#ffffff' : (hex ?? value)
+  }
+  return new Map(
+    [
+      ...declarationsOf(nuxtUi, /\.dark\{([^}]*)\}/g),
+      ...declarationsOf(theme, /\.dark \{([^}]*)\}/g),
+    ].map(([name, value]) => [name, hexOf(value)]),
+  )
+}
+
+function luminance(hex: string): number {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => {
+    const channel = Number.parseInt(hex.slice(at, at + 2), 16) / 255
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function contrast(text: string, ground: string): number {
+  const [light = 0, dark = 0] = [luminance(text), luminance(ground)].sort((a, b) => b - a)
+  return (light + 0.05) / (dark + 0.05)
+}
 
 describe('the look of Hollware', () => {
   it('is one theme block in the site and in the admin: Schibsted Grotesk, Carbón and flame', () => {
@@ -67,6 +123,24 @@ describe('the look of Hollware', () => {
     expect(readText('apps/web/nuxt.config.ts')).toContain('ui: { colorMode: false }')
     expect(readText('packages/admin/app/index.html')).toContain('<html lang="en" class="dark">')
     expect(readText(ADMIN_CONFIG)).toContain('colorMode: false')
+  })
+
+  it('gives every tone of text 4.5:1 on every ground of the dark theme, as WCAG AA asks', () => {
+    const tones = darkTones()
+    const measured = TEXTS.flatMap((text) =>
+      GROUNDS.map((ground) => ({
+        text,
+        ground,
+        ratio: contrast(tones.get(text) ?? '', tones.get(ground) ?? ''),
+      })),
+    )
+
+    expect(contrast('#767676', '#ffffff')).toBeCloseTo(4.54, 2)
+    expect([tones.get('--ui-text-dimmed'), tones.get('--ui-bg-elevated')]).toEqual([
+      '#878074',
+      '#17140f',
+    ])
+    expect(measured.filter(({ ratio }) => !(ratio >= 4.5))).toEqual([])
   })
 
   it('gives the sign-in pages the Carbón ground and the flame accent of the theme', () => {
