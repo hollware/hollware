@@ -1,4 +1,4 @@
-import { backupKey, backupsIn } from '../backup/run.ts'
+import { backupBucketOf, backupKey, backupsOf } from '../backup/run.ts'
 import { isSiteKey, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
@@ -279,7 +279,7 @@ export function createGateway(options: GatewayOptions): Gateway {
           analytics: analyticsSourcesOf(c.env, () => clock.now()),
           structure: structureOf(db, c.env.HOLLWARE_SECRET),
           media: mediaOfEnv(c.env),
-          backups: c.env.MEDIA === undefined ? null : backupsIn(c.env.MEDIA),
+          backups: backupsOf(c.env),
         },
         ...(principal.kind === 'read'
           ? {}
@@ -427,10 +427,11 @@ export function createGateway(options: GatewayOptions): Gateway {
         return insufficientScope(['schema:admin'], oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1)
       }
       const date = c.req.param('date')
+      const bucket = backupBucketOf(c.env)
       const object =
-        c.env.MEDIA === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+        bucket === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(date)
           ? null
-          : await c.env.MEDIA.get(backupKey(principal.site, date))
+          : await bucket.get(backupKey(principal.site, date))
       if (object === null) {
         return Response.json(
           {

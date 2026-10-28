@@ -1,4 +1,4 @@
-import { listBackups } from '@hollware/core'
+import { EXTENSIONS, listBackups, sniffImage } from '@hollware/core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
@@ -15,9 +15,11 @@ export const BACKUP_USAGE = [
   '       hollware backup get <date> <directory> --url <hollware url> (--token-file <file> | token on stdin) [--published]',
   '',
   'The daily backups of a site, which the cron of Hollware makes after 03:00 UTC and keeps 30 days',
-  "in the deployment's R2 bucket. list says which there are; get writes the one of <date>",
-  '(YYYY-MM-DD) as files, <collection>/<locale>/<slug>.md, the layout "hollware import" reads,',
-  'with site.json, the definition of the site. The directory must be empty or not exist.',
+  'in the R2 bucket BACKUPS of the deployment, or MEDIA without it. list says which there are; get',
+  'writes the one of <date> (YYYY-MM-DD) as files, <collection>/<locale>/<slug>.md, the layout',
+  '"hollware import" reads, with site.json, the definition of the site, redirects.json, the 301s',
+  'of the entries that moved, and the images of the site in _assets, which the import uploads',
+  'again. The directory must be empty or not exist.',
   '',
   'Options:',
   '  --url <url>          The address of your Hollware, such as https://cms.example.com',
@@ -37,7 +39,42 @@ interface BackupEntry {
   readonly published: string | null
 }
 
+interface BackupRedirect {
+  readonly fromPath: string
+  readonly toPath: string
+}
+
+interface BackupAsset {
+  readonly id: string
+  readonly alt: string
+  readonly filename: string
+}
+
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/
+
+const listOf = (record: object, key: string): unknown[] => {
+  const value: unknown = Reflect.get(record, key)
+  return Array.isArray(value) ? value : []
+}
+
+function isBackupRedirect(value: unknown): value is BackupRedirect {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'fromPath') === 'string' &&
+    typeof Reflect.get(value, 'toPath') === 'string'
+  )
+}
+
+function isBackupAsset(value: unknown): value is BackupAsset {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    /^ast_[0-9a-f]{26}$/.test(String(Reflect.get(value, 'id'))) &&
+    typeof Reflect.get(value, 'alt') === 'string' &&
+    typeof Reflect.get(value, 'filename') === 'string'
+  )
+}
 
 function isBackupEntry(value: unknown): value is BackupEntry {
   if (typeof value !== 'object' || value === null) return false
@@ -80,7 +117,9 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
     try {
       const answer = await session.call(listBackups, {})
       if (answer.outcome === 'unavailable') {
-        throw new CliError('this Hollware keeps no backups: its Worker has no R2 bucket MEDIA.')
+        throw new CliError(
+          'this Hollware keeps no backups: its Worker has no R2 bucket BACKUPS or MEDIA.',
+        )
       }
       const backups = answer.backups ?? []
       io.out(
@@ -152,8 +191,52 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
   writeFileSync(join(root, 'site.json'), `${JSON.stringify(definition, null, 2)}\n`, {
     flag: 'wx',
   })
+  const redirects = listOf(record, 'redirects')
+    .filter(isBackupRedirect)
+    .map((redirect) => ({ from: redirect.fromPath, to: redirect.toPath, status: 301 }))
+  if (redirects.length > 0) {
+    writeFileSync(join(root, 'redirects.json'), `${JSON.stringify(redirects, null, 2)}\n`, {
+      flag: 'wx',
+    })
+  }
+  const manifest: Record<string, { alt: string; filename: string }> = {}
+  const missing: string[] = []
+  for (const asset of listOf(record, 'assets').filter(isBackupAsset)) {
+    const response = await fetch(new URL(`/v1/assets/${asset.id}/original`, endpoint), {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const bytes = response.ok ? new Uint8Array(await response.arrayBuffer()) : null
+    const format = bytes === null ? null : sniffImage(bytes)
+    if (bytes === null || format === null) {
+      await response.body?.cancel()
+      missing.push(asset.id)
+      continue
+    }
+    const name = `${asset.id}.${EXTENSIONS[format]}`
+    mkdirSync(join(root, '_assets'), { recursive: true })
+    writeFileSync(join(root, '_assets', name), bytes, { flag: 'wx' })
+    manifest[name] = { alt: asset.alt, filename: asset.filename }
+  }
+  const images = Object.keys(manifest).length
+  if (images > 0) {
+    writeFileSync(join(root, '_assets', 'assets.json'), `${JSON.stringify(manifest, null, 2)}\n`, {
+      flag: 'wx',
+    })
+  }
+  const parts = [
+    'site.json',
+    ...(redirects.length === 0
+      ? []
+      : [`${redirects.length} ${redirects.length === 1 ? 'redirect' : 'redirects'}`]),
+    ...(images === 0 ? [] : [`${images} ${images === 1 ? 'image' : 'images'}`]),
+  ]
   io.out(
-    `Wrote ${written.length} ${written.length === 1 ? 'entry' : 'entries'} of the backup of ${date} to ${printable(directory)}, with site.json. "hollware import ${printable(directory)}" takes them back.`,
+    `Wrote ${written.length} ${written.length === 1 ? 'entry' : 'entries'} of the backup of ${date} to ${printable(directory)}, with ${parts.join(', ')}. "hollware import ${printable(directory)}" takes them back.`,
   )
+  if (missing.length > 0) {
+    io.out(
+      `The deployment kept no original of ${missing.join(', ')}: ${missing.length === 1 ? 'it is' : 'they are'} left out.`,
+    )
+  }
   return 0
 }

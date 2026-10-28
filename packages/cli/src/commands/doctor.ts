@@ -117,7 +117,8 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
         ),
   )
 
-  const media = records(config['r2_buckets']).some((entry) => entry['binding'] === 'MEDIA')
+  const buckets = records(config['r2_buckets'])
+  const media = buckets.some((entry) => entry['binding'] === 'MEDIA')
   findings.push(
     media
       ? pass('media-bucket', 'the R2 bucket "MEDIA" keeps the images of the sites')
@@ -126,6 +127,14 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
           'there is no R2 bucket "MEDIA", so upload_asset answers unavailable',
           'Add { "binding": "MEDIA", "bucket_name": "<name>-media" } to r2_buckets in wrangler.jsonc; hollware deploy creates the bucket.',
         ),
+  )
+  findings.push(
+    pass(
+      'backups-bucket',
+      buckets.some((entry) => entry['binding'] === 'BACKUPS')
+        ? 'the R2 bucket "BACKUPS" keeps the daily backups, apart from the images'
+        : 'there is no R2 bucket "BACKUPS": the daily backups share the bucket of the images (add { "binding": "BACKUPS", "bucket_name": "<name>-backups" } to r2_buckets to keep them apart)',
+    ),
   )
   const images = isRecord(config['images']) && config['images']['binding'] === 'IMAGES'
   findings.push(

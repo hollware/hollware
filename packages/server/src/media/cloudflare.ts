@@ -87,7 +87,7 @@ interface Row {
   readonly created_at: string
 }
 
-function widthsOf(text: string): number[] {
+export function widthsOf(text: string): number[] {
   try {
     const parsed: unknown = JSON.parse(text)
     return Array.isArray(parsed)

@@ -1,10 +1,13 @@
+import { listBackups as listBackupsSpec } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { backupKey, backUpSite, type Backup } from '../../src/backup/run.ts'
 import { listBackups } from '../../src/ops/backups.ts'
 import { backupsIn } from '../../src/backup/run.ts'
+import { handlers } from '../../src/ops/index.ts'
 import { seedToken } from '../auth/support.ts'
+import { callRaw, textOf } from '../mcp/support.ts'
 import { boot, restoreLogs, SITE_KEY } from '../http/support.ts'
 import { warmUpComark } from '../ops/support.ts'
 import { createPost, newWorld, publishPost } from '../ops/world.ts'
@@ -56,7 +59,7 @@ describe('the daily backup', () => {
     const object = await env.MEDIA.get(backupKey(site, '2026-10-18'))
     const backup: Backup = JSON.parse((await object?.text()) ?? '{}')
     expect([backup.hollware, backup.site, backup.at]).toEqual([
-      'backup/1',
+      'backup/2',
       site,
       '2026-10-18T03:00:00.000Z',
     ])
@@ -112,25 +115,175 @@ describe('the daily backup', () => {
   })
 })
 
+describe('a site rebuilt from its backup', () => {
+  it('gets back every entry as it was, and the backup keeps the redirects and the images', async () => {
+    const world = await newWorld(env.DB, 'backup-source')
+    const post = await createPost(world, { slug: 'moved-post', group: 'moved' })
+    await createPost(world, { slug: 'movido', locale: 'es', group: 'moved' })
+    const live = await publishPost(world, post)
+    const moved = await world.agent.moveEntry({
+      id: post.id,
+      version: live.version,
+      slug: 'renamed-post',
+    })
+    if (moved.entry === undefined) throw new Error(JSON.stringify(moved))
+    await world.agent.updateDraft({
+      id: post.id,
+      version: moved.entry.version,
+      markdown:
+        '---\ntitle: Edited\ndescription: d\ndate: 2026-10-01\ntags: [a]\ntranslationGroup: moved\n---\nEdited after the publish.\n',
+    })
+    await createPost(world, { slug: 'un-borrador', locale: 'es', group: 'draft' })
+    const asset = `ast_${'a'.repeat(26)}`
+    await env.DB.prepare(
+      `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, widths, original_format, original_bytes, alt, filename, created_by, created_at, updated_at)
+       VALUES (?1, ?2, ?3, 'image/webp', 640, 480, 1234, '[640]', 'image/png', 2345, 'A diagram', 'diagram.png', ?4, ?5, ?5)`,
+    )
+      .bind(
+        asset,
+        world.tenant.key,
+        'b'.repeat(64),
+        world.tenant.userId,
+        '2026-10-02T00:00:00.000Z',
+      )
+      .run()
+
+    const definition = { locales: ['en', 'es'], defaultLocale: 'en', collections: {} }
+    await env.DB.prepare('UPDATE sites SET definition = ?1 WHERE id = ?2')
+      .bind(JSON.stringify(definition), world.tenant.key)
+      .run()
+
+    await backUpSite(env.DB, env.BACKUPS, world.tenant.site, at('2026-10-18T03:00:00.000Z'))
+    const object = await env.BACKUPS.get(backupKey(world.tenant.key, '2026-10-18'))
+    const backup: Backup = JSON.parse((await object?.text()) ?? '{}')
+    const rebuilt = await newWorld(env.DB, 'backup-rebuilt')
+    const drafts = []
+    for (const entry of backup.entries) {
+      const draft = await rebuilt.agent.createDraft({
+        collection: entry.collection,
+        locale: entry.locale,
+        slug: entry.slug,
+        markdown: entry.published ?? entry.markdown,
+      })
+      if (draft.entry !== undefined) drafts.push({ entry, draft: draft.entry })
+    }
+    for (const { entry, draft } of drafts) {
+      if (entry.status !== 'published') continue
+      const published = await publishPost(rebuilt, draft)
+      if (entry.published !== null) {
+        await rebuilt.agent.updateDraft({
+          id: published.id,
+          version: published.version,
+          markdown: entry.markdown,
+        })
+      }
+    }
+    const contentOf = async (of: typeof world) => {
+      const listed = await of.agent.listEntries({ collection: 'blog', limit: 50 })
+      const rows = await Promise.all(
+        (listed.entries ?? []).map(async (summary) => {
+          const where = { collection: 'blog', locale: summary.locale, slug: summary.slug }
+          const head = await of.agent.getEntry({ ...where, formats: ['markdown'] })
+          const live = await of.reader.getEntry({ ...where, formats: ['markdown'] })
+          return [
+            summary.locale,
+            summary.slug,
+            summary.status,
+            head.entry?.markdown,
+            live.entry?.markdown ?? null,
+          ]
+        }),
+      )
+      return rows.sort((a, b) => `${a[0]}/${a[1]}`.localeCompare(`${b[0]}/${b[1]}`))
+    }
+
+    expect(backup.definition).toEqual(definition)
+    expect(await contentOf(rebuilt)).toEqual(await contentOf(world))
+    expect(backup.redirects).toEqual([
+      {
+        collection: 'blog',
+        locale: 'en',
+        from: 'moved-post',
+        to: 'renamed-post',
+        fromPath: '/en/blog/moved-post/',
+        toPath: '/en/blog/renamed-post/',
+        entryId: post.id,
+      },
+    ])
+    expect(backup.assets).toEqual([
+      {
+        id: asset,
+        sha256: 'b'.repeat(64),
+        format: 'image/webp',
+        width: 640,
+        height: 480,
+        bytes: 1234,
+        widths: [640],
+        originalFormat: 'image/png',
+        originalBytes: 2345,
+        alt: 'A diagram',
+        filename: 'diagram.png',
+        createdAt: '2026-10-02T00:00:00.000Z',
+      },
+    ])
+  })
+})
+
+describe('list_backups', () => {
+  it('lists the backups of BACKUPS over MCP and over /v1/ops, and those of MEDIA without it', async () => {
+    const owner = await seedToken(env.DB, SITE_KEY, { expiresAt: '2026-12-01T00:00:00.000Z' })
+    await env.BACKUPS.put(backupKey(SITE_KEY, '2026-10-20'), '{}')
+    await env.MEDIA.put(backupKey(SITE_KEY, '2026-10-19'), '{}')
+    const both = boot({ handlers, bindings: { MEDIA: env.MEDIA, BACKUPS: env.BACKUPS } })
+    const alone = boot({ handlers, bindings: { MEDIA: env.MEDIA } })
+    const overOps = async (worker: typeof both) =>
+      (
+        await (
+          await worker.send('/v1/ops/list_backups', {
+            method: 'POST',
+            token: owner.token,
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+          })
+        ).json<{ backups: { date: string }[] }>()
+      ).backups.map((backup) => backup.date)
+    const overMcp = async (worker: typeof both) => {
+      const answer = await callRaw(worker.endpoint(owner.token), 'modern', 'list_backups', {})
+      const listed = listBackupsSpec.output.parse(textOf(answer.result))
+      return (listed.backups ?? []).map((backup) => backup.date)
+    }
+
+    expect(await overMcp(both)).toEqual(['2026-10-20'])
+    expect(await overOps(both)).toEqual(['2026-10-20'])
+    expect(await overMcp(alone)).toEqual(['2026-10-19'])
+  })
+})
+
 describe('GET /v1/backups/<date>', () => {
-  it('serves a backup to an owner of the site, and to no one else', async () => {
+  it('serves a backup to an owner of the site, and to no one else, from BACKUPS before MEDIA', async () => {
     const owner = await seedToken(env.DB, SITE_KEY, { expiresAt: '2026-12-01T00:00:00.000Z' })
     const writer = await seedToken(env.DB, SITE_KEY, {
       expiresAt: '2026-12-01T00:00:00.000Z',
       scopes: ['content:read', 'content:write', 'content:publish'],
     })
-    await env.MEDIA.put(backupKey(SITE_KEY, '2026-10-18'), '{"hollware":"backup/1"}')
-    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+    await env.BACKUPS.put(backupKey(SITE_KEY, '2026-10-18'), '{"hollware":"backup/2"}')
+    await env.MEDIA.put(backupKey(SITE_KEY, '2026-10-18'), '{"in":"media"}')
+    const worker = boot({ bindings: { MEDIA: env.MEDIA, BACKUPS: env.BACKUPS } })
+    const alone = boot({ bindings: { MEDIA: env.MEDIA } })
 
     const mine = await worker.send('/v1/backups/2026-10-18', { token: owner.token })
     const missing = await worker.send('/v1/backups/2026-10-19', { token: owner.token })
     const none = await worker.send('/v1/backups/2026-10-18')
     const unscoped = await worker.send('/v1/backups/2026-10-18', { token: writer.token })
+    const fromMedia = await alone.send('/v1/backups/2026-10-18', { token: owner.token })
 
     expect([mine.status, missing.status, none.status, unscoped.status]).toEqual([
       200, 404, 401, 403,
     ])
-    expect(await mine.text()).toBe('{"hollware":"backup/1"}')
+    expect([await mine.text(), await fromMedia.text()]).toEqual([
+      '{"hollware":"backup/2"}',
+      '{"in":"media"}',
+    ])
     expect(mine.headers.get('cache-control')).toBe('private, no-store')
     expect(unscoped.headers.get('www-authenticate')).toContain('scope="schema:admin"')
   })

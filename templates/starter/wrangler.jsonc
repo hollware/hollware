@@ -39,6 +39,9 @@
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "my-hollware-media" }],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "my-hollware-media" },
+    { "binding": "BACKUPS", "bucket_name": "my-hollware-backups" },
+  ],
   "images": { "binding": "IMAGES" },
 }

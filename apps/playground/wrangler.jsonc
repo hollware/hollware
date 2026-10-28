@@ -46,7 +46,10 @@
       "migrations_dir": "node_modules/@hollware/server/migrations",
     },
   ],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "hollware-playground-media" }],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "hollware-playground-media" },
+    { "binding": "BACKUPS", "bucket_name": "hollware-playground-backups" },
+  ],
   "images": { "binding": "IMAGES" },
   "services": [{ "binding": "PROBE", "service": "hollware-playground", "entrypoint": "Probe" }],
   "env": {

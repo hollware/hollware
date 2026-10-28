@@ -168,6 +168,7 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
     ['"name": "my-hollware"', `"name": "${choices.name}"`],
     ['"database_name": "my-hollware"', `"database_name": "${choices.name}"`],
     ['"bucket_name": "my-hollware-media"', `"bucket_name": "${choices.name}-media"`],
+    ['"bucket_name": "my-hollware-backups"', `"bucket_name": "${choices.name}-backups"`],
     ['hollware-events', `${choices.name}-events`],
   ])
   for (const file of ['README.md']) {

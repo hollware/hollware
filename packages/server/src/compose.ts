@@ -17,7 +17,7 @@ import { createAuditLog, dropExpiredLines, systemActor, type AuditActor } from '
 import type { DeliveryDeps } from './events/deliver.ts'
 import { abandonEvents, consumeEvents, isDeadLetters, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
-import { backUpSite } from './backup/run.ts'
+import { backupBucketOf, backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
 import { runDueSchedules, runDueUnpublishes } from './schedule/run.ts'
@@ -129,8 +129,9 @@ export function createHollwareWith(
         await runDueSchedules(due)
         await runDueUnpublishes(due)
         await dropExpiredLines(env.DB, site, clock.now())
-        if (env.MEDIA !== undefined) {
-          const backup = await backUpSite(env.DB, env.MEDIA, site, clock.now())
+        const backups = backupBucketOf(env)
+        if (backups !== undefined) {
+          const backup = await backUpSite(env.DB, backups, site, clock.now())
           if (backup === 'made') writeLog({ kind: 'backup', site: site.key, outcome: backup })
         }
         await reparseRevisions(env.DB, site, clock.now().toISOString(), writeLog)

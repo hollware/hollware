@@ -1,4 +1,6 @@
 import type { ResolvedSite } from '@hollware/core'
+import { widthsOf } from '../media/cloudflare.ts'
+import { entryPath } from '../ops/event.ts'
 import type { Backups } from '../ports.ts'
 
 export const BACKUP_HOUR_UTC = 3
@@ -34,13 +36,45 @@ export interface BackupEntry {
   readonly published: string | null
 }
 
+export interface BackupRedirect {
+  readonly collection: string
+  readonly locale: string
+  readonly from: string
+  readonly to: string
+  readonly fromPath: string | null
+  readonly toPath: string | null
+  readonly entryId: string
+}
+
+export interface BackupAsset {
+  readonly id: string
+  readonly sha256: string
+  readonly format: string
+  readonly width: number | null
+  readonly height: number | null
+  readonly bytes: number
+  readonly widths: readonly number[]
+  readonly originalFormat: string
+  readonly originalBytes: number
+  readonly alt: string
+  readonly filename: string
+  readonly createdAt: string
+}
+
 export interface Backup {
-  readonly hollware: 'backup/1'
+  readonly hollware: 'backup/2'
   readonly site: string
   readonly at: string
   readonly definition: unknown
   readonly entries: readonly BackupEntry[]
+  readonly redirects: readonly BackupRedirect[]
+  readonly assets: readonly BackupAsset[]
 }
+
+export const backupBucketOf = <Bucket>(env: {
+  readonly BACKUPS?: Bucket
+  readonly MEDIA?: Bucket
+}): Bucket | undefined => env.BACKUPS ?? env.MEDIA
 
 export const backupKey = (site: string, date: string) => `backups/${site}/${date}.json`
 
@@ -68,6 +102,14 @@ export const backupsIn = (bucket: BackupBucket): Backups => ({
   list: (site) => listBackups(bucket, site),
 })
 
+export function backupsOf(env: {
+  readonly BACKUPS?: BackupBucket
+  readonly MEDIA?: BackupBucket
+}): Backups | null {
+  const bucket = backupBucketOf(env)
+  return bucket === undefined ? null : backupsIn(bucket)
+}
+
 async function dropOld(
   bucket: BackupBucket,
   site: string,
@@ -82,7 +124,7 @@ async function dropOld(
 export async function backUpSite(
   db: D1Database,
   bucket: BackupBucket,
-  site: Pick<ResolvedSite, 'key' | 'backups'>,
+  site: Pick<ResolvedSite, 'key' | 'backups' | 'collections'>,
   now: Date,
 ): Promise<'made' | 'not_yet' | 'done' | 'off'> {
   if (!site.backups.enabled) {
@@ -91,17 +133,50 @@ export async function backUpSite(
     }
     return 'off'
   }
-  return backUp(db, bucket, site.key, site.backups.retentionDays, now)
+  return backUp(db, bucket, site, now)
+}
+
+async function redirectsOf(
+  db: D1Database,
+  site: Pick<ResolvedSite, 'key' | 'collections'>,
+): Promise<BackupRedirect[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT r.collection AS collection, r.locale AS locale, r.from_slug AS "from", e.slug AS "to", r.entry_id AS entryId
+         FROM redirects AS r JOIN entries AS e ON e.id = r.entry_id AND e.site_id = r.site_id
+        WHERE r.site_id = ?1
+        ORDER BY r.collection, r.locale, r.from_slug`,
+    )
+    .bind(site.key)
+    .all<Omit<BackupRedirect, 'fromPath' | 'toPath'>>()
+  return results.map((redirect) => {
+    const collection = site.collections.get(redirect.collection)
+    const path = (slug: string) =>
+      collection === undefined ? null : entryPath(collection, redirect.locale, slug)
+    return { ...redirect, fromPath: path(redirect.from), toPath: path(redirect.to) }
+  })
+}
+
+async function assetsOf(db: D1Database, site: string): Promise<BackupAsset[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT id, sha256, format, width, height, bytes, widths, original_format AS originalFormat,
+              original_bytes AS originalBytes, alt, filename, created_at AS createdAt
+         FROM assets WHERE site_id = ?1 ORDER BY created_at, id`,
+    )
+    .bind(site)
+    .all<Omit<BackupAsset, 'widths'> & { readonly widths: string }>()
+  return results.map((asset) => ({ ...asset, widths: widthsOf(asset.widths) }))
 }
 
 async function backUp(
   db: D1Database,
   bucket: BackupBucket,
-  site: string,
-  retentionDays: number,
+  resolved: Pick<ResolvedSite, 'key' | 'backups' | 'collections'>,
   now: Date,
 ): Promise<'made' | 'not_yet' | 'done'> {
   if (now.getUTCHours() < BACKUP_HOUR_UTC) return 'not_yet'
+  const site = resolved.key
   const date = now.toISOString().slice(0, 10)
   const key = backupKey(site, date)
   if ((await bucket.head(key)) !== null) return 'done'
@@ -124,15 +199,17 @@ async function backUp(
     .bind(site)
     .all<BackupEntry>()
   const backup: Backup = {
-    hollware: 'backup/1',
+    hollware: 'backup/2',
     site,
     at: now.toISOString(),
     definition: row?.definition === null || row === null ? null : JSON.parse(row.definition),
     entries: results,
+    redirects: await redirectsOf(db, resolved),
+    assets: await assetsOf(db, site),
   }
   await bucket.put(key, JSON.stringify(backup), {
     httpMetadata: { contentType: 'application/json' },
   })
-  await dropOld(bucket, site, retentionDays, now)
+  await dropOld(bucket, site, resolved.backups.retentionDays, now)
   return 'made'
 }
