@@ -6,7 +6,7 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/conventions/` has one test per guard about a fact of the repository, and `tests/meta/` one per guard about the docs, the tests and the guards themselves. Each runs its guard on this repository, which has none, and in a `describe('self-test: ...')` block on bad fixtures, asserting the exact violation.
 - `tests/support/` holds what guards stand on: the repository's file list, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
-- `tests/acceptance/` holds each stage's acceptance suite (`vp run test:acceptance`), named after the criteria of `PLAN.md`. It runs the built playground and site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` (`tests/acceptance/v0.1/support/project.ts`).
+- `tests/acceptance/` holds each stage's acceptance suite, named after the criteria of `PLAN.md`. It runs the built playground and site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` (`tests/acceptance/v0.1/support/project.ts`).
 - `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker`: runner, token proxy, probes, baselines and must-pass profile.
 - `tests/fixtures/` holds the synthetic content of the tests (`tests/fixtures/README.md`).
 
@@ -14,7 +14,7 @@ Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with 
 
 ## Guards
 
-What each guard binds, one line per file of `tests/conventions/` and `tests/meta/`. A new guard adds its line here.
+What each guard binds, one line per file of `tests/conventions/` and `tests/meta/`.
 
 - `tests/conventions/manifests.test.ts`: the packages share one manifest shape and version; `exports` and `bin` point at the source and `publishConfig` at `dist`; apps and templates are private; `tsconfig.base.json` sets `erasableSyntaxOnly`.
 - `tests/conventions/pre-push.test.ts`: the hook pre-push runs `check:local`, which runs the tasks of `ci.yml` but `CI_ONLY`; `scripts/commit-subjects.test.ts`: there, commit subjects are Conventional Commits.
@@ -49,7 +49,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/voice.test.ts`: no text file uses a word Hollware never says.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
-- `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options.
+- `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options; no MCP tool manages people or tokens.
 - `tests/conventions/code-of-conduct.test.ts`: no template placeholder, the issues as contact.
 - `tests/conventions/personal-email.test.ts`: no personal email address in any file.
 - `tests/conventions/invisible-characters.test.ts`: no text file but `INVISIBLE_CHARACTER_FILES` holds a bidirectional control, zero-width mark, byte order mark or line or paragraph separator.

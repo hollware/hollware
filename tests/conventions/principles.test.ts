@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { OPERATIONS } from '../../packages/core/src/operations/index.ts'
 import { checkPrinciples, NO_PRINCIPLE_OPTION, principlesOf } from '../guards/principles.ts'
 import { describeViolations } from '../guards/types.ts'
 import { file, json } from '../support/fixtures.ts'
@@ -55,6 +56,15 @@ describe('principles', () => {
       'Markdown is the source of truth',
       'Cloudflare-native, close to zero cost',
     ])
+  })
+
+  it('leaves who may sign in and what a token may do out of MCP, as principle 2 says', () => {
+    const names = OPERATIONS.map(({ name }) => name)
+
+    expect(names).toContain('approve_review')
+    expect(
+      names.filter((name) => /token|invit|member|role|people|person|passkey|session/.test(name)),
+    ).toEqual([])
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
