@@ -226,6 +226,24 @@ describe("the admin's own routes", () => {
     expect(people.invitations.map((invitation) => invitation.id)).not.toContain(made.id)
   })
 
+  it('say how big the database of the deployment is, to an owner only', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const editor = await adminToken(worker, 'editor')
+    const size = async () =>
+      (await (await call(worker, owner, '/v1/admin/database')).json<{ bytes: number }>()).bytes
+
+    const before = await size()
+    await env.DB.prepare('CREATE TABLE size_probe (x TEXT)').run()
+    await env.DB.prepare('INSERT INTO size_probe (x) VALUES (?1)').bind('x'.repeat(1_000_000)).run()
+    const after = await size()
+    await env.DB.prepare('DROP TABLE size_probe').run()
+    const refused = await call(worker, editor, '/v1/admin/database')
+
+    expect(after - before).toBeGreaterThanOrEqual(1_000_000)
+    expect(refused.status).toBe(403)
+  })
+
   it('list the deliveries of the site that failed, and send one of their events again', async () => {
     const sent: unknown[] = []
     const worker = boot({

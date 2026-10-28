@@ -145,6 +145,9 @@ export const es: Messages = {
   },
   home: {
     title: 'Inicio',
+    database: 'Base de datos',
+    databaseSize: (megabytes: string) =>
+      `La base de datos de este despliegue ocupa ${megabytes} MB, de los 500 MB que Cloudflare permite a una base D1 en el plan Free, o 10 GB en Paid. Cada guardado de un borrador es una revisión, y las revisiones se quedan.`,
     mostRead: 'Lo más leído, últimos 30 días',
     views: (count: string) => `${count} visitas`,
     noAnalytics:
@@ -264,6 +267,11 @@ export const es: Messages = {
     saving: 'Guardando…',
     savedState: 'Guardado',
     unsavedState: 'Cambios sin guardar',
+    restored: 'Se restauraron los cambios que este navegador conservó desde el último guardado',
+    olderCopy: (version: number, now: number) =>
+      `Este navegador conservó cambios hechos a la versión ${version}; la entrada ya va en la versión ${now}`,
+    restoreOlder: 'Restaurarlos',
+    discardRestored: 'Descartar',
     viewMarkdown: 'Ver Markdown',
     editVisually: 'Editar visualmente',
     titleLabel: 'Título',

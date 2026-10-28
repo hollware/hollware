@@ -133,6 +133,9 @@ export const en = {
   },
   home: {
     title: 'Home',
+    database: 'Database',
+    databaseSize: (megabytes: string) =>
+      `The database of this deployment holds ${megabytes} MB, of the 500 MB that Cloudflare lets a D1 database hold on the Free plan, or 10 GB on Paid. Every save of a draft is a revision, and revisions stay.`,
     mostRead: 'Most read, last 30 days',
     views: (count: string) => `${count} views`,
     noAnalytics:
@@ -252,6 +255,11 @@ export const en = {
     saving: 'Saving…',
     savedState: 'Saved',
     unsavedState: 'Unsaved changes',
+    restored: 'Restored the changes this browser kept since the last save',
+    olderCopy: (version: number, now: number) =>
+      `This browser kept changes made to version ${version}; the entry is at version ${now} now`,
+    restoreOlder: 'Restore them',
+    discardRestored: 'Discard',
     viewMarkdown: 'View Markdown',
     editVisually: 'Edit visually',
     titleLabel: 'Title',

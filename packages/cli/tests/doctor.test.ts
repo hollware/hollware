@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { d1, fakeWrangler, ok } from './support/fake-wrangler.ts'
+import { d1, failed, fakeWrangler, ok } from './support/fake-wrangler.ts'
 import { run } from './support/io.ts'
 import { tempDirs } from './support/project.ts'
 
@@ -149,6 +149,27 @@ describe('hollware doctor', () => {
         '      Give the consumer of "hollware-events" "dead_letter_queue": "hollware-events-dlq", and add the consumer { "queue": "hollware-events-dlq" } to queues in wrangler.jsonc, as the starter has them.',
       ],
     ])
+  })
+
+  it('says how big the remote database is, as wrangler d1 info tells it', async () => {
+    const sized = fakeWrangler(
+      ok(NONE_PENDING),
+      d1([{ id: 'usr_1' }]),
+      ok('{"name":"x","database_size":12345678}'),
+    )
+    const silent = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]), failed('not logged in'))
+    const cwd = temp.make({ 'wrangler.jsonc': STARTER, ...INSTALLED })
+
+    const told = await run(['doctor', '--remote'], { cwd, wrangler: sized.run })
+    const unknown = await run(['doctor', '--remote'], { cwd, wrangler: silent.run })
+
+    expect(told.out[0]?.split('\n').at(-1)).toBe(
+      'ok    the remote database holds 12.3 MB, of the 500 MB a D1 database holds on the Free plan, or 10 GB on Paid',
+    )
+    expect(sized.calls.at(-1)?.args).toEqual(['d1', 'info', 'DB', '--json'])
+    expect(unknown.out[0]?.split('\n').at(-1)).toBe(
+      'ok    wrangler did not say how big the remote database is',
+    )
   })
 
   it('says what the database lacks: its migrations first, then its owner', async () => {

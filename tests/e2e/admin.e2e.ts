@@ -140,6 +140,49 @@ test('the owner writes in the visual editor, and finds the Markdown an agent wri
   await owner.getByRole('button', { name: 'Edit visually' }).click()
 })
 
+test('the owner types in bursts, which this browser keeps until one save, and gets kept changes back', async () => {
+  await owner.goto('/admin/entries/blog/en/a-long-post?panel=history')
+  const history = owner.getByRole('list', { name: 'History of the entry' })
+  await expect(history.getByRole('button').first()).toContainText('Latest')
+  const revisions = await history.getByRole('button').count()
+  const kept = () =>
+    owner.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('hollware:working-copy:'))
+        .map((key) => [key, JSON.parse(localStorage.getItem(key) ?? '{}')]),
+    )
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  await body.getByText('The last paragraph, changed.').click()
+  await owner.keyboard.press('End')
+  for (const word of [' One.', ' Two.', ' Three.']) {
+    await owner.keyboard.type(word)
+    await owner.waitForTimeout(2_000)
+  }
+
+  const copies = await kept()
+  expect(copies).toHaveLength(1)
+  const [key, copy] = copies[0] ?? []
+  expect(copy.markdown).toContain('One. Two. Three.')
+  await saveNow(owner)
+  await expect(history.getByRole('button')).toHaveCount(revisions + 1)
+  expect(await kept()).toEqual([])
+
+  await owner.evaluate(
+    ([name, markdown, version]) =>
+      localStorage.setItem(String(name), JSON.stringify({ markdown, version })),
+    [key, `${copy.markdown.trimEnd()} Four.\n`, copy.version + 1],
+  )
+  await owner.reload()
+  const restored = owner.getByText('Restored the changes this browser kept since the last save')
+  await expect(restored).toBeVisible()
+  await expect(body).toContainText('Four.')
+  await expectAccessible(owner)
+  await owner.getByRole('button', { name: 'Discard', exact: true }).click()
+  await expect(restored).toBeHidden()
+  await expect(body).not.toContainText('Four.')
+  expect(await kept()).toEqual([])
+})
+
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({
   browser,
 }) => {

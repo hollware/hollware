@@ -563,6 +563,14 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
   )
 
   app.get(
+    '/v1/admin/database',
+    admin(null, async (c) => {
+      const { meta } = await c.env.DB.prepare('SELECT 1').run()
+      return json({ bytes: meta.size_after })
+    }),
+  )
+
+  app.get(
     '/v1/admin/deliveries',
     admin(null, async (c, person) => {
       const rows = await failedDeliveries(connect(c.env.DB), person.site, DELIVERIES_PAGE)

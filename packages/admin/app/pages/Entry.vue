@@ -22,12 +22,23 @@ import {
   type Reference,
 } from '../lib/frontmatter.ts'
 import { openEntry } from '../lib/open-entry.ts'
+import { me } from '../lib/me.ts'
 import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
 import { useNarrow } from '../lib/narrow.ts'
 import { usePageTitle } from '../lib/title.ts'
+import {
+  browserStorage,
+  dropWorkingCopy,
+  keepWorkingCopy,
+  readWorkingCopy,
+  restoreOf,
+  saveDelay,
+  workingCopyKey,
+  type Restore,
+} from '../lib/working-copy.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
 
@@ -119,6 +130,11 @@ const title = computed({
 const body = computed(() => bodyOf(text.value))
 usePageTitle(() => title.value)
 const dirty = computed(() => text.value !== saved.value)
+const storage = browserStorage()
+const copyKey = computed(() =>
+  entry.value === null || me.value === null ? null : workingCopyKey(me.value.site, entry.value.id),
+)
+const restored = ref<Restore>({ kind: 'none' })
 const diagnostics = computed(() =>
   verdict.value === null ? [] : diagnosticsOf(text.value, verdict.value),
 )
@@ -175,6 +191,11 @@ async function load() {
   verdict.value = read.entry.verdict
   saveState.value = 'saved'
   overrideReview.value = false
+  restored.value = restoreOf(
+    copyKey.value === null ? null : readWorkingCopy(storage, copyKey.value),
+    { version: read.entry.version, markdown: saved.value },
+  )
+  if (restored.value.kind === 'same') text.value = restored.value.markdown
   const [asked, grouped] = await Promise.all([
     api.call('list_reviews', { status: 'pending', entryId: read.entry.id, limit: 1 }),
     read.entry.translationGroup === null
@@ -220,6 +241,11 @@ async function persist(): Promise<boolean> {
         saved.value = stored
         if (text.value === sent) text.value = stored
         saveState.value = text.value === saved.value ? 'saved' : 'unsaved'
+        if (saveState.value === 'saved') {
+          firstChange = null
+          restored.value = { kind: 'none' }
+          if (copyKey.value !== null) dropWorkingCopy(storage, copyKey.value)
+        }
         return true
       }
       case 'conflict':
@@ -255,12 +281,22 @@ function save(): Promise<boolean> {
 
 let autosave: ReturnType<typeof setTimeout> | undefined
 let validation: ReturnType<typeof setTimeout> | undefined
+let copying: ReturnType<typeof setTimeout> | undefined
+let firstChange: number | null = null
 watch(text, (markdown) => {
   clearTimeout(autosave)
   clearTimeout(validation)
+  clearTimeout(copying)
   if (markdown === saved.value) return
   saveState.value = 'unsaved'
-  autosave = setTimeout(() => void save(), 1500)
+  const now = Date.now()
+  firstChange ??= now
+  autosave = setTimeout(() => void save(), saveDelay(firstChange, now))
+  copying = setTimeout(() => {
+    if (copyKey.value !== null && entry.value !== null) {
+      keepWorkingCopy(storage, copyKey.value, { markdown, version: entry.value.version })
+    }
+  }, 300)
   validation = setTimeout(async () => {
     verdict.value = (await api.call('validate', { ...ref_.value, markdown })).verdict
   }, 600)
@@ -274,10 +310,24 @@ onBeforeRouteLeave(async () => {
 
 function discardChange() {
   clearTimeout(autosave)
+  clearTimeout(copying)
   heldOpen.value = false
   text.value = saved.value
   saveState.value = 'saved'
+  firstChange = null
+  restored.value = { kind: 'none' }
+  if (copyKey.value !== null) dropWorkingCopy(storage, copyKey.value)
 }
+
+function restoreOlder() {
+  if (restored.value.kind === 'older') text.value = restored.value.markdown
+  restored.value = { kind: 'none' }
+}
+
+function saveWhenHidden() {
+  if (document.visibilityState === 'hidden' && dirty.value) void save()
+}
+document.addEventListener('visibilitychange', saveWhenHidden)
 
 async function saveOverReview() {
   overrideReview.value = true
@@ -579,6 +629,7 @@ watchEffect(() => {
 })
 onBeforeUnmount(() => {
   openEntry.value = null
+  document.removeEventListener('visibilitychange', saveWhenHidden)
 })
 
 const more = computed<DropdownMenuItem[][]>(() => {
@@ -790,6 +841,29 @@ const stateLabel = computed(
           color="warning"
           variant="subtle"
           class="mb-6 ms-16"
+        />
+        <UAlert
+          v-if="restored.kind === 'same'"
+          :title="m.entry.restored"
+          icon="i-lucide-history"
+          color="neutral"
+          variant="subtle"
+          class="mb-6 ms-16"
+          :actions="[
+            { label: m.entry.discardRestored, variant: 'outline', onClick: discardChange },
+          ]"
+        />
+        <UAlert
+          v-else-if="restored.kind === 'older'"
+          :title="m.entry.olderCopy(restored.version, entry.version)"
+          icon="i-lucide-history"
+          color="warning"
+          variant="subtle"
+          class="mb-6 ms-16"
+          :actions="[
+            { label: m.entry.restoreOlder, variant: 'outline', onClick: restoreOlder },
+            { label: m.entry.discardRestored, variant: 'ghost', onClick: discardChange },
+          ]"
         />
         <UAlert
           v-if="pendingReview !== null"
