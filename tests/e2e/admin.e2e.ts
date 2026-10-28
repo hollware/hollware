@@ -376,6 +376,13 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
 test('the owner connects analytics in Analytics, and the provider is asked before anything is kept', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByText('No analytics connected.')).toBeVisible()
+  await expect(owner.getByRole('list', { name: 'Get started' }).getByRole('listitem')).toHaveText([
+    /^Connect an agent, done.*claude mcp add --transport http hollware http:\/\/localhost:\d+\/mcp/,
+    /^Write the first entry, done/,
+    /^Invite a person, done/,
+    /^Connect the analytics of your site, to do/,
+  ])
+  await expect(owner.getByRole('heading', { name: 'Last audit' })).toHaveCount(0)
   await owner.getByRole('link', { name: 'Connect analytics' }).click()
 
   await expect(owner.getByRole('heading', { name: 'Analytics' })).toBeVisible()

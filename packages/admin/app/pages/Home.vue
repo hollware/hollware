@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import Page from '../components/Page.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
+import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
+import { me } from '../lib/me.ts'
 import { api } from '../lib/session.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
@@ -15,6 +17,28 @@ const stats = ref<Stats | null>(null)
 const reviews = ref<Review[] | null>(null)
 const drafts = ref<Entry[] | null>(null)
 const audit = ref<Entry | null>(null)
+const entryCount = ref<number | null>(null)
+const tokens = ref<readonly TokenOfSite[] | null>(null)
+const peopleCount = ref<number | null>(null)
+const mcpLine = `claude mcp add --transport http hollware ${window.location.origin}/mcp --header "Authorization: Bearer <token>"`
+
+const owner = computed(
+  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
+)
+
+watch(
+  owner,
+  async (isOwner) => {
+    if (!isOwner) return
+    const [made, team] = await Promise.all([
+      api.admin<{ tokens: TokenOfSite[] }>('tokens'),
+      api.admin<{ people: unknown[]; invitations: unknown[] }>('people'),
+    ])
+    tokens.value = made.tokens
+    peopleCount.value = team.people.length + team.invitations.length
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   const { site } = await api.call('describe_site', {})
@@ -27,6 +51,7 @@ onMounted(async () => {
   stats.value = read
   reviews.value = pending.reviews
   const everything = lists.flatMap((list) => list.entries)
+  entryCount.value = everything.length
   const newest = (a: Entry, b: Entry) => b.updatedAt.localeCompare(a.updatedAt)
   drafts.value = everything
     .filter((entry) => entry.status !== 'published' || entry.hasUnpublishedChanges)
@@ -36,6 +61,25 @@ onMounted(async () => {
   audit.value =
     everything.filter((entry) => entry.slug.startsWith('audit-')).sort(newest)[0] ?? null
 })
+
+const steps = computed(() =>
+  tokens.value === null ||
+  peopleCount.value === null ||
+  entryCount.value === null ||
+  stats.value === null
+    ? []
+    : firstSteps({
+        tokens: tokens.value,
+        people: peopleCount.value,
+        entries: entryCount.value,
+        analytics: stats.value.outcome === 'ok',
+        now: new Date().toISOString(),
+      }),
+)
+
+async function copyLine() {
+  await navigator.clipboard.writeText(mcpLine)
+}
 
 const topViews = computed(() =>
   Math.max(1, ...(stats.value?.pages ?? []).map((page) => page.views)),
@@ -48,6 +92,47 @@ const totalViews = computed(() =>
 <template>
   <Page :title="m.home.title">
     <div class="space-y-8">
+      <section
+        v-if="steps.some((step) => !step.done)"
+        aria-labelledby="start"
+        class="space-y-4 rounded-lg border border-default p-5"
+      >
+        <h2 id="start" class="font-semibold">{{ m.home.start }}</h2>
+        <ol :aria-label="m.home.start" class="space-y-4">
+          <li v-for="step in steps" :key="step.key" class="flex gap-3">
+            <UIcon
+              :name="step.done ? 'i-lucide-circle-check' : 'i-lucide-circle'"
+              class="mt-0.5 size-4 shrink-0"
+              :class="step.done ? 'text-secondary' : 'text-dimmed'"
+              aria-hidden="true"
+            />
+            <div class="min-w-0 flex-1 space-y-1.5 text-sm">
+              <p>
+                <RouterLink :to="step.to" class="font-medium text-highlighted hover:underline">{{
+                  m.home.steps[step.key].title
+                }}</RouterLink
+                ><span class="sr-only">, {{ step.done ? m.home.done : m.home.toDo }}</span>
+              </p>
+              <p class="text-muted">{{ m.home.steps[step.key].body }}</p>
+              <div v-if="step.key === 'agent'" class="flex items-center gap-2">
+                <code
+                  class="min-w-0 flex-1 truncate rounded-md bg-elevated px-2.5 py-1.5 font-mono text-xs"
+                  >{{ mcpLine }}</code
+                >
+                <UButton
+                  :label="m.common.copy"
+                  icon="i-lucide-copy"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="copyLine"
+                />
+              </div>
+            </div>
+          </li>
+        </ol>
+      </section>
+
       <div class="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section aria-labelledby="read" class="space-y-3 rounded-lg border border-default p-5">
           <div class="flex items-baseline justify-between gap-3">
@@ -150,13 +235,9 @@ const totalViews = computed(() =>
           </ul>
         </section>
 
-        <section aria-labelledby="audit" class="space-y-3">
+        <section v-if="audit !== null" aria-labelledby="audit" class="space-y-3">
           <h2 id="audit" class="font-semibold">{{ m.home.lastAudit }}</h2>
-          <p v-if="audit === null" class="text-sm text-muted">
-            {{ m.home.noAudit }}
-          </p>
           <RouterLink
-            v-else
             :to="entryPath(audit)"
             class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
           >

@@ -147,8 +147,28 @@ export const en = {
     allPublished: 'Everything written is published.',
     changes: 'changes',
     lastAudit: 'Last audit',
-    noAudit: 'No audit report yet. The auditor of @hollware/agents writes one a week.',
     written: (at: string) => `Written ${at}`,
+    start: 'Get started',
+    done: 'done',
+    toDo: 'to do',
+    steps: {
+      agent: {
+        title: 'Connect an agent',
+        body: 'Make a personal token, then add Hollware to Claude Code with this line:',
+      },
+      entry: {
+        title: 'Write the first entry',
+        body: 'Or ask the agent for one: the checks of the collection come back to it.',
+      },
+      invite: {
+        title: 'Invite a person',
+        body: 'An editor publishes; what an author asks to publish waits for review.',
+      },
+      analytics: {
+        title: 'Connect the analytics of your site',
+        body: 'Home then shows what readers read most.',
+      },
+    },
   },
   entries: {
     views: {
