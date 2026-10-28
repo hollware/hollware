@@ -7,8 +7,8 @@ What lives in `tests/`: the guards of what this repository claims about itself, 
 - `tests/support/` holds what guards stand on: the repository's file list, readers of JSONC, Markdown, YAML, syntax trees and Vite+ tasks, and fixture builders.
 - `tests/ci/` runs the shell scripts of the CI and release workflows.
 - `tests/acceptance/` holds each stage's acceptance suite (`vp run test:acceptance`), named after the criteria of `PLAN.md`. It runs the built playground and site in process (`tests/acceptance/v0.1/support/harness.ts`), and a project under `wrangler dev` (`tests/acceptance/v0.1/support/project.ts`).
-- `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker` (`vp run test:conformance`): runner, token proxy, probes, baselines and must-pass profile.
-- `tests/fixtures/` holds synthetic content, loaded through `tests/fixtures/content.ts` in Node and in workerd (`tests/fixtures/README.md`).
+- `tests/conformance/` runs the MCP conformance suite against `tests/conformance/worker`: runner, token proxy, probes, baselines and must-pass profile.
+- `tests/fixtures/` holds the synthetic content of the tests (`tests/fixtures/README.md`).
 
 Run the guards with `pnpm exec vp test --project repo`. Prove one can fail with `node scripts/break-line.ts`; failing for another reason proves nothing. After `vp run -r build`, `node scripts/check-bins.ts` runs each built bin (`publishConfig.bin`) with `--version`.
 
@@ -28,6 +28,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
 - `tests/conventions/brand.test.ts`: the site and the admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed) with text at 4.5:1 contrast; the sign-in pages its ground and accent; every logo one mark.
 - `tests/conventions/starter-template.test.ts`: create-hollware's template is made by `scripts/sync-starter.ts` from `templates/starter` on build or pack, never committed: its files, the catalog's exact versions, `HOLLWARE_VERSION`, a standalone tsconfig.
+- `tests/conventions/install-tag.test.ts`: READMEs, hollware.com and the starter install with the tag of `.changeset/pre.json` in pre mode, none after.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
 - `tests/conventions/single-copies.test.ts`: each of `SINGLE_COPY_PACKAGES` resolves to one version.
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
@@ -66,7 +67,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/meta/package-lists.test.ts`: Layout, README table and changeset README list the real packages.
 - `tests/meta/agents-size.test.ts`: every `AGENTS.md` stays within 12,000 characters.
 - `tests/meta/test-projects.test.ts`: every test file is in a project of `vp test`, or in a directory with its own runner, a task of the root `vite.config.ts` that CI runs.
-- `tests/meta/disabled-tests.test.ts`: no test is skipped, postponed, focused or conditioned (`.skip`, `.todo`, `.only`, `.skipIf`, `.runIf`, `xit`, `xtest`, `xdescribe`), with no exception.
+- `tests/meta/disabled-tests.test.ts`: no test is skipped, postponed, focused or conditioned, with no exception.
 - `tests/meta/contributing.test.ts`: `CONTRIBUTING.md` agrees on Node.js, pnpm and the commands table.
 - `tests/meta/exceptions.test.ts`: exception lists keep their recorded size; none lives outside `tests/guards/exceptions.ts`.
 - `tests/meta/patches.test.ts`: a dependency patch starts with `PATCHED (reason)` and a test mentions it.

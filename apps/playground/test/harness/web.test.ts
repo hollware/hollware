@@ -121,7 +121,7 @@ describe('hollware.com', () => {
     expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
     expect(text.match(/^## /gm)).toHaveLength(40)
     expect(text).toContain('## create_draft')
-    expect(home).toContain('npm create hollware my-cms')
+    expect(home).toContain('npm create hollware@rc my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
     expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
     expect(home).toContain('Docs that follow the code')
