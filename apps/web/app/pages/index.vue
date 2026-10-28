@@ -257,6 +257,23 @@ const shaping = computed(() =>
     </UPageSection>
 
     <UPageSection
+      id="admin"
+      :headline="m.home.admin.headline"
+      :title="m.home.admin.title"
+      :description="m.home.admin.description"
+    >
+      <img
+        src="/admin-review.webp"
+        :alt="m.home.admin.alt"
+        width="1280"
+        height="720"
+        loading="lazy"
+        decoding="async"
+        class="w-full rounded-lg border border-default"
+      />
+    </UPageSection>
+
+    <UPageSection
       :headline="m.home.benefits.headline"
       :title="m.home.benefits.title"
       :description="m.home.benefits.description"

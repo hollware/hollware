@@ -20,6 +20,13 @@ export const en = {
       'Your agents write your content in Markdown. Hollware checks every change against your rules, lets people approve what goes live, and serves it from Cloudflare’s network seconds after you publish.',
     readDocs: 'Read the docs',
     demo: 'See the demo',
+    admin: {
+      headline: 'The admin',
+      title: 'Where a person has the last word',
+      description:
+        'What an agent asks to publish waits in Reviews, with its diff against the live version and the verdict of the contracts. A person approves it, asks for changes or rejects it, on a laptop or a phone.',
+      alt: 'The Reviews page of the Hollware admin: Ana asks to publish «Hola mundo, otra vez», the diff of its frontmatter against the live version, «Every contract passes», and the buttons Ask for changes and Approve and publish.',
+    },
     flow: {
       headline: 'How it works',
       title: 'From a prompt to a live page, with checks in between',
