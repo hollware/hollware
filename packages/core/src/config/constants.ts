@@ -1,4 +1,3 @@
-/** The largest Markdown file a collection accepts when its config does not say, 512 KiB. */
 export const DEFAULT_MAX_MARKDOWN_BYTES = 524_288
 
 /**

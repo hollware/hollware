@@ -16,7 +16,6 @@ export interface Chunk {
   readonly text: string
 }
 
-/** How long a piece may grow, in characters, before it is cut at a word. */
 export const CHUNK_LIMITS = { summary: 1200, section: 2000 } as const
 
 type Node = EntryDocument['nodes'][number]

@@ -3,12 +3,10 @@ import { PREVIEW_QUERY_PARAM } from '@hollware/core'
 /** The cookie that holds the token of a preview, on the site's own origin. */
 export const PREVIEW_COOKIE = 'hollware_preview'
 
-/** How long the cookie lives, in seconds: the hour of the token. */
 export const PREVIEW_COOKIE_MAX_AGE = 3600
 
 const TOKEN_SHAPE = /^hw_prv_[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
 
-/** Whether a value is shaped like a preview token. A value that is not is never kept. */
 export function isPreviewToken(value: unknown): value is string {
   return typeof value === 'string' && TOKEN_SHAPE.test(value)
 }
@@ -100,7 +98,6 @@ export function isSecureRequest(url: URL | string): boolean {
   return !(protocol === 'http:' && (hostname === 'localhost' || hostname === '127.0.0.1'))
 }
 
-/** The `Set-Cookie` that keeps a token for its hour: no script reads it, and only this site gets it. */
 export function previewCookie(token: string, options: { readonly secure: boolean }): string {
   return cookieLine(token, PREVIEW_COOKIE_MAX_AGE, options.secure)
 }

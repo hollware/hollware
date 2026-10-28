@@ -83,11 +83,6 @@ function readerOf(options: ReaderOptions): HollwareReader {
   return createClient({ url: options.url, token: options.token, fetch: options.fetch })
 }
 
-/**
- * Reads one collection of a site in one locale, published content only (but for `get` with a
- * preview token). The reader is resolved on
- * each call, so a live loader gets its service binding from the request that makes it.
- */
 export function createSource(options: SourceOptions & ReaderOptions): Source {
   const { site, collection, locale } = options
   return {

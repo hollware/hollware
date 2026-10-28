@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { readBackups } from '../../src/config/backups.ts'
+import { DEFAULT_BACKUPS, readBackups } from '../../src/config/backups.ts'
 import { Problems } from '../../src/config/config-error.ts'
-import { DEFAULT_BACKUPS } from '../../src/index.ts'
 
 describe('readBackups', () => {
   it('reads the backup setting, and refuses what is out of range with a fix', () => {

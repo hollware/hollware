@@ -34,7 +34,6 @@ function yamlValue(value: string): string {
   return JSON.stringify(value)
 }
 
-/** The report as Markdown, with its frontmatter. */
 export function reportOf(day: string, findings: readonly Finding[], report: ReportOptions): string {
   const frontmatter = report.frontmatter?.(day) ?? {
     title: `Content audit of ${day}`,
@@ -73,7 +72,6 @@ function problemsOf(verdict: Json): string[] {
   )
 }
 
-/** The memory's key of what the auditor has checked: where it is, and what it found by entry. */
 export const AUDIT_STATE = 'audit:state'
 
 export interface AuditState {

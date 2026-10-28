@@ -71,7 +71,6 @@ export function issuesOf(
   return issues
 }
 
-/** A JSON Schema (draft 2020-12) as a schema of Hollware. */
 export function describedSchemaOf(schema: JsonObject): DescribedSchema {
   const validator = new Validator(
     schema as ConstructorParameters<typeof Validator>[0],

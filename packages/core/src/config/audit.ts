@@ -7,7 +7,6 @@ export const AUDIT_RETENTION_MIN_DAYS = 30
 /** The most days a retention may be: ten years. Beyond that, keep it with no retention. */
 export const AUDIT_RETENTION_MAX_DAYS = 3650
 
-/** What a site that says nothing keeps: no addresses, and the log for as long as the site exists. */
 export const DEFAULT_AUDIT: ResolvedAudit = { ipAddresses: 'off', retentionDays: null }
 
 export function readAudit(path: string, raw: unknown, problems: Problems): ResolvedAudit {

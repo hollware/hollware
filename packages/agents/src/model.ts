@@ -9,7 +9,6 @@ export interface Message {
 /** A model that answers a conversation with text. */
 export type Model = (messages: readonly Message[]) => Promise<string>
 
-/** The model of Workers AI the agents use when the options name none. */
 export const DEFAULT_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
 interface AiBinding {
@@ -32,7 +31,6 @@ export function textOf(answer: unknown): string | null {
   return null
 }
 
-/** A model of Workers AI, through an AI Gateway when its id is given. */
 export function workersAiModel(
   ai: AiBinding,
   model: string,
@@ -53,7 +51,6 @@ export function workersAiModel(
   }
 }
 
-/** The day's cap of model calls was reached; the agents stop until the next day. */
 export class DailyLimitReached extends Error {
   constructor(limit: number) {
     super(`The agents reached their ${limit} model calls of the day`)
@@ -61,7 +58,6 @@ export class DailyLimitReached extends Error {
   }
 }
 
-/** A model that counts its calls of the day in the memory and refuses one over `limit`. */
 export function capped(model: Model, memory: Memory, limit: number, today: () => string): Model {
   return async (messages) => {
     const key = `usage:${today()}`

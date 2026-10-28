@@ -7,7 +7,6 @@ export const BACKUP_RETENTION_MIN_DAYS = 1
 /** The most: a year of daily files. Older content lives in an export kept elsewhere. */
 export const BACKUP_RETENTION_MAX_DAYS = 365
 
-/** What a site that says nothing gets: a backup each day, kept 30 days. */
 export const DEFAULT_BACKUPS: ResolvedBackups = { enabled: true, retentionDays: 30 }
 
 const FIX = 'Declare it as { enabled: true, retentionDays: 30 }, or remove it.'

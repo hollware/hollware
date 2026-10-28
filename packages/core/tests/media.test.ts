@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import { DEFAULT_MEDIA } from '../src/config/media.ts'
+import { assetIdIn } from '../src/media/index.ts'
+
 import {
-  assetIdIn,
   assetIdOf,
   assetIdsIn,
   checkSvg,
   conversionOf,
-  DEFAULT_MEDIA,
   processMarkdown,
   resolveAssetReferences,
   sniffImage,

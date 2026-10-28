@@ -1,6 +1,5 @@
 import type { ResolvedMedia } from '../config/types.ts'
 
-/** The kinds of image Hollware takes, by media type. */
 export const IMAGE_FORMATS = [
   'image/jpeg',
   'image/png',
@@ -199,7 +198,6 @@ export function srcsetOf(url: string, image: ImageSizes): string | null {
   ].join(', ')
 }
 
-/** The `sizes` that goes with it: as wide as the layout, never wider than the image itself. */
 export const sizesOf = (width: number) => `(min-width: ${width}px) ${width}px, 100vw`
 
 /**
@@ -217,11 +215,9 @@ export async function assetIdOf(site: string, sha256Hex: string): Promise<string
   return `ast_${hex.slice(0, 26)}`
 }
 
-/** What content writes to name an asset: `asset:ast_…`. */
 export const ASSET_SCHEME = 'asset:'
 const ASSET_REFERENCE = /^asset:(ast_[0-9a-f]{26})$/
 
-/** The id an `asset:` reference names, or `null` when the value is no such reference. */
 export function assetIdIn(value: string): string | null {
   return ASSET_REFERENCE.exec(value.trim())?.[1] ?? null
 }

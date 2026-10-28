@@ -26,10 +26,6 @@ export const OPERATION_AUDIT_ACTIONS = [
   'update_asset',
 ] as const
 
-/**
- * What happens outside the operations: the tokens, members, passkeys, sessions and apps of people,
- * the scheduled publications, the events given up on and sent again, and the entries purged.
- */
 export const IDENTITY_AUDIT_ACTIONS = [
   'token.create',
   'preview.create',
@@ -60,14 +56,9 @@ export const AUDIT_ACTIONS = [...OPERATION_AUDIT_ACTIONS, ...IDENTITY_AUDIT_ACTI
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 
-/** `denied`: a scope or a role was missing; `failed`: any other error the caller got. */
 export const AUDIT_OUTCOMES = ['ok', 'denied', 'failed'] as const
 export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number]
 
-/**
- * Who acted: a person in the admin, a personal token, an app a person allowed through OAuth, or
- * the deployment itself (its cron).
- */
 export const AUDIT_ACTOR_KINDS = ['user', 'token', 'oauth_client', 'system'] as const
 export type AuditActorKind = (typeof AUDIT_ACTOR_KINDS)[number]
 

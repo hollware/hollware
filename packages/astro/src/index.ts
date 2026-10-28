@@ -21,7 +21,6 @@ export type {
   Translation,
 } from './source.ts'
 export type { HollwareReader } from '@hollware/client'
-export { createSource } from './source.ts'
 export {
   contentNodes,
   elementOf,

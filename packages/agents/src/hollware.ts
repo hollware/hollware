@@ -1,4 +1,3 @@
-/** The tools an agent may call. */
 export const ALLOWED_TOOLS = [
   'comment_review',
   'content_stats',

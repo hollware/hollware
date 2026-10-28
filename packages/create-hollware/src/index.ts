@@ -4,7 +4,6 @@ import { readFileSync, realpathSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { create, CreateError, USAGE, UsageError, type Io, type RunResult } from './scaffold.ts'
 
-export { USAGE } from './scaffold.ts'
 export type { Io } from './scaffold.ts'
 
 function readVersion(): string {

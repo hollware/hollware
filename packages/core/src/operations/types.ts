@@ -43,7 +43,6 @@ export interface OperationSpec<
   readonly outcomes: Readonly<Record<OutcomeOf<Output>, OutcomeInfo>>
 }
 
-/** Declares an operation spec, keeping the literal types of its name and schemas. */
 export function defineOperation<
   const Name extends string,
   Input extends z.ZodType,

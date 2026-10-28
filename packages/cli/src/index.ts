@@ -13,7 +13,6 @@ import { createWranglerRunner } from './wrangler.ts'
 
 export type { Io } from './io.ts'
 export type { RunWrangler, WranglerResult } from './wrangler.ts'
-export { createWranglerRunner } from './wrangler.ts'
 
 const COMMANDS = [
   {

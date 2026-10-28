@@ -47,7 +47,6 @@ export interface AgentsOptions {
   readonly clock?: () => Date
 }
 
-/** The roles, by turn: each run is one, so that it stays within the fifty calls of a free run. */
 export const ROLES = ['reviewer', 'translator', 'auditor'] as const
 
 /** The role whose turn it is at `time`: the ten minutes of the time, in turn. */
@@ -55,10 +54,8 @@ export function roleAt(time: number): (typeof ROLES)[number] {
   return ROLES[Math.floor(time / 600_000) % ROLES.length] ?? 'reviewer'
 }
 
-/** The memory's key of the day of the last audit. */
 export const LAST_AUDIT = 'audit:last'
 
-/** Whether an audit is due: none yet, or the last one `everyDays` or more days before `day`. */
 export function auditDue(last: string | null, day: string, everyDays: number): boolean {
   return last === null || Date.parse(day) - Date.parse(last) >= everyDays * 86_400_000
 }

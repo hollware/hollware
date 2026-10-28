@@ -53,8 +53,7 @@ export type { PageEntry } from './runtime/types.ts'
 
 export const name = '@hollware/nuxt'
 
-/** The routes of the site that read Hollware for its pages, on the server. */
-export const ROUTES = [
+const ROUTES = [
   ['/_hollware/site', 'site'],
   ['/_hollware/entries/:collection', 'entries'],
   ['/_hollware/entry/:collection/:locale/:slug', 'entry'],

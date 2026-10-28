@@ -2,7 +2,6 @@ import type { Problems } from './config-error.ts'
 import type { ResolvedMedia } from './types.ts'
 import { isRecord, keyPath, wrongType } from './values.ts'
 
-/** The formats a site may convert its images to, or keep them as they came. */
 export const MEDIA_FORMATS = ['webp', 'avif', 'original'] as const
 
 /** The narrowest an image may be scaled down to: smaller would blur on every screen. */
@@ -13,10 +12,6 @@ export const MEDIA_MAX_WIDTH = 8192
 /** The most narrower copies an image gets: each one is a conversion, and the month has a limit. */
 export const MEDIA_MAX_WIDTHS = 4
 
-/**
- * What a site that says nothing gets: WebP at 85, nothing wider than 2400 pixels, and copies 640
- * and 1280 pixels wide of each image wider than them.
- */
 export const DEFAULT_MEDIA: ResolvedMedia = {
   format: 'webp',
   quality: 85,

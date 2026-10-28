@@ -24,7 +24,6 @@ export const AUTOMATIC_KINDS = [
 ] as const
 export type AutomaticKind = (typeof AUTOMATIC_KINDS)[number]
 
-/** What a reading time counts: 200 words a minute. */
 export const WORDS_PER_MINUTE = 200
 
 /** A field Hollware fills, and the shape its schema gives the value. */

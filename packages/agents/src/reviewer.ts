@@ -3,7 +3,6 @@ import type { Memory } from './memory.ts'
 import type { Model } from './model.ts'
 import { list, record, text } from './read.ts'
 
-/** The name the agents' client gives: a comment of theirs carries it. */
 export const AGENTS_CLIENT = 'hollware-agents'
 
 export const MAX_REVIEWS = 8
