@@ -78,6 +78,7 @@ describe('D1 schema', () => {
       'deliveries',
       'entries',
       'entry_embeddings',
+      'entry_purges',
       'invitations',
       'members',
       'outbox',

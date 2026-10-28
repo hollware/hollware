@@ -120,7 +120,7 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, the two of assets and the two that write the events of reviews', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, the two of assets and of entry_purges, and the two that write the events of reviews', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
@@ -132,6 +132,8 @@ describe('append-only tables', () => {
       { name: 'audit_log_no_replace', tbl_name: 'audit_log' },
       { name: 'entries_fts_publication', tbl_name: 'entries' },
       { name: 'entries_fts_removal', tbl_name: 'entries' },
+      { name: 'entry_purges_immutable', tbl_name: 'entry_purges' },
+      { name: 'entry_purges_no_delete', tbl_name: 'entry_purges' },
       { name: 'publications_immutable', tbl_name: 'publications' },
       { name: 'publications_no_delete', tbl_name: 'publications' },
       { name: 'publications_no_replace', tbl_name: 'publications' },
@@ -147,6 +149,26 @@ describe('append-only tables', () => {
       { name: 'site_changes_no_delete', tbl_name: 'site_changes' },
       { name: 'site_changes_no_replace', tbl_name: 'site_changes' },
     ])
+  })
+
+  it('keep the record of a purge: it is neither changed nor deleted', async () => {
+    const site = `purges-${crypto.randomUUID().slice(0, 8)}`
+    await env.DB.prepare("INSERT INTO sites (id, created_at, updated_at) VALUES (?1, 'now', 'now')")
+      .bind(site)
+      .run()
+    await env.DB.prepare(
+      "INSERT INTO entry_purges (id, site_id, entry_id, purged_by, created_at, updated_at) VALUES (?1, ?2, 'ent_1', 'usr_1', 'now', 'now')",
+    )
+      .bind(`prg_${site}`, site)
+      .run()
+    const attempt = (sql: string) => env.DB.prepare(sql).bind(`prg_${site}`).run()
+
+    await expect(
+      attempt("UPDATE entry_purges SET purged_by = 'usr_2' WHERE id = ?1"),
+    ).rejects.toThrow('append-only: the record of a purge never changes')
+    await expect(attempt('DELETE FROM entry_purges WHERE id = ?1')).rejects.toThrow(
+      'append-only: the record of a purge is never deleted',
+    )
   })
 
   it('keep site_changes as it was written: no line is changed, deleted or replaced', async () => {

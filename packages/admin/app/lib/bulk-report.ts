@@ -13,6 +13,7 @@ const DONE = new Set([
   'changed',
   'trashed',
   'restored',
+  'purged',
 ])
 
 export function useBulkReport() {

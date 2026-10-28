@@ -24,6 +24,7 @@ import type { AuditLine } from '../audit/log.ts'
 import type { AuditLogFor } from '../mcp/index.ts'
 import { connect } from '../db/d1.ts'
 import { failedDeliveries, sendAgain, type FailedDelivery } from '../db/events.ts'
+import { purgeEntry } from '../db/purge.ts'
 import { enqueue } from '../events/run.ts'
 import { createD1Store } from '../db/index.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
@@ -559,6 +560,31 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
             'List the people of the site and pick an invitation that waits.',
             404,
           )
+    }),
+  )
+
+  app.post(
+    '/v1/admin/entries/:id/purge',
+    admin('entry.purge', async (c, person, note) => {
+      const id = c.req.param('id') ?? ''
+      note.target = { type: 'entry', id }
+      const outcome = await purgeEntry(c.env.DB, {
+        site: person.site,
+        entryId: id,
+        purgedBy: person.userId,
+        now: options.clock.now().toISOString(),
+      })
+      if (outcome === 'not_found') {
+        return refused('This site has no entry with that id.', 'Pick an entry of its trash.', 404)
+      }
+      if (outcome === 'not_in_trash') {
+        return refused(
+          'Only an entry in the trash is deleted for ever.',
+          'Move it to the trash first; a published one is unpublished before.',
+          409,
+        )
+      }
+      return json({ outcome: 'purged' })
     }),
   )
 

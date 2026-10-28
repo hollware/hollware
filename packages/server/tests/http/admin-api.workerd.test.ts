@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { connect } from '../../src/db/d1.ts'
 import { createInvitation, redeemInvitation } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
+import { insertEntries } from '../db/support.ts'
 import { adminPerson, adminToken, call } from './admin-session.ts'
 import { boot, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
 
@@ -242,6 +243,46 @@ describe("the admin's own routes", () => {
 
     expect(after - before).toBeGreaterThanOrEqual(1_000_000)
     expect(refused.status).toBe(403)
+  })
+
+  it('delete an entry of the trash for ever, for an owner, and refuse one out of the trash', async () => {
+    const worker = boot()
+    await worker.ready()
+    const owner = await adminPerson(worker, 'owner')
+    const editor = await adminToken(worker, 'editor')
+    const unique = crypto.randomUUID().replaceAll('-', '').slice(0, 20).toUpperCase()
+    const [trashed, live] = [`ent_${unique}TRASH1`, `ent_${unique}LIVE01`]
+    await insertEntries(
+      env.DB,
+      { site: SITE_KEY, actor: { kind: 'user', userId: owner.userId, tokenId: null, meta: null } },
+      [
+        { id: trashed, slug: `trashed-${unique.toLowerCase()}`, updatedAt: NOW },
+        { id: live, slug: `live-${unique.toLowerCase()}`, updatedAt: NOW },
+      ],
+    )
+    await env.DB.prepare('UPDATE entries SET deleted_at = ?1 WHERE id = ?2')
+      .bind(NOW, trashed)
+      .run()
+
+    const answers = [
+      await call(worker, editor, `/v1/admin/entries/${trashed}/purge`, {}),
+      await call(worker, owner.access, `/v1/admin/entries/${live}/purge`, {}),
+      await call(worker, owner.access, `/v1/admin/entries/${trashed}/purge`, {}),
+      await call(worker, owner.access, `/v1/admin/entries/${trashed}/purge`, {}),
+    ]
+    const rows = await env.DB.prepare('SELECT id FROM entries WHERE id IN (?1, ?2) ORDER BY id')
+      .bind(trashed, live)
+      .all<{ id: string }>()
+    const audit = await env.DB.prepare(
+      "SELECT outcome FROM audit_log WHERE action = 'entry.purge' AND target_id IN (?1, ?2) ORDER BY rowid",
+    )
+      .bind(trashed, live)
+      .all<{ outcome: string }>()
+
+    expect(answers.map((answer) => answer.status)).toEqual([403, 409, 200, 404])
+    expect(await answers[2]?.json()).toEqual({ outcome: 'purged' })
+    expect(rows.results.map((row) => row.id)).toEqual([live])
+    expect(audit.results.map((line) => line.outcome)).toEqual(['failed', 'ok', 'failed'])
   })
 
   it('list the deliveries of the site that failed, and send one of their events again', async () => {

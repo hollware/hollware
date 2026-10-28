@@ -24,5 +24,6 @@
   "0022_revision_code_words.sql": "973d2d959fc2c76c0f37ae3332cf9733dbcf408a2766c720d3280b8795f7e64f",
   "0023_site_analytics.sql": "1d247a75dbcc92a8aa19674d7cf7d77fddeb6bbc941ddcf242a35fb1145154b2",
   "0024_review_events.sql": "78943291fd372a3d4eec3d3ae659bc64ba088caa9d1910eb50c0a32ba15dc4ac",
-  "0025_abandoned_events.sql": "44ceb32ad04ce73464ec0a3abb1780035de553335394d58b3e3aefa5309d4dc1"
+  "0025_abandoned_events.sql": "44ceb32ad04ce73464ec0a3abb1780035de553335394d58b3e3aefa5309d4dc1",
+  "0026_entry_purges.sql": "8fce10fcf968ff0b03eb7c9b48d6b1d0ba19eff3e36413475f13b2506ccadf1b"
 }

@@ -106,6 +106,7 @@ export const es: Messages = {
       changed: (n: number) => (n === 1 ? '1 cambiada' : `${n} cambiadas`),
       trashed: (n: number) => (n === 1 ? '1 movida a la papelera' : `${n} movidas a la papelera`),
       restored: (n: number) => (n === 1 ? '1 restaurada' : `${n} restauradas`),
+      purged: (n: number) => (n === 1 ? '1 borrada para siempre' : `${n} borradas para siempre`),
       not_draft: (n: number) =>
         n === 1
           ? '1 publicada o programada: despublícala primero'
@@ -123,6 +124,11 @@ export const es: Messages = {
     remove: (n: number) => `Quitar ${n}`,
     trash: (n: number) => `Mover ${n} a la papelera`,
     restore: (n: number) => `Restaurar ${n}`,
+    purge: (n: number) => `Borrar ${n} para siempre`,
+    purgeTitle: (n: number) =>
+      n === 1 ? '¿Borrar 1 entrada para siempre?' : `¿Borrar ${n} entradas para siempre?`,
+    purgeBody:
+      'Se borran con sus revisiones, publicaciones, revisiones pedidas, comentarios y redirecciones, y nada las trae de vuelta. El registro de actividad guarda que lo hiciste, y sus ids.',
     setRole: 'Cambiar el rol',
     unpublishTitle: (n: number) => `¿Despublicar ${n} entradas?`,
     unpublishBody:
@@ -868,6 +874,7 @@ export const es: Messages = {
       'schedule.unpublish': 'Despublicó una entrada cuando llegó su hora',
       'event.abandon': 'Dio por perdido un evento que nadie recibió',
       'event.retry': 'Volvió a enviar un evento',
+      'entry.purge': 'Borró una entrada para siempre',
     },
     columns: {
       when: 'Cuándo',

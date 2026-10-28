@@ -183,6 +183,13 @@
       "when": 1793166669640,
       "tag": "0025_abandoned_events",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793189609140,
+      "tag": "0026_entry_purges",
+      "breakpoints": true
     }
   ]
 }

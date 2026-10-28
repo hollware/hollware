@@ -280,6 +280,22 @@ export const schedules = sqliteTable(
   ],
 )
 
+export const entryPurges = sqliteTable(
+  'entry_purges',
+  {
+    id: id('prg'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    purgedBy: text('purged_by').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('entry_purges_id_site').on(t.id, t.siteId),
+    unique('entry_purges_entry').on(t.siteId, t.entryId),
+    foreignKey({ name: 'entry_purges_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+  ],
+)
+
 export const redirects = sqliteTable(
   'redirects',
   {
