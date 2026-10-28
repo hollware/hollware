@@ -284,6 +284,37 @@ export const en = {
     untranslated: '',
     callout: { note: 'Note', tip: 'Tip', warning: 'Warning' },
   },
+  readApi: {
+    title: 'Read API',
+    description:
+      'Every endpoint of the read API of Hollware: what it answers and the parameters it takes.',
+    intro: (endpoints: number) =>
+      `The ${endpoints} endpoints of /v1, which a site outside Cloudflare reads with a read token. Each answers JSON with an ETag, and 304 when nothing changed since; a preview token reads the latest revision of one entry. A deployment serves the same, as OpenAPI, at /v1/openapi.json.`,
+    untranslated: '',
+    answers: 'Answers:',
+    parameter: 'Parameter',
+    in: 'In',
+    about: 'What it is',
+  },
+  events: {
+    title: 'Webhook events',
+    description:
+      'Every event a webhook of Hollware gets: when it is sent, its fields, and how to verify it.',
+    intro:
+      'A site lists its webhooks in its events. Each change sends an event to each of them, as JSON in a POST, signed with the secret of the webhook. parseHollwareEvent of @hollware/core reads one, and verifyWebhook checks its signature.',
+    untranslated: '',
+    delivery: 'Delivery',
+    deliveryBody:
+      'An event is written in the same batch as the change it tells of, then sent through the Queue: a webhook that answers an error gets it again, up to five times. The events of a review reach the webhooks at the next sweep of the cron, within a minute. A receiver uses the id of an event to ignore one it already has.',
+    eventHeader: 'the id of the event, the same on every retry',
+    timestampHeader:
+      'when it was signed, in seconds; verifyWebhook refuses one more than five minutes away',
+    signatureHeader:
+      'v1= and the HMAC-SHA256 of the timestamp, a dot and the body, under the secret of the webhook',
+    field: 'Field',
+    type: 'Type',
+    about: 'What it is',
+  },
   tools: {
     title: 'MCP tools',
     description:

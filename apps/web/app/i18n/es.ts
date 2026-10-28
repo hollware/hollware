@@ -286,6 +286,37 @@ export const es: Messages = {
     untranslated: 'Esta página todavía no está traducida al español: la ves en inglés.',
     callout: { note: 'Nota', tip: 'Consejo', warning: 'Atención' },
   },
+  readApi: {
+    title: 'API de lectura',
+    description:
+      'Cada endpoint de la API de lectura de Hollware: qué responde y los parámetros que recibe.',
+    intro: (endpoints: number) =>
+      `Los ${endpoints} endpoints de /v1, que un sitio fuera de Cloudflare lee con un token de lectura. Cada uno responde JSON con un ETag, y 304 cuando nada cambió desde entonces; un token de preview lee la última revisión de una entrada. Un despliegue sirve lo mismo, como OpenAPI, en /v1/openapi.json.`,
+    untranslated: 'Las descripciones son las que entrega el servidor, en inglés.',
+    answers: 'Responde:',
+    parameter: 'Parámetro',
+    in: 'En',
+    about: 'Qué es',
+  },
+  events: {
+    title: 'Eventos de webhooks',
+    description:
+      'Cada evento que recibe un webhook de Hollware: cuándo se envía, sus campos y cómo verificarlo.',
+    intro:
+      'Un sitio lista sus webhooks en sus eventos. Cada cambio envía un evento a cada uno, como JSON en un POST, firmado con el secreto del webhook. parseHollwareEvent de @hollware/core lee uno, y verifyWebhook verifica su firma.',
+    untranslated: 'Las descripciones de los campos son las del código, en inglés.',
+    delivery: 'Entrega',
+    deliveryBody:
+      'Un evento se escribe en el mismo lote que el cambio que cuenta, y después se envía por la cola: un webhook que responde un error lo recibe de nuevo, hasta cinco veces. Los eventos de una revisión llegan a los webhooks en la siguiente pasada del cron, en menos de un minuto. Quien recibe usa el id de un evento para ignorar uno que ya tiene.',
+    eventHeader: 'el id del evento, el mismo en cada reintento',
+    timestampHeader:
+      'cuándo se firmó, en segundos; verifyWebhook rechaza uno que esté a más de cinco minutos',
+    signatureHeader:
+      'v1= y el HMAC-SHA256 del timestamp, un punto y el cuerpo, con el secreto del webhook',
+    field: 'Campo',
+    type: 'Tipo',
+    about: 'Qué es',
+  },
   tools: {
     title: 'Herramientas MCP',
     description:
