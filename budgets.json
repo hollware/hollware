@@ -8,7 +8,12 @@
     "reason": "Every module is uploaded with the Worker, and the first write loads the lazy ones as well: the Markdown parser is imported on the first write, so what it weighs is the cost of a cold write. Raised from 400 on 2026-10-16 for the JSON Schema validator and the operations that change a site's structure. Cloudflare's own limit is 3 MB on the Free plan."
   },
   "lazyPackages": {
-    "packages": ["comark", "@comark/html", "@simplewebauthn/server"],
-    "reason": "Comark parses Markdown on a write and @comark/html renders a stored document; SimpleWebAuthn runs only for a passkey ceremony. Each loads when it is first needed, so an isolate that only reads or answers a token check never evaluates them."
+    "packages": [
+      "comark",
+      "@comark/html",
+      "@simplewebauthn/server",
+      "@modelcontextprotocol/server"
+    ],
+    "reason": "Comark parses Markdown on a write and @comark/html renders a stored document; SimpleWebAuthn runs only for a passkey ceremony; the MCP server, on the first request to /mcp. Each loads when it is first needed, so an isolate that only reads or answers a token check never evaluates them."
   }
 }
