@@ -434,7 +434,7 @@ test('the owner finds the delivery to a webhook that failed, and sends its event
   }).toPass({ timeout: 60_000 })
   await expect(row).toContainText('site · site.changed')
   await row.getByRole('button', { name: 'Send again' }).click()
-  await expect(owner.getByText('Sent to the Queue again')).toBeVisible()
+  await expect(owner.getByText('Sent to the Queue again', { exact: true })).toBeVisible()
   await expectAccessible(owner)
   await owner.goto('/admin/settings/activity')
   await expect(owner.getByRole('row', { name: /Sent an event again/ }).first()).toBeVisible()
