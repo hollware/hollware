@@ -51,12 +51,16 @@ function fakeImages(info: ImageInfo, failure?: { code: number }, infoFailure?: E
   return { images, asked }
 }
 
-function mediaWith(images: ImageConverter | null): Media {
+function mediaWith(
+  images: ImageConverter | null,
+  download: Media['download'] = () => Promise.reject(new Error('no network in this test')),
+): Media {
   return {
     files: r2Files(env.MEDIA),
     images,
     catalog: d1Catalog(env.DB),
     baseUrl: 'https://cms.example.com/assets/',
+    download,
   }
 }
 
@@ -367,6 +371,100 @@ describe('upload_asset', () => {
       'image/png',
       null,
     ])
+  })
+})
+
+describe('upload_asset from a URL', () => {
+  it('downloads a public https image through its redirects and keeps it as one sent in base64', async () => {
+    const world = await newWorld(env.DB, 'media-url')
+    const asked: string[] = []
+    const media = mediaWith(null, async (url) => {
+      asked.push(url)
+      return url.endsWith('/moved.png')
+        ? new Response(null, { status: 301, headers: { location: '/pixel.png' } })
+        : new Response(PNG, { headers: { 'content-type': 'image/png' } })
+    })
+
+    const answer = await uploadAsset(
+      { filename: 'pixel.png', alt: 'A pixel', url: 'https://images.example.com/moved.png' },
+      withMedia(world.context(), media),
+    )
+
+    expect(asked).toEqual([
+      'https://images.example.com/moved.png',
+      'https://images.example.com/pixel.png',
+    ])
+    expect(answer).toMatchObject({
+      outcome: 'created',
+      asset: { format: 'image/png', originalBytes: PNG.length, alt: 'A pixel' },
+    })
+    expect(await stored(`sites/${world.tenant.key}/${answer.asset?.id ?? ''}`)).toEqual(PNG)
+  })
+
+  it('refuses http, a redirect to http or past five, an answer that is not ok, a file past 10 MB, a fetch that fails, and data with url', async () => {
+    const world = await newWorld(env.DB, 'media-url-refused')
+    const asked: string[] = []
+    const responses: Record<string, () => Response> = {
+      'https://images.example.com/to-http.png': () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: 'http://images.example.com/pixel.png' },
+        }),
+      'https://images.example.com/loop.png': () =>
+        new Response(null, { status: 302, headers: { location: '/loop.png' } }),
+      'https://images.example.com/gone.png': () => new Response('Not found', { status: 404 }),
+      'https://images.example.com/big.png': () =>
+        new Response('x', { headers: { 'content-length': '10485761' } }),
+      'https://images.example.com/endless.png': () =>
+        new Response(
+          new ReadableStream({
+            pull(controller) {
+              controller.enqueue(new Uint8Array(1024 * 1024))
+            },
+          }),
+        ),
+    }
+    const media = mediaWith(null, async (url) => {
+      asked.push(url)
+      const response = responses[url]
+      if (response === undefined) throw new Error('connection refused')
+      return response()
+    })
+    const upload = (input: { url?: string; data?: string }) =>
+      uploadAsset({ filename: 'x.png', alt: 'x', ...input }, withMedia(world.context(), media))
+
+    const answers = [
+      await upload({ url: 'http://images.example.com/pixel.png' }),
+      await upload({ url: 'https://images.example.com/to-http.png' }),
+      await upload({ url: 'https://images.example.com/loop.png' }),
+      await upload({ url: 'https://images.example.com/gone.png' }),
+      await upload({ url: 'https://images.example.com/big.png' }),
+      await upload({ url: 'https://images.example.com/endless.png' }),
+      await upload({ url: 'https://down.example.com/pixel.png' }),
+      await upload({ url: 'https://images.example.com/gone.png', data: base64(PNG) }),
+      await upload({}),
+    ]
+
+    expect(answers.map((answer) => answer.problem?.message)).toEqual([
+      'http://images.example.com/pixel.png is not an https URL.',
+      'https://images.example.com/to-http.png redirected to http://images.example.com/pixel.png, which is not an https URL.',
+      'https://images.example.com/loop.png redirected more than 5 times.',
+      'https://images.example.com/gone.png answered 404.',
+      'The file is 10485761 bytes, more than the 10485760 an image may be.',
+      'The file is 11534336 bytes, more than the 10485760 an image may be.',
+      'https://down.example.com/pixel.png could not be fetched: Error: connection refused.',
+      'Send the image once: as data, in base64, or as url, never both or neither.',
+      'Send the image once: as data, in base64, or as url, never both or neither.',
+    ])
+    expect(asked).toEqual([
+      'https://images.example.com/to-http.png',
+      ...Array<string>(6).fill('https://images.example.com/loop.png'),
+      'https://images.example.com/gone.png',
+      'https://images.example.com/big.png',
+      'https://images.example.com/endless.png',
+      'https://down.example.com/pixel.png',
+    ])
+    expect(await rows(world.tenant.key)).toBe(0)
   })
 })
 

@@ -1127,7 +1127,7 @@ export const uploadAsset = defineOperation({
   name: 'upload_asset',
   title: 'Upload an image',
   description:
-    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth) and makes the narrower copies of its widths for srcset (640 and 1280 pixels by default), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
+    "Uploads an image to the site: JPEG, PNG, WebP, AVIF, GIF or SVG, at most 10 MB, sent in base64 as data, or named by a public https url that Hollware downloads. What it is comes from its bytes, never from its name. The site's media setting converts it once (to WebP at 85 by default; PNG lossless; GIF with its frames; nothing wider than its maxWidth) and makes the narrower copies of its widths for srcset (640 and 1280 pixels by default), and an SVG is kept as it is when nothing in it can run, or refused with what to remove. The same file uploaded again answers exists with the same asset. Write its reference in content: img: asset:ast_… in the frontmatter, or ![alt](asset:ast_…) in Markdown.",
   input: z.strictObject({
     filename: z.string().min(1).max(200).describe('Its name, such as continuum.png.'),
     alt: z
@@ -1135,7 +1135,20 @@ export const uploadAsset = defineOperation({
       .min(1)
       .max(500)
       .describe('What the image shows, for whoever cannot see it: required.'),
-    data: z.string().min(1).max(MAX_BASE64).describe('The file, in base64.'),
+    data: z
+      .string()
+      .min(1)
+      .max(MAX_BASE64)
+      .optional()
+      .describe('The file, in base64. Send data or url, not both.'),
+    url: z
+      .string()
+      .min(1)
+      .max(2048)
+      .optional()
+      .describe(
+        'A public https URL of the file, which Hollware downloads. Send data or url, not both.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['created', 'exists', 'refused', 'unavailable']),
