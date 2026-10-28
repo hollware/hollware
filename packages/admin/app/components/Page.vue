@@ -24,7 +24,13 @@ const trail = computed(
 </script>
 
 <template>
-  <UDashboardPanel :ui="flush ? { body: 'p-0 sm:p-0 gap-0' } : undefined">
+  <UDashboardPanel
+    id="main"
+    role="main"
+    tabindex="-1"
+    class="focus:outline-none"
+    :ui="flush ? { body: 'p-0 sm:p-0 gap-0' } : undefined"
+  >
     <template #header>
       <UDashboardNavbar :title="title" :ui="{ title: 'text-sm font-medium truncate' }">
         <template #leading>

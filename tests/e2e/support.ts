@@ -40,12 +40,19 @@ export const AXE_EXCLUDED: readonly { readonly selector: string; readonly reason
   },
 ]
 
+const LANDMARKS = ['region', 'landmark-one-main', 'landmark-unique', 'landmark-no-duplicate-main']
+
 export async function expectAccessible(page: Page): Promise<void> {
   let builder = new AxeBuilder({ page })
   for (const { selector } of AXE_EXCLUDED) builder = builder.exclude(selector)
   const results = await builder.analyze()
   const blocking = results.violations
-    .filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
+    .filter(
+      (violation) =>
+        violation.impact === 'serious' ||
+        violation.impact === 'critical' ||
+        LANDMARKS.includes(violation.id),
+    )
     .map(
       (violation) =>
         `${violation.id}: ${violation.nodes

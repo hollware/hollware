@@ -422,6 +422,12 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
 })
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
+  await owner.goto('/admin/')
+  await expect(owner.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
+  await owner.keyboard.press('Tab')
+  await expect(owner.getByRole('link', { name: 'Skip to content' })).toBeFocused()
+  await owner.keyboard.press('Enter')
+  await expect(owner.getByRole('main')).toBeFocused()
   for (const [path, heading, title] of [
     ['/admin/', 'Home', 'Home · playground · Hollware'],
     ['/admin/settings/site', 'General', 'General · playground · Hollware'],
