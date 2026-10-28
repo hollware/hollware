@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 1.0.0-rc.10
+
+### Patch Changes
+
+- [#74](https://github.com/hollware/hollware/pull/74) [`bdeb962`](https://github.com/hollware/hollware/commit/bdeb9625dc9df025bd8eeeaa45cb8ae6db05ae8c) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The editor reads the copy the browser kept once it knows who is signed in: on a page loaded cold, the entry could arrive first, and the copy of a tab that closed was ignored. Typing back to the saved text also says Saved again, instead of Unsaved changes until the next save.
+
 ## 1.0.0-rc.9
 
 ### Minor Changes

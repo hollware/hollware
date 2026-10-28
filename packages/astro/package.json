@@ -1,6 +1,6 @@
 {
   "name": "@hollware/astro",
-  "version": "1.0.0-rc.9",
+  "version": "1.0.0-rc.10",
   "description": "Read Hollware from an Astro site: a content loader, over a service binding or HTTP.",
   "homepage": "https://hollware.com",
   "bugs": {
