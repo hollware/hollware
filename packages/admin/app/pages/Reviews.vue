@@ -13,6 +13,7 @@ import { useBulkReport } from '../lib/bulk-report.ts'
 import { nextIndex } from '../lib/entry-list.ts'
 import { indexAfterReload } from '../lib/reviews.ts'
 import { api } from '../lib/session.ts'
+import { personName } from '../lib/people.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
 
@@ -448,7 +449,7 @@ defineShortcuts(
                 {{
                   m.reviews.requested(
                     review.entry.locale,
-                    review.requestedByName ?? review.requestedBy,
+                    personName(review.requestedBy, review.requestedByName, m.people.formerPerson),
                     formatDateTime(review.requestedAt),
                   )
                 }}
@@ -503,7 +504,7 @@ defineShortcuts(
             {{
               m.reviews.requested(
                 chosen.entry.locale,
-                chosen.requestedByName ?? chosen.requestedBy,
+                personName(chosen.requestedBy, chosen.requestedByName, m.people.formerPerson),
                 formatDateTime(chosen.requestedAt),
               )
             }}
@@ -547,7 +548,9 @@ defineShortcuts(
                 class="rounded-lg border border-default bg-elevated/30 p-3 text-sm"
               >
                 <p class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                  <span class="font-medium text-toned">{{ item.authorName ?? item.author }}</span>
+                  <span class="font-medium text-toned">{{
+                    personName(item.author, item.authorName, m.people.formerPerson)
+                  }}</span>
                   <UBadge
                     v-if="item.client !== null && item.client !== 'hollware-admin'"
                     :label="item.client"

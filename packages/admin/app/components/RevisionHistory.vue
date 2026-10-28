@@ -5,6 +5,7 @@ import DiffView from './DiffView.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { api } from '../lib/session.ts'
+import { personName } from '../lib/people.ts'
 
 const props = defineProps<{
   entryId: string
@@ -92,7 +93,7 @@ async function restore() {
 }
 
 function author(revision: Revision): string {
-  const who = revision.authorName ?? revision.author
+  const who = personName(revision.author, revision.authorName, m.value.people.formerPerson)
   return revision.client === null ? who : `${who} · ${revision.client}`
 }
 </script>

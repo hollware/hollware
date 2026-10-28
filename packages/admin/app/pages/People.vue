@@ -13,9 +13,11 @@ import { api } from '../lib/session.ts'
 
 type Member = { id: string; name: string | null; role: string; since: string }
 type Invitation = { id: string; role: string; expiresAt: string }
+type Former = { id: string; name: string | null }
 interface People {
   people: Member[]
   invitations: Invitation[]
+  former: Former[]
 }
 
 const m = useMessages()
@@ -28,6 +30,10 @@ const memberColumns = computed<TableColumn<Member>[]>(() => [
 const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
   { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
   { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
+  { id: 'actions', header: '' },
+])
+const formerColumns = computed<TableColumn<Former>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
   { id: 'actions', header: '' },
 ])
 const roleItems = (roles: readonly string[]) =>
@@ -115,6 +121,27 @@ async function remove() {
     toast.add({ title: m.value.people.out(person.name ?? person.id), color: 'success' })
   } catch (error) {
     toast.add({ title: m.value.people.notRemoved, description: describe(error), color: 'error' })
+  }
+  await load()
+}
+
+const anonymizing = ref<Former | null>(null)
+const anonymizeOpen = computed({
+  get: () => anonymizing.value !== null,
+  set: (value: boolean) => {
+    if (!value) anonymizing.value = null
+  },
+})
+
+async function anonymize() {
+  const person = anonymizing.value
+  anonymizing.value = null
+  if (person === null) return
+  try {
+    await api.admin('people/anonymize', { userId: person.id })
+    toast.add({ title: m.value.people.anonymized(person.name ?? person.id), color: 'success' })
+  } catch (error) {
+    toast.add({ title: m.value.people.notAnonymized, description: describe(error), color: 'error' })
   }
   await load()
 }
@@ -272,7 +299,40 @@ async function copy() {
             </template>
           </DataTable>
         </section>
+        <section v-if="data.former.length > 0" :aria-label="m.people.former" class="space-y-2">
+          <h2 class="font-medium">{{ m.people.former }}</h2>
+          <p class="text-sm text-muted">{{ m.people.formerHelp }}</p>
+          <DataTable :data="data.former" :columns="formerColumns" :filter-label="m.people.filter">
+            <template #name-cell="{ row }">
+              <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
+            </template>
+            <template #actions-cell="{ row }">
+              <div class="text-right">
+                <UButton
+                  icon="i-lucide-user-x"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  :aria-label="m.people.anonymize(row.original.name ?? row.original.id)"
+                  @click="anonymizing = row.original"
+                />
+              </div>
+            </template>
+          </DataTable>
+        </section>
       </template>
+      <UModal
+        v-model:open="anonymizeOpen"
+        :title="m.people.anonymizeTitle(anonymizing?.name ?? anonymizing?.id ?? '')"
+      >
+        <template #body>
+          <p>{{ m.people.anonymizeBody }}</p>
+        </template>
+        <template #footer>
+          <UButton :label="m.people.keepThem" variant="ghost" @click="anonymizing = null" />
+          <UButton :label="m.people.anonymizeIt" color="error" @click="anonymize" />
+        </template>
+      </UModal>
       <UModal v-model:open="revokeOpen" :title="m.people.revokeTitle">
         <template #body>
           <p>{{ m.people.revokeBody }}</p>

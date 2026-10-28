@@ -1,4 +1,4 @@
-import { newId } from '@hollware/core'
+import { FORMER_PERSON, newId } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
@@ -169,6 +169,109 @@ describe('append-only tables', () => {
     await expect(attempt('DELETE FROM entry_purges WHERE id = ?1')).rejects.toThrow(
       'append-only: the record of a purge is never deleted',
     )
+  })
+
+  it('let an anonymization that is open name the former person where a line named the one it anonymizes, and change nothing else', async () => {
+    const { site, user, ids, now } = await seed()
+    const line = {
+      change: newId('sit'),
+      actor: newId('aud'),
+      target: newId('aud'),
+      asset: newId('ast'),
+      purge: newId('prg'),
+    }
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO users (id, role, created_at, updated_at) VALUES (?1, 'reviewer', ?2, ?2)",
+      ).bind(FORMER_PERSON, now),
+      env.DB.prepare(
+        `INSERT INTO site_changes (id, site_id, version, actor_user_id, actor_meta, created_at, updated_at)
+          VALUES (?1, ?2, 1, ?3, '{"name":"Claude Code"}', ?4, ?4)`,
+      ).bind(line.change, site, user, now),
+      env.DB.prepare(
+        `INSERT INTO audit_log (id, site_id, action, outcome, actor_kind, actor_user_id, actor_meta, detail, ip_hash, created_at, updated_at)
+          VALUES (?1, ?2, 'token.create', 'ok', 'user', ?3, '{"name":"Claude Code"}', '{"kind":"personal","label":"Ana at home"}', 'a-hash', ?4, ?4)`,
+      ).bind(line.actor, site, user, now),
+      env.DB.prepare(
+        `INSERT INTO audit_log (id, site_id, action, outcome, actor_kind, target_type, target_id, created_at, updated_at)
+          VALUES (?1, ?2, 'member.remove', 'ok', 'user', 'user', ?3, ?4, ?4)`,
+      ).bind(line.target, site, user, now),
+      env.DB.prepare(
+        `INSERT INTO assets (id, site_id, sha256, format, width, height, bytes, widths, original_format, original_bytes, alt, filename, created_by, created_at, updated_at)
+          VALUES (?1, ?2, ?3, 'image/webp', 640, 480, 1234, '[640]', 'image/png', 2345, 'A diagram', 'diagram.png', ?4, ?5, ?5)`,
+      ).bind(line.asset, site, 'c'.repeat(64), user, now),
+      env.DB.prepare(
+        "INSERT INTO entry_purges (id, site_id, entry_id, purged_by, created_at, updated_at) VALUES (?1, ?2, 'ent_1', ?3, ?4, ?4)",
+      ).bind(line.purge, site, user, now),
+    ])
+    const actor = `actor_user_id = '${FORMER_PERSON}', actor_token_id = NULL, actor_meta = NULL`
+    const rows = [
+      ['revisions', ids.revisions, actor, "markdown = '# Changed'"],
+      ['publications', ids.publications, actor, "action = 'unpublish'"],
+      [
+        'site_changes',
+        line.change,
+        `actor_user_id = '${FORMER_PERSON}', actor_meta = NULL`,
+        "after = '{}'",
+      ],
+      [
+        'audit_log',
+        line.actor,
+        `${actor}, ip_hash = NULL, detail = json_remove(detail, '$.label')`,
+        "outcome = 'denied'",
+      ],
+      ['audit_log', line.target, `target_id = '${FORMER_PERSON}'`, "action = 'member.role'"],
+      ['assets', line.asset, `created_by = '${FORMER_PERSON}'`, "filename = 'other.png'"],
+      ['entry_purges', line.purge, `purged_by = '${FORMER_PERSON}'`, "entry_id = 'ent_2'"],
+    ] as const
+    const changes = (set: (anonymize: string, other: string) => string) =>
+      Promise.all(
+        rows.map(([table, id, anonymize, other]) =>
+          attempt(
+            env.DB.prepare(`UPDATE ${table} SET ${set(anonymize, other)} WHERE id = ?1`).bind(id),
+          ),
+        ),
+      )
+    const refused = [
+      'append-only: only the derived columns of a revision change',
+      'append-only: a publication never changes',
+      'append-only: a change of the structure never changes',
+      'append-only: a line of the activity log never changes',
+      'append-only: a line of the activity log never changes',
+      'append-only: only the alt of an asset changes',
+      'append-only: the record of a purge never changes',
+    ]
+
+    const closed = await changes((anonymize) => anonymize)
+    await env.DB.prepare(
+      'INSERT INTO anonymizations (id, site_id, user_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)',
+    )
+      .bind(newId('anm'), site, user, now)
+      .run()
+    const more = await changes((anonymize, other) => `${anonymize}, ${other}`)
+    const detail = await attempt(
+      env.DB.prepare(
+        `UPDATE audit_log SET ${actor}, ip_hash = NULL, detail = '{}' WHERE id = ?1`,
+      ).bind(line.actor),
+    )
+    const open = await changes((anonymize) => anonymize)
+
+    expect(closed).toEqual(refused)
+    expect(more).toEqual(refused)
+    expect(detail).toBe('append-only: a line of the activity log never changes')
+    expect(open).toEqual(rows.map(() => 'ok'))
+    expect(
+      await env.DB.prepare(
+        'SELECT detail, target_id FROM audit_log WHERE id IN (?1, ?2) ORDER BY action DESC',
+      )
+        .bind(line.actor, line.target)
+        .all(),
+    ).toMatchObject({
+      results: [
+        { detail: '{"kind":"personal"}', target_id: null },
+        { detail: null, target_id: FORMER_PERSON },
+      ],
+    })
   })
 
   it('keep site_changes as it was written: no line is changed, deleted or replaced', async () => {

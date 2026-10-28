@@ -280,6 +280,20 @@ export const schedules = sqliteTable(
   ],
 )
 
+export const anonymizations = sqliteTable(
+  'anonymizations',
+  {
+    id: id('anm'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('anonymizations_id_site').on(t.id, t.siteId),
+    foreignKey({ name: 'anonymizations_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+  ],
+)
+
 export const entryPurges = sqliteTable(
   'entry_purges',
   {

@@ -5,7 +5,7 @@ export * from './contracts/index.ts'
 export * from './audit/index.ts'
 export * from './structure/index.ts'
 export { ERROR_CODES, HollwareError, type ErrorCode } from './errors.ts'
-export { ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
+export { FORMER_PERSON, ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
 export type {
   ComponentUse,
   DisallowedMarker,

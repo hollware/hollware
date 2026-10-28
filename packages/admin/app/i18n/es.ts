@@ -745,6 +745,17 @@ export const es: Messages = {
     revoked: 'Invitación revocada',
     notRevoked: 'No se revocó',
     notRemoved: 'No se quitó',
+    former: 'Antiguos miembros',
+    formerHelp:
+      'Personas que se quitaron de este sitio. Lo que escribieron se conserva; anonimizar a una saca su nombre de ahí.',
+    formerPerson: 'Un antiguo miembro',
+    anonymize: (name: string) => `Anonimizar a ${name}`,
+    anonymizeTitle: (name: string) => `¿Anonimizar a ${name}?`,
+    anonymizeBody:
+      'Sus revisiones, revisiones pedidas, comentarios y líneas del registro de actividad se conservan, y nombran a un antiguo miembro en vez de a esa persona. Sus tokens e invitaciones de este sitio se borran, con lo que sus aplicaciones decían de sí mismas, y la persona sale de este Hollware cuando ningún sitio la conserva. Nada recupera su nombre.',
+    anonymizeIt: 'Anonimizar',
+    anonymized: (name: string) => `${name} quedó anónimo`,
+    notAnonymized: 'No se anonimizó',
   },
   account: {
     title: 'Tu cuenta',
@@ -858,6 +869,7 @@ export const es: Messages = {
       'token.revoke': 'Revocó un token',
       'member.role': 'Cambió el rol de una persona',
       'member.remove': 'Eliminó a una persona',
+      'member.anonymize': 'Anonimizó a un antiguo miembro',
       'invitation.create': 'Invitó a una persona',
       'invitation.revoke': 'Revocó una invitación',
       'invitation.accept': 'Aceptó una invitación',

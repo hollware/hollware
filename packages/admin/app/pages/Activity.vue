@@ -210,17 +210,19 @@ const json = (value: unknown) => JSON.stringify(value, null, 2)
           <template #who-cell="{ row }">
             <div class="flex flex-wrap items-center gap-2">
               <UBadge
-                :label="m.activity.kinds[whoOf(row.original).kind]"
-                :color="kindColor[whoOf(row.original).kind]"
+                :label="m.activity.kinds[whoOf(row.original, m.people.formerPerson).kind]"
+                :color="kindColor[whoOf(row.original, m.people.formerPerson).kind]"
                 variant="subtle"
               />
-              <span class="font-medium">{{ whoOf(row.original).name ?? m.activity.system }}</span>
+              <span class="font-medium">{{
+                whoOf(row.original, m.people.formerPerson).name ?? m.activity.system
+              }}</span>
               <span
-                v-if="whoOf(row.original).via !== null"
+                v-if="whoOf(row.original, m.people.formerPerson).via !== null"
                 class="text-xs text-muted"
                 :title="m.activity.viaHelp"
               >
-                {{ m.activity.via(whoOf(row.original).via ?? '') }}
+                {{ m.activity.via(whoOf(row.original, m.people.formerPerson).via ?? '') }}
               </span>
             </div>
           </template>

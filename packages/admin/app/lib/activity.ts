@@ -1,4 +1,4 @@
-import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '@hollware/core'
+import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS, FORMER_PERSON } from '@hollware/core'
 
 export interface ActivityLine {
   readonly id: string
@@ -64,10 +64,11 @@ export interface Who {
   readonly via: string | null
 }
 
-export function whoOf(line: ActivityLine): Who {
+export function whoOf(line: ActivityLine, former: string): Who {
   const { actor } = line
   const declared = actor.declared?.['name']
   const via = typeof declared === 'string' && declared !== '' ? declared : null
+  if (actor.userId === FORMER_PERSON) return { kind: actor.kind, name: former, via }
   switch (actor.kind) {
     case 'user':
       return { kind: 'user', name: actor.name ?? actor.userId, via }
