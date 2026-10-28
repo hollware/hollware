@@ -151,11 +151,12 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
 
   const queues = isRecord(config['queues']) ? config['queues'] : {}
   const producer = records(queues['producers']).find((entry) => entry['binding'] === 'EVENTS')
-  const consumed = records(queues['consumers']).some(
+  const consumers = records(queues['consumers'])
+  const consumer = consumers.find(
     (entry) => producer !== undefined && entry['queue'] === producer['queue'],
   )
   findings.push(
-    producer !== undefined && consumed
+    producer !== undefined && consumer !== undefined
       ? pass(
           'events-queue',
           `the queue "${String(producer['queue'])}" carries the events of publications`,
@@ -168,6 +169,25 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
           'Add the producer { "binding": "EVENTS", "queue": "<name>-events" } and its consumer to queues in wrangler.jsonc, as the starter has them.',
         ),
   )
+  if (consumer !== undefined) {
+    const queue = String(consumer['queue'])
+    const deadLetters = `${queue}-dlq`
+    const named = consumer['dead_letter_queue'] === deadLetters
+    findings.push(
+      named && consumers.some((entry) => entry['queue'] === deadLetters)
+        ? pass(
+            'dead-letters',
+            `the queue "${deadLetters}" keeps the events given up on, for the admin to send again`,
+          )
+        : fail(
+            'dead-letters',
+            named
+              ? `nothing here consumes "${deadLetters}", so the events given up on are lost after four days`
+              : `the consumer of "${queue}" has no "dead_letter_queue": "${deadLetters}", so an event it gives up on is lost`,
+            `Give the consumer of "${queue}" "dead_letter_queue": "${deadLetters}", and add the consumer { "queue": "${deadLetters}" } to queues in wrangler.jsonc, as the starter has them.`,
+          ),
+    )
+  }
 
   const limited = records(config['ratelimits']).some(
     (entry) => entry['name'] === 'HOLLWARE_RATE_LIMIT',

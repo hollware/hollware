@@ -100,7 +100,8 @@ describe('wrangler flags', () => {
     const db = '"d1_databases": [{ "binding": "DB" }]'
     const kv = '"kv_namespaces": [{ "binding": "OAUTH_KV" }]'
     const cron = '"triggers": { "crons": ["* * * * *"] }'
-    const consumer = '"queues": { "consumers": [{ "queue": "e", "dead_letter_queue": "e-dlq" }] }'
+    const consumer =
+      '"queues": { "consumers": [{ "queue": "e", "dead_letter_queue": "e-dlq" }, { "queue": "e-dlq" }] }'
     const worker = (top: string, demo: string) =>
       `{ ${hollwareFlags}, "send_metrics": false, ${top}, "env": { "demo": { ${demo} } } }`
 
@@ -147,7 +148,7 @@ describe('wrangler flags', () => {
             rule: 'wrangler-flags/events',
             file: 'apps/x/wrangler.jsonc',
             message:
-              'env.demo must consume a queue with a "dead_letter_queue": it delivers the publication events and keeps the ones it could not',
+              'env.demo must consume a queue with a "dead_letter_queue" named <queue>-dlq, and consume that one too: it delivers the publication events, and keeps the ones it gave up on for the admin to send again',
           },
         ],
       )
@@ -159,6 +160,22 @@ describe('wrangler flags', () => {
       ).toEqual([
         'the top of the config must declare a cron trigger: it publishes the scheduled entries whose time has come',
       ])
+    })
+
+    it('reports a dead-letter queue nobody consumes, or not named after its queue', () => {
+      const top = `${db}, ${kv}, ${cron}`
+      const unread = '"queues": { "consumers": [{ "queue": "e", "dead_letter_queue": "e-dlq" }] }'
+      const misnamed =
+        '"queues": { "consumers": [{ "queue": "e", "dead_letter_queue": "e-dead" }, { "queue": "e-dead" }] }'
+      for (const queues of [unread, misnamed]) {
+        expect(
+          check('apps/x/wrangler.jsonc', worker(`${top}, ${consumer}`, `${top}, ${queues}`)).map(
+            (violation) => violation.message,
+          ),
+        ).toEqual([
+          'env.demo must consume a queue with a "dead_letter_queue" named <queue>-dlq, and consume that one too: it delivers the publication events, and keeps the ones it gave up on for the admin to send again',
+        ])
+      }
     })
 
     it('excuses a Worker of WORKERS_WITHOUT_EVENTS, and reports the exception once it no longer applies', () => {

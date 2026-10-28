@@ -164,9 +164,13 @@ export interface HollwareRpc {
 export interface HollwareWorker {
   /** MCP at `/mcp`, and the other routes of the gateway. */
   readonly fetch: (request: Request, env: HollwareEnv, ctx: ExecutionContext) => Promise<Response>
-  /** The consumer of the events Queue (`queues.consumers` in wrangler.jsonc). */
+  /**
+   * The consumer of the events Queue and of its dead-letter queue (`queues.consumers` in
+   * wrangler.jsonc). The events of a queue whose name ends in `-dlq` were given up on: the admin
+   * lists them under Webhooks, to send again.
+   */
   readonly queue: (
-    batch: { readonly messages: readonly EventDelivery[] },
+    batch: { readonly queue?: string; readonly messages: readonly EventDelivery[] },
     env: HollwareEnv,
     ctx: ExecutionContext,
   ) => Promise<void>

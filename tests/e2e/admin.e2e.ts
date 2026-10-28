@@ -414,7 +414,7 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expect(owner).toHaveURL(/\/admin\/settings\/site\/webhooks$/)
   await expect(owner.getByRole('heading', { name: 'Webhooks', level: 1 })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Name', exact: true }).last().fill('site')
-  await owner.getByLabel('URL', { exact: true }).fill('https://example.com/_hollware/webhook')
+  await owner.getByLabel('URL', { exact: true }).fill('https://hooks.invalid/hollware')
   await owner.getByRole('button', { name: 'Add', exact: true }).click()
 
   await expect(
@@ -423,6 +423,21 @@ test('the owner adds a webhook, whose secret Hollware makes and shows once', asy
   await expect(owner.getByText(/^whsec_[0-9a-f]{64}$/)).toBeVisible()
   await expect(owner.getByText("signed by Hollware's secret")).toBeVisible()
   await expectAccessible(owner)
+})
+
+test('the owner finds the delivery to a webhook that failed, and sends its event again', async () => {
+  const failed = owner.getByRole('region', { name: 'Deliveries that failed' })
+  const row = failed.getByRole('listitem').filter({ hasText: 'site.changed' }).first()
+  await expect(async () => {
+    await owner.reload()
+    await expect(row).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
+  await expect(row).toContainText('site · site.changed')
+  await row.getByRole('button', { name: 'Send again' }).click()
+  await expect(owner.getByText('Sent to the Queue again')).toBeVisible()
+  await expectAccessible(owner)
+  await owner.goto('/admin/settings/activity')
+  await expect(owner.getByRole('row', { name: /Sent an event again/ }).first()).toBeVisible()
 })
 
 test('the owner connects analytics in Analytics, and the provider is asked before anything is kept', async () => {

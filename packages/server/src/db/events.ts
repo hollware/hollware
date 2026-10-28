@@ -1,5 +1,5 @@
 import { newId } from '@hollware/core'
-import { and, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import type { Db } from './d1.ts'
 import { deliveries, outbox } from './schema.ts'
 
@@ -34,6 +34,60 @@ export async function markSent(db: Db, site: string, ids: readonly string[], now
     .update(outbox)
     .set({ sentAt: now, updatedAt: now })
     .where(and(eq(outbox.siteId, site), inArray(outbox.id, [...ids])))
+}
+
+export async function abandonEvent(db: Db, site: string, id: string, now: string) {
+  const rows = await db
+    .update(outbox)
+    .set({ abandonedAt: now, updatedAt: now })
+    .where(and(eq(outbox.siteId, site), eq(outbox.id, id), isNull(outbox.abandonedAt)))
+    .returning({ id: outbox.id })
+  return rows.length > 0
+}
+
+const undelivered = sql`exists (select 1 from ${deliveries} where ${deliveries.eventId} = ${outbox.id} and ${deliveries.siteId} = ${outbox.siteId} and ${deliveries.deliveredAt} is null)`
+
+export async function sendAgain(db: Db, site: string, id: string, now: string): Promise<boolean> {
+  const rows = await db
+    .update(outbox)
+    .set({ abandonedAt: null, sentAt: null, updatedAt: now })
+    .where(and(eq(outbox.siteId, site), eq(outbox.id, id), undelivered))
+    .returning({ id: outbox.id })
+  return rows.length > 0
+}
+
+export interface FailedDelivery {
+  readonly event: string
+  readonly kind: string
+  readonly payload: string
+  readonly subscriber: string
+  readonly attempts: number
+  readonly lastError: string | null
+  readonly triedAt: string
+  readonly abandonedAt: string | null
+}
+
+export async function failedDeliveries(
+  db: Db,
+  site: string,
+  limit: number,
+): Promise<FailedDelivery[]> {
+  return db
+    .select({
+      event: deliveries.eventId,
+      kind: outbox.kind,
+      payload: outbox.payload,
+      subscriber: deliveries.subscriber,
+      attempts: deliveries.attempts,
+      lastError: deliveries.lastError,
+      triedAt: deliveries.updatedAt,
+      abandonedAt: outbox.abandonedAt,
+    })
+    .from(deliveries)
+    .innerJoin(outbox, and(eq(outbox.id, deliveries.eventId), eq(outbox.siteId, deliveries.siteId)))
+    .where(and(eq(deliveries.siteId, site), isNull(deliveries.deliveredAt)))
+    .orderBy(desc(deliveries.updatedAt), desc(deliveries.id))
+    .limit(limit)
 }
 
 export async function deliveredTo(db: Db, site: string, eventId: string): Promise<Set<string>> {

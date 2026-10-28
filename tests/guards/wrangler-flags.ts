@@ -34,15 +34,14 @@ function triggersCron(bindings: Record<string, unknown>): boolean {
 
 function consumesWithDeadLetters(bindings: Record<string, unknown>): boolean {
   const queues = bindings.queues
-  return (
-    isRecord(queues) &&
-    Array.isArray(queues.consumers) &&
-    queues.consumers.some(
-      (consumer) =>
-        isRecord(consumer) &&
-        typeof consumer.dead_letter_queue === 'string' &&
-        consumer.dead_letter_queue !== '',
-    )
+  if (!isRecord(queues) || !Array.isArray(queues.consumers)) return false
+  const consumers = queues.consumers.filter(isRecord)
+  const consumed = consumers.map((consumer) => consumer.queue)
+  return consumers.some(
+    (consumer) =>
+      typeof consumer.dead_letter_queue === 'string' &&
+      consumer.dead_letter_queue === `${String(consumer.queue)}-dlq` &&
+      consumed.includes(consumer.dead_letter_queue),
   )
 }
 
@@ -110,7 +109,7 @@ export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
         if (!consumesWithDeadLetters(bindings)) {
           report(
             'events',
-            `${place} must consume a queue with a "dead_letter_queue": it delivers the publication events and keeps the ones it could not`,
+            `${place} must consume a queue with a "dead_letter_queue" named <queue>-dlq, and consume that one too: it delivers the publication events, and keeps the ones it gave up on for the admin to send again`,
           )
         }
       }

@@ -31,8 +31,9 @@ of the sites live in D1; this repository holds only the Worker.
 - `global_fetch_strictly_public`: the OAuth server fetches the metadata documents of clients, and
   `upload_asset` the URL an agent gives, over the public internet only, never through your zone.
 - The cron runs every minute: it publishes the scheduled entries and sends the events the queue
-  missed. The `EVENTS` queue carries the publication events; the Worker consumes them and keeps
-  what fails five times in the dead-letter queue. Queue names are unique in an account.
+  missed. The `EVENTS` queue carries the publication events; the Worker consumes them, and what
+  fails five times goes to the dead-letter queue, `<queue>-dlq`, which it consumes too: the admin
+  lists those events under Webhooks, to send again. Queue names are unique in an account.
 - `assets` is the admin, at `/admin/`: its hashed files go straight to the browser, every other
   request reaches the Worker first.
 - `HOLLWARE_PUBLIC_URL` is the only Host and Origin the Worker answers. `hollware deploy` sets it
