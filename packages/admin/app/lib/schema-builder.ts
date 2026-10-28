@@ -12,6 +12,7 @@ export type BuilderKind =
   | 'number'
   | 'integer'
   | 'switch'
+  | 'image'
   | 'other'
 
 export interface BuilderField {
@@ -47,6 +48,9 @@ export function kindOf(schema: Json): BuilderKind {
     case 'string':
       if (schema['format'] === 'date') return 'date'
       if (schema['format'] === 'date-time') return 'datetime'
+      if (typeof schema['pattern'] === 'string' && schema['pattern'].startsWith('^asset:')) {
+        return 'image'
+      }
       return 'text'
     case 'number':
       return 'number'
@@ -117,6 +121,8 @@ function freshSchema(kind: BuilderKind): Json {
       return { type: 'integer' }
     case 'switch':
       return { type: 'boolean' }
+    case 'image':
+      return { type: 'string', pattern: '^asset:ast_[0-9a-f]{26}$' }
     case 'other':
       return {}
   }

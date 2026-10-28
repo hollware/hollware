@@ -21,6 +21,7 @@ const BLOG = {
     tags: { type: 'array', items: { type: 'string', minLength: 1 }, minItems: 1 },
     section: { type: 'string', enum: ['start', 'guides'] },
     order: { type: 'integer', minimum: 0, maximum: 999 },
+    cover: { type: 'string', pattern: '^asset:ast_[0-9a-f]{26}$' },
     meta: { type: 'object' },
   },
   required: ['title', 'description', 'date', 'tags'],
@@ -41,6 +42,7 @@ describe('fieldsFromSchema', () => {
       ['tags', 'list', true, 1, null, [], ''],
       ['section', 'choice', false, null, null, ['start', 'guides'], ''],
       ['order', 'integer', false, 0, 999, [], ''],
+      ['cover', 'image', false, null, null, [], ''],
       ['meta', 'other', false, null, null, [], ''],
     ])
     expect(rest).toEqual({
@@ -65,6 +67,7 @@ describe('schemaFromFields', () => {
     date.required = false
     tags.kind = 'text'
     builder.fields.push({ ...newField('subtitle', 'text'), required: true, max: 120 })
+    builder.fields.push(newField('hero', 'image'))
 
     const schema = schemaFromFields(builder)
 
@@ -73,6 +76,7 @@ describe('schemaFromFields', () => {
       date: { type: 'string', format: 'date', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
       tags: { type: 'string', minLength: 1 },
       subtitle: { type: 'string', maxLength: 120 },
+      hero: { type: 'string', pattern: '^asset:ast_[0-9a-f]{26}$' },
     })
     expect(schema['required']).toEqual(['title', 'description', 'tags', 'subtitle'])
   })

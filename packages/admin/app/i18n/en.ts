@@ -481,6 +481,7 @@ export const en = {
       number: 'Number',
       integer: 'Whole number',
       switch: 'Yes or no',
+      image: 'Image of the library',
       other: 'Other (JSON Schema)',
     },
     problems: {
@@ -880,6 +881,11 @@ export const en = {
     notRevoked: 'Not revoked',
   },
   frontmatter: {
+    markdownOnly: (fields: string) =>
+      `The form does not show ${fields}: edit them in the Markdown of the entry.`,
+    openMarkdown: 'Open the Markdown',
+    chooseImage: 'Choose an image',
+    pickEntry: 'Choose entries',
     notYamlBefore: 'The frontmatter does not read as YAML between two ',
     notYamlAfter: ' lines. Fix it in the Markdown, and its fields come back here.',
     noFields:

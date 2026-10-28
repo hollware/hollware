@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { bodyOf, fieldsOf, readFrontmatter, setField, withBody } from '../app/lib/frontmatter.ts'
+import {
+  bodyOf,
+  fieldsOf,
+  markdownOnly,
+  readFrontmatter,
+  referencesOf,
+  setField,
+  withBody,
+} from '../app/lib/frontmatter.ts'
 import { pageUrl } from '../app/lib/site.ts'
 
 const SCHEMA = {
@@ -13,7 +21,9 @@ const SCHEMA = {
     tags: { type: 'array', items: { type: 'string' } },
     order: { type: 'integer' },
     featured: { type: 'boolean' },
+    cover: { type: 'string', pattern: '^asset:ast_[0-9a-f]{26}$' },
     meta: { type: 'object' },
+    links: { type: 'array', items: { type: 'object' } },
     minutes: { type: 'integer', readOnly: true },
   },
   required: ['title', 'date'],
@@ -31,7 +41,29 @@ describe('fieldsOf', () => {
       ['tags', 'list', false, []],
       ['order', 'number', false, []],
       ['featured', 'switch', false, []],
+      ['cover', 'image', false, []],
     ])
+  })
+
+  it('names what the form leaves to the Markdown, and never what Hollware fills', () => {
+    expect(markdownOnly(SCHEMA)).toEqual(['meta', 'links'])
+  })
+
+  it('reads which fields name entries of another collection from the reference rules', () => {
+    expect(
+      referencesOf(
+        [
+          { rule: 'reference', params: { field: 'related', collection: 'blog' } },
+          { rule: 'reference', params: { field: 'author', collection: 'people', locale: 'en' } },
+          { rule: 'translations-of', params: { field: 'title', collection: 'blog' } },
+          { rule: 'reference', params: { field: 3, collection: 'blog' } },
+        ],
+        'es',
+      ),
+    ).toEqual({
+      related: { collection: 'blog', locale: 'es' },
+      author: { collection: 'people', locale: 'en' },
+    })
   })
 })
 
