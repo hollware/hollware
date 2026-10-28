@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import {
+  copyKeeper,
   dropWorkingCopy,
+  isOlderCopy,
   keepWorkingCopy,
   readWorkingCopy,
   restoreOf,
@@ -100,5 +102,58 @@ describe('the save of a draft', () => {
       saveDelay(0, 55_000),
       saveDelay(0, 70_000),
     ]).toEqual([8_000, 8_000, 5_000, 0])
+  })
+})
+
+describe('the copy the editor keeps after a change', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('is kept 300 ms after the last change, with the version the entry has by then', () => {
+    const storage = memory()
+    const copies = copyKeeper(storage)
+    let version = 3
+    copies.keep('k', () => ({ markdown: 'One', version }))
+    vi.advanceTimersByTime(100)
+    copies.keep('k', () => ({ markdown: 'One two', version }))
+    vi.advanceTimersByTime(299)
+    const early = { ...storage.entries }
+    version = 4
+    vi.advanceTimersByTime(1)
+
+    expect(early).toEqual({})
+    expect(storage.entries).toEqual({ k: '{"markdown":"One two","version":4}' })
+  })
+
+  it('waits no more once dropped or cancelled, so a save that lands first leaves no copy behind', () => {
+    const storage = memory({ k: '{"markdown":"Before","version":2}' })
+    const copies = copyKeeper(storage)
+    copies.keep('k', () => ({ markdown: 'Saved', version: 3 }))
+    copies.drop('k')
+    vi.advanceTimersByTime(1_000)
+    const dropped = { ...storage.entries }
+    copies.keep('k', () => ({ markdown: 'Typed back', version: 3 }))
+    copies.cancel()
+    vi.advanceTimersByTime(1_000)
+    copies.keep('k', () => null)
+    vi.advanceTimersByTime(1_000)
+
+    expect(dropped).toEqual({})
+    expect(storage.entries).toEqual({})
+  })
+})
+
+describe('a copy the editor finds when the text is back to what is saved', () => {
+  it('is older, and kept on offer, only when it was made for an earlier version', () => {
+    expect([
+      isOlderCopy({ markdown: 'Before', version: 2 }, 3),
+      isOlderCopy({ markdown: 'Typed', version: 3 }, 3),
+      isOlderCopy({ markdown: 'Later', version: 4 }, 3),
+      isOlderCopy(null, 3),
+    ]).toEqual([true, false, false, false])
   })
 })

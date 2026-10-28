@@ -11,6 +11,7 @@ export interface CopyStorage {
 
 export const SAVE_AFTER_MS = 8_000
 export const SAVE_AT_MOST_MS = 60_000
+export const KEEP_AFTER_MS = 300
 
 export const workingCopyKey = (site: string, entryId: string): string =>
   `hollware:working-copy:${site}:${entryId}`
@@ -58,6 +59,32 @@ export function dropWorkingCopy(storage: CopyStorage | undefined, key: string): 
   }
 }
 
+export interface CopyKeeper {
+  keep(key: string, copy: () => WorkingCopy | null): void
+  drop(key: string): void
+  cancel(): void
+}
+
+export function copyKeeper(storage: CopyStorage | undefined): CopyKeeper {
+  let waiting: ReturnType<typeof setTimeout> | undefined
+  return {
+    keep(key, copy) {
+      clearTimeout(waiting)
+      waiting = setTimeout(() => {
+        const kept = copy()
+        if (kept !== null) keepWorkingCopy(storage, key, kept)
+      }, KEEP_AFTER_MS)
+    },
+    drop(key) {
+      clearTimeout(waiting)
+      dropWorkingCopy(storage, key)
+    },
+    cancel() {
+      clearTimeout(waiting)
+    },
+  }
+}
+
 export type Restore =
   | { readonly kind: 'none' }
   | { readonly kind: 'same'; readonly markdown: string }
@@ -73,6 +100,10 @@ export function restoreOf(
   return copy.version === entry.version
     ? { kind: 'same', markdown: copy.markdown }
     : { kind: 'older', markdown: copy.markdown, version: copy.version }
+}
+
+export function isOlderCopy(copy: WorkingCopy | null, version: number): boolean {
+  return copy !== null && copy.version < version
 }
 
 export function saveDelay(firstChangeAt: number, now: number): number {

@@ -2,7 +2,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
@@ -31,8 +31,8 @@ import { useNarrow } from '../lib/narrow.ts'
 import { usePageTitle } from '../lib/title.ts'
 import {
   browserStorage,
-  dropWorkingCopy,
-  keepWorkingCopy,
+  copyKeeper,
+  isOlderCopy,
   readWorkingCopy,
   restoreOf,
   saveDelay,
@@ -131,6 +131,7 @@ const body = computed(() => bodyOf(text.value))
 usePageTitle(() => title.value)
 const dirty = computed(() => text.value !== saved.value)
 const storage = browserStorage()
+const copies = copyKeeper(storage)
 const copyKey = computed(() =>
   entry.value === null || me.value === null ? null : workingCopyKey(me.value.site, entry.value.id),
 )
@@ -244,7 +245,7 @@ async function persist(): Promise<boolean> {
         if (saveState.value === 'saved') {
           firstChange = null
           restored.value = { kind: 'none' }
-          if (copyKey.value !== null) dropWorkingCopy(storage, copyKey.value)
+          if (copyKey.value !== null) copies.drop(copyKey.value)
         }
         return true
       }
@@ -281,42 +282,52 @@ function save(): Promise<boolean> {
 
 let autosave: ReturnType<typeof setTimeout> | undefined
 let validation: ReturnType<typeof setTimeout> | undefined
-let copying: ReturnType<typeof setTimeout> | undefined
 let firstChange: number | null = null
 watch(text, (markdown) => {
   clearTimeout(autosave)
   clearTimeout(validation)
-  clearTimeout(copying)
-  if (markdown === saved.value) return
+  if (markdown === saved.value) {
+    if (
+      copyKey.value !== null &&
+      entry.value !== null &&
+      !isOlderCopy(readWorkingCopy(storage, copyKey.value), entry.value.version)
+    ) {
+      copies.drop(copyKey.value)
+    } else {
+      copies.cancel()
+    }
+    return
+  }
   saveState.value = 'unsaved'
   const now = Date.now()
   firstChange ??= now
   autosave = setTimeout(() => void save(), saveDelay(firstChange, now))
-  copying = setTimeout(() => {
-    if (copyKey.value !== null && entry.value !== null) {
-      keepWorkingCopy(storage, copyKey.value, { markdown, version: entry.value.version })
-    }
-  }, 300)
+  if (copyKey.value !== null) {
+    copies.keep(copyKey.value, () =>
+      entry.value === null ? null : { markdown, version: entry.value.version },
+    )
+  }
   validation = setTimeout(async () => {
     verdict.value = (await api.call('validate', { ...ref_.value, markdown })).verdict
   }, 600)
 })
 
-onBeforeRouteLeave(async () => {
+async function saveBeforeLeaving() {
   clearTimeout(autosave)
   if (dirty.value) await save()
   return true
-})
+}
+onBeforeRouteLeave(saveBeforeLeaving)
+onBeforeRouteUpdate((to, from) => (to.path === from.path ? true : saveBeforeLeaving()))
 
 function discardChange() {
   clearTimeout(autosave)
-  clearTimeout(copying)
   heldOpen.value = false
   text.value = saved.value
   saveState.value = 'saved'
   firstChange = null
   restored.value = { kind: 'none' }
-  if (copyKey.value !== null) dropWorkingCopy(storage, copyKey.value)
+  if (copyKey.value !== null) copies.drop(copyKey.value)
 }
 
 function restoreOlder() {
