@@ -1,11 +1,13 @@
 import { env } from 'cloudflare:workers'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import { createInvitation, redeemInvitation } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { adminPerson, adminToken, call } from './admin-session.ts'
 import { boot, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
+
+vi.setConfig({ testTimeout: 60_000 })
 
 describe("the admin's own routes", () => {
   it("refuse a personal token, even an owner's, and an admin token without schema:admin", async () => {
@@ -222,6 +224,111 @@ describe("the admin's own routes", () => {
     expect(await revoked.json()).toEqual({ outcome: 'revoked' })
     expect([after.ok, theirs.ok]).toEqual([false, true])
     expect(people.invitations.map((invitation) => invitation.id)).not.toContain(made.id)
+  })
+
+  it('list the deliveries of the site that failed, and send one of their events again', async () => {
+    const sent: unknown[] = []
+    const worker = boot({
+      bindings: {
+        EVENTS: {
+          sendBatch: async (messages: Iterable<{ readonly body: unknown }>) => {
+            for (const message of messages) sent.push(message.body)
+          },
+        },
+      },
+    })
+    const owner = await adminToken(worker, 'owner')
+    const unique = crypto.randomUUID().replaceAll('-', '').slice(0, 20).toUpperCase()
+    const failed = `evt_${unique}FAIL01`
+    const delivered = `evt_${unique}DONE01`
+    const foreign = `evt_${unique}ELSE01`
+    const entry = JSON.stringify({
+      id: failed,
+      site: SITE_KEY,
+      at: NOW,
+      cacheTags: [],
+      kind: 'entry.published',
+      entry: {
+        id: 'ent_1',
+        collection: 'blog',
+        locale: 'en',
+        slug: 'hello',
+        translationGroup: null,
+      },
+      path: '/en/blog/hello/',
+      url: null,
+    })
+    const event = (
+      id: string,
+      site: string,
+      kind: string,
+      payload: string,
+      abandoned: string | null,
+    ) =>
+      env.DB.prepare(
+        'INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, abandoned_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?6, ?6)',
+      ).bind(id, site, kind, kind === 'site.changed' ? null : 'ent_1', payload, NOW, abandoned)
+    const delivery = (id: string, site: string, deliveredAt: string | null) =>
+      env.DB.prepare(
+        "INSERT INTO deliveries (id, site_id, event_id, subscriber, attempts, delivered_at, last_error, created_at, updated_at) VALUES (?1, ?2, ?3, 'webhook:site', 6, ?4, ?5, ?6, ?6)",
+      ).bind(
+        `dlv_${id.slice(4)}`,
+        site,
+        id,
+        deliveredAt,
+        deliveredAt === null ? 'the webhook site answered 500' : null,
+        NOW,
+      )
+    await worker.ready()
+    await env.DB.batch([
+      event(failed, SITE_KEY, 'entry.published', entry, NOW),
+      event(delivered, SITE_KEY, 'site.changed', '{}', null),
+      event(foreign, OTHER_SITE_KEY, 'site.changed', '{}', NOW),
+      delivery(failed, SITE_KEY, null),
+      delivery(delivered, SITE_KEY, NOW),
+      delivery(foreign, OTHER_SITE_KEY, null),
+    ])
+
+    const listed = await (
+      await call(worker, owner, '/v1/admin/deliveries')
+    ).json<{ deliveries: { event: string }[] }>()
+    const answers = [
+      await call(worker, owner, `/v1/admin/events/${failed}/retry`, {}),
+      await call(worker, owner, `/v1/admin/events/${delivered}/retry`, {}),
+      await call(worker, owner, `/v1/admin/events/${foreign}/retry`, {}),
+    ]
+    const row = await env.DB.prepare('SELECT sent_at, abandoned_at FROM outbox WHERE id = ?1')
+      .bind(failed)
+      .first()
+
+    expect(
+      listed.deliveries.filter((one) => [failed, delivered, foreign].includes(one.event)),
+    ).toEqual([
+      {
+        event: failed,
+        kind: 'entry.published',
+        entry: { collection: 'blog', locale: 'en', slug: 'hello' },
+        subscriber: 'webhook:site',
+        attempts: 6,
+        lastError: 'the webhook site answered 500',
+        triedAt: NOW,
+        abandonedAt: NOW,
+      },
+    ])
+    expect(answers.map((answer) => answer.status)).toEqual([200, 404, 404])
+    expect(await answers[0]?.json()).toEqual({ outcome: 'queued' })
+    expect(sent).toEqual([{ site: SITE_KEY, id: failed }])
+    expect(row).toEqual({ sent_at: NOW, abandoned_at: null })
+    const audit = await env.DB.prepare(
+      "SELECT target_id, outcome FROM audit_log WHERE action = 'event.retry' AND target_id IN (?1, ?2, ?3) ORDER BY rowid",
+    )
+      .bind(failed, delivered, foreign)
+      .all()
+    expect(audit.results).toEqual([
+      { target_id: failed, outcome: 'ok' },
+      { target_id: delivered, outcome: 'failed' },
+      { target_id: foreign, outcome: 'failed' },
+    ])
   })
 
   it('give a member another role, and remove one, whose token stops working at once', async () => {

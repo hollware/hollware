@@ -16,7 +16,10 @@ const STARTER = `{
   "triggers": { "crons": ["* * * * *"] },
   "queues": {
     "producers": [{ "binding": "EVENTS", "queue": "hollware-events" }],
-    "consumers": [{ "queue": "hollware-events", "max_retries": 5 }],
+    "consumers": [
+      { "queue": "hollware-events", "max_retries": 5, "dead_letter_queue": "hollware-events-dlq" },
+      { "queue": "hollware-events-dlq" },
+    ],
   },
   "ratelimits": [{ "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [
@@ -51,6 +54,7 @@ describe('hollware doctor', () => {
         'ok    the Images binding "IMAGES" converts each image once, by the media setting of its site',
         'ok    the cron runs * * * * *',
         'ok    the queue "hollware-events" carries the events of publications',
+        'ok    the queue "hollware-events-dlq" keeps the events given up on, for the admin to send again',
         'ok    the rate limit "HOLLWARE_RATE_LIMIT" guards sign-in and tokens',
         'ok    the admin is built, in the static assets',
         'ok    the local database has every migration',
@@ -99,7 +103,7 @@ describe('hollware doctor', () => {
     const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]))
     const cwd = temp.make({
       'wrangler.jsonc': STARTER.replace(
-        '"consumers": [{ "queue": "hollware-events", "max_retries": 5 }]',
+        /"consumers": \[[^\]]*\]/,
         '"consumers": [{ "queue": "another-queue" }]',
       ),
       ...INSTALLED,
@@ -111,6 +115,35 @@ describe('hollware doctor', () => {
     expect(out[0]?.split('\n')).toContain(
       'FAIL  the queue "hollware-events" has no consumer here, so its events are never delivered',
     )
+  })
+
+  it('says when the dead-letter queue of the events is missing, or nothing here consumes it', async () => {
+    const answers = []
+    for (const consumers of [
+      '"consumers": [{ "queue": "hollware-events", "max_retries": 5 }]',
+      '"consumers": [{ "queue": "hollware-events", "dead_letter_queue": "hollware-events-dlq" }]',
+    ]) {
+      const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]))
+      const cwd = temp.make({
+        'wrangler.jsonc': STARTER.replace(/"consumers": \[[^\]]*\]/, consumers),
+        ...INSTALLED,
+      })
+      const { code, out } = await run(['doctor'], { cwd, wrangler: wrangler.run })
+      answers.push([code, ...(out[0]?.split('\n').filter((line) => line.includes('dlq')) ?? [])])
+    }
+
+    expect(answers).toEqual([
+      [
+        1,
+        'FAIL  the consumer of "hollware-events" has no "dead_letter_queue": "hollware-events-dlq", so an event it gives up on is lost',
+        '      Give the consumer of "hollware-events" "dead_letter_queue": "hollware-events-dlq", and add the consumer { "queue": "hollware-events-dlq" } to queues in wrangler.jsonc, as the starter has them.',
+      ],
+      [
+        1,
+        'FAIL  nothing here consumes "hollware-events-dlq", so the events given up on are lost after four days',
+        '      Give the consumer of "hollware-events" "dead_letter_queue": "hollware-events-dlq", and add the consumer { "queue": "hollware-events-dlq" } to queues in wrangler.jsonc, as the starter has them.',
+      ],
+    ])
   })
 
   it('says what the database lacks: its migrations first, then its owner', async () => {

@@ -347,6 +347,7 @@ export const outbox = sqliteTable(
     entryId: text('entry_id'),
     payload: text('payload').notNull(),
     sentAt: text('sent_at'),
+    abandonedAt: text('abandoned_at'),
     ...timestamps(),
   },
   (t) => [

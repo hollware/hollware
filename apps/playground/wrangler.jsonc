@@ -19,6 +19,7 @@
         "max_retries": 5,
         "dead_letter_queue": "hollware-playground-events-dlq",
       },
+      { "queue": "hollware-playground-events-dlq" },
     ],
   },
   "assets": {
@@ -89,6 +90,7 @@
             "max_retries": 5,
             "dead_letter_queue": "hollware-demo-events-dlq",
           },
+          { "queue": "hollware-demo-events-dlq" },
         ],
       },
     },
@@ -136,6 +138,7 @@
             "max_retries": 5,
             "dead_letter_queue": "hollware-staging-events-dlq",
           },
+          { "queue": "hollware-staging-events-dlq" },
         ],
       },
     },

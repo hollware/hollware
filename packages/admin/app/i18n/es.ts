@@ -1,4 +1,3 @@
-import type { AuditAction } from '@hollware/core'
 import { type Explained, type Params, param, type VerdictTexts } from '../lib/verdict-text.ts'
 import type { Messages } from './en.ts'
 
@@ -652,6 +651,15 @@ export const es: Messages = {
     signedBy: (secret: string) => `firmado con ${secret}`,
     newSecret: 'Crear secreto',
     removeWebhook: (name: string) => `Eliminar el webhook ${name}`,
+    failedTitle: 'Entregas que fallaron',
+    failedNote:
+      'Quien recibe un evento y responde un error lo recibe de nuevo, hasta cinco veces. Después Hollware lo da por perdido y lo guarda aquí: envíalo de nuevo cuando quien lo recibe funcione.',
+    retrying: (attempts: number) =>
+      `${attempts} ${attempts === 1 ? 'intento' : 'intentos'}, y la cola lo intenta de nuevo`,
+    gaveUp: (attempts: number) => `abandonado tras ${attempts} intentos`,
+    sendAgain: 'Enviar de nuevo',
+    sentAgain: 'Se envió de nuevo a la cola',
+    notSentAgain: 'No se envió de nuevo',
     secretShown: (webhook: string) =>
       `El secreto de ${webhook}: entrégalo ahora a quien lo recibe, se muestra una sola vez`,
     hookPlaceholder: 'sitio',
@@ -811,6 +819,8 @@ export const es: Messages = {
       update_draft: 'Editó un borrador',
       publish: 'Publicó una entrada',
       unpublish: 'Despublicó una entrada',
+      move_entry: 'Movió una entrada a otra URL',
+      schedule_unpublish: 'Programó el fin de una entrada',
       delete_entry: 'Movió una entrada a la papelera',
       restore_entry: 'Restauró una entrada de la papelera',
       restore_revision: 'Volvió a una revisión anterior de una entrada',
@@ -846,7 +856,11 @@ export const es: Messages = {
       'app.allow': 'Permitió una aplicación',
       'app.revoke': 'Revocó una aplicación',
       'schedule.publish': 'Publicó una entrada programada',
-    } as Record<AuditAction, string>,
+      'app.refresh_reused': 'Revocó una aplicación que usó dos veces un token de renovación',
+      'schedule.unpublish': 'Despublicó una entrada cuando llegó su hora',
+      'event.abandon': 'Dio por perdido un evento que nadie recibió',
+      'event.retry': 'Volvió a enviar un evento',
+    },
     columns: {
       when: 'Cuándo',
       who: 'Quién',

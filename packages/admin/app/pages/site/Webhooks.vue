@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
 import { ApiError } from '../../lib/api.ts'
-import { useMessages } from '../../i18n/index.ts'
+import { formatDateTime, useMessages } from '../../i18n/index.ts'
 import { api } from '../../lib/session.ts'
 import { useSiteSettings, type Definition } from '../../lib/site-settings.ts'
 
@@ -15,6 +15,30 @@ const hookUrl = ref('')
 const madeSecret = ref<{ webhook: string; secret: string } | null>(null)
 
 const { structure, change, load, save } = useSiteSettings()
+
+interface Delivery {
+  readonly event: string
+  readonly kind: string
+  readonly entry: {
+    readonly collection: string
+    readonly locale: string
+    readonly slug: string
+  } | null
+  readonly subscriber: string
+  readonly attempts: number
+  readonly lastError: string | null
+  readonly triedAt: string
+  readonly abandonedAt: string | null
+}
+
+const failed = ref<Delivery[]>([])
+const sending = ref<string | null>(null)
+
+async function loadDeliveries() {
+  failed.value = (await api.admin<{ deliveries: Delivery[] }>('deliveries')).deliveries
+}
+
+onMounted(loadDeliveries)
 
 const webhooks = computed(() => structure.value?.definition.events.webhooks ?? [])
 const validHook = computed(
@@ -58,6 +82,19 @@ async function makeSecret(webhook: string) {
     }
   } catch (error) {
     toast.add({ title: m.value.site.noSecret, description: describe(error), color: 'error' })
+  }
+}
+
+async function sendAgain(event: string) {
+  sending.value = event
+  try {
+    await api.admin(`events/${event}/retry`, {})
+    toast.add({ title: m.value.site.sentAgain, color: 'success' })
+    await loadDeliveries()
+  } catch (error) {
+    toast.add({ title: m.value.site.notSentAgain, description: describe(error), color: 'error' })
+  } finally {
+    sending.value = null
   }
 }
 
@@ -140,6 +177,51 @@ async function copySecret() {
           :loading="change.busy.value"
         />
       </form>
+      <section v-if="failed.length > 0" class="space-y-2 pt-4" aria-labelledby="failed-deliveries">
+        <h2 id="failed-deliveries" class="text-sm font-semibold text-highlighted">
+          {{ m.site.failedTitle }}
+        </h2>
+        <p class="text-sm text-muted">{{ m.site.failedNote }}</p>
+        <ul class="divide-y divide-default rounded-lg border border-default text-sm">
+          <li
+            v-for="delivery in failed"
+            :key="`${delivery.event}:${delivery.subscriber}`"
+            class="flex flex-wrap items-start gap-3 px-4 py-2.5"
+          >
+            <div class="min-w-0 flex-1 space-y-0.5">
+              <p class="break-words">
+                <span class="font-mono">{{ delivery.subscriber.replace(/^webhook:/, '') }}</span>
+                <span class="text-muted">
+                  · {{ delivery.kind
+                  }}{{
+                    delivery.entry === null
+                      ? ''
+                      : ` · ${delivery.entry.collection}/${delivery.entry.locale}/${delivery.entry.slug}`
+                  }}</span
+                >
+              </p>
+              <p v-if="delivery.lastError !== null" class="text-xs break-words text-muted">
+                {{ delivery.lastError }}
+              </p>
+              <p class="text-xs text-dimmed">
+                {{
+                  delivery.abandonedAt === null
+                    ? m.site.retrying(delivery.attempts)
+                    : m.site.gaveUp(delivery.attempts)
+                }}
+                · {{ formatDateTime(delivery.triedAt) }}
+              </p>
+            </div>
+            <UButton
+              :label="m.site.sendAgain"
+              size="xs"
+              variant="outline"
+              :loading="sending === delivery.event"
+              @click="sendAgain(delivery.event)"
+            />
+          </li>
+        </ul>
+      </section>
     </div>
     <p v-else class="text-muted">{{ m.common.loading }}</p>
   </Page>

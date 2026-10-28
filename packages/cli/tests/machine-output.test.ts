@@ -292,7 +292,10 @@ describe('--json', () => {
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "x-media" }],
   "triggers": { "crons": ["* * * * *"] },
-  "queues": { "producers": [{ "binding": "EVENTS", "queue": "e" }], "consumers": [{ "queue": "e" }] },
+  "queues": {
+    "producers": [{ "binding": "EVENTS", "queue": "e" }],
+    "consumers": [{ "queue": "e", "dead_letter_queue": "e-dlq" }, { "queue": "e-dlq" }],
+  },
   "ratelimits": [{ "name": "HOLLWARE_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   "d1_databases": [{ "binding": "DB", "database_name": "x", "migrations_dir": "m" }],
 }`,

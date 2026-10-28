@@ -13,6 +13,7 @@
     "producers": [{ "binding": "EVENTS", "queue": "hollware-events" }],
     "consumers": [
       { "queue": "hollware-events", "max_retries": 5, "dead_letter_queue": "hollware-events-dlq" },
+      { "queue": "hollware-events-dlq" },
     ],
   },
   "assets": {

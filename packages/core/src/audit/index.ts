@@ -26,7 +26,10 @@ export const OPERATION_AUDIT_ACTIONS = [
   'update_asset',
 ] as const
 
-/** What people do outside the operations: their tokens, members, passkeys, sessions and apps. */
+/**
+ * What happens outside the operations: the tokens, members, passkeys, sessions and apps of people,
+ * the scheduled publications, and the events given up on and sent again.
+ */
 export const IDENTITY_AUDIT_ACTIONS = [
   'token.create',
   'preview.create',
@@ -45,6 +48,8 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'app.allow',
   'app.revoke',
   'app.refresh_reused',
+  'event.abandon',
+  'event.retry',
   'schedule.publish',
   'schedule.unpublish',
 ] as const

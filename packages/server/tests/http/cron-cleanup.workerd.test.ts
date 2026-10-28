@@ -5,7 +5,7 @@ import * as z from 'zod'
 
 import { handlers } from '../../src/ops/index.ts'
 import { seedSite, type SeededSite } from '../support/sites.ts'
-import { boot, captureLogs, restoreLogs, SITE_KEY } from './support.ts'
+import { boot, captureLogs, NOW, restoreLogs, SITE_KEY } from './support.ts'
 
 afterEach(() => {
   restoreLogs()
@@ -228,6 +228,42 @@ describe('the cron trigger, step by step', () => {
 })
 
 describe('the consumer of the events Queue', () => {
+  it('gives up on the event of a message from the dead-letter queue, and says so in the activity log', async () => {
+    const worker = boot()
+    await worker.ready()
+    const id = `evt_${crypto.randomUUID().replaceAll('-', '').slice(0, 26).toUpperCase()}`
+    await worker.env.DB.prepare(
+      "INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, created_at, updated_at) VALUES (?1, ?2, 'site.changed', NULL, '{}', ?3, ?3, ?3)",
+    )
+      .bind(id, SITE_KEY, NOW)
+      .run()
+    const abandonedAt = async () =>
+      (
+        await worker.env.DB.prepare('SELECT abandoned_at FROM outbox WHERE id = ?1')
+          .bind(id)
+          .first<{ abandoned_at: string | null }>()
+      )?.abandoned_at
+    const batch = (queue: string) => ({
+      queue,
+      messages: [{ body: { site: SITE_KEY, id }, ack: () => undefined, retry: () => undefined }],
+    })
+
+    await worker.worker.queue(batch('hollware-events'), worker.env, worker.ctx)
+    const kept = await abandonedAt()
+    await worker.worker.queue(batch('hollware-events-dlq'), worker.env, worker.ctx)
+
+    const lines = await worker.env.DB.prepare(
+      'SELECT action, outcome, actor_kind, target_type FROM audit_log WHERE target_id = ?1',
+    )
+      .bind(id)
+      .all()
+
+    expect([kept, await abandonedAt()]).toEqual([null, NOW])
+    expect(lines.results).toEqual([
+      { action: 'event.abandon', outcome: 'failed', actor_kind: 'system', target_type: 'event' },
+    ])
+  })
+
   it('acks a message of a site the deployment does not serve, and throws nothing', async () => {
     const worker = boot()
     const verdicts: string[] = []

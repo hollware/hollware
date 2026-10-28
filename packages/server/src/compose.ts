@@ -13,9 +13,9 @@ import type { Actor, Clock } from './ports.ts'
 import { connect } from './db/d1.ts'
 import { createD1Store } from './db/index.ts'
 import { dropExpired } from './identity/store.ts'
-import { createAuditLog, dropExpiredLines, type AuditActor } from './audit/log.ts'
+import { createAuditLog, dropExpiredLines, systemActor, type AuditActor } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
-import { consumeEvents, sweepOutbox } from './events/run.ts'
+import { abandonEvents, consumeEvents, isDeadLetters, sweepOutbox } from './events/run.ts'
 import { createEntrypoint, createRpc } from './rpc/index.ts'
 import { backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
@@ -168,9 +168,30 @@ export function createHollwareWith(
     },
     queue: async (batch, env) => {
       await refresh(env.DB)
-      await consumeEvents(batch.messages, (key) => {
+      const depsOf = (key: string) => {
         const site = sites.get(key)
         return site === undefined ? undefined : deliveryDeps(env, site)
+      }
+      if (!isDeadLetters(batch.queue)) {
+        await consumeEvents(batch.messages, depsOf)
+        return
+      }
+      await abandonEvents(batch.messages, depsOf, async (site, event) => {
+        const requestId = `queue_${crypto.randomUUID()}`
+        writeLog({ kind: 'event_abandoned', requestId, site: site.key, event })
+        await createAuditLog({
+          db: env.DB,
+          actor: systemActor(null),
+          requestId,
+          address: null,
+          master: env.HOLLWARE_SECRET,
+          now: () => clock.now(),
+          log: writeLog,
+        }).write(site, {
+          action: 'event.abandon',
+          outcome: 'failed',
+          target: { type: 'event', id: event },
+        })
       })
     },
     Hollware: createEntrypoint({ sites, refresh, handlers, clock, log: writeLog }),

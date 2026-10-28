@@ -4,7 +4,12 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import { deliverEvent, INDEXNOW_ENDPOINT, type DeliveryDeps } from '../../src/events/deliver.ts'
-import { consumeEvents, sweepOutbox, type EventMessage } from '../../src/events/run.ts'
+import {
+  abandonEvents,
+  consumeEvents,
+  sweepOutbox,
+  type EventMessage,
+} from '../../src/events/run.ts'
 import { agent, blogFrontmatter, warmUpComark } from './support.ts'
 import { newWorld, type World } from './world.ts'
 
@@ -232,6 +237,56 @@ describe('deliveries', () => {
     await consumeEvents([message({ site: 'another-site', id })], served(network().fetch))
 
     expect(verdicts).toEqual([`retry ${id}`, `ack ${id}`, `ack ${id}`])
+  })
+})
+
+describe('the dead-letter queue of the events', () => {
+  it('marks the event the Queue gave up on, the first time only, and acks every message', async () => {
+    const world = await newWorld(env.DB, 'dead-letters')
+    await published(world)
+    const [event] = await outboxOf(world)
+    const id = event?.id ?? ''
+    const verdicts: string[] = []
+    const gaveUp: string[] = []
+    const message = (body: unknown) => ({
+      body,
+      ack: () => verdicts.push('ack'),
+      retry: () => verdicts.push('retry'),
+    })
+    const served = (site: string) =>
+      site === world.tenant.key ? deps(world, network().fetch) : undefined
+    const abandonedAt = async () =>
+      (
+        await world.db
+          .prepare('SELECT abandoned_at FROM outbox WHERE id = ?1')
+          .bind(id)
+          .first<{ abandoned_at: string | null }>()
+      )?.abandoned_at
+
+    world.time.set('2026-10-28T08:00:00.000Z')
+    await abandonEvents(
+      [
+        message({ site: world.tenant.key, id }),
+        message({ site: 'another-site', id }),
+        message('not an event'),
+      ],
+      served,
+      async (site, event) => void gaveUp.push(`${site.key} ${event}`),
+    )
+    const first = await abandonedAt()
+    world.time.set('2026-10-28T09:00:00.000Z')
+    await abandonEvents(
+      [message({ site: world.tenant.key, id })],
+      served,
+      async (site, event) => void gaveUp.push(`${site.key} ${event}`),
+    )
+
+    expect(verdicts).toEqual(['ack', 'ack', 'ack', 'ack'])
+    expect([first, await abandonedAt()]).toEqual([
+      '2026-10-28T08:00:00.000Z',
+      '2026-10-28T08:00:00.000Z',
+    ])
+    expect(gaveUp).toEqual([`${world.tenant.key} ${id}`])
   })
 })
 

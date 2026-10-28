@@ -572,6 +572,7 @@ function insertEventWhere(
     entryId,
     payload: event?.payload ?? '{}',
     sentAt: null,
+    abandonedAt: null,
     createdAt: now,
     updatedAt: now,
   }

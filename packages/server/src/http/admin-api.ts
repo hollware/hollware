@@ -7,6 +7,7 @@ import {
   isScope,
   makePreviewToken,
   newId,
+  parseHollwareEvent,
   PERSONAL_TOKEN_TTL_DAYS,
   PREVIEW_QUERY_PARAM,
   type ResolvedSite,
@@ -22,6 +23,8 @@ import type { AuditAction } from '@hollware/core'
 import type { AuditLine } from '../audit/log.ts'
 import type { AuditLogFor } from '../mcp/index.ts'
 import { connect } from '../db/d1.ts'
+import { failedDeliveries, sendAgain, type FailedDelivery } from '../db/events.ts'
+import { enqueue } from '../events/run.ts'
 import { createD1Store } from '../db/index.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
 import {
@@ -52,6 +55,7 @@ import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provi
 
 const INVITATION_DAYS = 7
 const ACTIVITY_PAGE = 50
+const DELIVERIES_PAGE = 50
 const ACTIVITY_CSV_MAX = 10_000
 
 export interface AdminApiOptions {
@@ -146,6 +150,23 @@ async function clientName(helpers: OAuthHelpers, clientId: string): Promise<stri
     return (await helpers.lookupClient(clientId))?.clientName ?? clientId
   } catch {
     return clientId
+  }
+}
+
+function deliveryView(row: FailedDelivery) {
+  const event = parseHollwareEvent(row.payload)
+  return {
+    event: row.event,
+    kind: row.kind,
+    entry:
+      event !== null && 'entry' in event
+        ? { collection: event.entry.collection, locale: event.entry.locale, slug: event.entry.slug }
+        : null,
+    subscriber: row.subscriber,
+    attempts: row.attempts,
+    lastError: row.lastError,
+    triedAt: row.triedAt,
+    abandonedAt: row.abandonedAt,
   }
 }
 
@@ -538,6 +559,32 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
             'List the people of the site and pick an invitation that waits.',
             404,
           )
+    }),
+  )
+
+  app.get(
+    '/v1/admin/deliveries',
+    admin(null, async (c, person) => {
+      const rows = await failedDeliveries(connect(c.env.DB), person.site, DELIVERIES_PAGE)
+      return json({ deliveries: rows.map(deliveryView) })
+    }),
+  )
+
+  app.post(
+    '/v1/admin/events/:id/retry',
+    admin('event.retry', async (c, person, note) => {
+      const id = c.req.param('id') ?? ''
+      note.target = { type: 'event', id }
+      const db = connect(c.env.DB)
+      if (!(await sendAgain(db, person.site, id, options.clock.now().toISOString()))) {
+        return refused(
+          'This site has no event with a delivery that failed under that id.',
+          'List the deliveries that failed, under Webhooks, and send one of their events.',
+          404,
+        )
+      }
+      await enqueue({ queue: c.env.EVENTS, db, site: person.site, ids: [id], clock: options.clock })
+      return json({ outcome: 'queued' })
     }),
   )
 

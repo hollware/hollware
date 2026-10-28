@@ -1,0 +1,1 @@
+ALTER TABLE `outbox` ADD `abandoned_at` text;

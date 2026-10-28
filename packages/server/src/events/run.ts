@@ -1,5 +1,5 @@
 import type { Db } from '../db/d1.ts'
-import { markSent, unsentEvents } from '../db/events.ts'
+import { abandonEvent, markSent, unsentEvents } from '../db/events.ts'
 import type { Clock } from '../ports.ts'
 import { deliverEvent, type DeliveryDeps } from './deliver.ts'
 
@@ -74,5 +74,28 @@ export async function consumeEvents(
     const result = await deliverEvent(deps, body.id)
     if (result.failed.length === 0) message.ack()
     else message.retry()
+  }
+}
+
+export function isDeadLetters(queue: string | undefined): boolean {
+  return queue?.endsWith('-dlq') === true
+}
+
+export async function abandonEvents(
+  messages: readonly EventDelivery[],
+  depsOf: (site: string) => DeliveryDeps | undefined,
+  gaveUp: (site: DeliveryDeps['site'], event: string) => Promise<void>,
+): Promise<void> {
+  for (const message of messages) {
+    const { body } = message
+    const deps = isEventMessage(body) ? depsOf(body.site) : undefined
+    if (
+      isEventMessage(body) &&
+      deps !== undefined &&
+      (await abandonEvent(deps.db, body.site, body.id, deps.clock.now().toISOString()))
+    ) {
+      await gaveUp(deps.site, body.id)
+    }
+    message.ack()
   }
 }
