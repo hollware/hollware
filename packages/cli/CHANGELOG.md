@@ -1,5 +1,40 @@
 # hollware
 
+## 1.0.0-rc.9
+
+### Major Changes
+
+- [#73](https://github.com/hollware/hollware/pull/73) [`42df9fb`](https://github.com/hollware/hollware/commit/42df9fb82477bec5b80385bd1b853f68d89092db) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The public API of 1.0 loses 54 values that nothing outside their own package used and no page of the docs names: constants, defaults and helpers internal to how Hollware works. Every type stays, as the names of what remains. Code that imported one of them takes the value from what uses it, or asks for it in an issue:
+
+  - `@hollware/agents`: `AGENTS_CLIENT`, `ALLOWED_TOOLS`, `AUDIT_STATE`, `auditDue`, `capped`, `DailyLimitReached`, `DEFAULT_MODEL`, `kvMemory`, `LAST_AUDIT`, `reportOf`, `ROLES`, `slugOf`, `workersAiModel`
+  - `@hollware/astro`: `createSource`
+  - `@hollware/client`: `isPreviewToken`, `PREVIEW_COOKIE_MAX_AGE`, `previewCookie`
+  - `@hollware/core`: `ASSET_SCHEME`, `assetIdIn`, `AUDIT_ACTOR_KINDS`, `AUDIT_OUTCOMES`, `CHUNK_LIMITS`, `componentDefinitionData`, `DEFAULT_AUDIT`, `DEFAULT_BACKUPS`, `DEFAULT_MAX_MARKDOWN_BYTES`, `DEFAULT_MEDIA`, `defineOperation`, `describeContract`, `describedSchemaOf`, `ERROR_CODES`, `IDENTITY_AUDIT_ACTIONS`, `IMAGE_FORMATS`, `listAssets`, `MEDIA_FORMATS`, `PERSONAL_TOKEN_PREFIX`, `PREVIEW_SECRET_MIN_LENGTH`, `PREVIEW_TOKEN_PREFIX`, `PREVIEW_TTL_SECONDS`, `READ_TOKEN_PREFIX`, `routesFor`, `ruleDefinition`, `SITE_KEY_PATTERN`, `sizesOf`, `updateAsset`, `webhookDefinition`, `WORDS_PER_MINUTE`
+  - `@hollware/nuxt`: `ROUTES`
+  - `@hollware/server`: `defineHandlers`, `MAX_BOUND_PARAMETERS`, `OPERATION_TIMEOUT_MS`, `OUTPUT_CAP_BYTES`
+  - `create-hollware`: `USAGE`
+  - `hollware`: `createWranglerRunner`
+
+### Minor Changes
+
+- [#66](https://github.com/hollware/hollware/pull/66) [`b29fe9d`](https://github.com/hollware/hollware/commit/b29fe9d074c7b83b77014c59c41a4037d044bed4) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware backup get` writes a backup as an export would: the entries and site.json, `redirects.json` with the 301s of the entries that moved, and the images of the site in `_assets`, which `hollware import` uploads again. An image whose original the deployment no longer has is named and left out. A new project binds the R2 bucket `BACKUPS`, `<name>-backups`, so its backups live apart from its images, and `hollware doctor` says whether a project has one.
+
+- [#63](https://github.com/hollware/hollware/pull/63) [`44149e0`](https://github.com/hollware/hollware/commit/44149e0d5a2921754521b7be0797306cf2d5cd55) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project consumes the dead-letter queue of its events, `<name>-events-dlq`, so Hollware keeps the events it gave up on for the admin to send again. `hollware doctor` says when the consumer of the events has no dead-letter queue, or when nothing consumes it. A project made before adds `{ "queue": "<name>-events-dlq" }` to `queues.consumers` in its wrangler.jsonc.
+
+- [#69](https://github.com/hollware/hollware/pull/69) [`b14218b`](https://github.com/hollware/hollware/commit/b14218bbb905f2d8542af396fb83aeeaaa2f437e) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The editor of the admin writes far fewer revisions. It saves 8 seconds after the last change, and at least once a minute while the typing goes on, instead of a second and a half after each pause; it also saves when the tab is hidden, the page is left or another entry opens, such as a translation. Until then the browser keeps what was typed, so a crash loses nothing: the next time the entry opens, the changes come back with a notice, to keep or discard, and changes kept for an older version are offered rather than applied. Home shows an owner how big the database of the deployment is, against the 500 MB of a D1 database on the Free plan (`GET /v1/admin/database`), and `hollware doctor --remote` says it too.
+
+- [#52](https://github.com/hollware/hollware/pull/52) [`e6c6fb7`](https://github.com/hollware/hollware/commit/e6c6fb74ce757f74d215564a5174133e2879b1d3) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An invitation that waits can be revoked, and its link stops working at once: from People in the admin (`POST /v1/admin/invitations/:id/revoke`), or with `hollware invite revoke <id>` after `hollware invite list`. The activity log records it as `invitation.revoke`.
+
+- [#40](https://github.com/hollware/hollware/pull/40) [`9305e2d`](https://github.com/hollware/hollware/commit/9305e2dc7bb336c97523a05ea79190c2f733b5c6) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A personal token expires after 90 days unless its maker asks for other days or for none: `hollware token create` takes `--no-expiry`, the admin's Tokens page has a "Never expires" box, and `POST /v1/admin/tokens` takes `expiresInDays: null`. A read token still never expires unless it is given days.
+
+### Patch Changes
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An upload that opens on an XML declaration and many comments no longer stalls the check of its format, and a URL or a path with thousands of trailing slashes no longer takes seconds to trim: both are read in linear time.
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The packages carry no comments but the TSDoc of their public API, and the help of the CLI and the descriptions of the MCP tools no longer cite decision records the repository does not have. The starter's `AGENTS.md` now says what each setting of its `wrangler.jsonc` is for.
+- Updated dependencies [[`901959b`](https://github.com/hollware/hollware/commit/901959bff6b8de29b8db6206a47c5b2e03efef55), [`b29fe9d`](https://github.com/hollware/hollware/commit/b29fe9d074c7b83b77014c59c41a4037d044bed4), [`4fd2a54`](https://github.com/hollware/hollware/commit/4fd2a54a0426ee128403febc89d45e127c7fa5ac), [`77b98b8`](https://github.com/hollware/hollware/commit/77b98b8e91e34b6b11c70adb16ed5fe35efda837), [`fe98663`](https://github.com/hollware/hollware/commit/fe98663f342ff4f69ea6e579c9dc28670ded00d7), [`44149e0`](https://github.com/hollware/hollware/commit/44149e0d5a2921754521b7be0797306cf2d5cd55), [`18aac23`](https://github.com/hollware/hollware/commit/18aac23e3ef8309fb802437d5166094cb4a7eb03), [`4d9b15e`](https://github.com/hollware/hollware/commit/4d9b15ea2d854cbec6f4390d14317b705d56cc45), [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a), [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a), [`42df9fb`](https://github.com/hollware/hollware/commit/42df9fb82477bec5b80385bd1b853f68d89092db), [`3b98d87`](https://github.com/hollware/hollware/commit/3b98d8701f82646554a9355e7523addb2ed5b09c), [`7f6ca95`](https://github.com/hollware/hollware/commit/7f6ca9528c258518065dedb22b3703910ec5e985), [`e6c6fb7`](https://github.com/hollware/hollware/commit/e6c6fb74ce757f74d215564a5174133e2879b1d3), [`2a302dc`](https://github.com/hollware/hollware/commit/2a302dcbe1fb41c10757352312b21861aa60f6d5), [`2244160`](https://github.com/hollware/hollware/commit/2244160693dc307127bced011214b59080832dba)]:
+  - @hollware/core@1.0.0-rc.9
+
 ## 1.0.0-rc.8
 
 ### Patch Changes
