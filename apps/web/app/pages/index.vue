@@ -8,6 +8,8 @@ const INSTALL = 'npm create hollware@rc my-cms'
 useSeoMeta({
   title: '',
   description: () => m.value.seo.description,
+  ogTitle: () => m.value.seo.home,
+  ogDescription: () => m.value.seo.description,
 })
 
 const flow = computed(() => {
