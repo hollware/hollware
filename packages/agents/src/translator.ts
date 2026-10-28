@@ -16,7 +16,6 @@ export const TRANSLATOR_PROMPT = [
   'Write naturally, as a native speaker would, in the voice of the style guide.',
 ].join(' ')
 
-/** A slug from a title: lowercase ASCII words joined by hyphens. */
 export function slugOf(title: string): string {
   return (
     title

@@ -29,11 +29,6 @@ export function findBin(cwd: string, name: string): string | undefined {
   }
 }
 
-/**
- * A runner that starts the project's wrangler as a child process in `cwd`. Its stdin is closed
- * and its output is captured, so wrangler runs without a terminal and never asks anything. It
- * inherits the environment, which is where wrangler finds its Cloudflare credentials.
- */
 export function createWranglerRunner(cwd: string): RunWrangler {
   return (args) => {
     const bin = findWrangler(cwd)

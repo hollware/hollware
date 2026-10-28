@@ -15,20 +15,9 @@ import { handlers } from './ops/index.ts'
 
 export const name = '@hollware/server'
 
-export {
-  defineHandlers,
-  type Handlers,
-  type OperationContext,
-  type OperationHandler,
-} from './ops/types.ts'
+export { type Handlers, type OperationContext, type OperationHandler } from './ops/types.ts'
 export type { Principal } from './auth/types.ts'
-export {
-  MAX_BOUND_PARAMETERS,
-  MAX_ROW_BYTES,
-  OPEN_WORLD_TIMEOUT_MS,
-  OPERATION_TIMEOUT_MS,
-  OUTPUT_CAP_BYTES,
-} from './limits.ts'
+export { MAX_ROW_BYTES, OPEN_WORLD_TIMEOUT_MS } from './limits.ts'
 export type * from './ports.ts'
 export type { EventMessage } from './events/run.ts'
 

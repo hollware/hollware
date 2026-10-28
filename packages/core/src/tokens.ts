@@ -1,16 +1,5 @@
-/**
- * Personal tokens: `hw_pat_` and 52 characters of lowercase Crockford base 32, which
- * carry 260 random bits. The CLI makes a token and prints it once. The server never stores it:
- * it keeps the SHA-256 of the whole token, in hex, and finds a presented token by that hash. The
- * row of a token has an id of its own (`tok_…`, see `ids.ts`), its scopes and its expiry.
- */
-
 export const PERSONAL_TOKEN_PREFIX = 'hw_pat_'
 
-/**
- * Read tokens: `hw_read_` and the same 52 characters. A read token reads the published content of
- * one site over the read API (`GET /v1/…`) and nothing else, so a site may ship one to a browser.
- */
 export const READ_TOKEN_PREFIX = 'hw_read_'
 
 /** Days until a new personal token expires, unless whoever creates it asks for another expiry. */

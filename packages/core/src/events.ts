@@ -37,10 +37,6 @@ export const siteEvent = z.object({
   kind: z.literal('site.changed'),
 })
 
-/**
- * A request to publish, made or decided: who asked, what became of it, and the entry. No tag to
- * purge: nothing on the site changed.
- */
 export const reviewEvent = z.object({
   ...base,
   kind: z.enum(['review.requested', 'review.decided']),

@@ -2,13 +2,13 @@ import { HollwareClientError, type HollwareReader } from '@hollware/client'
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
-  createSource,
   hollwareBinding,
   hollwareLiveLoader,
   hollwareTranslations,
   loadInto,
   type LoadContext,
 } from '../src/index.ts'
+import { createSource } from '../src/source.ts'
 
 type Listed = Awaited<ReturnType<HollwareReader['listEntries']>>['entries'][number]
 type Found = NonNullable<Awaited<ReturnType<HollwareReader['getEntry']>>['entry']>

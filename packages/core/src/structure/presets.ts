@@ -7,7 +7,6 @@ export const PRESETS = ['blog', 'docs', 'empty'] as const
 
 export type Preset = (typeof PRESETS)[number]
 
-/** The path of an entry in each locale: the default one at the root, the others under theirs. */
 export function routesFor(
   name: string,
   locales: readonly string[],

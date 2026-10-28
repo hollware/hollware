@@ -9,7 +9,6 @@ interface KvBinding {
   put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>
 }
 
-/** Memory in a KV namespace. KV keeps a value at least 60 seconds. */
 export function kvMemory(kv: KvBinding): Memory {
   return {
     get: (key) => kv.get(key),

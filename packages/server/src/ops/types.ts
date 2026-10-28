@@ -58,7 +58,6 @@ export type OperationHandler<Name extends OperationName> = (
 /** One handler for every operation. */
 export type Handlers = { readonly [Name in OperationName]: OperationHandler<Name> }
 
-/** Declares the handlers; the type checks that they pair with the specs one to one. */
 export function defineHandlers(handlers: Handlers): Handlers {
   return handlers
 }

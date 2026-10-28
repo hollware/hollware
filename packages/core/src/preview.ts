@@ -1,25 +1,10 @@
-/**
- * The preview token: a signed, stateless proof that a person of a site may read the
- * latest revision of one entry, for one hour. A site that reads published content only (the
- * binding of RPC, the read API) reads that entry's head instead when it presents one.
- *
- *   hw_prv_<payload>.<signature>
- *
- * The payload is base64url of `{ "s": site, "e": entryId, "x": expiresAtSeconds }`, and the
- * signature the base64url HMAC-SHA256 of the payload text under a key that HKDF-SHA256 derives
- * from the Worker secret `HOLLWARE_SECRET`, bound to the site. Nothing is stored: a token cannot
- * be revoked, only wait out its hour, and rotating the secret ends every one.
- */
-
 export const PREVIEW_TOKEN_PREFIX = 'hw_prv_'
 
 /** The query parameter a site's page takes the token from. */
 export const PREVIEW_QUERY_PARAM = 'hollware-preview'
 
-/** How long a token lasts, in seconds. */
 export const PREVIEW_TTL_SECONDS = 3600
 
-/** The least characters of `HOLLWARE_SECRET` that Hollware signs anything with. */
 export const PREVIEW_SECRET_MIN_LENGTH = 32
 
 /** Why a token was not accepted: for the log of the operator, never for the caller. */

@@ -1,8 +1,3 @@
-/**
- * The errors of an operation that are none of its outcomes: the caller asked for something it
- * cannot have, or the server could not answer. Conflicts, missing entries and blocked publishes
- * are outcomes, not errors (`operations/specs.ts`).
- */
 export const ERROR_CODES = [
   'invalid_input',
   'unknown_collection',

@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import * as z from 'zod'
 
-import { createWranglerRunner, type Io } from '../src/index.ts'
+import { type Io } from '../src/index.ts'
+import { createWranglerRunner } from '../src/wrangler.ts'
 import { countingBytes, run } from './support/io.ts'
 
 const MIGRATIONS = fileURLToPath(new URL('../../server/migrations', import.meta.url))

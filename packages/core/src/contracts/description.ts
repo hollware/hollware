@@ -12,7 +12,6 @@ export function contractPhases(contract: Pick<Contract<unknown>, 'phases'>): Pha
   return PHASES.filter((phase) => declared.includes(phase))
 }
 
-/** A contract as `describe_site` shows it to agents. */
 export function describeContract(
   contract: Pick<Contract<unknown>, 'id' | 'severity' | 'phases' | 'description'>,
 ): ContractDescription {
