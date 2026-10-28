@@ -259,7 +259,30 @@ async function checkDatabase(io: Io, target: Target): Promise<Finding[]> {
           `the ${target} database has no owner yet`,
           `Run "hollware init --site <key> --${target}", with the key your site is to have, such as my-site.`,
         ),
+    ...(target === 'remote' ? [await databaseSize(io)] : []),
   ]
+}
+
+function bytesOf(stdout: string): number | null {
+  try {
+    const info: unknown = JSON.parse(stdout)
+    const size: unknown =
+      typeof info === 'object' && info !== null ? Reflect.get(info, 'database_size') : undefined
+    return typeof size === 'number' ? size : null
+  } catch {
+    return null
+  }
+}
+
+async function databaseSize(io: Io): Promise<Finding> {
+  const info = await io.wrangler(['d1', 'info', DEFAULT_BINDING, '--json'])
+  const bytes = info.code === 0 ? bytesOf(info.stdout) : null
+  return pass(
+    'database-size',
+    bytes === null
+      ? 'wrangler did not say how big the remote database is'
+      : `the remote database holds ${(Math.round(bytes / 100_000) / 10).toFixed(1)} MB, of the 500 MB a D1 database holds on the Free plan, or 10 GB on Paid`,
+  )
 }
 
 export async function doctor(argv: readonly string[], io: Io): Promise<number> {

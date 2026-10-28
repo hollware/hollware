@@ -16,6 +16,13 @@ test.describe.configure({ mode: 'serial' })
 
 let owner: Page
 
+const keptCopies = (page: Page) =>
+  page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('hollware:working-copy:'))
+      .map((key) => [key, JSON.parse(localStorage.getItem(key) ?? '{}')]),
+  )
+
 async function newEntry(page: Page, locale: 'es' | 'en', title: string, slug: string) {
   await page.goto('/admin/entries/new')
   await expect(page.getByRole('heading', { name: 'New entry' })).toBeVisible()
@@ -138,6 +145,121 @@ test('the owner writes in the visual editor, and finds the Markdown an agent wri
   await expect(markdown).toContainText('One **word**')
   await shot(owner, 'editor-markdown')
   await owner.getByRole('button', { name: 'Edit visually' }).click()
+})
+
+test('the owner types in bursts, which this browser keeps until one save, and gets kept changes back', async ({
+  browser,
+}) => {
+  await owner.goto('/admin/entries/blog/en/a-long-post?panel=history')
+  const history = owner.getByRole('list', { name: 'History of the entry' })
+  await expect(history.getByRole('button').first()).toContainText('Latest')
+  const revisions = await history.getByRole('button').count()
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  await body.getByText('The last paragraph, changed.').click()
+  await owner.keyboard.press('End')
+  for (const word of [' One.', ' Two.', ' Three.']) {
+    await owner.keyboard.type(word)
+    await owner.waitForTimeout(2_000)
+  }
+
+  const copies = await keptCopies(owner)
+  expect(copies).toHaveLength(1)
+  const [key, copy] = copies[0] ?? []
+  expect(copy.markdown).toContain('One. Two. Three.')
+  await saveNow(owner)
+  await expect(history.getByRole('button')).toHaveCount(revisions + 1)
+  expect(await keptCopies(owner)).toEqual([])
+  await owner.getByRole('button', { name: 'View Markdown' }).click()
+  await owner.locator('.cm-content').first().click()
+  await owner.keyboard.press('ControlOrMeta+End')
+  await owner.keyboard.type('X')
+  await owner.keyboard.press('Backspace')
+  await owner.waitForTimeout(600)
+  expect(await keptCopies(owner)).toEqual([])
+  await owner.keyboard.type('X')
+  await owner.waitForTimeout(600)
+  expect((await keptCopies(owner)).map(([, kept]) => kept.markdown.endsWith('X'))).toEqual([true])
+  await owner.keyboard.press('Backspace')
+  await owner.waitForTimeout(600)
+  expect(await keptCopies(owner)).toEqual([])
+  await owner.getByRole('button', { name: 'Edit visually' }).click()
+
+  await owner.evaluate(
+    ([name, markdown, version]) =>
+      localStorage.setItem(String(name), JSON.stringify({ markdown, version })),
+    [key, `${copy.markdown.trimEnd()} Four.\n`, copy.version + 1],
+  )
+  await owner.reload()
+  const restored = owner.getByText('Restored the changes this browser kept since the last save')
+  await expect(restored).toBeVisible()
+  await expect(body).toContainText('Four.')
+  await expectAccessible(owner)
+  await owner.getByRole('button', { name: 'Discard', exact: true }).click()
+  await expect(restored).toBeHidden()
+  await expect(body).not.toContainText('Four.')
+  expect(await keptCopies(owner)).toEqual([])
+
+  await owner.evaluate(
+    ([name, markdown, version]) =>
+      localStorage.setItem(String(name), JSON.stringify({ markdown, version })),
+    [key, `${copy.markdown.trimEnd()} Five.\n`, copy.version],
+  )
+  await owner.reload()
+  const offered = owner.getByText(/^This browser kept changes made to version \d+/)
+  await expect(offered).toBeVisible()
+  await expect(body).not.toContainText('Five.')
+  expect(await keptCopies(owner)).toHaveLength(1)
+  const elsewhere = await browser.newContext({
+    baseURL: target().url,
+    storageState: await owner.context().storageState(),
+  })
+  await elsewhere.clock.install()
+  const paused = await elsewhere.newPage()
+  await paused.goto('/admin/entries/blog/en/a-long-post')
+  await expect(paused.getByText(/^This browser kept changes made to version \d+/)).toBeVisible()
+  await paused.getByRole('button', { name: 'View Markdown' }).click()
+  await paused.locator('.cm-content').first().click()
+  await paused.clock.pauseAt(await paused.evaluate(() => Date.now() + 1_000))
+  await paused.keyboard.press('ControlOrMeta+End')
+  await paused.keyboard.type('Y')
+  await paused.keyboard.press('Backspace')
+  await paused.clock.runFor(1_000)
+  expect((await keptCopies(paused)).map(([, kept]) => kept.markdown.includes('Five.'))).toEqual([
+    true,
+  ])
+  await elsewhere.close()
+  await owner.getByRole('button', { name: 'Discard', exact: true }).click()
+  await expect(offered).toBeHidden()
+  expect(await keptCopies(owner)).toEqual([])
+})
+
+test('the editor saves what the owner typed before it opens a translation, and not for a tab', async () => {
+  await owner.goto('/admin/entries/blog/es/hola-mundo?panel=history')
+  const history = owner.getByRole('list', { name: 'History of the entry' })
+  await expect(history.getByRole('button').first()).toContainText('Latest')
+  const revisions = await history.getByRole('button').count()
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  await body.getByText('Plain words, one idea, and nothing that links anywhere.').click()
+  await owner.keyboard.press('End')
+  await owner.keyboard.type(' Y algo más.')
+  await owner.getByRole('tab', { name: 'Properties' }).click()
+  await owner.getByRole('tab', { name: 'History' }).click()
+  await expect(history.getByRole('button').first()).toContainText('Latest')
+  await owner.waitForTimeout(600)
+  await expect(history.getByRole('button')).toHaveCount(revisions)
+  await owner.getByRole('tab', { name: 'Properties' }).click()
+  await owner.getByRole('link', { name: 'en · Hello world', exact: true }).click()
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  expect(await keptCopies(owner)).toEqual([])
+  await owner.getByRole('link', { name: 'es · Hola mundo', exact: true }).click()
+  await expect(owner.getByRole('heading', { name: 'Hola mundo', level: 1 })).toBeVisible()
+  await expect(body).toContainText('nothing that links anywhere. Y algo más.')
+  await owner.getByRole('tab', { name: 'History' }).click()
+  await expect(history.getByRole('button')).toHaveCount(revisions + 1)
+  await expect(
+    owner.getByText('Restored the changes this browser kept since the last save'),
+  ).toBeHidden()
+  expect(await keptCopies(owner)).toEqual([])
 })
 
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({

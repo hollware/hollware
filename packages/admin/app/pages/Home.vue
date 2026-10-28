@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
+import { databaseSize } from '../lib/database.ts'
 import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
 import { me } from '../lib/me.ts'
 import { api } from '../lib/session.ts'
@@ -20,6 +21,7 @@ const audit = ref<Entry | null>(null)
 const entryCount = ref<number | null>(null)
 const tokens = ref<readonly TokenOfSite[] | null>(null)
 const peopleCount = ref<number | null>(null)
+const database = ref<ReturnType<typeof databaseSize> | null>(null)
 const mcpLine = `claude mcp add --transport http hollware ${window.location.origin}/mcp --header "Authorization: Bearer <token>"`
 
 const owner = computed(
@@ -30,12 +32,14 @@ watch(
   owner,
   async (isOwner) => {
     if (!isOwner) return
-    const [made, team] = await Promise.all([
+    const [made, team, size] = await Promise.all([
       api.admin<{ tokens: TokenOfSite[] }>('tokens'),
       api.admin<{ people: unknown[]; invitations: unknown[] }>('people'),
+      api.admin<{ bytes: number }>('database'),
     ])
     tokens.value = made.tokens
     peopleCount.value = team.people.length + team.invitations.length
+    database.value = databaseSize(size.bytes)
   },
   { immediate: true },
 )
@@ -246,6 +250,13 @@ const totalViews = computed(() =>
           </RouterLink>
         </section>
       </div>
+
+      <section v-if="database !== null" aria-labelledby="database" class="space-y-1 text-sm">
+        <h2 id="database" class="font-semibold">{{ m.home.database }}</h2>
+        <p :class="database.near ? 'text-warning' : 'text-muted'">
+          {{ m.home.databaseSize(formatNumber(database.megabytes)) }}
+        </p>
+      </section>
     </div>
   </Page>
 </template>
