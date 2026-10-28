@@ -14,6 +14,7 @@ export const ID_PREFIXES = {
   member: 'mbr',
   passkey: 'pky',
   publication: 'pub',
+  purge: 'prg',
   redirect: 'rdr',
   revision: 'rev',
   revisionTag: 'tag',

@@ -28,7 +28,7 @@ export const OPERATION_AUDIT_ACTIONS = [
 
 /**
  * What happens outside the operations: the tokens, members, passkeys, sessions and apps of people,
- * the scheduled publications, and the events given up on and sent again.
+ * the scheduled publications, the events given up on and sent again, and the entries purged.
  */
 export const IDENTITY_AUDIT_ACTIONS = [
   'token.create',
@@ -50,6 +50,7 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'app.refresh_reused',
   'event.abandon',
   'event.retry',
+  'entry.purge',
   'schedule.publish',
   'schedule.unpublish',
 ] as const

@@ -91,6 +91,8 @@ describe('AC-0.1-10: migrations', () => {
       'audit_log_no_replace',
       'entries_fts_publication',
       'entries_fts_removal',
+      'entry_purges_immutable',
+      'entry_purges_no_delete',
       'publications_immutable',
       'publications_no_delete',
       'publications_no_replace',

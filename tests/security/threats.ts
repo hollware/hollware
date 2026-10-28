@@ -1348,4 +1348,26 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-114',
+    area: 'Content',
+    threat:
+      'Someone deletes entries for ever: their revisions, publications and reviews, which append-only otherwise keeps',
+    mitigation:
+      'Only an owner, in the admin, and only an entry of the trash, which only a draft reaches; each purge leaves a record that is never changed or deleted and a line in the activity log, and without that record the triggers still refuse every delete',
+    guards: [
+      {
+        file: 'packages/server/tests/http/admin-api.workerd.test.ts',
+        test: 'delete an entry of the trash for ever, for an owner, and refuse one out of the trash',
+      },
+      {
+        file: 'packages/server/tests/db/purge.workerd.test.ts',
+        test: 'deletes an entry of the trash with all it left, records who did, and touches no other',
+      },
+      {
+        file: 'packages/server/tests/append-only.workerd.test.ts',
+        test: 'keep the record of a purge: it is neither changed nor deleted',
+      },
+    ],
+  },
 ]

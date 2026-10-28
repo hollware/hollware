@@ -9,6 +9,7 @@ import { useBulkReport } from '../lib/bulk-report.ts'
 import { useMessages } from '../i18n/index.ts'
 import { entryPath, titleOf } from '../lib/entries.ts'
 import { matches } from '../lib/entry-list.ts'
+import { me } from '../lib/me.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 
@@ -142,6 +143,11 @@ const restorable = (entry: Row) => entry.deletedAt !== null
 
 const unpublishing = ref<Row[]>([])
 const trashing = ref<Row[]>([])
+const owner = computed(
+  () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
+)
+const purgeable = (entry: Row) => entry.deletedAt !== null && owner.value
+const purging = ref<Row[]>([])
 const scheduling = ref<Row[]>([])
 const publishAt = ref('')
 const warned = ref<{ row: Row; warnings: Warning[] }[]>([])
@@ -155,6 +161,7 @@ const open = (list: { value: unknown[] }) =>
   })
 const unpublishOpen = open(unpublishing)
 const trashOpen = open(trashing)
+const purgeOpen = open(purging)
 const scheduleOpen = open(scheduling)
 const warnedOpen = open(warned)
 
@@ -236,6 +243,22 @@ async function trashMany() {
       return { outcome: answer.outcome === 'published' ? 'not_draft' : answer.outcome }
     })
     reportBulk(countOutcomes(results))
+    await load()
+  } finally {
+    busy.value = false
+  }
+}
+
+async function purgeMany() {
+  const rows = purging.value
+  purging.value = []
+  busy.value = true
+  try {
+    reportBulk(
+      countOutcomes(
+        await runAll(rows, (row) => api.admin<{ outcome: string }>(`entries/${row.id}/purge`, {})),
+      ),
+    )
     await load()
   } finally {
     busy.value = false
@@ -405,6 +428,16 @@ const locales = computed(() => [
         @click="restoreMany(chosen.filter(restorable))"
       />
       <UButton
+        v-if="chosen.some(purgeable)"
+        :label="m.bulk.purge(chosen.filter(purgeable).length)"
+        icon="i-lucide-trash"
+        color="error"
+        variant="outline"
+        size="sm"
+        :disabled="busy"
+        @click="purging = chosen.filter(purgeable)"
+      />
+      <UButton
         icon="i-lucide-x"
         color="neutral"
         variant="ghost"
@@ -438,6 +471,16 @@ const locales = computed(() => [
       <template #footer>
         <UButton :label="m.common.keepIt" variant="ghost" @click="trashing = []" />
         <UButton :label="m.bulk.trash(trashing.length)" color="error" @click="trashMany" />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="purgeOpen" :title="m.bulk.purgeTitle(purging.length)">
+      <template #body>
+        <p class="text-sm">{{ m.bulk.purgeBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.keepIt" variant="ghost" @click="purging = []" />
+        <UButton :label="m.bulk.purge(purging.length)" color="error" @click="purgeMany" />
       </template>
     </UModal>
 

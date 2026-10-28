@@ -99,6 +99,7 @@ export const en = {
       changed: (n: number) => `${n} changed`,
       trashed: (n: number) => `${n} moved to the trash`,
       restored: (n: number) => `${n} restored`,
+      purged: (n: number) => `${n} deleted for ever`,
       not_draft: (n: number) => `${n} published or scheduled: unpublish them first`,
       not_trashed: (n: number) => `${n} not in the trash`,
       failed: (n: number) => `${n} failed`,
@@ -112,6 +113,11 @@ export const en = {
     remove: (n: number) => `Remove ${n}`,
     trash: (n: number) => `Move ${n} to the trash`,
     restore: (n: number) => `Restore ${n}`,
+    purge: (n: number) => `Delete ${n} for ever`,
+    purgeTitle: (n: number) =>
+      n === 1 ? 'Delete 1 entry for ever?' : `Delete ${n} entries for ever?`,
+    purgeBody:
+      'Their revisions, publications, reviews, comments and redirects are deleted with them, and nothing brings them back. The activity log keeps that you did it, and their ids.',
     setRole: 'Change the role',
     unpublishTitle: (n: number) => `Unpublish ${n} entries?`,
     unpublishBody:
@@ -847,6 +853,7 @@ export const en = {
       'schedule.unpublish': 'Unpublished an entry when its time came',
       'event.abandon': 'Gave up on an event no receiver took',
       'event.retry': 'Sent an event again',
+      'entry.purge': 'Deleted an entry for ever',
     } satisfies Record<AuditAction, string>,
     columns: { when: 'When', who: 'Who', action: 'Action', target: 'Target', outcome: 'Outcome' },
     kinds: { user: 'person', token: 'token', oauth_client: 'app', system: 'system' },

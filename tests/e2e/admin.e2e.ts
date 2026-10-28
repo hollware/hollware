@@ -262,6 +262,32 @@ test('the editor saves what the owner typed before it opens a translation, and n
   expect(await keptCopies(owner)).toEqual([])
 })
 
+test('the owner deletes a draft of the trash for ever, and the activity log keeps that', async () => {
+  await owner.goto('/admin/entries/new')
+  await owner.getByRole('combobox', { name: 'Locale' }).click()
+  await owner.getByRole('option', { name: 'en' }).click()
+  await owner.getByLabel('Title').fill('Short lived')
+  await owner.getByLabel('Slug').fill('short-lived')
+  await owner.getByRole('button', { name: 'Create the draft' }).click()
+  await expect(owner.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
+  await entryAction(owner, 'Move to trash')
+  await owner.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click()
+  await expect(owner.getByText('Moved to the trash', { exact: true }).first()).toBeVisible()
+
+  await owner.getByRole('tab', { name: 'Trash' }).click()
+  await owner.getByRole('checkbox', { name: 'Select Short lived' }).click()
+  const bar = owner.getByRole('toolbar', { name: 'Actions on the selected rows' })
+  await bar.getByRole('button', { name: 'Delete 1 for ever' }).click()
+  await expect(owner.getByRole('dialog')).toContainText('Delete 1 entry for ever?')
+  await expectAccessible(owner)
+  await owner.getByRole('dialog').getByRole('button', { name: 'Delete 1 for ever' }).click()
+  await expect(owner.getByText('1 deleted for ever', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByText('Done', { exact: true }).first()).toBeVisible()
+  await expect(owner.getByRole('listitem', { name: /^Short lived/ })).toHaveCount(0)
+  await owner.goto('/admin/settings/activity')
+  await expect(owner.getByRole('row', { name: /Deleted an entry for ever/ }).first()).toBeVisible()
+})
+
 test('AC-0.3-2: an author publishes through review, and the owner approves it', async ({
   browser,
 }) => {
