@@ -19,6 +19,7 @@ import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
+import { usePageTitle } from '../lib/title.ts'
 
 const props = defineProps<{ collection: string; locale: string; slug: string }>()
 
@@ -102,6 +103,7 @@ const title = computed({
   },
 })
 const body = computed(() => bodyOf(text.value))
+usePageTitle(() => title.value)
 const dirty = computed(() => text.value !== saved.value)
 const diagnostics = computed(() =>
   verdict.value === null ? [] : diagnosticsOf(text.value, verdict.value),
