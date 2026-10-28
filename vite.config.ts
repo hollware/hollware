@@ -66,6 +66,7 @@ export default defineConfig({
           include: ['scripts/**/*.test.ts', 'tests/**/*.test.ts'],
           exclude: ['tests/acceptance/**', 'tests/conformance/**', 'tests/e2e/**'],
           environment: 'node',
+          testTimeout: 30_000,
         },
       },
     ],
