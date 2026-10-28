@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
+import { connect } from '../../src/db/d1.ts'
+import { createInvitation, redeemInvitation } from '../../src/identity/store.ts'
 import { seedToken } from '../auth/support.ts'
 import { adminPerson, adminToken, call } from './admin-session.ts'
 import { boot, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
@@ -172,6 +174,54 @@ describe("the admin's own routes", () => {
     expect(asOwner.status).toBe(400)
     expect(people.invitations.map((invitation) => invitation.role)).toContain('author')
     expect(people.people.some((person) => person.role === 'owner')).toBe(true)
+  })
+
+  it('revoke an invitation that waits, whose link stops working at once, and only of the site', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const made = await (
+      await call(worker, owner, '/v1/admin/invitations', { role: 'author' })
+    ).json<{ id: string; link: string }>()
+    const elsewhere = await createInvitation(connect(env.DB), {
+      site: OTHER_SITE_KEY,
+      role: 'author',
+      userId: null,
+      now: new Date(NOW),
+      days: 7,
+    })
+    const used = await createInvitation(connect(env.DB), {
+      site: SITE_KEY,
+      role: 'author',
+      userId: null,
+      now: new Date(NOW),
+      days: 7,
+    })
+    await redeemInvitation(connect(env.DB), used.id, new Date(NOW))
+    const options = (invitation: string) =>
+      worker.send('/auth/register/options', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://hollware.test' },
+        body: JSON.stringify({ invitation }),
+      })
+    const secret = made.link.split('#invitation=')[1] ?? ''
+
+    const before = await options(secret)
+    const revoked = await call(worker, owner, `/v1/admin/invitations/${made.id}/revoke`, {})
+    const again = await call(worker, owner, `/v1/admin/invitations/${made.id}/revoke`, {})
+    const foreign = await call(worker, owner, `/v1/admin/invitations/${elsewhere.id}/revoke`, {})
+    const spent = await call(worker, owner, `/v1/admin/invitations/${used.id}/revoke`, {})
+    const after = await options(secret)
+    const theirs = await options(elsewhere.secret)
+    const people = await (
+      await call(worker, owner, '/v1/admin/people')
+    ).json<{ invitations: { id: string }[] }>()
+
+    expect([before.status, revoked.status, again.status, foreign.status, spent.status]).toEqual([
+      200, 200, 404, 404, 404,
+    ])
+    expect(await revoked.json()).toEqual({ outcome: 'revoked' })
+    expect([after.ok, theirs.ok]).toEqual([false, true])
+    expect(people.invitations.map((invitation) => invitation.id)).not.toContain(made.id)
   })
 
   it('give a member another role, and remove one, whose token stops working at once', async () => {

@@ -7,9 +7,12 @@ import type { Io } from '../io.ts'
 import { publicUrlOf, setupLink } from '../public-url.ts'
 import {
   insertInvitation,
+  listInvitations,
   ownerOfSiteQuery,
   parseExpiresInDays,
+  parseInvitationId,
   parseSiteKey,
+  revokeInvitation,
   sitesQuery,
 } from '../sql.ts'
 import { chooseSite, WHERE_OPTIONS } from './token.ts'
@@ -17,12 +20,15 @@ import { chooseSite, WHERE_OPTIONS } from './token.ts'
 export const INVITE_USAGE = [
   'Usage: hollware invite (--role <editor | author> | --owner) [--days <n>] [--url <url>]',
   '                       [--site <key>] [--local | --remote] [--database <name>] [--json]',
+  '       hollware invite list [--site <key>] [--local | --remote] [--database <name>]',
+  '       hollware invite revoke <id> [--site <key>] [--local | --remote] [--database <name>]',
   '',
   'Invites a person to the admin: prints a link, valid once and for 7 days by default,',
   'where they set up a passkey. An editor reads, writes and publishes; an author reads and writes,',
   'and what an author publishes goes through review. With --owner, the link is for the owner of',
   'the site, to set up a passkey: on a deployment that was made before the admin existed, or on a',
-  'new device.',
+  'new device. "invite list" shows the invitations that wait, and "invite revoke" stops the link',
+  'of one at once.',
   '',
   'Options:',
   '  --role <role>      editor or author',
@@ -44,6 +50,9 @@ function roleOf(value: string | undefined): 'editor' | 'author' {
 }
 
 export async function invite(argv: readonly string[], io: Io): Promise<number> {
+  const [subcommand, ...rest] = argv
+  if (subcommand === 'list') return listWaiting(rest, io)
+  if (subcommand === 'revoke') return revokeWaiting(rest, io)
   const { values } = parseFlags({
     args: [...argv],
     allowPositionals: false,
@@ -120,5 +129,81 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
       `  ${setupLink(url, secret)}`,
     ].join('\n'),
   )
+  return 0
+}
+
+async function siteOf(
+  values: { readonly site?: string | undefined; readonly database?: string | undefined },
+  io: Io,
+  target: ReturnType<typeof chooseTarget>,
+  database: string,
+): Promise<string> {
+  const siteFlag = values.site === undefined ? undefined : parseSiteKey(values.site)
+  const [siteRows = []] = await query(io.wrangler, database, target, sitesQuery())
+  return chooseSite(siteRows, siteFlag)
+}
+
+async function listWaiting(argv: readonly string[], io: Io): Promise<number> {
+  const { values } = parseFlags({
+    args: [...argv],
+    allowPositionals: false,
+    options: WHERE_OPTIONS,
+  })
+  if (values.help === true) {
+    io.out(INVITE_USAGE)
+    return 0
+  }
+  const target = chooseTarget(values)
+  const database = resolveDatabase(io.cwd, values.database)
+  const site = await siteOf(values, io, target, database)
+  const [rows = []] = await query(
+    io.wrangler,
+    database,
+    target,
+    listInvitations(site, io.now().toISOString()),
+  )
+  io.out(
+    rows.length === 0
+      ? `No invitation waits in the site "${site}".`
+      : rows
+          .map(
+            (row) =>
+              `${String(row['id'])}  ${String(row['role'])}  until ${String(row['expires_at'])}`,
+          )
+          .join('\n'),
+  )
+  return 0
+}
+
+async function revokeWaiting(argv: readonly string[], io: Io): Promise<number> {
+  const { values, positionals } = parseFlags({
+    args: [...argv],
+    allowPositionals: true,
+    options: WHERE_OPTIONS,
+  })
+  if (values.help === true) {
+    io.out(INVITE_USAGE)
+    return 0
+  }
+  const [rawId, ...extra] = positionals
+  if (rawId === undefined || extra.length > 0) {
+    throw new UsageError('revoke takes the id of one invitation: hollware invite revoke <id>.')
+  }
+  const id = parseInvitationId(rawId)
+  const target = chooseTarget(values)
+  const database = resolveDatabase(io.cwd, values.database)
+  const site = await siteOf(values, io, target, database)
+  const [revoked = []] = await query(
+    io.wrangler,
+    database,
+    target,
+    revokeInvitation(id, site, io.now().toISOString()),
+  )
+  if (revoked.length === 0) {
+    throw new CliError(
+      `no invitation ${id} waits in the site "${site}". "hollware invite list" shows the ones that do.`,
+    )
+  }
+  io.out(`Revoked invitation ${id}: its link no longer works.`)
   return 0
 }

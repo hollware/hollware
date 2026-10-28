@@ -272,6 +272,25 @@ test('the owner who changes an entry that waits for review is asked first, and t
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
 })
 
+test('the owner revokes an invitation, whose link then works no more', async ({ browser }) => {
+  await owner.goto('/admin/settings/people')
+  await owner.getByRole('button', { name: 'Invite' }).click()
+  const link = (await owner.getByText(/\/setup#invitation=/).textContent()) ?? ''
+  const waiting = owner.getByRole('region', { name: 'Invitations' })
+  await waiting.getByRole('button', { name: 'Revoke the invitation of an Author' }).click()
+  await owner.getByRole('dialog').getByRole('button', { name: 'Revoke', exact: true }).click()
+  await expect(owner.getByText('Invitation revoked').first()).toBeVisible()
+  await expect(waiting).toHaveCount(0)
+
+  const stranger = await (await browser.newContext({ baseURL: target().url })).newPage()
+  await stranger.goto(link.trim())
+  await stranger.getByLabel('Your name').fill('Eve')
+  await stranger.getByRole('button', { name: 'Create the passkey' }).click()
+  await expect(stranger.getByRole('alert')).toContainText(
+    'Ask the owner of this Hollware for a new invitation.',
+  )
+})
+
 test('the owner schedules the end of an entry, unpublishes it, then schedules it', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()

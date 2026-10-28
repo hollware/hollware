@@ -65,6 +65,26 @@ export async function findInvitation(
   return row === undefined ? null : { ...row, role: roleOf(row.role) }
 }
 
+export async function revokeInvitation(
+  db: Db,
+  input: { site: string; id: string; now: Date },
+): Promise<boolean> {
+  const at = input.now.toISOString()
+  const rows = await db
+    .update(invitations)
+    .set({ expiresAt: at, updatedAt: at })
+    .where(
+      and(
+        eq(invitations.id, input.id),
+        eq(invitations.siteId, input.site),
+        isNull(invitations.usedAt),
+        gt(invitations.expiresAt, at),
+      ),
+    )
+    .returning({ id: invitations.id })
+  return rows.length === 1
+}
+
 export async function redeemInvitation(db: Db, id: string, now: Date): Promise<boolean> {
   const at = now.toISOString()
   const rows = await db

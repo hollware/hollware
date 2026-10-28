@@ -85,4 +85,64 @@ describe('hollware invite', () => {
       ],
     ])
   })
+
+  it('lists the invitations that wait, and revokes one of the site at once', async () => {
+    const cwd = temp.make({ 'wrangler.jsonc': WRANGLER_JSONC })
+    const id = 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW'
+    const wrangler = fakeWrangler(
+      d1([{ id: 'blog' }]),
+      d1([{ id, role: 'author', expires_at: '2026-10-19T12:00:00.000Z' }]),
+      d1([{ id: 'blog' }]),
+      d1([{ id }]),
+    )
+
+    const listed = await run(['invite', 'list'], { cwd, wrangler: wrangler.run })
+    const revoked = await run(['invite', 'revoke', id], { cwd, wrangler: wrangler.run })
+
+    expect(wrangler.calls.map((call) => call.args[6])).toEqual([
+      SITES,
+      "SELECT id, role, expires_at FROM invitations WHERE site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' ORDER BY created_at, id;",
+      SITES,
+      "UPDATE invitations SET expires_at = '2026-10-12T12:00:00.000Z', updated_at = '2026-10-12T12:00:00.000Z' WHERE id = 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW' AND site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' RETURNING id;",
+    ])
+    expect([listed.code, listed.out]).toEqual([
+      0,
+      ['inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW  author  until 2026-10-19T12:00:00.000Z'],
+    ])
+    expect([revoked.code, revoked.out]).toEqual([
+      0,
+      ['Revoked invitation inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW: its link no longer works.'],
+    ])
+  })
+
+  it('says so when no invitation waits, or when the one to revoke waits no more', async () => {
+    const cwd = temp.make({ 'wrangler.jsonc': WRANGLER_JSONC })
+    const wrangler = fakeWrangler(d1([{ id: 'blog' }]), d1([]), d1([{ id: 'blog' }]), d1([]))
+
+    const listed = await run(['invite', 'list'], { cwd, wrangler: wrangler.run })
+    const revoked = await run(['invite', 'revoke', 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW'], {
+      cwd,
+      wrangler: wrangler.run,
+    })
+    const wrong = await run(['invite', 'revoke', 'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW'], {
+      cwd,
+      wrangler: wrangler.run,
+    })
+
+    expect(listed.out).toEqual(['No invitation waits in the site "blog".'])
+    expect([revoked.code, revoked.err]).toEqual([
+      1,
+      [
+        'hollware invite: no invitation inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW waits in the site "blog". "hollware invite list" shows the ones that do.',
+      ],
+    ])
+    expect([wrong.code, wrong.err]).toEqual([
+      1,
+      [
+        expect.stringMatching(
+          /^hollware invite: invalid invitation id .*tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW.*: an invitation id is inv_ followed by 26 characters\./,
+        ),
+      ],
+    ])
+  })
 })

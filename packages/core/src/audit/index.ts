@@ -34,6 +34,7 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'member.role',
   'member.remove',
   'invitation.create',
+  'invitation.revoke',
   'invitation.accept',
   'session.sign_in',
   'session.sign_out',
