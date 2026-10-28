@@ -8171,7 +8171,7 @@
             "type": "string"
           },
           "data": {
-            "description": "The file, in base64.",
+            "description": "The file, in base64. Send data or url, not both.",
             "maxLength": 13981016,
             "minLength": 1,
             "type": "string"
@@ -8181,9 +8181,15 @@
             "maxLength": 200,
             "minLength": 1,
             "type": "string"
+          },
+          "url": {
+            "description": "A public https URL of the file, which Hollware downloads. Send data or url, not both.",
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
           }
         },
-        "required": ["filename", "alt", "data"],
+        "required": ["filename", "alt"],
         "type": "object"
       },
       "name": "upload_asset",

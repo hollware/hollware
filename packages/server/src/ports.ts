@@ -770,4 +770,6 @@ export interface Media {
   readonly catalog: AssetCatalog
   /** Where the Worker serves the assets: `<HOLLWARE_PUBLIC_URL>/assets/`. */
   readonly baseUrl: string
+  /** Fetches the URL an agent gave for an image, and answers a redirect without following it. */
+  download(url: string): Promise<Response>
 }

@@ -28,8 +28,8 @@ of the sites live in D1; this repository holds only the Worker.
 
 - `no_nodejs_compat` and `no_nodejs_compat_v2` keep Node.js compatibility off: Hollware runs and
   is tested without it. Remove both only if your own code needs Node.js APIs.
-- `global_fetch_strictly_public`: the OAuth server fetches the metadata documents of clients over
-  the public internet only, never through your zone.
+- `global_fetch_strictly_public`: the OAuth server fetches the metadata documents of clients, and
+  `upload_asset` the URL an agent gives, over the public internet only, never through your zone.
 - The cron runs every minute: it publishes the scheduled entries and sends the events the queue
   missed. The `EVENTS` queue carries the publication events; the Worker consumes them and keeps
   what fails five times in the dead-letter queue. Queue names are unique in an account.

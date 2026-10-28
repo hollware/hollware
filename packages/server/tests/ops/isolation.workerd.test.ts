@@ -136,6 +136,7 @@ function withPorts(context: OperationContext, clock: Clock): OperationContext {
       images: null,
       catalog: d1Catalog(env.DB),
       baseUrl: 'https://cms.example.com/assets/',
+      download: () => Promise.reject(new Error('no network in this test')),
     },
     analytics: createAnalyticsSources({
       db: env.DB,

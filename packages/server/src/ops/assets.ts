@@ -45,10 +45,91 @@ export function assetView(row: AssetRow, media: Media) {
   }
 }
 
-function bytesOfBase64(data: string): Uint8Array | null {
+const refused = (message: string, fix: string) =>
+  ({ outcome: 'refused', problem: { message, fix } }) as const
+
+type Refusal = ReturnType<typeof refused>
+
+const MAX_REDIRECTS = 5
+
+const URL_FIX =
+  'Give a public https URL that answers the image itself, or send the file in base64 as data.'
+
+function tooBig(bytes: number): Refusal {
+  return refused(
+    `The file is ${bytes} bytes, more than the ${MAX_ASSET_BYTES} an image may be.`,
+    'Make it smaller (fewer pixels, or a format such as WebP) and upload it again.',
+  )
+}
+
+async function bytesOfUrl(media: Media, url: string): Promise<Uint8Array | Refusal> {
+  let at = url
+  for (let hops = 0; ; hops++) {
+    if (!URL.canParse(at) || new URL(at).protocol !== 'https:') {
+      return refused(
+        hops === 0
+          ? `${url} is not an https URL.`
+          : `${url} redirected to ${at}, which is not an https URL.`,
+        URL_FIX,
+      )
+    }
+    let response: Response
+    try {
+      response = await media.download(at)
+    } catch (cause) {
+      return refused(`${at} could not be fetched: ${String(cause)}.`, URL_FIX)
+    }
+    const location = response.headers.get('location')
+    if (response.status < 300 || response.status > 399 || location === null) {
+      return bytesOfResponse(at, response)
+    }
+    await response.body?.cancel()
+    if (hops === MAX_REDIRECTS) {
+      return refused(`${url} redirected more than ${MAX_REDIRECTS} times.`, URL_FIX)
+    }
+    at = URL.canParse(location, at) ? new URL(location, at).href : location
+  }
+}
+
+async function bytesOfResponse(url: string, response: Response): Promise<Uint8Array | Refusal> {
+  if (!response.ok || response.body === null) {
+    await response.body?.cancel()
+    return refused(`${url} answered ${response.status}.`, URL_FIX)
+  }
+  const declared = Number(response.headers.get('content-length'))
+  if (declared > MAX_ASSET_BYTES) {
+    await response.body.cancel()
+    return tooBig(declared)
+  }
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.length
+    if (size > MAX_ASSET_BYTES) {
+      await reader.cancel()
+      return tooBig(size)
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.length
+  }
+  return bytes
+}
+
+function bytesOfBase64(data: string): Uint8Array | Refusal {
   const clean = data.replace(/\s/g, '')
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean) || clean.length % 4 !== 0) return null
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean) || clean.length % 4 !== 0) {
+    return refused('data is not base64.', 'Send the file encoded in base64, with its padding.')
+  }
   const binary = atob(clean)
+  if (binary.length > MAX_ASSET_BYTES) return tooBig(binary.length)
   const bytes = new Uint8Array(binary.length)
   for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
   return bytes
@@ -81,9 +162,6 @@ function imagesCode(error: unknown): number | null {
   return match === null ? null : Number(match[1])
 }
 
-const refused = (message: string, fix: string) =>
-  ({ outcome: 'refused', problem: { message, fix } }) as const
-
 const NOT_READABLE = refused(
   'Cloudflare Images could not read this file as an image: it may be damaged or cut short.',
   'Open it in an image editor, save it again, and upload that.',
@@ -101,16 +179,15 @@ const NO_ALLOWANCE = {
 export const uploadAsset: OperationHandler<'upload_asset'> = async (input, context) => {
   const media = context.media ?? null
   if (media === null) return { outcome: 'unavailable', problem: NO_BUCKET }
-  const original = bytesOfBase64(input.data)
-  if (original === null || original.length === 0) {
-    return refused('data is not base64.', 'Send the file encoded in base64, with its padding.')
-  }
-  if (original.length > MAX_ASSET_BYTES) {
+  if ((input.data === undefined) === (input.url === undefined)) {
     return refused(
-      `The file is ${original.length} bytes, more than the ${MAX_ASSET_BYTES} an image may be.`,
-      'Make it smaller (fewer pixels, or a format such as WebP) and upload it again.',
+      'Send the image once: as data, in base64, or as url, never both or neither.',
+      'Give data with the file in base64, or url with a public https URL of it.',
     )
   }
+  const original =
+    input.url === undefined ? bytesOfBase64(input.data ?? '') : await bytesOfUrl(media, input.url)
+  if (!(original instanceof Uint8Array)) return original
   const originalFormat = sniffImage(original)
   if (originalFormat === null) {
     return refused(

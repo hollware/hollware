@@ -397,7 +397,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               problem: options.refuseUploads,
             })
           }
-          const original = new Uint8Array(Buffer.from(args.data, 'base64'))
+          const original = new Uint8Array(Buffer.from(args.data ?? '', 'base64'))
           const bytes = createHash('sha256').update(original).digest('hex')
           const id = `ast_${createHash('sha256').update(`${site.key}:${bytes}`).digest('hex').slice(0, 26)}`
           const found = assets.get(id)

@@ -224,5 +224,6 @@ export function mediaOfEnv(env: MediaEnv): Media | null {
     images: env.IMAGES === undefined ? null : imagesConverter(env.IMAGES),
     catalog: d1Catalog(env.DB),
     baseUrl: `${env.HOLLWARE_PUBLIC_URL.replace(/\/$/, '')}/assets/`,
+    download: (url) => fetch(url, { redirect: 'manual', headers: { accept: 'image/*' } }),
   }
 }
