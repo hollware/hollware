@@ -56,6 +56,7 @@ test('AC-0.3-3: the owner writes a post in the editor and publishes it', async (
 test('the owner reads the history of an entry and goes back to an earlier version', async () => {
   await owner.goto('/admin/entries/blog/en/hello-world')
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  await expect(owner).toHaveTitle('Hello world · playground · Hollware')
   await writeMarkdown(owner, post('Hello again', 'hello-world'))
   await saveNow(owner)
   await owner.getByRole('tab', { name: 'History' }).click()
@@ -421,17 +422,18 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
 })
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
-  for (const [path, heading] of [
-    ['/admin/', 'Home'],
-    ['/admin/settings/site', 'General'],
-    ['/admin/settings/site/redirects', 'Redirects'],
-    ['/admin/settings/site/danger', 'Danger zone'],
-    ['/admin/settings/tokens', 'Tokens'],
-    ['/admin/settings/activity', 'Activity'],
-    ['/signin', 'Sign in'],
+  for (const [path, heading, title] of [
+    ['/admin/', 'Home', 'Home · playground · Hollware'],
+    ['/admin/settings/site', 'General', 'General · playground · Hollware'],
+    ['/admin/settings/site/redirects', 'Redirects', 'Redirects · playground · Hollware'],
+    ['/admin/settings/site/danger', 'Danger zone', 'Danger zone · playground · Hollware'],
+    ['/admin/settings/tokens', 'Tokens', 'Tokens · playground · Hollware'],
+    ['/admin/settings/activity', 'Activity', 'Activity · playground · Hollware'],
+    ['/signin', 'Sign in', 'Sign in · Hollware'],
   ] as const) {
     await owner.goto(path)
     await expect(owner.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
+    await expect(owner).toHaveTitle(title)
     if (heading === 'Activity') {
       await expect(owner.getByRole('row', { name: /Published an entry/ }).first()).toBeVisible()
     }

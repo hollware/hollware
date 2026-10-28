@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { type RouteLocationRaw, useRoute } from 'vue-router'
 import { useMessages } from '../i18n/index.ts'
 import { me, useSiteMenu } from '../lib/me.ts'
+import { usePageTitle } from '../lib/title.ts'
 
 const props = defineProps<{
   title: string
@@ -13,6 +14,7 @@ const props = defineProps<{
 const m = useMessages()
 const route = useRoute()
 const siteMenu = useSiteMenu()
+usePageTitle(() => props.title)
 
 const inSettings = computed(() => route.path.startsWith('/settings'))
 const trail = computed(
