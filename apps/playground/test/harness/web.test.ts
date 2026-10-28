@@ -125,7 +125,13 @@ describe('hollware.com', () => {
     expect(home).toContain('<meta name="generator" content="Hollware">')
     expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
     expect(home).toContain('Docs that follow the code')
-    expect(home).toContain('MCP is the main door, not a plugin: 40 tools')
+    expect(home).toContain('40 MCP tools, each with the scopes it needs.')
+    expect(home).not.toContain('main door')
+    const opening = home.indexOf('Every refusal carries its fix')
+    expect(opening).toBeGreaterThan(-1)
+    expect(opening).toBeLessThan(
+      home.indexOf('From a prompt to a live page, with checks in between'),
+    )
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {

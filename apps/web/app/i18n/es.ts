@@ -84,7 +84,7 @@ export const es: Messages = {
         yours: {
           title: 'Tu contenido sigue siendo tuyo',
           description:
-            'El Markdown entra y sale idéntico, byte por byte. Expórtalo cuando quieras y córrelo en tu propia cuenta con licencia MIT.',
+            'Exporta cada entrada como Markdown cuando quieras, y corre Hollware en tu propia cuenta con licencia MIT.',
         },
         free: {
           title: 'Gratis para empezar',
@@ -99,20 +99,30 @@ export const es: Messages = {
       description:
         'Hollware se diseñó desde la primera línea para un mundo en el que la mayoría de las escrituras vienen de un agente y una persona tiene la última palabra.',
       items: {
+        fix: {
+          title: 'Cada rechazo trae su arreglo',
+          description:
+            'Una escritura que rompe una regla de su colección vuelve en milisegundos con lo que hay que cambiar, así el agente corrige su propio borrador antes de que una persona le dedique tiempo.',
+        },
+        review: {
+          title: 'Revisión con diff, en cada instalación',
+          description:
+            'Un agente sin permiso para publicar pide una revisión. Una persona lee el diff de la revisión, la ve en el sitio, y la aprueba o pide cambios.',
+        },
+        markdown: {
+          title: 'Entra Markdown, salen los mismos bytes',
+          description:
+            'Lo que escribe un agente o una persona se guarda byte por byte, con cada una de sus revisiones. Nada lo convierte a un formato propio de Hollware: lo exportas tal como se escribió.',
+        },
         agents: {
-          title: 'Los agentes son usuarios de primera clase',
+          title: 'Scopes en cada herramienta',
           description: (tools: number) =>
-            `MCP es la puerta principal, no un plugin: ${tools} herramientas, scopes en cada una, OAuth o tokens personales, y errores que dicen cómo corregirlos.`,
+            `${tools} herramientas de MCP, cada una con los scopes que necesita. Un token personal ve solo las que puede llamar, y cada error dice cómo corregirlo.`,
         },
         rules: {
           title: 'Las reglas viven con el contenido',
           description:
             'Colecciones, campos y reglas son datos, no código. Cámbialos en el admin o por MCP sin desplegar, y un agente los aprende con una sola llamada.',
-        },
-        operate: {
-          title: 'Nada que operar',
-          description:
-            'Sin servidor, sin contenedor y sin base de datos que parchar. Es un solo Worker en tu cuenta, y Cloudflare lo corre en cada región.',
         },
         reads: {
           title: 'Los sitios lo leen sin salir a la red',
