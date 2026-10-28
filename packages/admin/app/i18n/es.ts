@@ -160,9 +160,28 @@ export const es: Messages = {
     allPublished: 'Todo lo escrito está publicado.',
     changes: 'cambios',
     lastAudit: 'Última auditoría',
-    noAudit:
-      'Todavía no hay un informe de auditoría. El auditor de @hollware/agents escribe uno por semana.',
     written: (at: string) => `Escrito el ${at}`,
+    start: 'Primeros pasos',
+    done: 'hecho',
+    toDo: 'pendiente',
+    steps: {
+      agent: {
+        title: 'Conecta un agente',
+        body: 'Crea un token personal y agrega Hollware a Claude Code con esta línea:',
+      },
+      entry: {
+        title: 'Escribe la primera entrada',
+        body: 'O pídele una al agente: los chequeos de la colección le vuelven a él.',
+      },
+      invite: {
+        title: 'Invita a una persona',
+        body: 'Un editor publica; lo que un autor pide publicar espera una revisión.',
+      },
+      analytics: {
+        title: 'Conecta la analítica de tu sitio',
+        body: 'Así el inicio muestra lo que más leen tus lectores.',
+      },
+    },
   },
   entries: {
     views: {
