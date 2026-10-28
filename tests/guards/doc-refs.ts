@@ -5,6 +5,7 @@ export interface DocRefsInput {
   files: readonly TextFile[]
   allowed: readonly string[]
   frozen: readonly string[]
+  threats: readonly string[]
 }
 
 const GONE = new RegExp(
@@ -27,7 +28,9 @@ export function checkDocRefs(input: DocRefsInput): Violation[] {
     if (frozen.has(path)) continue
     const lines = text.split('\n')
     const hits = lines.flatMap((line, index) =>
-      [...line.matchAll(GONE)].map((match) => ({ line: index + 1, ref: match[0] })),
+      [...line.matchAll(GONE)]
+        .filter((match) => !input.threats.includes(match[0]))
+        .map((match) => ({ line: index + 1, ref: match[0] })),
     )
     if (hits.length === 0) continue
     const glob = input.allowed.find((pattern) => matchesGlob(path, pattern))
