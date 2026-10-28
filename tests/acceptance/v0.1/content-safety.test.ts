@@ -117,7 +117,7 @@ describe('AC-0.1-14: content safety', () => {
 
     expect(html).toBe(
       '<p>Never write <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> in a post.</p>\n' +
-        '<pre language="html"><code class="language-html">&lt;iframe src="https://example.com"&gt;&lt;/iframe&gt;</code></pre>',
+        '<pre data-language="html"><code class="language-html">&lt;iframe src="https://example.com"&gt;&lt;/iframe&gt;</code></pre>',
     )
     for (const markup of [html, page]) {
       expect(markup).not.toMatch(/<script|<iframe/i)

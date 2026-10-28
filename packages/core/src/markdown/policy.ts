@@ -12,6 +12,8 @@ export const OPEN_KEY = '$open'
 
 export const MAX_DEPTH = 100
 
+export const MAX_ELEMENT_DEPTH = 49
+
 export const NATIVE_TAGS: ReadonlySet<string> = new Set([
   'h1',
   'h2',
