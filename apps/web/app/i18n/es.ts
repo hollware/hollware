@@ -23,6 +23,13 @@ export const es: Messages = {
       'Tus agentes escriben tu contenido en Markdown. Hollware revisa cada cambio con tus reglas, deja que las personas aprueben lo que se publica y lo sirve desde la red de Cloudflare segundos después de publicar.',
     readDocs: 'Leer la documentación',
     demo: 'Ver la demo',
+    admin: {
+      headline: 'El admin',
+      title: 'Donde una persona tiene la última palabra',
+      description:
+        'Lo que un agente pide publicar espera en Revisiones, con su diff contra la versión publicada y el veredicto de los contratos. Una persona lo aprueba, pide cambios o lo rechaza, desde un portátil o un teléfono.',
+      alt: 'La página Revisiones del admin de Hollware: Ana pide publicar «Hola mundo, otra vez», el diff de su frontmatter contra la versión publicada, «Every contract passes» y los botones Ask for changes y Approve and publish.',
+    },
     flow: {
       headline: 'Cómo funciona',
       title: 'De un prompt a una página publicada, con revisiones en el medio',

@@ -168,6 +168,21 @@ describe('hollware.com', () => {
     )
   })
 
+  it('shows the Reviews page of the admin at home, after how it works, as an image the site serves', async () => {
+    const home = await (await webFetch(server, '/')).text()
+    const spanish = await (await webFetch(server, '/es/')).text()
+    const image = await webFetch(server, '/admin-review.webp')
+
+    expect(home).toMatch(
+      /<img src="\/admin-review\.webp" alt="The Reviews page of the Hollware admin: Ana asks to publish/,
+    )
+    expect(spanish).toMatch(/<img src="\/admin-review\.webp" alt="La página Revisiones del admin/)
+    expect(home.indexOf('Where a person has the last word')).toBeGreaterThan(
+      home.indexOf('From a prompt to a live page, with checks in between'),
+    )
+    expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/webp'])
+  })
+
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {
     const home = await (await webFetch(server, '/es/')).text()
 
