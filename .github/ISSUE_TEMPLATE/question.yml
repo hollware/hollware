@@ -1,0 +1,29 @@
+name: Question
+description: Ask how to do something with Hollware that the docs do not answer.
+title: '[Question]: '
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The docs are at [hollware.com](https://hollware.com/docs/), and [`llms.txt`](https://hollware.com/llms.txt) lists every page of them for an agent. If they do not answer your question, ask it here.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you want to do, and where are you stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: The commands you ran, the pages of the docs you read, and what happened.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Hollware version
+      description: The version of `@hollware/server` in your project, if you have one.

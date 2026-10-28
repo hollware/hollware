@@ -2,7 +2,7 @@
 
 Thank you for your interest in Hollware. The project is open source from its first commit, and contributions are welcome.
 
-Hollware is **pre-alpha** and is built one stage at a time, following [`PLAN.md`](PLAN.md). Right now the most useful contributions are feedback in issues and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
+Hollware is built one stage at a time, following [`PLAN.md`](PLAN.md); the [README](README.md) says which stage it is at. Right now the most useful contributions are feedback in issues and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
 
 Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -89,7 +89,7 @@ Coding agents read [`AGENTS.md`](AGENTS.md): it orients them in the repository w
 
 ## Issues
 
-Use the issue forms. A bug report asks for the Hollware version, where it runs, the steps to reproduce, the expected and the actual behavior, and the logs. A feature request starts from the problem rather than the solution, and says which of the five principles in the [README](README.md) it relates to. Search the existing issues first.
+Use the issue forms. A bug report asks for the Hollware version, where it runs, the steps to reproduce, the expected and the actual behavior, and the logs. A feature request starts from the problem rather than the solution, and says which of the five principles in the [README](README.md) it relates to. A question says what you want to do and what you tried. Search the existing issues first.
 
 ## Pull requests
 

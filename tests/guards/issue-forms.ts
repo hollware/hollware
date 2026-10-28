@@ -39,6 +39,7 @@ const TOP_LEVEL = [
 export const REQUIRED_IDS: Readonly<Record<string, readonly string[]>> = {
   'bug_report.yml': ['version', 'runtime', 'reproduce', 'expected', 'actual', 'logs'],
   'feature_request.yml': ['problem', 'proposal', 'alternatives', 'principle'],
+  'question.yml': ['question', 'tried'],
 }
 
 export function checkIssueForms(input: IssueFormsInput): Violation[] {
