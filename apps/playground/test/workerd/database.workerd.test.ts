@@ -25,6 +25,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'entries_fts_idx',
     'entry_embeddings',
     'entry_purges',
+    'identities',
     'invitations',
     'members',
     'outbox',
