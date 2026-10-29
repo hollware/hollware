@@ -226,8 +226,17 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
   const paused = await elsewhere.newPage()
   await paused.goto('/admin/entries/blog/en/a-long-post')
   await expect(paused.getByText(/^This browser kept changes made to version \d+/)).toBeVisible()
+  const stillOffered = async () => {
+    await paused.waitForTimeout(600)
+    await expect(paused.getByRole('status').filter({ hasText: /^\s*Saved\s*$/ })).toBeVisible()
+    expect((await keptCopies(paused)).map(([, kept]) => kept.markdown.includes('Five.'))).toEqual([
+      true,
+    ])
+  }
+  await stillOffered()
   await paused.getByRole('button', { name: 'View Markdown' }).click()
   await paused.locator('.cm-content').first().click()
+  await stillOffered()
   await paused.clock.pauseAt(await paused.evaluate(() => Date.now() + 1_000))
   await paused.keyboard.press('ControlOrMeta+End')
   await paused.keyboard.type('Y')
