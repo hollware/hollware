@@ -2,7 +2,7 @@
 
 Thank you for your interest in Hollware. The project is open source from its first commit, and contributions are welcome.
 
-Hollware is built one stage at a time, following [`PLAN.md`](PLAN.md); the [README](README.md) says which stage it is at. Right now the most useful contributions are feedback in issues and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
+Hollware 1.0 is out; the [README](README.md) says what it is. The most useful contributions are feedback in issues and small, well-tested fixes. For anything larger, open an issue first so we can agree on the approach before you spend time on it.
 
 Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 

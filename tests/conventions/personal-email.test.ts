@@ -15,7 +15,7 @@ describe('personal email', () => {
       .map((path) => ({ path, text: readTextUnlessBinary(path) }))
       .flatMap(({ path, text }) => (text === undefined ? [] : [file(path, text)]))
     expect(files.length).toBeGreaterThan(100)
-    expect(readRepoFiles((path) => path === 'PLAN.md')).toHaveLength(1)
+    expect(readRepoFiles((path) => path === 'README.md')).toHaveLength(1)
     expect(describeViolations(checkPersonalEmail({ files }))).toEqual([])
   })
 

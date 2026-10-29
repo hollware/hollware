@@ -2,13 +2,13 @@
 
 A headless CMS for the agent era, native to Cloudflare.
 
-> [!WARNING]
-> **1.0 release candidate.** `npm create hollware@rc` installs it. Agents write and publish over MCP with contracts on every write, people review in an admin with passkeys, sites read over a service binding or HTTP, images live in R2, and one deployment serves several sites. From 1.0 the API follows semver ([Versions and stability](https://hollware.com/docs/versions/)). The docs are at [hollware.com](https://hollware.com); what is left before 1.0 is tracked in [`PLAN.md`](PLAN.md).
+> [!NOTE]
+> **1.0.** `npm create hollware` installs it. Agents write and publish over MCP with contracts on every write, people review in an admin with passkeys, sites read over a service binding or HTTP, images live in R2, and one deployment serves several sites. The API follows semver ([Versions and stability](https://hollware.com/docs/versions/)). The docs are at [hollware.com](https://hollware.com).
 
 ## Get started
 
 ```sh
-npm create hollware@rc my-cms
+npm create hollware my-cms
 ```
 
 It makes a project, its local database, your site and a token, and prints the command that connects Claude Code to it. The [quickstart](https://hollware.com/docs/quickstart/) goes from there to a deployed Hollware.
@@ -44,7 +44,7 @@ Some things are deliberately not part of Hollware:
 
 ## Roadmap
 
-Each stage ends with an exit criterion that can be verified. The stage-by-stage plan, with its progress and the evidence for each step, is in [`PLAN.md`](PLAN.md).
+Hollware was built one stage at a time, each ending with an exit criterion that was verified. 1.0 is the last of them.
 
 | Stage | Name         | Goal                                                                                                                    |
 | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
