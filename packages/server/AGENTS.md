@@ -102,11 +102,7 @@ serve them. Boundary rules for this package:
   the Hono 4 form answers a plain-text 500, so everything version-specific stays in
   `src/http/errors.ts`. A route's error reaches `onError` before any middleware around it, so a
   route catches what it answers itself (`src/http/read-api.ts`).
-- `src/rpc` is what sites call over a service binding: the class has the six methods of
-  `HollwareRpc` and nothing else, because everything on its prototype is callable. Each call checks
-  its site, parses its input with the spec, and runs on the published view with a binding
-  principal and a replica session. An error crosses a binding with its `cause`, so a failure
-  reaches the caller rebuilt without it, or as `internal`, and the cause goes to the log.
+- `src/rpc` is what other Workers of the account call over a service binding: `src/rpc/AGENTS.md`.
 - `src/mcp` is the MCP adapter: `createMcpEndpoint` returns `{ fetch(request, call) }`, which
   the gateway mounts at `/mcp` once per isolate, passing `{ principal, requestId, context }`.
   It sets the view (`head`) and the client itself, asks for each tool's scopes before its

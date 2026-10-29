@@ -129,8 +129,8 @@ function parseInput<Schema extends z.ZodType>(schema: Schema, raw: unknown): z.o
   )
 }
 
-function forCaller(
-  deps: RpcDeps,
+export function forCaller(
+  deps: Pick<RpcDeps, 'log'>,
   requestId: string,
   method: string,
   error: unknown,

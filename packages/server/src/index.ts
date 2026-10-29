@@ -4,6 +4,8 @@ import type {
   getTranslations,
   HollwareConfig,
   listEntries,
+  OperationByName,
+  OperationName,
   search,
   listRedirects,
 } from '@hollware/core'
@@ -149,6 +151,24 @@ export interface HollwareRpc {
 }
 
 /**
+ * What another Worker of the same account calls over a service binding to the `HollwareOps`
+ * entrypoint: any operation, or MCP over `fetch`, always as the personal token it passes.
+ */
+export interface HollwareOpsRpc {
+  /**
+   * Runs one operation as the personal token (`hw_pat_…`) of `options`, on its site. A read token,
+   * or a token that is unknown, expired or revoked, is an `unauthorized` error.
+   */
+  ops<Name extends OperationName>(
+    name: Name,
+    input: z.input<OperationByName<Name>['input']>,
+    options: { readonly token: string },
+  ): Promise<z.output<OperationByName<Name>['output']>>
+  /** MCP, as the personal token of `Authorization: Bearer`, with no check of Host or Origin. */
+  fetch(request: Request): Promise<Response>
+}
+
+/**
  * What `createHollware(config)` returns. The user's Worker is
  * `export default { fetch }` and `export class Hollware extends hollware.Hollware {}`.
  */
@@ -176,6 +196,14 @@ export interface HollwareWorker {
     ctx: ExecutionContext,
     env: HollwareEnv,
   ) => WorkerEntrypoint<HollwareEnv> & HollwareRpc
+  /**
+   * The entrypoint of operations and MCP over a service binding, for the user's Worker to export
+   * under the name `HollwareOps`.
+   */
+  readonly HollwareOps: new (
+    ctx: ExecutionContext,
+    env: HollwareEnv,
+  ) => WorkerEntrypoint<HollwareEnv> & HollwareOpsRpc
 }
 
 /**

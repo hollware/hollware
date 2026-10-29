@@ -5,32 +5,21 @@ import { HollwareError, OPERATIONS, type Scope } from '@hollware/core'
 import type { Context, Hono } from 'hono'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
-import { createD1Store } from '../db/index.ts'
 import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Proceed } from '../oauth/server.ts'
-import type { Clock, Structure } from '../ports.ts'
 import { describeError } from '../mcp/errors.ts'
 import type { ResolvedSite } from '@hollware/core'
+import type { SharedContext } from './operation-context.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
-import { semanticOfEnv } from '../semantic/cloudflare.ts'
-import { mediaOfEnv } from '../media/cloudflare.ts'
-import { analyticsSourcesOf } from '../analytics/env.ts'
-import { backupsOf } from '../backup/run.ts'
 import { invoke } from '../ops/invoke.ts'
 
 export interface OpsApiOptions {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly handlers: Handlers
-  readonly clock: Clock
   readonly log: (entry: GatewayLogEntry) => void
   readonly protect: (c: Context<GatewayEnv>, proceed: Proceed) => Promise<Response>
   readonly metadataUrl: (c: Context<GatewayEnv>) => string
-  readonly structure?: (db: D1Database, master?: string) => Structure
-  readonly notify: (
-    c: Context<GatewayEnv>,
-    requestId: string,
-    site: string,
-  ) => (ids: readonly string[]) => void
+  readonly context: (c: Context<GatewayEnv>, site: ResolvedSite, requestId: string) => SharedContext
   readonly audit?: (c: Context<GatewayEnv>, principal: RequestPrincipal) => Promise<AuditLogFor>
 }
 
@@ -88,21 +77,11 @@ export function installOpsApi(app: Hono<GatewayEnv>, options: OpsApiOptions): vo
         )
       }
       const context: OperationContext = {
-        site,
+        ...options.context(c, site, requestId),
         principal,
         view: 'head',
-        store: createD1Store(c.env.DB, { clock: options.clock }),
-        clock: options.clock,
         client: CLIENT,
         requestId,
-        notify: options.notify(c, requestId, site.key),
-        semantic: semanticOfEnv(c.env),
-        analytics: analyticsSourcesOf(c.env, () => options.clock.now()),
-        media: mediaOfEnv(c.env),
-        backups: backupsOf(c.env),
-        ...(options.structure === undefined
-          ? {}
-          : { structure: options.structure(c.env.DB, c.env.HOLLWARE_SECRET) }),
       }
       const audited = async (result: { output: unknown } | { errorCode: string }) => {
         const line = operationLine(spec, parsed.data, site.key, result)

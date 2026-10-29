@@ -41,6 +41,14 @@ export {
   type Translation,
 } from './hollware.ts'
 export {
+  createOpsClient,
+  type OperationInput,
+  type OperationOutput,
+  type OpsBinding,
+  type OpsClient,
+  type OpsClientOptions,
+} from './ops.ts'
+export {
   isPreviewRequest,
   previewCookieClear,
   previewHeaders,

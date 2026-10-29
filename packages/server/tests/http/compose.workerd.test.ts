@@ -75,12 +75,19 @@ describe('createHollwareWith', () => {
     )
   })
 
-  it('returns the fetch, the scheduled and queue handlers and the Hollware class, and nothing else', () => {
+  it('returns the fetch, the scheduled and queue handlers and the Hollware and HollwareOps classes, and nothing else', () => {
     const { worker } = boot()
 
-    expect(Object.keys(worker).sort()).toEqual(['Hollware', 'fetch', 'queue', 'scheduled'])
+    expect(Object.keys(worker).sort()).toEqual([
+      'Hollware',
+      'HollwareOps',
+      'fetch',
+      'queue',
+      'scheduled',
+    ])
     expect(typeof worker.fetch).toBe('function')
     expect(typeof worker.Hollware).toBe('function')
+    expect(worker.HollwareOps.name).toBe('HollwareOps')
   })
 
   it('has a fetch that does not need its object: the Worker exports it detached', async () => {

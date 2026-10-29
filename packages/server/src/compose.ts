@@ -17,7 +17,7 @@ import { dropExpired } from './identity/store.ts'
 import { createAuditLog, dropExpiredLines, systemActor, type AuditActor } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
 import { abandonEvents, consumeEvents, isDeadLetters, sweepOutbox } from './events/run.ts'
-import { createEntrypoint, createRpc } from './rpc/index.ts'
+import { createEntrypoint, createOpsEntrypoint, createRpc } from './rpc/index.ts'
 import { backupBucketOf, backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
@@ -199,5 +199,14 @@ export function createHollwareWith(
       })
     },
     Hollware: createEntrypoint({ sites, refresh, handlers, clock, log: writeLog }),
+    HollwareOps: createOpsEntrypoint({
+      sites,
+      siteKeys: registry.keys,
+      refresh,
+      handlers,
+      mcp,
+      clock,
+      log: writeLog,
+    }),
   }
 }

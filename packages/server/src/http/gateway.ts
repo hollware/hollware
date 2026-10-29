@@ -1,13 +1,10 @@
-import { backupBucketOf, backupKey, backupsOf } from '../backup/run.ts'
+import { backupBucketOf, backupKey } from '../backup/run.ts'
 import { isSiteKey, type ResolvedAdmin, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
 import { originalKey, servedKey, variantKey } from '../ops/assets.ts'
 import { Hono, type Context } from 'hono'
 import { checkHostAndOrigin, unauthorized } from '../auth/index.ts'
-import { connect } from '../db/d1.ts'
-import { createD1Store } from '../db/index.ts'
-import { enqueue } from '../events/run.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import type { AuditLogFor, McpEndpoint } from '../mcp/index.ts'
 import { actorOf, createAuditLog, systemActor, type AuditActor } from '../audit/log.ts'
@@ -18,13 +15,12 @@ import {
   spentRefresh,
 } from '../oauth/refresh-reuse.ts'
 import type { RequestPrincipal } from '../auth/types.ts'
-import type { Clock, Structure } from '../ports.ts'
-import { newWebhookSecret, seal } from '../structure/seal.ts'
-import { createSecretStore, createStructureStore } from '../structure/store.ts'
+import type { Clock } from '../ports.ts'
 import { installErrorHandling } from './errors.ts'
 import { installAdmin } from './admin.ts'
 import { installAdminApi } from './admin-api.ts'
 import { installOpsApi } from './ops-api.ts'
+import { operationContext, type OperationContextDeps } from './operation-context.ts'
 import { installReadApi } from './read-api.ts'
 import type { Handlers } from '../ops/types.ts'
 import { installIdentity } from '../identity/routes.ts'
@@ -32,9 +28,7 @@ import { installAuthorize } from '../oauth/authorize.ts'
 import { adminClient } from '../oauth/admin.ts'
 import { createOAuth, type Proceed, type Refusal, type ResourceName } from '../oauth/server.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
-import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
-import { analyticsSourcesOf } from '../analytics/env.ts'
 
 export interface GatewayOptions {
   readonly sites: ReadonlyMap<string, ResolvedSite>
@@ -82,32 +76,13 @@ export function createGateway(options: GatewayOptions): Gateway {
     log,
   })
 
-  const notify =
-    (c: Context<GatewayEnv>, requestId: string, site: string) => (ids: readonly string[]) => {
-      c.executionCtx.waitUntil(
-        enqueue({ queue: c.env.EVENTS, db: connect(c.env.DB), site, ids, clock }).catch(
-          (error: unknown) => {
-            log({ kind: 'enqueue_failed', requestId, message: String(error) })
-          },
-        ),
-      )
-    }
-
-  const structureOf = (db: D1Database, master?: string): Structure => ({
-    store: createStructureStore(db, () => clock.now()),
-    changed: async () => {
-      await options.refresh?.(db, { force: true })
-    },
-    secrets: {
-      make: async (site, name) => {
-        if (master === undefined) return null
-        const secret = newWebhookSecret()
-        const sealed = await seal(master, secret, { site, name })
-        await createSecretStore(db, () => clock.now()).write(site, name, sealed)
-        return secret
-      },
-    },
-  })
+  const contextDeps: OperationContextDeps = {
+    clock,
+    log,
+    ...(options.refresh === undefined ? {} : { refresh: options.refresh }),
+  }
+  const contextOf = (c: Context<GatewayEnv>, site: ResolvedSite, requestId: string) =>
+    operationContext(contextDeps, c.env, c.executionCtx, site, requestId)
 
   const auditOf =
     (
@@ -264,24 +239,13 @@ export function createGateway(options: GatewayOptions): Gateway {
   app.all('/mcp', async (c) =>
     protectWrites(c, 'mcp', async (principal) => {
       const requestId = c.get('requestId')
-      const db = c.env.DB
       const site = sites.get(principal.site)
       if (site === undefined) throw new Error(`No site ${principal.site} for a checked token`)
       return await mcp.fetch(c.req.raw, {
         principal,
         requestId,
         resourceMetadataUrl: oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.mcp,
-        context: {
-          site,
-          store: createD1Store(db, { clock }),
-          clock,
-          notify: notify(c, requestId, site.key),
-          semantic: semanticOfEnv(c.env),
-          analytics: analyticsSourcesOf(c.env, () => clock.now()),
-          structure: structureOf(db, c.env.HOLLWARE_SECRET),
-          media: mediaOfEnv(c.env),
-          backups: backupsOf(c.env),
-        },
+        context: contextOf(c, site, requestId),
         ...(principal.kind === 'read'
           ? {}
           : {
@@ -368,12 +332,10 @@ export function createGateway(options: GatewayOptions): Gateway {
     installOpsApi(app, {
       sites,
       handlers: options.handlers,
-      clock,
       log,
       protect: (c, proceed) => protectWrites(c, 'v1', proceed),
       metadataUrl: (c) => oauth(c.env.HOLLWARE_PUBLIC_URL).metadataUrls.v1,
-      notify,
-      structure: structureOf,
+      context: contextOf,
       audit: async (c, principal) =>
         auditOf(
           c,

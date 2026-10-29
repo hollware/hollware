@@ -9,3 +9,4 @@ export default {
 } satisfies ExportedHandler<Env>
 
 export class Hollware extends hollware.Hollware {}
+export class HollwareOps extends hollware.HollwareOps {}

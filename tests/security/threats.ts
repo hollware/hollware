@@ -1392,4 +1392,48 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-116',
+    area: 'Tokens',
+    threat:
+      'A Worker of the account with a service binding to `HollwareOps` writes to a site, or speaks MCP to it, as no one, skipping the Host guard of the gateway',
+    mitigation:
+      'Every call of `ops` and every request of its `fetch` is checked as a personal token (`hw_pat_`) on the primary D1, so a revoked token stops at once; the site, the scopes and the actor of the activity log come from the token, never from the input',
+    guards: [
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'refuses a token revoked since its last call, on the next one',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'runs on the site of the token, and refuses an input that names another',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'writes the line of a write to the activity log as the token, through the binding',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'serves MCP as the bearer token, whatever the Host, and answers 401 without one',
+      },
+    ],
+  },
+  {
+    id: 'T-117',
+    area: 'Tokens',
+    threat:
+      'A read token (`hw_read_`), public once a browser has it, runs a write through the `HollwareOps` binding',
+    mitigation:
+      '`HollwareOps` takes only the shape of a personal token before it looks one up, and refuses a read token as `unauthorized`; the scopes of the operation are checked against the token before its handler runs',
+    guards: [
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'refuses a read token, and no token at all, before any operation runs',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'runs an operation as an author token, which writes a draft and is refused what needs content:publish',
+      },
+    ],
+  },
 ]
