@@ -187,6 +187,7 @@ export interface BootOptions {
   readonly config?: HollwareConfig
   readonly assets?: Fetcher
   readonly bindings?: Partial<HollwareEnv>
+  readonly admin?: HollwareConfig['admin']
 }
 
 export async function defineSites(db: D1Database, config: HollwareConfig, now: string) {
@@ -215,7 +216,12 @@ export function boot(options: BootOptions = {}) {
   const clock = testClock(options.now)
   const config = options.config ?? CONFIG
   const worker: HollwareWorker = createHollwareWith(
-    config.auth === undefined ? undefined : { auth: config.auth },
+    config.auth === undefined && options.admin === undefined
+      ? undefined
+      : {
+          ...(config.auth === undefined ? {} : { auth: config.auth }),
+          ...(options.admin === undefined ? {} : { admin: options.admin }),
+        },
     handlers,
     { clock },
   )

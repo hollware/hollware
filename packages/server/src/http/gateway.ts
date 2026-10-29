@@ -1,5 +1,5 @@
 import { backupBucketOf, backupKey, backupsOf } from '../backup/run.ts'
-import { isSiteKey, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
+import { isSiteKey, type ResolvedAdmin, type ResolvedAuth, type ResolvedSite } from '@hollware/core'
 import { insufficientScope } from '../auth/index.ts'
 import { missingScopes } from '../auth/scopes.ts'
 import { originalKey, servedKey, variantKey } from '../ops/assets.ts'
@@ -45,6 +45,7 @@ export interface GatewayOptions {
   readonly log: (entry: GatewayLogEntry) => void
   readonly read?: (env: HollwareEnv) => HollwareRpc
   readonly auth?: ResolvedAuth
+  readonly admin?: ResolvedAdmin
   readonly handlers?: Handlers
 }
 
@@ -350,7 +351,7 @@ export function createGateway(options: GatewayOptions): Gateway {
   })
 
   installIdentity(app, { clock, site: auditSite, audit: auditAs })
-  installAdmin(app, { oauth })
+  installAdmin(app, { oauth, favicon: options.admin?.favicon ?? null })
 
   installAdminApi(app, {
     sites: siteKeys,

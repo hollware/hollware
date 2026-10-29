@@ -164,7 +164,11 @@ export function compileSites(definitions: Readonly<Record<string, unknown>>): Re
   }
   if (problems.list.length > 0) throw new ConfigError(problems.list)
   if (Object.keys(sites).length === 0) {
-    return { sites: new Map(), auth: { dynamicClientRegistration: false } }
+    return {
+      sites: new Map(),
+      auth: { dynamicClientRegistration: false },
+      admin: { favicon: null },
+    }
   }
   return resolveConfig({ sites })
 }

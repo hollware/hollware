@@ -28,9 +28,32 @@ function notInstalled(): Response {
   )
 }
 
+export const ADMIN_ICONS: ReadonlySet<string> = new Set([
+  '/admin/favicon.ico',
+  '/admin/favicon.svg',
+  '/admin/apple-touch-icon.png',
+])
+
+async function ownIcon(url: string): Promise<Response> {
+  const answer = await fetch(url)
+  const type = answer.headers.get('content-type') ?? ''
+  if (!answer.ok || !type.startsWith('image/')) {
+    await answer.body?.cancel()
+    return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
+  }
+  return new Response(answer.body, {
+    headers: {
+      'content-type': type,
+      'cache-control': 'public, max-age=3600',
+      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      'x-content-type-options': 'nosniff',
+    },
+  })
+}
+
 export function installAdmin(
   app: Hono<GatewayEnv>,
-  options: { readonly oauth: (publicUrl: string) => OAuth },
+  options: { readonly oauth: (publicUrl: string) => OAuth; readonly favicon: string | null },
 ): void {
   app.get('/admin/config.json', async (c) => {
     const oauth = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
@@ -65,6 +88,7 @@ export function installAdmin(
   app.get('/admin', (c) => c.redirect('/admin/', 301))
   app.get('/admin/', page)
   app.get('/admin/*', async (c) => {
+    if (options.favicon !== null && ADMIN_ICONS.has(c.req.path)) return ownIcon(options.favicon)
     if (/\.[a-z0-9]+$/i.test(c.req.path)) {
       const assets = c.env.ASSETS
       if (assets === undefined) return notInstalled()

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { boot, PUBLIC_URL } from './support.ts'
 
@@ -26,6 +26,10 @@ function assets() {
 }
 
 describe('the admin', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('serves its page, at every path of the app, with a policy that frames nothing', async () => {
     const { fetcher, asked } = assets()
     const worker = boot({ assets: fetcher })
@@ -72,6 +76,48 @@ describe('the admin', () => {
     expect([file.status, await file.text()]).toEqual([200, '<svg/>'])
     expect(missing.status).toBe(404)
     expect(await missing.json()).toMatchObject({ code: 'not_found' })
+  })
+
+  it("serves the favicon of the config from its own origin, for every icon, and Hollware's without one", async () => {
+    const remote = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input instanceof Request ? input.url : input)
+      return url === 'https://brand.example/icon.png'
+        ? new Response('png', { headers: { 'content-type': 'image/png' } })
+        : new Response('<html>', { headers: { 'content-type': 'text/html' } })
+    })
+    const { fetcher, asked } = assets()
+    const branded = boot({ assets: fetcher, admin: { favicon: 'https://brand.example/icon.png' } })
+    const plain = boot({ assets: fetcher })
+
+    const icons = await Promise.all(
+      ['/admin/favicon.ico', '/admin/favicon.svg', '/admin/apple-touch-icon.png'].map((path) =>
+        branded.send(path),
+      ),
+    )
+    const own = await plain.send('/admin/favicon.svg')
+
+    for (const icon of icons) {
+      expect([icon.status, await icon.text()]).toEqual([200, 'png'])
+      expect(Object.fromEntries(icon.headers)).toMatchObject({
+        'content-type': 'image/png',
+        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        'x-content-type-options': 'nosniff',
+      })
+    }
+    expect(await own.text()).toBe('<svg/>')
+    expect(asked).toEqual(['/admin/favicon.svg'])
+    expect(remote).toHaveBeenCalledTimes(3)
+  })
+
+  it('answers 404 when the favicon of the config is not an image', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('<html>', { headers: { 'content-type': 'text/html' } }),
+    )
+    const worker = boot({ admin: { favicon: 'https://brand.example/page' } })
+
+    const icon = await worker.send('/admin/favicon.ico')
+
+    expect([icon.status, await icon.text()]).toEqual([404, ''])
   })
 
   it('names its own client, the same one each time, and asks for /v1', async () => {

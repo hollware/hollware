@@ -6,7 +6,13 @@ import { readMedia } from './media.ts'
 import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
-import type { ResolvedAuth, ResolvedCollection, ResolvedConfig, ResolvedSite } from './types.ts'
+import type {
+  ResolvedAdmin,
+  ResolvedAuth,
+  ResolvedCollection,
+  ResolvedConfig,
+  ResolvedSite,
+} from './types.ts'
 import { isRecord, itemPath, keyPath, quote, readOptionalString, wrongType } from './values.ts'
 
 const SITE_FIX =
@@ -211,6 +217,34 @@ function readAuth(raw: unknown, problems: Problems): ResolvedAuth {
   return { dynamicClientRegistration: value }
 }
 
+const FAVICON_FIX = "Write admin: { favicon: 'https://example.com/icon.png' }, or leave it out."
+
+function readAdmin(raw: unknown, problems: Problems): ResolvedAdmin {
+  if (raw === undefined) return { favicon: null }
+  if (!isRecord(raw)) {
+    problems.add('admin', wrongType(raw, 'an object'), FAVICON_FIX)
+    return { favicon: null }
+  }
+  const favicon = raw['favicon']
+  if (favicon === undefined) return { favicon: null }
+  if (typeof favicon !== 'string' || URL.parse(favicon)?.protocol !== 'https:') {
+    problems.add('admin.favicon', wrongType(favicon, 'an https:// URL'), FAVICON_FIX)
+    return { favicon: null }
+  }
+  return { favicon }
+}
+
+/**
+ * Checks `admin` of the config on its own, for a deployment whose sites already live in D1, and
+ * throws a `ConfigError` that says what to change.
+ */
+export function resolveAdmin(admin: unknown): ResolvedAdmin {
+  const problems = new Problems()
+  const resolved = readAdmin(admin, problems)
+  if (problems.list.length > 0) throw new ConfigError(problems.list)
+  return resolved
+}
+
 /**
  * Checks the config of the deployment and fills in its defaults, or throws a `ConfigError` with
  * every problem it found, so that a broken `hollware.config.ts` stops the Worker at startup with
@@ -241,9 +275,11 @@ export function resolveConfig(config: unknown): ResolvedConfig {
   const problems = new Problems()
   let sites = new Map<string, ResolvedSite>()
   let auth: ResolvedAuth = { dynamicClientRegistration: false }
+  let admin: ResolvedAdmin = { favicon: null }
   if (isRecord(config)) {
     sites = readSites(config['sites'], problems)
     auth = readAuth(config['auth'], problems)
+    admin = readAdmin(config['admin'], problems)
   } else {
     problems.add(
       'config',
@@ -252,5 +288,5 @@ export function resolveConfig(config: unknown): ResolvedConfig {
     )
   }
   if (problems.list.length > 0) throw new ConfigError(problems.list)
-  return { sites, auth }
+  return { sites, auth, admin }
 }

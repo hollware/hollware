@@ -29,6 +29,10 @@ const POST = `async function post(path, body) {
 }
 function fail(error) { document.getElementById('error').textContent = error.message }`
 
+const ICONS = `<link rel="icon" href="/admin/favicon.ico" sizes="32x32">
+<link rel="icon" type="image/svg+xml" href="/admin/favicon.svg">
+<link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">`
+
 function page(title: string, nonce: string, body: string, script: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -37,6 +41,7 @@ function page(title: string, nonce: string, body: string, script: string): strin
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} · Hollware</title>
 <style>${STYLE}</style>
+${ICONS}
 </head>
 <body>
 <main>
@@ -116,7 +121,7 @@ export function pageHeaders(nonce: string): Record<string, string> {
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
-    'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src '${STYLE_HASH}'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`,
+    'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src '${STYLE_HASH}'; img-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
     ...PAGE_ISOLATION,
@@ -176,6 +181,7 @@ export function consentPage(view: ConsentView): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Allow ${name} · Hollware</title>
 <style>${STYLE}</style>
+${ICONS}
 </head>
 <body>
 <main>
@@ -204,6 +210,7 @@ export function messagePage(title: string, message: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)} · Hollware</title>
 <style>${STYLE}</style>
+${ICONS}
 </head>
 <body>
 <main>
@@ -220,7 +227,7 @@ export function plainPageHeaders(): Record<string, string> {
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
-    'content-security-policy': `default-src 'none'; style-src '${STYLE_HASH}'; base-uri 'none'; frame-ancestors 'none'`,
+    'content-security-policy': `default-src 'none'; style-src '${STYLE_HASH}'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'`,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
     ...PAGE_ISOLATION,

@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { pageHeaders, plainPageHeaders, STYLE_HASH } from '../../src/identity/pages.ts'
+import {
+  consentPage,
+  messagePage,
+  pageHeaders,
+  plainPageHeaders,
+  signInPage,
+  STYLE_HASH,
+} from '../../src/identity/pages.ts'
 
 const SOURCE = readFileSync(join(import.meta.dirname, '../../src/identity/pages.ts'), 'utf8')
 
@@ -20,6 +27,30 @@ describe('the headers of the sign-in, setup and consent pages', () => {
 
   it('leave form-action open on the consent page, since a browser applies it to the redirect to the client', () => {
     expect(plainPageHeaders()['content-security-policy']).not.toContain('form-action')
+  })
+
+  it('show the icons of the admin, from its own origin only', () => {
+    const icons = [
+      '<link rel="icon" href="/admin/favicon.ico" sizes="32x32">',
+      '<link rel="icon" type="image/svg+xml" href="/admin/favicon.svg">',
+      '<link rel="apple-touch-icon" href="/admin/apple-touch-icon.png">',
+    ]
+    const consent = consentPage({
+      clientName: 'Claude',
+      redirectHost: 'claude.ai',
+      redirectIsLoopback: false,
+      person: 'Ana',
+      scopes: ['content:read'],
+      sites: ['blog'],
+      handle: 'h',
+    })
+
+    for (const html of [signInPage('n'), messagePage('Gone', 'Sign in again.'), consent]) {
+      for (const icon of icons) expect(html).toContain(icon)
+    }
+    for (const headers of [pageHeaders('n'), plainPageHeaders()]) {
+      expect(headers['content-security-policy']).toContain("img-src 'self';")
+    }
   })
 
   it('isolate the page from other origins and ask for no device', () => {

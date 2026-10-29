@@ -167,6 +167,14 @@ describe('the look of Hollware', () => {
     }
   })
 
+  it('gives the site and the admin the same icons, byte for byte', () => {
+    for (const icon of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) {
+      const site = readFileSync(join(REPO_ROOT, 'apps/web/public', icon))
+      const admin = readFileSync(join(REPO_ROOT, 'packages/admin/app/public', icon))
+      expect(admin.equals(site), icon).toBe(true)
+    }
+  })
+
   it('reads the theme block and the mark, and nothing around them', () => {
     expect(themeOf('a /* theme:start x */ b /* theme:end */ c')).toBe(
       '/* theme:start x */ b /* theme:end */',

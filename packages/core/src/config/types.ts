@@ -127,6 +127,17 @@ export interface HollwareConfig {
   readonly sites?: Readonly<Record<string, SiteDefinition>>
   /** How MCP clients and the admin get tokens. */
   readonly auth?: AuthDefinition
+  /** How the admin looks in the browser. */
+  readonly admin?: AdminDefinition
+}
+
+/** The admin of a deployment and its sign-in pages. */
+export interface AdminDefinition {
+  /**
+   * The `https://` URL of an image the browser shows as their icon, in place of Hollware's flame.
+   * The Worker serves it from its own origin, so the pages' policy stays `img-src 'self'`.
+   */
+  readonly favicon?: string
 }
 
 /** The OAuth server of a deployment. */
@@ -208,6 +219,12 @@ export interface ResolvedEvents {
 export interface ResolvedConfig {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly auth: ResolvedAuth
+  readonly admin: ResolvedAdmin
+}
+
+/** The admin once the config is resolved: `favicon` is `null` for Hollware's own. */
+export interface ResolvedAdmin {
+  readonly favicon: string | null
 }
 
 /** The OAuth server once the config is resolved. */

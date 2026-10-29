@@ -48,6 +48,7 @@ describe('the config module', () => {
       'defineContract',
       'describeResolvedSite',
       'isSiteKey',
+      'resolveAdmin',
       'resolveConfig',
       'withAutomaticFields',
     ])
