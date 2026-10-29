@@ -62,8 +62,8 @@ export function edgeHeaders(
   if (tags.length === 0 || status !== 200 || method !== 'GET') return null
   return {
     'cache-tag': tags.join(','),
-    'cache-control': 'public, max-age=0, must-revalidate',
-    'cloudflare-cdn-cache-control': `max-age=${EDGE_SECONDS}`,
+    'cache-control': 'public, max-age=0',
+    'cloudflare-cdn-cache-control': `max-age=${EDGE_SECONDS}, stale-if-error=${EDGE_SECONDS}`,
   }
 }
 

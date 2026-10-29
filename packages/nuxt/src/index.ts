@@ -37,8 +37,10 @@ export interface ModuleOptions {
    *
    * - `'purge'`: in Cloudflare's Workers Cache, which serves them without running the Worker, each
    *   tagged with what it showed, until Hollware's webhook to `/_hollware/webhook` (signed with
-   *   `NUXT_HOLLWARE_WEBHOOK_SECRET`) purges what changed: a publish, an edit or an unpublish shows
-   *   in seconds everywhere. It needs `"cache": { "enabled": true }` in the site's wrangler.jsonc.
+   *   `NUXT_HOLLWARE_WEBHOOK_SECRET`) marks what changed stale: a publish, an edit or an unpublish
+   *   shows in seconds everywhere. A page the Worker fails to render again (an error or a `5xx`)
+   *   is served as it was until it renders. It needs `"cache": { "enabled": true }` in the site's
+   *   wrangler.jsonc.
    * - a number of seconds: kept by Nitro (`swr`) in each isolate, and rendered again in the
    *   background once that old; a change shows within that time.
    *

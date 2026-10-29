@@ -96,13 +96,15 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     const tags = (page.headers.get('cache-tag') ?? '').split(',')
     expect(tags).toContain('list:blog:en')
     expect(tags.filter((tag) => tag.startsWith('entry:ent_')).length).toBeGreaterThan(0)
-    expect(page.headers.get('cloudflare-cdn-cache-control')).toBe('max-age=31536000')
-    expect(page.headers.get('cache-control')).toBe('public, max-age=0, must-revalidate')
+    expect(page.headers.get('cloudflare-cdn-cache-control')).toBe(
+      'max-age=31536000, stale-if-error=31536000',
+    )
+    expect(page.headers.get('cache-control')).toBe('public, max-age=0')
     expect((route.headers.get('cache-tag') ?? '').split(',')).toContain('list:blog:en')
     expect(missing.headers.get('cache-tag')).toBeNull()
   })
 
-  it('takes a signed event of its site to purge, and refuses a bad signature or another site', async () => {
+  it('takes a signed event of its site to invalidate, and refuses a bad signature or another site', async () => {
     const body = JSON.stringify({ id: 'evt_1', site: 'playground', cacheTags: ['list:blog:en'] })
     const send = async (secret: string, payload = body) => {
       const timestamp = Math.floor(Date.now() / 1000)

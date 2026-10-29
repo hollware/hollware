@@ -57,7 +57,7 @@ export const es: Messages = {
         {
           title: 'Tu sitio lo muestra',
           description:
-            'Publicar purga las páginas que cambiaron. Tu sitio lee el contenido nuevo por Workers RPC y queda en línea en segundos, sin rebuild.',
+            'Publicar marca como viejas las páginas que cambiaron. Tu sitio lee el contenido nuevo por Workers RPC y queda en línea en segundos, sin rebuild.',
           detail: 'publish',
         },
       ],
@@ -86,7 +86,7 @@ export const es: Messages = {
         live: {
           title: 'En línea en segundos, sin rebuild',
           description:
-            'Sin esperar un CI ni un build estático: publicar purga las páginas en caché por etiqueta, y la siguiente visita lee la versión nueva.',
+            'Sin esperar un CI ni un build estático: publicar marca como viejas por etiqueta las páginas en caché, y la siguiente visita lee la versión nueva.',
         },
         yours: {
           title: 'Tu contenido sigue siendo tuyo',
@@ -159,7 +159,8 @@ export const es: Messages = {
         r2: 'Las imágenes y sus originales, y un respaldo de cada día.',
         images: 'Redimensiona cada imagen a los anchos de su srcset.',
         rpc: 'Tu sitio lee el contenido publicado de Worker a Worker, sin token.',
-        cache: 'Guarda las páginas en el borde y las descarta por etiqueta al publicar.',
+        cache:
+          'Guarda las páginas en el borde, vuelve a renderizar por etiqueta las que cambió una publicación y sirve la última buena si eso falla.',
         queues: 'Entrega webhooks y eventos, con reintentos y una dead letter queue.',
         cron: 'Publica lo que programaste y corre el respaldo diario.',
         kv: 'Guarda los permisos OAuth de los agentes que conectas.',

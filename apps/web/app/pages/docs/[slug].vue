@@ -7,10 +7,11 @@ const [own, pages] = await Promise.all([
   useDocsPages(locale.value),
 ])
 const english =
-  own.error.value && locale.value !== 'en' ? await useHollwareEntry('docs', 'en', slug) : null
+  own.error.value?.statusCode === 404 && locale.value !== 'en'
+    ? await useHollwareEntry('docs', 'en', slug)
+    : null
 const found = english ?? own
-if (found.error.value)
-  throw createError({ statusCode: 404, statusMessage: m.value.docs.notFound, fatal: true })
+if (found.error.value) failRead(found.error.value, route.fullPath, m.value.docs.notFound)
 
 const entry = computed(() => found.data.value?.entry ?? null)
 const page = computed(() => (entry.value === null ? null : docLink(entry.value, locale.value)))

@@ -25,8 +25,8 @@ describe('the tags of a response', () => {
   it('let the edge keep a GET that answered 200 and read Hollware, and nothing else', () => {
     expect(edgeHeaders(['entry:ent_1'], 200, 'GET')).toEqual({
       'cache-tag': 'entry:ent_1',
-      'cache-control': 'public, max-age=0, must-revalidate',
-      'cloudflare-cdn-cache-control': 'max-age=31536000',
+      'cache-control': 'public, max-age=0',
+      'cloudflare-cdn-cache-control': 'max-age=31536000, stale-if-error=31536000',
     })
     expect([
       edgeHeaders(['entry:ent_1'], 404, 'GET'),

@@ -54,7 +54,7 @@ export const en = {
         {
           title: 'Your site shows it',
           description:
-            'Publishing purges the pages that changed. Your site reads the new content over Workers RPC, live in seconds, with no rebuild.',
+            'Publishing marks the pages that changed stale. Your site reads the new content over Workers RPC, live in seconds, with no rebuild.',
           detail: 'publish',
         },
       ],
@@ -83,7 +83,7 @@ export const en = {
         live: {
           title: 'Live in seconds, no rebuild',
           description:
-            'No CI run and no static build to wait for: publishing purges the cached pages by tag, and the next request reads the new version.',
+            'No CI run and no static build to wait for: publishing marks the cached pages stale by tag, and the next request reads the new version.',
         },
         yours: {
           title: 'Your content stays yours',
@@ -156,7 +156,8 @@ export const en = {
         r2: 'Images and their originals, and a backup of each day.',
         images: 'Resizes each image to the widths of its srcset.',
         rpc: 'Your site reads published content Worker to Worker, with no token.',
-        cache: 'Keeps pages at the edge, and drops them by tag when you publish.',
+        cache:
+          'Keeps pages at the edge, renders again by tag those a publish changed, and serves the last good one if that fails.',
         queues: 'Delivers webhooks and events, with retries and a dead letter queue.',
         cron: 'Publishes what you scheduled and runs the daily backup.',
         kv: 'Keeps the OAuth grants of the agents you connect.',

@@ -3,7 +3,7 @@ import { createError, defineEventHandler, getRequestHeaders, readRawBody } from 
 import { useRuntimeConfig } from 'nitropack/runtime'
 
 interface WorkerCache {
-  purge(options: { readonly tags: readonly string[] }): Promise<unknown>
+  invalidate(options: { readonly tags: readonly string[] }): Promise<unknown>
 }
 
 function cacheOf(context: unknown): WorkerCache | undefined {
@@ -17,9 +17,9 @@ function cacheOf(context: unknown): WorkerCache | undefined {
     typeof ctx === 'object' && ctx !== null ? Reflect.get(ctx, 'cache') : undefined
   return typeof cache === 'object' &&
     cache !== null &&
-    typeof Reflect.get(cache, 'purge') === 'function'
+    typeof Reflect.get(cache, 'invalidate') === 'function'
     ? {
-        purge: (options) => Reflect.apply(Reflect.get(cache, 'purge'), cache, [options]),
+        invalidate: (options) => Reflect.apply(Reflect.get(cache, 'invalidate'), cache, [options]),
       }
     : undefined
 }
@@ -57,9 +57,9 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 501,
       statusMessage:
-        'This Worker has no cache to purge: set "cache": { "enabled": true } in wrangler.jsonc',
+        'This Worker has no cache to invalidate: set "cache": { "enabled": true } in wrangler.jsonc',
     })
   }
-  if (tags.length > 0) await cache.purge({ tags })
-  return { purged: tags }
+  if (tags.length > 0) await cache.invalidate({ tags })
+  return { invalidated: tags }
 })
