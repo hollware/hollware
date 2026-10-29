@@ -40,7 +40,7 @@ body:
         - The agent is the primary editor
         - Contracts at write time
         - Markdown is the source of truth
-        - Cloudflare-native, close to zero cost
+        - Cloudflare-native
         - None of them, or I am not sure
     validations:
       required: true

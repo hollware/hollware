@@ -7,8 +7,9 @@ service binding; no page text lives in this repository.
 
 The site, the docs, the admin, the CLI and every error speak alike:
 
-- Say what happens: the mechanism, not the feeling. Use numbers ($0 to $5 a month, milliseconds,
-  the number of tools).
+- Say what happens: the mechanism, not the feeling. Use numbers (milliseconds, the number of
+  tools, the bytes of a write).
+- Promise no price: what Hollware costs depends on what each site uses, at Cloudflare's prices.
 - The agent writes, the person decides: agents write, read and ask for review; they never "think".
 - Short sentences, active voice. Every error carries its fix.
 - English first; Spanish is a careful translation, not a new text.

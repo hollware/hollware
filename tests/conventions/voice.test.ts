@@ -39,6 +39,30 @@ describe('the voice of Hollware', () => {
       ])
     })
 
+    it('reports a price in the copy that people read, and only there', () => {
+      const text = `# Hollware\n\nIt costs ${'$'}5 a month, ${'fr'}ee to start.\n`
+      expect(
+        checkVoice([file('README.md', text), file('apps/web/app/i18n/es.ts', `'${'gra'}tis'\n`)]),
+      ).toEqual([
+        {
+          rule: 'voice/price',
+          file: 'README.md',
+          message: `line 3 says "${'$'}5": what Hollware costs depends on what each site uses, so it promises no price (apps/web/AGENTS.md)`,
+        },
+        {
+          rule: 'voice/price',
+          file: 'README.md',
+          message: `line 3 says "${'fr'}ee to start": what Hollware costs depends on what each site uses, so it promises no price (apps/web/AGENTS.md)`,
+        },
+        {
+          rule: 'voice/price',
+          file: 'apps/web/app/i18n/es.ts',
+          message: `line 1 says "${'gra'}tis": what Hollware costs depends on what each site uses, so it promises no price (apps/web/AGENTS.md)`,
+        },
+      ])
+      expect(checkVoice([file('PLAN.md', text)])).toEqual([])
+    })
+
     it('accepts the words that only contain one', () => {
       expect(checkVoice([file('a.md', 'autopilots? no: seamstress, leash, generation\n')])).toEqual(
         [],

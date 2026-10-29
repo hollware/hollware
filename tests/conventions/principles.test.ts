@@ -54,7 +54,7 @@ describe('principles', () => {
       'The agent is the primary editor',
       'Contracts at write time',
       'Markdown is the source of truth',
-      'Cloudflare-native, close to zero cost',
+      'Cloudflare-native',
     ])
   })
 

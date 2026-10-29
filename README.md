@@ -23,7 +23,7 @@ Hollware's thesis is stated as five principles. They describe what Hollware is c
 2. **The agent is the primary editor.** MCP is the first-class interface: whatever the admin does to content and to the structure of a site, an agent can do over MCP. The admin exists to review and approve. Who may sign in, and what a token may do, stays with people: invitations, roles and tokens are made in the admin or the CLI, never over MCP.
 3. **Contracts at write time.** Quality rules run when content is written. The error goes back to the agent within milliseconds, with an instruction on how to fix it, instead of failing a CI pipeline ten minutes later.
 4. **Markdown is the source of truth.** It is what agents write and read best, and it produces readable diffs. [Comark](https://comark.dev) compiles it into a derived document that can be regenerated at any time.
-5. **Cloudflare-native, close to zero cost.** Every piece uses a Cloudflare primitive with a free tier, and it all deploys to your own account. The target is $0 to $5 a month for two sites.
+5. **Cloudflare-native.** Every piece is a Cloudflare primitive, and it all deploys to your own account. What it costs follows what your sites use, at Cloudflare's prices.
 
 ## How it works
 

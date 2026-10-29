@@ -28,7 +28,7 @@ const benefits = computed(() => {
     { icon: 'i-lucide-user-check', ...words.people },
     { icon: 'i-lucide-zap', ...words.live },
     { icon: 'i-lucide-file-text', ...words.yours },
-    { icon: 'i-lucide-piggy-bank', ...words.free },
+    { icon: 'i-lucide-cloud', ...words.account },
   ]
 })
 
