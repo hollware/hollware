@@ -85,6 +85,8 @@ The `hollware` command. Boundary rules for this package:
   output schemas), so an outcome that is an error for the caller (`not_found`, `conflict`,
   `blocked`) is an answer, and turns transport failures (401, 403, 404, no connection) into
   messages that say what to do.
+- `--from notion` builds the corpus from a public Notion tree (`src/import/from-notion.ts`, with
+  `notion-client` loaded only then) and hands it to the same phases. Bound by `tests/from-notion.test.ts`.
 
 ## Export
 

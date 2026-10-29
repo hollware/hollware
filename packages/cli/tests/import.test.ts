@@ -1119,7 +1119,7 @@ describe('hollware import --from', () => {
 
     expect(noCollection.err.join('\n')).toContain('--from nuxt-content needs --collection')
     expect(unknown.err.join('\n')).toContain(
-      '--from takes markdown or nuxt-content, not "wordpress".',
+      '--from takes markdown, nuxt-content or notion, not "wordpress".',
     )
     expect(stub.calls).toEqual([])
   })

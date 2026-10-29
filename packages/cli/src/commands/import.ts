@@ -1,6 +1,7 @@
 import {
   REFUSAL_CONTRACT_IDS,
   createDraft,
+  describeSite,
   getEntry,
   isPersonalToken,
   publish,
@@ -9,13 +10,22 @@ import {
   uploadAsset,
   validate,
 } from '@hollware/core'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { Buffer } from 'node:buffer'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type * as z from 'zod'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable } from '../format.ts'
 import { readCorpus, type ContentFile, type Corpus } from '../import/corpus.ts'
+import {
+  corpusFromNotion,
+  NotionReadError,
+  withCustomEmojis,
+  type NotionLoader,
+  type NotionOptions,
+  type ReadRecords,
+} from '../import/from-notion.ts'
 import { corpusFromNuxtContent } from '../import/from-nuxt-content.ts'
 import { openSession, ToolFailure, type Session } from '../import/session.ts'
 import type { Io } from '../io.ts'
@@ -24,6 +34,7 @@ import { readVersion } from '../version.ts'
 export const IMPORT_USAGE = [
   'Usage: hollware import <directory> --url <hollware url> (--token-file <file> | token on stdin)',
   '                       [--publish] [--dry-run] [--from markdown | nuxt-content]',
+  '       hollware import --from notion --root <page> --collection <name> --url <hollware url>',
   '',
   'Sends the Markdown files of a directory to a running Hollware over MCP, as drafts. The files',
   'are <directory>/<collection>/<locale>/<slug>.md. Every file is validated first: if one would be',
@@ -36,12 +47,20 @@ export const IMPORT_USAGE = [
   '  --publish            Then publish the entries that have unpublished changes, acknowledging no warnings',
   '  --dry-run            Only validate: write nothing, publish nothing',
   '  --from <source>      What the directory is: markdown (the default), or the content/ of a',
-  '                       Nuxt Content site',
-  '  --collection <name>  nuxt-content: the collection its pages go to',
-  '  --locale <code>      nuxt-content: the locale of every page (default en)',
+  '                       Nuxt Content site; notion reads a public Notion page and its subpages',
+  '  --collection <name>  nuxt-content, notion: the collection its pages go to',
+  '  --locale <code>      nuxt-content, notion: the locale of every page (default en)',
   '  --locale-dirs        nuxt-content: the first folder of each page is its locale',
   '  --group-field <name> nuxt-content: the field of a translation group (default',
   '                       translationGroup)',
+  '  --root <page>        notion: the id or the address of the top page',
+  '  --section-field <f>  notion: the field of the title of the top page above it (default section)',
+  '  --order-field <f>    notion: the field of its place among its siblings, from 1 (default order)',
+  '  --callouts <mode>    notion: components (::callout, the default) or alerts (> [!NOTE])',
+  '  --toggles <mode>     notion: details (::details, the default) or flatten (a bold line)',
+  '  --slug-map <file>    notion: a JSON object of page id to slug, which wins over the title',
+  '  --id-map <file>      notion: writes the page id to collection, locale and slug of each entry',
+  '  --report <file>      notion: writes what each page lost or changed on the way',
   '  --help               Show this help',
   '',
   'The token needs content:read and content:write, and content:publish for --publish: without it,',
@@ -66,6 +85,14 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       locale: { type: 'string' },
       'locale-dirs': { type: 'boolean' },
       'group-field': { type: 'string' },
+      root: { type: 'string' },
+      'section-field': { type: 'string' },
+      'order-field': { type: 'string' },
+      callouts: { type: 'string' },
+      toggles: { type: 'string' },
+      'slug-map': { type: 'string' },
+      'id-map': { type: 'string' },
+      report: { type: 'string' },
       help: { type: 'boolean' },
     },
   })
@@ -74,8 +101,30 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
     return 0
   }
   const from = values.from ?? 'markdown'
-  if (from !== 'markdown' && from !== 'nuxt-content') {
-    throw new UsageError(`--from takes markdown or nuxt-content, not "${printable(from)}".`)
+  if (from !== 'markdown' && from !== 'nuxt-content' && from !== 'notion') {
+    throw new UsageError(`--from takes markdown, nuxt-content or notion, not "${printable(from)}".`)
+  }
+  const notionFlags = NOTION_FLAGS.filter((flag) => values[flag] !== undefined)
+  if (from !== 'notion' && notionFlags.length > 0) {
+    throw new UsageError(`--${notionFlags[0] ?? 'root'} is for --from notion.`)
+  }
+  if (from === 'notion') {
+    return importNotion(io, positionals, {
+      url: values.url,
+      tokenFile: values['token-file'],
+      root: values.root,
+      collection: values.collection,
+      locale: values.locale ?? 'en',
+      sectionField: values['section-field'] ?? 'section',
+      orderField: values['order-field'] ?? 'order',
+      callouts: values.callouts ?? 'components',
+      toggles: values.toggles ?? 'details',
+      slugMap: values['slug-map'],
+      idMap: values['id-map'],
+      report: values.report,
+      publish: values.publish === true,
+      dryRun: values['dry-run'] === true,
+    })
   }
   if (from === 'nuxt-content' && values.collection === undefined) {
     throw new UsageError('--from nuxt-content needs --collection: the collection its pages go to.')
@@ -92,7 +141,7 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
   const endpoint = mcpEndpoint(values.url)
   const root = resolve(io.cwd, directory)
   if (!isDirectory(root)) throw new CliError(`${directory} is not a directory.`)
-  const corpus = sourceOf(from, root, {
+  const corpus = await sourceOf(from, root, {
     collection: values.collection ?? '',
     locale: values.locale ?? 'en',
     localeDirs: values['locale-dirs'] === true,
@@ -105,14 +154,200 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       token,
       endpoint,
       directory,
-      root,
-      corpus,
+      early: corpus,
+      load: () => Promise.resolve({ corpus, images: manifestImages(root, directory) }),
       publish: values.publish === true,
       dryRun: values['dry-run'] === true,
     })
   } catch (error) {
     throw withoutToken(error, token)
   }
+}
+
+const NOTION_FLAGS = [
+  'root',
+  'section-field',
+  'order-field',
+  'callouts',
+  'toggles',
+  'slug-map',
+  'id-map',
+  'report',
+] as const
+
+const FIELD = /^[A-Za-z_][\w-]*$/
+
+interface NotionFlags {
+  url: string | undefined
+  tokenFile: string | undefined
+  root: string | undefined
+  collection: string | undefined
+  locale: string
+  sectionField: string
+  orderField: string
+  callouts: string
+  toggles: string
+  slugMap: string | undefined
+  idMap: string | undefined
+  report: string | undefined
+  publish: boolean
+  dryRun: boolean
+}
+
+async function importNotion(
+  io: Io,
+  positionals: readonly string[],
+  flags: NotionFlags,
+): Promise<number> {
+  if (positionals.length > 0) {
+    throw new UsageError('--from notion takes no directory: --root names the Notion page.')
+  }
+  if (flags.root === undefined) {
+    throw new UsageError('--from notion needs --root: the id or the address of the top page.')
+  }
+  if (flags.collection === undefined) {
+    throw new UsageError('--from notion needs --collection: the collection its pages go to.')
+  }
+  if (flags.callouts !== 'components' && flags.callouts !== 'alerts') {
+    throw new UsageError(
+      `--callouts takes components or alerts, not "${printable(flags.callouts)}".`,
+    )
+  }
+  if (flags.toggles !== 'details' && flags.toggles !== 'flatten') {
+    throw new UsageError(`--toggles takes details or flatten, not "${printable(flags.toggles)}".`)
+  }
+  for (const [flag, field] of [
+    ['--section-field', flags.sectionField],
+    ['--order-field', flags.orderField],
+  ] as const) {
+    if (!FIELD.test(field) || field === 'title') {
+      throw new UsageError(
+        `${flag} takes the name of a frontmatter field other than title, not "${printable(field)}".`,
+      )
+    }
+  }
+  if (flags.url === undefined) {
+    throw new UsageError(
+      '--url is required: the address of your Hollware, such as https://cms.example.com.',
+    )
+  }
+  const endpoint = mcpEndpoint(flags.url)
+  const slugMap = flags.slugMap === undefined ? {} : readSlugMap(io, flags.slugMap)
+  const { callouts, toggles, collection } = flags
+  const token = await readToken(io, flags.tokenFile)
+  try {
+    return await importFiles({
+      io,
+      token,
+      endpoint,
+      directory: 'Notion',
+      early: undefined,
+      load: async (session, out) => {
+        const loaded = await corpusFromNotion({
+          root: flags.root ?? '',
+          collection,
+          locale: flags.locale,
+          sectionField: flags.sectionField,
+          orderField: flags.orderField,
+          callouts,
+          toggles,
+          slugMap,
+          target: await targetOf(session, collection, flags.locale),
+          loader: io.notion ?? (await notionLoader()),
+          download: io.download ?? ((url) => fetch(url)),
+        }).catch((error: unknown) => {
+          if (!(error instanceof NotionReadError)) throw error
+          throw new CliError(
+            `could not read the Notion page ${printable(error.pageId)}: ${printable(error.reason)}. Check --root, and that the page is shared to the web.`,
+          )
+        })
+        if (flags.idMap !== undefined) writeJson(io, flags.idMap, loaded.ids)
+        if (flags.report !== undefined) writeJson(io, flags.report, loaded.report)
+        const noted = loaded.report.filter((page) => page.notes.length > 0).length
+        out(
+          `Read ${count(loaded.report.length, 'Notion page')}: ${noted} with notes${flags.report === undefined ? (noted === 0 ? '' : ' (--report <file> lists them)') : ` (in ${flags.report})`}, ${count(loaded.images.length, 'image')}.`,
+        )
+        return {
+          corpus: loaded.corpus,
+          images:
+            loaded.images.length === 0
+              ? undefined
+              : {
+                  from: 'from Notion',
+                  list: loaded.images.map((image) => ({
+                    name: image.filename,
+                    key: image.key,
+                    filename: image.filename,
+                    alt: image.alt,
+                    data: () => Buffer.from(image.bytes).toString('base64'),
+                  })),
+                },
+        }
+      },
+      publish: flags.publish,
+      dryRun: flags.dryRun,
+    })
+  } catch (error) {
+    throw withoutToken(error, token)
+  }
+}
+
+async function notionLoader(): Promise<NotionLoader> {
+  const { NotionAPI } = await import('notion-client')
+  const api = new NotionAPI()
+  const read: ReadRecords = (table, ids) =>
+    api.fetch({
+      endpoint: 'syncRecordValuesMain',
+      body: { requests: ids.map((id) => ({ table, id, version: -1 })) },
+    })
+  return {
+    getPage: async (id) =>
+      withCustomEmojis(
+        await api.getPage(id, { fetchCollections: false, signFileUrls: true }),
+        read,
+      ),
+  }
+}
+
+async function targetOf(
+  session: Session,
+  collection: string,
+  locale: string,
+): Promise<NotionOptions['target']> {
+  const { site } = await session.call(describeSite, {})
+  const found = site.collections.find((one) => one.name === collection)
+  if (found === undefined) {
+    throw new CliError(
+      `the site has no collection ${printable(collection)}: it has ${site.collections.map((one) => printable(one.name)).join(', ') || 'none'}.`,
+    )
+  }
+  return { components: found.components.map((one) => one.name), route: found.routes[locale] }
+}
+
+function readSlugMap(io: Io, file: string): Record<string, string> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(resolve(io.cwd, file), 'utf8'))
+  } catch (error) {
+    throw new CliError(
+      `could not read --slug-map ${file}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new CliError(`--slug-map ${file} is not a JSON object of Notion page id to slug.`)
+  }
+  const map: Record<string, string> = {}
+  for (const [key, value] of Object.entries(parsed)) {
+    if (typeof value !== 'string') {
+      throw new CliError(`--slug-map ${file} gives ${printable(key)} a slug that is not a string.`)
+    }
+    map[key] = value
+  }
+  return map
+}
+
+function writeJson(io: Io, file: string, value: unknown): void {
+  writeFileSync(resolve(io.cwd, file), `${JSON.stringify(value, null, 2)}\n`)
 }
 
 export function withoutToken(error: unknown, token: string): CliError {
@@ -127,8 +362,28 @@ function sourceOf(
   from: 'markdown' | 'nuxt-content',
   root: string,
   options: { collection: string; locale: string; localeDirs: boolean; groupField: string },
-): Corpus {
-  return from === 'markdown' ? readCorpus(root) : corpusFromNuxtContent(root, options)
+): Promise<Corpus> {
+  return Promise.resolve(
+    from === 'markdown' ? readCorpus(root) : corpusFromNuxtContent(root, options),
+  )
+}
+
+interface PendingImage {
+  name: string
+  key: string
+  filename: string
+  alt: string
+  data: () => string
+}
+
+interface Images {
+  from: string
+  list: PendingImage[]
+}
+
+interface Loaded {
+  corpus: Corpus
+  images: Images | undefined
 }
 
 interface Plan {
@@ -136,8 +391,8 @@ interface Plan {
   token: string
   endpoint: URL
   directory: string
-  root: string
-  corpus: Corpus
+  early: Corpus | undefined
+  load: (session: Session, out: (message: string) => void) => Promise<Loaded>
   publish: boolean
   dryRun: boolean
 }
@@ -147,41 +402,19 @@ async function importFiles({
   token,
   endpoint,
   directory,
-  root,
-  corpus,
+  early,
+  load,
   publish: publishToo,
   dryRun,
 }: Plan): Promise<number> {
   const out = (message: string): void => io.out(redact(message, token))
 
-  if (corpus.files.length === 0 && corpus.problems.length === 0) {
-    throw new CliError(
-      `no entries in ${directory}: expected Markdown files at <collection>/<locale>/<slug>.md, such as blog/en/hello.md.`,
-    )
-  }
-  if (corpus.files.length > 0) {
-    out(
-      `Found ${count(corpus.files.length, 'entry', 'entries')} in ${directory} (${collectionSummary(corpus.files)}).`,
-    )
-  }
-  if (corpus.skipped.length > 0) {
-    out(
-      `Skipped ${count(corpus.skipped.length, 'Markdown file')} that ${corpus.skipped.length === 1 ? 'is' : 'are'} not at <collection>/<locale>/<slug>.md: ${listSome(corpus.skipped)}.`,
-    )
-  }
-  if (corpus.problems.length > 0) {
-    throw new CliError(
-      [
-        `${count(corpus.problems.length, 'file')} cannot be imported, so nothing was sent:`,
-        ...corpus.problems.map((problem) => `  ${printable(problem.path)}: ${problem.reason}`),
-        'Fix or remove them and run the import again.',
-      ].join('\n'),
-    )
-  }
-
+  if (early !== undefined) checkCorpus(early, directory, out)
   const session = await openSession(endpoint, token, readVersion())
   try {
-    const moved = await uploadImages(session, root, directory, dryRun, out)
+    const { corpus, images } = await load(session, out)
+    if (early === undefined) checkCorpus(corpus, directory, out)
+    const moved = await uploadImages(session, images, dryRun, out)
     const files = withAssetIds(corpus.files, moved)
     const checks = await validateAll(session, files)
     if (dryRun) out(dryRunReport(checks))
@@ -222,6 +455,33 @@ async function importFiles({
     return 0
   } finally {
     await session.close()
+  }
+}
+
+function checkCorpus(corpus: Corpus, directory: string, out: (message: string) => void): void {
+  if (corpus.files.length === 0 && corpus.problems.length === 0) {
+    throw new CliError(
+      `no entries in ${directory}: expected Markdown files at <collection>/<locale>/<slug>.md, such as blog/en/hello.md.`,
+    )
+  }
+  if (corpus.files.length > 0) {
+    out(
+      `Found ${count(corpus.files.length, 'entry', 'entries')} in ${directory} (${collectionSummary(corpus.files)}).`,
+    )
+  }
+  if (corpus.skipped.length > 0) {
+    out(
+      `Skipped ${count(corpus.skipped.length, 'Markdown file')} that ${corpus.skipped.length === 1 ? 'is' : 'are'} not at <collection>/<locale>/<slug>.md: ${listSome(corpus.skipped)}.`,
+    )
+  }
+  if (corpus.problems.length > 0) {
+    throw new CliError(
+      [
+        `${count(corpus.problems.length, 'file')} cannot be imported, so nothing was sent:`,
+        ...corpus.problems.map((problem) => `  ${printable(problem.path)}: ${problem.reason}`),
+        'Fix or remove them and run the import again.',
+      ].join('\n'),
+    )
   }
 }
 
@@ -600,54 +860,66 @@ export function withAssetIds(
   }))
 }
 
-async function uploadImages(
-  session: Session,
-  root: string,
-  directory: string,
-  dryRun: boolean,
-  out: (message: string) => void,
-): Promise<Map<string, string>> {
-  const moved = new Map<string, string>()
+function manifestImages(root: string, directory: string): Images | undefined {
   const manifestFile = join(root, '_assets', 'assets.json')
-  if (!existsSync(manifestFile)) return moved
+  if (!existsSync(manifestFile)) return undefined
   let manifest: Record<string, { alt?: unknown; filename?: unknown }>
   try {
     manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
   } catch {
     throw new CliError(`${directory}/_assets/assets.json is not JSON. Nothing was sent.`)
   }
-  const names = Object.keys(manifest).sort()
+  const list = Object.keys(manifest)
+    .sort()
+    .map((name): PendingImage => {
+      const { alt, filename } = manifest[name] ?? {}
+      if (!/^ast_[0-9a-f]{26}\.[a-z]+$/.test(name) || typeof alt !== 'string') {
+        throw new CliError(
+          `${directory}/_assets/assets.json names ${printable(name)} without its alt, or not as an export writes it. Nothing more was sent.`,
+        )
+      }
+      return {
+        name,
+        key: name.slice(0, name.indexOf('.')),
+        filename: typeof filename === 'string' && filename !== '' ? filename : name,
+        alt,
+        data: () => readFileSync(join(root, '_assets', name)).toString('base64'),
+      }
+    })
+  return { from: `of ${directory}/_assets`, list }
+}
+
+async function uploadImages(
+  session: Session,
+  images: Images | undefined,
+  dryRun: boolean,
+  out: (message: string) => void,
+): Promise<Map<string, string>> {
+  const moved = new Map<string, string>()
+  if (images === undefined) return moved
   if (dryRun) {
-    out(`Would upload ${count(names.length, 'image')} of ${directory}/_assets.`)
+    out(`Would upload ${count(images.list.length, 'image')} ${images.from}.`)
     return moved
   }
   let created = 0
   let existing = 0
-  for (const name of names) {
-    const { alt, filename } = manifest[name] ?? {}
-    if (!/^ast_[0-9a-f]{26}\.[a-z]+$/.test(name) || typeof alt !== 'string') {
-      throw new CliError(
-        `${directory}/_assets/assets.json names ${printable(name)} without its alt, or not as an export writes it. Nothing more was sent.`,
-      )
-    }
-    const data = readFileSync(join(root, '_assets', name)).toString('base64')
+  for (const image of images.list) {
     const answer = await session.call(uploadAsset, {
-      filename: typeof filename === 'string' && filename !== '' ? filename : name,
-      alt,
-      data,
+      filename: image.filename,
+      alt: image.alt,
+      data: image.data(),
     })
     if (answer.outcome === 'created') created += 1
     else if (answer.outcome === 'exists') existing += 1
     else {
       throw new CliError(
-        `could not upload ${printable(name)}: ${answer.problem?.message ?? answer.outcome} ${answer.problem?.fix ?? ''}`.trim(),
+        `could not upload ${printable(image.name)}: ${answer.problem?.message ?? answer.outcome} ${answer.problem?.fix ?? ''}`.trim(),
       )
     }
-    const exported = name.slice(0, name.indexOf('.'))
     if (answer.asset === undefined) {
-      throw new CliError(`could not upload ${printable(name)}: Hollware answered no asset.`)
+      throw new CliError(`could not upload ${printable(image.name)}: Hollware answered no asset.`)
     }
-    if (answer.asset.id !== exported) moved.set(exported, answer.asset.id)
+    if (answer.asset.id !== image.key) moved.set(image.key, answer.asset.id)
   }
   out(`Images: ${created} uploaded, ${existing} already there.`)
   return moved

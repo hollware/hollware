@@ -84,6 +84,7 @@ export interface StubOptions {
   before?: (call: RecordedCall, entries: Map<string, StubEntry>) => void
   respond?: (request: Request) => Response | undefined
   site?: { key: string; locales: string[]; collections: string[] }
+  declared?: Record<string, { components?: string[]; routes?: Record<string, string> }>
   pageSize?: number
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
   backups?: { date: string; bytes: number }[]
@@ -439,11 +440,16 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               collections: site.collections.map((name) => ({
                 name,
                 schema: {},
-                routes: {},
+                routes: options.declared?.[name]?.routes ?? {},
                 translationGroupField: null,
                 tagsField: null,
                 sortByField: null,
-                components: [],
+                components: (options.declared?.[name]?.components ?? []).map((component) => ({
+                  name: component,
+                  description: null,
+                  example: null,
+                  props: {},
+                })),
                 contracts: [],
                 maxMarkdownBytes: options.maxBytes ?? 8192,
                 styleGuide: null,

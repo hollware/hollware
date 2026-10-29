@@ -45,6 +45,7 @@
   "dependencies": {
     "@hollware/core": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
+    "notion-client": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

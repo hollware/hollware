@@ -1,0 +1,5 @@
+---
+'hollware': minor
+---
+
+`hollware import --from notion --root <page> --collection <name>` imports a public Notion page and its subpages as drafts of one collection. Each page is an entry, with its title in `title`, the title of its top page below the root in `section` and its place among its siblings in `order` (`--section-field`, `--order-field`); slugs come from the titles in ASCII, numbered when two match, unless `--slug-map` names them. Blocks become Markdown: headings, nested lists, tasks, quotes, code, GFM tables, callouts as `::callout` (or GitHub alerts by their color with `--callouts alerts`), toggles as `::details` (or flat with `--toggles flatten`), videos and embeds as `::embed` when the collection declares it. Images and custom emoji are downloaded at once and uploaded as assets, with the caption as their alt or the title of the page and their place in it. Links to imported pages point at the route of the collection. It checks first that the collection declares the components the pages use; `--id-map` writes the page id of each entry and `--report` what each page lost on the way.
