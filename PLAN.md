@@ -807,7 +807,6 @@ The criteria gather what the design asked of 1.0 (its success metrics) and what 
 | AC-1.0-5 | Its threats are bound to tests       | Each threat of the Gateway and of the OAuth flow names the test that fails when its mitigation goes, in a registry a guard keeps, as `tests/AGENTS.md` keeps the guards.                                                  |
 | AC-1.0-6 | Publishing needs no CI               | On the demo, a post an agent publishes over MCP is live in under 60 seconds, with no build between.                                                                                                                       |
 | AC-1.0-7 | Nothing published broke a contract   | No published entry of the three sites has a contract in error: `publish` refuses one, and a check of their published entries finds none.                                                                                  |
-| AC-1.0-8 | Two sites cost $5 or less a month    | The Cloudflare bill of the account that runs the demo and hollware.com is at most $5 for a month, Workers Paid included.                                                                                                  |
 
 ### Where each stands (2026-10-28)
 
@@ -818,4 +817,4 @@ The criteria gather what the design asked of 1.0 (its success metrics) and what 
 - [ ] AC-1.0-5: the threat model went with `docs/` on 2026-10-23; the registry bound to tests replaces it.
 - [ ] AC-1.0-6: to measure on the demo with the last release candidate.
 - [ ] AC-1.0-7: `publish` refuses a contract in error by construction; the check of the three sites waits for sergioazocar.com.
-- [ ] AC-1.0-8: waits for a month of the bill, which only the maintainer can read.
+- AC-1.0-8 is dropped (maintainer, 2026-10-28): Hollware promises no price, since what it costs depends on what each site uses; the README, hollware.com and the docs say so, and `voice/price` keeps a price out of the copy people read.

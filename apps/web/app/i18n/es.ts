@@ -93,10 +93,10 @@ export const es: Messages = {
           description:
             'Exporta cada entrada como Markdown cuando quieras, y corre Hollware en tu propia cuenta con licencia MIT.',
         },
-        free: {
-          title: 'Gratis para empezar',
+        account: {
+          title: 'En tu propia cuenta',
           description:
-            'Pensado para los límites del plan gratuito de Cloudflare: un blog o un sitio de documentación funcionan sin pagar nada y sin un servidor que cuidar.',
+            'Un Worker en tu cuenta de Cloudflare, con su base de datos y sus colas, y sin un servidor que cuidar. Lo que cuesta depende de lo que usen tus sitios.',
         },
       },
     },

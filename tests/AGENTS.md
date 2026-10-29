@@ -41,12 +41,12 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/workflow-pinning.test.ts`: every action is a commit SHA with its `# vX.Y.Z`.
 - `tests/conventions/workflow-permissions.test.ts`: `permissions: {}`, `id-token: write` only in `publish` and Scorecard, other writes per `WRITE_SCOPES`, no kept credentials, Scorecard rules.
 - `tests/conventions/workflow-forbidden.test.ts`: no npm token, `pnpm`, `yarn` or `changeset publish`, `npm stage`, `git push`, `npx` or `dlx`; `npm publish` only with `--provenance` in the `release.yml` `publish` job; zizmor ignores allowlisted.
-- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), jobs gated to this repository and branch, chained by `needs`; `publish` isolated; one run per ref, never cancelled; its scripts get only their env and full history; `finalize_only` finalizes only `RELEASE_SHA`/`release_sha`; the Version Packages title; `finalize` outlasts its wait; `ci.yml` runs on `release` without the changeset gate, `fetch-depth: 0`.
+- `tests/conventions/release-workflow.test.ts`: `release.yml` runs on `main` (versions) and `release` (promotes, packs, publishes, finalizes), jobs gated to this repo and branch, chained by `needs`; `publish` isolated; one run per ref, never cancelled; its scripts get only their env, full history; `finalize_only` finalizes only `RELEASE_SHA`/`release_sha`; the Version Packages title; `finalize` outlasts its wait; `ci.yml` runs on `release` without the changeset gate, `fetch-depth: 0`.
 - `tests/conventions/deploy-workflow.test.ts`: `deploy.yml` deploys staging from `main`, production from `release` or either by hand, gated by `DEPLOY_ENABLED`, in `environment: deploy`.
 - `tests/conventions/setup-vp-version.test.ts`: `setup-vp` pins the catalog `vite-plus`; Node comes from `.node-version`.
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
 - `tests/conventions/admin-parity.test.ts`: the admin calls every MCP operation, or says why not.
-- `tests/conventions/voice.test.ts`: no text file uses a word Hollware never says.
+- `tests/conventions/voice.test.ts`: no word Hollware never says; no price in public copy.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options; no MCP tool manages people or tokens.

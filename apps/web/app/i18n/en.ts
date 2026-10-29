@@ -90,10 +90,10 @@ export const en = {
           description:
             'Export every entry as Markdown at any time, and run Hollware on your own account under the MIT license.',
         },
-        free: {
-          title: 'Free to start',
+        account: {
+          title: 'On your own account',
           description:
-            'Built for the limits of Cloudflare’s free plan: a blog or a docs site runs without paying for anything, and with no server to look after.',
+            'One Worker on your Cloudflare account, with its database and its queues, and no server to look after. What it costs follows what your sites use.',
         },
       },
     },
