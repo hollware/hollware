@@ -143,7 +143,7 @@ describe('hollware.com', () => {
     expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
     expect(text.match(/^## /gm)).toHaveLength(40)
     expect(text).toContain('## create_draft')
-    expect(home).toContain('npm create hollware@rc my-cms')
+    expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
     expect(home).toContain('<meta property="og:image" content="https://hollware.com/og.png">')
     expect(home).toContain(

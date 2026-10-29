@@ -3,7 +3,7 @@ import { OPERATIONS } from '@hollware/core'
 import hollwarePackage from '@hollware/core/package.json'
 
 const { m, to } = useLocale()
-const INSTALL = 'npm create hollware@rc my-cms'
+const INSTALL = 'npm create hollware my-cms'
 
 useSeoMeta({
   title: '',

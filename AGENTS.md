@@ -9,12 +9,6 @@ Its look is the theme that the site and the admin share
 This file orients. Rules live in tests, lint rules or types: if a test could hold
 a claim, the claim belongs in a test.
 
-## Work in progress
-
-`PLAN.md` tracks the roadmap while it is being built. Mark an item `[x]` only
-after it is verified, and record the evidence in its verification log. The file is
-deleted when v1.0 ships, together with this section.
-
 ## Commands
 
 | Command                       | What it does                                                                      |

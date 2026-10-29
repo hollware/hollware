@@ -198,15 +198,11 @@ export const WORKERS_WITHOUT_EVENTS: ExceptionList = {
 }
 
 export const DOC_REF_FILES: ExceptionList = {
-  max: 2,
+  max: 1,
   entries: [
     {
       value: '**/CHANGELOG.md',
       reason: 'Generated release history: it keeps what each release said when it shipped.',
-    },
-    {
-      value: 'PLAN.md',
-      reason: 'The roadmap while 1.0 is built; it is deleted when 1.0 ships.',
     },
   ],
 }
