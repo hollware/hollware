@@ -1,6 +1,7 @@
 import {
   createClient,
   HollwareClientError,
+  type CollectionNavigation,
   type HollwareReader,
   type PageImage,
 } from '@hollware/client'
@@ -72,6 +73,8 @@ export interface Source {
    */
   get(slug: string, options?: { readonly preview?: string }): Promise<SourceEntry | undefined>
   translations(group: string): Promise<Translation[]>
+  /** The published entries of the locale, grouped and ordered as the collection's navigation says. */
+  navigation(): Promise<CollectionNavigation>
 }
 
 const PAGE = 100
@@ -129,6 +132,10 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
     async translations(group) {
       const answer = await readerOf(options).getTranslations(site, collection, group)
       return (answer.entries ?? []).map((entry) => ({ locale: entry.locale, slug: entry.slug }))
+    },
+    async navigation() {
+      const answer = await readerOf(options).getNavigation(site, collection, { locale })
+      return { collection: answer.collection, locale: answer.locale, groups: answer.groups }
     },
   }
 }

@@ -62,6 +62,22 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
   readonly maxMarkdownBytes?: number
   /** Guidance for whoever writes in this collection, in Markdown. */
   readonly styleGuide?: string
+  /**
+   * How `getNavigation` arranges the published entries, for a sidebar: grouped by the string or
+   * enum field `groupBy`, the groups in the order of `groups` (or of the enum), and each group
+   * by the number field `orderBy`, then by title.
+   */
+  readonly navigation?: NavigationDefinition
+}
+
+/** How a collection's entries are arranged for navigation. */
+export interface NavigationDefinition {
+  /** The frontmatter field, a string or an enum, whose value names an entry's group. */
+  readonly groupBy?: string
+  /** The groups first, in this order; for an enum, values of it. */
+  readonly groups?: readonly string[]
+  /** The frontmatter field, a number, that orders the entries of a group, lowest first. */
+  readonly orderBy?: string
 }
 
 /** A site of the deployment. */
@@ -228,6 +244,14 @@ export interface ResolvedCollection {
   readonly contracts: readonly Contract<unknown>[]
   readonly maxMarkdownBytes: number
   readonly styleGuide: string | null
+  readonly navigation: ResolvedNavigation | null
+}
+
+/** A collection's navigation once resolved: `groups` are the given ones, or the enum's values. */
+export interface ResolvedNavigation {
+  readonly groupBy: string | null
+  readonly groups: readonly string[] | null
+  readonly orderBy: string | null
 }
 
 /** A site once the config is resolved. */

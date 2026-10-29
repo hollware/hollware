@@ -5,6 +5,7 @@ import {
   entryTags,
   groupTags,
   listTags,
+  navigationTags,
   recordTags,
   tagsOf,
 } from '../src/runtime/tags.ts'
@@ -20,6 +21,10 @@ describe('the tags of a response', () => {
 
     expect(tagsOf(event)).toEqual(['entry:ent_1', 'list:blog:*', 'entry:ent_2', 'group:blog:hola'])
     expect(listTags('blog', 'es', [])).toEqual(['list:blog:es'])
+  })
+
+  it('tag a navigation with the list of its collection in the locale it answered', () => {
+    expect(navigationTags('docs', 'en')).toEqual(['list:docs:en'])
   })
 
   it('let the edge keep a GET that answered 200 and read Hollware, and nothing else', () => {

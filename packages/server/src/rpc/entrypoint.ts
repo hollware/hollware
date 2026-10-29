@@ -12,6 +12,10 @@ export function createEntrypoint(deps: RpcDeps): HollwareWorker['Hollware'] {
       return createRpc(deps, this.env).listEntries(...args)
     }
 
+    getNavigation(...args: Parameters<HollwareRpc['getNavigation']>) {
+      return createRpc(deps, this.env).getNavigation(...args)
+    }
+
     getTranslations(...args: Parameters<HollwareRpc['getTranslations']>) {
       return createRpc(deps, this.env).getTranslations(...args)
     }

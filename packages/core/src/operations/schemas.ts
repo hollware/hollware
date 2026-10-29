@@ -277,6 +277,16 @@ export const collectionDescription = z.object({
   contracts: z.array(contractDescription),
   maxMarkdownBytes: z.number().int(),
   styleGuide: z.string().nullable(),
+  navigation: z
+    .object({
+      groupBy: z.string().nullable(),
+      groups: z.array(z.string()).nullable(),
+      orderBy: z.string().nullable(),
+    })
+    .optional()
+    .describe(
+      'How getNavigation arranges the published entries: the field that groups them, the groups in their order, and the number field that orders each group before the title. Absent when they are listed by title.',
+    ),
 })
 
 export const siteDescription = z.object({

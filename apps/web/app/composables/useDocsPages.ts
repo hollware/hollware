@@ -4,12 +4,10 @@ export async function useDocsPages(locale: Locale) {
   const route = useRoute()
   const { m } = useLocale()
   const [own, english] = await Promise.all([
-    useHollwareEntries('docs', { locale, limit: 100 }),
-    locale === 'en' ? null : useHollwareEntries('docs', { locale: 'en', limit: 100 }),
+    useHollwareNavigation('docs', { locale }),
+    locale === 'en' ? null : useHollwareNavigation('docs', { locale: 'en' }),
   ])
   const failed = own.error.value ?? english?.error.value
   if (failed) failRead(failed, route.fullPath, m.value.docs.empty)
-  return computed(() =>
-    readingOrder(own.data.value?.entries ?? [], locale, english?.data.value?.entries ?? []),
-  )
+  return computed(() => docLinks(own.data.value, locale, english?.data.value ?? null))
 }

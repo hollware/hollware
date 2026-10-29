@@ -109,6 +109,7 @@ function compileCollection(
       ? {}
       : { maxMarkdownBytes: collection.maxMarkdownBytes }),
     ...(collection.styleGuide === null ? {} : { styleGuide: collection.styleGuide }),
+    ...(collection.navigation === null ? {} : { navigation: collection.navigation }),
   }
 }
 

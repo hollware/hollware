@@ -51,6 +51,21 @@ function collectionOf(
     rules,
     maxMarkdownBytes: collection.maxMarkdownBytes ?? null,
     styleGuide: collection.styleGuide ?? null,
+    ...(collection.navigation === undefined
+      ? {}
+      : {
+          navigation: {
+            ...(collection.navigation.groupBy === undefined
+              ? {}
+              : { groupBy: collection.navigation.groupBy }),
+            ...(collection.navigation.groups === undefined
+              ? {}
+              : { groups: [...collection.navigation.groups] }),
+            ...(collection.navigation.orderBy === undefined
+              ? {}
+              : { orderBy: collection.navigation.orderBy }),
+          },
+        }),
   }
 }
 

@@ -60,6 +60,17 @@ export const collectionDefinitionData = z.strictObject({
   rules: z.array(ruleDefinition).default([]),
   maxMarkdownBytes: z.number().int().positive().nullable().default(null),
   styleGuide: z.string().nullable().default(null),
+  navigation: z
+    .strictObject({
+      groupBy: z.string().min(1).optional(),
+      groups: z.array(z.string().min(1)).optional(),
+      orderBy: z.string().min(1).optional(),
+    })
+    .nullable()
+    .default(null)
+    .describe(
+      'How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title.',
+    ),
 })
 
 export const webhookDefinition = z.strictObject({

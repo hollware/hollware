@@ -1,16 +1,10 @@
 <script setup lang="ts">
 const route = useRoute()
 const { locale, m, to } = useLocale()
-const { data } = useHollwareEntries('docs', () => ({ locale: locale.value, limit: 100 }), {
-  lazy: true,
-})
-const { data: english } = useHollwareEntries('docs', { locale: 'en', limit: 100 }, { lazy: true })
+const { data } = useHollwareNavigation('docs', () => ({ locale: locale.value }), { lazy: true })
+const { data: english } = useHollwareNavigation('docs', { locale: 'en' }, { lazy: true })
 const pages = computed(() =>
-  readingOrder(
-    data.value?.entries ?? [],
-    locale.value,
-    locale.value === 'en' ? [] : (english.value?.entries ?? []),
-  ),
+  docLinks(data.value, locale.value, locale.value === 'en' ? null : (english.value ?? null)),
 )
 
 const links = computed(() => [

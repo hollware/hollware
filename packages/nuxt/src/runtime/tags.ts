@@ -40,6 +40,10 @@ export function listTags(
   return [listTag(collection, locale ?? EVERY_LOCALE), ...idsOf(entries)]
 }
 
+export function navigationTags(collection: string, locale: string): string[] {
+  return [listTag(collection, locale)]
+}
+
 export function groupTags(
   collection: string,
   group: string,

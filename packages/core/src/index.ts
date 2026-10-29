@@ -42,8 +42,10 @@ export {
   type ResolvedAdmin,
   type ResolvedAuth,
   type ResolvedBackups,
+  type NavigationDefinition,
   type ResolvedCollection,
   type ResolvedConfig,
+  type ResolvedNavigation,
   type ResolvedProvider,
   type ResolvedSite,
   type SchemaOutput,
@@ -245,3 +247,12 @@ export {
   tagsOfEntries,
   type TaggedEntry,
 } from './cache.ts'
+export {
+  arrangeNavigation,
+  NAVIGATION_MAX_ENTRIES,
+  navigationInput,
+  type Navigation,
+  type NavigationEntry,
+  type NavigationGroup,
+  type NavigationSource,
+} from './navigation.ts'

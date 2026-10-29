@@ -102,6 +102,33 @@ describe('a 0.x config moved to a definition', () => {
     ])
   })
 
+  it('keeps the navigation of a collection, as the config resolves it', () => {
+    const withNavigation: HollwareConfig = {
+      sites: {
+        docs: {
+          locales: ['en'],
+          defaultLocale: 'en',
+          collections: {
+            pages: {
+              schema: z.object({ section: z.enum(['start', 'guides']), order: z.number() }),
+              routes: { en: '/docs/:slug/' },
+              navigation: { groupBy: 'section', groups: ['guides'], orderBy: 'order' },
+            },
+          },
+        },
+      },
+    }
+    const stored: Record<string, unknown> = JSON.parse(
+      JSON.stringify(definitionsFromConfig(withNavigation)),
+    )
+
+    expect(compileSites(stored).sites.get('docs')?.collections.get('pages')?.navigation).toEqual({
+      groupBy: 'section',
+      groups: ['guides', 'start'],
+      orderBy: 'order',
+    })
+  })
+
   it('refuses a contract of the config’s own code', () => {
     const custom: HollwareConfig = {
       sites: {

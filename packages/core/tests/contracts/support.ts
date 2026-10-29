@@ -91,6 +91,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     contracts: parts.contracts ?? [],
     maxMarkdownBytes: 524_288,
     styleGuide: null,
+    navigation: null,
   }
 }
 

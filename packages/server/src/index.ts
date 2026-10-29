@@ -4,6 +4,7 @@ import type {
   getTranslations,
   HollwareConfig,
   listEntries,
+  Navigation,
   OperationByName,
   OperationName,
   search,
@@ -122,6 +123,15 @@ export interface HollwareRpc {
     collection: string,
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
+  /**
+   * The published entries of a collection in a locale (the site's default when absent), grouped
+   * and ordered as the collection's navigation says, for a sidebar: at most 1,000 of them.
+   */
+  getNavigation(
+    site: string,
+    collection: string,
+    options?: { readonly locale?: string },
+  ): Promise<Navigation>
   describeSite(site: string): Promise<Output<typeof describeSite>>
   /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(

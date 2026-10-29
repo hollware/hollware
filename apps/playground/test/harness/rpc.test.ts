@@ -84,7 +84,7 @@ describe('the binding of the site', () => {
     ])
   })
 
-  it('answers the six read methods', async () => {
+  it('answers the seven read methods', async () => {
     const { HOLLWARE } = await server.getWorker<{ HOLLWARE: HollwareRpc }>(SITE_WORKER).getEnv()
 
     expect(await HOLLWARE.listEntries(SITE_KEY, 'blog')).toEqual({
@@ -97,6 +97,12 @@ describe('the binding of the site', () => {
     })
     expect(await HOLLWARE.getTranslations(SITE_KEY, 'blog', 'no-group')).toEqual({
       outcome: 'not_found',
+    })
+    expect(await HOLLWARE.getNavigation(SITE_KEY, 'blog')).toEqual({
+      outcome: 'ok',
+      collection: 'blog',
+      locale: 'es',
+      groups: [],
     })
     expect(await HOLLWARE.describeSite(SITE_KEY)).toMatchObject({
       outcome: 'ok',

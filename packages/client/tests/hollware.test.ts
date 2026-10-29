@@ -64,6 +64,20 @@ function fakeReader(missing: readonly string[] = []) {
       calls.push(['translations', ...args])
       return { outcome: 'ok', entries: [entry('uno'), { ...entry('one'), locale: 'es' }] }
     },
+    async getNavigation(...args) {
+      calls.push(['navigation', ...args])
+      return {
+        outcome: 'ok',
+        collection: args[1],
+        locale: args[2]?.locale ?? 'en',
+        groups: [
+          {
+            name: 'start',
+            entries: [{ slug: 'one', title: 'One', description: null, path: '/one/', order: 1 }],
+          },
+        ],
+      }
+    },
     async describeSite(...args) {
       calls.push(['describe', ...args])
       return { outcome: 'ok', site: SITE }
@@ -258,6 +272,26 @@ describe('createHollware', () => {
       { locale: 'en', slug: 'uno' },
       { locale: 'es', slug: 'one' },
     ])
+  })
+
+  it('reads the navigation of a collection in a locale, without the outcome', async () => {
+    const { reader, calls } = fakeReader()
+
+    const navigation = await createHollware({ site: 's', reader }).getNavigation('docs', {
+      locale: 'es',
+    })
+
+    expect(calls).toEqual([['navigation', 's', 'docs', { locale: 'es' }]])
+    expect(navigation).toEqual({
+      collection: 'docs',
+      locale: 'es',
+      groups: [
+        {
+          name: 'start',
+          entries: [{ slug: 'one', title: 'One', description: null, path: '/one/', order: 1 }],
+        },
+      ],
+    })
   })
 
   it('resolves a reader given as a function on each read, not when it is made', async () => {

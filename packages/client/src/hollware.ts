@@ -1,4 +1,4 @@
-import { createClient, type HollwareReader } from './index.ts'
+import { createClient, type HollwareReader, type NavigationGroup } from './index.ts'
 import { isPreviewToken, previewTokenFromCookie } from './preview.ts'
 
 /** Where to read from: a reader (a service binding is one), or a Hollware URL and a read token. */
@@ -192,6 +192,19 @@ export interface SearchPage {
   }[]
 }
 
+/** What a navigation reads: the locale, the site's default when not set. */
+export interface NavigationOptions {
+  readonly locale?: string
+}
+
+/** The published entries of a collection in a locale, grouped and ordered for a sidebar. */
+export interface CollectionNavigation {
+  readonly collection: string
+  readonly locale: string
+  /** In their order; the group named `null`, of entries with no group, comes last. */
+  readonly groups: readonly NavigationGroup[]
+}
+
 /** What `describeSite` answers: the site's locales, collections and their rules. */
 export type SiteDescription = Awaited<ReturnType<HollwareReader['describeSite']>>['site']
 
@@ -214,6 +227,11 @@ export interface Hollware {
   listEntries(collection: string, options?: ListEntriesOptions): Promise<EntryPage>
   /** The published entries of a translation group of a collection, one per locale. */
   getTranslations(collection: string, group: string): Promise<Translation[]>
+  /**
+   * The published entries of a collection, grouped and ordered as its navigation says: by the
+   * group field, then the order field, then the title. At most 1,000 of them.
+   */
+  getNavigation(collection: string, options?: NavigationOptions): Promise<CollectionNavigation>
   /** The published entries that match a query, best first: full text, by meaning, or both. */
   search(query: string, options?: SearchOptions): Promise<SearchPage>
   /** The site: its locales, its collections, their routes and their schemas. */
@@ -314,6 +332,10 @@ export function createHollware(options: HollwareOptions): Hollware {
     async getTranslations(collection, group) {
       const answer = await readerOf(options).getTranslations(site, collection, group)
       return (answer.entries ?? []).map((entry) => ({ locale: entry.locale, slug: entry.slug }))
+    },
+    async getNavigation(collection, navigationOptions = {}) {
+      const answer = await readerOf(options).getNavigation(site, collection, navigationOptions)
+      return { collection: answer.collection, locale: answer.locale, groups: answer.groups }
     },
     async search(query, searchOptions = {}) {
       const answer = await readerOf(options).search(site, query, searchOptions)

@@ -1228,6 +1228,36 @@
                       ],
                       "default": null
                     },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                    },
                     "routes": {
                       "additionalProperties": {
                         "type": "string"
@@ -1853,6 +1883,33 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "navigation": {
+                      "additionalProperties": false,
+                      "description": "How getNavigation arranges the published entries: the field that groups them, the groups in their order, and the number field that orders each group before the title. Absent when they are listed by title.",
+                      "properties": {
+                        "groupBy": {
+                          "type": ["string", "null"]
+                        },
+                        "groups": {
+                          "anyOf": [
+                            {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orderBy": {
+                          "type": ["string", "null"]
+                        }
+                      },
+                      "required": ["groupBy", "groups", "orderBy"],
+                      "type": "object"
                     },
                     "routes": {
                       "additionalProperties": {
@@ -3303,6 +3360,36 @@
                       ],
                       "default": null
                     },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                    },
                     "routes": {
                       "additionalProperties": {
                         "type": "string"
@@ -3407,7 +3494,8 @@
                     "components",
                     "rules",
                     "maxMarkdownBytes",
-                    "styleGuide"
+                    "styleGuide",
+                    "navigation"
                   ],
                   "type": "object"
                 },
@@ -6862,6 +6950,36 @@
                     ],
                     "default": null
                   },
+                  "navigation": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "groupBy": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "groups": {
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "orderBy": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                  },
                   "routes": {
                     "additionalProperties": {
                       "type": "string"
@@ -7911,6 +8029,36 @@
                         }
                       ],
                       "default": null
+                    },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
                     },
                     "routes": {
                       "additionalProperties": {
