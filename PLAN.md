@@ -811,10 +811,10 @@ The criteria gather what the design asked of 1.0 (its success metrics) and what 
 ### Where each stands (2026-10-28)
 
 - [x] AC-1.0-1: met on 2026-10-28. `api-check --against-promise` runs in the Check job since rc.0, and in pre mode it refuses every break whatever its changesets say (`verdictOf`, `scripts/api-check.test.ts`, four mutation probes caught). The pruning of 54 values went out with rc.9 before it.
-- [ ] AC-1.0-2: hollware.com and the demo run on rc.8; sergioazocar.com moves next.
+- [ ] AC-1.0-2: hollware.com and the demo run on rc.10 (deployed by the release of 2026-10-28); sergioazocar.com moves to rc.10 with its PR #31, which the maintainer deploys.
 - [x] AC-1.0-3: met on 2026-10-17 (the verification log of 0.8.0).
-- [ ] AC-1.0-4: measured on 0.11.0 (2026-10-17, 17 commands in about two minutes); to measure again on the last release candidate.
+- [x] AC-1.0-4: met on 2026-10-29 with rc.10. A fresh agent given only hollware.com and the npm READMEs went from an empty directory to a deployment on the maintainer's account, published a post over MCP and read it back over MCP and the read API, with no person needed (the passkey of the admin is the one optional step), in about five minutes of commands. Its first deploy stopped at a dead-letter queue wrangler does not create, fixed in #78; the docs it found unclear went to review. Its Cloudflare resources were deleted after.
 - [x] AC-1.0-5: met on 2026-10-28 (#67). `tests/security/threats.ts` names, for each threat of the Gateway and of the OAuth flow, the tests that hold its mitigation, and `tests/guards/threats.ts` fails when a named test is gone.
-- [ ] AC-1.0-6: to measure on the demo with the last release candidate.
-- [ ] AC-1.0-7: `publish` refuses a contract in error by construction; the check of the three sites waits for sergioazocar.com.
+- [x] AC-1.0-6: met on 2026-10-28 with rc.10. On the demo, three posts an agent published over MCP were live on demo.hollware.com 0.8, 1.3 and 1.4 seconds after `publish`, with no build between; they were unpublished and moved to the trash after.
+- [x] AC-1.0-7: met on 2026-10-29. `publish` refuses a contract in error, and `validate` of the published revision of every published entry found none in error: 2 on the demo's blog, 48 in the docs of hollware.com, 38 on sergioazocar.com.
 - AC-1.0-8 is dropped (maintainer, 2026-10-28): Hollware promises no price, since what it costs depends on what each site uses; the README, hollware.com and the docs say so, and `voice/price` keeps a price out of the copy people read.
