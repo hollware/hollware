@@ -1,5 +1,13 @@
 # hollware
 
+## 1.0.0-rc.11
+
+### Patch Changes
+
+- [#78](https://github.com/hollware/hollware/pull/78) [`c238a55`](https://github.com/hollware/hollware/commit/c238a5583cdc8eaa63733586951208b824f158cc) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy` creates the dead-letter queue of the events when it does not exist yet: wrangler creates the other queues, the database, the KV namespace and the buckets of a new project by itself, but stopped the first deploy at a dead-letter queue it does not make. `npm create hollware .` no longer says `cd .`, and the README of `create-hollware` lists every option of `--help`.
+- Updated dependencies []:
+  - @hollware/core@1.0.0-rc.11
+
 ## 1.0.0-rc.10
 
 ### Patch Changes
