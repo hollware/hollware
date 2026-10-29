@@ -62,6 +62,34 @@ export function majorsSince(
     .map((changeset) => changeset.name)
 }
 
+export function inPreMode(preJson: string | null): boolean {
+  if (preJson === null) return false
+  try {
+    const parsed: unknown = JSON.parse(preJson)
+    return typeof parsed === 'object' && parsed !== null && Reflect.get(parsed, 'mode') === 'pre'
+  } catch {
+    return false
+  }
+}
+
+export function verdictOf(
+  breaks: readonly string[],
+  majors: readonly string[],
+  pre: boolean,
+): 'fits' | 'carried' | 'frozen' | 'refused' {
+  if (breaks.length === 0) return 'fits'
+  if (pre) return 'frozen'
+  return majors.length > 0 ? 'carried' : 'refused'
+}
+
+function preJsonOf(root: string): string | null {
+  try {
+    return readFileSync(join(root, '.changeset', 'pre.json'), 'utf8')
+  } catch {
+    return null
+  }
+}
+
 function changesetsOf(root: string): { name: string; text: string }[] {
   const read = (directory: string) => {
     try {
@@ -125,20 +153,26 @@ export async function main(root: string, argv: readonly string[]): Promise<numbe
     return 0
   }
   const breaks = breakingChanges(before, now)
-  if (breaks.length === 0) {
-    console.log(`Nothing breaks since ${ref}: the change fits a minor version.`)
-    return 0
-  }
-  const list = breaks.map((line) => `  - ${line}`).join('\n')
   const majors = majorsSince(changesetsOf(root), releasedAt(root, ref))
-  if (majors.length > 0) {
-    console.log(
-      `What breaks since ${ref}, carried by the major version of ${majors.join(', ')}:\n${list}`,
-    )
-    return 0
+  const list = breaks.map((line) => `  - ${line}`).join('\n')
+  switch (verdictOf(breaks, majors, inPreMode(preJsonOf(root)))) {
+    case 'fits':
+      console.log(`Nothing breaks since ${ref}: the change fits a minor version.`)
+      return 0
+    case 'carried':
+      console.log(
+        `What breaks since ${ref}, carried by the major version of ${majors.join(', ')}:\n${list}`,
+      )
+      return 0
+    case 'frozen':
+      console.error(
+        `What breaks since ${ref}, which a release candidate refuses whatever its changesets say: the public API is frozen until the release. Keep what is public as it is, or leave pre mode first:\n${list}`,
+      )
+      return 1
+    case 'refused':
+      console.error(`What breaks since ${ref}, which needs a major version:\n${list}`)
+      return 1
   }
-  console.error(`What breaks since ${ref}, which needs a major version:\n${list}`)
-  return 1
 }
 
 const invoked = process.argv[1]

@@ -811,11 +811,11 @@ The criteria gather what the design asked of 1.0 (its success metrics) and what 
 
 ### Where each stands (2026-10-28)
 
-- [ ] AC-1.0-1: `api-check --against-promise` runs since rc.0 (2026-10-17); the refusal in pre mode is the last change before rc.9.
+- [x] AC-1.0-1: met on 2026-10-28. `api-check --against-promise` runs in the Check job since rc.0, and in pre mode it refuses every break whatever its changesets say (`verdictOf`, `scripts/api-check.test.ts`, four mutation probes caught). The pruning of 54 values went out with rc.9 before it.
 - [ ] AC-1.0-2: hollware.com and the demo run on rc.8; sergioazocar.com moves next.
 - [x] AC-1.0-3: met on 2026-10-17 (the verification log of 0.8.0).
 - [ ] AC-1.0-4: measured on 0.11.0 (2026-10-17, 17 commands in about two minutes); to measure again on the last release candidate.
-- [ ] AC-1.0-5: the threat model went with `docs/` on 2026-10-23; the registry bound to tests replaces it.
+- [x] AC-1.0-5: met on 2026-10-28 (#67). `tests/security/threats.ts` names, for each threat of the Gateway and of the OAuth flow, the tests that hold its mitigation, and `tests/guards/threats.ts` fails when a named test is gone.
 - [ ] AC-1.0-6: to measure on the demo with the last release candidate.
 - [ ] AC-1.0-7: `publish` refuses a contract in error by construction; the check of the three sites waits for sergioazocar.com.
 - [ ] AC-1.0-8: waits for a month of the bill, which only the maintainer can read.

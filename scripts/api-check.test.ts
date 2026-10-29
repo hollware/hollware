@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { asksForMajor, majorsSince, promisedTag } from './api-check.ts'
+import { asksForMajor, inPreMode, majorsSince, promisedTag, verdictOf } from './api-check.ts'
 
 describe('the release that holds the promise of the public API', () => {
   it('is none before 1.0.0-rc.0, whatever 0.x says', () => {
@@ -51,5 +51,30 @@ describe('a break of the public API carried by a major version', () => {
     ]
     expect(majorsSince(changesets, new Set(['old-major.md']))).toEqual(['beacon.md'])
     expect(majorsSince(changesets, new Set(['beacon.md', 'old-major.md']))).toEqual([])
+  })
+})
+
+describe('what the check answers to a change of the public API', () => {
+  it('lets through what breaks nothing, in pre mode or not', () => {
+    expect([verdictOf([], [], false), verdictOf([], [], true)]).toEqual(['fits', 'fits'])
+  })
+
+  it('takes a break with a major changeset, and refuses one without it', () => {
+    expect(verdictOf(['exports a: is gone'], ['beacon.md'], false)).toBe('carried')
+    expect(verdictOf(['exports a: is gone'], [], false)).toBe('refused')
+  })
+
+  it('refuses every break of a release candidate, whatever its changesets say', () => {
+    expect(verdictOf(['exports a: is gone'], ['beacon.md'], true)).toBe('frozen')
+    expect(verdictOf(['exports a: is gone'], [], true)).toBe('frozen')
+  })
+
+  it('reads pre mode from .changeset/pre.json, and nothing else', () => {
+    expect([
+      inPreMode('{ "mode": "pre", "tag": "rc" }'),
+      inPreMode('{ "mode": "exit", "tag": "rc" }'),
+      inPreMode(null),
+      inPreMode('not json'),
+    ]).toEqual([true, false, false, false])
   })
 })

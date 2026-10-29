@@ -57,7 +57,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/legacy-role.test.ts`: no package source reads `users.role`; the role of a person in a site is in `members`.
 - `tests/conventions/admin-isolation.test.ts`: no code outside `packages/admin` imports `@hollware/admin`, but a project's `vite.config.ts` may import its root (`adminAssets()`).
 - `tests/conventions/admin-messages.test.ts`: admin and site templates read every text from messages.
-- `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major changeset.
+- `tests/conventions/public-api.test.ts`: `api/` is the code's public API; `scripts/api-check.test.ts`: a break needs a major, an rc none.
 - `tests/conventions/comments.test.ts`: no comment but a bin's shebang, a top `/// <reference>`, a reasoned `@ts-expect-error` or `oxlint-disable-next-line`, theme markers, action pins, pnpm reasons, `ZIZMOR_IGNORES`, migration breakpoints, shipped migrations, TSDoc of public exports.
 - `tests/conventions/doc-refs.test.ts`: no file cites a removed document (ADR, design, brand book) or an unknown threat id, but `DOC_REF_FILES` and shipped migrations.
 - `tests/conventions/threats.test.ts`: each threat of `tests/security/threats.ts` cites existing tests or why it is accepted.
