@@ -310,4 +310,20 @@ describe('create-hollware, for an agent', () => {
       },
     ])
   })
+
+  it('says no cd when the project is the directory it runs in', async () => {
+    const { io, out } = world()
+
+    await create(['.', '--name', 'blog-cms', '--json', '--no-install', '--no-git'], io)
+
+    expect(out.map((line) => JSON.parse(line).next[0])).toEqual(['npm install'])
+  })
+
+  it('starts it with no cd when the project is the directory it runs in', async () => {
+    const { io, out } = world()
+
+    await create(['.', '--name', 'blog-cms', '--no-git'], io)
+
+    expect(out.at(-1)?.split('\n').slice(1, 3)).toEqual(['Start it:', '  npm exec hollware dev'])
+  })
 })

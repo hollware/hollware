@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import {
   customDomainOf,
+  deadLetterQueuesOf,
   withCustomDomain,
   withPublicUrl,
   workersDevUrlOf,
@@ -112,7 +113,7 @@ describe('hollware deploy', () => {
         '  MCP    https://my-hollware.ada.workers.dev/mcp',
         '  Admin  https://my-hollware.ada.workers.dev/admin/',
         '',
-        'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
+        'Commit wrangler.jsonc: it holds the public URL of the Worker.',
         '',
         'Next: create your site and its owner in the remote database. It prints a token for your',
         'agents and a link to set up your passkey; shape the site in the admin afterwards:',
@@ -176,7 +177,7 @@ describe('hollware deploy', () => {
         '  MCP    https://my-hollware.ada.workers.dev/mcp',
         '  Admin  https://my-hollware.ada.workers.dev/admin/',
         '',
-        'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
+        'Commit wrangler.jsonc: it holds the public URL of the Worker.',
       ].join('\n'),
     )
   })
@@ -304,6 +305,76 @@ describe('hollware deploy', () => {
     expect(out[0]).toBe(
       'wrangler.jsonc has routes of its own and none for cms.example.com: add { "pattern": "cms.example.com", "custom_domain": true } to them.',
     )
+  })
+
+  it('creates a dead-letter queue that does not exist yet, before the deploy, and leaves one that does', async () => {
+    const migrated = [ok('✅ No migrations to apply!'), ok('✅ No migrations to apply!')]
+    const wrangler = fakeWrangler(
+      ...migrated,
+      failed('Queue "my-hollware-events-dlq" does not exist.'),
+      ok('Created queue my-hollware-events-dlq.'),
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      d1([]),
+    )
+    const cwd = temp.make({
+      'wrangler.jsonc': wranglerJsonc('https://my-hollware.ada.workers.dev').replace(
+        '  "kv_namespaces"',
+        `  "queues": {
+    "producers": [{ "binding": "EVENTS", "queue": "my-hollware-events" }],
+    "consumers": [
+      { "queue": "my-hollware-events", "max_retries": 5, "dead_letter_queue": "my-hollware-events-dlq" },
+      { "queue": "my-hollware-events-dlq" },
+    ],
+  },
+  "kv_namespaces"`,
+      ),
+    })
+    const again = fakeWrangler(
+      ...migrated,
+      ok('my-hollware-events-dlq'),
+      ok(DEPLOYED),
+      ok(HAS_MASTER),
+      d1([]),
+    )
+
+    const first = await run(['deploy'], { cwd, wrangler: wrangler.run, tempDir: () => cwd })
+    const second = await run(['deploy'], { cwd, wrangler: again.run, tempDir: () => cwd })
+
+    expect(first.code).toBe(0)
+    expect(wrangler.calls.slice(2, 5).map((call) => call.args)).toEqual([
+      ['queues', 'info', 'my-hollware-events-dlq'],
+      ['queues', 'create', 'my-hollware-events-dlq'],
+      ['deploy'],
+    ])
+    expect(first.out).toContain(
+      'Created the queue my-hollware-events-dlq, where the events that failed every retry wait.',
+    )
+    expect(second.code).toBe(0)
+    expect(again.calls.slice(2, 4).map((call) => call.args)).toEqual([
+      ['queues', 'info', 'my-hollware-events-dlq'],
+      ['deploy'],
+    ])
+  })
+
+  it('reads the dead-letter queues of the consumers, and nothing else', () => {
+    expect(
+      deadLetterQueuesOf({
+        queues: {
+          producers: [{ queue: 'a' }],
+          consumers: [
+            { queue: 'a', dead_letter_queue: 'a-dlq' },
+            { queue: 'a-dlq' },
+            { queue: 'b', dead_letter_queue: '' },
+          ],
+        },
+      }),
+    ).toEqual(['a-dlq'])
+    expect([
+      deadLetterQueuesOf({}),
+      deadLetterQueuesOf(null),
+      deadLetterQueuesOf({ queues: { consumers: 'x' } }),
+    ]).toEqual([[], [], []])
   })
 
   it('stops when wrangler cannot deploy, and migrates nothing', async () => {

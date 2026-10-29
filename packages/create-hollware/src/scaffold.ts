@@ -270,7 +270,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
   ]
   if (!choices.install) {
     const next = [
-      `cd ${choices.dir}`,
+      ...(choices.dir === '.' ? [] : [`cd ${choices.dir}`]),
       `${choices.pm} install`,
       `${choices.pm} exec vp fmt`,
       `${choices.pm} exec hollware migrate --local`,
@@ -325,7 +325,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
     [
       '',
       'Start it:',
-      `  cd ${choices.dir}`,
+      ...(choices.dir === '.' ? [] : [`  cd ${choices.dir}`]),
       `  ${dev}`,
       '',
       'The admin is at http://localhost:5199/admin/. To deploy, log in to Cloudflare and run:',

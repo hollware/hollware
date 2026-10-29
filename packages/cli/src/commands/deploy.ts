@@ -4,6 +4,7 @@ import { parseFlags } from '../args.ts'
 import { query, resolveDatabase } from '../d1.ts'
 import { CliError } from '../errors.ts'
 import type { Io } from '../io.ts'
+import { parseJsonc } from '../jsonc.ts'
 import { publicUrlOf } from '../public-url.ts'
 import { ownerQuery } from '../sql.ts'
 import { failureReason, stripAnsi } from '../wrangler.ts'
@@ -13,9 +14,10 @@ export const DEPLOY_USAGE = [
   'Usage: hollware deploy [--url <url>]',
   '',
   'Deploys the project to Cloudflare with its wrangler, and applies the migrations to the remote',
-  'database. The first deploy creates the D1 database, the KV namespace, the queues and the bucket',
-  'that wrangler.jsonc names, then migrates. A project deployed before is migrated first, while its',
-  'Worker still serves, so the new Worker never serves a database without its tables.',
+  'database. The first deploy creates the D1 database, the KV namespace, the queues (the',
+  'dead-letter queue included) and the buckets that wrangler.jsonc names, then migrates. A',
+  'project deployed before is migrated first, while its Worker still serves, so the new Worker',
+  'never serves a database without its tables.',
   '',
   'HOLLWARE_PUBLIC_URL must be the public URL of the Worker. While it is a localhost URL, the',
   'workers.dev URL that wrangler prints is written into wrangler.jsonc, and the Worker is deployed',
@@ -93,6 +95,35 @@ export function withPublicUrl(text: string, url: string): string {
   return text.replace(PUBLIC_URL_VALUE, (_match, key: string) => `${key}${JSON.stringify(url)}`)
 }
 
+export function deadLetterQueuesOf(config: unknown): string[] {
+  const queues: unknown =
+    typeof config === 'object' && config !== null ? Reflect.get(config, 'queues') : undefined
+  const consumers: unknown =
+    typeof queues === 'object' && queues !== null ? Reflect.get(queues, 'consumers') : undefined
+  if (!Array.isArray(consumers)) return []
+  const items: readonly unknown[] = consumers
+  return items.flatMap((consumer) => {
+    const queue: unknown =
+      typeof consumer === 'object' && consumer !== null
+        ? Reflect.get(consumer, 'dead_letter_queue')
+        : undefined
+    return typeof queue === 'string' && queue !== '' ? [queue] : []
+  })
+}
+
+async function ensureDeadLetterQueues(io: Io, file: string): Promise<void> {
+  for (const queue of deadLetterQueuesOf(parseJsonc(readFileSync(file, 'utf8')))) {
+    if ((await io.wrangler(['queues', 'info', queue])).code === 0) continue
+    const made = await io.wrangler(['queues', 'create', queue])
+    if (made.code !== 0) {
+      throw new CliError(
+        `wrangler could not create the queue ${queue}: ${failureReason(made).replace(/\.$/, '')}.${loginHint(made)}`,
+      )
+    }
+    io.out(`Created the queue ${queue}, where the events that failed every retry wait.`)
+  }
+}
+
 async function migrateIfThere(io: Io, database: string): Promise<boolean> {
   const listed = await io.wrangler(['d1', 'migrations', 'list', database, '--remote'])
   if (listed.code !== 0) return false
@@ -153,6 +184,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
   const deployedBefore = configured !== undefined && !isLoopback(configured)
   const migratedFirst = deployedBefore && (await migrateIfThere(io, database))
 
+  await ensureDeadLetterQueues(io, file)
   io.out('Deploying with wrangler ...')
   const printed = await wranglerDeploy(io)
   const url = known ?? workersDevUrlOf(printed)
@@ -179,7 +211,7 @@ export async function deploy(argv: readonly string[], io: Io): Promise<number> {
       `  MCP    ${url}/mcp`,
       `  Admin  ${url}/admin/`,
       '',
-      'Commit wrangler.jsonc: it holds the public URL, and any id wrangler wrote into it.',
+      'Commit wrangler.jsonc: it holds the public URL of the Worker.',
       ...(owners.length === 0
         ? [
             '',
