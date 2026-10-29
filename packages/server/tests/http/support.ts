@@ -188,6 +188,7 @@ export interface BootOptions {
   readonly assets?: Fetcher
   readonly bindings?: Partial<HollwareEnv>
   readonly admin?: HollwareConfig['admin']
+  readonly secrets?: Readonly<Record<string, string>>
 }
 
 export async function defineSites(db: D1Database, config: HollwareConfig, now: string) {
@@ -233,6 +234,7 @@ export function boot(options: BootOptions = {}) {
     ...envWith(db, 'publicUrl' in options ? options.publicUrl : PUBLIC_URL),
     ...(options.assets === undefined ? {} : { ASSETS: options.assets }),
     ...options.bindings,
+    ...options.secrets,
   }
   const { ctx, waited } = fakeContext()
 

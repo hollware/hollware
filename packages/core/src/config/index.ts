@@ -2,6 +2,9 @@ export { defineCollection, defineComponent, defineConfig, defineContract } from 
 export type {
   AdminDefinition,
   AuthDefinition,
+  ProviderDefinition,
+  ResolvedAccess,
+  ResolvedProvider,
   ResolvedAdmin,
   ResolvedAuth,
   ResolvedAudit,
@@ -39,4 +42,6 @@ export {
 export { DEFAULT_MAX_MARKDOWN_BYTES, MAX_MARKDOWN_BYTES_CEILING } from './constants.ts'
 export { describeResolvedSite, type SiteDescription } from './describe.ts'
 export { resolveAdmin, resolveConfig } from './resolve.ts'
+export { resolveAuth } from './auth.ts'
+export { admitsEmail, emailAddress } from './access.ts'
 export { isSiteKey, SITE_KEY_MAX_LENGTH, SITE_KEY_PATTERN } from './site-key.ts'

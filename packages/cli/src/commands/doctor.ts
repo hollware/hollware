@@ -226,6 +226,52 @@ export function checkConfig(cwd: string, config: Json): Finding[] {
   return findings
 }
 
+const CONFIG_FILES = ['hollware.config.ts', join('src', 'worker.ts'), join('src', 'index.ts')]
+
+export function providerSecrets(cwd: string): string[] {
+  const names = new Set<string>()
+  for (const file of CONFIG_FILES) {
+    const path = join(cwd, file)
+    if (!existsSync(path)) continue
+    const text = readFileSync(path, 'utf8')
+    for (const match of text.matchAll(/["']?clientSecret["']?\s*:\s*["']([A-Z][A-Z0-9_]*)["']/g)) {
+      if (match[1] !== undefined) names.add(match[1])
+    }
+  }
+  return [...names].sort()
+}
+
+function devVars(cwd: string): Set<string> {
+  const path = join(cwd, '.dev.vars')
+  if (!existsSync(path)) return new Set()
+  return new Set(
+    readFileSync(path, 'utf8')
+      .split('\n')
+      .map((line) => /^\s*([A-Z][A-Z0-9_]*)\s*=/.exec(line)?.[1])
+      .filter((name) => name !== undefined),
+  )
+}
+
+export function checkProviderSecrets(cwd: string, config: Json, target: Target): Finding[] {
+  const names = providerSecrets(cwd)
+  if (names.length === 0 || target !== 'local') return []
+  const vars = isRecord(config['vars']) ? config['vars'] : {}
+  const local = devVars(cwd)
+  const missing = names.filter((name) => !(name in vars) && !local.has(name))
+  return [
+    missing.length === 0
+      ? pass(
+          'provider-secrets',
+          `the secrets of the sign-in providers are set: ${names.join(', ')}`,
+        )
+      : fail(
+          'provider-secrets',
+          `the config names ${missing.join(', ')}, which neither .dev.vars nor vars sets, so sign-in through that provider fails`,
+          `Add ${missing.map((name) => `${name}=…`).join(', ')} to .dev.vars, and run wrangler secret put ${missing[0] ?? ''} before you deploy.`,
+        ),
+  ]
+}
+
 async function checkDatabase(io: Io, target: Target): Promise<Finding[]> {
   const listed = await io.wrangler(['d1', 'migrations', 'list', DEFAULT_BINDING, `--${target}`])
   if (listed.code !== 0) {
@@ -313,7 +359,11 @@ export async function doctor(argv: readonly string[], io: Io): Promise<number> {
   }
   if (!isRecord(config)) throw new CliError('wrangler.jsonc holds no object.')
 
-  const findings = [...checkConfig(io.cwd, config), ...(await checkDatabase(io, target))]
+  const findings = [
+    ...checkConfig(io.cwd, config),
+    ...checkProviderSecrets(io.cwd, config, target),
+    ...(await checkDatabase(io, target)),
+  ]
   const failed = findings.filter((finding) => !finding.ok).length
   if (values.json === true) {
     io.out(

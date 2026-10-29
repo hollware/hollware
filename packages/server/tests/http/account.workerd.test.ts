@@ -266,6 +266,105 @@ describe("a person's passkeys", () => {
   })
 })
 
+describe('passkeys and accounts of providers, from the account page', () => {
+  const GOOGLE_ONLY = defineConfig({
+    ...CONFIG,
+    auth: {
+      providers: [{ kind: 'google', clientId: 'google-client', clientSecret: 'GOOGLE_SECRET' }],
+    },
+  })
+
+  it('adds a passkey to the person signed in, which then signs them in', async () => {
+    const worker = boot()
+    const me = await person(worker)
+    const { softAuthenticator } = await import('../support/authenticator.ts')
+    const authenticator = await softAuthenticator(PUBLIC_URL)
+
+    const asked = await call(worker, me.access, '/v1/admin/account/passkeys/options', {})
+    const { challengeId, options } = await asked.json<{
+      challengeId: string
+      options: { challenge: string; user: { id: string } }
+    }>()
+    const added = await call(worker, me.access, '/v1/admin/account/passkeys/verify', {
+      challengeId,
+      response: await authenticator.register(options),
+      label: 'Phone',
+    })
+    const body = await added.json<{ outcome: string; id: string }>()
+    const signIn = await worker.send('/auth/signin/options', { method: 'POST', body: '{}' })
+    const challenge = await signIn.json<{ challengeId: string; options: { challenge: string } }>()
+    const verified = await worker.send('/auth/signin/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        challengeId: challenge.challengeId,
+        response: await authenticator.authenticate(challenge.options),
+      }),
+    })
+
+    expect([added.status, body.outcome]).toEqual([201, 'added'])
+    expect(await passkeyIds(me.userId)).toEqual([body.id])
+    expect(verified.status).toBe(200)
+    expect(await auditOf(me.userId, 'passkey.add')).toEqual([['ok', null, body.id]])
+  })
+
+  it('refuses a challenge of another person, and adding passkeys when they are off', async () => {
+    const worker = boot()
+    const me = await person(worker)
+    const other = await person(worker)
+    const { softAuthenticator } = await import('../support/authenticator.ts')
+    const authenticator = await softAuthenticator(PUBLIC_URL)
+    const asked = await call(worker, other.access, '/v1/admin/account/passkeys/options', {})
+    const { challengeId, options } = await asked.json<{
+      challengeId: string
+      options: { challenge: string; user: { id: string } }
+    }>()
+    const off = boot({
+      config: defineConfig({ ...GOOGLE_ONLY, auth: { ...GOOGLE_ONLY.auth, passkeys: false } }),
+    })
+    const offPerson = await person(off)
+
+    const stolen = await call(worker, me.access, '/v1/admin/account/passkeys/verify', {
+      challengeId,
+      response: await authenticator.register(options),
+    })
+    const refused = await call(off, offPerson.access, '/v1/admin/account/passkeys/options', {})
+
+    expect(stolen.status).toBe(400)
+    expect(await passkeyIds(me.userId)).toEqual([])
+    expect(await passkeyIds(other.userId)).toEqual([])
+    expect(refused.status).toBe(403)
+  })
+
+  it('lists the accounts of providers by the name of their provider, and removes the last passkey of a person who has one', async () => {
+    const worker = boot({ config: GOOGLE_ONLY })
+    const me = await person(worker)
+    const only = await passkey(me.userId, 'Laptop', '2026-10-01T09:00:00.000Z')
+    await env.DB.prepare(
+      "INSERT INTO identities (id, user_id, provider, subject, email, created_at, updated_at) VALUES ('idn_01JAB3XQ8ZK4M6N2P5R7S9T0VW', ?1, 'google', 'sub-1', 'ada@example.org', ?2, ?2)",
+    )
+      .bind(me.userId, NOW)
+      .run()
+
+    const account = await call(worker, me.access, '/v1/admin/account')
+    const removed = await call(worker, me.access, '/v1/admin/account/passkeys/remove', { id: only })
+
+    expect(await account.json()).toMatchObject({
+      passkeysEnabled: true,
+      identities: [
+        {
+          id: 'idn_01JAB3XQ8ZK4M6N2P5R7S9T0VW',
+          provider: 'google',
+          name: 'Google',
+          email: 'ada@example.org',
+          createdAt: NOW,
+        },
+      ],
+    })
+    expect(removed.status).toBe(200)
+    expect(await passkeyIds(me.userId)).toEqual([])
+  })
+})
+
 describe('the apps a person connected', () => {
   it('lists each grant with its client, scopes and site, and marks the admin', async () => {
     const worker = boot({ config: WITH_REGISTRATION })

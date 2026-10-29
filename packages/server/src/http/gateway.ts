@@ -69,10 +69,11 @@ export function createGateway(options: GatewayOptions): Gateway {
     if (ctx === undefined) throw new Error('A request reached a route without its context')
     return ctx
   }
+  const auth: ResolvedAuth = options.auth ?? NO_PROVIDERS
   const oauth = createOAuth({
     sites: siteKeys,
     clock,
-    dynamicClientRegistration: options.auth?.dynamicClientRegistration ?? false,
+    dynamicClientRegistration: auth.dynamicClientRegistration,
     log,
   })
 
@@ -314,10 +315,21 @@ export function createGateway(options: GatewayOptions): Gateway {
     return response
   })
 
-  installIdentity(app, { clock, site: auditSite, audit: auditAs })
+  installIdentity(app, {
+    clock,
+    auth,
+    site: auditSite,
+    audit: auditAs,
+    log,
+    sites: async (c) => {
+      await options.refresh?.(c.env.DB)
+      return sites
+    },
+  })
   installAdmin(app, { oauth, favicon: options.admin?.favicon ?? null })
 
   installAdminApi(app, {
+    auth,
     sites: siteKeys,
     site: (key) => sites.get(key),
     audit: async (c, principal) =>
@@ -465,7 +477,14 @@ export function createGateway(options: GatewayOptions): Gateway {
 
 const ASSET_ID = /^ast_[0-9a-f]{26}$/
 
+const NO_PROVIDERS: ResolvedAuth = {
+  dynamicClientRegistration: false,
+  passkeys: true,
+  providers: [],
+}
+
 export function limitedRoute(method: string, pathname: string): string | null {
+  if (method === 'GET' && pathname.startsWith('/auth/federate/')) return 'auth'
   if (method !== 'POST') return null
   if (pathname.startsWith('/auth/')) return 'auth'
   if (pathname === '/oauth/token' || pathname === '/oauth/register') return 'oauth'

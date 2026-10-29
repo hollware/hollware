@@ -85,11 +85,12 @@ serve them. Boundary rules for this package:
   store (the contracts' lookups included) leaves a trashed entry out but `listEntries` with
   `trashed`; it keeps its slug and translation, so `create_draft` answers `in_trash`
   (`tests/ops/trash.workerd.test.ts`).
-- `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
-  `/signin`, the four steps of their ceremonies, and `POST /authorize/signout`, below the one path
-  the session cookie is sent to. A person manages their own passkeys, grants and sessions over
-  `/v1/admin/account`; their last passkey is refused in the statement that deletes. `routes.ts`
-  imports the ceremonies with `import()`, so SimpleWebAuthn stays out of startup.
+- `src/identity` is the sign-in: passkeys, providers (`federation.ts`, `jwt.ts`), invitations and
+  sessions: `/setup`, `/signin`, the ceremonies, `/auth/federate/:provider` and its GET callback, and
+  `POST /authorize/signout`, below the one path the session cookie is sent to. Only a verified email
+  links, invites or provisions (`tests/identity/federation.workerd.test.ts`). A person manages their
+  passkeys, grants and sessions over `/v1/admin/account`; the last passkey goes only with an identity
+  left. `routes.ts` imports the ceremonies and the federation with `import()`, out of startup.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
   when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
   there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one

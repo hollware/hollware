@@ -45,7 +45,11 @@ describe('the headers of the sign-in, setup and consent pages', () => {
       handle: 'h',
     })
 
-    for (const html of [signInPage('n'), messagePage('Gone', 'Sign in again.'), consent]) {
+    for (const html of [
+      signInPage('n', { providers: [], passkeys: true, returnTo: null }),
+      messagePage('Gone', 'Sign in again.'),
+      consent,
+    ]) {
       for (const icon of icons) expect(html).toContain(icon)
     }
     for (const headers of [pageHeaders('n'), plainPageHeaders()]) {

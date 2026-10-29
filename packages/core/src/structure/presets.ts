@@ -118,6 +118,7 @@ export function sitePreset(
       widths: [640, 1280],
       keepOriginals: true,
     },
+    access: { autoProvision: null },
     collections,
   }
 }

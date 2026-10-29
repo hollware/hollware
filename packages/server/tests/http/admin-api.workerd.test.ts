@@ -179,6 +179,32 @@ describe("the admin's own routes", () => {
     expect(people.people.some((person) => person.role === 'owner')).toBe(true)
   })
 
+  it('invite an address, kept in lowercase and listed with the invitation, and refuse one that is no address', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const address = `Ada-${crypto.randomUUID().slice(0, 8)}@Example.org`
+
+    const invited = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'editor',
+      email: address,
+    })
+    const wrong = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'editor',
+      email: 'ada',
+    })
+    const people = await (
+      await call(worker, owner, '/v1/admin/people')
+    ).json<{ invitations: { email: string | null }[]; people: { email: string | null }[] }>()
+
+    expect(invited.status).toBe(201)
+    expect(await invited.json()).toMatchObject({ role: 'editor', email: address.toLowerCase() })
+    expect(wrong.status).toBe(400)
+    expect(people.invitations.map((invitation) => invitation.email)).toContain(
+      address.toLowerCase(),
+    )
+    expect(people.people.every((person) => person.email === null)).toBe(true)
+  })
+
   it('revoke an invitation that waits, whose link stops working at once, and only of the site', async () => {
     const worker = boot()
     const owner = await adminToken(worker, 'owner')

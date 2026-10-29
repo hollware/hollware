@@ -79,6 +79,20 @@ export function definitionsFromConfig(config: HollwareConfig): Record<string, Si
             },
           }),
       ...(site.backups === undefined ? {} : { backups: { ...site.backups } }),
+      ...(site.access?.autoProvision === undefined
+        ? {}
+        : {
+            access: {
+              autoProvision:
+                site.access.autoProvision === null
+                  ? null
+                  : {
+                      domains: [...(site.access.autoProvision.domains ?? [])],
+                      emails: [...(site.access.autoProvision.emails ?? [])],
+                      role: site.access.autoProvision.role ?? 'author',
+                    },
+            },
+          }),
       collections: Object.fromEntries(
         Object.entries(site.collections).map(([name, collection]) => [
           name,

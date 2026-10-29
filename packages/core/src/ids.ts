@@ -11,6 +11,7 @@ export const ID_PREFIXES = {
   embedding: 'emb',
   entry: 'ent',
   event: 'evt',
+  identity: 'idn',
   invitation: 'inv',
   member: 'mbr',
   passkey: 'pky',

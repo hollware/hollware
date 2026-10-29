@@ -170,6 +170,31 @@ export const siteDefinitionData = z.strictObject({
     })
     .default({ ...DEFAULT_MEDIA, widths: [...DEFAULT_MEDIA.widths] })
     .describe('How the site converts the images it receives.'),
+  access: z
+    .strictObject({
+      autoProvision: z
+        .strictObject({
+          domains: z
+            .array(z.string().min(1))
+            .default([])
+            .describe('The domains whose addresses come in, such as "example.com".'),
+          emails: z
+            .array(z.string().min(1))
+            .default([])
+            .describe('The addresses that come in, such as "ada@example.com".'),
+          role: z
+            .enum(['author', 'editor'])
+            .default('author')
+            .describe('The role each of them gets in the site.'),
+        })
+        .nullable()
+        .default(null)
+        .describe(
+          'Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation.',
+        ),
+    })
+    .default({ autoProvision: null })
+    .describe('Who may come in without an invitation. Only an owner should change it.'),
   collections: z.record(z.string(), collectionDefinitionData),
 })
 

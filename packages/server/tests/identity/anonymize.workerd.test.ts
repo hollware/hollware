@@ -47,8 +47,11 @@ async function seedPerson(name: string, worlds: readonly World[]) {
   const tokens = sites.map(() => newId('tok'))
   await env.DB.batch([
     env.DB.prepare(
-      "INSERT INTO users (id, name, role, created_at, updated_at) VALUES (?1, ?2, 'editor', ?3, ?3)",
-    ).bind(userId, name, NOW),
+      "INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES (?1, ?2, 'editor', ?4, ?3, ?3, ?3)",
+    ).bind(userId, name, NOW, `${userId.toLowerCase()}@example.org`),
+    env.DB.prepare(
+      "INSERT INTO identities (id, user_id, provider, subject, email, created_at, updated_at) VALUES (?1, ?2, 'google', ?2, 'x@example.org', ?3, ?3)",
+    ).bind(newId('idn'), userId, NOW),
     ...sites.flatMap((site, index) => [
       env.DB.prepare(
         "INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (?1, ?2, ?3, 'editor', ?4, ?4)",
@@ -255,6 +258,7 @@ describe('the anonymization of a former member', () => {
                 (SELECT count(*) FROM users WHERE id = ?2) AS users,
                 (SELECT count(*) FROM passkeys WHERE user_id = ?2) AS passkeys,
                 (SELECT count(*) FROM sessions WHERE user_id = ?2) AS sessions,
+                (SELECT count(*) FROM identities WHERE user_id = ?2) AS identities,
                 (SELECT name FROM users WHERE id = ?3) AS former,
                 (SELECT count(*) FROM anonymizations) AS open`,
       )
@@ -269,6 +273,7 @@ describe('the anonymization of a former member', () => {
       users: 0,
       passkeys: 0,
       sessions: 0,
+      identities: 0,
       former: 'Former member',
       open: 0,
     })
@@ -312,12 +317,14 @@ describe('the anonymization of a former member', () => {
     expect(
       await env.DB.prepare(
         `SELECT (SELECT name FROM users WHERE id = ?1) AS name,
+                (SELECT email IS NOT NULL FROM users WHERE id = ?1) AS email,
                 (SELECT count(*) FROM passkeys WHERE user_id = ?1) AS passkeys,
-                (SELECT count(*) FROM sessions WHERE user_id = ?1) AS sessions`,
+                (SELECT count(*) FROM sessions WHERE user_id = ?1) AS sessions,
+                (SELECT count(*) FROM identities WHERE user_id = ?1) AS identities`,
       )
         .bind(bea.userId)
         .first(),
-    ).toEqual({ name: 'Bea Both', passkeys: 1, sessions: 1 })
+    ).toEqual({ name: 'Bea Both', email: 1, passkeys: 1, sessions: 1, identities: 1 })
   })
 
   it('keeps a person another site has as a member, or whom its activity log names, as actor or as target', async () => {

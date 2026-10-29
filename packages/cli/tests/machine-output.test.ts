@@ -174,10 +174,13 @@ describe('--json', () => {
     const cwd = temp.make({ 'wrangler.jsonc': WITH_URL })
     const wrangler = fakeWrangler(d1([{ id: 'blog' }]), d1([]))
 
-    const { code, out, err } = await run(['invite', '--role', 'editor', '--json'], {
-      cwd,
-      wrangler: wrangler.run,
-    })
+    const { code, out, err } = await run(
+      ['invite', '--role', 'editor', '--email', 'Ada@Example.com', '--json'],
+      {
+        cwd,
+        wrangler: wrangler.run,
+      },
+    )
 
     expect([code, err]).toEqual([0, []])
     expect(out.map((line) => JSON.parse(line))).toEqual([
@@ -185,6 +188,7 @@ describe('--json', () => {
         site: 'blog',
         role: 'editor',
         userId: null,
+        email: 'ada@example.com',
         expiresAt: '2026-10-19T12:00:00.000Z',
         setupUrl:
           'https://cms.example.com/setup#invitation=hw_inv_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',

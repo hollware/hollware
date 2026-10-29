@@ -208,6 +208,9 @@
         "locales": {
           "type": "string"
         },
+        "owner-email": {
+          "type": "string"
+        },
         "owner-name": {
           "type": "string"
         },
@@ -231,6 +234,9 @@
     "invite": [
       {
         "days": {
+          "type": "string"
+        },
+        "email": {
           "type": "string"
         },
         "json": {

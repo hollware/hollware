@@ -1,8 +1,16 @@
 import { newId } from '@hollware/core'
-import { and, eq, gt, isNull, lte } from 'drizzle-orm'
+import { and, desc, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
 import { legacyRoleOf } from '../auth/roles.ts'
-import { authChallenges, invitations, members, passkeys, sessions, users } from '../db/schema.ts'
+import {
+  authChallenges,
+  identities,
+  invitations,
+  members,
+  passkeys,
+  sessions,
+  users,
+} from '../db/schema.ts'
 import { hashSecret, newSecret } from './secrets.ts'
 
 export type Role = 'owner' | 'editor' | 'author'
@@ -14,6 +22,8 @@ export interface Invitation {
   readonly userId: string | null
 }
 
+export type ChallengePurpose = 'register' | 'authenticate' | 'federate' | 'enroll'
+
 function roleOf(value: string): Role {
   if (value === 'owner' || value === 'editor' || value === 'author') return value
   throw new Error(`A role of ${value} is no role the schema allows`)
@@ -21,7 +31,14 @@ function roleOf(value: string): Role {
 
 export async function createInvitation(
   db: Db,
-  input: { site: string; role: Role; userId: string | null; now: Date; days: number },
+  input: {
+    site: string
+    role: Role
+    userId: string | null
+    now: Date
+    days: number
+    email?: string | null
+  },
 ): Promise<{ id: string; secret: string; expiresAt: string }> {
   const secret = newSecret('hw_inv')
   const id = newId('inv')
@@ -37,6 +54,7 @@ export async function createInvitation(
     usedAt: null,
     createdAt: now,
     updatedAt: now,
+    email: input.email ?? null,
   })
   return { id, secret, expiresAt }
 }
@@ -99,10 +117,14 @@ export async function saveChallenge(
   db: Db,
   input: {
     challenge: string
-    purpose: 'register' | 'authenticate'
+    purpose: ChallengePurpose
     invitationId: string | null
     userId: string | null
     now: Date
+    provider?: string
+    nonce?: string
+    codeVerifier?: string
+    returnTo?: string | null
   },
 ): Promise<string> {
   const id = newId('chl')
@@ -116,13 +138,17 @@ export async function saveChallenge(
     expiresAt: new Date(input.now.getTime() + 300_000).toISOString(),
     createdAt: now,
     updatedAt: now,
+    provider: input.provider ?? null,
+    nonce: input.nonce ?? null,
+    codeVerifier: input.codeVerifier ?? null,
+    returnTo: input.returnTo ?? null,
   })
   return id
 }
 
 export async function takeChallenge(
   db: Db,
-  input: { id: string; purpose: 'register' | 'authenticate'; now: Date },
+  input: { id: string; purpose: ChallengePurpose; now: Date },
 ) {
   const [row] = await db.delete(authChallenges).where(eq(authChallenges.id, input.id)).returning()
   if (row === undefined || row.purpose !== input.purpose) return null
@@ -153,9 +179,17 @@ export async function touchPasskey(db: Db, id: string, counter: number, now: Dat
 
 export async function createUser(
   db: Db,
-  input: { id: string; name: string; role: Role; site: string; now: Date },
+  input: {
+    id: string
+    name: string
+    role: Role
+    site: string
+    now: Date
+    email?: string | null
+  },
 ): Promise<void> {
   const at = input.now.toISOString()
+  const email = input.email ?? null
   await db.batch([
     db.insert(users).values({
       id: input.id,
@@ -163,6 +197,8 @@ export async function createUser(
       role: legacyRoleOf(input.role),
       createdAt: at,
       updatedAt: at,
+      email,
+      emailVerifiedAt: email === null ? null : at,
     }),
     db.insert(members).values({
       id: newId('mbr'),
@@ -173,6 +209,114 @@ export async function createUser(
       updatedAt: at,
     }),
   ])
+}
+
+export async function addMember(
+  db: Db,
+  input: { site: string; userId: string; role: Role; now: Date },
+): Promise<void> {
+  const at = input.now.toISOString()
+  await db
+    .insert(members)
+    .values({
+      id: newId('mbr'),
+      siteId: input.site,
+      userId: input.userId,
+      role: input.role,
+      createdAt: at,
+      updatedAt: at,
+    })
+    .onConflictDoNothing()
+}
+
+export async function findIdentity(
+  db: Db,
+  provider: string,
+  subject: string,
+): Promise<{ readonly userId: string } | null> {
+  const [row] = await db
+    .select({ userId: identities.userId })
+    .from(identities)
+    .where(and(eq(identities.provider, provider), eq(identities.subject, subject)))
+    .limit(1)
+  return row ?? null
+}
+
+export async function linkIdentity(
+  db: Db,
+  input: { userId: string; provider: string; subject: string; email: string | null; now: Date },
+): Promise<void> {
+  const at = input.now.toISOString()
+  await db
+    .insert(identities)
+    .values({
+      id: newId('idn'),
+      userId: input.userId,
+      provider: input.provider,
+      subject: input.subject,
+      email: input.email,
+      createdAt: at,
+      updatedAt: at,
+    })
+    .onConflictDoNothing()
+}
+
+export async function userWithEmail(db: Db, email: string): Promise<string | null> {
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.email, email), isNotNull(users.emailVerifiedAt)))
+    .limit(1)
+  return row?.id ?? null
+}
+
+export async function giveEmail(db: Db, userId: string, email: string, now: Date): Promise<void> {
+  const at = now.toISOString()
+  if ((await userWithEmail(db, email)) !== null) return
+  await db
+    .update(users)
+    .set({ email, emailVerifiedAt: at, updatedAt: at })
+    .where(and(eq(users.id, userId), isNull(users.email)))
+}
+
+export async function invitationsFor(db: Db, email: string, now: Date): Promise<Invitation[]> {
+  const rows = await db
+    .select({
+      id: invitations.id,
+      site: invitations.siteId,
+      role: invitations.role,
+      userId: invitations.userId,
+    })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.email, email),
+        isNull(invitations.usedAt),
+        gt(invitations.expiresAt, now.toISOString()),
+      ),
+    )
+    .orderBy(desc(invitations.createdAt), invitations.id)
+  return rows.map((row) => ({ ...row, role: roleOf(row.role) }))
+}
+
+export interface IdentitySummary {
+  readonly id: string
+  readonly provider: string
+  readonly email: string | null
+  readonly createdAt: string
+}
+
+export async function identitiesOf(db: Db, userId: string): Promise<IdentitySummary[]> {
+  return db
+    .select({
+      id: identities.id,
+      provider: identities.provider,
+      email: identities.email,
+      createdAt: identities.createdAt,
+    })
+    .from(identities)
+    .where(eq(identities.userId, userId))
+    .orderBy(identities.createdAt, identities.id)
 }
 
 export async function addPasskey(
@@ -186,10 +330,11 @@ export async function addPasskey(
     label: string
     now: Date
   },
-): Promise<void> {
+): Promise<string> {
   const at = input.now.toISOString()
+  const id = newId('pky')
   await db.insert(passkeys).values({
-    id: newId('pky'),
+    id,
     userId: input.userId,
     credentialId: input.credentialId,
     publicKey: input.publicKey,
@@ -200,6 +345,7 @@ export async function addPasskey(
     createdAt: at,
     updatedAt: at,
   })
+  return id
 }
 
 export async function createSession(
@@ -289,7 +435,8 @@ export async function removePasskey(
   const result = await db
     .prepare(
       `DELETE FROM passkeys WHERE id = ?1 AND user_id = ?2
-       AND (SELECT count(*) FROM passkeys WHERE user_id = ?2) > 1`,
+       AND ((SELECT count(*) FROM passkeys WHERE user_id = ?2) > 1
+         OR EXISTS (SELECT 1 FROM identities WHERE user_id = ?2))`,
     )
     .bind(input.id, input.userId)
     .run()

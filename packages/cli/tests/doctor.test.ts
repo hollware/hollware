@@ -68,6 +68,38 @@ describe('hollware doctor', () => {
     ])
   })
 
+  it('says which secret of a sign-in provider the local project does not set, and passes once .dev.vars has it', async () => {
+    const worker = `createHollware({ auth: { providers: [
+      { kind: 'google', clientId: 'g', clientSecret: 'GOOGLE_CLIENT_SECRET' },
+      { kind: 'github', clientId: 'h', "clientSecret": "GITHUB_CLIENT_SECRET" },
+    ] } })`
+    const missing = temp.make({ 'wrangler.jsonc': STARTER, 'src/worker.ts': worker, ...INSTALLED })
+    const set = temp.make({
+      'wrangler.jsonc': STARTER,
+      'src/worker.ts': worker,
+      '.dev.vars': 'GOOGLE_CLIENT_SECRET=x\nGITHUB_CLIENT_SECRET=y\n',
+      ...INSTALLED,
+    })
+    const owner = () => fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1', site: 'blog' }]))
+
+    const without = await run(['doctor'], { cwd: missing, wrangler: owner().run })
+    const withThem = await run(['doctor'], { cwd: set, wrangler: owner().run })
+    const remote = await run(['doctor', '--remote'], {
+      cwd: missing,
+      wrangler: fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]), failed('not logged in')).run,
+    })
+
+    expect(without.code).toBe(1)
+    expect(without.out[0]?.split('\n')).toContain(
+      'FAIL  the config names GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_SECRET, which neither .dev.vars nor vars sets, so sign-in through that provider fails',
+    )
+    expect(withThem.code).toBe(0)
+    expect(withThem.out[0]?.split('\n')).toContain(
+      'ok    the secrets of the sign-in providers are set: GITHUB_CLIENT_SECRET, GOOGLE_CLIENT_SECRET',
+    )
+    expect([remote.code, remote.out[0]?.includes('provider')]).toEqual([0, false])
+  })
+
   it('says each problem of the config with its fix', async () => {
     const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]))
     const cwd = temp.make({

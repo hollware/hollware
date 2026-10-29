@@ -31,8 +31,30 @@ export const users = sqliteTable(
     name: text('name'),
     role: text('role').notNull(),
     ...timestamps(),
+    email: text('email'),
+    emailVerifiedAt: text('email_verified_at'),
   },
-  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`)],
+  (t) => [
+    check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`),
+    uniqueIndex('users_email').on(t.email),
+  ],
+)
+
+export const identities = sqliteTable(
+  'identities',
+  {
+    id: id('idn'),
+    userId: text('user_id').notNull(),
+    provider: text('provider').notNull(),
+    subject: text('subject').notNull(),
+    email: text('email'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('identities_subject').on(t.provider, t.subject),
+    index('identities_user').on(t.userId),
+    foreignKey({ name: 'identities_user_fk', columns: [t.userId], foreignColumns: [users.id] }),
+  ],
 )
 
 export const members = sqliteTable(
@@ -454,6 +476,7 @@ export const invitations = sqliteTable(
     expiresAt: text('expires_at').notNull(),
     usedAt: text('used_at'),
     ...timestamps(),
+    email: text('email'),
   },
   (t) => [
     unique('invitations_id_site').on(t.id, t.siteId),
@@ -474,8 +497,17 @@ export const authChallenges = sqliteTable(
     userId: text('user_id'),
     expiresAt: text('expires_at').notNull(),
     ...timestamps(),
+    provider: text('provider'),
+    nonce: text('nonce'),
+    codeVerifier: text('code_verifier'),
+    returnTo: text('return_to'),
   },
-  (t) => [check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`)],
+  (t) => [
+    check(
+      'auth_challenges_purpose',
+      sql`${t.purpose} IN ('register', 'authenticate', 'federate', 'enroll')`,
+    ),
+  ],
 )
 
 export const sessions = sqliteTable(

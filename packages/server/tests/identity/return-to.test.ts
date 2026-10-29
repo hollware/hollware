@@ -26,6 +26,23 @@ describe('sameOriginTarget', () => {
   })
 
   it('is the function the page runs', () => {
-    expect(signInPage('nonce')).toContain(`const sameOriginTarget = ${sameOriginTarget.toString()}`)
+    expect(signInPage('nonce', { providers: [], passkeys: true, returnTo: null })).toContain(
+      `const sameOriginTarget = ${sameOriginTarget.toString()}`,
+    )
+  })
+})
+
+describe('the sign-in page with providers', () => {
+  it('links each provider with the escaped return_to, and offers no passkey when they are off', () => {
+    const page = signInPage('nonce', {
+      providers: [{ id: 'google', name: 'Google' }],
+      passkeys: false,
+      returnTo: '/authorize?a=1&b="x"',
+    })
+    expect(page).toContain(
+      '<a class="provider" href="/auth/federate/google?return_to=%2Fauthorize%3Fa%3D1%26b%3D%22x%22">Continue with Google</a>',
+    )
+    expect(page).not.toContain('Sign in with a passkey')
+    expect(page).not.toContain('/auth/signin/options')
   })
 })

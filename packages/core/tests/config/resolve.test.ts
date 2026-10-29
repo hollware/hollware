@@ -91,6 +91,7 @@ describe('resolveConfig', () => {
       events: { webhooks: [], indexNow: null },
       audit: { ipAddresses: 'off', retentionDays: null },
       backups: { enabled: true, retentionDays: 30 },
+      access: { autoProvision: null },
       media: {
         format: 'webp',
         quality: 85,
@@ -196,6 +197,7 @@ describe('resolveConfig', () => {
       events: { webhooks: [], indexNow: null },
       audit: { ipAddresses: 'off', retentionDays: null },
       backups: { enabled: true, retentionDays: 30 },
+      access: { autoProvision: null },
       media: {
         format: 'webp',
         quality: 85,

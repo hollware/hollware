@@ -1,4 +1,12 @@
-import { isId, isScope, isSiteKey, SCOPES, SITE_KEY_MAX_LENGTH, type Scope } from '@hollware/core'
+import {
+  emailAddress,
+  isId,
+  isScope,
+  isSiteKey,
+  SCOPES,
+  SITE_KEY_MAX_LENGTH,
+  type Scope,
+} from '@hollware/core'
 import { UsageError } from './errors.ts'
 import { printable } from './format.ts'
 
@@ -41,6 +49,16 @@ export function parseLabel(value: string): string {
 
 export function parseOwnerName(value: string): string {
   return parseText(value, '--owner-name', OWNER_NAME_MAX)
+}
+
+export function parseEmail(value: string, flag: string): string {
+  const address = emailAddress(value)
+  if (address === null) {
+    throw new UsageError(
+      `${flag} ${shown(value)} is not an email address: write it whole, such as ada@example.com.`,
+    )
+  }
+  return address
 }
 
 export function parseScopes(value: string): Scope[] {
@@ -132,6 +150,7 @@ export interface FirstSite {
   ownerId: string
   memberId: string
   ownerName: string | undefined
+  ownerEmail?: string | undefined
   token: NewToken
   structure?: InitialStructure | undefined
 }
@@ -160,13 +179,18 @@ export function initScript({
   ownerId,
   memberId,
   ownerName,
+  ownerEmail,
   token,
   structure,
 }: FirstSite): string {
   const name = ownerName === undefined ? 'NULL' : quote(ownerName)
+  const user =
+    ownerEmail === undefined
+      ? `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`
+      : `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(ownerEmail)}, ${quote(token.now)}, ${quote(token.now)}, ${quote(token.now)});`
   return [
     siteRow(site, token.now, structure),
-    `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
+    user,
     `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
     ...siteChange(site, ownerId, token.now, structure),
@@ -206,10 +230,14 @@ export interface NewInvitation {
   userId: string | null
   expiresAt: string
   now: string
+  email?: string | undefined
 }
 
 export function insertInvitation(invitation: NewInvitation): string {
   const user = invitation.userId === null ? 'NULL' : quote(invitation.userId)
+  if (invitation.email !== undefined) {
+    return `INSERT INTO invitations (id, site_id, hash, role, user_id, email, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.email)}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
+  }
   return `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
 }
 
@@ -223,7 +251,7 @@ export function parseInvitationId(value: string): string {
 }
 
 export function listInvitations(site: string, now: string): string {
-  return `SELECT id, role, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
+  return `SELECT id, role, email, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
 }
 
 export function revokeInvitation(id: string, site: string, now: string): string {

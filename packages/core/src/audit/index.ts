@@ -39,6 +39,7 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'session.sign_in',
   'session.sign_out',
   'session.end_all',
+  'passkey.add',
   'passkey.remove',
   'passkey.rename',
   'account.rename',

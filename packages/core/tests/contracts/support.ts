@@ -109,6 +109,7 @@ export function siteOf(
     events: { webhooks: [], indexNow: null },
     audit: { ipAddresses: 'off', retentionDays: null },
     backups: { enabled: true, retentionDays: 30 },
+    access: { autoProvision: null },
     media: {
       format: 'webp',
       quality: 85,

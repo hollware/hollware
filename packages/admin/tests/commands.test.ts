@@ -123,6 +123,7 @@ describe('the commands of ⌘K', () => {
       ['Settings: Redirects', '/settings/site/redirects'],
       ['Settings: Danger zone', '/settings/site/danger'],
       ['Settings: People', '/settings/people'],
+      ['Settings: Sign-in', '/settings/site/signin'],
       ['Settings: Tokens', '/settings/tokens'],
       ['Settings: Activity', '/settings/activity'],
       ['Settings: Account', '/settings/account'],

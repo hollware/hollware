@@ -1,6 +1,7 @@
 import {
   definitionsFromConfig,
   resolveAdmin,
+  resolveAuth,
   resolveConfig,
   type HollwareConfig,
   type ResolvedSite,
@@ -55,6 +56,7 @@ export function createHollwareWith(
   const moving = config?.sites !== undefined
   if (moving) resolveConfig(config)
   const admin = resolveAdmin(config?.admin)
+  const auth = resolveAuth(config?.auth)
   const registry = createSiteRegistry({
     ...(moving ? { seed: definitionsFromConfig(config) } : {}),
     now: () => clock.now(),
@@ -104,7 +106,7 @@ export function createHollwareWith(
       clock,
       log: writeLog,
       read: (env) => createRpc({ sites, handlers, clock, log: writeLog }, env),
-      auth: { dynamicClientRegistration: config?.auth?.dynamicClientRegistration ?? false },
+      auth,
       admin,
       handlers,
     }),

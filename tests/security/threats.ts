@@ -1436,4 +1436,166 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-118',
+    area: 'Sign-in',
+    threat:
+      'An ID token forged with another key, under the key id of the provider, signs someone in',
+    mitigation:
+      'Every ID token and Access assertion is verified with WebCrypto against the JWKS of its issuer (RS256 or ES256 only); a key id the cached set lacks is fetched once, and a token whose signature fails is refused before any person is looked up',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token signed by another key under the kid of Google',
+      },
+    ],
+  },
+  {
+    id: 'T-119',
+    area: 'Sign-in',
+    threat: 'An ID token issued to another client, or by another issuer, signs a person in here',
+    mitigation:
+      'The audience must be the client id of the provider (the audience tag for Access) and the issuer the one of its discovery document (Google: `https://accounts.google.com`; Access: the team domain)',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token for another client',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token of another issuer',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an assertion of Access for another application',
+      },
+    ],
+  },
+  {
+    id: 'T-120',
+    area: 'Sign-in',
+    threat: 'An expired ID token, or one of another sign-in, is replayed',
+    mitigation:
+      '`exp` and `nbf` are checked with 60 seconds of skew, and the nonce of the token must be the one the challenge of this sign-in keeps',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token that expired more than a minute ago',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token of another sign-in, by its nonce',
+      },
+    ],
+  },
+  {
+    id: 'T-121',
+    area: 'Sign-in',
+    threat: 'The answer of a provider is replayed, or its state is missing',
+    mitigation:
+      'The state is the id of a challenge taken with `DELETE … RETURNING`, once and within 5 minutes; an answer with no state, or a used one, signs nobody in and exchanges no code',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a state used once already',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an answer with no state, and one whose state began in another browser',
+      },
+    ],
+  },
+  {
+    id: 'T-122',
+    area: 'Sign-in',
+    threat:
+      'Login CSRF: an attacker sends a victim the callback of a sign-in the attacker began, and the victim is signed in as the attacker',
+    mitigation:
+      'The start of a sign-in sets a cookie bound to the challenge (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/auth/federate`); the callback refuses a state whose cookie is not in the browser',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an answer with no state, and one whose state began in another browser',
+      },
+    ],
+  },
+  {
+    id: 'T-123',
+    area: 'Sign-in',
+    threat:
+      'An account with an unverified email takes over the person who owns that email, or gets in by its domain',
+    mitigation:
+      'Only a verified email links an account to a person, redeems an invitation or matches the access of a site (Google and OIDC: `email_verified` true; GitHub: the primary verified address; Microsoft: one directory, never `common`; Access: verified by Access); otherwise the person is only found by provider and subject',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an unverified email: never linked to its owner, never provisioned',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an OIDC account whose email the provider does not say it verified',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'the shared tenant of Microsoft, at startup',
+      },
+    ],
+  },
+  {
+    id: 'T-124',
+    area: 'Sign-in',
+    threat: 'Anyone with an account of a provider becomes a member of a site',
+    mitigation:
+      'A person who is not known and has no invitation becomes a member only of a site whose `access.autoProvision` lists their exact address or its domain (never a subdomain), and only as an author or editor; otherwise the answer is a 403 page',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a verified email of a domain no site lets in',
+      },
+      {
+        file: 'packages/core/tests/config/access.test.ts',
+        test: 'admits an address by itself or by its domain, never a subdomain or a lookalike',
+      },
+    ],
+  },
+  {
+    id: 'T-125',
+    area: 'Sign-in',
+    threat:
+      'A forged `Cf-Access-Jwt-Assertion` header signs someone in on a deployment that does not use Cloudflare Access',
+    mitigation:
+      'The header is read only when a `cloudflare-access` provider is configured, and then verified against the certificates of its team domain and its audience',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'the header of Cloudflare Access when no Access provider is configured',
+      },
+    ],
+  },
+  {
+    id: 'T-126',
+    area: 'Sign-in',
+    threat: 'The `return_to` of a sign-in through a provider sends the person to another origin',
+    mitigation:
+      'After the sign-in the target goes through `sameOriginTarget`: another origin, scheme or a `javascript:` URL goes to `/admin/`',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a return_to of another origin, which goes to the admin instead',
+      },
+    ],
+  },
+  {
+    id: 'T-127',
+    area: 'Accounts',
+    threat: 'Someone adds a passkey to the account of another person with a challenge of theirs',
+    mitigation:
+      "A passkey is added over `/v1/admin/account/passkeys/*` only by the admin client, and the enrollment challenge names the person who asked for it: another person's challenge is refused",
+    guards: [
+      {
+        file: 'packages/server/tests/http/account.workerd.test.ts',
+        test: 'refuses a challenge of another person, and adding passkeys when they are off',
+      },
+    ],
+  },
 ]

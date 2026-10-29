@@ -52,6 +52,7 @@ const EVERYWHERE = [
   `DELETE FROM passkeys WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM sessions WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM auth_challenges WHERE user_id = ?1 AND ${GONE}`,
+  `DELETE FROM identities WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM users WHERE id = ?1 AND ${GONE}`,
 ]
 

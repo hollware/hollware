@@ -91,6 +91,18 @@ export interface SiteDefinition {
     /** Tells IndexNow the URLs that changed; `key` is the key itself, which is public. */
     readonly indexNow?: { readonly key: string }
   }
+  /** Who may come in through a sign-in provider without an invitation: nobody by default. */
+  readonly access?: {
+    /**
+     * People whose verified email is one of `emails` or ends in `@` one of `domains` become
+     * members with `role` the first time they sign in; `null` lets nobody in that way.
+     */
+    readonly autoProvision?: {
+      readonly domains?: readonly string[]
+      readonly emails?: readonly string[]
+      readonly role?: 'author' | 'editor'
+    } | null
+  }
   /** What the site's activity log keeps: no addresses, and forever, by default. */
   readonly audit?: {
     /** `hashed` keeps a keyed hash of the address of each request; `off` keeps nothing of it. */
@@ -140,6 +152,53 @@ export interface AdminDefinition {
   readonly favicon?: string
 }
 
+/**
+ * A provider people sign in with. A client secret is the name of the Worker secret that holds
+ * it, never the secret itself. Google, Microsoft and GitHub take their kind as their id unless
+ * `id` says otherwise.
+ */
+export type ProviderDefinition =
+  | {
+      readonly kind: 'google'
+      readonly id?: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'microsoft'
+      readonly id?: string
+      /** The id or domain of one directory: `common`, `organizations` and `consumers` are refused. */
+      readonly tenant: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'github'
+      readonly id?: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'oidc'
+      readonly id: string
+      /** What the sign-in page calls it. */
+      readonly name: string
+      /** The issuer, whose `/.well-known/openid-configuration` names its endpoints. */
+      readonly issuer: string
+      readonly clientId: string
+      readonly clientSecret: string
+      /** `openid email profile` by default; `openid` is always among them. */
+      readonly scopes?: readonly string[]
+    }
+  | {
+      readonly kind: 'cloudflare-access'
+      readonly id?: string
+      /** The team domain, such as `example.cloudflareaccess.com`. */
+      readonly teamDomain: string
+      /** The Application Audience (AUD) tag of the Access application. */
+      readonly audience: string
+    }
+
 /** The OAuth server of a deployment. */
 export interface AuthDefinition {
   /**
@@ -148,6 +207,10 @@ export interface AuthDefinition {
    * make, and MCP 2026-07-28 prefers metadata documents.
    */
   readonly dynamicClientRegistration?: boolean
+  /** Whether people may sign in with a passkey: true by default. */
+  readonly passkeys?: boolean
+  /** The providers people sign in with, in the order the sign-in page lists them. */
+  readonly providers?: readonly ProviderDefinition[]
 }
 
 /** A collection once the config is resolved: checked, with every default filled in. */
@@ -182,6 +245,16 @@ export interface ResolvedSite {
   readonly audit: ResolvedAudit
   readonly backups: ResolvedBackups
   readonly media: ResolvedMedia
+  readonly access: ResolvedAccess
+}
+
+/** Who comes in through a sign-in provider without an invitation, with lowercase addresses. */
+export interface ResolvedAccess {
+  readonly autoProvision: {
+    readonly domains: readonly string[]
+    readonly emails: readonly string[]
+    readonly role: 'author' | 'editor'
+  } | null
 }
 
 /** The daily backups of a site: whether the cron makes them, and how long each is kept. */
@@ -230,7 +303,43 @@ export interface ResolvedAdmin {
 /** The OAuth server once the config is resolved. */
 export interface ResolvedAuth {
   readonly dynamicClientRegistration: boolean
+  readonly passkeys: boolean
+  readonly providers: readonly ResolvedProvider[]
 }
+
+/** A provider once the config is resolved: its id, and the name the sign-in page shows. */
+export type ResolvedProvider =
+  | {
+      readonly kind: 'google' | 'github'
+      readonly id: string
+      readonly name: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'microsoft'
+      readonly id: string
+      readonly name: string
+      readonly tenant: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'oidc'
+      readonly id: string
+      readonly name: string
+      readonly issuer: string
+      readonly clientId: string
+      readonly clientSecret: string
+      readonly scopes: readonly string[]
+    }
+  | {
+      readonly kind: 'cloudflare-access'
+      readonly id: string
+      readonly name: string
+      readonly teamDomain: string
+      readonly audience: string
+    }
 
 /**
  * Checks a config and fills in its defaults. It throws one error that lists every problem, each

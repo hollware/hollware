@@ -49,10 +49,18 @@ export type GatewayLogEntry =
   | OAuthErrorLog
   | RateLimitedLog
   | RefreshReusedLog
+  | FederationRefusedLog
   | AuditLogEntry
 
 export interface RefreshReusedLog {
   readonly kind: 'refresh_reused'
   readonly requestId: string
   readonly grantId: string
+}
+
+export interface FederationRefusedLog {
+  readonly kind: 'federation_refused'
+  readonly requestId: string
+  readonly provider: string
+  readonly reason: string
 }

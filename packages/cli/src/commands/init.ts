@@ -35,6 +35,7 @@ import {
   initScript,
   insertInvitation,
   ownerQuery,
+  parseEmail,
   parseOwnerName,
   parseSiteKey,
 } from '../sql.ts'
@@ -42,7 +43,8 @@ import { deliverToken, tokenFileOf, type TokenFile } from '../token-output.ts'
 
 export const INIT_USAGE = [
   'Usage: hollware init --site <key> [--preset <blog | docs | empty>] [--locales <list>]',
-  '                     [--local | --remote] [--owner-name <name>] [--database <name>] [--url <url>]',
+  '                     [--local | --remote] [--owner-name <name>] [--owner-email <address>]',
+  '                     [--database <name>] [--url <url>]',
   '                     [--ip-addresses <off | hashed>] [--audit-retention-days <n>]',
   '                     [--token-file <path> [--force]] [--json]',
   '',
@@ -63,6 +65,9 @@ export const INIT_USAGE = [
   '  --local              Use the local database (the default)',
   '  --remote             Use the database in Cloudflare',
   '  --owner-name <name>  The name of the owner',
+  '  --owner-email <address>',
+  '                       The address the owner signs in with through a provider (Google, Microsoft,',
+  '                       GitHub, OIDC, Cloudflare Access); you vouch for it, so it counts as verified',
   '  --database <name>    The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
   '  --url <url>          The public URL of Hollware, for the link (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
   '  --ip-addresses <off | hashed>',
@@ -90,6 +95,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
       local: { type: 'boolean' },
       remote: { type: 'boolean' },
       'owner-name': { type: 'string' },
+      'owner-email': { type: 'string' },
       preset: { type: 'string' },
       locales: { type: 'string' },
       database: { type: 'string' },
@@ -114,6 +120,10 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
   const definition = initialDefinition(io.cwd, values.preset, values.locales, audit)
   const ownerName =
     values['owner-name'] === undefined ? undefined : parseOwnerName(values['owner-name'])
+  const ownerEmail =
+    values['owner-email'] === undefined
+      ? undefined
+      : parseEmail(values['owner-email'], '--owner-email')
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
   const url = publicUrlOf(io.cwd, values.url)
@@ -168,6 +178,7 @@ export async function init(argv: readonly string[], io: Io): Promise<number> {
     ownerId,
     memberId,
     ownerName,
+    ownerEmail,
     token: {
       id: tokenId,
       site,

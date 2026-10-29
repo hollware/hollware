@@ -76,8 +76,11 @@ describe('the rate limit of the routes without a token', () => {
           ['GET', '/auth/signin/options'],
           ['GET', '/v1/site'],
           ['POST', '/v1/ops/publish'],
+          ['GET', '/auth/federate/google/callback'],
+          ['GET', '/auth/federate/google'],
+          ['GET', '/authorize'],
         ].map(([method, path]) => limitedRoute(method ?? '', path ?? '')),
-      ).toEqual(['auth', 'oauth', 'oauth', null, null, null, null, null])
+      ).toEqual(['auth', 'oauth', 'oauth', null, null, null, null, null, 'auth', 'auth', null])
     },
   )
 })

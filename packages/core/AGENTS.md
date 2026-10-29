@@ -25,6 +25,8 @@ Where things are:
     `ConfigError` and nothing else: a line per problem, `<path>: <message>. <fix>`, and the same
     as `problems` data. A new rule adds its case, with the exact path, message and fix, to the
     tables of `tests/config/*-problems.test.ts`.
+  - `auth.ts` resolves the sign-in providers (`resolveAuth`, also for a deployment whose sites live
+    in D1) and `access.ts` whom a site lets in without an invitation (`admitsEmail`).
   - A contract takes the id of a built-in one (`BUILT_IN_CONTRACT_IDS`) only if Hollware made
     it (`isBuiltInContract`); a plain object or a copy is refused.
   - A site key is `isSiteKey`, which the CLI uses too. `maxMarkdownBytes` stops at

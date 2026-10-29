@@ -21,12 +21,12 @@ describe('the navigation of the settings', () => {
           'danger',
         ],
       ],
-      ['access', ['people', 'tokens', 'activity']],
+      ['access', ['people', 'signin', 'tokens', 'activity']],
       ['you', ['account']],
     ])
   })
 
-  it('shows the activity log and the danger zone to an owner only', () => {
+  it('shows the activity log, the danger zone and the sign-in policy to an owner only', () => {
     expect(keys(false)).toEqual([
       [
         'site',

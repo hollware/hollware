@@ -140,6 +140,7 @@ function compileSite(path: string, site: SiteDefinitionData, problems: Problems)
     audit: site.audit,
     backups: site.backups,
     media: site.media,
+    access: site.access,
   }
 }
 
@@ -166,7 +167,7 @@ export function compileSites(definitions: Readonly<Record<string, unknown>>): Re
   if (Object.keys(sites).length === 0) {
     return {
       sites: new Map(),
-      auth: { dynamicClientRegistration: false },
+      auth: { dynamicClientRegistration: false, passkeys: true, providers: [] },
       admin: { favicon: null },
     }
   }

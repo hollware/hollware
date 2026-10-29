@@ -32,6 +32,7 @@ const router = createRouter({
     { path: '/settings/site/backups', component: () => import('./pages/site/Backups.vue') },
     { path: '/settings/site/redirects', component: () => import('./pages/site/Redirects.vue') },
     { path: '/settings/site/danger', component: () => import('./pages/site/Danger.vue') },
+    { path: '/settings/site/signin', component: () => import('./pages/site/Access.vue') },
     { path: '/settings/collections', component: () => import('./pages/Collections.vue') },
     {
       path: '/settings/collections/:name',

@@ -10,6 +10,7 @@ export type SettingsKey =
   | 'redirects'
   | 'danger'
   | 'people'
+  | 'signin'
   | 'tokens'
   | 'activity'
   | 'account'
@@ -51,6 +52,7 @@ const GROUPS: readonly SettingsGroup[] = [
     key: 'access',
     sections: [
       section('people', 'i-lucide-users', '/settings/people'),
+      section('signin', 'i-lucide-log-in', '/settings/site/signin'),
       section('tokens', 'i-lucide-key-round', '/settings/tokens'),
       section('activity', 'i-lucide-scroll-text', '/settings/activity'),
     ],
@@ -61,7 +63,7 @@ const GROUPS: readonly SettingsGroup[] = [
   },
 ]
 
-const OWNER_ONLY: ReadonlySet<SettingsKey> = new Set(['activity', 'danger'])
+const OWNER_ONLY: ReadonlySet<SettingsKey> = new Set(['activity', 'danger', 'signin'])
 
 export function settingsGroups(owner: boolean): SettingsGroup[] {
   return GROUPS.map((group) => ({

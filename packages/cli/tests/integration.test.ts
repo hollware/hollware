@@ -165,7 +165,15 @@ describe('hollware on a real local D1', () => {
   })
 
   it('init writes the site, the owner and a token whose hash is stored', SLOW, async () => {
-    const { code, out, err } = await cli(['init', '--site', 'blog', '--owner-name', 'Test Owner'])
+    const { code, out, err } = await cli([
+      'init',
+      '--site',
+      'blog',
+      '--owner-name',
+      'Test Owner',
+      '--owner-email',
+      'Owner@Example.com',
+    ])
 
     expect(err).toEqual([])
     expect(code).toBe(0)
@@ -194,6 +202,8 @@ describe('hollware on a real local D1', () => {
         id: expect.stringMatching(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/),
         name: 'Test Owner',
         role: 'owner',
+        email: 'owner@example.com',
+        email_verified_at: NOW,
         created_at: NOW,
         updated_at: NOW,
       },

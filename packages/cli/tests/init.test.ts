@@ -42,7 +42,7 @@ function setup(
 }
 
 const BLOG_DEFINITION =
-  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
+  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"access":{"autoProvision":null},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
 
 const SCRIPT = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('blog', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
@@ -242,6 +242,24 @@ describe('hollware init', () => {
     )
   })
 
+  it('stores the address of the owner with --owner-email, as verified at that moment', async () => {
+    const wrangler = fakeWrangler(d1([]), d1([], [], []))
+    const project = setup(wrangler)
+
+    const { code } = await project.run([
+      'init',
+      '--site',
+      'blog',
+      '--owner-email',
+      'Ops@Example.com',
+    ])
+
+    expect(code).toBe(0)
+    expect(wrangler.calls[1]?.sql?.split('\n')[1]).toBe(
+      `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES ('${OWNER_ID}', NULL, 'owner', 'ops@example.com', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+    )
+  })
+
   it('stores no name for the owner when none is given', async () => {
     const wrangler = fakeWrangler(d1([]), d1([], [], []))
     const project = setup(wrangler)
@@ -264,6 +282,10 @@ describe('hollware init', () => {
       /^hollware init: invalid --site "x'; DROP TABLE users; --": /,
     ],
     [['--site', 'blog', '--owner-name', 'a\nb'], /^hollware init: invalid --owner-name "a\\nb": /],
+    [
+      ['--site', 'blog', '--owner-email', "x'@y"],
+      /^hollware init: --owner-email "x'@y" is not an email address/,
+    ],
     [
       ['--site', 'blog', '--local', '--remote'],
       /^hollware init: --local and --remote cannot be used together: choose one\./,

@@ -1066,6 +1066,55 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "type": "object"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -3088,6 +3137,57 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["domains", "emails", "role"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "required": ["autoProvision"],
+                "type": "object"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -3478,6 +3578,7 @@
               "audit",
               "backups",
               "media",
+              "access",
               "collections"
             ],
             "type": "object"
@@ -7649,6 +7750,55 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "type": "object"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
