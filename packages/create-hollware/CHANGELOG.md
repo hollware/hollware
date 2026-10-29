@@ -1,5 +1,60 @@
 # create-hollware
 
+## 1.0.0
+
+### Major Changes
+
+- [#73](https://github.com/hollware/hollware/pull/73) [`42df9fb`](https://github.com/hollware/hollware/commit/42df9fb82477bec5b80385bd1b853f68d89092db) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The public API of 1.0 loses 54 values that nothing outside their own package used and no page of the docs names: constants, defaults and helpers internal to how Hollware works. Every type stays, as the names of what remains. Code that imported one of them takes the value from what uses it, or asks for it in an issue:
+
+  - `@hollware/agents`: `AGENTS_CLIENT`, `ALLOWED_TOOLS`, `AUDIT_STATE`, `auditDue`, `capped`, `DailyLimitReached`, `DEFAULT_MODEL`, `kvMemory`, `LAST_AUDIT`, `reportOf`, `ROLES`, `slugOf`, `workersAiModel`
+  - `@hollware/astro`: `createSource`
+  - `@hollware/client`: `isPreviewToken`, `PREVIEW_COOKIE_MAX_AGE`, `previewCookie`
+  - `@hollware/core`: `ASSET_SCHEME`, `assetIdIn`, `AUDIT_ACTOR_KINDS`, `AUDIT_OUTCOMES`, `CHUNK_LIMITS`, `componentDefinitionData`, `DEFAULT_AUDIT`, `DEFAULT_BACKUPS`, `DEFAULT_MAX_MARKDOWN_BYTES`, `DEFAULT_MEDIA`, `defineOperation`, `describeContract`, `describedSchemaOf`, `ERROR_CODES`, `IDENTITY_AUDIT_ACTIONS`, `IMAGE_FORMATS`, `listAssets`, `MEDIA_FORMATS`, `PERSONAL_TOKEN_PREFIX`, `PREVIEW_SECRET_MIN_LENGTH`, `PREVIEW_TOKEN_PREFIX`, `PREVIEW_TTL_SECONDS`, `READ_TOKEN_PREFIX`, `routesFor`, `ruleDefinition`, `SITE_KEY_PATTERN`, `sizesOf`, `updateAsset`, `webhookDefinition`, `WORDS_PER_MINUTE`
+  - `@hollware/nuxt`: `ROUTES`
+  - `@hollware/server`: `defineHandlers`, `MAX_BOUND_PARAMETERS`, `OPERATION_TIMEOUT_MS`, `OUTPUT_CAP_BYTES`
+  - `create-hollware`: `USAGE`
+  - `hollware`: `createWranglerRunner`
+
+### Minor Changes
+
+- [`84d96fd`](https://github.com/hollware/hollware/commit/84d96fdbfe0527c5aae28b52d2d5045c8ec69354) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Setting Hollware up from an agent: `hollware init` and `hollware token create` take `--token-file <path>` (mode 0600, refused when the file exists unless `--force`) and print its path instead of the token, and `create-hollware` passes it through. `--json` on `create-hollware`, `init`, `token create`, `invite` and `doctor` prints one JSON object and nothing else. `hollware dev` starts the project's local server, waits for `/health` and stays in the foreground until SIGINT or SIGTERM (`--detach` and `--stop` run it in the background), and `hollware mcp-config` prints the `claude mcp add` line or the JSON block of Claude Code, Cursor and VS Code, which name `HOLLWARE_TOKEN` and never the token. The output of `init` and `create-hollware` says the passkey link is for the admin and an agent starts with the token alone. `GET /v1` answers 200 with the URLs of the OpenAPI document and of `/v1/site`, with no token. `update_site` and `set_collection` answer `conflict` on a stale version with a `message` and a `fix` that say to call `get_structure` again.
+
+- [`f16f745`](https://github.com/hollware/hollware/commit/f16f7452e24037ab564f4442839c26b463019d58) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Images. `upload_asset` takes a JPEG, PNG, WebP, AVIF, GIF or SVG, judged by its bytes, and converts it once by the site's new `media` setting (WebP at 85 by default, PNG lossless, GIF with its frames, nothing wider than 2400 px; or AVIF, or the file as it came). An SVG is kept as it is, and refused when anything in it can run. R2 keeps the image and its original; content shows it as `img: asset:ast_…` or `![alt](asset:ast_…)`, which reads of the published site and HTML turn into the URL where the Worker serves it, cached for a year. `list_assets` and `get_asset` read them; the admin has an Images page; `hollware export --assets <dir> --assets-url <path>` writes the images for a site that serves them itself, and without it keeps the originals in `_assets/`, which `hollware import` uploads again under the same ids. A new project binds an R2 bucket (`MEDIA`), which the first deploy creates, and the Images binding (`IMAGES`); `hollware doctor` says when either is missing. Migration 0017 adds the `assets` table.
+
+### Patch Changes
+
+- [#81](https://github.com/hollware/hollware/pull/81) [`648c299`](https://github.com/hollware/hollware/commit/648c2990429ddcbc6ec14f2cc33fc149711e9274) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Hollware 1.0: `npm create hollware` installs it, with no tag, and the README of `create-hollware` says so.
+
+- [#66](https://github.com/hollware/hollware/pull/66) [`b29fe9d`](https://github.com/hollware/hollware/commit/b29fe9d074c7b83b77014c59c41a4037d044bed4) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware backup get` writes a backup as an export would: the entries and site.json, `redirects.json` with the 301s of the entries that moved, and the images of the site in `_assets`, which `hollware import` uploads again. An image whose original the deployment no longer has is named and left out. A new project binds the R2 bucket `BACKUPS`, `<name>-backups`, so its backups live apart from its images, and `hollware doctor` says whether a project has one.
+
+- [#63](https://github.com/hollware/hollware/pull/63) [`44149e0`](https://github.com/hollware/hollware/commit/44149e0d5a2921754521b7be0797306cf2d5cd55) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project consumes the dead-letter queue of its events, `<name>-events-dlq`, so Hollware keeps the events it gave up on for the admin to send again. `hollware doctor` says when the consumer of the events has no dead-letter queue, or when nothing consumes it. A project made before adds `{ "queue": "<name>-events-dlq" }` to `queues.consumers` in its wrangler.jsonc.
+
+- [#78](https://github.com/hollware/hollware/pull/78) [`c238a55`](https://github.com/hollware/hollware/commit/c238a5583cdc8eaa63733586951208b824f158cc) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy` creates the dead-letter queue of the events when it does not exist yet: wrangler creates the other queues, the database, the KV namespace and the buckets of a new project by itself, but stopped the first deploy at a dead-letter queue it does not make. `npm create hollware .` no longer says `cd .`, and the README of `create-hollware` lists every option of `--help`.
+
+- [`20f1fe3`](https://github.com/hollware/hollware/commit/20f1fe3d065d6b8484f1264ea23c41dcf061005b) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware deploy` of a project deployed before applies the new migrations to the remote database first, while its Worker still serves, and then deploys the new Worker, which so never serves a database without its tables. The starter's README and AGENTS.md say how to upgrade: one version for every package, a project of the new release to compare with, then deploy.
+
+- [`d6ef107`](https://github.com/hollware/hollware/commit/d6ef10750cbd045b20225eb289b3b76859cba61a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project keeps working at localhost after `hollware deploy`: the starter's `vite.config.ts` sets `HOLLWARE_PUBLIC_URL` to `http://localhost:5199` in development (`vp dev`), whatever public URL the deploy wrote into `wrangler.jsonc`, and `hollware dev` waits for the server there. `hollware deploy` writes `worker-configuration.d.ts` again whenever it rewrites `wrangler.jsonc`, so `wrangler types --check` keeps passing.
+
+- [#47](https://github.com/hollware/hollware/pull/47) [`c7403f4`](https://github.com/hollware/hollware/commit/c7403f413993cab6f899d8b993b02d978d7d873a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The README installs the release candidate, `npm create hollware@rc`: without the tag, npm still gets the last stable release, 0.11.0.
+
+- [`d8e7306`](https://github.com/hollware/hollware/commit/d8e730611739d6fb335702ae01f4f4e38cdedaba) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project's local server has a `HOLLWARE_SECRET` of its own, for development only, so preview links and the secrets of webhooks work before the first deploy; a `.dev.vars` with `HOLLWARE_SECRET` takes its place.
+
+- [#24](https://github.com/hollware/hollware/pull/24) [`73110f5`](https://github.com/hollware/hollware/commit/73110f5317dd9da454ad45a84baccedd1403767a) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The packages carry no comments but the TSDoc of their public API, and the help of the CLI and the descriptions of the MCP tools no longer cite decision records the repository does not have. The starter's `AGENTS.md` now says what each setting of its `wrangler.jsonc` is for.
+
+- [`84d96fd`](https://github.com/hollware/hollware/commit/84d96fdbfe0527c5aae28b52d2d5045c8ec69354) Thanks [@sergioazoc](https://github.com/sergioazoc)! - What a rehearsal of moving a real site into Hollware turned up. A database that lacks the migrations of its release answers a 503 `not_migrated` that names the command to run, instead of a bare 500. `hollware import` shows an unchanged entry with the verdict of this run, not the one kept since it was written, which a change of the site's definition can have made stale. `npm create hollware` prints how to connect an agent once (init's block, which names `HOLLWARE_TOKEN`, never the token), and starts the project with `hollware dev`.
+
+- [`f1c5806`](https://github.com/hollware/hollware/commit/f1c5806937109e52a1cd2b9d468bc3b583179a95) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project's own test of its database no longer breaks when Hollware adds a migration: it checks that every migration of `@hollware/server` is applied and that the tables of content are there, instead of listing every table of one release.
+
+- [#43](https://github.com/hollware/hollware/pull/43) [`4070b0c`](https://github.com/hollware/hollware/commit/4070b0ccaeffa77a53e155edc9f198bee21307b7) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project made with npm, the default, gets the commands of npm in its AGENTS.md and README (`npm test`, `npx hollware doctor`, `npm install -E`), so an agent that follows them no longer runs pnpm in a project that npm installed.
+
+- [`0f69adb`](https://github.com/hollware/hollware/commit/0f69adbd8f17cf0dc66175a60b98afc6dd4d9bdd) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A new project passes its own `vp check`: the starter formats and lints as Hollware writes it (no semicolons, single quotes, generated files left alone), has a `check` script, and `npm create hollware` formats the project after the install, so a longer name than the starter's never leaves a line too wide. Its `AGENTS.md` says how to update Hollware: every package to one exact version, then `hollware deploy`.
+
+- [#58](https://github.com/hollware/hollware/pull/58) [`2a302dc`](https://github.com/hollware/hollware/commit/2a302dcbe1fb41c10757352312b21861aa60f6d5) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The AGENTS.md of a new project says why it keeps `global_fetch_strictly_public`: `upload_asset` downloads the URL an agent gives over the public internet only, as the OAuth server does with the metadata documents of clients.
+
+- [`f38af74`](https://github.com/hollware/hollware/commit/f38af744088d5985b6cf5c849d56bb0183bae15f) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A project's tests pass after `hollware deploy`: the starter's `vitest.config.ts` gives the Worker under test `HOLLWARE_PUBLIC_URL=http://localhost:5199`, whatever public URL the deploy wrote into `wrangler.jsonc`. They used to answer 403 in CI, where no `.dev.vars` sets it back to localhost.
+
+- [`0783887`](https://github.com/hollware/hollware/commit/0783887e0ca06684143ddd0de531a137ba6f0950) Thanks [@sergioazoc](https://github.com/sergioazoc)! - New projects pin Vite+ 1.3.0, Vitest 5.0.5, wrangler 4.151.1 and @cloudflare/vitest-plugin 1.4.4.
+
 ## 1.0.0-rc.11
 
 ### Patch Changes
