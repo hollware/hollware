@@ -1,5 +1,6 @@
 {
   "commands": [
+    "agent",
     "analytics",
     "backup",
     "deploy",
@@ -14,6 +15,19 @@
     "token"
   ],
   "flags": {
+    "agent": [
+      {
+        "json": {
+          "type": "boolean"
+        }
+      },
+      {
+        "json": {
+          "type": "boolean"
+        }
+      },
+      {}
+    ],
     "analytics": [
       {
         "account": {

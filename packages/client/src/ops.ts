@@ -12,7 +12,7 @@ export interface OpsBinding {
 export interface OpsClientOptions {
   /** The service binding to the `HollwareOps` entrypoint. */
   readonly binding: unknown
-  /** A personal token (`hw_pat_…`): every call runs as it, on its site. */
+  /** A personal token (`hw_pat_…`) or an agent's grant (`hw_agt_…`): every call runs as it, on its site. */
   readonly token: string
 }
 

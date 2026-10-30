@@ -266,3 +266,51 @@ export function revokeToken(id: string, site: string | undefined, now: string): 
   const scope = site === undefined ? '' : ` AND site_id = ${quote(site)}`
   return `UPDATE tokens SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE id = ${quote(id)}${scope} AND revoked_at IS NULL RETURNING id; SELECT id, revoked_at FROM tokens WHERE id = ${quote(id)}${scope};`
 }
+
+const AGENT_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+export const AGENT_NAME_MAX = 64
+
+export function parseAgentName(value: string): string {
+  if (value.length > AGENT_NAME_MAX || !AGENT_NAME.test(value)) {
+    throw new UsageError(
+      `invalid agent name ${shown(value)}: use lowercase letters and digits joined by single hyphens, up to ${AGENT_NAME_MAX} characters, such as "reviewer" or "seo-auditor".`,
+    )
+  }
+  return value
+}
+
+export function parseUserId(value: string): string {
+  if (!isId('usr', value)) {
+    throw new UsageError(
+      `invalid user id ${shown(value)}: the id of an agent is usr_ followed by 26 characters. "hollware agent list" shows them.`,
+    )
+  }
+  return value
+}
+
+export interface NewAgentMember {
+  userId: string
+  memberId: string
+  site: string
+  name: string
+  now: string
+}
+
+export function insertAgentMember({ userId, memberId, site, name, now }: NewAgentMember): string {
+  return [
+    `INSERT INTO users (id, name, role, kind, created_at, updated_at) SELECT ${quote(userId)}, ${quote(name)}, 'reviewer', 'agent', ${quote(now)}, ${quote(now)} WHERE NOT EXISTS (SELECT 1 FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = ${quote(site)} AND users.kind = 'agent' AND users.name = ${quote(name)});`,
+    `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) SELECT ${quote(memberId)}, ${quote(site)}, id, 'author', ${quote(now)}, ${quote(now)} FROM users WHERE id = ${quote(userId)} RETURNING user_id AS id;`,
+  ].join(' ')
+}
+
+export function listAgentMembers(site: string): string {
+  return `SELECT users.id AS id, users.name AS name, members.created_at AS since FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = ${quote(site)} AND users.kind = 'agent' ORDER BY members.created_at, users.id;`
+}
+
+export function removeAgentMember(userId: string, site: string, now: string): string {
+  const agent = "user_id IN (SELECT id FROM users WHERE kind = 'agent')"
+  return [
+    `UPDATE agent_grants SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND revoked_at IS NULL AND ${agent};`,
+    `DELETE FROM members WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND ${agent} RETURNING user_id AS id;`,
+  ].join(' ')
+}

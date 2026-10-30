@@ -27,11 +27,13 @@ const IN_SITE = [
   `UPDATE entry_purges SET purged_by = ${FORMER} WHERE site_id = ?1 AND purged_by = ?2 AND ${OPEN}`,
   `DELETE FROM invitations WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
   `DELETE FROM tokens WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
+  `DELETE FROM agent_grants WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
 ]
 
 const GONE = [
   'members WHERE user_id = ?1',
   'tokens WHERE user_id = ?1',
+  'agent_grants WHERE user_id = ?1',
   'invitations WHERE user_id = ?1',
   'revisions WHERE actor_user_id = ?1',
   'publications WHERE actor_user_id = ?1',

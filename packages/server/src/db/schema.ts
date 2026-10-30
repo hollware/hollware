@@ -33,6 +33,9 @@ export const users = sqliteTable(
     ...timestamps(),
     email: text('email'),
     emailVerifiedAt: text('email_verified_at'),
+    kind: text('kind', { enum: ['person', 'agent'] })
+      .notNull()
+      .default('person'),
   },
   (t) => [
     check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`),
@@ -825,5 +828,58 @@ export const assets = sqliteTable(
       'assets_sizes',
       sql`${t.bytes} > 0 AND ${t.originalBytes} BETWEEN 1 AND 10485760 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200 AND length(${t.sha256}) = 64`,
     ),
+  ],
+)
+
+export const agentGrants = sqliteTable(
+  'agent_grants',
+  {
+    id: id('agt'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    agent: text('agent').notNull(),
+    reviewId: text('review_id'),
+    hash: text('hash').notNull(),
+    scopes: text('scopes').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    revokedAt: text('revoked_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('agent_grants_id_site').on(t.id, t.siteId),
+    unique('agent_grants_hash').on(t.hash),
+    index('agent_grants_expiry').on(t.expiresAt),
+    foreignKey({ name: 'agent_grants_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'agent_grants_user', columns: [t.userId], foreignColumns: [users.id] }),
+    foreignKey({
+      name: 'agent_grants_review',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    check('agent_grants_scopes', sql`json_valid(${t.scopes}) AND json_type(${t.scopes}) = 'array'`),
+  ],
+)
+
+export const reviewAgentRuns = sqliteTable(
+  'review_agent_runs',
+  {
+    id: id('rar'),
+    siteId: siteId(),
+    reviewId: text('review_id').notNull(),
+    agent: text('agent').notNull(),
+    status: text('status').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('review_agent_runs_id_site').on(t.id, t.siteId),
+    unique('review_agent_runs_review_agent').on(t.reviewId, t.agent),
+    index('review_agent_runs_review').on(t.siteId, t.reviewId),
+    foreignKey({ name: 'review_agent_runs_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'review_agent_runs_review_fk',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    check('review_agent_runs_status', sql`${t.status} IN ('queued', 'commented', 'failed')`),
   ],
 )

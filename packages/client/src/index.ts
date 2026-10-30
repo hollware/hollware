@@ -51,6 +51,17 @@ export {
   type Translation,
 } from './hollware.ts'
 export {
+  hollwareAgentBindingClient,
+  hollwareAgentClient,
+  type AgentClientOptions,
+} from './agent.ts'
+export {
+  verifyAgentEvent,
+  type AgentDelivery,
+  type AgentGrant,
+  type HollwareAgentRpc,
+} from '@hollware/core'
+export {
   createOpsClient,
   type OperationInput,
   type OperationOutput,

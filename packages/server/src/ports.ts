@@ -223,6 +223,14 @@ export interface UnpublishWrite {
   readonly event: OutboxEvent | null
 }
 
+export type AgentRunStatus = 'queued' | 'commented' | 'failed'
+
+/** How far an agent got with a review. */
+export interface StoredAgentRun {
+  readonly agent: string
+  readonly status: AgentRunStatus
+}
+
 /** A comment on a review (v0.6). */
 export interface StoredReviewComment {
   readonly id: string
@@ -232,6 +240,8 @@ export interface StoredReviewComment {
   readonly lines: { readonly from: number; readonly to: number } | null
   readonly authorId: string
   readonly authorName: string | null
+  /** Whether a person wrote it, or an agent member of the site. */
+  readonly authorKind: 'person' | 'agent'
   /** What the client that wrote it said about itself, or `null`. */
   readonly authorMeta: Readonly<Record<string, unknown>> | null
   readonly body: string
@@ -550,6 +560,19 @@ export interface ContentStore {
     site: string,
     reviewIds: readonly string[],
   ): Promise<ReadonlyMap<string, readonly StoredReviewComment[]>>
+  /** How far each agent got with these reviews, by review. */
+  reviewAgentRuns(
+    site: string,
+    reviewIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly StoredAgentRun[]>>
+  /**
+   * Records how far an agent got with a review: `queued` never takes a `commented` back, and
+   * `failed` only replaces `queued`.
+   */
+  markAgentRun(
+    site: string,
+    run: { readonly reviewId: string; readonly agent: string; readonly status: AgentRunStatus },
+  ): Promise<void>
   /** Closes a pending review with a note, without publishing. */
   requestChanges(
     site: string,
@@ -745,6 +768,8 @@ export interface StructureStore {
   restore(site: string, actor: StructureActor): Promise<boolean>
   /** The role of a person in a site, or `null` for none. */
   roleOf(site: string, userId: string): Promise<'owner' | 'editor' | 'author' | null>
+  /** The ids of the agent members of a site. */
+  agentMembers(site: string): Promise<ReadonlySet<string>>
   /** How many entries a site holds, by collection and by locale. */
   counts(site: string): Promise<{
     readonly byCollection: ReadonlyMap<string, number>

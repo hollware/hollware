@@ -132,6 +132,7 @@ const OUTCOMES: Record<string, string[]> = {
     'published',
     'blocked',
     'needs_acknowledgement',
+    'agents_pending',
     'conflict',
     'not_pending',
     'not_found',
@@ -281,7 +282,12 @@ describe('tools/list', () => {
     async (era) => {
       const { endpoint } = endpointWith()
       const writer = makeCall({
-        principal: tokenPrincipal(['content:read', 'content:write']),
+        principal: tokenPrincipal([
+          'content:read',
+          'content:write',
+          'review:read',
+          'review:comment',
+        ]),
         requestId: 'req_writer',
       })
       const owner = makeCall({ principal: oauthPrincipal(ALL_SCOPES), requestId: 'req_owner' })

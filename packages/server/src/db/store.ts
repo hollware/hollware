@@ -61,5 +61,7 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     rejectReview: (site, write) => reviews.rejectReview(database, clock, site, write),
     commentReview: (site, write) => reviews.commentReview(database, clock, site, write),
     reviewComments: (site, reviewIds) => reviews.reviewCommentsOf(database, site, reviewIds),
+    reviewAgentRuns: (site, reviewIds) => reviews.agentRunsOf(database, site, reviewIds),
+    markAgentRun: (site, run) => reviews.markAgentRun(database, clock, site, run),
   }
 }

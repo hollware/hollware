@@ -142,6 +142,22 @@ function compileSite(path: string, site: SiteDefinitionData, problems: Problems)
     backups: site.backups,
     media: site.media,
     access: site.access,
+    agents: site.agents.map((agent) => ({
+      name: agent.name,
+      member: agent.member,
+      events: agent.events,
+      delivery:
+        agent.delivery.kind === 'binding'
+          ? { kind: 'binding' as const, binding: agent.delivery.binding }
+          : {
+              kind: 'webhook' as const,
+              url: agent.delivery.url,
+              ...(agent.delivery.secret === undefined ? {} : { secret: agent.delivery.secret }),
+            },
+      ...(agent.scopes === undefined ? {} : { scopes: agent.scopes }),
+      required: agent.required,
+    })),
+    review: site.review,
   }
 }
 

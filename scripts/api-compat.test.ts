@@ -71,6 +71,19 @@ describe('breakingChanges', () => {
     expect(breakingChanges(before, after)).toEqual([])
   })
 
+  it('takes a scope a token of the version before already implies as no break', () => {
+    const asked = (scopes: string[]) => ({
+      'mcp.json': {
+        tools: [{ name: 'list_reviews', scopes, input: object({}), output: object({}) }],
+      },
+    })
+
+    expect(breakingChanges(asked(['content:read']), asked(['review:read']))).toEqual([])
+    expect(breakingChanges(asked(['content:read']), asked(['review:comment']))).toEqual([
+      'mcp list_reviews: now asks for review:comment',
+    ])
+  })
+
   it('reports an input that gets stricter, and an answer that loses what it sent', () => {
     const before = tool(
       object({ slug: { type: 'string' }, view: { type: 'string', enum: ['head', 'published'] } }, [

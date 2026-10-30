@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "description": "The name of the agent, as the site declares it.",
+      "type": "string"
+    },
+    "event": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "at": {
+              "description": "When it happened, as an ISO 8601 timestamp.",
+              "type": "string"
+            },
+            "cacheTags": {
+              "description": "The cache tags of the pages it changed, to purge; none when no page changed.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "entry": {
+              "additionalProperties": false,
+              "description": "The entry: its id, collection, locale, slug and translation group.",
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["id", "collection", "locale", "slug", "translationGroup"],
+              "type": "object"
+            },
+            "id": {
+              "description": "The id of the event, the same on every retry: ignore one you already have.",
+              "type": "string"
+            },
+            "kind": {
+              "enum": ["entry.published", "entry.unpublished"],
+              "type": "string"
+            },
+            "path": {
+              "description": "The path of the entry on the site, from the route of its collection and locale.",
+              "type": ["string", "null"]
+            },
+            "site": {
+              "description": "The key of the site it happened in.",
+              "type": "string"
+            },
+            "url": {
+              "description": "The URL of the entry, when the site has a url.",
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["id", "site", "at", "cacheTags", "kind", "entry", "path", "url"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "at": {
+              "description": "When it happened, as an ISO 8601 timestamp.",
+              "type": "string"
+            },
+            "cacheTags": {
+              "description": "The cache tags of the pages it changed, to purge; none when no page changed.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "id": {
+              "description": "The id of the event, the same on every retry: ignore one you already have.",
+              "type": "string"
+            },
+            "kind": {
+              "const": "site.changed",
+              "type": "string"
+            },
+            "site": {
+              "description": "The key of the site it happened in.",
+              "type": "string"
+            }
+          },
+          "required": ["id", "site", "at", "cacheTags", "kind"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "adminPath": {
+              "description": "Where a person reads the review in the admin, under the URL of this Hollware.",
+              "type": "string"
+            },
+            "at": {
+              "description": "When it happened, as an ISO 8601 timestamp.",
+              "type": "string"
+            },
+            "cacheTags": {
+              "description": "The cache tags of the pages it changed, to purge; none when no page changed.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "entry": {
+              "additionalProperties": false,
+              "description": "The entry the review asks to publish.",
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["id", "collection", "locale", "slug", "translationGroup"],
+              "type": "object"
+            },
+            "id": {
+              "description": "The id of the event, the same on every retry: ignore one you already have.",
+              "type": "string"
+            },
+            "items": {
+              "description": "Every entry the review changes, the entry above first, and what it does to each.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "enum": ["publish", "unpublish"],
+                    "type": "string"
+                  },
+                  "entryId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["entryId", "action"],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "enum": ["review.requested", "review.decided"],
+              "type": "string"
+            },
+            "review": {
+              "additionalProperties": false,
+              "description": "The review: its id, its status (pending when asked, what became of it when decided), the name of who asked, and the note of a reviewer who asked for changes or rejected it.",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": ["string", "null"]
+                },
+                "requestedBy": {
+                  "type": ["string", "null"]
+                },
+                "status": {
+                  "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
+                  "type": "string"
+                }
+              },
+              "required": ["id", "status", "requestedBy", "note"],
+              "type": "object"
+            },
+            "site": {
+              "description": "The key of the site it happened in.",
+              "type": "string"
+            }
+          },
+          "required": ["id", "site", "at", "cacheTags", "kind", "review", "entry", "adminPath"],
+          "type": "object"
+        }
+      ]
+    },
+    "grant": {
+      "additionalProperties": false,
+      "properties": {
+        "expiresAt": {
+          "description": "When it stops working, as an ISO 8601 timestamp.",
+          "type": "string"
+        },
+        "mcp": {
+          "description": "The MCP endpoint of Hollware.",
+          "type": "string"
+        },
+        "ops": {
+          "description": "The operations endpoint of Hollware: POST <ops>/<name>.",
+          "type": "string"
+        },
+        "review": {
+          "description": "With review.requested, the review it is for: it reads and comments on that review only, and stops working once the review is decided.",
+          "type": ["string", "null"]
+        },
+        "scopes": {
+          "description": "What it may do: those of the subscription.",
+          "items": {
+            "enum": [
+              "content:read",
+              "content:write",
+              "content:publish",
+              "schema:admin",
+              "review:read",
+              "review:comment"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "token": {
+          "description": "The grant (hw_agt_…), a bearer token for /mcp and /v1/ops.",
+          "type": "string"
+        }
+      },
+      "required": ["token", "expiresAt", "scopes", "review", "mcp", "ops"],
+      "type": "object"
+    }
+  },
+  "required": ["agent", "event", "grant"],
+  "type": "object"
+}

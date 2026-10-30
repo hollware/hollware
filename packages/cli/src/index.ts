@@ -26,6 +26,7 @@ const COMMANDS = [
   { name: 'doctor', summary: 'Check the project, its bindings, its database and its owner' },
   { name: 'token', summary: 'Create, list and revoke personal tokens' },
   { name: 'invite', summary: 'Invite a person to the admin, as an editor or an author' },
+  { name: 'agent', summary: 'Add, list and remove the agent members of a site' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
   { name: 'export', summary: 'Export entries as Markdown files over MCP' },
   { name: 'backup', summary: 'List the daily backups of a site, and write one as files' },
@@ -48,11 +49,14 @@ const USAGE = [
   '  --version  Print the version',
   '',
   'Run "hollware <command> --help" for the options of a command.',
-  'init, dev, migrate, deploy, doctor, token and invite work on the project in the current directory,',
-  'through its wrangler.',
+  'init, dev, migrate, deploy, doctor, token, invite and agent work on the project in the current',
+  'directory, through its wrangler.',
 ].join('\n')
 
-const TOKEN_COMMANDS = ['create', 'list', 'revoke']
+const SUBCOMMANDS: Readonly<Record<string, readonly string[]>> = {
+  token: ['create', 'list', 'revoke'],
+  agent: ['add', 'list', 'remove'],
+}
 
 /**
  * Runs the CLI and returns its exit code. Each call to `io.out` or `io.err` is one message;
@@ -80,6 +84,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       'doctor',
       'token',
       'invite',
+      'agent',
       'import',
       'export',
       'backup',
@@ -89,8 +94,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
     io.err(`hollware: unknown command or flag "${printable(first)}"\n\n${USAGE}`)
     return 1
   }
-  const label =
-    first === 'token' && TOKEN_COMMANDS.includes(rest[0] ?? '') ? `token ${rest[0]}` : first
+  const label = SUBCOMMANDS[first]?.includes(rest[0] ?? '') === true ? `${first} ${rest[0]}` : first
   try {
     return await run(first, rest, io)
   } catch (error) {
@@ -120,6 +124,8 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/token.ts')).token(args, io)
     case 'invite':
       return (await import('./commands/invite.ts')).invite(args, io)
+    case 'agent':
+      return (await import('./commands/agent.ts')).agent(args, io)
     case 'export':
       return (await import('./commands/export.ts')).exportContent(args, io)
     case 'backup':

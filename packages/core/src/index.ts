@@ -1,6 +1,7 @@
 export const name = '@hollware/core'
 
 export {
+  AGENT_EVENT_KINDS,
   AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
   AUTOMATIC_KINDS,
@@ -26,6 +27,8 @@ export {
   SITE_KEY_MAX_LENGTH,
   withAutomaticFields,
   type AdminDefinition,
+  type AgentDefinition,
+  type AgentEventKind,
   type AuthDefinition,
   type AutomaticFacts,
   type AutomaticField,
@@ -38,6 +41,7 @@ export {
   type ProviderDefinition,
   type ResolveConfig,
   type ResolvedAccess,
+  type ResolvedAgent,
   type ResolvedAudit,
   type ResolvedAdmin,
   type ResolvedAuth,
@@ -47,6 +51,7 @@ export {
   type ResolvedConfig,
   type ResolvedNavigation,
   type ResolvedProvider,
+  type ResolvedReview,
   type ResolvedSite,
   type SchemaOutput,
   type SiteDefinition,
@@ -185,10 +190,21 @@ export {
   type OutcomeInfo,
   type OutcomeOf,
 } from './operations/index.ts'
-export { isScope, SCOPES, type Scope } from './scopes.ts'
 export {
+  AGENT_DEFAULT_SCOPES,
+  AGENT_SCOPE_CEILING,
+  isScope,
+  SCOPES,
+  withImplied,
+  type Scope,
+} from './scopes.ts'
+export {
+  AGENT_GRANT_PREFIX,
+  AGENT_GRANT_TTL_MINUTES,
+  generateAgentGrant,
   generatePersonalToken,
   generateReadToken,
+  isAgentGrant,
   hashPersonalToken,
   isPersonalToken,
   isReadToken,
@@ -258,3 +274,11 @@ export {
   type NavigationGroup,
   type NavigationSource,
 } from './navigation.ts'
+export {
+  agentDelivery,
+  agentGrant,
+  verifyAgentEvent,
+  type AgentDelivery,
+  type AgentGrant,
+  type HollwareAgentRpc,
+} from './agents.ts'

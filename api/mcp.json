@@ -38,6 +38,11 @@
             "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "override": {
+            "default": false,
+            "description": "Approve without the comments of the required agents, which agents_pending asked for. Only an owner (schema:admin) may, and the activity log keeps it.",
+            "type": "boolean"
           }
         },
         "required": ["id"],
@@ -48,6 +53,30 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "agents": {
+            "description": "With agents_pending: the required agents that have not commented yet.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "description": "The agent, as the site declares it.",
+                  "type": "string"
+                },
+                "required": {
+                  "description": "Whether approve_review waits for its comment, as the site asks.",
+                  "type": "boolean"
+                },
+                "status": {
+                  "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                  "enum": ["queued", "commented", "failed"],
+                  "type": "string"
+                }
+              },
+              "required": ["name", "status", "required"],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "conflict": {
             "additionalProperties": false,
             "properties": {
@@ -204,6 +233,7 @@
               "published",
               "blocked",
               "needs_acknowledgement",
+              "agents_pending",
               "conflict",
               "not_pending",
               "not_found"
@@ -450,6 +480,11 @@
                 "description": "The user who wrote it, or whose token their agent used.",
                 "type": "string"
               },
+              "authorKind": {
+                "description": "Whether a person wrote it, or an agent member of the site.",
+                "enum": ["person", "agent"],
+                "type": "string"
+              },
               "authorName": {
                 "type": ["string", "null"]
               },
@@ -502,7 +537,17 @@
                 "description": "The lines of the proposed Markdown of that entry it is about, or null."
               }
             },
-            "required": ["id", "author", "authorName", "client", "body", "at", "entryId", "lines"],
+            "required": [
+              "id",
+              "author",
+              "authorName",
+              "authorKind",
+              "client",
+              "body",
+              "at",
+              "entryId",
+              "lines"
+            ],
             "type": "object"
           },
           "outcome": {
@@ -513,7 +558,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["content:write"],
+      "scopes": ["review:comment"],
       "title": "Comment on a review"
     },
     {
@@ -1216,6 +1261,106 @@
                 },
                 "type": "object"
               },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -1590,6 +1735,21 @@
                     },
                     "maxItems": 4,
                     "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
                   }
                 },
                 "type": "object"
@@ -3344,6 +3504,30 @@
           "review": {
             "additionalProperties": false,
             "properties": {
+              "agents": {
+                "description": "The agents that review it, as the site declares them, and how far each got.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "description": "The agent, as the site declares it.",
+                      "type": "string"
+                    },
+                    "required": {
+                      "description": "Whether approve_review waits for its comment, as the site asks.",
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                      "enum": ["queued", "commented", "failed"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "status", "required"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "comments": {
                 "description": "What was said about it, oldest first.",
                 "items": {
@@ -3354,6 +3538,11 @@
                     },
                     "author": {
                       "description": "The user who wrote it, or whose token their agent used.",
+                      "type": "string"
+                    },
+                    "authorKind": {
+                      "description": "Whether a person wrote it, or an agent member of the site.",
+                      "enum": ["person", "agent"],
                       "type": "string"
                     },
                     "authorName": {
@@ -3412,6 +3601,7 @@
                     "id",
                     "author",
                     "authorName",
+                    "authorKind",
                     "client",
                     "body",
                     "at",
@@ -3475,7 +3665,8 @@
               "decidedBy",
               "decidedAt",
               "note",
-              "comments"
+              "comments",
+              "agents"
             ],
             "type": "object"
           }
@@ -3483,7 +3674,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["content:read"],
+      "scopes": ["review:read"],
       "title": "Read a review"
     },
     {
@@ -3695,6 +3886,106 @@
                 },
                 "required": ["autoProvision"],
                 "type": "object"
+              },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery", "required"],
+                  "type": "object"
+                },
+                "type": "array"
               },
               "audit": {
                 "additionalProperties": false,
@@ -4090,6 +4381,22 @@
                 "required": ["format", "quality", "maxWidth", "widths", "keepOriginals"],
                 "type": "object"
               },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
+                  }
+                },
+                "required": ["requireAgents"],
+                "type": "object"
+              },
               "styleGuide": {
                 "default": null,
                 "type": ["string", "null"]
@@ -4118,6 +4425,8 @@
               "backups",
               "media",
               "access",
+              "agents",
+              "review",
               "collections"
             ],
             "type": "object"
@@ -4827,6 +5136,30 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "agents": {
+                  "description": "The agents that review it, as the site declares them, and how far each got.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "description": "The agent, as the site declares it.",
+                        "type": "string"
+                      },
+                      "required": {
+                        "description": "Whether approve_review waits for its comment, as the site asks.",
+                        "type": "boolean"
+                      },
+                      "status": {
+                        "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                        "enum": ["queued", "commented", "failed"],
+                        "type": "string"
+                      }
+                    },
+                    "required": ["name", "status", "required"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
                 "comments": {
                   "description": "What was said about it, oldest first.",
                   "items": {
@@ -4837,6 +5170,11 @@
                       },
                       "author": {
                         "description": "The user who wrote it, or whose token their agent used.",
+                        "type": "string"
+                      },
+                      "authorKind": {
+                        "description": "Whether a person wrote it, or an agent member of the site.",
+                        "enum": ["person", "agent"],
                         "type": "string"
                       },
                       "authorName": {
@@ -4895,6 +5233,7 @@
                       "id",
                       "author",
                       "authorName",
+                      "authorKind",
                       "client",
                       "body",
                       "at",
@@ -5095,7 +5434,8 @@
                 "note",
                 "entry",
                 "items",
-                "comments"
+                "comments",
+                "agents"
               ],
               "type": "object"
             },
@@ -5105,7 +5445,7 @@
         "required": ["outcome", "reviews"],
         "type": "object"
       },
-      "scopes": ["content:read"],
+      "scopes": ["review:read"],
       "title": "List the reviews"
     },
     {
@@ -5246,7 +5586,7 @@
         "additionalProperties": false,
         "properties": {
           "webhook": {
-            "description": "The name of the webhook, as the definition of the site has it.",
+            "description": "The name of the webhook, or of the agent, as the definition of the site has it.",
             "minLength": 1,
             "type": "string"
           }
@@ -8475,6 +8815,106 @@
                 },
                 "type": "object"
               },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -8849,6 +9289,21 @@
                     },
                     "maxItems": 4,
                     "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
                   }
                 },
                 "type": "object"

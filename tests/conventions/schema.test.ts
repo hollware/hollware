@@ -72,6 +72,7 @@ describe('D1 schema', () => {
       .map(describeTable)
     expect(tables.map((table) => table.name).sort()).toEqual([
       '_hollware_meta',
+      'agent_grants',
       'anonymizations',
       'assets',
       'audit_log',
@@ -87,6 +88,7 @@ describe('D1 schema', () => {
       'passkeys',
       'publications',
       'redirects',
+      'review_agent_runs',
       'review_comments',
       'review_items',
       'reviews',

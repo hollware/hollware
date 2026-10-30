@@ -3,7 +3,7 @@ import type { TableColumn } from '@nuxt/ui'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
-import { invitationBody } from '../lib/people.ts'
+import { byKind, invitationBody } from '../lib/people.ts'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
@@ -12,7 +12,14 @@ import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
 
-type Member = { id: string; name: string | null; email: string | null; role: string; since: string }
+type Member = {
+  id: string
+  name: string | null
+  email: string | null
+  role: string
+  since: string
+  kind?: 'person' | 'agent'
+}
 type Invitation = { id: string; role: string; email: string | null; expiresAt: string }
 type Former = { id: string; name: string | null }
 interface People {
@@ -35,6 +42,10 @@ const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
   { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
   { id: 'actions', header: '' },
 ])
+const agentColumns = computed<TableColumn<Member>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
+  { accessorKey: 'since', header: sortable(m.value.people.columns.since) },
+])
 const formerColumns = computed<TableColumn<Former>[]>(() => [
   { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
   { id: 'actions', header: '' },
@@ -44,6 +55,7 @@ const roleItems = (roles: readonly string[]) =>
 
 const toast = useToast()
 const data = ref<People | null>(null)
+const members = computed(() => byKind(data.value?.people ?? []))
 const failure = ref<string | null>(null)
 const role = ref<'editor' | 'author'>('author')
 const email = ref('')
@@ -227,7 +239,7 @@ async function copy() {
         <section :aria-label="m.people.members" class="space-y-2">
           <h2 class="font-medium">{{ m.people.members }}</h2>
           <DataTable
-            :data="data.people"
+            :data="members.people"
             :columns="memberColumns"
             :filter-label="m.people.filter"
             :empty="m.people.empty"
@@ -282,6 +294,28 @@ async function copy() {
                 />
               </div>
             </template>
+          </DataTable>
+        </section>
+        <section v-if="members.agents.length > 0" :aria-label="m.people.agents" class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="font-medium">{{ m.people.agents }}</h2>
+            <UButton
+              :label="m.people.manageAgents"
+              icon="i-lucide-bot"
+              variant="outline"
+              size="sm"
+              to="/settings/site/agents"
+            />
+          </div>
+          <p class="text-sm text-muted">{{ m.people.agentsHelp }}</p>
+          <DataTable :data="members.agents" :columns="agentColumns" :filter-label="m.people.filter">
+            <template #name-cell="{ row }">
+              <span class="flex items-center gap-2">
+                <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
+                <UBadge :label="m.people.agent" variant="subtle" size="sm" icon="i-lucide-bot" />
+              </span>
+            </template>
+            <template #since-cell="{ row }">{{ formatDateTime(row.original.since) }}</template>
           </DataTable>
         </section>
         <section

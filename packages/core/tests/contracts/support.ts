@@ -111,6 +111,8 @@ export function siteOf(
     audit: { ipAddresses: 'off', retentionDays: null },
     backups: { enabled: true, retentionDays: 30 },
     access: { autoProvision: null },
+    agents: [],
+    review: { requireAgents: false },
     media: {
       format: 'webp',
       quality: 85,

@@ -42,13 +42,13 @@ function setup(
 }
 
 const BLOG_DEFINITION =
-  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"access":{"autoProvision":null},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
+  '{"locales":["en"],"defaultLocale":"en","url":null,"styleGuide":null,"cors":{"origins":[]},"events":{"webhooks":[],"indexNow":null},"audit":{"ipAddresses":"off","retentionDays":null},"backups":{"enabled":true,"retentionDays":30},"media":{"format":"webp","quality":85,"maxWidth":2400,"widths":[640,1280],"keepOriginals":true},"access":{"autoProvision":null},"agents":[],"review":{"requireAgents":false},"collections":{"blog":{"routes":{"en":"/blog/:slug/"},"translationGroupField":null,"tagsField":"tags","sortByField":"date","automaticFields":{"date":"firstPublished"},"components":{},"rules":[{"rule":"images-have-alt","severity":"error","params":{}},{"rule":"internal-links-resolve","severity":"warning","params":{}}],"maxMarkdownBytes":null,"styleGuide":null,"navigation":null,"schema":{"type":"object","properties":{"title":{"type":"string","minLength":1},"description":{"type":"string","minLength":1,"maxLength":160},"date":{"type":"string","format":"date"},"tags":{"type":"array","items":{"type":"string","minLength":1}}},"required":["title","description"]}}}}'
 
 const SCRIPT = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('blog', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO users (id, name, role, created_at, updated_at) VALUES ('${OWNER_ID}', 'Sergio', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00R30C1G60R30C1G6', 'blog', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
-  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('${TOKEN_ID}', 'blog', '${OWNER_ID}', 'hollware init', '${HASH}', '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00W3GE1R70W3GE1R7', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'blog' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES ('inv_01M4QZQSG00M2GA1850M2GA185', 'blog', '44a460337a32fc1946b319cfb5b958772000faaa3658fe6b12c1faf2b5aaee0f', 'owner', '${OWNER_ID}', '2026-10-19T12:00:00.000Z', NULL, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   '',
@@ -57,7 +57,7 @@ const SCRIPT = [
 const ANOTHER_SITE = [
   `INSERT INTO sites (id, definition, version, created_at, updated_at) VALUES ('docs', '${BLOG_DEFINITION}', 1, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z') ON CONFLICT (id) DO UPDATE SET definition = excluded.definition, version = 1, updated_at = excluded.updated_at WHERE sites.definition IS NULL;`,
   `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES ('mbr_01M4QZQSG00C1G60R30C1G60R3', 'docs', '${OWNER_ID}', 'owner', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
-  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
+  `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at) VALUES ('tok_01M4QZQSG0040G2081040G2081', 'docs', '${OWNER_ID}', 'hollware init', '4dae158c0f9ca15ca4364c007877155d279d027930f58291cc65e9f95b98b429', '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]', '2027-01-10T12:00:00.000Z', '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z');`,
   `INSERT OR IGNORE INTO site_changes (id, site_id, version, actor_user_id, actor_meta, before, after, created_at, updated_at) SELECT 'sit_01M4QZQSG00G2081040G208104', id, 1, '${OWNER_ID}', NULL, NULL, definition, '2026-10-12T12:00:00.000Z', '2026-10-12T12:00:00.000Z' FROM sites WHERE id = 'docs' AND version = 1 AND updated_at = '2026-10-12T12:00:00.000Z';`,
   '',
 ].join('\n')
@@ -91,7 +91,7 @@ describe('hollware init', () => {
         'Site     blog',
         `Owner    ${OWNER_ID}`,
         `Token    ${TOKEN_ID}`,
-        'Scopes   content:read content:write content:publish schema:admin',
+        'Scopes   content:read content:write content:publish schema:admin review:read review:comment',
         'Expires  2027-01-10T12:00:00.000Z (in 90 days)',
         '',
         'Your personal token. It is shown only once: Hollware keeps just its hash.',

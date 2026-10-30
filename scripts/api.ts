@@ -238,6 +238,7 @@ export async function surfaceOf(root: string): Promise<Record<string, Surface>> 
     'http.json': readApi.openApiDocument(),
     'rpc.json': rpcSurface(root),
     'events.json': z.toJSONSchema(core.hollwareEvent, { io: 'output' }),
+    'agents.json': z.toJSONSchema(core.agentDelivery, { io: 'output' }),
     'cli.json': cliSurface(root),
     'exports.json': exportsSurface(root),
     'migrations.json': migrationsSurface(root),

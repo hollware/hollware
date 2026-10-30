@@ -1,4 +1,6 @@
 import { AUTOMATIC_KINDS } from '../config/automatic.ts'
+import { AGENT_EVENT_KINDS } from '../config/agents.ts'
+import { SCOPES } from '../scopes.ts'
 import * as z from 'zod'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '../config/audit.ts'
 import {
@@ -83,6 +85,48 @@ export const webhookDefinition = z.strictObject({
     .describe(
       'The Worker secret that signs the deliveries. Leave it out for Hollware to make one with make_webhook_secret and keep it sealed.',
     ),
+})
+
+export const agentDefinition = z.strictObject({
+  name: z.string().min(1).describe('Its name, lowercase words joined by hyphens.'),
+  member: z
+    .string()
+    .min(1)
+    .describe('The id of the agent member of the site (usr_…) it acts as, made in the admin.'),
+  events: z.array(z.enum(AGENT_EVENT_KINDS)).min(1).describe('The events it hears.'),
+  delivery: z
+    .discriminatedUnion('kind', [
+      z.strictObject({
+        kind: z.literal('webhook'),
+        url: z.string().min(1).describe('The https URL that receives each event, signed.'),
+        secret: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            'The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.',
+          ),
+      }),
+      z.strictObject({
+        kind: z.literal('binding'),
+        binding: z
+          .string()
+          .min(1)
+          .describe('The service binding of the Worker that runs the agent, such as AGENTS.'),
+      }),
+    ])
+    .describe('Where each event goes, with a grant of an hour for the agent to act.'),
+  scopes: z
+    .array(z.enum(SCOPES))
+    .min(1)
+    .optional()
+    .describe(
+      'What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.',
+    ),
+  required: z
+    .boolean()
+    .default(false)
+    .describe('Whether an approval waits for its comment, when review.requireAgents is on.'),
 })
 
 export const siteDefinitionData = z.strictObject({
@@ -206,11 +250,27 @@ export const siteDefinitionData = z.strictObject({
     })
     .default({ autoProvision: null })
     .describe('Who may come in without an invitation. Only an owner should change it.'),
+  agents: z
+    .array(agentDefinition)
+    .default([])
+    .describe('The agents that hear the events of the site. Only an owner should change it.'),
+  review: z
+    .strictObject({
+      requireAgents: z
+        .boolean()
+        .default(false)
+        .describe(
+          'Whether approve_review waits for a comment of every agent marked required; an owner may override it.',
+        ),
+    })
+    .default({ requireAgents: false })
+    .describe('How reviews are decided. Only an owner should change it.'),
   collections: z.record(z.string(), collectionDefinitionData),
 })
 
 export type RuleDefinition = z.output<typeof ruleDefinition>
 export type CollectionDefinitionData = z.output<typeof collectionDefinitionData>
 export type SiteDefinitionData = z.output<typeof siteDefinitionData>
+export type AgentDefinitionData = z.output<typeof agentDefinition>
 /** A definition as a person or an agent writes it, with the defaults left out. */
 export type SiteDefinitionInput = z.input<typeof siteDefinitionData>

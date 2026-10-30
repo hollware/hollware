@@ -221,6 +221,9 @@ export const reviewComment = z.object({
   id: z.string(),
   author: z.string().describe('The user who wrote it, or whose token their agent used.'),
   authorName: z.string().nullable(),
+  authorKind: z
+    .enum(['person', 'agent'])
+    .describe('Whether a person wrote it, or an agent member of the site.'),
   client: z
     .string()
     .nullable()
@@ -234,6 +237,16 @@ export const reviewComment = z.object({
     .object({ from: z.number().int().min(1), to: z.number().int().min(1) })
     .nullable()
     .describe('The lines of the proposed Markdown of that entry it is about, or null.'),
+})
+
+export const reviewAgent = z.object({
+  name: z.string().describe('The agent, as the site declares it.'),
+  status: z
+    .enum(['queued', 'commented', 'failed'])
+    .describe(
+      'queued until it comments on the review, commented once it did, failed when its delivery was given up.',
+    ),
+  required: z.boolean().describe('Whether approve_review waits for its comment, as the site asks.'),
 })
 
 export const reviewAction = z

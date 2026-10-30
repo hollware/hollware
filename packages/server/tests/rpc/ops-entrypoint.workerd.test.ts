@@ -64,7 +64,7 @@ describe('the HollwareOps class', () => {
       userId: seeded.userId,
       tokenId: seeded.tokenId,
       site: SITE_KEY,
-      scopes: ['content:read', 'content:write'],
+      scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
     })
     expect([context.view, context.client]).toEqual(['head', { name: 'binding' }])
   })

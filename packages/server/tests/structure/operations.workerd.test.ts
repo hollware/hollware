@@ -1,5 +1,6 @@
 import {
   collectionDefinitionData,
+  newId,
   siteDefinitionData,
   type SiteDefinitionInput,
 } from '@hollware/core'
@@ -497,5 +498,87 @@ describe('make_webhook_secret', () => {
     expect(await unseal(MASTER, sealed ?? '', { site: key, name: 'webhook:site' })).toBe(
       'whsec_made',
     )
+  })
+})
+
+describe('update_site and the agents of a site', () => {
+  async function agentMember(site: string): Promise<string> {
+    const id = newId('usr')
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO users (id, name, role, kind, created_at, updated_at)
+          VALUES (?1, 'reviewer', 'reviewer', 'agent', ?2, ?2)`,
+      ).bind(id, NOW.toISOString()),
+      env.DB.prepare(
+        `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at)
+          VALUES (?1, ?2, ?3, 'author', ?4, ?4)`,
+      ).bind(newId('mbr'), site, id, NOW.toISOString()),
+    ])
+    return id
+  }
+
+  const withAgent = (member: string) =>
+    siteDefinitionData.parse({
+      ...BLOG,
+      agents: [
+        {
+          name: 'reviewer',
+          member,
+          events: ['review.requested'],
+          delivery: { kind: 'webhook', url: 'https://agents.example.com/in?key=s3cr3t' },
+        },
+      ],
+      review: { requireAgents: true },
+    })
+
+  it('names an agent only as an agent member of the site, never as a person', async () => {
+    const { key, context, seeded } = await setUp()
+    const agent = await agentMember(key)
+
+    const person = await handlers.update_site(
+      { version: 1, definition: withAgent(seeded.userId), confirm: false },
+      context,
+    )
+    const updated = await handlers.update_site(
+      { version: 1, definition: withAgent(agent), confirm: false },
+      context,
+    )
+
+    expect(person).toEqual({
+      outcome: 'invalid',
+      problems: [
+        {
+          path: `sites.${key}.agents[0].member`,
+          message: `is "${seeded.userId}", which is no agent member of the site`,
+          fix: 'Make an agent member in the admin (Agents) or with `hollware agent add <name>`, and name its id.',
+        },
+      ],
+    })
+    expect(updated).toEqual({ outcome: 'updated', version: 2 })
+  })
+
+  it('makes a secret for an agent delivered by webhook, and shows its URL whole to an owner only', async () => {
+    const { key, context, contextOf, seeded } = await setUp()
+    const agent = await agentMember(key)
+    await handlers.update_site(
+      { version: 1, definition: withAgent(agent), confirm: false },
+      context,
+    )
+
+    const made = await handlers.make_webhook_secret({ webhook: 'reviewer' }, context)
+    const sealed = await createSecretStore(env.DB, () => NOW).read(key, 'agent:reviewer')
+    const author = await handlers.get_structure(
+      {},
+      {
+        ...contextOf(seeded.userId),
+        principal: { ...context.principal, scopes: ['content:read'] },
+      },
+    )
+
+    expect(made).toEqual({ outcome: 'made', secret: 'whsec_made' })
+    expect(sealed).not.toBeNull()
+    expect(author.definition.agents.map((one) => one.delivery)).toEqual([
+      { kind: 'webhook', url: 'https://agents.example.com' },
+    ])
   })
 })

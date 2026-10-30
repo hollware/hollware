@@ -10,7 +10,14 @@ const temp = tempDirs()
 
 const WITH_URL = wranglerWithPublicUrl('https://cms.example.com')
 const SECRET = `hw_pat_${'3'.repeat(52)}`
-const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
+const SCOPES = [
+  'content:read',
+  'content:write',
+  'content:publish',
+  'schema:admin',
+  'review:read',
+  'review:comment',
+]
 
 function initProject(files: Record<string, string> = { 'wrangler.jsonc': WITH_URL }) {
   const cwd = temp.make(files)

@@ -7,9 +7,16 @@ describe('ROLE_SCOPES', () => {
   it('gives the owner every scope, an editor the content, and an author all but publishing', () => {
     expect(ROLES).toEqual(['owner', 'editor', 'author'])
     expect(ROLE_SCOPES).toEqual({
-      owner: ['content:read', 'content:write', 'content:publish', 'schema:admin'],
-      editor: ['content:read', 'content:write', 'content:publish'],
-      author: ['content:read', 'content:write'],
+      owner: [
+        'content:read',
+        'content:write',
+        'content:publish',
+        'schema:admin',
+        'review:read',
+        'review:comment',
+      ],
+      editor: ['content:read', 'content:write', 'content:publish', 'review:read', 'review:comment'],
+      author: ['content:read', 'content:write', 'review:read', 'review:comment'],
     })
   })
 
@@ -30,16 +37,26 @@ describe('isRole', () => {
 
 describe('effectiveScopes', () => {
   it('keeps what the token carries and the role allows, in the order of the role', () => {
-    expect(effectiveScopes('owner', ['content:write', 'content:read'])).toEqual([
-      'content:read',
-      'content:write',
+    expect(effectiveScopes('owner', ['review:comment', 'schema:admin'])).toEqual([
+      'schema:admin',
+      'review:comment',
     ])
     expect(effectiveScopes('owner', ['schema:admin'])).toEqual(['schema:admin'])
     expect(effectiveScopes('owner', [])).toEqual([])
   })
 
+  it('gives a token of 1.0 the review scopes its content scopes imply', () => {
+    expect(effectiveScopes('author', ['content:write', 'content:read'])).toEqual([
+      'content:read',
+      'content:write',
+      'review:read',
+      'review:comment',
+    ])
+    expect(effectiveScopes('owner', ['content:read'])).toEqual(['content:read', 'review:read'])
+  })
+
   it('lists a scope once, whatever the token says', () => {
-    expect(effectiveScopes('owner', ['content:read', 'content:read'])).toEqual(['content:read'])
+    expect(effectiveScopes('owner', ['review:read', 'review:read'])).toEqual(['review:read'])
   })
 
   it('takes away what the role does not allow', () => {
@@ -47,8 +64,15 @@ describe('effectiveScopes', () => {
       'content:read',
       'content:write',
       'content:publish',
+      'review:read',
+      'review:comment',
     ])
-    expect(effectiveScopes('author', [...SCOPES])).toEqual(['content:read', 'content:write'])
+    expect(effectiveScopes('author', [...SCOPES])).toEqual([
+      'content:read',
+      'content:write',
+      'review:read',
+      'review:comment',
+    ])
   })
 
   it('grants nothing to a role it does not know', () => {

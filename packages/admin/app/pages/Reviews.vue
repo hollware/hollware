@@ -14,6 +14,8 @@ import { nextIndex } from '../lib/entry-list.ts'
 import { anchorOf, commentsOn, exclusionOf, indexAfterReload } from '../lib/reviews.ts'
 import { api } from '../lib/session.ts'
 import { personName } from '../lib/people.ts'
+import { agentStatusColor, clientBadge, isAgentComment, isOwnerOf } from '../lib/agents.ts'
+import { me } from '../lib/me.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
 
@@ -25,6 +27,8 @@ type Item = Detail['items'][number]
 type Site = Output<'describe_site'>['site']
 type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
+type Said = Review['comments'][number]
+type ReviewAgent = Review['agents'][number]
 
 const toast = useToast()
 const m = useMessages()
@@ -46,6 +50,15 @@ const comment = ref('')
 const busy = ref(false)
 const warnings = ref<Warning[]>([])
 const acknowledgeOpen = ref(false)
+const pendingAgents = ref<ReviewAgent[]>([])
+const overriding = ref(false)
+const owner = computed(() => isOwnerOf(me.value))
+const pendingAgentsOpen = computed({
+  get: () => pendingAgents.value.length > 0,
+  set: (value: boolean) => {
+    if (!value) pendingAgents.value = []
+  },
+})
 
 const focused = ref(-1)
 const listEl = ref<HTMLElement | null>(null)
@@ -196,6 +209,7 @@ async function askChangesMany() {
 
 async function choose(review: Review, index = reviews.value.indexOf(review)) {
   chosen.value = review
+  overriding.value = false
   focused.value = index
   note.value = ''
   comment.value = ''
@@ -220,6 +234,20 @@ async function choose(review: Review, index = reviews.value.indexOf(review)) {
 
 const items = computed(() => detail.value?.items ?? [])
 const comments = computed(() => detail.value?.review.comments ?? chosen.value?.comments ?? [])
+const reviewAgents = computed(() => detail.value?.review.agents ?? chosen.value?.agents ?? [])
+
+function agentLabel(agent: ReviewAgent): string {
+  return [
+    agent.name,
+    m.value.reviews.agentStatus[agent.status],
+    ...(agent.required ? [m.value.reviews.agentRequired] : []),
+  ].join(' · ')
+}
+
+function authorOf(said: Said): string {
+  const name = personName(said.author, said.authorName, m.value.people.formerPerson)
+  return isAgentComment(said) ? m.value.reviews.agentAuthor(name) : name
+}
 
 function exclude(entryId: string, on: boolean | 'indeterminate') {
   const next = new Set(excluded.value)
@@ -269,14 +297,17 @@ function report(error: unknown, title: string) {
   toast.add({ title, description, color: 'error' })
 }
 
-async function approve(acknowledged: readonly Warning[] = []) {
+async function approve(acknowledged: readonly Warning[] = [], override = overriding.value) {
   if (chosen.value === null) return
   busy.value = true
   acknowledgeOpen.value = false
+  pendingAgents.value = []
+  overriding.value = override
   try {
     const answer = await api.call('approve_review', {
       id: chosen.value.id,
       acknowledgeWarnings: acknowledged.map(({ contract, path }) => ({ contract, path })),
+      override,
       exclude: exclusionOf(
         excluded.value,
         items.value.map((item) => item.entry.id),
@@ -290,6 +321,9 @@ async function approve(acknowledged: readonly Warning[] = []) {
       case 'needs_acknowledgement':
         warnings.value = answer.verdict?.warnings ?? []
         acknowledgeOpen.value = true
+        break
+      case 'agents_pending':
+        pendingAgents.value = answer.agents ?? []
         break
       case 'blocked':
         verdict.value = answer.verdict ?? verdict.value
@@ -308,7 +342,9 @@ async function approve(acknowledged: readonly Warning[] = []) {
         await list()
         break
     }
+    if (answer.outcome !== 'needs_acknowledgement') overriding.value = false
   } catch (error) {
+    overriding.value = false
     report(error, m.value.reviews.notApproved)
   } finally {
     busy.value = false
@@ -392,7 +428,12 @@ async function move(step: 1 | -1) {
 }
 
 const dialogOpen = computed(
-  () => noteOpen.value || acknowledgeOpen.value || askingMany.value || warnedManyOpen.value,
+  () =>
+    noteOpen.value ||
+    acknowledgeOpen.value ||
+    askingMany.value ||
+    warnedManyOpen.value ||
+    pendingAgentsOpen.value,
 )
 
 defineShortcuts(
@@ -588,6 +629,22 @@ defineShortcuts(
               )
             }}
           </p>
+          <section
+            v-if="reviewAgents.length > 0"
+            :aria-label="m.reviews.agents"
+            class="flex flex-wrap items-center gap-2 text-sm"
+          >
+            <span class="text-xs font-medium text-toned">{{ m.reviews.agents }}</span>
+            <UBadge
+              v-for="agent in reviewAgents"
+              :key="agent.name"
+              :color="agentStatusColor(agent.status)"
+              variant="subtle"
+              size="sm"
+              icon="i-lucide-bot"
+              :label="agentLabel(agent)"
+            />
+          </section>
           <UTabs v-model="view" :items="views" variant="link">
             <template #changes>
               <div class="space-y-8 pt-4">
@@ -633,9 +690,7 @@ defineShortcuts(
                       class="rounded-lg border border-default bg-elevated/30 p-3 text-sm"
                     >
                       <p class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                        <span class="font-medium text-toned">{{
-                          personName(said.author, said.authorName, m.people.formerPerson)
-                        }}</span>
+                        <span class="font-medium text-toned">{{ authorOf(said) }}</span>
                         <span v-if="said.lines !== null">
                           · {{ m.reviews.lines(said.lines.from, said.lines.to) }}
                         </span>
@@ -705,12 +760,10 @@ defineShortcuts(
                 class="rounded-lg border border-default bg-elevated/30 p-3 text-sm"
               >
                 <p class="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                  <span class="font-medium text-toned">{{
-                    personName(item.author, item.authorName, m.people.formerPerson)
-                  }}</span>
+                  <span class="font-medium text-toned">{{ authorOf(item) }}</span>
                   <UBadge
-                    v-if="item.client !== null && item.client !== 'hollware-admin'"
-                    :label="item.client"
+                    v-if="clientBadge(item) !== null"
+                    :label="clientBadge(item) ?? ''"
                     variant="subtle"
                     size="sm"
                   />
@@ -806,6 +859,38 @@ defineShortcuts(
             color="warning"
             :disabled="manyNote.trim() === ''"
             @click="askChangesMany"
+          />
+        </template>
+      </UModal>
+
+      <UModal v-model:open="pendingAgentsOpen" :title="m.reviews.agentsPendingTitle">
+        <template #body>
+          <div class="space-y-3 text-sm">
+            <p>{{ m.reviews.agentsPendingBody }}</p>
+            <ul class="space-y-1">
+              <li v-for="agent in pendingAgents" :key="agent.name" class="flex items-center gap-2">
+                <span class="font-mono">{{ agent.name }}</span>
+                <UBadge
+                  :color="agentStatusColor(agent.status)"
+                  :label="m.reviews.agentStatus[agent.status]"
+                  variant="subtle"
+                  size="sm"
+                />
+              </li>
+            </ul>
+            <p class="text-muted">
+              {{ owner ? m.reviews.agentsPendingOwner : m.reviews.agentsPendingWait }}
+            </p>
+          </div>
+        </template>
+        <template #footer>
+          <UButton :label="m.common.cancel" variant="ghost" @click="pendingAgents = []" />
+          <UButton
+            v-if="owner"
+            :label="m.reviews.approveAnyway"
+            color="warning"
+            :loading="busy"
+            @click="approve([], true)"
           />
         </template>
       </UModal>

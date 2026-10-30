@@ -4,6 +4,7 @@ import { readAudit } from './audit.ts'
 import { readBackups } from './backups.ts'
 import { readMedia } from './media.ts'
 import { readAccess } from './access.ts'
+import { readAgents, readReview } from './agents.ts'
 import { readAuth } from './auth.ts'
 import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
@@ -165,6 +166,8 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
   const backups = readBackups(keyPath(path, 'backups'), raw['backups'], problems)
   const media = readMedia(keyPath(path, 'media'), raw['media'], problems)
   const access = readAccess(keyPath(path, 'access'), raw['access'], problems)
+  const agents = readAgents(keyPath(path, 'agents'), raw['agents'], problems)
+  const review = readReview(keyPath(path, 'review'), raw['review'], problems)
   return {
     key,
     locales,
@@ -178,6 +181,8 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
     backups,
     media,
     access,
+    agents,
+    review,
   }
 }
 

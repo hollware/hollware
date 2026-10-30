@@ -85,6 +85,7 @@ export function operationLine(
     detail: {
       ...(typeof answer === 'string' ? { answer } : {}),
       ...(Object.keys(named).length === 0 ? {} : { input: named }),
+      ...(given['override'] === true ? { override: true } : {}),
     },
   }
 }

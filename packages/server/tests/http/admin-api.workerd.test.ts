@@ -35,7 +35,7 @@ describe("the admin's own routes", () => {
     expect(me.status).toBe(200)
     expect(await me.json()).toMatchObject({
       site: SITE_KEY,
-      scopes: ['content:read', 'content:write'],
+      scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
       sites: [{ site: SITE_KEY, role: 'author' }],
     })
     expect(tokens.status).toBe(403)

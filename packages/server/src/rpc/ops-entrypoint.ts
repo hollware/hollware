@@ -1,5 +1,6 @@
 import {
   HollwareError,
+  isAgentGrant,
   isPersonalToken,
   OPERATIONS,
   type OperationByName,
@@ -54,7 +55,7 @@ export function createOpsEntrypoint(deps: OpsDeps): HollwareWorker['HollwareOps'
     requestId: string,
     token: unknown,
   ): Promise<TokenPrincipal | null> => {
-    if (typeof token !== 'string' || !isPersonalToken(token)) {
+    if (typeof token !== 'string' || !(isPersonalToken(token) || isAgentGrant(token))) {
       deps.log({ kind: 'auth_refused', requestId, reason: token === null ? 'no_token' : 'unknown' })
       return null
     }

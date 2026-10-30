@@ -1,5 +1,7 @@
 export const name = '@hollware/agents'
 
+export type { AgentGrant, HollwareAgentRpc, HollwareEvent } from '@hollware/core'
+
 export {
   audit,
   auditStep,
@@ -8,10 +10,16 @@ export {
   type Finding,
   type ReportOptions,
 } from './auditor.ts'
-export { allowOnly, mcpHollware, type AllowedTool, type Hollware } from './hollware.ts'
+export {
+  allowOnly,
+  grantHollware,
+  mcpHollware,
+  type AllowedTool,
+  type Hollware,
+} from './hollware.ts'
 export { mapMemory, type Memory } from './memory.ts'
 export { type Message, type Model } from './model.ts'
-export { reviewPending } from './reviewer.ts'
+export { reviewById, reviewPending } from './reviewer.ts'
 export { translateMissing } from './translator.ts'
 export {
   createHollwareAgents,

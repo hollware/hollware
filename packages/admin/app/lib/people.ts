@@ -11,3 +11,12 @@ export function invitationBody(
   const address = email.trim()
   return address === '' ? { role } : { role, email: address }
 }
+
+export function byKind<Member extends { readonly kind?: 'person' | 'agent' }>(
+  members: readonly Member[],
+): { people: Member[]; agents: Member[] } {
+  return {
+    people: members.filter((member) => member.kind !== 'agent'),
+    agents: members.filter((member) => member.kind === 'agent'),
+  }
+}

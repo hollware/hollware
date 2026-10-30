@@ -1,6 +1,7 @@
 import type { AutomaticField, AutomaticKind } from './automatic.ts'
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec'
 import type { Contract } from '../contracts/types.ts'
+import type { Scope } from '../scopes.ts'
 
 /**
  * A schema Hollware can validate with and show to agents: a Standard Schema that also converts to
@@ -107,6 +108,13 @@ export interface SiteDefinition {
     /** Tells IndexNow the URLs that changed; `key` is the key itself, which is public. */
     readonly indexNow?: { readonly key: string }
   }
+  /**
+   * The agents that hear the site's events, each as an agent member of the site, through a webhook
+   * or a service binding, with a grant of `scopes` that lasts an hour. None by default.
+   */
+  readonly agents?: readonly AgentDefinition[]
+  /** Whether an approval waits for the agents marked `required`: it does not by default. */
+  readonly review?: { readonly requireAgents?: boolean }
   /** Who may come in through a sign-in provider without an invitation: nobody by default. */
   readonly access?: {
     /**
@@ -270,6 +278,46 @@ export interface ResolvedSite {
   readonly backups: ResolvedBackups
   readonly media: ResolvedMedia
   readonly access: ResolvedAccess
+  readonly agents: readonly ResolvedAgent[]
+  readonly review: ResolvedReview
+}
+
+/** An event an agent may hear. */
+export type AgentEventKind =
+  | 'review.requested'
+  | 'review.decided'
+  | 'entry.published'
+  | 'entry.unpublished'
+  | 'site.changed'
+
+/** An agent as a site declares it. */
+export interface AgentDefinition {
+  readonly name: string
+  /** The id of an agent member of the site (`usr_…`), whose grants it gets. */
+  readonly member: string
+  readonly events: readonly AgentEventKind[]
+  readonly delivery:
+    | { readonly kind: 'webhook'; readonly url: string; readonly secret?: string }
+    | { readonly kind: 'binding'; readonly binding: string }
+  /** What its grants may do, within an author's scopes; read and comment by default. */
+  readonly scopes?: readonly Scope[]
+  /** Whether an approval waits for its comment when `review.requireAgents` is on. */
+  readonly required?: boolean
+}
+
+export interface ResolvedAgent {
+  readonly name: string
+  readonly member: string
+  readonly events: readonly AgentEventKind[]
+  readonly delivery:
+    | { readonly kind: 'webhook'; readonly url: string; readonly secret: string | null }
+    | { readonly kind: 'binding'; readonly binding: string }
+  readonly scopes: readonly Scope[]
+  readonly required: boolean
+}
+
+export interface ResolvedReview {
+  readonly requireAgents: boolean
 }
 
 /** Who comes in through a sign-in provider without an invitation, with lowercase addresses. */

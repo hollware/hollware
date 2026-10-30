@@ -122,6 +122,8 @@ export function sitePreset(
       keepOriginals: true,
     },
     access: { autoProvision: null },
+    agents: [],
+    review: { requireAgents: false },
     collections,
   }
 }

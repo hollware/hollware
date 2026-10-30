@@ -108,6 +108,21 @@ export function definitionsFromConfig(config: HollwareConfig): Record<string, Si
                     },
             },
           }),
+      ...(site.agents === undefined
+        ? {}
+        : {
+            agents: site.agents.map((agent) => ({
+              name: agent.name,
+              member: agent.member,
+              events: [...agent.events],
+              delivery: { ...agent.delivery },
+              ...(agent.scopes === undefined ? {} : { scopes: [...agent.scopes] }),
+              ...(agent.required === undefined ? {} : { required: agent.required }),
+            })),
+          }),
+      ...(site.review?.requireAgents === undefined
+        ? {}
+        : { review: { requireAgents: site.review.requireAgents } }),
       collections: Object.fromEntries(
         Object.entries(site.collections).map(([name, collection]) => [
           name,

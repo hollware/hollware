@@ -57,6 +57,7 @@ import {
 import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
 import type { GatewayEnv } from './types.ts'
+import * as agentsApi from './agents-api.ts'
 import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
 const INVITATION_DAYS = 7
@@ -446,6 +447,7 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           name: users.name,
           email: users.email,
           role: members.role,
+          kind: users.kind,
           since: members.createdAt,
         })
         .from(members)
@@ -654,6 +656,42 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       }
       return json({ outcome: 'purged' })
     }),
+  )
+
+  app.get(
+    '/v1/admin/agents',
+    admin(null, async (c, person) => agentsApi.listAgents(c.env.DB, person.site)),
+  )
+
+  app.post(
+    '/v1/admin/agents',
+    admin('agent.create', async (c, person, note) =>
+      agentsApi.createAgent(
+        c.env.DB,
+        {
+          site: person.site,
+          name: (await body(c))['name'],
+          now: options.clock.now().toISOString(),
+        },
+        note,
+      ),
+    ),
+  )
+
+  app.delete(
+    '/v1/admin/agents/:id',
+    admin('agent.remove', async (c, person, note) =>
+      agentsApi.removeAgent(
+        c.env.DB,
+        { site: person.site, id: c.req.param('id') ?? '', now: options.clock.now().toISOString() },
+        note,
+      ),
+    ),
+  )
+
+  app.get(
+    '/v1/admin/agents/deliveries',
+    admin(null, async (c, person) => agentsApi.agentDeliveries(c.env.DB, person.site)),
   )
 
   app.get(

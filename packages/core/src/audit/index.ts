@@ -51,6 +51,8 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'entry.purge',
   'schedule.publish',
   'schedule.unpublish',
+  'agent.create',
+  'agent.remove',
 ] as const
 
 export const AUDIT_ACTIONS = [...OPERATION_AUDIT_ACTIONS, ...IDENTITY_AUDIT_ACTIONS] as const

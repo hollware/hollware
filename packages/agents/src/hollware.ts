@@ -4,6 +4,7 @@ export const ALLOWED_TOOLS = [
   'create_draft',
   'describe_site',
   'get_entry',
+  'get_review',
   'get_translations',
   'list_entries',
   'list_reviews',
@@ -103,4 +104,14 @@ function withoutTrailingSlashes(text: string): string {
   let end = text.length
   while (end > 0 && text[end - 1] === '/') end--
   return text.slice(0, end)
+}
+
+/** Hollware as the grant of a delivery sees it: its token, at the MCP endpoint it names. */
+export function grantHollware(
+  grant: { readonly token: string; readonly mcp: string },
+  fetch: (request: Request) => Promise<Response>,
+): Hollware {
+  const endpoint = withoutTrailingSlashes(grant.mcp)
+  const url = endpoint.endsWith('/mcp') ? endpoint.slice(0, -'/mcp'.length) : endpoint
+  return mcpHollware({ url, token: grant.token, fetch })
 }

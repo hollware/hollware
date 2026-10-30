@@ -11,6 +11,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
 
   expect(results.map((row) => row.name)).toEqual([
     '_hollware_meta',
+    'agent_grants',
     'anonymizations',
     'assets',
     'audit_log',
@@ -32,6 +33,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'passkeys',
     'publications',
     'redirects',
+    'review_agent_runs',
     'review_comments',
     'review_items',
     'reviews',

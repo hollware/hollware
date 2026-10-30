@@ -2,6 +2,8 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
 /** The kinds of ids and their prefixes. A new kind adds its prefix here. */
 export const ID_PREFIXES = {
+  agentGrant: 'agt',
+  agentRun: 'rar',
   analytics: 'ana',
   anonymization: 'anm',
   asset: 'ast',

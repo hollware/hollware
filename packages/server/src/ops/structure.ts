@@ -98,6 +98,31 @@ function conflict(sent: number, current: number) {
   }
 }
 
+async function memberProblems(
+  structure: Structure,
+  site: string,
+  next: SiteDefinitionData,
+  current: SiteDefinitionData | null,
+): Promise<Problems> {
+  const changed = next.agents
+    .map((agent, index) => ({ agent, index }))
+    .filter(
+      ({ agent }) =>
+        !current?.agents.some(
+          (before) => before.name === agent.name && before.member === agent.member,
+        ),
+    )
+  if (changed.length === 0) return []
+  const agents = await structure.store.agentMembers(site)
+  return changed
+    .filter(({ agent }) => !agents.has(agent.member))
+    .map(({ agent, index }) => ({
+      path: `sites.${site}.agents[${index}].member`,
+      message: `is "${agent.member}", which is no agent member of the site`,
+      fix: 'Make an agent member in the admin (Agents) or with `hollware agent add <name>`, and name its id.',
+    }))
+}
+
 async function change(
   context: OperationContext,
   version: number,
@@ -109,6 +134,8 @@ async function change(
   if (problems.length > 0) return { outcome: 'invalid' as const, problems }
   const current = await currentOf(context)
   if (current.version !== version) return conflict(version, current.version)
+  const members = await memberProblems(structure, context.site.key, next, current.definition)
+  if (members.length > 0) return { outcome: 'invalid' as const, problems: members }
   if (canonicalJson(current.definition) === canonicalJson(next)) {
     return { outcome: 'unchanged' as const, version }
   }
@@ -165,6 +192,11 @@ export const getStructure: OperationHandler<'get_structure'> = async (_input, co
             url: originOnly(webhook.url),
           })),
         },
+        agents: current.definition.agents.map((agent) =>
+          agent.delivery.kind === 'webhook'
+            ? { ...agent, delivery: { ...agent.delivery, url: originOnly(agent.delivery.url) } }
+            : agent,
+        ),
       }
   return {
     outcome: 'ok',
@@ -190,6 +222,8 @@ export const createSite: OperationHandler<'create_site'> = async (input, context
   const structure = structureOf(context)
   const problems = problemsOf(input.key, input.definition)
   if (problems.length > 0) return { outcome: 'invalid', problems }
+  const members = await memberProblems(structure, input.key, input.definition, null)
+  if (members.length > 0) return { outcome: 'invalid', problems: members }
   const made = await structure.store.create({
     site: input.key,
     definition: input.definition,
@@ -238,8 +272,17 @@ export const makeWebhookSecret: OperationHandler<'make_webhook_secret'> = async 
   const structure = structureOf(context)
   const { definition } = await currentOf(context)
   const webhook = definition.events.webhooks.find((candidate) => candidate.name === input.webhook)
-  if (webhook === undefined || webhook.secret !== undefined) return { outcome: 'not_found' }
-  const secret =
-    (await structure.secrets?.make(context.site.key, `webhook:${webhook.name}`)) ?? null
+  const agent = definition.agents.find((candidate) => candidate.name === input.webhook)
+  const name =
+    webhook !== undefined && webhook.secret === undefined
+      ? `webhook:${webhook.name}`
+      : webhook === undefined &&
+          agent !== undefined &&
+          agent.delivery.kind === 'webhook' &&
+          agent.delivery.secret === undefined
+        ? `agent:${agent.name}`
+        : null
+  if (name === null) return { outcome: 'not_found' }
+  const secret = (await structure.secrets?.make(context.site.key, name)) ?? null
   return secret === null ? { outcome: 'unavailable' } : { outcome: 'made', secret }
 }

@@ -166,6 +166,8 @@ const SCOPE_WORDS: Readonly<Record<string, string>> = {
   'content:write': 'Write drafts',
   'content:publish': 'Publish and unpublish',
   'schema:admin': 'Change the site settings',
+  'review:read': 'Read the reviews',
+  'review:comment': 'Comment on reviews',
 }
 
 export interface ConsentView {

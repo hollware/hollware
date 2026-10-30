@@ -14,6 +14,11 @@ export type Principal =
       readonly site: string
       /** The token's own scopes intersected with those of its user's role, as of now. */
       readonly scopes: readonly Scope[]
+      /**
+       * Set for an agent's grant (`hw_agt_`): the agent as the site declares it, and the review
+       * the grant is for, which is the only one it reads or comments on.
+       */
+      readonly agent?: { readonly name: string; readonly review: string | null }
     }
   | {
       /** An access token of the OAuth server: a person, through a client they allowed. */

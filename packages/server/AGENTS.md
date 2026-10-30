@@ -79,6 +79,8 @@ serve them. Boundary rules for this package:
   asks for a review (`src/db/reviews.ts`). Its entries are `review_items`, active while it is
   pending, one active per entry. A new revision of one cancels the review whole, in its batch.
   `approve_review` publishes one entry through `publish`, several in one batch.
+- Agents: `src/events/agents.ts` delivers a site's `agents` their events with a grant (`hw_agt_`,
+  `src/auth/grant.ts`), which `checkPersonalToken` checks.
 - Drafts store and answer what `formatMarkdown` gives; `unchanged` compares that canonical form
   (`tests/ops/drafts.workerd.test.ts`).
 - The trash of entries: `delete_entry` sets `entries.deleted_at` on a draft, and every read of the

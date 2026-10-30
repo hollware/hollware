@@ -18,6 +18,7 @@ current directory through its wrangler. POSIX shells only: it has not been tried
 | `doctor`     | Check the project, its bindings, its database and its owner, with what to fix    |
 | `token`      | Create, list and revoke personal tokens, and read tokens with `--read`           |
 | `invite`     | Invite a person to the admin, as an editor or an author                          |
+| `agent`      | Add, list and remove the agent members of a site, and revoke their grants        |
 | `import`     | Import Markdown over MCP, as drafts; from a Nuxt Content site with `--from`      |
 | `export`     | Export entries and their images over MCP, the layout `import` reads              |
 

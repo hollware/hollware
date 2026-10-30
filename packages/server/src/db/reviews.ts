@@ -3,9 +3,11 @@ import { and, asc, desc, eq, getTableColumns, inArray, sql, type SQL } from 'dri
 import type { BatchItem } from 'drizzle-orm/batch'
 import type {
   Actor,
+  AgentRunStatus,
   Clock,
   ReviewAction,
   ReviewStatus,
+  StoredAgentRun,
   StoredReview,
   StoredReviewComment,
   StoredReviewItem,
@@ -18,6 +20,7 @@ import { parseAcknowledged } from './schedules.ts'
 import {
   entries,
   outbox,
+  reviewAgentRuns,
   reviewComments,
   reviewItems,
   reviews,
@@ -416,16 +419,24 @@ function metaOf(text: string | null): Readonly<Record<string, unknown>> | null {
     : null
 }
 
-const COMMENT_COLUMNS = { ...getTableColumns(reviewComments), authorName: users.name }
+const COMMENT_COLUMNS = {
+  ...getTableColumns(reviewComments),
+  authorName: users.name,
+  authorKind: users.kind,
+}
 
 function toComment(
-  row: typeof reviewComments.$inferSelect & { authorName: string | null },
+  row: typeof reviewComments.$inferSelect & {
+    authorName: string | null
+    authorKind: 'person' | 'agent'
+  },
 ): StoredReviewComment {
   return {
     id: row.id,
     reviewId: row.reviewId,
     authorId: row.authorId,
     authorName: row.authorName,
+    authorKind: row.authorKind === 'agent' ? 'agent' : 'person',
     authorMeta: metaOf(row.authorMeta),
     body: row.body,
     entryId: row.entryId,
@@ -498,4 +509,65 @@ export async function reviewCommentsOf(
     byReview.set(row.reviewId, list)
   }
   return byReview
+}
+
+const RUN_STATUSES: readonly AgentRunStatus[] = ['queued', 'commented', 'failed']
+
+export async function agentRunsOf(
+  db: Db,
+  site: string,
+  reviewIds: readonly string[],
+): Promise<ReadonlyMap<string, readonly StoredAgentRun[]>> {
+  const byReview = new Map<string, StoredAgentRun[]>()
+  if (reviewIds.length === 0) return byReview
+  for (const ids of chunk([...reviewIds], 80)) {
+    const rows = await db
+      .select({
+        reviewId: reviewAgentRuns.reviewId,
+        agent: reviewAgentRuns.agent,
+        status: reviewAgentRuns.status,
+      })
+      .from(reviewAgentRuns)
+      .where(and(eq(reviewAgentRuns.siteId, site), inArray(reviewAgentRuns.reviewId, ids)))
+      .orderBy(asc(reviewAgentRuns.agent))
+    for (const row of rows) {
+      const status = RUN_STATUSES.find((known) => known === row.status)
+      if (status === undefined) continue
+      const list = byReview.get(row.reviewId) ?? []
+      list.push({ agent: row.agent, status })
+      byReview.set(row.reviewId, list)
+    }
+  }
+  return byReview
+}
+
+export async function markAgentRun(
+  db: Db,
+  clock: Clock,
+  site: string,
+  run: { readonly reviewId: string; readonly agent: string; readonly status: AgentRunStatus },
+): Promise<void> {
+  const now = clock.now().toISOString()
+  const replaces =
+    run.status === 'commented'
+      ? sql`1`
+      : run.status === 'failed'
+        ? sql`${reviewAgentRuns.status} = 'queued'`
+        : sql`${reviewAgentRuns.status} = 'failed'`
+  await db
+    .insert(reviewAgentRuns)
+    .values({
+      id: newId('rar'),
+      siteId: site,
+      reviewId: run.reviewId,
+      agent: run.agent,
+      status: run.status,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [reviewAgentRuns.reviewId, reviewAgentRuns.agent],
+      set: { status: run.status, updatedAt: now },
+      setWhere: and(eq(reviewAgentRuns.siteId, site), replaces),
+    })
 }

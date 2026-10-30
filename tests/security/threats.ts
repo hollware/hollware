@@ -1598,4 +1598,85 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-128',
+    area: 'Agents',
+    threat:
+      "An agent's grant is replayed after its hour, or after the review it was minted for is decided, to keep reading or commenting",
+    mitigation:
+      'A grant (`hw_agt_`) lasts an hour, names its review, and is checked on the primary at every request: expired, revoked, or its review no longer pending is refused; a review-bound grant reads and comments on that review only',
+    guards: [
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'refuses the grant an hour later, and once its review is decided',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'gets the event signed, with a grant that comments on that review and on no other',
+      },
+    ],
+  },
+  {
+    id: 'T-129',
+    area: 'Agents',
+    threat:
+      "A site definition gives an agent more than an author's scopes, or names a person as an agent, to publish or approve through its grants",
+    mitigation:
+      "A subscription's scopes must be within an author's (`AGENT_SCOPE_CEILING`), update_site names only agent members, and a grant's scopes are intersected with the member's role at every request",
+    guards: [
+      { file: 'packages/core/tests/config/agents-problems.test.ts', test: 'reports $name' },
+      {
+        file: 'packages/server/tests/structure/operations.workerd.test.ts',
+        test: 'names an agent only as an agent member of the site, never as a person',
+      },
+      {
+        file: 'packages/server/tests/agents/scopes.workerd.test.ts',
+        test: 'keeps no more than an author has, whatever scopes a grant row holds',
+      },
+      {
+        file: 'packages/server/tests/agents/scopes.workerd.test.ts',
+        test: 'lets an agent grant of the default scopes read and comment, and never write, publish or approve',
+      },
+    ],
+  },
+  {
+    id: 'T-130',
+    area: 'Agents',
+    threat:
+      "A forged or replayed request reaches an agent's webhook as a delivery of Hollware, or a failed delivery leaves a live grant behind",
+    mitigation:
+      'Deliveries are signed as webhooks are (`verifyAgentEvent`: signature, body and a 5-minute window); a delivery that fails revokes its grant, and each retry mints another; a binding delivery goes only to a service binding the site names',
+    guards: [
+      {
+        file: 'packages/core/tests/agents.test.ts',
+        test: 'refuses a request signed with another secret, a body changed after signing, and one too old',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'is called with the event and a live grant; a failure revokes it and the retry mints another',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'takes no delivery of a member that is no agent, and mints no grant for it',
+      },
+    ],
+  },
+  {
+    id: 'T-131',
+    area: 'Reviews',
+    threat:
+      'A review is approved before the agents the site requires have read it, and nobody can tell',
+    mitigation:
+      'With `review.requireAgents`, approve_review answers `agents_pending` until each required agent commented; only an owner overrides it, and the activity log keeps `override`',
+    guards: [
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'answers agents_pending until the required agent comments, unless an owner overrides',
+      },
+      {
+        file: 'packages/server/tests/audit/operations.test.ts',
+        test: 'keeps that an owner approved a review without the agents it waited for',
+      },
+    ],
+  },
 ]

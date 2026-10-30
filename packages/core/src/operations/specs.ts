@@ -12,6 +12,7 @@ import {
   markdown,
   review,
   reviewAction,
+  reviewAgent,
   reviewId,
   revisionId,
   revisionSummary,
@@ -572,6 +573,9 @@ export const getReview = defineOperation({
     review: review
       .extend({
         comments: z.array(reviewComment).describe('What was said about it, oldest first.'),
+        agents: z
+          .array(reviewAgent)
+          .describe('The agents that review it, as the site declares them, and how far each got.'),
       })
       .optional(),
     items: z
@@ -593,7 +597,7 @@ export const getReview = defineOperation({
       )
       .optional(),
   }),
-  scopes: ['content:read'],
+  scopes: ['review:read'],
   effect: 'read',
   outcomes: { ok: { isError: false }, not_found: { isError: true } },
 })
@@ -619,10 +623,13 @@ export const listReviews = defineOperation({
           .min(0)
           .describe('How many entries the review changes: get_review shows each one.'),
         comments: z.array(reviewComment).describe('What was said about it, oldest first.'),
+        agents: z
+          .array(reviewAgent)
+          .describe('The agents that review it, as the site declares them, and how far each got.'),
       }),
     ),
   }),
-  scopes: ['content:read'],
+  scopes: ['review:read'],
   effect: 'read',
   outcomes: { ok: { isError: false } },
 })
@@ -645,16 +652,27 @@ export const approveReview = defineOperation({
       .describe(
         'Entries of the review to leave as they are: the rest is published or unpublished, and the review is closed for all of them.',
       ),
+    override: z
+      .boolean()
+      .default(false)
+      .describe(
+        'Approve without the comments of the required agents, which agents_pending asked for. Only an owner (schema:admin) may, and the activity log keeps it.',
+      ),
   }),
   output: z.object({
     outcome: z.enum([
       'published',
       'blocked',
       'needs_acknowledgement',
+      'agents_pending',
       'conflict',
       'not_pending',
       'not_found',
     ]),
+    agents: z
+      .array(reviewAgent)
+      .optional()
+      .describe('With agents_pending: the required agents that have not commented yet.'),
     review: review.optional(),
     entry: entrySummary.optional(),
     verdict: verdict.optional(),
@@ -671,6 +689,7 @@ export const approveReview = defineOperation({
     published: { isError: false },
     blocked: { isError: true },
     needs_acknowledgement: { isError: false },
+    agents_pending: { isError: true },
     conflict: { isError: true },
     not_pending: { isError: true },
     not_found: { isError: true },
@@ -759,7 +778,7 @@ export const commentReview = defineOperation({
     outcome: z.enum(['commented', 'not_pending', 'not_found']),
     comment: reviewComment.optional(),
   }),
-  scopes: ['content:write'],
+  scopes: ['review:comment'],
   effect: 'write',
   outcomes: {
     commented: { isError: false },
@@ -1165,12 +1184,12 @@ export const makeWebhookSecret = defineOperation({
   name: 'make_webhook_secret',
   title: 'Make the secret of a webhook',
   description:
-    "Makes a new secret for a webhook of the site that names no Worker secret of its own, keeps it sealed, and answers it once: give it to the receiver, which checks each delivery's signature with it. A new one replaces the old at once. unavailable when the deployment has no HOLLWARE_SECRET to seal it with.",
+    "Makes a new secret for a webhook of the site, or for an agent of the site delivered by webhook, that names no Worker secret of its own, keeps it sealed, and answers it once: give it to the receiver, which checks each delivery's signature with it. A new one replaces the old at once. unavailable when the deployment has no HOLLWARE_SECRET to seal it with.",
   input: z.strictObject({
     webhook: z
       .string()
       .min(1)
-      .describe('The name of the webhook, as the definition of the site has it.'),
+      .describe('The name of the webhook, or of the agent, as the definition of the site has it.'),
   }),
   output: z.object({
     outcome: z.enum(['made', 'not_found', 'unavailable']),

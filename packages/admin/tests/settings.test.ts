@@ -15,6 +15,7 @@ describe('the navigation of the settings', () => {
           'collections',
           'images',
           'webhooks',
+          'agents',
           'analytics',
           'backups',
           'redirects',
@@ -26,7 +27,7 @@ describe('the navigation of the settings', () => {
     ])
   })
 
-  it('shows the activity log, the danger zone and the sign-in policy to an owner only', () => {
+  it('shows the agents, the activity log, the danger zone and the sign-in policy to an owner only', () => {
     expect(keys(false)).toEqual([
       [
         'site',
@@ -44,6 +45,7 @@ describe('the navigation of the settings', () => {
       ['/settings/collections', false],
       ['/settings/site/images', false],
       ['/settings/site/webhooks', false],
+      ['/settings/site/agents', false],
       ['/settings/site/analytics', false],
       ['/settings/site/backups', false],
       ['/settings/site/redirects', false],

@@ -38,6 +38,8 @@ export const SITE: ResolvedSite = {
   audit: { ipAddresses: 'off', retentionDays: null },
   backups: { enabled: true, retentionDays: 30 },
   access: { autoProvision: null },
+  agents: [],
+  review: { requireAgents: false },
   media: { format: 'webp', quality: 85, maxWidth: 2400, widths: [640, 1280], keepOriginals: true },
 }
 
@@ -82,6 +84,8 @@ export const STORE: ContentStore = {
   rejectReview: unused,
   commentReview: unused,
   reviewComments: unused,
+  reviewAgentRuns: unused,
+  markAgentRun: unused,
   reviewItems: unused,
   revisionMarkdown: unused,
   approveReview: unused,
@@ -94,6 +98,8 @@ export const ALL_SCOPES: readonly Scope[] = [
   'content:write',
   'content:publish',
   'schema:admin',
+  'review:read',
+  'review:comment',
 ]
 
 export function tokenPrincipal(scopes: readonly Scope[] = ALL_SCOPES): Principal {
@@ -296,6 +302,11 @@ export const CANNED: Canned = {
       entry: { ...SUMMARY, status: 'published', version: 2 },
     },
     blocked: { outcome: 'blocked', review: REVIEW, entry: SUMMARY, verdict: VERDICT_FAILED },
+    agents_pending: {
+      outcome: 'agents_pending',
+      review: REVIEW,
+      agents: [{ name: 'reviewer', status: 'queued', required: true }],
+    },
     needs_acknowledgement: {
       outcome: 'needs_acknowledgement',
       review: REVIEW,
@@ -339,6 +350,7 @@ export const CANNED: Canned = {
         id: 'rvc_01JAB3XQ8ZK4M6N2P5R7S9T0VZ',
         author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
         authorName: 'Ada',
+        authorKind: 'person',
         client: null,
         body: 'Add an example.',
         at: '2026-10-13T11:00:00.000Z',
@@ -393,7 +405,7 @@ export const CANNED: Canned = {
   get_review: {
     ok: {
       outcome: 'ok',
-      review: { ...REVIEW, comments: [] },
+      review: { ...REVIEW, comments: [], agents: [] },
       items: [
         {
           entry: SUMMARY,
@@ -437,6 +449,7 @@ export const CANNED: Canned = {
               id: 'rvc_01JAB3XQ8ZK4M6N2P5R7S9T0VZ',
               author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
               authorName: 'Ada',
+              authorKind: 'person',
               client: 'hollware-agents',
               body: 'The second section needs an example.',
               at: '2026-10-13T11:00:00.000Z',
@@ -445,6 +458,7 @@ export const CANNED: Canned = {
             },
           ],
           items: 1,
+          agents: [{ name: 'reviewer', status: 'commented', required: true }],
         },
       ],
     },

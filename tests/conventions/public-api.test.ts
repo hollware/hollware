@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
-import { exportsOf, staleParts } from '../../scripts/api.ts'
+import { exportsOf, staleParts, surfaceOf } from '../../scripts/api.ts'
 
 const ROOT = resolve(import.meta.dirname, '../..')
 
@@ -10,6 +10,19 @@ describe('public API', () => {
   it('api/ is the public API of the code', { timeout: 60_000 }, async () => {
     expect(await staleParts(ROOT)).toEqual([])
   })
+
+  it(
+    'api/agents.json is what an agent receives: its name, the event and the grant',
+    { timeout: 60_000 },
+    async () => {
+      const agents = (await surfaceOf(ROOT))['agents.json']
+
+      expect([agents?.['required'], Object.keys(Object(agents?.['properties']))]).toEqual([
+        ['agent', 'event', 'grant'],
+        ['agent', 'event', 'grant'],
+      ])
+    },
+  )
 
   describe('self-test: the exports of a module', () => {
     it('reads values, types, re-exports and export *, a const and its type as a value', () => {

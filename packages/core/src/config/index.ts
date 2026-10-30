@@ -1,6 +1,10 @@
 export { defineCollection, defineComponent, defineConfig, defineContract } from './define.ts'
 export type {
   AdminDefinition,
+  AgentDefinition,
+  AgentEventKind,
+  ResolvedAgent,
+  ResolvedReview,
   AuthDefinition,
   ProviderDefinition,
   ResolvedAccess,
@@ -24,6 +28,7 @@ export type {
 } from './types.ts'
 export { ConfigError, type ConfigProblem } from './config-error.ts'
 export { INDEXNOW_KEY } from './events.ts'
+export { AGENT_EVENT_KINDS } from './agents.ts'
 export { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS, DEFAULT_AUDIT } from './audit.ts'
 export { BACKUP_RETENTION_MAX_DAYS, BACKUP_RETENTION_MIN_DAYS, DEFAULT_BACKUPS } from './backups.ts'
 export {
