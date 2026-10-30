@@ -20,6 +20,7 @@ import {
   disconnectAnalytics,
   getAnalytics,
   uploadAsset,
+  withImplied,
 } from '@hollware/core'
 import {
   createMcpHandler,
@@ -169,12 +170,9 @@ export function startStub(options: StubOptions): Promise<StubServer> {
   const calls: RecordedCall[] = []
   let connection: { outcome: string; [field: string]: unknown } | null = null
   const authorizations: (string | null)[] = []
-  const granted = options.scopes ?? [
-    'content:read',
-    'content:write',
-    'content:publish',
-    'schema:admin',
-  ]
+  const granted = withImplied(
+    options.scopes ?? ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+  )
   let nextId = 0
   const site = options.site ?? { key: 'blog', locales: ['en', 'es'], collections: ['blog'] }
 
@@ -797,6 +795,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       id: `cmt_${index + 1}`,
       author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
       authorName: null,
+      authorKind: 'person' as const,
       client: 'hollware-cli',
       body: comment.body,
       at: STUB_TIME,
@@ -814,7 +813,11 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           if (review === undefined) return reply(getReview.outcomes, { outcome: 'not_found' })
           return reply(getReview.outcomes, {
             outcome: 'ok',
-            review: { ...reviewView(review), comments: review.comments.map(commentView) },
+            review: {
+              ...reviewView(review),
+              comments: review.comments.map(commentView),
+              agents: [],
+            },
             items: review.items.flatMap((item) => {
               const entry = byId(item.entryId)
               return entry === undefined
