@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
@@ -9,6 +9,7 @@ const ROOT = resolve(import.meta.dirname, '../..')
 describe('public API', () => {
   it('api/ is the public API of the code', { timeout: 60_000 }, async () => {
     expect(await staleParts(ROOT)).toEqual([])
+    expect(readdirSync(join(ROOT, 'api')).sort()).toEqual(Object.keys(await surfaceOf(ROOT)).sort())
   })
 
   it(

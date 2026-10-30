@@ -121,11 +121,13 @@ describe('breakingChanges', () => {
     ])
   })
 
-  it('reports what goes: a tool, a path, an RPC method, a flag, an export, an event kind, a migration', () => {
+  it('reports what goes: a tool, a path, an RPC or ops method, a flag, an export, an event kind, an agent field, a migration', () => {
     const before = {
       'mcp.json': { tools: [{ name: 'publish', scopes: [], input: {}, output: {} }] },
       'http.json': { paths: { '/v1/site': { get: { responses: {} } } } },
       'rpc.json': { describeSite: 'describeSite(site: string)', search: 'search(q: string)' },
+      'ops.json': { fetch: 'fetch(request: Request)', ops: 'ops(name: string)' },
+      'agents.json': object({ agent: { type: 'string' }, grant: { type: 'string' } }),
       'cli.json': {
         commands: ['init', 'export'],
         flags: { init: [{ site: { type: 'string' }, local: { type: 'boolean' } }] },
@@ -143,6 +145,8 @@ describe('breakingChanges', () => {
       'mcp.json': { tools: [] },
       'http.json': { paths: {} },
       'rpc.json': { describeSite: 'describeSite(site: string, options?: object)' },
+      'ops.json': { ops: 'ops(name: string, token: string)' },
+      'agents.json': object({ agent: { type: 'string' } }),
       'cli.json': { commands: ['init'], flags: { init: [{ site: { type: 'string' } }] } },
       'exports.json': { '@hollware/core': { '.': { verifyWebhook: 'type' } } },
       'events.json': { oneOf: [object({ kind: { type: 'string', const: 'entry.published' } })] },
@@ -153,8 +157,11 @@ describe('breakingChanges', () => {
       'mcp publish: the tool is gone',
       'http GET /v1/site: is gone',
       'event: kind=site.changed is no longer sent',
+      'agent.grant: is no longer sent',
       'rpc describeSite: its signature changed, from describeSite(site: string) to describeSite(site: string, options?: object)',
       'rpc search: is gone',
+      'ops fetch: is gone',
+      'ops ops: its signature changed, from ops(name: string) to ops(name: string, token: string)',
       'cli export: the command is gone',
       'cli init --local: the flag is gone',
       'exports @hollware/core . verifyWebhook: is a type now, no longer a value',

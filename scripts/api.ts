@@ -121,12 +121,12 @@ function exportsSurface(root: string): Surface {
   return out
 }
 
-function rpcSurface(root: string): Surface {
+function rpcSurface(root: string, entrypoint: string): Surface {
   const file = join(root, 'packages/server/src/index.ts')
   const text = readFileSync(file, 'utf8')
   const methods: Record<string, string> = {}
   walk(programOf(file, text), (node) => {
-    if (node.type !== 'TSInterfaceDeclaration' || nameOf(node['id']) !== 'HollwareRpc') return
+    if (node.type !== 'TSInterfaceDeclaration' || nameOf(node['id']) !== entrypoint) return
     walk(node['body'], (member) => {
       if (member.type !== 'TSMethodSignature') return
       const name = nameOf(member['key'])
@@ -236,7 +236,8 @@ export async function surfaceOf(root: string): Promise<Record<string, Surface>> 
   const parts: Record<string, Surface> = {
     'mcp.json': { tools },
     'http.json': readApi.openApiDocument(),
-    'rpc.json': rpcSurface(root),
+    'rpc.json': rpcSurface(root, 'HollwareRpc'),
+    'ops.json': rpcSurface(root, 'HollwareOpsRpc'),
     'events.json': z.toJSONSchema(core.hollwareEvent, { io: 'output' }),
     'agents.json': z.toJSONSchema(core.agentDelivery, { io: 'output' }),
     'cli.json': cliSurface(root),
