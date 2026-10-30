@@ -231,16 +231,17 @@ export function breakingChanges(
   compareMcp(part('mcp.json', before), part('mcp.json', after), breaks)
   compareHttp(part('http.json', before), part('http.json', after), breaks)
   compareSchemas('event', part('events.json', before), part('events.json', after), 'output', breaks)
-  compareNamed(
-    'rpc',
-    part('rpc.json', before),
-    part('rpc.json', after),
-    breaks,
-    (name, was, now) =>
+  compareSchemas('agent', part('agents.json', before), part('agents.json', after), 'output', breaks)
+  for (const [what, file] of [
+    ['rpc', 'rpc.json'],
+    ['ops', 'ops.json'],
+  ] as const) {
+    compareNamed(what, part(file, before), part(file, after), breaks, (name, was, now) =>
       was === now || onlyAddsOptional(String(was), String(now))
         ? null
-        : `rpc ${name}: its signature changed, from ${String(was)} to ${String(now)}`,
-  )
+        : `${what} ${name}: its signature changed, from ${String(was)} to ${String(now)}`,
+    )
+  }
   const cliBefore = part('cli.json', before)
   const cliAfter = part('cli.json', after)
   for (const command of stringsAt(cliBefore, 'commands')) {

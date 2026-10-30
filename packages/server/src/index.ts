@@ -166,15 +166,16 @@ export interface HollwareRpc {
  */
 export interface HollwareOpsRpc {
   /**
-   * Runs one operation as the personal token (`hw_pat_…`) of `options`, on its site. A read token,
-   * or a token that is unknown, expired or revoked, is an `unauthorized` error.
+   * Runs one operation as the personal token (`hw_pat_…`) or the agent grant (`hw_agt_…`) of
+   * `options`, on its site. A read token, or a token that is unknown, expired or revoked, is an
+   * `unauthorized` error.
    */
   ops<Name extends OperationName>(
     name: Name,
     input: z.input<OperationByName<Name>['input']>,
     options: { readonly token: string },
   ): Promise<z.output<OperationByName<Name>['output']>>
-  /** MCP, as the personal token of `Authorization: Bearer`, with no check of Host or Origin. */
+  /** MCP, as the token of `Authorization: Bearer`, with no check of Host or Origin. */
   fetch(request: Request): Promise<Response>
 }
 

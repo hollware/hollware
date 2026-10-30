@@ -1,0 +1,4 @@
+{
+  "fetch": "fetch(request: Request): Promise<Response>",
+  "ops": "ops<Name extends OperationName>( name: Name, input: z.input<OperationByName<Name>['input']>, options: { readonly token: string }): Promise<z.output<OperationByName<Name>['output']>>"
+}
