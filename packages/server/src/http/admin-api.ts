@@ -496,6 +496,12 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           'Make another person an owner first, then change this one.',
           409,
         )
+      case 'agent':
+        return refused(
+          'An agent member is an author, and its role does not change.',
+          'What an agent may do comes from the agents of its site in the config: change it there.',
+          409,
+        )
     }
   }
 

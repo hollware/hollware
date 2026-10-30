@@ -443,6 +443,29 @@ describe("the admin's own routes", () => {
     ])
   })
 
+  it('keep an agent member an author, whatever role an owner gives it', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const made = await call(worker, owner, '/v1/admin/agents', {
+      name: `reviewer-${crypto.randomUUID().slice(0, 8)}`,
+    })
+    const agent = await made.json<{ id: string }>()
+
+    const promoted = await call(worker, owner, '/v1/admin/people/role', {
+      userId: agent.id,
+      role: 'owner',
+    })
+    const role = await env.DB.prepare(
+      'SELECT role FROM members WHERE site_id = ?1 AND user_id = ?2',
+    )
+      .bind(SITE_KEY, agent.id)
+      .first<string>('role')
+
+    expect(promoted.status).toBe(409)
+    expect(await promoted.json()).toMatchObject({ code: 'conflict' })
+    expect(role).toBe('author')
+  })
+
   it('keep the last owner of the site: neither demoted nor removed until another owner exists', async () => {
     const worker = boot()
     const owner = await adminPerson(worker, 'owner')

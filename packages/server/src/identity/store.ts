@@ -1,8 +1,9 @@
 import { newId } from '@hollware/core'
-import { and, desc, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm'
+import { and, desc, eq, gt, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { Db } from '../db/d1.ts'
 import { legacyRoleOf } from '../auth/roles.ts'
 import {
+  agentGrants,
   authChallenges,
   identities,
   invitations,
@@ -481,6 +482,9 @@ export async function dropExpired(db: Db, now: Date): Promise<void> {
   await db.batch([
     db.delete(sessions).where(lte(sessions.expiresAt, at)),
     db.delete(authChallenges).where(lte(authChallenges.expiresAt, at)),
+    db
+      .delete(agentGrants)
+      .where(or(lte(agentGrants.expiresAt, at), isNotNull(agentGrants.revokedAt))),
   ])
 }
 

@@ -117,7 +117,7 @@ export const THREATS: readonly Threat[] = [
     guards: [
       {
         file: 'packages/server/tests/http/cron-cleanup.workerd.test.ts',
-        test: 'drops the challenges and sessions that expired, and keeps the others',
+        test: 'drops the challenges, sessions and agent grants that expired, the revoked grants, and keeps the others',
       },
     ],
   },
@@ -1604,8 +1604,12 @@ export const THREATS: readonly Threat[] = [
     threat:
       "An agent's grant is replayed after its hour, or after the review it was minted for is decided, to keep reading or commenting",
     mitigation:
-      'A grant (`hw_agt_`) lasts an hour, names its review, and is checked on the primary at every request: expired, revoked, or its review no longer pending is refused; a review-bound grant reads and comments on that review only',
+      'A grant (`hw_agt_`) lasts an hour, names its review, and is checked on the primary at every request: expired, revoked, or its review no longer pending is refused; a review-bound grant reads and comments on that review only; the cron deletes expired and revoked grants',
     guards: [
+      {
+        file: 'packages/server/tests/http/cron-cleanup.workerd.test.ts',
+        test: 'drops the challenges, sessions and agent grants that expired, the revoked grants, and keeps the others',
+      },
       {
         file: 'packages/server/tests/agents/delivery.workerd.test.ts',
         test: 'refuses the grant an hour later, and once its review is decided',
@@ -1622,9 +1626,13 @@ export const THREATS: readonly Threat[] = [
     threat:
       "A site definition gives an agent more than an author's scopes, or names a person as an agent, to publish or approve through its grants",
     mitigation:
-      "A subscription's scopes must be within an author's (`AGENT_SCOPE_CEILING`), update_site names only agent members, and a grant's scopes are intersected with the member's role at every request",
+      "A subscription's scopes must be within an author's (`AGENT_SCOPE_CEILING`), update_site names only agent members, an agent member stays an author whatever role an owner gives it, and a grant's scopes are intersected with the member's role at every request",
     guards: [
       { file: 'packages/core/tests/config/agents-problems.test.ts', test: 'reports $name' },
+      {
+        file: 'packages/server/tests/http/admin-api.workerd.test.ts',
+        test: 'keep an agent member an author, whatever role an owner gives it',
+      },
       {
         file: 'packages/server/tests/structure/operations.workerd.test.ts',
         test: 'names an agent only as an agent member of the site, never as a person',
