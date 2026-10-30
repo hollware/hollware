@@ -1,5 +1,20 @@
 # @hollware/client
 
+## 1.1.0
+
+### Minor Changes
+
+- [#85](https://github.com/hollware/hollware/pull/85) [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Agents plug into a site with least privilege: a site declares `agents` that hear its events through a signed webhook or a service binding, each with a grant (`hw_agt_`) of an hour that acts as an agent member and dies with its review; the scopes `review:read` and `review:comment` (implied by `content:read` and `content:write`), `review.requireAgents` with `agents_pending` and an owner's `override` on approve_review, each review's `agents`, `verifyAgentEvent`, `hollwareAgentClient` and `api/agents.json`.
+
+- [#85](https://github.com/hollware/hollware/pull/85) [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A collection may declare `navigation: { groupBy, groups, orderBy }`: a string or enum field that groups its entries, the groups in order (an enum's own order when none are given), and a number field that orders each group before the title. `getNavigation(site, collection, { locale })` answers the published entries of a locale arranged that way, with their title, description, path and order, over RPC, `GET /v1/:collection/navigation` and the client (`HollwareReader.getNavigation`, `createHollware().getNavigation`). A collection without one is a single group by title; more than 1,000 published entries in the locale are refused. The `docs` preset groups by `section` and orders by `order`. `@hollware/nuxt` adds `useHollwareNavigation` and `/_hollware/navigation/:collection`, `@hollware/vue` `useHollwareNavigation`, and `@hollware/astro` `hollwareNavigation`.
+
+- [#85](https://github.com/hollware/hollware/pull/85) [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Another Worker of the same account runs any operation, or speaks MCP, over a service binding to the new `HollwareOps` entrypoint, with no check of Host or Origin and always as a personal token (`hw_pat_…`): its site, scopes and the actor of the activity log come from the token, and a read token or a revoked one is refused as `unauthorized`, a new error code. Export it from the project's Worker with `export class HollwareOps extends hollware.HollwareOps {}` and type the binding with `HollwareOpsRpc`. `@hollware/client` adds `createOpsClient({ binding, token })`, whose `call(name, input)` is typed by the operation.
+
+### Patch Changes
+
+- Updated dependencies [[`b4d307a`](https://github.com/hollware/hollware/commit/b4d307ace92e54fe19be97b3ce40e8184fe3ccbf), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400)]:
+  - @hollware/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

@@ -1,5 +1,16 @@
 # @hollware/agents
 
+## 1.1.0
+
+### Minor Changes
+
+- [#85](https://github.com/hollware/hollware/pull/85) [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `createHollwareAgents()` returns `handle(event, grant, env)`: on `review.requested` delivered over a binding, the reviewer reads that review with the event's grant and comments on each entry it proposes; `grantHollware`, `reviewById` and the types `AgentGrant`, `HollwareEvent` and `HollwareAgentRpc` are exported, `get_review` joins the allowlist, and `HOLLWARE_AGENT_TOKEN` is optional (the cron roles skip without it).
+
+### Patch Changes
+
+- Updated dependencies [[`b4d307a`](https://github.com/hollware/hollware/commit/b4d307ace92e54fe19be97b3ce40e8184fe3ccbf), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400), [`5934bf8`](https://github.com/hollware/hollware/commit/5934bf84b1202d8b558c185e71e41312dabcc400)]:
+  - @hollware/core@1.1.0
+
 ## 1.0.0
 
 ### Major Changes
