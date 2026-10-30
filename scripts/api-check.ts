@@ -16,10 +16,10 @@ export function partsAt(root: string, ref: string, files: readonly string[]) {
       })
       parts[file] = JSON.parse(text)
     } catch {
-      return null
+      continue
     }
   }
-  return parts
+  return Object.keys(parts).length === 0 ? null : parts
 }
 
 function versionOf(tag: string): [number, number, number, string] | null {

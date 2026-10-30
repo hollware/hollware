@@ -41,6 +41,7 @@ it('calls an operation and an admin route with the token', async () => {
   await w.api.call('list_reviews', { status: 'pending' })
   await w.api.admin('tokens')
   await w.api.admin('invitations', { role: 'author' })
+  await w.api.adminDelete('agents/usr_1')
 
   expect(w.sent).toEqual([
     {
@@ -56,6 +57,7 @@ it('calls an operation and an admin route with the token', async () => {
       authorization: 'Bearer access-1',
       body: '{"role":"author"}',
     },
+    { url: '/v1/admin/agents/usr_1', method: 'DELETE', authorization: 'Bearer access-1', body: '' },
   ])
 })
 

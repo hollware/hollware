@@ -125,6 +125,17 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
       return role === 'owner' || role === 'editor' || role === 'author' ? role : null
     },
 
+    async agentMembers(site) {
+      const { results } = await db
+        .prepare(
+          `SELECT m.user_id AS id FROM members AS m JOIN users AS u ON u.id = m.user_id
+            WHERE m.site_id = ?1 AND u.kind = 'agent'`,
+        )
+        .bind(site)
+        .all<{ id: string }>()
+      return new Set(results.map((row) => row.id))
+    },
+
     async counts(site) {
       const [collections, locales] = await db.batch<{ key: string; n: number }>([
         db

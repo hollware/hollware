@@ -106,19 +106,16 @@ describe('publish without content:publish', () => {
     expect(await reviewsOf(world)).toBe(0)
   })
 
-  it('refuses a group, and a time, with what to do instead', async () => {
+  it('refuses a time, with what to do instead', async () => {
     const world = await newWorld(env.DB, 'review-group')
     const en = await createPost(world, { slug: 'edge-caching-guide' })
     const writer = agentFor(world.context({ principal: author(world) }))
 
     await expect(
       writer.publish({ id: en.id, version: 1, publishAt: '2026-12-01T10:00:00Z' }),
-    ).rejects.toMatchObject({ code: 'invalid_input' })
-    await expect(
-      writer.publish({ id: en.id, version: 1, group: [{ id: en.id, version: 1 }] }),
     ).rejects.toMatchObject({
       code: 'invalid_input',
-      fix: 'Publish each entry on its own, without group and publishAt; a person who may publish approves it.',
+      fix: 'Publish without publishAt; a person who may publish approves it.',
     })
     expect(await reviewsOf(world)).toBe(0)
   })

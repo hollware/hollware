@@ -226,6 +226,25 @@ describe('describeResolvedSite', () => {
     ])
   })
 
+  it('shows the navigation of a collection that has one, with the groups of its enum', () => {
+    const site = siteOfDocs(
+      docsConfig({
+        pages: {
+          schema: z.object({ part: z.enum(['basics', 'advanced']), rank: z.number() }),
+          routes: { en: '/pages/:slug/', es: '/es/pages/:slug/' },
+          navigation: { groupBy: 'part', orderBy: 'rank' },
+        },
+      }),
+    )
+    const [guides, pages] = describeResolvedSite(site).collections
+    expect(pages?.navigation).toEqual({
+      groupBy: 'part',
+      groups: ['basics', 'advanced'],
+      orderBy: 'rank',
+    })
+    expect(guides !== undefined && 'navigation' in guides).toBe(false)
+  })
+
   it('lists collections, components and routes in the order of the config and the locales', () => {
     const site = siteOfDocs(
       docsConfig({ aaa: collectionWith({ routes: { es: '/a/:slug/', en: '/en/a/:slug/' } }) }),

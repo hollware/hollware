@@ -8,6 +8,11 @@ import {
   updateDraft,
   validate,
   type Scope,
+  commentReview,
+  getReview,
+  requestReview,
+  unifiedDiff,
+  unpublish,
   getAsset,
   listBackups,
   listRedirects,
@@ -15,6 +20,7 @@ import {
   disconnectAnalytics,
   getAnalytics,
   uploadAsset,
+  withImplied,
 } from '@hollware/core'
 import {
   createMcpHandler,
@@ -57,6 +63,20 @@ export interface StubEntry {
   written?: ReturnType<typeof writtenVerdict>
   frontmatter?: Record<string, unknown>
   automatic?: Record<string, unknown>
+  updatedAt?: string
+}
+
+export interface StubReview {
+  id: string
+  status: 'pending' | 'cancelled' | 'approved'
+  items: {
+    entryId: string
+    action: 'publish' | 'unpublish'
+    base: string | null
+    proposed: string | null
+  }[]
+  comments: { body: string; entryId: string | null; lines: { from: number; to: number } | null }[]
+  acknowledged: { contract: string; path: string }[]
 }
 
 function writtenVerdict(verdict: {
@@ -84,6 +104,7 @@ export interface StubOptions {
   before?: (call: RecordedCall, entries: Map<string, StubEntry>) => void
   respond?: (request: Request) => Response | undefined
   site?: { key: string; locales: string[]; collections: string[] }
+  declared?: Record<string, { components?: string[]; routes?: Record<string, string> }>
   pageSize?: number
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
   backups?: { date: string; bytes: number }[]
@@ -105,6 +126,7 @@ export interface StubServer {
   url: string
   entries: Map<string, StubEntry>
   assets: Map<string, StubAsset>
+  reviews: Map<string, StubReview>
   calls: RecordedCall[]
   authorizations: (string | null)[]
   close: () => Promise<void>
@@ -119,12 +141,17 @@ function violation(contract: string, path: string, message: string, fix: string)
 }
 
 function revisionId(entry: StubEntry): string {
-  return `rev_${String(entry.revisions.length).padStart(26, '0')}`
+  return revisionAt(entry.revisions.length - 1)
+}
+
+function revisionAt(index: number): string {
+  return `rev_${String(index + 1).padStart(26, '0')}`
 }
 
 export function startStub(options: StubOptions): Promise<StubServer> {
   const entries = new Map<string, StubEntry>()
   const assets = new Map<string, StubAsset>()
+  const reviews = new Map<string, StubReview>()
   let origin = ''
   const assetView = (asset: StubAsset) => ({
     id: asset.id,
@@ -143,12 +170,9 @@ export function startStub(options: StubOptions): Promise<StubServer> {
   const calls: RecordedCall[] = []
   let connection: { outcome: string; [field: string]: unknown } | null = null
   const authorizations: (string | null)[] = []
-  const granted = options.scopes ?? [
-    'content:read',
-    'content:write',
-    'content:publish',
-    'schema:admin',
-  ]
+  const granted = withImplied(
+    options.scopes ?? ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+  )
   let nextId = 0
   const site = options.site ?? { key: 'blog', locales: ['en', 'es'], collections: ['blog'] }
 
@@ -206,7 +230,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       publishedAt: entry.published === null ? null : STUB_TIME,
       scheduledAt: null,
       deletedAt: entry.deletedAt ?? null,
-      updatedAt: STUB_TIME,
+      updatedAt: entry.updatedAt ?? STUB_TIME,
     }
   }
 
@@ -267,7 +291,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             outcome: 'ok',
             entry: {
               ...summaryOf(entry),
-              revision: revisionId(entry),
+              revision: args.published ? revisionAt(entry.published ?? 0) : revisionId(entry),
               verdict: verdictOf(fileOf(entry, markdown), 'write'),
               lastPublication: null,
               unpublishAt: null,
@@ -439,11 +463,16 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               collections: site.collections.map((name) => ({
                 name,
                 schema: {},
-                routes: {},
+                routes: options.declared?.[name]?.routes ?? {},
                 translationGroupField: null,
                 tagsField: null,
                 sortByField: null,
-                components: [],
+                components: (options.declared?.[name]?.components ?? []).map((component) => ({
+                  name: component,
+                  description: null,
+                  example: null,
+                  props: {},
+                })),
                 contracts: [],
                 maxMarkdownBytes: options.maxBytes ?? 8192,
                 styleGuide: null,
@@ -471,6 +500,8 @@ export function startStub(options: StubOptions): Promise<StubServer> {
                 entry.collection === args.collection &&
                 (args.locale === undefined || entry.locale === args.locale) &&
                 (args.status === undefined || summaryOf(entry).status === args.status) &&
+                (args.changedSince === undefined ||
+                  (entry.updatedAt ?? STUB_TIME) >= new Date(args.changedSince).toISOString()) &&
                 (args.trashed === true) === ((entry.deletedAt ?? null) !== null),
             )
           const start = args.cursor === undefined ? 0 : Number(args.cursor)
@@ -559,6 +590,14 @@ export function startStub(options: StubOptions): Promise<StubServer> {
           entry.revisions.push(args.markdown)
           entry.version += 1
           entry.written = verdict
+          for (const review of reviews.values()) {
+            if (
+              review.status === 'pending' &&
+              review.items.some((item) => item.entryId === entry.id)
+            ) {
+              review.status = 'cancelled'
+            }
+          }
           return reply(updateDraft.outcomes, { outcome: 'saved', entry: summaryOf(entry), verdict })
         }),
       ),
@@ -670,6 +709,180 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         }),
       ),
     )
+    const reviewView = (review: StubReview) => ({
+      id: review.id,
+      entryId: review.items[0]?.entryId ?? '',
+      revision: 'rev_00000000000000000000000001',
+      status: review.status,
+      requestedBy: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+      requestedByName: null,
+      requestedAt: STUB_TIME,
+      decidedBy: null,
+      decidedAt: null,
+      note: null,
+    })
+
+    keep(
+      requestReview.name,
+      server.registerTool(
+        requestReview.name,
+        {
+          ...describe(requestReview),
+          inputSchema: requestReview.input,
+          outputSchema: requestReview.output,
+        },
+        guarded(requestReview.name, (args) => {
+          const asked = [
+            ...[{ id: args.id, version: args.version }, ...args.group].map((member) => ({
+              ...member,
+              action: 'publish' as const,
+            })),
+            ...args.unpublish.map((member) => ({ ...member, action: 'unpublish' as const })),
+          ]
+          const items: StubReview['items'] = []
+          for (const member of asked) {
+            const entry = byId(member.id)
+            if (entry === undefined) {
+              return reply(requestReview.outcomes, { outcome: 'not_found', failedEntry: member.id })
+            }
+            if (entry.version !== member.version) {
+              return reply(requestReview.outcomes, {
+                outcome: 'conflict',
+                conflict: { currentVersion: entry.version, headRevision: revisionId(entry) },
+                failedEntry: member.id,
+              })
+            }
+            const held = [...reviews.values()].find(
+              (review) =>
+                review.status === 'pending' &&
+                review.items.some((item) => item.entryId === member.id),
+            )
+            if (held !== undefined) {
+              return reply(requestReview.outcomes, {
+                outcome: 'conflict',
+                review: reviewView(held),
+                failedEntry: member.id,
+              })
+            }
+            const base =
+              entry.published === null ? null : (entry.revisions[entry.published] ?? null)
+            items.push({
+              entryId: entry.id,
+              action: member.action,
+              base,
+              proposed: member.action === 'publish' ? (entry.revisions.at(-1) ?? null) : null,
+            })
+          }
+          const review: StubReview = {
+            id: `rvw_${String(reviews.size + 1).padStart(26, '0')}`,
+            status: 'pending',
+            items,
+            comments: [],
+            acknowledged: args.acknowledgeWarnings,
+          }
+          reviews.set(review.id, review)
+          const first = byId(args.id)
+          return reply(requestReview.outcomes, {
+            outcome: 'pending_review',
+            ...(first === undefined ? {} : { entry: summaryOf(first) }),
+            review: reviewView(review),
+          })
+        }),
+      ),
+    )
+
+    const commentView = (comment: StubReview['comments'][number], index: number) => ({
+      id: `cmt_${index + 1}`,
+      author: 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VA',
+      authorName: null,
+      authorKind: 'person' as const,
+      client: 'hollware-cli',
+      body: comment.body,
+      at: STUB_TIME,
+      entryId: comment.entryId,
+      lines: comment.lines,
+    })
+
+    keep(
+      getReview.name,
+      server.registerTool(
+        getReview.name,
+        { ...describe(getReview), inputSchema: getReview.input, outputSchema: getReview.output },
+        guarded(getReview.name, (args) => {
+          const review = reviews.get(args.id)
+          if (review === undefined) return reply(getReview.outcomes, { outcome: 'not_found' })
+          return reply(getReview.outcomes, {
+            outcome: 'ok',
+            review: {
+              ...reviewView(review),
+              comments: review.comments.map(commentView),
+              agents: [],
+            },
+            items: review.items.flatMap((item) => {
+              const entry = byId(item.entryId)
+              return entry === undefined
+                ? []
+                : [
+                    {
+                      entry: summaryOf(entry),
+                      action: item.action,
+                      excluded: false,
+                      published: item.base,
+                      proposed: item.proposed,
+                      diff: unifiedDiff(item.base ?? '', item.proposed ?? ''),
+                    },
+                  ]
+            }),
+          })
+        }),
+      ),
+    )
+
+    keep(
+      commentReview.name,
+      server.registerTool(
+        commentReview.name,
+        {
+          ...describe(commentReview),
+          inputSchema: commentReview.input,
+          outputSchema: commentReview.output,
+        },
+        guarded(commentReview.name, (args) => {
+          const review = reviews.get(args.id)
+          if (review === undefined) return reply(commentReview.outcomes, { outcome: 'not_found' })
+          if (review.status !== 'pending') {
+            return reply(commentReview.outcomes, { outcome: 'not_pending' })
+          }
+          const comment = {
+            body: args.body,
+            entryId: args.entryId ?? null,
+            lines: args.lines ?? null,
+          }
+          review.comments.push(comment)
+          return reply(commentReview.outcomes, {
+            outcome: 'commented',
+            comment: commentView(comment, review.comments.length - 1),
+          })
+        }),
+      ),
+    )
+
+    keep(
+      unpublish.name,
+      server.registerTool(
+        unpublish.name,
+        { ...describe(unpublish), inputSchema: unpublish.input, outputSchema: unpublish.output },
+        guarded(unpublish.name, (args) => {
+          const entry = byId(args.id)
+          if (entry === undefined) return reply(unpublish.outcomes, { outcome: 'not_found' })
+          if (entry.published !== null) {
+            entry.published = null
+            entry.version += 1
+          }
+          return reply(unpublish.outcomes, { outcome: 'unpublished', entry: summaryOf(entry) })
+        }),
+      ),
+    )
     return server
   }
 
@@ -750,6 +963,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         url: origin,
         entries,
         assets,
+        reviews,
         calls,
         authorizations,
         close: async () => {

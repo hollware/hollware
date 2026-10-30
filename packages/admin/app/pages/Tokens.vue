@@ -25,7 +25,14 @@ type Token = {
   createdAt: string
 }
 
-const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
+const SCOPES = [
+  'content:read',
+  'content:write',
+  'content:publish',
+  'schema:admin',
+  'review:read',
+  'review:comment',
+]
 
 const m = useMessages()
 const columns = computed<TableColumn<Token>[]>(() => [

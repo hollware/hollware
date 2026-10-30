@@ -2,6 +2,7 @@ import {
   contracts,
   approveReview as approveReviewSpec,
   commentReview as commentReviewSpec,
+  getReview as getReviewSpec,
   connectAnalytics as connectAnalyticsSpec,
   contentStats as contentStatsSpec,
   disconnectAnalytics as disconnectAnalyticsSpec,
@@ -247,6 +248,8 @@ export function agent(context: OperationContext) {
       call(rejectReviewSpec, handlers.reject_review, input, context),
     commentReview: (input: z.input<typeof commentReviewSpec.input>) =>
       call(commentReviewSpec, handlers.comment_review, input, context),
+    getReview: (input: z.input<typeof getReviewSpec.input>) =>
+      call(getReviewSpec, handlers.get_review, input, context),
     contentStats: (input: z.input<typeof contentStatsSpec.input>) =>
       call(contentStatsSpec, handlers.content_stats, input, context),
     getAnalytics: () => call(getAnalyticsSpec, handlers.get_analytics, {}, context),
@@ -362,4 +365,9 @@ export const UNTOUCHED: ContentStore = {
   rejectReview: () => touched('rejectReview'),
   commentReview: () => touched('commentReview'),
   reviewComments: () => touched('reviewComments'),
+  reviewAgentRuns: () => touched('reviewAgentRuns'),
+  markAgentRun: () => touched('markAgentRun'),
+  reviewItems: () => touched('reviewItems'),
+  revisionMarkdown: () => touched('revisionMarkdown'),
+  approveReview: () => touched('approveReview'),
 }

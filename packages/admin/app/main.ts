@@ -28,10 +28,12 @@ const router = createRouter({
     { path: '/settings/site', component: () => import('./pages/site/General.vue') },
     { path: '/settings/site/images', component: () => import('./pages/site/Images.vue') },
     { path: '/settings/site/webhooks', component: () => import('./pages/site/Webhooks.vue') },
+    { path: '/settings/site/agents', component: () => import('./pages/site/Agents.vue') },
     { path: '/settings/site/analytics', component: () => import('./pages/site/Analytics.vue') },
     { path: '/settings/site/backups', component: () => import('./pages/site/Backups.vue') },
     { path: '/settings/site/redirects', component: () => import('./pages/site/Redirects.vue') },
     { path: '/settings/site/danger', component: () => import('./pages/site/Danger.vue') },
+    { path: '/settings/site/signin', component: () => import('./pages/site/Access.vue') },
     { path: '/settings/collections', component: () => import('./pages/Collections.vue') },
     {
       path: '/settings/collections/:name',

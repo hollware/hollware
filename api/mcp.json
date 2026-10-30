@@ -23,10 +23,26 @@
             },
             "type": "array"
           },
+          "exclude": {
+            "default": [],
+            "description": "Entries of the review to leave as they are: the rest is published or unpublished, and the review is closed for all of them.",
+            "items": {
+              "description": "The id of an entry (ent_…), as the other operations return it.",
+              "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
           "id": {
             "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "override": {
+            "default": false,
+            "description": "Approve without the comments of the required agents, which agents_pending asked for. Only an owner (schema:admin) may, and the activity log keeps it.",
+            "type": "boolean"
           }
         },
         "required": ["id"],
@@ -37,6 +53,47 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "agents": {
+            "description": "With agents_pending: the required agents that have not commented yet.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "description": "The agent, as the site declares it.",
+                  "type": "string"
+                },
+                "required": {
+                  "description": "Whether approve_review waits for its comment, as the site asks.",
+                  "type": "boolean"
+                },
+                "status": {
+                  "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                  "enum": ["queued", "commented", "failed"],
+                  "type": "string"
+                }
+              },
+              "required": ["name", "status", "required"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
           "entry": {
             "additionalProperties": false,
             "properties": {
@@ -166,8 +223,21 @@
             ],
             "type": "object"
           },
+          "failedEntry": {
+            "description": "In a review of several entries, the entry that kept it from being approved: blocked, moved since the request, missing, or with a warning to acknowledge.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "outcome": {
-            "enum": ["published", "blocked", "needs_acknowledgement", "not_pending", "not_found"],
+            "enum": [
+              "published",
+              "blocked",
+              "needs_acknowledgement",
+              "agents_pending",
+              "conflict",
+              "not_pending",
+              "not_found"
+            ],
             "type": "string"
           },
           "review": {
@@ -363,10 +433,33 @@
             "minLength": 1,
             "type": "string"
           },
+          "entryId": {
+            "description": "The entry of the review the comment is about; the whole review without it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "id": {
             "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "lines": {
+            "additionalProperties": false,
+            "description": "With entryId, the lines of its proposed Markdown the comment is about, as get_review numbers them.",
+            "properties": {
+              "from": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "to": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": ["from", "to"],
+            "type": "object"
           }
         },
         "required": ["id", "body"],
@@ -387,6 +480,11 @@
                 "description": "The user who wrote it, or whose token their agent used.",
                 "type": "string"
               },
+              "authorKind": {
+                "description": "Whether a person wrote it, or an agent member of the site.",
+                "enum": ["person", "agent"],
+                "type": "string"
+              },
               "authorName": {
                 "type": ["string", "null"]
               },
@@ -397,11 +495,59 @@
                 "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
                 "type": ["string", "null"]
               },
+              "entryId": {
+                "anyOf": [
+                  {
+                    "description": "The id of an entry (ent_…), as the other operations return it.",
+                    "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The entry of the review the comment is about, or null for the whole review."
+              },
               "id": {
                 "type": "string"
+              },
+              "lines": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "from": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "to": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": ["from", "to"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The lines of the proposed Markdown of that entry it is about, or null."
               }
             },
-            "required": ["id", "author", "authorName", "client", "body", "at"],
+            "required": [
+              "id",
+              "author",
+              "authorName",
+              "authorKind",
+              "client",
+              "body",
+              "at",
+              "entryId",
+              "lines"
+            ],
             "type": "object"
           },
           "outcome": {
@@ -412,7 +558,7 @@
         "required": ["outcome"],
         "type": "object"
       },
-      "scopes": ["content:write"],
+      "scopes": ["review:comment"],
       "title": "Comment on a review"
     },
     {
@@ -1066,6 +1212,155 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "type": "object"
+              },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -1178,6 +1473,36 @@
                         }
                       ],
                       "default": null
+                    },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
                     },
                     "routes": {
                       "additionalProperties": {
@@ -1410,6 +1735,21 @@
                     },
                     "maxItems": 4,
                     "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
                   }
                 },
                 "type": "object"
@@ -1804,6 +2144,33 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "navigation": {
+                      "additionalProperties": false,
+                      "description": "How getNavigation arranges the published entries: the field that groups them, the groups in their order, and the number field that orders each group before the title. Absent when they are listed by title.",
+                      "properties": {
+                        "groupBy": {
+                          "type": ["string", "null"]
+                        },
+                        "groups": {
+                          "anyOf": [
+                            {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "orderBy": {
+                          "type": ["string", "null"]
+                        }
+                      },
+                      "required": ["groupBy", "groups", "orderBy"],
+                      "type": "object"
                     },
                     "routes": {
                       "additionalProperties": {
@@ -2935,6 +3302,387 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "entryId": {
+            "description": "Only this entry of the review: for a review too large for one answer.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "get_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "description": "What approving the review does to the entry.",
+                  "enum": ["publish", "unpublish"],
+                  "type": "string"
+                },
+                "diff": {
+                  "description": "The unified diff from published to proposed, with three lines of context.",
+                  "type": "string"
+                },
+                "entry": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                      "type": ["string", "null"]
+                    },
+                    "frontmatter": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "hasUnpublishedChanges": {
+                      "description": "Whether the latest revision differs from the published one.",
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "description": "The id of an entry (ent_…), as the other operations return it.",
+                      "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                      "type": "string"
+                    },
+                    "images": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alt": {
+                            "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                            "type": "string"
+                          },
+                          "height": {
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "srcset": {
+                            "type": ["string", "null"]
+                          },
+                          "width": {
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["width", "height", "srcset"],
+                        "type": "object"
+                      },
+                      "description": "Where asset: references are read as URLs (a site over RPC or the read API, or the published view): the images its frontmatter names, by URL, with their size and srcset, to lay out a cover. Absent when it names none.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "locale": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "description": "When the entry was first published, or null.",
+                      "type": ["string", "null"]
+                    },
+                    "scheduledAt": {
+                      "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                      "type": ["string", "null"]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": ["draft", "scheduled", "published"],
+                      "type": "string"
+                    },
+                    "tags": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "translationGroup": {
+                      "type": ["string", "null"]
+                    },
+                    "translationOutdated": {
+                      "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                      "type": "boolean"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "collection",
+                    "locale",
+                    "slug",
+                    "translationGroup",
+                    "status",
+                    "version",
+                    "frontmatter",
+                    "tags",
+                    "hasUnpublishedChanges",
+                    "publishedAt",
+                    "scheduledAt",
+                    "deletedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "excluded": {
+                  "description": "Whether the approval left this entry as it was.",
+                  "type": "boolean"
+                },
+                "proposed": {
+                  "anyOf": [
+                    {
+                      "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Markdown the review publishes, or null when it unpublishes."
+                },
+                "published": {
+                  "anyOf": [
+                    {
+                      "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Markdown published when the review was asked, or null."
+                }
+              },
+              "required": ["entry", "action", "excluded", "published", "proposed", "diff"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "properties": {
+              "agents": {
+                "description": "The agents that review it, as the site declares them, and how far each got.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "description": "The agent, as the site declares it.",
+                      "type": "string"
+                    },
+                    "required": {
+                      "description": "Whether approve_review waits for its comment, as the site asks.",
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                      "enum": ["queued", "commented", "failed"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name", "status", "required"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "comments": {
+                "description": "What was said about it, oldest first.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "at": {
+                      "type": "string"
+                    },
+                    "author": {
+                      "description": "The user who wrote it, or whose token their agent used.",
+                      "type": "string"
+                    },
+                    "authorKind": {
+                      "description": "Whether a person wrote it, or an agent member of the site.",
+                      "enum": ["person", "agent"],
+                      "type": "string"
+                    },
+                    "authorName": {
+                      "type": ["string", "null"]
+                    },
+                    "body": {
+                      "type": "string"
+                    },
+                    "client": {
+                      "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
+                      "type": ["string", "null"]
+                    },
+                    "entryId": {
+                      "anyOf": [
+                        {
+                          "description": "The id of an entry (ent_…), as the other operations return it.",
+                          "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The entry of the review the comment is about, or null for the whole review."
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "from": {
+                              "maximum": 9007199254740991,
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "to": {
+                              "maximum": 9007199254740991,
+                              "minimum": 1,
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["from", "to"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The lines of the proposed Markdown of that entry it is about, or null."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "author",
+                    "authorName",
+                    "authorKind",
+                    "client",
+                    "body",
+                    "at",
+                    "entryId",
+                    "lines"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note",
+              "comments",
+              "agents"
+            ],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["review:read"],
+      "title": "Read a review"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
           "id": {
             "description": "The id of a revision (rev_…).",
             "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
@@ -3088,6 +3836,157 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "required": ["domains", "emails", "role"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "required": ["autoProvision"],
+                "type": "object"
+              },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery", "required"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -3203,6 +4102,36 @@
                       ],
                       "default": null
                     },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                    },
                     "routes": {
                       "additionalProperties": {
                         "type": "string"
@@ -3307,7 +4236,8 @@
                     "components",
                     "rules",
                     "maxMarkdownBytes",
-                    "styleGuide"
+                    "styleGuide",
+                    "navigation"
                   ],
                   "type": "object"
                 },
@@ -3451,6 +4381,22 @@
                 "required": ["format", "quality", "maxWidth", "widths", "keepOriginals"],
                 "type": "object"
               },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
+                  }
+                },
+                "required": ["requireAgents"],
+                "type": "object"
+              },
               "styleGuide": {
                 "default": null,
                 "type": ["string", "null"]
@@ -3478,6 +4424,9 @@
               "audit",
               "backups",
               "media",
+              "access",
+              "agents",
+              "review",
               "collections"
             ],
             "type": "object"
@@ -3876,6 +4825,12 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "changedSince": {
+            "description": "Only the entries changed at or after this time, as an ISO 8601 date and time: a new revision, a publication, an unpublication, a move or the trash each change an entry. Give the latest updatedAt you read to list what changed since, in the same order.",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "type": "string"
+          },
           "collection": {
             "description": "A collection of the site, as describe_site lists it.",
             "minLength": 1,
@@ -4187,6 +5142,30 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "agents": {
+                  "description": "The agents that review it, as the site declares them, and how far each got.",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "description": "The agent, as the site declares it.",
+                        "type": "string"
+                      },
+                      "required": {
+                        "description": "Whether approve_review waits for its comment, as the site asks.",
+                        "type": "boolean"
+                      },
+                      "status": {
+                        "description": "queued until it comments on the review, commented once it did, failed when its delivery was given up.",
+                        "enum": ["queued", "commented", "failed"],
+                        "type": "string"
+                      }
+                    },
+                    "required": ["name", "status", "required"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
                 "comments": {
                   "description": "What was said about it, oldest first.",
                   "items": {
@@ -4199,6 +5178,11 @@
                         "description": "The user who wrote it, or whose token their agent used.",
                         "type": "string"
                       },
+                      "authorKind": {
+                        "description": "Whether a person wrote it, or an agent member of the site.",
+                        "enum": ["person", "agent"],
+                        "type": "string"
+                      },
                       "authorName": {
                         "type": ["string", "null"]
                       },
@@ -4209,11 +5193,59 @@
                         "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
                         "type": ["string", "null"]
                       },
+                      "entryId": {
+                        "anyOf": [
+                          {
+                            "description": "The id of an entry (ent_…), as the other operations return it.",
+                            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The entry of the review the comment is about, or null for the whole review."
+                      },
                       "id": {
                         "type": "string"
+                      },
+                      "lines": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "from": {
+                                "maximum": 9007199254740991,
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "to": {
+                                "maximum": 9007199254740991,
+                                "minimum": 1,
+                                "type": "integer"
+                              }
+                            },
+                            "required": ["from", "to"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The lines of the proposed Markdown of that entry it is about, or null."
                       }
                     },
-                    "required": ["id", "author", "authorName", "client", "body", "at"],
+                    "required": [
+                      "id",
+                      "author",
+                      "authorName",
+                      "authorKind",
+                      "client",
+                      "body",
+                      "at",
+                      "entryId",
+                      "lines"
+                    ],
                     "type": "object"
                   },
                   "type": "array"
@@ -4363,6 +5395,12 @@
                   "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
                   "type": "string"
                 },
+                "items": {
+                  "description": "How many entries the review changes: get_review shows each one.",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "note": {
                   "description": "What the reviewer asked to change, or null.",
                   "type": ["string", "null"]
@@ -4401,7 +5439,9 @@
                 "decidedAt",
                 "note",
                 "entry",
-                "comments"
+                "items",
+                "comments",
+                "agents"
               ],
               "type": "object"
             },
@@ -4411,7 +5451,7 @@
         "required": ["outcome", "reviews"],
         "type": "object"
       },
-      "scopes": ["content:read"],
+      "scopes": ["review:read"],
       "title": "List the reviews"
     },
     {
@@ -4552,7 +5592,7 @@
         "additionalProperties": false,
         "properties": {
           "webhook": {
-            "description": "The name of the webhook, as the definition of the site has it.",
+            "description": "The name of the webhook, or of the agent, as the definition of the site has it.",
             "minLength": 1,
             "type": "string"
           }
@@ -5437,10 +6477,58 @@
             },
             "type": "array"
           },
+          "group": {
+            "default": [],
+            "description": "Other entries to publish in the same review, each with the version you read: the review publishes all of them, or none.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version of the entry you read. A change against an older version answers conflict.",
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["id", "version"],
+              "type": "object"
+            },
+            "maxItems": 99,
+            "type": "array"
+          },
           "id": {
             "description": "The id of an entry (ent_…), as the other operations return it.",
             "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "unpublish": {
+            "default": [],
+            "description": "Published entries the same review takes off the site, each with the version you read.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version of the entry you read. A change against an older version answers conflict.",
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["id", "version"],
+              "type": "object"
+            },
+            "maxItems": 99,
+            "type": "array"
           },
           "version": {
             "description": "The version of the entry you read. A change against an older version answers conflict.",
@@ -5603,13 +6691,18 @@
             ],
             "type": "object"
           },
+          "failedEntry": {
+            "description": "The entry that kept the review from being asked: blocked, stale, missing, not published, in another pending review, or with a warning to acknowledge.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "outcome": {
             "enum": ["pending_review", "blocked", "needs_acknowledgement", "conflict", "not_found"],
             "type": "string"
           },
           "review": {
             "additionalProperties": false,
-            "description": "With pending_review: the request, as list_reviews shows it.",
+            "description": "With pending_review: the request, as list_reviews shows it. With conflict: the pending review that already holds failedEntry, when one does.",
             "properties": {
               "decidedAt": {
                 "type": ["string", "null"]
@@ -6761,6 +7854,36 @@
                     ],
                     "default": null
                   },
+                  "navigation": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "groupBy": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "groups": {
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "orderBy": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                  },
                   "routes": {
                     "additionalProperties": {
                       "type": "string"
@@ -7649,6 +8772,155 @@
           "definition": {
             "additionalProperties": false,
             "properties": {
+              "access": {
+                "additionalProperties": false,
+                "default": {
+                  "autoProvision": null
+                },
+                "description": "Who may come in without an invitation. Only an owner should change it.",
+                "properties": {
+                  "autoProvision": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domains": {
+                            "default": [],
+                            "description": "The domains whose addresses come in, such as \"example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "emails": {
+                            "default": [],
+                            "description": "The addresses that come in, such as \"ada@example.com\".",
+                            "items": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "role": {
+                            "default": "author",
+                            "description": "The role each of them gets in the site.",
+                            "enum": ["author", "editor"],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Who becomes a member the first time they sign in through a provider with a verified email that matches; null lets nobody in without an invitation."
+                  }
+                },
+                "type": "object"
+              },
+              "agents": {
+                "default": [],
+                "description": "The agents that hear the events of the site. Only an owner should change it.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "delivery": {
+                      "description": "Where each event goes, with a grant of an hour for the agent to act.",
+                      "oneOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "webhook",
+                              "type": "string"
+                            },
+                            "secret": {
+                              "description": "The Worker secret that signs the deliveries; Hollware makes one with make_webhook_secret when it is left out.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "url": {
+                              "description": "The https URL that receives each event, signed.",
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "url"],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "binding": {
+                              "description": "The service binding of the Worker that runs the agent, such as AGENTS.",
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "const": "binding",
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "binding"],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "events": {
+                      "description": "The events it hears.",
+                      "items": {
+                        "enum": [
+                          "review.requested",
+                          "review.decided",
+                          "entry.published",
+                          "entry.unpublished",
+                          "site.changed"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "member": {
+                      "description": "The id of the agent member of the site (usr_…) it acts as, made in the admin.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "Its name, lowercase words joined by hyphens.",
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": false,
+                      "description": "Whether an approval waits for its comment, when review.requireAgents is on.",
+                      "type": "boolean"
+                    },
+                    "scopes": {
+                      "description": "What its grants may do, within the scopes of an author; content:read, review:read and review:comment when left out.",
+                      "items": {
+                        "enum": [
+                          "content:read",
+                          "content:write",
+                          "content:publish",
+                          "schema:admin",
+                          "review:read",
+                          "review:comment"
+                        ],
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    }
+                  },
+                  "required": ["name", "member", "events", "delivery"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "audit": {
                 "additionalProperties": false,
                 "default": {
@@ -7761,6 +9033,36 @@
                         }
                       ],
                       "default": null
+                    },
+                    "navigation": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "groupBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "groups": {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "orderBy": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
                     },
                     "routes": {
                       "additionalProperties": {
@@ -7993,6 +9295,21 @@
                     },
                     "maxItems": 4,
                     "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "review": {
+                "additionalProperties": false,
+                "default": {
+                  "requireAgents": false
+                },
+                "description": "How reviews are decided. Only an owner should change it.",
+                "properties": {
+                  "requireAgents": {
+                    "default": false,
+                    "description": "Whether approve_review waits for a comment of every agent marked required; an owner may override it.",
+                    "type": "boolean"
                   }
                 },
                 "type": "object"

@@ -9,6 +9,7 @@ import {
   insertInvitation,
   listInvitations,
   ownerOfSiteQuery,
+  parseEmail,
   parseExpiresInDays,
   parseInvitationId,
   parseSiteKey,
@@ -18,7 +19,8 @@ import {
 import { chooseSite, WHERE_OPTIONS } from './token.ts'
 
 export const INVITE_USAGE = [
-  'Usage: hollware invite (--role <editor | author> | --owner) [--days <n>] [--url <url>]',
+  'Usage: hollware invite (--role <editor | author> | --owner) [--email <address>] [--days <n>]',
+  '                       [--url <url>]',
   '                       [--site <key>] [--local | --remote] [--database <name>] [--json]',
   '       hollware invite list [--site <key>] [--local | --remote] [--database <name>]',
   '       hollware invite revoke <id> [--site <key>] [--local | --remote] [--database <name>]',
@@ -33,13 +35,16 @@ export const INVITE_USAGE = [
   'Options:',
   '  --role <role>      editor or author',
   '  --owner            A setup link for the owner of the site, instead of a new person',
+  '  --email <address>  The address the person signs in with through a provider: signing in with',
+  '                     it accepts the invitation, with or without the link',
   '  --days <n>         Days until the link expires, 1 to 365 (default: 7)',
   '  --url <url>        The public URL of Hollware (default: HOLLWARE_PUBLIC_URL of wrangler.jsonc)',
   '  --site <key>       The site (default: the only site of the database)',
   '  --local            Use the local database (the default)',
   '  --remote           Use the database in Cloudflare',
   '  --database <name>  The D1 database, by name or binding (default: the binding "DB" of wrangler.jsonc)',
-  '  --json             One JSON object on stdout and nothing else: site, role, userId, expiresAt, setupUrl',
+  '  --json             One JSON object on stdout and nothing else: site, role, userId, email, expiresAt,',
+  '                     setupUrl',
   '                     (null when no URL is known)',
   '  --help             Show this help',
 ].join('\n')
@@ -60,6 +65,7 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
       ...WHERE_OPTIONS,
       role: { type: 'string' },
       owner: { type: 'boolean' },
+      email: { type: 'string' },
       days: { type: 'string' },
       url: { type: 'string' },
       json: { type: 'boolean' },
@@ -75,6 +81,7 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
   }
   const role = forOwner ? 'owner' : roleOf(values.role)
   const days = values.days === undefined ? INVITATION_TTL_DAYS : parseExpiresInDays(values.days)
+  const email = values.email === undefined ? undefined : parseEmail(values.email, '--email')
   const siteFlag = values.site === undefined ? undefined : parseSiteKey(values.site)
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
@@ -106,6 +113,7 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
       userId,
       expiresAt,
       now: now.toISOString(),
+      email,
     }),
   )
   if (values.json === true) {
@@ -114,6 +122,7 @@ export async function invite(argv: readonly string[], io: Io): Promise<number> {
         site,
         role,
         userId,
+        email: email ?? null,
         expiresAt,
         setupUrl: url === undefined ? null : setupLink(url, secret),
       }),
@@ -168,7 +177,7 @@ async function listWaiting(argv: readonly string[], io: Io): Promise<number> {
       : rows
           .map(
             (row) =>
-              `${String(row['id'])}  ${String(row['role'])}  until ${String(row['expires_at'])}`,
+              `${String(row['id'])}  ${String(row['role'])}${typeof row['email'] === 'string' ? `  ${row['email']}` : ''}  until ${String(row['expires_at'])}`,
           )
           .join('\n'),
   )

@@ -1,4 +1,4 @@
-import { isPersonalToken, isReadToken, isScope, SCOPES } from '@hollware/core'
+import { isAgentGrant, isPersonalToken, isReadToken, isScope, SCOPES } from '@hollware/core'
 import {
   OAuthAuthorizationServer,
   OAuthResourceServer,
@@ -118,7 +118,7 @@ function build(issuer: string, options: OAuthOptions): OAuth {
       pending.get(request)?.refused(reason)
       return null
     }
-    if (isPersonalToken(token) || isReadToken(token)) {
+    if (isPersonalToken(token) || isReadToken(token) || isAgentGrant(token)) {
       const check = await checkPersonalToken(env.DB, token, {
         sites: options.sites,
         now: options.clock.now(),

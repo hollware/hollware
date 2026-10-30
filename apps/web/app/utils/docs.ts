@@ -1,3 +1,4 @@
+import type { Navigation, NavigationEntry } from '@hollware/core'
 import type { PageEntry } from '@hollware/nuxt'
 
 export const SECTIONS = ['start', 'guides', 'frameworks', 'concepts', 'reference'] as const
@@ -13,6 +14,9 @@ export interface DocLink {
   readonly locale: string
 }
 
+const docsPath = (slug: string, locale: string) =>
+  `${locale === 'en' ? '' : `/${locale}`}/docs/${slug}/`
+
 const text = (value: unknown, fallback: string) => (typeof value === 'string' ? value : fallback)
 
 export function docLink(entry: PageEntry, locale = 'en'): DocLink {
@@ -23,27 +27,61 @@ export function docLink(entry: PageEntry, locale = 'en'): DocLink {
     description: text(front['description'], ''),
     section: text(front['section'], 'guides'),
     order: typeof front['order'] === 'number' ? front['order'] : 999,
-    to: `${locale === 'en' ? '' : `/${locale}`}/docs/${entry.slug}/`,
+    to: docsPath(entry.slug, locale),
     locale: entry.locale,
   }
 }
 
-export function readingOrder(
-  entries: readonly PageEntry[],
-  locale = 'en',
-  fallback: readonly PageEntry[] = [],
-): DocLink[] {
-  const rank = (section: string) => {
-    const index = SECTIONS.findIndex((candidate) => candidate === section)
-    return index === -1 ? SECTIONS.length : index
+function linkOf(
+  entry: NavigationEntry,
+  section: string | null,
+  navigation: Navigation,
+  locale: string,
+): DocLink {
+  return {
+    slug: entry.slug,
+    title: entry.title,
+    description: entry.description ?? '',
+    section: section ?? 'guides',
+    order: entry.order ?? 999,
+    to: docsPath(entry.slug, locale),
+    locale: navigation.locale,
   }
-  const slugs = new Set(entries.map((entry) => entry.slug))
-  return [...entries, ...fallback.filter((entry) => !slugs.has(entry.slug))]
-    .map((entry) => docLink(entry, locale))
-    .sort(
-      (a, b) =>
-        rank(a.section) - rank(b.section) || a.order - b.order || a.title.localeCompare(b.title),
-    )
+}
+
+function linksIn(
+  navigation: Navigation | null | undefined,
+  name: string | null,
+  locale: string,
+): DocLink[] {
+  const group = navigation?.groups.find((candidate) => candidate.name === name)
+  return navigation === null || navigation === undefined || group === undefined
+    ? []
+    : group.entries.map((entry) => linkOf(entry, name, navigation, locale))
+}
+
+export function docLinks(
+  own: Navigation | null | undefined,
+  locale = 'en',
+  fallback: Navigation | null = null,
+): DocLink[] {
+  const names = [...(own?.groups ?? []), ...(fallback?.groups ?? [])].map((group) => group.name)
+  const unique = [...new Set(names)]
+  const ordered = [
+    ...unique.filter((name) => name !== null),
+    ...unique.filter((name) => name === null),
+  ]
+  const translated = new Set(
+    own?.groups.flatMap((group) => group.entries.map((entry) => entry.slug)),
+  )
+  return ordered.flatMap((name) => {
+    const links = linksIn(own, name, locale)
+    if (fallback === null) return links
+    return [
+      ...links,
+      ...linksIn(fallback, name, locale).filter((link) => !translated.has(link.slug)),
+    ].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, locale))
+  })
 }
 
 export interface Heading {

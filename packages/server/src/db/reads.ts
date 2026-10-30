@@ -1,6 +1,6 @@
 import { HollwareError } from '@hollware/core'
 import type { EntryFacts, EntryLookup, EntryRef } from '@hollware/core'
-import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type {
   EntrySummaryView,
@@ -144,6 +144,11 @@ export function listEntriesQuery(
         ? eq(entries.status, query.status)
         : undefined,
       query.tag === undefined ? undefined : hasTag(site, query.tag),
+      query.changedSince === undefined
+        ? undefined
+        : query.view === 'head'
+          ? gte(entries.updatedAt, query.changedSince)
+          : sql`+${entries.updatedAt} >= ${query.changedSince}`,
       cursor === null
         ? undefined
         : sql`(${sortKey}, ${entries.id}) < (${cursor.key}, ${cursor.id})`,
@@ -198,12 +203,11 @@ export async function findSummaries(
   ids: readonly string[],
   view: View,
 ): Promise<readonly EntrySummaryView[]> {
-  if (ids.length === 0) return []
-  const rows = await summaryQuery(db, view, [
-    eq(entries.siteId, site),
-    inArray(entries.id, [...ids]),
-  ])
-  const byId = new Map(rows.map((row) => [row.entry.id, toEntrySummaryView(row)]))
+  const byId = new Map<string, EntrySummaryView>()
+  for (const some of chunk([...new Set(ids)], 80)) {
+    const rows = await summaryQuery(db, view, [eq(entries.siteId, site), inArray(entries.id, some)])
+    for (const row of rows) byId.set(row.entry.id, toEntrySummaryView(row))
+  }
   return ids.flatMap((id) => {
     const entry = byId.get(id)
     return entry === undefined ? [] : [entry]

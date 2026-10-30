@@ -5,11 +5,13 @@ export type SettingsKey =
   | 'collections'
   | 'images'
   | 'webhooks'
+  | 'agents'
   | 'analytics'
   | 'backups'
   | 'redirects'
   | 'danger'
   | 'people'
+  | 'signin'
   | 'tokens'
   | 'activity'
   | 'account'
@@ -41,6 +43,7 @@ const GROUPS: readonly SettingsGroup[] = [
       section('collections', 'i-lucide-layers', '/settings/collections'),
       section('images', 'i-lucide-image', '/settings/site/images'),
       section('webhooks', 'i-lucide-webhook', '/settings/site/webhooks'),
+      section('agents', 'i-lucide-bot', '/settings/site/agents'),
       section('analytics', 'i-lucide-chart-line', '/settings/site/analytics'),
       section('backups', 'i-lucide-archive', '/settings/site/backups'),
       section('redirects', 'i-lucide-corner-down-right', '/settings/site/redirects'),
@@ -51,6 +54,7 @@ const GROUPS: readonly SettingsGroup[] = [
     key: 'access',
     sections: [
       section('people', 'i-lucide-users', '/settings/people'),
+      section('signin', 'i-lucide-log-in', '/settings/site/signin'),
       section('tokens', 'i-lucide-key-round', '/settings/tokens'),
       section('activity', 'i-lucide-scroll-text', '/settings/activity'),
     ],
@@ -61,7 +65,7 @@ const GROUPS: readonly SettingsGroup[] = [
   },
 ]
 
-const OWNER_ONLY: ReadonlySet<SettingsKey> = new Set(['activity', 'danger'])
+const OWNER_ONLY: ReadonlySet<SettingsKey> = new Set(['activity', 'agents', 'danger', 'signin'])
 
 export function settingsGroups(owner: boolean): SettingsGroup[] {
   return GROUPS.map((group) => ({

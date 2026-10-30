@@ -15,7 +15,7 @@ const jsonSchema = (schema: z.ZodType, io: 'input' | 'output') =>
   schema['~standard'].jsonSchema[io]({ target: 'draft-2020-12' })
 
 describe('operation specs', () => {
-  it('are the forty operations, sorted by name, as tools/list shows them', () => {
+  it('are the forty-one operations, sorted by name, as tools/list shows them', () => {
     const names = OPERATIONS.map((operation) => operation.name)
     expect(names).toEqual([
       'approve_review',
@@ -31,6 +31,7 @@ describe('operation specs', () => {
       'get_analytics',
       'get_asset',
       'get_entry',
+      'get_review',
       'get_revision',
       'get_structure',
       'get_translations',
@@ -81,12 +82,20 @@ describe('operation specs', () => {
       approve_review: {
         effect: 'write',
         scopes: ['content:publish'],
-        outcomes: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
-        errors: ['blocked', 'not_pending', 'not_found'],
+        outcomes: [
+          'published',
+          'blocked',
+          'needs_acknowledgement',
+          'agents_pending',
+          'conflict',
+          'not_pending',
+          'not_found',
+        ],
+        errors: ['blocked', 'agents_pending', 'conflict', 'not_pending', 'not_found'],
       },
       comment_review: {
         effect: 'write',
-        scopes: ['content:write'],
+        scopes: ['review:comment'],
         outcomes: ['commented', 'not_pending', 'not_found'],
         errors: ['not_pending', 'not_found'],
       },
@@ -145,6 +154,12 @@ describe('operation specs', () => {
         outcomes: ['ok', 'not_found'],
         errors: ['not_found'],
       },
+      get_review: {
+        effect: 'read',
+        scopes: ['review:read'],
+        outcomes: ['ok', 'not_found'],
+        errors: ['not_found'],
+      },
       get_structure: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       get_translations: {
         effect: 'read',
@@ -153,7 +168,7 @@ describe('operation specs', () => {
         errors: ['not_found'],
       },
       list_entries: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
-      list_reviews: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
+      list_reviews: { effect: 'read', scopes: ['review:read'], outcomes: ['ok'], errors: [] },
       upload_asset: {
         effect: 'write',
         scopes: ['content:write'],

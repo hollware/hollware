@@ -92,6 +92,10 @@ export function createApi(deps: ApiDeps) {
             },
       )) as Answer
     },
+
+    async adminDelete<Answer>(path: string): Promise<Answer> {
+      return (await send(`/v1/admin/${path}`, { method: 'DELETE' })) as Answer
+    },
   }
 }
 

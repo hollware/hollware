@@ -199,3 +199,67 @@ export async function verifyAuthentication(
   })
   return { userId: passkey.userId, session: session.secret }
 }
+
+export async function enrollmentOptions(ceremony: Ceremony, userId: string) {
+  const existing = await passkeysOf(ceremony.db, userId)
+  const rp = relyingParty(ceremony)
+  const options = await generateRegistrationOptions({
+    rpName: 'Hollware',
+    rpID: rp.id,
+    userName: userId,
+    userID: userHandle(userId),
+    attestationType: 'none',
+    excludeCredentials: existing.map((passkey) => ({ id: passkey.credentialId })),
+    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+  })
+  const challengeId = await saveChallenge(ceremony.db, {
+    challenge: options.challenge,
+    purpose: 'enroll',
+    invitationId: null,
+    userId,
+    now: ceremony.now,
+  })
+  return { challengeId, options }
+}
+
+export async function verifyEnrollment(
+  ceremony: Ceremony,
+  userId: string,
+  input: {
+    readonly challengeId: string
+    readonly response: RegistrationResponseJSON
+    readonly label: string
+  },
+): Promise<{ id: string }> {
+  const challenge = await takeChallenge(ceremony.db, {
+    id: input.challengeId,
+    purpose: 'enroll',
+    now: ceremony.now,
+  })
+  if (challenge === null || challenge.userId !== userId) {
+    throw refused('Adding the passkey expired.', 'Start again.')
+  }
+  const rp = relyingParty(ceremony)
+  const verified = await unlessThrown(() =>
+    verifyRegistrationResponse({
+      response: input.response,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: rp.origin,
+      expectedRPID: rp.id,
+      requireUserVerification: true,
+    }),
+  )
+  if (!verified.verified) throw refused('The passkey could not be verified.', 'Try again.')
+  const { credential } = verified.registrationInfo
+  return {
+    id: await addPasskey(ceremony.db, {
+      userId,
+      credentialId: credential.id,
+      publicKey: isoBase64URL.fromBuffer(credential.publicKey),
+      counter: credential.counter,
+      transports: credential.transports ?? [],
+      label: input.label.trim() === '' ? 'Passkey' : input.label.trim().slice(0, 100),
+      now: ceremony.now,
+    }),
+  }
+}

@@ -1,4 +1,5 @@
 import type { DataStore, LiveLoader, Loader, LoaderContext } from 'astro/loaders'
+import type { CollectionNavigation } from '@hollware/client'
 import {
   asError,
   createSource,
@@ -20,7 +21,12 @@ export type {
   SourceOptions,
   Translation,
 } from './source.ts'
-export type { HollwareReader } from '@hollware/client'
+export type {
+  CollectionNavigation,
+  HollwareReader,
+  NavigationEntry,
+  NavigationGroup,
+} from '@hollware/client'
 export {
   contentNodes,
   elementOf,
@@ -178,4 +184,12 @@ export function hollwareTranslations(
   group: string,
 ): Promise<Translation[]> {
   return createSource(options).translations(group)
+}
+
+/**
+ * The published entries of the collection in the locale of `options`, grouped and ordered as the
+ * collection's navigation says, for a sidebar: `groups`, each with its `entries` and their paths.
+ */
+export function hollwareNavigation(options: HollwareLoaderOptions): Promise<CollectionNavigation> {
+  return createSource(options).navigation()
 }

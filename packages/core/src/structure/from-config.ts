@@ -51,6 +51,21 @@ function collectionOf(
     rules,
     maxMarkdownBytes: collection.maxMarkdownBytes ?? null,
     styleGuide: collection.styleGuide ?? null,
+    ...(collection.navigation === undefined
+      ? {}
+      : {
+          navigation: {
+            ...(collection.navigation.groupBy === undefined
+              ? {}
+              : { groupBy: collection.navigation.groupBy }),
+            ...(collection.navigation.groups === undefined
+              ? {}
+              : { groups: [...collection.navigation.groups] }),
+            ...(collection.navigation.orderBy === undefined
+              ? {}
+              : { orderBy: collection.navigation.orderBy }),
+          },
+        }),
   }
 }
 
@@ -79,6 +94,35 @@ export function definitionsFromConfig(config: HollwareConfig): Record<string, Si
             },
           }),
       ...(site.backups === undefined ? {} : { backups: { ...site.backups } }),
+      ...(site.access?.autoProvision === undefined
+        ? {}
+        : {
+            access: {
+              autoProvision:
+                site.access.autoProvision === null
+                  ? null
+                  : {
+                      domains: [...(site.access.autoProvision.domains ?? [])],
+                      emails: [...(site.access.autoProvision.emails ?? [])],
+                      role: site.access.autoProvision.role ?? 'author',
+                    },
+            },
+          }),
+      ...(site.agents === undefined
+        ? {}
+        : {
+            agents: site.agents.map((agent) => ({
+              name: agent.name,
+              member: agent.member,
+              events: [...agent.events],
+              delivery: { ...agent.delivery },
+              ...(agent.scopes === undefined ? {} : { scopes: [...agent.scopes] }),
+              ...(agent.required === undefined ? {} : { required: agent.required }),
+            })),
+          }),
+      ...(site.review?.requireAgents === undefined
+        ? {}
+        : { review: { requireAgents: site.review.requireAgents } }),
       collections: Object.fromEntries(
         Object.entries(site.collections).map(([name, collection]) => [
           name,

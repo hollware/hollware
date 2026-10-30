@@ -10,7 +10,14 @@ const temp = tempDirs()
 
 const WITH_URL = wranglerWithPublicUrl('https://cms.example.com')
 const SECRET = `hw_pat_${'3'.repeat(52)}`
-const SCOPES = ['content:read', 'content:write', 'content:publish', 'schema:admin']
+const SCOPES = [
+  'content:read',
+  'content:write',
+  'content:publish',
+  'schema:admin',
+  'review:read',
+  'review:comment',
+]
 
 function initProject(files: Record<string, string> = { 'wrangler.jsonc': WITH_URL }) {
   const cwd = temp.make(files)
@@ -174,10 +181,13 @@ describe('--json', () => {
     const cwd = temp.make({ 'wrangler.jsonc': WITH_URL })
     const wrangler = fakeWrangler(d1([{ id: 'blog' }]), d1([]))
 
-    const { code, out, err } = await run(['invite', '--role', 'editor', '--json'], {
-      cwd,
-      wrangler: wrangler.run,
-    })
+    const { code, out, err } = await run(
+      ['invite', '--role', 'editor', '--email', 'Ada@Example.com', '--json'],
+      {
+        cwd,
+        wrangler: wrangler.run,
+      },
+    )
 
     expect([code, err]).toEqual([0, []])
     expect(out.map((line) => JSON.parse(line))).toEqual([
@@ -185,6 +195,7 @@ describe('--json', () => {
         site: 'blog',
         role: 'editor',
         userId: null,
+        email: 'ada@example.com',
         expiresAt: '2026-10-19T12:00:00.000Z',
         setupUrl:
           'https://cms.example.com/setup#invitation=hw_inv_AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE',

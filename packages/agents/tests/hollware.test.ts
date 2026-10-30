@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { ALLOWED_TOOLS, allowOnly, mcpHollware } from '../src/hollware.ts'
+import { ALLOWED_TOOLS, allowOnly, grantHollware, mcpHollware } from '../src/hollware.ts'
 
 describe('the allowlist', () => {
   it('lets the reading and writing tools through, and refuses those that publish or decide', async () => {
@@ -32,6 +32,7 @@ describe('the allowlist', () => {
       'create_draft',
       'describe_site',
       'get_entry',
+      'get_review',
       'get_translations',
       'list_entries',
       'list_reviews',
@@ -100,5 +101,28 @@ describe('mcpHollware', () => {
     await expect(hollware.call('describe_site', {})).rejects.toThrow(
       'Hollware answered describe_site with 401',
     )
+  })
+})
+
+describe('grantHollware', () => {
+  it('calls the MCP endpoint of the grant with its token, and still refuses to publish', async () => {
+    const sent: string[] = []
+    const hollware = grantHollware(
+      { token: 'hw_agt_grant', mcp: 'https://cms.example.com/mcp' },
+      async (request) => {
+        sent.push(`${request.url} ${request.headers.get('authorization')}`)
+        return Response.json({ jsonrpc: '2.0', id: 1, result: { structuredContent: { n: 1 } } })
+      },
+    )
+
+    const read = await hollware.call('get_review', { id: 'rvw_1' })
+    const refused = await hollware.call(JSON.parse('"publish"'), {}).then(
+      () => 'called',
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    )
+
+    expect(read).toEqual({ n: 1 })
+    expect(refused).toBe('The agents never call publish')
+    expect(sent).toEqual(['https://cms.example.com/mcp Bearer hw_agt_grant'])
   })
 })

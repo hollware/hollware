@@ -1,9 +1,9 @@
 import { defineEventHandler, setResponseHeader } from 'h3'
-import { readingOrder } from '../../app/utils/docs'
+import { docLinks } from '../../app/utils/docs'
 
 export default defineEventHandler(async (event) => {
   const { site, reader } = useHollware(event)
-  const page = await reader.listEntries(site, 'docs', { locale: 'en', limit: 100 })
+  const navigation = await reader.getNavigation(site, 'docs', { locale: 'en' })
   const lines = [
     '# Hollware',
     '',
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     '',
     '## Docs',
     '',
-    ...readingOrder(page.entries).map(
+    ...docLinks(navigation).map(
       (doc) => `- [${doc.title}](https://hollware.com/docs/${doc.slug}.md): ${doc.description}`,
     ),
     '- [MCP tools](https://hollware.com/reference/mcp-tools.md): every tool of the MCP server, its scopes and its input schema',

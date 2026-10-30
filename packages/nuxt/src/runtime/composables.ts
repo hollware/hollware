@@ -1,7 +1,7 @@
 import type { HollwareReader } from '@hollware/client'
 import { appendResponseHeader, type H3Event } from 'h3'
 import { useFetch, useRequestEvent } from 'nuxt/app'
-import { entryTags, groupTags, listTags, recordTags, siteTags } from './tags.ts'
+import { entryTags, groupTags, listTags, navigationTags, recordTags, siteTags } from './tags.ts'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { PageEntry } from './types.ts'
 
@@ -71,6 +71,23 @@ export function useHollwareTranslations(
   return useFetch<{ outcome: 'ok'; entries: PageEntry[] }>(path, {
     transform: (answer) => {
       recordTags(event, groupTags(toValue(collection), toValue(group), answer.entries))
+      return answer
+    },
+  })
+}
+
+export function useHollwareNavigation(
+  collection: MaybeRefOrGetter<string>,
+  options: MaybeRefOrGetter<{ locale?: string }> = {},
+  fetching: { lazy?: boolean } = {},
+) {
+  const path = computed(() => `/_hollware/navigation/${encodeURIComponent(toValue(collection))}`)
+  const event = pageRequest()
+  return useFetch<Answer<'getNavigation'>>(path, {
+    query: computed(() => toValue(options)),
+    ...fetching,
+    transform: (answer) => {
+      recordTags(event, navigationTags(toValue(collection), answer.locale))
       return answer
     },
   })

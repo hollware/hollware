@@ -1,4 +1,12 @@
-import { isId, isScope, isSiteKey, SCOPES, SITE_KEY_MAX_LENGTH, type Scope } from '@hollware/core'
+import {
+  emailAddress,
+  isId,
+  isScope,
+  isSiteKey,
+  SCOPES,
+  SITE_KEY_MAX_LENGTH,
+  type Scope,
+} from '@hollware/core'
 import { UsageError } from './errors.ts'
 import { printable } from './format.ts'
 
@@ -41,6 +49,16 @@ export function parseLabel(value: string): string {
 
 export function parseOwnerName(value: string): string {
   return parseText(value, '--owner-name', OWNER_NAME_MAX)
+}
+
+export function parseEmail(value: string, flag: string): string {
+  const address = emailAddress(value)
+  if (address === null) {
+    throw new UsageError(
+      `${flag} ${shown(value)} is not an email address: write it whole, such as ada@example.com.`,
+    )
+  }
+  return address
 }
 
 export function parseScopes(value: string): Scope[] {
@@ -132,6 +150,7 @@ export interface FirstSite {
   ownerId: string
   memberId: string
   ownerName: string | undefined
+  ownerEmail?: string | undefined
   token: NewToken
   structure?: InitialStructure | undefined
 }
@@ -160,13 +179,18 @@ export function initScript({
   ownerId,
   memberId,
   ownerName,
+  ownerEmail,
   token,
   structure,
 }: FirstSite): string {
   const name = ownerName === undefined ? 'NULL' : quote(ownerName)
+  const user =
+    ownerEmail === undefined
+      ? `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`
+      : `INSERT INTO users (id, name, role, email, email_verified_at, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(ownerEmail)}, ${quote(token.now)}, ${quote(token.now)}, ${quote(token.now)});`
   return [
     siteRow(site, token.now, structure),
-    `INSERT INTO users (id, name, role, created_at, updated_at) VALUES (${quote(ownerId)}, ${name}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
+    user,
     `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) VALUES (${quote(memberId)}, ${quote(site)}, ${quote(ownerId)}, 'owner', ${quote(token.now)}, ${quote(token.now)});`,
     insertToken(token),
     ...siteChange(site, ownerId, token.now, structure),
@@ -206,10 +230,14 @@ export interface NewInvitation {
   userId: string | null
   expiresAt: string
   now: string
+  email?: string | undefined
 }
 
 export function insertInvitation(invitation: NewInvitation): string {
   const user = invitation.userId === null ? 'NULL' : quote(invitation.userId)
+  if (invitation.email !== undefined) {
+    return `INSERT INTO invitations (id, site_id, hash, role, user_id, email, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.email)}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
+  }
   return `INSERT INTO invitations (id, site_id, hash, role, user_id, expires_at, used_at, created_at, updated_at) VALUES (${quote(invitation.id)}, ${quote(invitation.site)}, ${quote(invitation.hash)}, ${quote(invitation.role)}, ${user}, ${quote(invitation.expiresAt)}, NULL, ${quote(invitation.now)}, ${quote(invitation.now)});`
 }
 
@@ -223,7 +251,7 @@ export function parseInvitationId(value: string): string {
 }
 
 export function listInvitations(site: string, now: string): string {
-  return `SELECT id, role, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
+  return `SELECT id, role, email, expires_at FROM invitations WHERE site_id = ${quote(site)} AND used_at IS NULL AND expires_at > ${quote(now)} ORDER BY created_at, id;`
 }
 
 export function revokeInvitation(id: string, site: string, now: string): string {
@@ -237,4 +265,52 @@ export function listTokens(site: string): string {
 export function revokeToken(id: string, site: string | undefined, now: string): string {
   const scope = site === undefined ? '' : ` AND site_id = ${quote(site)}`
   return `UPDATE tokens SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE id = ${quote(id)}${scope} AND revoked_at IS NULL RETURNING id; SELECT id, revoked_at FROM tokens WHERE id = ${quote(id)}${scope};`
+}
+
+const AGENT_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+export const AGENT_NAME_MAX = 64
+
+export function parseAgentName(value: string): string {
+  if (value.length > AGENT_NAME_MAX || !AGENT_NAME.test(value)) {
+    throw new UsageError(
+      `invalid agent name ${shown(value)}: use lowercase letters and digits joined by single hyphens, up to ${AGENT_NAME_MAX} characters, such as "reviewer" or "seo-auditor".`,
+    )
+  }
+  return value
+}
+
+export function parseUserId(value: string): string {
+  if (!isId('usr', value)) {
+    throw new UsageError(
+      `invalid user id ${shown(value)}: the id of an agent is usr_ followed by 26 characters. "hollware agent list" shows them.`,
+    )
+  }
+  return value
+}
+
+export interface NewAgentMember {
+  userId: string
+  memberId: string
+  site: string
+  name: string
+  now: string
+}
+
+export function insertAgentMember({ userId, memberId, site, name, now }: NewAgentMember): string {
+  return [
+    `INSERT INTO users (id, name, role, kind, created_at, updated_at) SELECT ${quote(userId)}, ${quote(name)}, 'reviewer', 'agent', ${quote(now)}, ${quote(now)} WHERE NOT EXISTS (SELECT 1 FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = ${quote(site)} AND users.kind = 'agent' AND users.name = ${quote(name)});`,
+    `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at) SELECT ${quote(memberId)}, ${quote(site)}, id, 'author', ${quote(now)}, ${quote(now)} FROM users WHERE id = ${quote(userId)} RETURNING user_id AS id;`,
+  ].join(' ')
+}
+
+export function listAgentMembers(site: string): string {
+  return `SELECT users.id AS id, users.name AS name, members.created_at AS since FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = ${quote(site)} AND users.kind = 'agent' ORDER BY members.created_at, users.id;`
+}
+
+export function removeAgentMember(userId: string, site: string, now: string): string {
+  const agent = "user_id IN (SELECT id FROM users WHERE kind = 'agent')"
+  return [
+    `UPDATE agent_grants SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND revoked_at IS NULL AND ${agent};`,
+    `DELETE FROM members WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND ${agent} RETURNING user_id AS id;`,
+  ].join(' ')
 }

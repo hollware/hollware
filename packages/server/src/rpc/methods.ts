@@ -5,6 +5,7 @@ import {
   HollwareError,
   listEntries as listEntriesSpec,
   listRedirects as listRedirectsSpec,
+  navigationInput,
   verifyPreviewToken,
   search as searchSpec,
   type ErrorCode,
@@ -15,6 +16,7 @@ import type { Principal } from '../auth/types.ts'
 import { createD1Store } from '../db/index.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import { describeError } from '../mcp/errors.ts'
+import { getNavigation } from '../ops/navigation.ts'
 import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Clock } from '../ports.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
@@ -129,8 +131,8 @@ function parseInput<Schema extends z.ZodType>(schema: Schema, raw: unknown): z.o
   )
 }
 
-function forCaller(
-  deps: RpcDeps,
+export function forCaller(
+  deps: Pick<RpcDeps, 'log'>,
   requestId: string,
   method: string,
   error: unknown,
@@ -249,6 +251,16 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         listEntriesSpec.input,
         () => ({ collection, ...readOptions(options, ['locale', 'tag', 'limit', 'cursor']) }),
         deps.handlers.list_entries,
+      ),
+    getNavigation: (site, collection, options) =>
+      run(
+        deps,
+        env,
+        'getNavigation',
+        site,
+        navigationInput,
+        () => ({ collection, ...readOptions(options, ['locale']) }),
+        (input, context) => getNavigation(input, context),
       ),
     getTranslations: (site, collection, translationGroup) =>
       run(

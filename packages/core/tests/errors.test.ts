@@ -10,6 +10,7 @@ describe('HollwareError', () => {
       'unknown_locale',
       'invalid_preview',
       'insufficient_scope',
+      'unauthorized',
       'output_too_large',
       'timeout',
       'internal',

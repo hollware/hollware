@@ -9,9 +9,10 @@ label input{width:auto;margin:0}fieldset{border:1px solid var(--line);border-rad
 code{font:.82em ui-monospace,'SF Mono',Menlo,monospace;color:var(--muted)}
 button{margin-top:1.25rem;padding:.6rem 1rem;font:inherit;font-weight:500;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg)}
 button:not([value=deny]){background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+a.provider{display:block;padding:.6rem 1rem;border:1px solid var(--line);border-radius:8px;color:var(--fg);text-decoration:none;font-weight:500;text-align:center}a.provider:hover{border-color:var(--accent)}
 [role=alert]{color:var(--danger)}`
 
-export const STYLE_HASH = 'sha256-caUN4ZvB7+wd4+mmGJIGrYN04KxctcbogVYBfvIZv7o='
+export const STYLE_HASH = 'sha256-u0shKx0v4fxh1huafZzNU3gS3MbqPuIYXZoEfNQYUhY='
 
 export const PAGE_ISOLATION: Readonly<Record<string, string>> = {
   'cross-origin-opener-policy': 'same-origin',
@@ -99,13 +100,40 @@ export function sameOriginTarget(target: string | null, origin: string): string 
   }
 }
 
-export function signInPage(nonce: string): string {
+export interface SignInView {
+  readonly providers: readonly { readonly id: string; readonly name: string }[]
+  readonly passkeys: boolean
+  readonly returnTo: string | null
+}
+
+export function federateLink(id: string, returnTo: string | null): string {
+  const query = returnTo === null ? '' : `?return_to=${encodeURIComponent(returnTo)}`
+  return `/auth/federate/${encodeURIComponent(id)}${query}`
+}
+
+export function signInPage(nonce: string, view: SignInView): string {
+  const links = view.providers
+    .map(
+      (provider) =>
+        `<p><a class="provider" href="${escapeHtml(federateLink(provider.id, view.returnTo))}">Continue with ${escapeHtml(provider.name)}</a></p>`,
+    )
+    .join('\n')
+  const passkey = view.passkeys
+    ? '<button id="signin" type="button">Sign in with a passkey</button>'
+    : ''
+  const intro = view.passkeys
+    ? view.providers.length === 0
+      ? '<p>Sign in to this Hollware with your passkey.</p>'
+      : '<p>Sign in to this Hollware with your account, or with a passkey.</p>'
+    : '<p>Sign in to this Hollware with your account.</p>'
   return page(
     'Sign in',
     nonce,
-    `<p>Sign in to this Hollware with your passkey.</p>
-<button id="signin" type="button">Sign in with a passkey</button>`,
-    `const sameOriginTarget = ${sameOriginTarget.toString()}
+    `${intro}
+${links}
+${passkey}`,
+    view.passkeys
+      ? `const sameOriginTarget = ${sameOriginTarget.toString()}
 document.getElementById('signin').addEventListener('click', async () => {
   try {
     const { challengeId, options } = await post('/auth/signin/options', {})
@@ -113,7 +141,8 @@ document.getElementById('signin').addEventListener('click', async () => {
     await post('/auth/signin/verify', { challengeId, response: credential.toJSON() })
     location.href = sameOriginTarget(new URLSearchParams(location.search).get('return_to'), location.origin)
   } catch (error) { fail(error) }
-})`,
+})`
+      : '',
   )
 }
 
@@ -137,6 +166,8 @@ const SCOPE_WORDS: Readonly<Record<string, string>> = {
   'content:write': 'Write drafts',
   'content:publish': 'Publish and unpublish',
   'schema:admin': 'Change the site settings',
+  'review:read': 'Read the reviews',
+  'review:comment': 'Comment on reviews',
 }
 
 export interface ConsentView {

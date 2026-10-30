@@ -31,8 +31,33 @@ export const users = sqliteTable(
     name: text('name'),
     role: text('role').notNull(),
     ...timestamps(),
+    email: text('email'),
+    emailVerifiedAt: text('email_verified_at'),
+    kind: text('kind', { enum: ['person', 'agent'] })
+      .notNull()
+      .default('person'),
   },
-  (t) => [check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`)],
+  (t) => [
+    check('users_role', sql`${t.role} IN ('owner', 'editor', 'reviewer')`),
+    uniqueIndex('users_email').on(t.email),
+  ],
+)
+
+export const identities = sqliteTable(
+  'identities',
+  {
+    id: id('idn'),
+    userId: text('user_id').notNull(),
+    provider: text('provider').notNull(),
+    subject: text('subject').notNull(),
+    email: text('email'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('identities_subject').on(t.provider, t.subject),
+    index('identities_user').on(t.userId),
+    foreignKey({ name: 'identities_user_fk', columns: [t.userId], foreignColumns: [users.id] }),
+  ],
 )
 
 export const members = sqliteTable(
@@ -454,6 +479,7 @@ export const invitations = sqliteTable(
     expiresAt: text('expires_at').notNull(),
     usedAt: text('used_at'),
     ...timestamps(),
+    email: text('email'),
   },
   (t) => [
     unique('invitations_id_site').on(t.id, t.siteId),
@@ -474,8 +500,17 @@ export const authChallenges = sqliteTable(
     userId: text('user_id'),
     expiresAt: text('expires_at').notNull(),
     ...timestamps(),
+    provider: text('provider'),
+    nonce: text('nonce'),
+    codeVerifier: text('code_verifier'),
+    returnTo: text('return_to'),
   },
-  (t) => [check('auth_challenges_purpose', sql`${t.purpose} IN ('register', 'authenticate')`)],
+  (t) => [
+    check(
+      'auth_challenges_purpose',
+      sql`${t.purpose} IN ('register', 'authenticate', 'federate', 'enroll')`,
+    ),
+  ],
 )
 
 export const sessions = sqliteTable(
@@ -540,6 +575,56 @@ export const reviews = sqliteTable(
       'reviews_json',
       sql`json_valid(${t.acknowledged}) AND json_type(${t.acknowledged}) = 'array' AND (${t.requestedMeta} IS NULL OR json_valid(${t.requestedMeta}))`,
     ),
+  ],
+)
+
+export const reviewItems = sqliteTable(
+  'review_items',
+  {
+    id: id('rvi'),
+    siteId: siteId(),
+    reviewId: text('review_id').notNull(),
+    entryId: text('entry_id').notNull(),
+    revisionId: text('revision_id'),
+    baseRevisionId: text('base_revision_id'),
+    action: text('action').notNull(),
+    excluded: integer('excluded').notNull().default(0),
+    active: integer('active').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('review_items_id_site').on(t.id, t.siteId),
+    uniqueIndex('review_items_active')
+      .on(t.siteId, t.entryId)
+      .where(sql`${t.active} = 1`),
+    index('review_items_review').on(t.siteId, t.reviewId),
+    foreignKey({ name: 'review_items_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'review_items_review_fk',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_entry',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_revision',
+      columns: [t.revisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_base',
+      columns: [t.baseRevisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    check('review_items_action', sql`${t.action} IN ('publish', 'unpublish')`),
+    check(
+      'review_items_revision_of_action',
+      sql`(${t.action} = 'publish') = (${t.revisionId} IS NOT NULL)`,
+    ),
+    check('review_items_flags', sql`${t.excluded} IN (0, 1) AND ${t.active} IN (0, 1)`),
   ],
 )
 
@@ -647,6 +732,9 @@ export const reviewComments = sqliteTable(
     authorMeta: text('author_meta'),
     body: text('body').notNull(),
     ...timestamps(),
+    entryId: text('entry_id'),
+    lineFrom: integer('line_from'),
+    lineTo: integer('line_to'),
   },
   (t) => [
     unique('review_comments_id_site').on(t.id, t.siteId),
@@ -740,5 +828,58 @@ export const assets = sqliteTable(
       'assets_sizes',
       sql`${t.bytes} > 0 AND ${t.originalBytes} BETWEEN 1 AND 10485760 AND length(${t.alt}) BETWEEN 1 AND 500 AND length(${t.filename}) BETWEEN 1 AND 200 AND length(${t.sha256}) = 64`,
     ),
+  ],
+)
+
+export const agentGrants = sqliteTable(
+  'agent_grants',
+  {
+    id: id('agt'),
+    siteId: siteId(),
+    userId: text('user_id').notNull(),
+    agent: text('agent').notNull(),
+    reviewId: text('review_id'),
+    hash: text('hash').notNull(),
+    scopes: text('scopes').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    revokedAt: text('revoked_at'),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('agent_grants_id_site').on(t.id, t.siteId),
+    unique('agent_grants_hash').on(t.hash),
+    index('agent_grants_expiry').on(t.expiresAt),
+    foreignKey({ name: 'agent_grants_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({ name: 'agent_grants_user', columns: [t.userId], foreignColumns: [users.id] }),
+    foreignKey({
+      name: 'agent_grants_review',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    check('agent_grants_scopes', sql`json_valid(${t.scopes}) AND json_type(${t.scopes}) = 'array'`),
+  ],
+)
+
+export const reviewAgentRuns = sqliteTable(
+  'review_agent_runs',
+  {
+    id: id('rar'),
+    siteId: siteId(),
+    reviewId: text('review_id').notNull(),
+    agent: text('agent').notNull(),
+    status: text('status').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('review_agent_runs_id_site').on(t.id, t.siteId),
+    unique('review_agent_runs_review_agent').on(t.reviewId, t.agent),
+    index('review_agent_runs_review').on(t.siteId, t.reviewId),
+    foreignKey({ name: 'review_agent_runs_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'review_agent_runs_review_fk',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    check('review_agent_runs_status', sql`${t.status} IN ('queued', 'commented', 'failed')`),
   ],
 )

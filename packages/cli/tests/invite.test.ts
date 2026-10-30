@@ -38,6 +38,27 @@ describe('hollware invite', () => {
     ])
   })
 
+  it('names the address of the person with --email, in lowercase, and refuses one that is no address', async () => {
+    const { wrangler, run: invite } = project()
+
+    const sent = await invite(['invite', '--role', 'editor', '--email', 'Ada@Example.ORG'])
+    const wrong = await invite([
+      'invite',
+      '--role',
+      'editor',
+      '--email',
+      "ada'); DROP TABLE users;--",
+    ])
+
+    expect(sent.code).toBe(0)
+    expect(wrangler.calls[1]?.args[6]).toMatch(
+      /^INSERT INTO invitations \(id, site_id, hash, role, user_id, email, expires_at, used_at, created_at, updated_at\) VALUES \('inv_[0-9A-Z]{26}', 'blog', '[0-9a-f]{64}', 'editor', NULL, 'ada@example\.org', '2026-10-19T12:00:00\.000Z', NULL, /,
+    )
+    expect(wrong.code).toBe(1)
+    expect(wrong.err.join('\n')).toContain('is not an email address')
+    expect(wrangler.calls).toHaveLength(2)
+  })
+
   it('makes a setup link for the owner of the site with --owner', async () => {
     const cwd = temp.make({
       'wrangler.jsonc': wranglerWithPublicUrl('https://cms.example.com'),
@@ -101,7 +122,7 @@ describe('hollware invite', () => {
 
     expect(wrangler.calls.map((call) => call.args[6])).toEqual([
       SITES,
-      "SELECT id, role, expires_at FROM invitations WHERE site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' ORDER BY created_at, id;",
+      "SELECT id, role, email, expires_at FROM invitations WHERE site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' ORDER BY created_at, id;",
       SITES,
       "UPDATE invitations SET expires_at = '2026-10-12T12:00:00.000Z', updated_at = '2026-10-12T12:00:00.000Z' WHERE id = 'inv_01JAB3XQ8ZK4M6N2P5R7S9T0VW' AND site_id = 'blog' AND used_at IS NULL AND expires_at > '2026-10-12T12:00:00.000Z' RETURNING id;",
     ])

@@ -120,7 +120,7 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 }
 
 describe('append-only tables', () => {
-  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, the two of assets and of entry_purges, and the two that write the events of reviews', async () => {
+  it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, the two of assets and of entry_purges, the two that write the events of reviews and the one that closes the items of a review', async () => {
     const { results } = await env.DB.prepare(
       "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
     ).all()
@@ -137,6 +137,7 @@ describe('append-only tables', () => {
       { name: 'publications_immutable', tbl_name: 'publications' },
       { name: 'publications_no_delete', tbl_name: 'publications' },
       { name: 'publications_no_replace', tbl_name: 'publications' },
+      { name: 'reviews_close_items', tbl_name: 'reviews' },
       { name: 'reviews_decided_event', tbl_name: 'reviews' },
       { name: 'reviews_requested_event', tbl_name: 'reviews' },
       { name: 'revision_tags_immutable', tbl_name: 'revision_tags' },

@@ -20,6 +20,7 @@ function callableNames(prototype: object | null): string[] {
 const RPC_METHODS: Record<keyof HollwareRpc, true> = {
   describeSite: true,
   getEntry: true,
+  getNavigation: true,
   getTranslations: true,
   listEntries: true,
   listRedirects: true,
@@ -27,12 +28,13 @@ const RPC_METHODS: Record<keyof HollwareRpc, true> = {
 }
 
 describe('the Hollware class', () => {
-  it('has the six methods of HollwareRpc and nothing else, own or inherited', () => {
+  it('has the seven methods of HollwareRpc and nothing else, own or inherited', () => {
     const { worker } = boot()
 
     expect(callableNames(worker.Hollware.prototype)).toEqual([
       'describeSite',
       'getEntry',
+      'getNavigation',
       'getTranslations',
       'listEntries',
       'listRedirects',
@@ -41,6 +43,7 @@ describe('the Hollware class', () => {
     expect(Object.keys(RPC_METHODS).sort()).toEqual([
       'describeSite',
       'getEntry',
+      'getNavigation',
       'getTranslations',
       'listEntries',
       'listRedirects',

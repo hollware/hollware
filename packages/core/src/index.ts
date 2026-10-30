@@ -1,6 +1,7 @@
 export const name = '@hollware/core'
 
 export {
+  AGENT_EVENT_KINDS,
   AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
   AUTOMATIC_KINDS,
@@ -18,11 +19,16 @@ export {
   MEDIA_MAX_WIDTH,
   MEDIA_MAX_WIDTHS,
   MEDIA_MIN_WIDTH,
+  admitsEmail,
+  emailAddress,
   resolveAdmin,
+  resolveAuth,
   resolveConfig,
   SITE_KEY_MAX_LENGTH,
   withAutomaticFields,
   type AdminDefinition,
+  type AgentDefinition,
+  type AgentEventKind,
   type AuthDefinition,
   type AutomaticFacts,
   type AutomaticField,
@@ -32,13 +38,20 @@ export {
   type ConfigProblem,
   type DescribedSchema,
   type HollwareConfig,
+  type ProviderDefinition,
   type ResolveConfig,
+  type ResolvedAccess,
+  type ResolvedAgent,
   type ResolvedAudit,
   type ResolvedAdmin,
   type ResolvedAuth,
   type ResolvedBackups,
+  type NavigationDefinition,
   type ResolvedCollection,
   type ResolvedConfig,
+  type ResolvedNavigation,
+  type ResolvedProvider,
+  type ResolvedReview,
   type ResolvedSite,
   type SchemaOutput,
   type SiteDefinition,
@@ -101,6 +114,7 @@ export {
   type SiteDefinitionData,
   type SiteDefinitionInput,
 } from './structure/index.ts'
+export { unifiedDiff } from './diff.ts'
 export { HollwareError, type ErrorCode } from './errors.ts'
 export { FORMER_PERSON, ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
 export type {
@@ -143,6 +157,7 @@ export {
   getAnalytics,
   getAsset,
   getEntry,
+  getReview,
   getRevision,
   getTranslations,
   listBackups,
@@ -175,10 +190,21 @@ export {
   type OutcomeInfo,
   type OutcomeOf,
 } from './operations/index.ts'
-export { isScope, SCOPES, type Scope } from './scopes.ts'
 export {
+  AGENT_DEFAULT_SCOPES,
+  AGENT_SCOPE_CEILING,
+  isScope,
+  SCOPES,
+  withImplied,
+  type Scope,
+} from './scopes.ts'
+export {
+  AGENT_GRANT_PREFIX,
+  AGENT_GRANT_TTL_MINUTES,
+  generateAgentGrant,
   generatePersonalToken,
   generateReadToken,
+  isAgentGrant,
   hashPersonalToken,
   isPersonalToken,
   isReadToken,
@@ -239,3 +265,20 @@ export {
   tagsOfEntries,
   type TaggedEntry,
 } from './cache.ts'
+export {
+  arrangeNavigation,
+  NAVIGATION_MAX_ENTRIES,
+  navigationInput,
+  type Navigation,
+  type NavigationEntry,
+  type NavigationGroup,
+  type NavigationSource,
+} from './navigation.ts'
+export {
+  agentDelivery,
+  agentGrant,
+  verifyAgentEvent,
+  type AgentDelivery,
+  type AgentGrant,
+  type HollwareAgentRpc,
+} from './agents.ts'

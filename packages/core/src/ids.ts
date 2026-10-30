@@ -2,6 +2,8 @@ const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 
 /** The kinds of ids and their prefixes. A new kind adds its prefix here. */
 export const ID_PREFIXES = {
+  agentGrant: 'agt',
+  agentRun: 'rar',
   analytics: 'ana',
   anonymization: 'anm',
   asset: 'ast',
@@ -11,6 +13,7 @@ export const ID_PREFIXES = {
   embedding: 'emb',
   entry: 'ent',
   event: 'evt',
+  identity: 'idn',
   invitation: 'inv',
   member: 'mbr',
   passkey: 'pky',
@@ -21,6 +24,7 @@ export const ID_PREFIXES = {
   revisionTag: 'tag',
   review: 'rvw',
   reviewComment: 'rvc',
+  reviewItem: 'rvi',
   schedule: 'sch',
   session: 'ses',
   siteChange: 'sit',

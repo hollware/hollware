@@ -60,6 +60,7 @@ const ROUTES = [
   ['/_hollware/entries/:collection', 'entries'],
   ['/_hollware/entry/:collection/:locale/:slug', 'entry'],
   ['/_hollware/translations/:collection/:group', 'translations'],
+  ['/_hollware/navigation/:collection', 'navigation'],
 ] as const
 
 export default defineNuxtModule<ModuleOptions>({
@@ -89,9 +90,13 @@ export default defineNuxtModule<ModuleOptions>({
       })
     }
     addImports(
-      ['useHollwareEntry', 'useHollwareEntries', 'useHollwareSite', 'useHollwareTranslations'].map(
-        (imported) => ({ name: imported, from: resolve('./runtime/composables') }),
-      ),
+      [
+        'useHollwareEntry',
+        'useHollwareEntries',
+        'useHollwareNavigation',
+        'useHollwareSite',
+        'useHollwareTranslations',
+      ].map((imported) => ({ name: imported, from: resolve('./runtime/composables') })),
     )
     addComponent({
       name: 'HollwareContent',

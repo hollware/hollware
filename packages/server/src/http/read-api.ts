@@ -23,9 +23,10 @@ function crossOriginOf(c: Context<GatewayEnv>): string | null {
   return origin.toLowerCase() === new URL(c.env.HOLLWARE_PUBLIC_URL).origin ? null : origin
 }
 
-const STATUS: Readonly<Record<string, 400 | 404 | 500>> = {
+const STATUS: Readonly<Record<string, 400 | 404 | 422 | 500>> = {
   invalid_input: 400,
   invalid_preview: 400,
+  output_too_large: 422,
   unknown_collection: 404,
   unknown_locale: 404,
 }
@@ -209,6 +210,22 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     }),
   )
   app.get(
+    '/v1/:collection/navigation',
+    readRoute<'/v1/:collection/navigation'>(async (c) => {
+      const locale = c.req.query('locale')
+      return answer(
+        c,
+        await options
+          .read(c.env)
+          .getNavigation(
+            c.get('site'),
+            c.req.param('collection'),
+            locale === undefined ? {} : { locale },
+          ),
+      )
+    }),
+  )
+  app.get(
     '/v1/:collection/translations/:group',
     readRoute<'/v1/:collection/translations/:group'>(async (c) =>
       answer(
@@ -339,6 +356,21 @@ export function openApiDocument(): object {
             param('cursor', 'query', false),
           ],
           responses: { '200': ok('A page of published entries'), ...common },
+        },
+      },
+      '/v1/{collection}/navigation': {
+        get: {
+          operationId: 'get_navigation',
+          parameters: [param('collection', 'path', true), param('locale', 'query', false)],
+          responses: {
+            '200': ok(
+              'The published entries of the collection in the locale, grouped and ordered for a sidebar',
+            ),
+            '422': {
+              description: 'The collection has more than 1,000 published entries in the locale',
+            },
+            ...common,
+          },
         },
       },
       '/v1/{collection}/translations/{group}': {

@@ -352,7 +352,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await review.getByRole('button', { name: 'Open on the site' }).click()
   await expect(owner.locator('body')).toHaveAttribute('data-opened', /\?hollware-preview=hw_prv_/)
   await review.getByRole('tab', { name: 'Changes' }).click()
-  await owner.getByRole('textbox', { name: 'Comment' }).fill('The title reads well.')
+  await owner.getByRole('textbox', { name: 'Comment', exact: true }).fill('The title reads well.')
   await owner.getByRole('button', { name: 'Comment', exact: true }).click()
   await expect(owner.getByText('The title reads well.')).toBeVisible()
   await shot(owner, 'review')
@@ -1091,6 +1091,28 @@ test('the owner finds the daily backups of the site in Backups, keeps them a wee
     owner.getByRole('switch', { name: /^(Back this site up each day|Respaldar este sitio)/ }),
   ).not.toBeChecked()
   await expectAccessible(owner)
+})
+
+test('the owner lets a domain in with no invitation, in Sign-in, then turns it off', async () => {
+  await owner.goto('/admin/settings/site/signin')
+  await expect(owner.getByRole('heading', { name: /^(Sign-in|Inicio de sesión)$/ })).toBeVisible()
+  const allow = owner.getByRole('switch', { name: /^(Let people|Dejar entrar)/ })
+  const save = owner.getByRole('button', { name: /^(Save who comes in|Guardar quién entra)$/ })
+  await allow.click()
+  await save.click()
+  await expect(owner.getByText(/^(List a domain|Indica un dominio)/)).toBeVisible()
+  await owner.getByRole('textbox', { name: /^(Domains|Dominios)$/ }).fill('@Example.com')
+  await save.click()
+  await expect(owner.getByText(/^(Saved|Guardado)/).first()).toBeVisible()
+  await owner.reload()
+  await expect(owner.getByRole('textbox', { name: /^(Domains|Dominios)$/ })).toHaveValue(
+    'example.com',
+  )
+  await expectAccessible(owner)
+  await allow.click()
+  await save.click()
+  await owner.reload()
+  await expect(allow).not.toBeChecked()
 })
 
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out', async () => {

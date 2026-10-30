@@ -1,9 +1,13 @@
 # @hollware/agents
 
 The agents of Hollware: a reviewer, a translator and a weekly auditor, run by the cron triggers of
-a Worker of their own. Boundary rules for this package:
+a Worker of their own (`run`), and the reviewer again for each `review.requested` Hollware delivers
+(`handle(event, grant, env)` in `src/worker.ts`, which `reviewById` of `src/reviewer.ts` does with
+the event's grant through `grantHollware`). `examples/agents-worker` exposes both on its
+`HollwareAgents` entrypoint. Boundary rules for this package:
 
-- The agents reach Hollware only over MCP, with a personal token, and only through `allowOnly`:
+- The agents reach Hollware only over MCP, with a personal token (the cron) or the grant of a
+  delivery (`handle`), and only through `allowOnly`:
   no code path of theirs may call `publish`, `approve_review`, `request_changes` or `unpublish`.
   Their work reaches readers only through a person's approval (`request_review`).
 - A role takes its ports (`Hollware`, `Model`, `Memory`) as arguments; the Worker builds them from

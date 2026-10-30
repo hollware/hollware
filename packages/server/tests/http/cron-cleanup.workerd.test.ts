@@ -16,7 +16,7 @@ const PAST = '2000-01-01T00:00:00.000Z'
 const FUTURE = '2099-01-01T00:00:00.000Z'
 
 describe('the cron trigger and what of sign-in expired', () => {
-  it('drops the challenges and sessions that expired, and keeps the others', async () => {
+  it('drops the challenges, sessions and agent grants that expired, the revoked grants, and keeps the others', async () => {
     const worker = boot()
     const db = worker.env.DB
     const user = `usr_${crypto.randomUUID().replaceAll('-', '').slice(0, 26).toUpperCase()}`
@@ -39,7 +39,19 @@ describe('the cron trigger and what of sign-in expired', () => {
           'INSERT INTO sessions (id, user_id, hash, expires_at, created_at, updated_at) VALUES (?1, ?2, ?1, ?3, ?4, ?4)',
         )
         .bind(id, user, expires, PAST)
+    const grant = (id: string, expires: string, revoked: string | null) =>
+      db
+        .prepare(
+          "INSERT INTO agent_grants (id, site_id, user_id, agent, hash, scopes, expires_at, revoked_at, created_at, updated_at) VALUES (?1, ?2, ?3, 'reviewer', ?1, '[]', ?4, ?5, ?6, ?6)",
+        )
+        .bind(id, `cron-grants-${tag}`, user, expires, revoked, PAST)
     await db.batch([
+      db
+        .prepare('INSERT INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)')
+        .bind(`cron-grants-${tag}`, PAST),
+      grant(`agt_old_${tag}`, NOW, null),
+      grant(`agt_revoked_${tag}`, FUTURE, PAST),
+      grant(`agt_new_${tag}`, '2026-10-13T12:00:00.001Z', null),
       challenge(`chl_old_${tag}`, PAST),
       challenge(`chl_new_${tag}`, FUTURE),
       session(`ses_old_${tag}`, PAST),
@@ -66,6 +78,7 @@ describe('the cron trigger and what of sign-in expired', () => {
       ).results.map((row) => row.id)
     expect(await left('auth_challenges')).toEqual([`chl_new_${tag}`])
     expect(await left('sessions')).toEqual([`ses_new_${tag}`])
+    expect(await left('agent_grants')).toEqual([`agt_new_${tag}`])
   })
 
   it('rebuilds a revision an older pipeline parsed', async () => {

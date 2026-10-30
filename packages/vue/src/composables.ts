@@ -1,9 +1,11 @@
 import {
   createHollware,
+  type CollectionNavigation,
   type EntryPage,
   type Hollware,
   type HollwareOptions,
   type ListEntriesOptions,
+  type NavigationOptions,
   type PageEntry,
 } from '@hollware/client'
 import {
@@ -107,4 +109,12 @@ export function useHollwareEntries(
   options: MaybeRefOrGetter<ListEntriesOptions> = {},
 ): HollwareState<EntryPage> {
   return useRead((hollware) => hollware.listEntries(toValue(collection), toValue(options)))
+}
+
+/** The published entries of a collection grouped and ordered for a sidebar, as its navigation says. */
+export function useHollwareNavigation(
+  collection: MaybeRefOrGetter<string>,
+  options: MaybeRefOrGetter<NavigationOptions> = {},
+): HollwareState<CollectionNavigation> {
+  return useRead((hollware) => hollware.getNavigation(toValue(collection), toValue(options)))
 }

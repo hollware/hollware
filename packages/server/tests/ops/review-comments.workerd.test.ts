@@ -52,9 +52,12 @@ describe('comment_review', () => {
         id: expect.stringMatching(/^rvc_[0-9A-HJKMNP-TV-Z]{26}$/),
         author: world.tenant.userId,
         authorName: expect.any(String),
+        authorKind: 'person',
         client: 'hollware-agents',
         body: 'Add an example.',
         at: T1,
+        entryId: null,
+        lines: null,
       },
     })
     expect(

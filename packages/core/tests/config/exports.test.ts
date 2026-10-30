@@ -23,6 +23,7 @@ import * as entry from './entry.ts'
 describe('the config module', () => {
   it('exports these values, and the package entry re-exports them', () => {
     expect(Object.keys(config).sort()).toEqual([
+      'AGENT_EVENT_KINDS',
       'AUDIT_RETENTION_MAX_DAYS',
       'AUDIT_RETENTION_MIN_DAYS',
       'AUTOMATIC_KINDS',
@@ -42,13 +43,16 @@ describe('the config module', () => {
       'SITE_KEY_MAX_LENGTH',
       'SITE_KEY_PATTERN',
       'WORDS_PER_MINUTE',
+      'admitsEmail',
       'defineCollection',
       'defineComponent',
       'defineConfig',
       'defineContract',
       'describeResolvedSite',
+      'emailAddress',
       'isSiteKey',
       'resolveAdmin',
+      'resolveAuth',
       'resolveConfig',
       'withAutomaticFields',
     ])

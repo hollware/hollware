@@ -53,6 +53,10 @@ const COMMANDS_HELP = [
     'invite',
     ['--role', '--owner', '--days', '--url', '--site', '--local', '--remote', '--database'],
   ],
+  ['agent', ['add', 'list', 'remove']],
+  ['agent add', ['<name>', '--json', '--site', '--local', '--remote', '--database']],
+  ['agent list', ['--json', '--site', '--local', '--remote', '--database']],
+  ['agent remove', ['<id>', '--site', '--local', '--remote', '--database']],
   ['import', ['<directory>', '--url', '--token-file', '--publish', '--dry-run']],
   [
     'export',
@@ -65,6 +69,22 @@ const COMMANDS_HELP = [
       '--locale',
       '--published',
       '--dry-run',
+    ],
+  ],
+  [
+    'promote',
+    [
+      '--from',
+      '--from-token-file',
+      '--to',
+      '--to-token-file',
+      '--collection',
+      '--since',
+      '--all',
+      '--state',
+      '--publish',
+      '--dry-run',
+      '--json',
     ],
   ],
 ] as const
@@ -86,7 +106,7 @@ describe('hollware --help', () => {
 
   it('lists every command with what it does', async () => {
     const [usage] = (await run(['--help'])).out
-    expect(usage?.split('\n').slice(2, 13)).toEqual([
+    expect(usage?.split('\n').slice(2, 14)).toEqual([
       'Commands:',
       "  init        Set up a site, its owner and a first token in the project's D1 database",
       "  dev         Start the project's local server and wait until it is ready",
@@ -96,6 +116,7 @@ describe('hollware --help', () => {
       '  doctor      Check the project, its bindings, its database and its owner',
       '  token       Create, list and revoke personal tokens',
       '  invite      Invite a person to the admin, as an editor or an author',
+      '  agent       Add, list and remove the agent members of a site',
       '  import      Import Markdown files over MCP',
       '  export      Export entries as Markdown files over MCP',
     ])

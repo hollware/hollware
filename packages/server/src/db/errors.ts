@@ -6,3 +6,9 @@ export function isUniqueViolation(error: unknown): boolean {
   }
   return false
 }
+
+export const GUARD_FAILED = 'hollware: a guard of the batch failed'
+
+export function isGuardFailure(error: unknown): boolean {
+  return error instanceof Error && /malformed JSON/i.test(`${error.message} ${String(error.cause)}`)
+}

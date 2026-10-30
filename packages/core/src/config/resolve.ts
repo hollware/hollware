@@ -3,6 +3,9 @@ import { ConfigError, Problems } from './config-error.ts'
 import { readAudit } from './audit.ts'
 import { readBackups } from './backups.ts'
 import { readMedia } from './media.ts'
+import { readAccess } from './access.ts'
+import { readAgents, readReview } from './agents.ts'
+import { readAuth } from './auth.ts'
 import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
@@ -162,6 +165,9 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
   const audit = readAudit(keyPath(path, 'audit'), raw['audit'], problems)
   const backups = readBackups(keyPath(path, 'backups'), raw['backups'], problems)
   const media = readMedia(keyPath(path, 'media'), raw['media'], problems)
+  const access = readAccess(keyPath(path, 'access'), raw['access'], problems)
+  const agents = readAgents(keyPath(path, 'agents'), raw['agents'], problems)
+  const review = readReview(keyPath(path, 'review'), raw['review'], problems)
   return {
     key,
     locales,
@@ -174,6 +180,9 @@ function readSite(key: string, raw: unknown, problems: Problems): ResolvedSite |
     audit,
     backups,
     media,
+    access,
+    agents,
+    review,
   }
 }
 
@@ -192,29 +201,6 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
     if (site !== null) sites.set(key, site)
   }
   return sites
-}
-
-function readAuth(raw: unknown, problems: Problems): ResolvedAuth {
-  if (raw === undefined) return { dynamicClientRegistration: false }
-  if (!isRecord(raw)) {
-    problems.add(
-      'auth',
-      wrongType(raw, 'an object'),
-      'Write auth: { dynamicClientRegistration: true }, or leave auth out.',
-    )
-    return { dynamicClientRegistration: false }
-  }
-  const value = raw['dynamicClientRegistration']
-  if (value === undefined) return { dynamicClientRegistration: false }
-  if (typeof value !== 'boolean') {
-    problems.add(
-      'auth.dynamicClientRegistration',
-      wrongType(value, 'true or false'),
-      'Write true to let MCP clients register themselves, or leave it out.',
-    )
-    return { dynamicClientRegistration: false }
-  }
-  return { dynamicClientRegistration: value }
 }
 
 const FAVICON_FIX = "Write admin: { favicon: 'https://example.com/icon.png' }, or leave it out."
@@ -274,7 +260,7 @@ export function resolveAdmin(admin: unknown): ResolvedAdmin {
 export function resolveConfig(config: unknown): ResolvedConfig {
   const problems = new Problems()
   let sites = new Map<string, ResolvedSite>()
-  let auth: ResolvedAuth = { dynamicClientRegistration: false }
+  let auth: ResolvedAuth = { dynamicClientRegistration: false, passkeys: true, providers: [] }
   let admin: ResolvedAdmin = { favicon: null }
   if (isRecord(config)) {
     sites = readSites(config['sites'], problems)

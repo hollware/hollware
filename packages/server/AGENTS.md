@@ -76,20 +76,23 @@ serve them. Boundary rules for this package:
   to the library, which would answer a bare 503: it hands the error to the gateway, which throws
   it into the error handler.
 - Reviews (v0.3): `publish` from a principal without `content:publish` runs the same checks and
-  asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
-  closes its pending review in the same batch: a new revision cancels it, a publication approves
-  it. `approve_review` publishes through the `publish` handler itself, in the approver's name.
+  asks for a review (`src/db/reviews.ts`). Its entries are `review_items`, active while it is
+  pending, one active per entry. A new revision of one cancels the review whole, in its batch.
+  `approve_review` publishes one entry through `publish`, several in one batch.
+- Agents: `src/events/agents.ts` delivers a site's `agents` their events with a grant (`hw_agt_`,
+  `src/auth/grant.ts`), which `checkPersonalToken` checks.
 - Drafts store and answer what `formatMarkdown` gives; `unchanged` compares that canonical form
   (`tests/ops/drafts.workerd.test.ts`).
 - The trash of entries: `delete_entry` sets `entries.deleted_at` on a draft, and every read of the
   store (the contracts' lookups included) leaves a trashed entry out but `listEntries` with
   `trashed`; it keeps its slug and translation, so `create_draft` answers `in_trash`
   (`tests/ops/trash.workerd.test.ts`).
-- `src/identity` is the passkeys, the invitations and the sessions: the pages `/setup` and
-  `/signin`, the four steps of their ceremonies, and `POST /authorize/signout`, below the one path
-  the session cookie is sent to. A person manages their own passkeys, grants and sessions over
-  `/v1/admin/account`; their last passkey is refused in the statement that deletes. `routes.ts`
-  imports the ceremonies with `import()`, so SimpleWebAuthn stays out of startup.
+- `src/identity` is the sign-in: passkeys, providers (`federation.ts`, `jwt.ts`), invitations and
+  sessions: `/setup`, `/signin`, the ceremonies, `/auth/federate/:provider` and its GET callback, and
+  `POST /authorize/signout`, below the one path the session cookie is sent to. Only a verified email
+  links, invites or provisions (`tests/identity/federation.workerd.test.ts`). A person manages their
+  passkeys, grants and sessions over `/v1/admin/account`; the last passkey goes only with an identity
+  left. `routes.ts` imports the ceremonies and the federation with `import()`, out of startup.
 - `src/compose.ts`: `createHollwareWith(config, handlers, { clock? })` builds the Worker once,
   when the user's module loads: it resolves the config (a broken one throws its `ConfigError`
   there), builds the MCP endpoint, the gateway and the `Hollware` class. Every log line is one
@@ -102,11 +105,7 @@ serve them. Boundary rules for this package:
   the Hono 4 form answers a plain-text 500, so everything version-specific stays in
   `src/http/errors.ts`. A route's error reaches `onError` before any middleware around it, so a
   route catches what it answers itself (`src/http/read-api.ts`).
-- `src/rpc` is what sites call over a service binding: the class has the six methods of
-  `HollwareRpc` and nothing else, because everything on its prototype is callable. Each call checks
-  its site, parses its input with the spec, and runs on the published view with a binding
-  principal and a replica session. An error crosses a binding with its `cause`, so a failure
-  reaches the caller rebuilt without it, or as `internal`, and the cause goes to the log.
+- `src/rpc` is what other Workers of the account call over a service binding: `src/rpc/AGENTS.md`.
 - `src/mcp` is the MCP adapter: `createMcpEndpoint` returns `{ fetch(request, call) }`, which
   the gateway mounts at `/mcp` once per isolate, passing `{ principal, requestId, context }`.
   It sets the view (`head`) and the client itself, asks for each tool's scopes before its

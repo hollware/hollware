@@ -1,3 +1,5 @@
+import { isScope, withImplied } from '../packages/core/src/scopes.ts'
+
 type Json = Readonly<Record<string, unknown>>
 type Schema = Json
 
@@ -140,8 +142,9 @@ function compareMcp(before: Json, after: Json, breaks: string[]): void {
       breaks.push(`mcp ${tool.name}: the tool is gone`)
       continue
     }
+    const granted: readonly string[] = withImplied(tool.scopes.filter(isScope))
     for (const scope of match.scopes) {
-      if (!tool.scopes.includes(scope)) breaks.push(`mcp ${tool.name}: now asks for ${scope}`)
+      if (!granted.includes(scope)) breaks.push(`mcp ${tool.name}: now asks for ${scope}`)
     }
     compareSchemas(`mcp ${tool.name} input`, tool.input, match.input, 'input', breaks)
     compareSchemas(`mcp ${tool.name} output`, tool.output, match.output, 'output', breaks)

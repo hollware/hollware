@@ -1,8 +1,10 @@
+import type { AgentGrant, HollwareEvent } from '@hollware/core'
+
 import { auditStep, writeReport, type ReportOptions } from './auditor.ts'
-import { mcpHollware } from './hollware.ts'
-import { kvMemory } from './memory.ts'
+import { grantHollware, mcpHollware } from './hollware.ts'
+import { kvMemory, type Memory } from './memory.ts'
 import { capped, DailyLimitReached, DEFAULT_MODEL, workersAiModel, type Model } from './model.ts'
-import { reviewPending } from './reviewer.ts'
+import { reviewById, reviewPending } from './reviewer.ts'
 import { translateMissing } from './translator.ts'
 
 /** The bindings and variables of the Worker of the agents. */
@@ -11,8 +13,11 @@ export interface AgentsEnv {
   readonly HOLLWARE?: { fetch(request: Request): Promise<Response> }
   /** The public URL of Hollware, such as https://cms.example.com. */
   readonly HOLLWARE_PUBLIC_URL: string
-  /** A personal token of the site, with content:read and content:write (a secret). */
-  readonly HOLLWARE_AGENT_TOKEN: string
+  /**
+   * A personal token of the site, with content:read and content:write (a secret), for the roles of
+   * the cron; without it they skip, and only the events Hollware delivers to `handle` are worked.
+   */
+  readonly HOLLWARE_AGENT_TOKEN?: string
   /** Workers AI, for the default model. */
   readonly AI?: { run(model: string, input: object, options?: object): Promise<unknown> }
   /** What the agents remember: the reviews they read, the translations they tried, the day's calls. */
@@ -66,6 +71,12 @@ export interface AgentsWorker {
    * the agents over a service binding, so that they need no cron trigger of their own.
    */
   readonly run: (env: AgentsEnv) => Promise<void>
+  /**
+   * An event Hollware delivers to the agent, with the grant that acts as its member for it: on
+   * `review.requested` the reviewer comments on that review. A failure is thrown, so Hollware
+   * delivers the event again; reaching the day's limit of model calls ends it quietly.
+   */
+  readonly handle: (event: HollwareEvent, grant: AgentGrant, env: AgentsEnv) => Promise<void>
   readonly scheduled: (
     controller: { readonly cron: string },
     env: AgentsEnv,
@@ -89,14 +100,12 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
   const clock = options.clock ?? (() => new Date())
   const auditor = options.auditor === undefined ? false : options.auditor
 
-  const depsOf = (env: AgentsEnv) => {
-    const hollware = mcpHollware({
-      url: env.HOLLWARE_PUBLIC_URL,
-      token: env.HOLLWARE_AGENT_TOKEN,
-      fetch: (request) =>
-        env.HOLLWARE === undefined ? fetch(request) : env.HOLLWARE.fetch(request),
-    })
-    const memory = kvMemory(env.AGENTS_KV)
+  const fetchOf =
+    (env: AgentsEnv) =>
+    (request: Request): Promise<Response> =>
+      env.HOLLWARE === undefined ? fetch(request) : env.HOLLWARE.fetch(request)
+
+  const modelOf = (env: AgentsEnv, memory: Memory): Model => {
     const chosen = options.model ?? DEFAULT_MODEL
     const base: Model =
       typeof chosen === 'function'
@@ -111,8 +120,13 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
             )(messages)
           }
     const today = () => clock().toISOString().slice(0, 10)
-    const model = capped(base, memory, options.dailyLimit ?? 100, today)
-    return { hollware, memory, model }
+    return capped(base, memory, options.dailyLimit ?? 100, today)
+  }
+
+  const depsOf = (env: AgentsEnv, token: string) => {
+    const hollware = mcpHollware({ url: env.HOLLWARE_PUBLIC_URL, token, fetch: fetchOf(env) })
+    const memory = kvMemory(env.AGENTS_KV)
+    return { hollware, memory, model: modelOf(env, memory) }
   }
 
   const run = async (role: string, work: () => Promise<object>): Promise<boolean> => {
@@ -130,9 +144,14 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
   }
 
   const runOnce = async (env: AgentsEnv): Promise<void> => {
-    const deps = depsOf(env)
     const now = clock()
     const role = roleAt(now.getTime())
+    const token = env.HOLLWARE_AGENT_TOKEN
+    if (token === undefined || token === '') {
+      log({ role, skipped: 'HOLLWARE_AGENT_TOKEN is not set' })
+      return
+    }
+    const deps = depsOf(env, token)
     if (role === 'reviewer') {
       if (options.reviewer !== false) await run('reviewer', () => reviewPending(deps))
       return
@@ -175,8 +194,34 @@ export function createHollwareAgents(options: AgentsOptions = {}): AgentsWorker 
     if (done) await deps.memory.put(LAST_AUDIT, day)
   }
 
+  const handle = async (event: HollwareEvent, grant: AgentGrant, env: AgentsEnv): Promise<void> => {
+    if (event.kind !== 'review.requested' || options.reviewer === false) return
+    const id = grant.review ?? event.review.id
+    const memory = kvMemory(env.AGENTS_KV)
+    const deps = {
+      hollware: grantHollware(grant, fetchOf(env)),
+      memory,
+      model: modelOf(env, memory),
+    }
+    try {
+      log({ role: 'reviewer', review: id, ...(await reviewById(deps, id)) })
+    } catch (error) {
+      if (error instanceof DailyLimitReached) {
+        log({ role: 'reviewer', review: id, stopped: error.message })
+        return
+      }
+      log({
+        role: 'reviewer',
+        review: id,
+        failed: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+  }
+
   return {
     run: runOnce,
+    handle,
     async scheduled(_controller, env, ctx) {
       ctx.waitUntil(runOnce(env))
     },

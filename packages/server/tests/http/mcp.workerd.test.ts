@@ -24,6 +24,7 @@ const TOOLS = [
   'get_analytics',
   'get_asset',
   'get_entry',
+  'get_review',
   'get_revision',
   'get_structure',
   'get_translations',
@@ -114,7 +115,14 @@ describe('what the handler gets from the gateway', () => {
       userId: seeded.userId,
       tokenId: seeded.tokenId,
       site: 'gateway-tests',
-      scopes: ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+      scopes: [
+        'content:read',
+        'content:write',
+        'content:publish',
+        'schema:admin',
+        'review:read',
+        'review:comment',
+      ],
     })
     expect(context.view).toBe('head')
     expect(context.requestId).toBe(REQUEST_ID)
@@ -268,7 +276,7 @@ describe('a token without the scope of the tool', () => {
     expect(answer.status).toBe(200)
     expect(answer.result.structuredContent).toEqual(CANNED.list_entries.ok)
     expect(onlyCall(worker.seen).context.principal).toMatchObject({
-      scopes: ['content:read'],
+      scopes: ['content:read', 'review:read'],
     })
   })
 })

@@ -30,4 +30,14 @@ describe('presets', () => {
     ])
     expect([one.translationGroupField, one.rules.length]).toEqual([null, 2])
   })
+
+  it('give docs a navigation by section, then by order', () => {
+    const sites = compileSites({ site: sitePreset('docs', ['en'], 'en') }).sites
+
+    expect(sites.get('site')?.collections.get('docs')?.navigation).toEqual({
+      groupBy: 'section',
+      groups: null,
+      orderBy: 'order',
+    })
+  })
 })

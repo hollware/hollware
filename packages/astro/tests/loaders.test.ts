@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   hollwareBinding,
   hollwareLiveLoader,
+  hollwareNavigation,
   hollwareTranslations,
   loadInto,
   type LoadContext,
@@ -69,6 +70,22 @@ function fakeReader(published: readonly Published[]) {
         entries: [
           { ...post('hello', 'Hello'), locale: 'en' },
           { ...post('hola', 'Hola'), locale: 'es' },
+        ],
+      }
+    },
+    async getNavigation(site, collection, options) {
+      calls.push(`navigation ${site} ${collection} ${options?.locale}`)
+      return {
+        outcome: 'ok',
+        collection,
+        locale: options?.locale ?? 'en',
+        groups: [
+          {
+            name: null,
+            entries: [
+              { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+            ],
+          },
         ],
       }
     },
@@ -317,6 +334,28 @@ describe('hollwareTranslations', () => {
       { locale: 'es', slug: 'hola' },
     ])
     expect(calls).toEqual(['translations playground blog greeting'])
+  })
+})
+
+describe('hollwareNavigation', () => {
+  it('reads the navigation of the collection in the locale of the loader', async () => {
+    const { reader, calls } = fakeReader(POSTS)
+
+    const navigation = await hollwareNavigation({ ...base, locale: 'es', reader })
+
+    expect(navigation).toEqual({
+      collection: 'blog',
+      locale: 'es',
+      groups: [
+        {
+          name: null,
+          entries: [
+            { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+          ],
+        },
+      ],
+    })
+    expect(calls).toEqual(['navigation playground blog es'])
   })
 })
 

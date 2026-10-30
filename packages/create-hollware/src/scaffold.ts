@@ -54,6 +54,16 @@ export const USAGE = [
   '  --json           One JSON object on stdout and nothing else: dir, then what "hollware init" says',
   '                   (site, ownerId, tokenId, token or tokenFile, expiresAt, setupUrl, mcpUrl,',
   '                   readApiUrl), the commands to start it and the MCP configuration',
+  '  --owner-email <address>',
+  '                   The address the owner signs in with through a provider',
+  '  --auth <kind>    Sign in through google, microsoft, github, oidc or cloudflare-access, with:',
+  '  --client-id <id> The client id of the app registered with the provider (not Access); its',
+  '                   secret is the Worker secret <KIND>_CLIENT_SECRET, set with wrangler secret put',
+  '  --tenant <id>    microsoft: the id or domain of your directory',
+  '  --issuer <url>   oidc: the https:// issuer',
+  '  --team-domain <domain>',
+  '                   cloudflare-access: the team domain, such as example.cloudflareaccess.com',
+  '  --audience <tag> cloudflare-access: the Application Audience (AUD) tag',
   '  --pm <npm|pnpm>  The package manager that installs (default: npm)',
   '  --yes            Take the defaults: <dir> is my-hollware when it is not given',
   '  --no-install     Do not install, migrate or make the site',
@@ -84,6 +94,62 @@ export interface Choices {
   readonly tokenFile: string | undefined
   readonly json: boolean
   readonly initFlags: readonly string[]
+  readonly provider: Readonly<Record<string, string>> | null
+}
+
+const AUTH_KINDS = ['google', 'microsoft', 'github', 'oidc', 'cloudflare-access']
+
+function required(value: string | undefined, flag: string, kind: string): string {
+  if (value === undefined || value.trim() === '') {
+    throw new UsageError(`--auth ${kind} needs ${flag}`)
+  }
+  return value.trim()
+}
+
+export function providerOf(values: {
+  readonly auth?: string | undefined
+  readonly 'client-id'?: string | undefined
+  readonly tenant?: string | undefined
+  readonly issuer?: string | undefined
+  readonly 'team-domain'?: string | undefined
+  readonly audience?: string | undefined
+}): Readonly<Record<string, string>> | null {
+  const kind = values.auth
+  if (kind === undefined) return null
+  if (!AUTH_KINDS.includes(kind)) {
+    throw new UsageError(`--auth is ${AUTH_KINDS.join(', ')}, not "${kind}"`)
+  }
+  if (kind === 'cloudflare-access') {
+    return {
+      kind,
+      teamDomain: required(values['team-domain'], '--team-domain', kind),
+      audience: required(values.audience, '--audience', kind),
+    }
+  }
+  const client = {
+    clientId: required(values['client-id'], '--client-id', kind),
+    clientSecret: `${kind.toUpperCase()}_CLIENT_SECRET`,
+  }
+  if (kind === 'microsoft') {
+    return { kind, tenant: required(values.tenant, '--tenant', kind), ...client }
+  }
+  if (kind === 'oidc') {
+    return {
+      kind,
+      id: 'oidc',
+      name: 'Single sign-on',
+      issuer: required(values.issuer, '--issuer', kind),
+      ...client,
+    }
+  }
+  return { kind, ...client }
+}
+
+export function workerWithProvider(source: string, provider: Readonly<Record<string, string>>) {
+  return source.replace(
+    'createHollware()',
+    `createHollware({ auth: { providers: [${JSON.stringify(provider)}] } })`,
+  )
 }
 
 export function readChoices(argv: readonly string[]): Choices {
@@ -100,6 +166,13 @@ export function readChoices(argv: readonly string[]): Choices {
           'ip-addresses': { type: 'string' },
           'audit-retention-days': { type: 'string' },
           pm: { type: 'string' },
+          'owner-email': { type: 'string' },
+          auth: { type: 'string' },
+          'client-id': { type: 'string' },
+          tenant: { type: 'string' },
+          issuer: { type: 'string' },
+          'team-domain': { type: 'string' },
+          audience: { type: 'string' },
           yes: { type: 'boolean' },
           'no-install': { type: 'boolean' },
           'no-git': { type: 'boolean' },
@@ -147,7 +220,9 @@ export function readChoices(argv: readonly string[]): Choices {
       ...(values['audit-retention-days'] === undefined
         ? []
         : ['--audit-retention-days', values['audit-retention-days']]),
+      ...(values['owner-email'] === undefined ? [] : ['--owner-email', values['owner-email']]),
     ],
+    provider: providerOf(values),
   }
 }
 
@@ -174,6 +249,10 @@ export function writeProject(io: Io, target: string, choices: Choices): void {
   for (const file of ['README.md']) {
     replaceIn(join(target, file), [['my-site', choices.site]])
   }
+  if (choices.provider !== null) {
+    const worker = join(target, 'src', 'worker.ts')
+    writeFileSync(worker, workerWithProvider(readFileSync(worker, 'utf8'), choices.provider))
+  }
   if (choices.pm === 'pnpm') writeFileSync(join(target, 'pnpm-workspace.yaml'), PNPM_WORKSPACE)
   else for (const file of ['AGENTS.md', 'README.md']) replaceIn(join(target, file), NPM_COMMANDS)
 }
@@ -192,6 +271,16 @@ export const PNPM_WORKSPACE = `allowBuilds:
   esbuild: true
   workerd: false
 `
+
+function secretLines(choices: Choices): string[] {
+  const secret = choices.provider?.['clientSecret']
+  if (secret === undefined) return []
+  return [
+    `Put the client secret of the provider in .dev.vars as ${secret}=…, and before deploying:`,
+    `  ${choices.pm} exec wrangler secret put ${secret}`,
+    '',
+  ]
+}
 
 async function step(io: Io, what: string, command: string, args: string[], cwd: string) {
   const result = await io.run(command, args, cwd)
@@ -328,6 +417,7 @@ export async function create(argv: readonly string[], io: Io): Promise<number> {
       ...(choices.dir === '.' ? [] : [`  cd ${choices.dir}`]),
       `  ${dev}`,
       '',
+      ...secretLines(choices),
       'The admin is at http://localhost:5199/admin/. To deploy, log in to Cloudflare and run:',
       `  ${choices.pm} exec wrangler login`,
       `  ${choices.pm} run deploy`,

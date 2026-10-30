@@ -30,6 +30,7 @@ it('builds a Worker from a config, with the read methods of the entrypoint', () 
     'constructor',
     'describeSite',
     'getEntry',
+    'getNavigation',
     'getTranslations',
     'listEntries',
     'listRedirects',

@@ -141,6 +141,19 @@ describe.each(['home', 'stranger'] as const)(
       )
       expect(await store.findReview(caller.site, foreign)).toBeNull()
       expect((await store.findReview(caller.site, own))?.id).toBe(own)
+      await env.DB.prepare(
+        `INSERT INTO review_items (id, site_id, review_id, entry_id, revision_id, action, active, created_at, updated_at)
+          VALUES ('rvi_' || substr(?1, 5), ?2, ?1, ?3, ?4, 'publish', 1, ?5, ?5)`,
+      )
+        .bind(foreign, other.site, theirs.draft.id, theirs.draft.revisionId, NOW)
+        .run()
+      expect(await store.reviewItems(caller.site, [foreign, own])).toEqual(new Map())
+      expect(
+        await store.revisionMarkdown(caller.site, [
+          theirs.english.revisionId,
+          mine.english.revisionId,
+        ]),
+      ).toEqual(new Map([[mine.english.revisionId, expect.any(String)]]))
     })
 
     it('lists, and counts for the next page, only its own entries', async () => {

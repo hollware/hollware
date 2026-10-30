@@ -16,6 +16,7 @@ const TABLES = [
   'redirects',
   'outbox',
   'reviews',
+  'review_items',
   'schedules',
   'unpublishes',
   'entry_embeddings',
@@ -104,7 +105,7 @@ describe('the purge of an entry', () => {
 
     expect(moved.outcome).toBe('moved')
     expect(asked.outcome).toBe('pending_review')
-    expect(before).toEqual([1, 2, 1, 5, 1, 1, 1, 1])
+    expect(before).toEqual([1, 2, 1, 5, 1, 1, 1, 1, 1])
     expect([outcome, again, live2]).toEqual(['purged', 'not_found', 'not_in_trash'])
     expect(await Promise.all(TABLES.map((table) => count(table, post.id)))).toEqual(
       TABLES.map(() => 0),

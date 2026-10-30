@@ -91,6 +91,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     contracts: parts.contracts ?? [],
     maxMarkdownBytes: 524_288,
     styleGuide: null,
+    navigation: null,
   }
 }
 
@@ -109,6 +110,9 @@ export function siteOf(
     events: { webhooks: [], indexNow: null },
     audit: { ipAddresses: 'off', retentionDays: null },
     backups: { enabled: true, retentionDays: 30 },
+    access: { autoProvision: null },
+    agents: [],
+    review: { requireAgents: false },
     media: {
       format: 'webp',
       quality: 85,

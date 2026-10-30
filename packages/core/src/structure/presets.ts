@@ -37,6 +37,7 @@ export function collectionPreset(
     rules: [],
     maxMarkdownBytes: null,
     styleGuide: null,
+    navigation: null,
   }
   switch (preset) {
     case 'empty':
@@ -82,10 +83,12 @@ export function collectionPreset(
           properties: {
             title: { type: 'string', minLength: 1, maxLength: 70 },
             description: { type: 'string', minLength: 1, maxLength: 160 },
+            section: { type: 'string', minLength: 1 },
             order: { type: 'integer', minimum: 0 },
           },
           required: ['title', 'description'],
         },
+        navigation: { groupBy: 'section', orderBy: 'order' },
         rules: [
           { rule: 'images-have-alt', severity: 'error', params: {} },
           { rule: 'internal-links-resolve', severity: 'warning', params: {} },
@@ -118,6 +121,9 @@ export function sitePreset(
       widths: [640, 1280],
       keepOriginals: true,
     },
+    access: { autoProvision: null },
+    agents: [],
+    review: { requireAgents: false },
     collections,
   }
 }

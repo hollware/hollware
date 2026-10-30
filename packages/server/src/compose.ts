@@ -1,6 +1,7 @@
 import {
   definitionsFromConfig,
   resolveAdmin,
+  resolveAuth,
   resolveConfig,
   type HollwareConfig,
   type ResolvedSite,
@@ -16,8 +17,9 @@ import { createD1Store } from './db/index.ts'
 import { dropExpired } from './identity/store.ts'
 import { createAuditLog, dropExpiredLines, systemActor, type AuditActor } from './audit/log.ts'
 import type { DeliveryDeps } from './events/deliver.ts'
+import { failAgentRuns } from './events/agents.ts'
 import { abandonEvents, consumeEvents, isDeadLetters, sweepOutbox } from './events/run.ts'
-import { createEntrypoint, createRpc } from './rpc/index.ts'
+import { createEntrypoint, createOpsEntrypoint, createRpc } from './rpc/index.ts'
 import { backupBucketOf, backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
@@ -55,6 +57,7 @@ export function createHollwareWith(
   const moving = config?.sites !== undefined
   if (moving) resolveConfig(config)
   const admin = resolveAdmin(config?.admin)
+  const auth = resolveAuth(config?.auth)
   const registry = createSiteRegistry({
     ...(moving ? { seed: definitionsFromConfig(config) } : {}),
     now: () => clock.now(),
@@ -72,6 +75,21 @@ export function createHollwareWith(
       return (await endpoint).fetch(request, call)
     },
   }
+  const sealedSecret = async (
+    env: HollwareEnv,
+    site: ResolvedSite,
+    name: string,
+  ): Promise<string | undefined> => {
+    const master = env.HOLLWARE_SECRET
+    if (master === undefined) return undefined
+    const secrets = createSecretStore(env.DB, () => clock.now())
+    const sealed = await secrets.read(site.key, name)
+    if (sealed === null) return undefined
+    const value = await openSealed(master, sealed, { site: site.key, name }, (resealed) =>
+      secrets.write(site.key, name, resealed),
+    )
+    return value ?? undefined
+  }
   const deliveryDeps = (env: HollwareEnv, site: ResolvedSite): DeliveryDeps => ({
     db: connect(env.DB),
     site,
@@ -82,18 +100,10 @@ export function createHollwareWith(
       return typeof value === 'string' ? value : undefined
     },
     semantic: semanticOfEnv(env),
-    ownSecret: async (webhook) => {
-      const master = env.HOLLWARE_SECRET
-      if (master === undefined) return undefined
-      const name = `webhook:${webhook}`
-      const secrets = createSecretStore(env.DB, () => clock.now())
-      const sealed = await secrets.read(site.key, name)
-      if (sealed === null) return undefined
-      const value = await openSealed(master, sealed, { site: site.key, name }, (resealed) =>
-        secrets.write(site.key, name, resealed),
-      )
-      return value ?? undefined
-    },
+    ownSecret: (webhook) => sealedSecret(env, site, `webhook:${webhook}`),
+    sealed: (name) => sealedSecret(env, site, name),
+    publicUrl: env.HOLLWARE_PUBLIC_URL,
+    binding: (name) => Reflect.get(env, name),
   })
   return {
     fetch: createGateway({
@@ -104,7 +114,7 @@ export function createHollwareWith(
       clock,
       log: writeLog,
       read: (env) => createRpc({ sites, handlers, clock, log: writeLog }, env),
-      auth: { dynamicClientRegistration: config?.auth?.dynamicClientRegistration ?? false },
+      auth,
       admin,
       handlers,
     }),
@@ -183,6 +193,9 @@ export function createHollwareWith(
       await abandonEvents(batch.messages, depsOf, async (site, event) => {
         const requestId = `queue_${crypto.randomUUID()}`
         writeLog({ kind: 'event_abandoned', requestId, site: site.key, event })
+        if (site.agents.length > 0) {
+          await failAgentRuns(connect(env.DB), clock, site.key, event)
+        }
         await createAuditLog({
           db: env.DB,
           actor: systemActor(null),
@@ -199,5 +212,14 @@ export function createHollwareWith(
       })
     },
     Hollware: createEntrypoint({ sites, refresh, handlers, clock, log: writeLog }),
+    HollwareOps: createOpsEntrypoint({
+      sites,
+      siteKeys: registry.keys,
+      refresh,
+      handlers,
+      mcp,
+      clock,
+      log: writeLog,
+    }),
   }
 }

@@ -39,6 +39,7 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'session.sign_in',
   'session.sign_out',
   'session.end_all',
+  'passkey.add',
   'passkey.remove',
   'passkey.rename',
   'account.rename',
@@ -50,6 +51,8 @@ export const IDENTITY_AUDIT_ACTIONS = [
   'entry.purge',
   'schedule.publish',
   'schedule.unpublish',
+  'agent.create',
+  'agent.remove',
 ] as const
 
 export const AUDIT_ACTIONS = [...OPERATION_AUDIT_ACTIONS, ...IDENTITY_AUDIT_ACTIONS] as const

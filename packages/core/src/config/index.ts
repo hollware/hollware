@@ -1,7 +1,14 @@
 export { defineCollection, defineComponent, defineConfig, defineContract } from './define.ts'
 export type {
   AdminDefinition,
+  AgentDefinition,
+  AgentEventKind,
+  ResolvedAgent,
+  ResolvedReview,
   AuthDefinition,
+  ProviderDefinition,
+  ResolvedAccess,
+  ResolvedProvider,
   ResolvedAdmin,
   ResolvedAuth,
   ResolvedAudit,
@@ -11,14 +18,17 @@ export type {
   DescribedSchema,
   HollwareConfig,
   ResolveConfig,
+  NavigationDefinition,
   ResolvedCollection,
   ResolvedConfig,
+  ResolvedNavigation,
   ResolvedSite,
   SchemaOutput,
   SiteDefinition,
 } from './types.ts'
 export { ConfigError, type ConfigProblem } from './config-error.ts'
 export { INDEXNOW_KEY } from './events.ts'
+export { AGENT_EVENT_KINDS } from './agents.ts'
 export { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS, DEFAULT_AUDIT } from './audit.ts'
 export { BACKUP_RETENTION_MAX_DAYS, BACKUP_RETENTION_MIN_DAYS, DEFAULT_BACKUPS } from './backups.ts'
 export {
@@ -39,4 +49,6 @@ export {
 export { DEFAULT_MAX_MARKDOWN_BYTES, MAX_MARKDOWN_BYTES_CEILING } from './constants.ts'
 export { describeResolvedSite, type SiteDescription } from './describe.ts'
 export { resolveAdmin, resolveConfig } from './resolve.ts'
+export { resolveAuth } from './auth.ts'
+export { admitsEmail, emailAddress } from './access.ts'
 export { isSiteKey, SITE_KEY_MAX_LENGTH, SITE_KEY_PATTERN } from './site-key.ts'

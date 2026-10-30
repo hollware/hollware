@@ -1,10 +1,12 @@
 import {
   hashPersonalToken,
+  isAgentGrant,
   isPersonalToken,
   isReadToken,
   isScope,
   type Scope,
 } from '@hollware/core'
+import { checkAgentGrant } from './grant.ts'
 import { effectiveScopes } from './roles.ts'
 import type { Principal } from './types.ts'
 
@@ -89,6 +91,9 @@ export async function checkPersonalToken(
   token: string,
   options: TokenCheckOptions,
 ): Promise<TokenCheck> {
+  if (isAgentGrant(token)) {
+    return checkAgentGrant(db, token, options)
+  }
   const kind = isPersonalToken(token) ? 'personal' : isReadToken(token) ? 'read' : null
   if (kind === null) return { ok: false, reason: 'unknown' }
   const row = await db

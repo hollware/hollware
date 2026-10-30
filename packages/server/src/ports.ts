@@ -138,6 +138,7 @@ export interface ListQuery {
   readonly status?: StoredEntry['status']
   /** The entries in the trash instead of the others; the published view has none. */
   readonly trashed?: boolean
+  readonly changedSince?: string
   readonly view: View
   readonly limit: number
   /** The `nextCursor` of the previous page. */
@@ -199,12 +200,49 @@ export interface StoredReview {
   readonly note: string | null
 }
 
+/** What approving a review does to one of its entries. */
+export type ReviewAction = 'publish' | 'unpublish'
+
+/** One entry of a review: active while the review is pending. */
+export interface StoredReviewItem {
+  readonly reviewId: string
+  readonly entryId: string
+  /** The revision to publish, or `null` for an unpublish. */
+  readonly revisionId: string | null
+  /** The revision published when the review was asked, or `null`. */
+  readonly baseRevisionId: string | null
+  readonly action: ReviewAction
+  readonly excluded: boolean
+  readonly active: boolean
+}
+
+/** One entry to unpublish at the version read, as an approval writes it. */
+export interface UnpublishWrite {
+  readonly entryId: string
+  readonly expectedVersion: number
+  readonly actor: Actor
+  readonly event: OutboxEvent | null
+}
+
+export type AgentRunStatus = 'queued' | 'commented' | 'failed'
+
+/** How far an agent got with a review. */
+export interface StoredAgentRun {
+  readonly agent: string
+  readonly status: AgentRunStatus
+}
+
 /** A comment on a review (v0.6). */
 export interface StoredReviewComment {
   readonly id: string
   readonly reviewId: string
+  /** The entry of the review it is about, and its lines, or `null`. */
+  readonly entryId: string | null
+  readonly lines: { readonly from: number; readonly to: number } | null
   readonly authorId: string
   readonly authorName: string | null
+  /** Whether a person wrote it, or an agent member of the site. */
+  readonly authorKind: 'person' | 'agent'
   /** What the client that wrote it said about itself, or `null`. */
   readonly authorMeta: Readonly<Record<string, unknown>> | null
   readonly body: string
@@ -452,18 +490,51 @@ export interface ContentStore {
   /** The unpublications whose time has come, oldest first. */
   dueUnpublishes(site: string, now: string): Promise<readonly StoredUnpublish[]>
   /**
-   * Asks for the head revision of an entry to be published, if the entry is still at
-   * `expectedVersion`. An entry has one pending review at most: asking again answers it.
+   * Asks for one review of its items, each entry still at its `expectedVersion`, all or none: a
+   * publish of the head revision, or an unpublish of a published entry. An entry is in one
+   * pending review at most: `held` names the review that has it.
    */
   requestReview(
     site: string,
     write: {
-      readonly entryId: string
-      readonly expectedVersion: number
+      readonly items: readonly {
+        readonly entryId: string
+        readonly expectedVersion: number
+        readonly action: ReviewAction
+      }[]
       readonly acknowledged: readonly AcknowledgedWarning[]
       readonly actor: Actor
     },
-  ): Promise<{ readonly outcome: 'pending_review'; readonly review: StoredReview } | WriteRefusal>
+  ): Promise<
+    | { readonly outcome: 'pending_review'; readonly review: StoredReview }
+    | { readonly outcome: 'held'; readonly review: StoredReview; readonly entryId: string }
+    | (WriteRefusal & { readonly entryId: string })
+  >
+  /** The items of these reviews, in the order they were asked, by review. */
+  reviewItems(
+    site: string,
+    reviewIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly StoredReviewItem[]>>
+  /** The Markdown of these revisions, by id. */
+  revisionMarkdown(site: string, ids: readonly string[]): Promise<ReadonlyMap<string, string>>
+  /**
+   * Approves a pending review in one batch, all or none: the publishes and unpublishes, each at
+   * its `expectedVersion`, and the excluded entries marked as such.
+   */
+  approveReview(
+    site: string,
+    write: {
+      readonly reviewId: string
+      readonly userId: string
+      readonly publishes: readonly PublishWrite[]
+      readonly unpublishes: readonly UnpublishWrite[]
+      readonly excluded: readonly string[]
+    },
+  ): Promise<
+    | { readonly outcome: 'approved' | 'not_pending'; readonly review: StoredReview }
+    | { readonly outcome: 'not_found' }
+    | (WriteRefusal & { readonly entryId: string })
+  >
   /** A review of the site, by its id, or `null`. */
   findReview(site: string, id: string): Promise<StoredReview | null>
   /** The reviews of the site with this status, newest first, of one entry when it is given. */
@@ -474,7 +545,13 @@ export interface ContentStore {
   /** Adds a comment to a review, if it is still pending. */
   commentReview(
     site: string,
-    write: { readonly reviewId: string; readonly actor: Actor; readonly body: string },
+    write: {
+      readonly reviewId: string
+      readonly actor: Actor
+      readonly body: string
+      readonly entryId: string | null
+      readonly lines: { readonly from: number; readonly to: number } | null
+    },
   ): Promise<
     | { readonly outcome: 'commented'; readonly comment: StoredReviewComment }
     | { readonly outcome: 'not_pending' | 'not_found' }
@@ -484,6 +561,19 @@ export interface ContentStore {
     site: string,
     reviewIds: readonly string[],
   ): Promise<ReadonlyMap<string, readonly StoredReviewComment[]>>
+  /** How far each agent got with these reviews, by review. */
+  reviewAgentRuns(
+    site: string,
+    reviewIds: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly StoredAgentRun[]>>
+  /**
+   * Records how far an agent got with a review: `queued` never takes a `commented` back, and
+   * `failed` only replaces `queued`.
+   */
+  markAgentRun(
+    site: string,
+    run: { readonly reviewId: string; readonly agent: string; readonly status: AgentRunStatus },
+  ): Promise<void>
   /** Closes a pending review with a note, without publishing. */
   requestChanges(
     site: string,
@@ -679,6 +769,8 @@ export interface StructureStore {
   restore(site: string, actor: StructureActor): Promise<boolean>
   /** The role of a person in a site, or `null` for none. */
   roleOf(site: string, userId: string): Promise<'owner' | 'editor' | 'author' | null>
+  /** The ids of the agent members of a site. */
+  agentMembers(site: string): Promise<ReadonlySet<string>>
   /** How many entries a site holds, by collection and by locale. */
   counts(site: string): Promise<{
     readonly byCollection: ReadonlyMap<string, number>

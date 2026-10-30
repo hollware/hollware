@@ -221,13 +221,37 @@ export const reviewComment = z.object({
   id: z.string(),
   author: z.string().describe('The user who wrote it, or whose token their agent used.'),
   authorName: z.string().nullable(),
+  authorKind: z
+    .enum(['person', 'agent'])
+    .describe('Whether a person wrote it, or an agent member of the site.'),
   client: z
     .string()
     .nullable()
     .describe('The name the client gave, such as hollware-agents for the agents; null for none.'),
   body: z.string(),
   at: z.string(),
+  entryId: entryId
+    .nullable()
+    .describe('The entry of the review the comment is about, or null for the whole review.'),
+  lines: z
+    .object({ from: z.number().int().min(1), to: z.number().int().min(1) })
+    .nullable()
+    .describe('The lines of the proposed Markdown of that entry it is about, or null.'),
 })
+
+export const reviewAgent = z.object({
+  name: z.string().describe('The agent, as the site declares it.'),
+  status: z
+    .enum(['queued', 'commented', 'failed'])
+    .describe(
+      'queued until it comments on the review, commented once it did, failed when its delivery was given up.',
+    ),
+  required: z.boolean().describe('Whether approve_review waits for its comment, as the site asks.'),
+})
+
+export const reviewAction = z
+  .enum(['publish', 'unpublish'])
+  .describe('What approving the review does to the entry.')
 
 export const conflict = z.object({
   currentVersion: z.number().int().min(1),
@@ -277,6 +301,16 @@ export const collectionDescription = z.object({
   contracts: z.array(contractDescription),
   maxMarkdownBytes: z.number().int(),
   styleGuide: z.string().nullable(),
+  navigation: z
+    .object({
+      groupBy: z.string().nullable(),
+      groups: z.array(z.string()).nullable(),
+      orderBy: z.string().nullable(),
+    })
+    .optional()
+    .describe(
+      'How getNavigation arranges the published entries: the field that groups them, the groups in their order, and the number field that orders each group before the title. Absent when they are listed by title.',
+    ),
 })
 
 export const siteDescription = z.object({

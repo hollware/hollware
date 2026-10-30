@@ -11,11 +11,13 @@ import type { Clock } from '../ports.ts'
 import type { EventPayload } from '../ops/event.ts'
 import type { Semantic } from '../ports.ts'
 import { syncEntryVectors } from '../semantic/index-entry.ts'
+import { deliverToAgent } from './agents.ts'
 
 export const INDEXNOW_ENDPOINT = 'https://api.indexnow.org/indexnow'
 
 interface Subscriber {
   readonly name: string
+  readonly wants?: (payload: EventPayload) => boolean
   send(payload: EventPayload, body: string): Promise<void>
 }
 
@@ -26,7 +28,10 @@ export interface DeliveryDeps {
   readonly fetch: (request: Request) => Promise<Response>
   readonly secret: (name: string) => string | undefined
   readonly ownSecret?: (webhook: string) => Promise<string | undefined>
+  readonly sealed?: (name: string) => Promise<string | undefined>
   readonly semantic?: Semantic | null
+  readonly publicUrl?: string
+  readonly binding?: (name: string) => unknown
 }
 
 async function ensureOk(response: Response, what: string): Promise<void> {
@@ -62,6 +67,15 @@ export function subscribersOf(deps: DeliveryDeps): Subscriber[] {
       await ensureOk(await deps.fetch(request), `the webhook ${webhook.name}`)
     },
   }))
+  for (const agent of site.agents) {
+    subscribers.push({
+      name: `agent:${agent.name}`,
+      wants: (payload) => agent.events.includes(payload.kind),
+      async send(payload) {
+        await deliverToAgent(deps, agent, payload)
+      },
+    })
+  }
   const indexNow = site.events.indexNow
   if (indexNow !== null && site.url !== null) {
     const host = new URL(site.url).host
@@ -109,7 +123,7 @@ export async function deliverEvent(deps: DeliveryDeps, eventId: string): Promise
   const delivered: string[] = []
   const failed: string[] = []
   for (const subscriber of subscribersOf(deps)) {
-    if (done.has(subscriber.name)) continue
+    if (done.has(subscriber.name) || subscriber.wants?.(payload) === false) continue
     let error: string | null = null
     try {
       await subscriber.send(payload, event.payload)

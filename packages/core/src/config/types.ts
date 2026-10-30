@@ -1,6 +1,7 @@
 import type { AutomaticField, AutomaticKind } from './automatic.ts'
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from '@standard-schema/spec'
 import type { Contract } from '../contracts/types.ts'
+import type { Scope } from '../scopes.ts'
 
 /**
  * A schema Hollware can validate with and show to agents: a Standard Schema that also converts to
@@ -62,6 +63,22 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
   readonly maxMarkdownBytes?: number
   /** Guidance for whoever writes in this collection, in Markdown. */
   readonly styleGuide?: string
+  /**
+   * How `getNavigation` arranges the published entries, for a sidebar: grouped by the string or
+   * enum field `groupBy`, the groups in the order of `groups` (or of the enum), and each group
+   * by the number field `orderBy`, then by title.
+   */
+  readonly navigation?: NavigationDefinition
+}
+
+/** How a collection's entries are arranged for navigation. */
+export interface NavigationDefinition {
+  /** The frontmatter field, a string or an enum, whose value names an entry's group. */
+  readonly groupBy?: string
+  /** The groups first, in this order; for an enum, values of it. */
+  readonly groups?: readonly string[]
+  /** The frontmatter field, a number, that orders the entries of a group, lowest first. */
+  readonly orderBy?: string
 }
 
 /** A site of the deployment. */
@@ -90,6 +107,25 @@ export interface SiteDefinition {
     }[]
     /** Tells IndexNow the URLs that changed; `key` is the key itself, which is public. */
     readonly indexNow?: { readonly key: string }
+  }
+  /**
+   * The agents that hear the site's events, each as an agent member of the site, through a webhook
+   * or a service binding, with a grant of `scopes` that lasts an hour. None by default.
+   */
+  readonly agents?: readonly AgentDefinition[]
+  /** Whether an approval waits for the agents marked `required`: it does not by default. */
+  readonly review?: { readonly requireAgents?: boolean }
+  /** Who may come in through a sign-in provider without an invitation: nobody by default. */
+  readonly access?: {
+    /**
+     * People whose verified email is one of `emails` or ends in `@` one of `domains` become
+     * members with `role` the first time they sign in; `null` lets nobody in that way.
+     */
+    readonly autoProvision?: {
+      readonly domains?: readonly string[]
+      readonly emails?: readonly string[]
+      readonly role?: 'author' | 'editor'
+    } | null
   }
   /** What the site's activity log keeps: no addresses, and forever, by default. */
   readonly audit?: {
@@ -140,6 +176,53 @@ export interface AdminDefinition {
   readonly favicon?: string
 }
 
+/**
+ * A provider people sign in with. A client secret is the name of the Worker secret that holds
+ * it, never the secret itself. Google, Microsoft and GitHub take their kind as their id unless
+ * `id` says otherwise.
+ */
+export type ProviderDefinition =
+  | {
+      readonly kind: 'google'
+      readonly id?: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'microsoft'
+      readonly id?: string
+      /** The id or domain of one directory: `common`, `organizations` and `consumers` are refused. */
+      readonly tenant: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'github'
+      readonly id?: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'oidc'
+      readonly id: string
+      /** What the sign-in page calls it. */
+      readonly name: string
+      /** The issuer, whose `/.well-known/openid-configuration` names its endpoints. */
+      readonly issuer: string
+      readonly clientId: string
+      readonly clientSecret: string
+      /** `openid email profile` by default; `openid` is always among them. */
+      readonly scopes?: readonly string[]
+    }
+  | {
+      readonly kind: 'cloudflare-access'
+      readonly id?: string
+      /** The team domain, such as `example.cloudflareaccess.com`. */
+      readonly teamDomain: string
+      /** The Application Audience (AUD) tag of the Access application. */
+      readonly audience: string
+    }
+
 /** The OAuth server of a deployment. */
 export interface AuthDefinition {
   /**
@@ -148,6 +231,10 @@ export interface AuthDefinition {
    * make, and MCP 2026-07-28 prefers metadata documents.
    */
   readonly dynamicClientRegistration?: boolean
+  /** Whether people may sign in with a passkey: true by default. */
+  readonly passkeys?: boolean
+  /** The providers people sign in with, in the order the sign-in page lists them. */
+  readonly providers?: readonly ProviderDefinition[]
 }
 
 /** A collection once the config is resolved: checked, with every default filled in. */
@@ -165,6 +252,14 @@ export interface ResolvedCollection {
   readonly contracts: readonly Contract<unknown>[]
   readonly maxMarkdownBytes: number
   readonly styleGuide: string | null
+  readonly navigation: ResolvedNavigation | null
+}
+
+/** A collection's navigation once resolved: `groups` are the given ones, or the enum's values. */
+export interface ResolvedNavigation {
+  readonly groupBy: string | null
+  readonly groups: readonly string[] | null
+  readonly orderBy: string | null
 }
 
 /** A site once the config is resolved. */
@@ -182,6 +277,56 @@ export interface ResolvedSite {
   readonly audit: ResolvedAudit
   readonly backups: ResolvedBackups
   readonly media: ResolvedMedia
+  readonly access: ResolvedAccess
+  readonly agents: readonly ResolvedAgent[]
+  readonly review: ResolvedReview
+}
+
+/** An event an agent may hear. */
+export type AgentEventKind =
+  | 'review.requested'
+  | 'review.decided'
+  | 'entry.published'
+  | 'entry.unpublished'
+  | 'site.changed'
+
+/** An agent as a site declares it. */
+export interface AgentDefinition {
+  readonly name: string
+  /** The id of an agent member of the site (`usr_…`), whose grants it gets. */
+  readonly member: string
+  readonly events: readonly AgentEventKind[]
+  readonly delivery:
+    | { readonly kind: 'webhook'; readonly url: string; readonly secret?: string }
+    | { readonly kind: 'binding'; readonly binding: string }
+  /** What its grants may do, within an author's scopes; read and comment by default. */
+  readonly scopes?: readonly Scope[]
+  /** Whether an approval waits for its comment when `review.requireAgents` is on. */
+  readonly required?: boolean
+}
+
+export interface ResolvedAgent {
+  readonly name: string
+  readonly member: string
+  readonly events: readonly AgentEventKind[]
+  readonly delivery:
+    | { readonly kind: 'webhook'; readonly url: string; readonly secret: string | null }
+    | { readonly kind: 'binding'; readonly binding: string }
+  readonly scopes: readonly Scope[]
+  readonly required: boolean
+}
+
+export interface ResolvedReview {
+  readonly requireAgents: boolean
+}
+
+/** Who comes in through a sign-in provider without an invitation, with lowercase addresses. */
+export interface ResolvedAccess {
+  readonly autoProvision: {
+    readonly domains: readonly string[]
+    readonly emails: readonly string[]
+    readonly role: 'author' | 'editor'
+  } | null
 }
 
 /** The daily backups of a site: whether the cron makes them, and how long each is kept. */
@@ -230,7 +375,43 @@ export interface ResolvedAdmin {
 /** The OAuth server once the config is resolved. */
 export interface ResolvedAuth {
   readonly dynamicClientRegistration: boolean
+  readonly passkeys: boolean
+  readonly providers: readonly ResolvedProvider[]
 }
+
+/** A provider once the config is resolved: its id, and the name the sign-in page shows. */
+export type ResolvedProvider =
+  | {
+      readonly kind: 'google' | 'github'
+      readonly id: string
+      readonly name: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'microsoft'
+      readonly id: string
+      readonly name: string
+      readonly tenant: string
+      readonly clientId: string
+      readonly clientSecret: string
+    }
+  | {
+      readonly kind: 'oidc'
+      readonly id: string
+      readonly name: string
+      readonly issuer: string
+      readonly clientId: string
+      readonly clientSecret: string
+      readonly scopes: readonly string[]
+    }
+  | {
+      readonly kind: 'cloudflare-access'
+      readonly id: string
+      readonly name: string
+      readonly teamDomain: string
+      readonly audience: string
+    }
 
 /**
  * Checks a config and fills in its defaults. It throws one error that lists every problem, each

@@ -86,7 +86,7 @@ export const OTHER_TEST_RUNNERS: TestRunnerList = {
 }
 
 export const TABLES_WITHOUT_SITE: ExceptionList = {
-  max: 6,
+  max: 7,
   entries: [
     {
       value: '_hollware_meta',
@@ -112,6 +112,11 @@ export const TABLES_WITHOUT_SITE: ExceptionList = {
     {
       value: 'auth_challenges',
       reason: 'A sign-in has no site (v0.4); a registration names its invitation, which has one.',
+    },
+    {
+      value: 'identities',
+      reason:
+        "An account of a sign-in provider is the person, across sites, as a passkey is (v1.1): the site of a request is the grant's or the token's.",
     },
   ],
 }

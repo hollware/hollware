@@ -165,7 +165,15 @@ describe('hollware on a real local D1', () => {
   })
 
   it('init writes the site, the owner and a token whose hash is stored', SLOW, async () => {
-    const { code, out, err } = await cli(['init', '--site', 'blog', '--owner-name', 'Test Owner'])
+    const { code, out, err } = await cli([
+      'init',
+      '--site',
+      'blog',
+      '--owner-name',
+      'Test Owner',
+      '--owner-email',
+      'Owner@Example.com',
+    ])
 
     expect(err).toEqual([])
     expect(code).toBe(0)
@@ -194,8 +202,11 @@ describe('hollware on a real local D1', () => {
         id: expect.stringMatching(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/),
         name: 'Test Owner',
         role: 'owner',
+        email: 'owner@example.com',
+        email_verified_at: NOW,
         created_at: NOW,
         updated_at: NOW,
+        kind: 'person',
       },
     ])
     state.ownerId = String(users?.[0]?.id)
@@ -207,7 +218,8 @@ describe('hollware on a real local D1', () => {
         user_id: state.ownerId,
         label: 'hollware init',
         hash: sha256(token),
-        scopes: '["content:read","content:write","content:publish","schema:admin"]',
+        scopes:
+          '["content:read","content:write","content:publish","schema:admin","review:read","review:comment"]',
         expires_at: '2027-01-10T12:00:00.000Z',
         revoked_at: null,
         last_used_at: null,
@@ -377,6 +389,60 @@ describe('hollware on a real local D1', () => {
           { site: 'blog', role: 'owner', users: 1, tokens: 1 },
           { site: 'docs', role: 'owner', users: 1, tokens: 1 },
         ],
+      ])
+    },
+  )
+
+  it(
+    'agent add makes an agent member, and agent remove takes it out and revokes its grants, never a person',
+    SLOW,
+    async () => {
+      const added = await cli(['agent', 'add', 'reviewer', '--site', 'blog', '--json'])
+      expect([added.code, added.err]).toEqual([0, []])
+      const id = String(JSON.parse(added.out[0] ?? '{}').id)
+      expect(
+        await rows(
+          `SELECT u.name AS name, u.role AS role, u.kind AS kind, u.email AS email, m.site_id AS site, m.role AS member FROM users u JOIN members m ON m.user_id = u.id WHERE u.id = '${id}';`,
+        ),
+      ).toEqual([
+        [
+          {
+            name: 'reviewer',
+            role: 'reviewer',
+            kind: 'agent',
+            email: null,
+            site: 'blog',
+            member: 'author',
+          },
+        ],
+      ])
+
+      const again = await cli(['agent', 'add', 'reviewer', '--site', 'blog'])
+      expect(again.err).toEqual([
+        'hollware agent add: the site "blog" already has an agent named "reviewer". "hollware agent list" shows its id.',
+      ])
+
+      await rows(
+        `INSERT INTO agent_grants (id, site_id, user_id, agent, hash, scopes, expires_at, created_at, updated_at) VALUES ('agt_LIVE', 'blog', '${id}', 'reviewer', 'hash-live', '[]', '2026-10-12T13:00:00.000Z', '${NOW}', '${NOW}');`,
+      )
+
+      const person = await cli(['agent', 'remove', state.ownerId, '--site', 'blog'])
+      expect([person.code, person.err]).toEqual([
+        1,
+        [
+          `hollware agent remove: ${state.ownerId} is no agent member of the site "blog". "hollware agent list" shows the ones that are.`,
+        ],
+      ])
+
+      const removed = await cli(['agent', 'remove', id, '--site', 'blog'])
+      expect([removed.code, removed.err]).toEqual([0, []])
+      expect(
+        await rows(
+          `SELECT user_id FROM members WHERE site_id = 'blog' ORDER BY user_id; SELECT revoked_at, updated_at FROM agent_grants;`,
+        ),
+      ).toEqual([[{ user_id: state.ownerId }], [{ revoked_at: NOW, updated_at: NOW }]])
+      expect((await cli(['agent', 'list', '--site', 'blog'])).out).toEqual([
+        'The site "blog" has no agent members.',
       ])
     },
   )

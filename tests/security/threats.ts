@@ -117,7 +117,7 @@ export const THREATS: readonly Threat[] = [
     guards: [
       {
         file: 'packages/server/tests/http/cron-cleanup.workerd.test.ts',
-        test: 'drops the challenges and sessions that expired, and keeps the others',
+        test: 'drops the challenges, sessions and agent grants that expired, the revoked grants, and keeps the others',
       },
     ],
   },
@@ -1389,6 +1389,301 @@ export const THREATS: readonly Threat[] = [
       {
         file: 'packages/server/tests/append-only.workerd.test.ts',
         test: 'let an anonymization that is open name the former person where a line named the one it anonymizes, and change nothing else',
+      },
+    ],
+  },
+  {
+    id: 'T-116',
+    area: 'Tokens',
+    threat:
+      'A Worker of the account with a service binding to `HollwareOps` writes to a site, or speaks MCP to it, as no one, skipping the Host guard of the gateway',
+    mitigation:
+      'Every call of `ops` and every request of its `fetch` is checked as a personal token (`hw_pat_`) on the primary D1, so a revoked token stops at once; the site, the scopes and the actor of the activity log come from the token, never from the input',
+    guards: [
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'refuses a token revoked since its last call, on the next one',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'runs on the site of the token, and refuses an input that names another',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'writes the line of a write to the activity log as the token, through the binding',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'serves MCP as the bearer token, whatever the Host, and answers 401 without one',
+      },
+    ],
+  },
+  {
+    id: 'T-117',
+    area: 'Tokens',
+    threat:
+      'A read token (`hw_read_`), public once a browser has it, runs a write through the `HollwareOps` binding',
+    mitigation:
+      '`HollwareOps` takes only the shape of a personal token before it looks one up, and refuses a read token as `unauthorized`; the scopes of the operation are checked against the token before its handler runs',
+    guards: [
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'refuses a read token, and no token at all, before any operation runs',
+      },
+      {
+        file: 'packages/server/tests/rpc/ops-entrypoint.workerd.test.ts',
+        test: 'runs an operation as an author token, which writes a draft and is refused what needs content:publish',
+      },
+    ],
+  },
+  {
+    id: 'T-118',
+    area: 'Sign-in',
+    threat:
+      'An ID token forged with another key, under the key id of the provider, signs someone in',
+    mitigation:
+      'Every ID token and Access assertion is verified with WebCrypto against the JWKS of its issuer (RS256 or ES256 only); a key id the cached set lacks is fetched once, and a token whose signature fails is refused before any person is looked up',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token signed by another key under the kid of Google',
+      },
+    ],
+  },
+  {
+    id: 'T-119',
+    area: 'Sign-in',
+    threat: 'An ID token issued to another client, or by another issuer, signs a person in here',
+    mitigation:
+      'The audience must be the client id of the provider (the audience tag for Access) and the issuer the one of its discovery document (Google: `https://accounts.google.com`; Access: the team domain)',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token for another client',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token of another issuer',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an assertion of Access for another application',
+      },
+    ],
+  },
+  {
+    id: 'T-120',
+    area: 'Sign-in',
+    threat: 'An expired ID token, or one of another sign-in, is replayed',
+    mitigation:
+      '`exp` and `nbf` are checked with 60 seconds of skew, and the nonce of the token must be the one the challenge of this sign-in keeps',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token that expired more than a minute ago',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an ID token of another sign-in, by its nonce',
+      },
+    ],
+  },
+  {
+    id: 'T-121',
+    area: 'Sign-in',
+    threat: 'The answer of a provider is replayed, or its state is missing',
+    mitigation:
+      'The state is the id of a challenge taken with `DELETE … RETURNING`, once and within 5 minutes; an answer with no state, or a used one, signs nobody in and exchanges no code',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a state used once already',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an answer with no state, and one whose state began in another browser',
+      },
+    ],
+  },
+  {
+    id: 'T-122',
+    area: 'Sign-in',
+    threat:
+      'Login CSRF: an attacker sends a victim the callback of a sign-in the attacker began, and the victim is signed in as the attacker',
+    mitigation:
+      'The start of a sign-in sets a cookie bound to the challenge (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/auth/federate`); the callback refuses a state whose cookie is not in the browser',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an answer with no state, and one whose state began in another browser',
+      },
+    ],
+  },
+  {
+    id: 'T-123',
+    area: 'Sign-in',
+    threat:
+      'An account with an unverified email takes over the person who owns that email, or gets in by its domain',
+    mitigation:
+      'Only a verified email links an account to a person, redeems an invitation or matches the access of a site (Google and OIDC: `email_verified` true; GitHub: the primary verified address; Microsoft: one directory, never `common`; Access: verified by Access); otherwise the person is only found by provider and subject',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an unverified email: never linked to its owner, never provisioned',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'an OIDC account whose email the provider does not say it verified',
+      },
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'the shared tenant of Microsoft, at startup',
+      },
+    ],
+  },
+  {
+    id: 'T-124',
+    area: 'Sign-in',
+    threat: 'Anyone with an account of a provider becomes a member of a site',
+    mitigation:
+      'A person who is not known and has no invitation becomes a member only of a site whose `access.autoProvision` lists their exact address or its domain (never a subdomain), and only as an author or editor; otherwise the answer is a 403 page',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a verified email of a domain no site lets in',
+      },
+      {
+        file: 'packages/core/tests/config/access.test.ts',
+        test: 'admits an address by itself or by its domain, never a subdomain or a lookalike',
+      },
+    ],
+  },
+  {
+    id: 'T-125',
+    area: 'Sign-in',
+    threat:
+      'A forged `Cf-Access-Jwt-Assertion` header signs someone in on a deployment that does not use Cloudflare Access',
+    mitigation:
+      'The header is read only when a `cloudflare-access` provider is configured, and then verified against the certificates of its team domain and its audience',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'the header of Cloudflare Access when no Access provider is configured',
+      },
+    ],
+  },
+  {
+    id: 'T-126',
+    area: 'Sign-in',
+    threat: 'The `return_to` of a sign-in through a provider sends the person to another origin',
+    mitigation:
+      'After the sign-in the target goes through `sameOriginTarget`: another origin, scheme or a `javascript:` URL goes to `/admin/`',
+    guards: [
+      {
+        file: 'packages/server/tests/identity/federation.workerd.test.ts',
+        test: 'a return_to of another origin, which goes to the admin instead',
+      },
+    ],
+  },
+  {
+    id: 'T-127',
+    area: 'Accounts',
+    threat: 'Someone adds a passkey to the account of another person with a challenge of theirs',
+    mitigation:
+      "A passkey is added over `/v1/admin/account/passkeys/*` only by the admin client, and the enrollment challenge names the person who asked for it: another person's challenge is refused",
+    guards: [
+      {
+        file: 'packages/server/tests/http/account.workerd.test.ts',
+        test: 'refuses a challenge of another person, and adding passkeys when they are off',
+      },
+    ],
+  },
+  {
+    id: 'T-128',
+    area: 'Agents',
+    threat:
+      "An agent's grant is replayed after its hour, or after the review it was minted for is decided, to keep reading or commenting",
+    mitigation:
+      'A grant (`hw_agt_`) lasts an hour, names its review, and is checked on the primary at every request: expired, revoked, or its review no longer pending is refused; a review-bound grant reads and comments on that review only; the cron deletes expired and revoked grants',
+    guards: [
+      {
+        file: 'packages/server/tests/http/cron-cleanup.workerd.test.ts',
+        test: 'drops the challenges, sessions and agent grants that expired, the revoked grants, and keeps the others',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'refuses the grant an hour later, and once its review is decided',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'gets the event signed, with a grant that comments on that review and on no other',
+      },
+    ],
+  },
+  {
+    id: 'T-129',
+    area: 'Agents',
+    threat:
+      "A site definition gives an agent more than an author's scopes, or names a person as an agent, to publish or approve through its grants",
+    mitigation:
+      "A subscription's scopes must be within an author's (`AGENT_SCOPE_CEILING`), update_site names only agent members, an agent member stays an author whatever role an owner gives it, and a grant's scopes are intersected with the member's role at every request",
+    guards: [
+      { file: 'packages/core/tests/config/agents-problems.test.ts', test: 'reports $name' },
+      {
+        file: 'packages/server/tests/http/admin-api.workerd.test.ts',
+        test: 'keep an agent member an author, whatever role an owner gives it',
+      },
+      {
+        file: 'packages/server/tests/structure/operations.workerd.test.ts',
+        test: 'names an agent only as an agent member of the site, never as a person',
+      },
+      {
+        file: 'packages/server/tests/agents/scopes.workerd.test.ts',
+        test: 'keeps no more than an author has, whatever scopes a grant row holds',
+      },
+      {
+        file: 'packages/server/tests/agents/scopes.workerd.test.ts',
+        test: 'lets an agent grant of the default scopes read and comment, and never write, publish or approve',
+      },
+    ],
+  },
+  {
+    id: 'T-130',
+    area: 'Agents',
+    threat:
+      "A forged or replayed request reaches an agent's webhook as a delivery of Hollware, or a failed delivery leaves a live grant behind",
+    mitigation:
+      'Deliveries are signed as webhooks are (`verifyAgentEvent`: signature, body and a 5-minute window); a delivery that fails revokes its grant, and each retry mints another; a binding delivery goes only to a service binding the site names',
+    guards: [
+      {
+        file: 'packages/core/tests/agents.test.ts',
+        test: 'refuses a request signed with another secret, a body changed after signing, and one too old',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'is called with the event and a live grant; a failure revokes it and the retry mints another',
+      },
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'takes no delivery of a member that is no agent, and mints no grant for it',
+      },
+    ],
+  },
+  {
+    id: 'T-131',
+    area: 'Reviews',
+    threat:
+      'A review is approved before the agents the site requires have read it, and nobody can tell',
+    mitigation:
+      'With `review.requireAgents`, approve_review answers `agents_pending` until each required agent commented; only an owner overrides it, and the activity log keeps `override`',
+    guards: [
+      {
+        file: 'packages/server/tests/agents/delivery.workerd.test.ts',
+        test: 'answers agents_pending until the required agent comments, unless an owner overrides',
+      },
+      {
+        file: 'packages/server/tests/audit/operations.test.ts',
+        test: 'keeps that an owner approved a review without the agents it waited for',
       },
     ],
   },

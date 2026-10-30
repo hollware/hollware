@@ -1,4 +1,5 @@
 import type { DevHost } from './dev-host.ts'
+import type { Download, NotionLoader } from './import/from-notion.ts'
 import type { RunWrangler } from './wrangler.ts'
 
 /**
@@ -25,4 +26,6 @@ export interface Io {
   tempDir: () => string
   /** What `hollware dev` needs of the machine: processes, signals and the health check. */
   dev?: DevHost
+  download?: Download
+  notion?: NotionLoader
 }

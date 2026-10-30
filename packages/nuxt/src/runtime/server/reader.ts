@@ -1,7 +1,7 @@
 import { createClient, type HollwareReader } from '@hollware/client'
 import { createError, type H3Event } from 'h3'
 import { useRuntimeConfig } from 'nitropack/runtime'
-import { entryTags, groupTags, listTags, recordTags, siteTags } from '../tags.ts'
+import { entryTags, groupTags, listTags, navigationTags, recordTags, siteTags } from '../tags.ts'
 
 interface HollwareConfig {
   readonly site: string
@@ -50,6 +50,11 @@ function tagging(event: H3Event, reader: HollwareReader): HollwareReader {
     getTranslations: async (...args) => {
       const answer = await reader.getTranslations(...args)
       recordTags(event, groupTags(args[1], args[2], answer.entries ?? []))
+      return answer
+    },
+    getNavigation: async (...args) => {
+      const answer = await reader.getNavigation(...args)
+      recordTags(event, navigationTags(args[1], answer.locale))
       return answer
     },
     describeSite: async (...args) => {

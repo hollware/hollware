@@ -35,7 +35,7 @@ describe("the admin's own routes", () => {
     expect(me.status).toBe(200)
     expect(await me.json()).toMatchObject({
       site: SITE_KEY,
-      scopes: ['content:read', 'content:write'],
+      scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
       sites: [{ site: SITE_KEY, role: 'author' }],
     })
     expect(tokens.status).toBe(403)
@@ -177,6 +177,32 @@ describe("the admin's own routes", () => {
     expect(asOwner.status).toBe(400)
     expect(people.invitations.map((invitation) => invitation.role)).toContain('author')
     expect(people.people.some((person) => person.role === 'owner')).toBe(true)
+  })
+
+  it('invite an address, kept in lowercase and listed with the invitation, and refuse one that is no address', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const address = `Ada-${crypto.randomUUID().slice(0, 8)}@Example.org`
+
+    const invited = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'editor',
+      email: address,
+    })
+    const wrong = await call(worker, owner, '/v1/admin/invitations', {
+      role: 'editor',
+      email: 'ada',
+    })
+    const people = await (
+      await call(worker, owner, '/v1/admin/people')
+    ).json<{ invitations: { email: string | null }[]; people: { email: string | null }[] }>()
+
+    expect(invited.status).toBe(201)
+    expect(await invited.json()).toMatchObject({ role: 'editor', email: address.toLowerCase() })
+    expect(wrong.status).toBe(400)
+    expect(people.invitations.map((invitation) => invitation.email)).toContain(
+      address.toLowerCase(),
+    )
+    expect(people.people.every((person) => person.email === null)).toBe(true)
   })
 
   it('revoke an invitation that waits, whose link stops working at once, and only of the site', async () => {
@@ -415,6 +441,29 @@ describe("the admin's own routes", () => {
     expect([before.status, removed.status, after.status, stranger.status]).toEqual([
       200, 200, 401, 404,
     ])
+  })
+
+  it('keep an agent member an author, whatever role an owner gives it', async () => {
+    const worker = boot()
+    const owner = await adminToken(worker, 'owner')
+    const made = await call(worker, owner, '/v1/admin/agents', {
+      name: `reviewer-${crypto.randomUUID().slice(0, 8)}`,
+    })
+    const agent = await made.json<{ id: string }>()
+
+    const promoted = await call(worker, owner, '/v1/admin/people/role', {
+      userId: agent.id,
+      role: 'owner',
+    })
+    const role = await env.DB.prepare(
+      'SELECT role FROM members WHERE site_id = ?1 AND user_id = ?2',
+    )
+      .bind(SITE_KEY, agent.id)
+      .first<string>('role')
+
+    expect(promoted.status).toBe(409)
+    expect(await promoted.json()).toMatchObject({ code: 'conflict' })
+    expect(role).toBe('author')
   })
 
   it('keep the last owner of the site: neither demoted nor removed until another owner exists', async () => {

@@ -85,6 +85,8 @@ The `hollware` command. Boundary rules for this package:
   output schemas), so an outcome that is an error for the caller (`not_found`, `conflict`,
   `blocked`) is an answer, and turns transport failures (401, 403, 404, no connection) into
   messages that say what to do.
+- `--from notion` builds the corpus from a public Notion tree (`src/import/from-notion.ts`, with
+  `notion-client` loaded only then) and hands it to the same phases. Bound by `tests/from-notion.test.ts`.
 
 ## Export
 
@@ -98,6 +100,15 @@ The `hollware` command. Boundary rules for this package:
   it. `--published` lists `status: 'published'` and reads `published: true`; the head view leaves
   out the trash. A token reads the one site it is of, so `--site` only checks that site's key.
   Bound by `tests/export.test.ts`.
+
+## Promote
+
+- `promote` reads the source over MCP and writes the destination as drafts, matched by collection,
+  locale and slug, then asks for one review (`request_review` with `group` and `unpublish`, 100
+  changes a review). Its state file, `.hollware/promote-<from>-<to>.json`, holds a cursor per
+  collection (the newest `updatedAt` the source listed, read again with `changedSince`, which is
+  inclusive) and, per entry, the revisions and the SHA-256 of what was promoted: a destination whose
+  published revision and Markdown both differ from those is a conflict. Bound by `tests/promote.test.ts`.
 
 ## Tests
 

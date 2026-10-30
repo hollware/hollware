@@ -3,6 +3,7 @@ import type { TableColumn } from '@nuxt/ui'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
+import { byKind, invitationBody } from '../lib/people.ts'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { useToast } from '@nuxt/ui/composables'
 import { computed, onMounted, ref } from 'vue'
@@ -11,8 +12,15 @@ import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
 
-type Member = { id: string; name: string | null; role: string; since: string }
-type Invitation = { id: string; role: string; expiresAt: string }
+type Member = {
+  id: string
+  name: string | null
+  email: string | null
+  role: string
+  since: string
+  kind?: 'person' | 'agent'
+}
+type Invitation = { id: string; role: string; email: string | null; expiresAt: string }
 type Former = { id: string; name: string | null }
 interface People {
   people: Member[]
@@ -23,14 +31,20 @@ interface People {
 const m = useMessages()
 const memberColumns = computed<TableColumn<Member>[]>(() => [
   { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
+  { accessorKey: 'email', header: sortable(m.value.people.columns.email) },
   { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
   { accessorKey: 'since', header: sortable(m.value.people.columns.since) },
   { id: 'actions', header: '' },
 ])
 const invitationColumns = computed<TableColumn<Invitation>[]>(() => [
+  { accessorKey: 'email', header: sortable(m.value.people.columns.email) },
   { accessorKey: 'role', header: sortable(m.value.people.columns.role) },
   { accessorKey: 'expiresAt', header: sortable(m.value.people.columns.validUntil) },
   { id: 'actions', header: '' },
+])
+const agentColumns = computed<TableColumn<Member>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
+  { accessorKey: 'since', header: sortable(m.value.people.columns.since) },
 ])
 const formerColumns = computed<TableColumn<Former>[]>(() => [
   { accessorKey: 'name', header: sortable(m.value.people.columns.name) },
@@ -41,8 +55,10 @@ const roleItems = (roles: readonly string[]) =>
 
 const toast = useToast()
 const data = ref<People | null>(null)
+const members = computed(() => byKind(data.value?.people ?? []))
 const failure = ref<string | null>(null)
 const role = ref<'editor' | 'author'>('author')
+const email = ref('')
 const link = ref<string | null>(null)
 const busy = ref(false)
 
@@ -64,7 +80,10 @@ onMounted(load)
 async function invite() {
   busy.value = true
   try {
-    link.value = (await api.admin<{ link: string }>('invitations', { role: role.value })).link
+    link.value = (
+      await api.admin<{ link: string }>('invitations', invitationBody(role.value, email.value))
+    ).link
+    email.value = ''
     await load()
   } catch (error) {
     toast.add({ title: m.value.people.notInvited, description: describe(error), color: 'error' })
@@ -199,6 +218,9 @@ async function copy() {
       />
       <template v-else-if="data !== null">
         <form class="flex items-end gap-3" @submit.prevent="invite">
+          <UFormField :label="m.people.email" :help="m.people.emailHelp">
+            <UInput v-model="email" type="email" autocomplete="off" class="w-64" />
+          </UFormField>
           <UFormField :label="m.people.role" :help="m.people.roleHelp">
             <USelect v-model="role" :items="roleItems(['author', 'editor'])" class="w-40" />
           </UFormField>
@@ -217,7 +239,7 @@ async function copy() {
         <section :aria-label="m.people.members" class="space-y-2">
           <h2 class="font-medium">{{ m.people.members }}</h2>
           <DataTable
-            :data="data.people"
+            :data="members.people"
             :columns="memberColumns"
             :filter-label="m.people.filter"
             :empty="m.people.empty"
@@ -256,6 +278,9 @@ async function copy() {
                 @update:model-value="setRole(row.original.id, $event)"
               />
             </template>
+            <template #email-cell="{ row }">
+              <span class="text-muted">{{ row.original.email ?? '' }}</span>
+            </template>
             <template #since-cell="{ row }">{{ formatDateTime(row.original.since) }}</template>
             <template #actions-cell="{ row }">
               <div class="text-right">
@@ -271,6 +296,28 @@ async function copy() {
             </template>
           </DataTable>
         </section>
+        <section v-if="members.agents.length > 0" :aria-label="m.people.agents" class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="font-medium">{{ m.people.agents }}</h2>
+            <UButton
+              :label="m.people.manageAgents"
+              icon="i-lucide-bot"
+              variant="outline"
+              size="sm"
+              to="/settings/site/agents"
+            />
+          </div>
+          <p class="text-sm text-muted">{{ m.people.agentsHelp }}</p>
+          <DataTable :data="members.agents" :columns="agentColumns" :filter-label="m.people.filter">
+            <template #name-cell="{ row }">
+              <span class="flex items-center gap-2">
+                <span class="font-medium">{{ row.original.name ?? row.original.id }}</span>
+                <UBadge :label="m.people.agent" variant="subtle" size="sm" icon="i-lucide-bot" />
+              </span>
+            </template>
+            <template #since-cell="{ row }">{{ formatDateTime(row.original.since) }}</template>
+          </DataTable>
+        </section>
         <section
           v-if="data.invitations.length > 0"
           :aria-label="m.people.invitations"
@@ -282,6 +329,9 @@ async function copy() {
             :columns="invitationColumns"
             :filter-label="m.people.filterRole"
           >
+            <template #email-cell="{ row }">{{
+              row.original.email ?? m.people.anyAddress
+            }}</template>
             <template #expiresAt-cell="{ row }">{{
               formatDateTime(row.original.expiresAt)
             }}</template>

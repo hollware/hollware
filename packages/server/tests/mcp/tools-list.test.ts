@@ -23,6 +23,7 @@ const WRITER_TOOLS = [
   'describe_site',
   'get_asset',
   'get_entry',
+  'get_review',
   'get_revision',
   'get_structure',
   'get_translations',
@@ -96,6 +97,7 @@ const TOOLS = [
   { name: 'get_analytics', title: 'Read the analytics connection', annotations: READ },
   { name: 'get_asset', title: 'Get an image', annotations: READ },
   { name: 'get_entry', title: 'Get an entry', annotations: READ },
+  { name: 'get_review', title: 'Read a review', annotations: READ },
   { name: 'get_revision', title: 'Get a revision of an entry', annotations: READ },
   { name: 'get_structure', title: 'Get the structure of the site', annotations: READ },
   { name: 'get_translations', title: 'Get the translations of an entry', annotations: READ },
@@ -126,7 +128,15 @@ const TOOLS = [
 ]
 
 const OUTCOMES: Record<string, string[]> = {
-  approve_review: ['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found'],
+  approve_review: [
+    'published',
+    'blocked',
+    'needs_acknowledgement',
+    'agents_pending',
+    'conflict',
+    'not_pending',
+    'not_found',
+  ],
   comment_review: ['commented', 'not_pending', 'not_found'],
   connect_analytics: ['connected', 'refused', 'unreachable', 'invalid', 'unavailable'],
   content_stats: ['ok', 'unavailable'],
@@ -138,6 +148,7 @@ const OUTCOMES: Record<string, string[]> = {
   delete_site: ['trashed', 'needs_confirmation', 'not_found'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
+  get_review: ['ok', 'not_found'],
   get_structure: ['ok'],
   get_translations: ['ok', 'not_found'],
   list_entries: ['ok'],
@@ -271,7 +282,12 @@ describe('tools/list', () => {
     async (era) => {
       const { endpoint } = endpointWith()
       const writer = makeCall({
-        principal: tokenPrincipal(['content:read', 'content:write']),
+        principal: tokenPrincipal([
+          'content:read',
+          'content:write',
+          'review:read',
+          'review:comment',
+        ]),
         requestId: 'req_writer',
       })
       const owner = makeCall({ principal: oauthPrincipal(ALL_SCOPES), requestId: 'req_owner' })
@@ -290,7 +306,7 @@ describe('tools/list', () => {
       const refused = await callRaw(endpoint, era, 'unpublish', INPUTS.unpublish, { call: writer })
 
       expect(own.map((tool) => tool.name)).toEqual(WRITER_TOOLS)
-      expect(whole).toHaveLength(40)
+      expect(whole).toHaveLength(41)
       for (const tool of own) {
         expect(tool, String(tool.name)).toEqual(whole.find((other) => other.name === tool.name))
       }
@@ -344,9 +360,9 @@ describe('tools/list', () => {
     await callRaw(endpoint, 'legacy', 'create_draft', INPUTS.create_draft)
     await rpc(endpoint, 'modern', 'tools/list')
 
-    expect(converters).toHaveLength(80)
+    expect(converters).toHaveLength(82)
     expect(converters.map((converter) => converter.mock.calls.length)).toEqual(
-      Array.from({ length: 80 }, () => 1),
+      Array.from({ length: 82 }, () => 1),
     )
   })
 })
@@ -369,6 +385,7 @@ describe('the tool table', () => {
       'get_analytics',
       'get_asset',
       'get_entry',
+      'get_review',
       'get_revision',
       'get_structure',
       'get_translations',

@@ -32,7 +32,7 @@ describe('checkPersonalToken: who the token is', () => {
         userId: seeded.userId,
         tokenId: seeded.tokenId,
         site,
-        scopes: ['content:read', 'content:write'],
+        scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
       },
       touch: expect.any(Promise),
     })
@@ -194,8 +194,11 @@ describe('checkPersonalToken: a token that stopped working', () => {
 
 describe('checkPersonalToken: the scopes of the role', () => {
   it.each<['editor' | 'author', string[]]>([
-    ['editor', ['content:read', 'content:write', 'content:publish']],
-    ['author', ['content:read', 'content:write']],
+    [
+      'editor',
+      ['content:read', 'content:write', 'content:publish', 'review:read', 'review:comment'],
+    ],
+    ['author', ['content:read', 'content:write', 'review:read', 'review:comment']],
   ])(
     'accepts the token of a user whose role is %s, with every scope, and leaves it what the role allows',
     async (role, scopes) => {
@@ -224,11 +227,20 @@ describe('checkPersonalToken: the scopes of the role', () => {
 
     expect(before).toMatchObject({
       ok: true,
-      principal: { scopes: ['content:read', 'content:write', 'content:publish', 'schema:admin'] },
+      principal: {
+        scopes: [
+          'content:read',
+          'content:write',
+          'content:publish',
+          'schema:admin',
+          'review:read',
+          'review:comment',
+        ],
+      },
     })
     expect(after).toMatchObject({
       ok: true,
-      principal: { scopes: ['content:read', 'content:write'] },
+      principal: { scopes: ['content:read', 'content:write', 'review:read', 'review:comment'] },
     })
     await settle(before)
     await settle(after)

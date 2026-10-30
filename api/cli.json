@@ -1,5 +1,6 @@
 {
   "commands": [
+    "agent",
     "analytics",
     "backup",
     "deploy",
@@ -11,9 +12,23 @@
     "invite",
     "mcp-config",
     "migrate",
+    "promote",
     "token"
   ],
   "flags": {
+    "agent": [
+      {
+        "json": {
+          "type": "boolean"
+        }
+      },
+      {
+        "json": {
+          "type": "boolean"
+        }
+      },
+      {}
+    ],
     "analytics": [
       {
         "account": {
@@ -150,6 +165,9 @@
     ],
     "import": [
       {
+        "callouts": {
+          "type": "string"
+        },
         "collection": {
           "type": "string"
         },
@@ -165,14 +183,35 @@
         "help": {
           "type": "boolean"
         },
+        "id-map": {
+          "type": "string"
+        },
         "locale": {
           "type": "string"
         },
         "locale-dirs": {
           "type": "boolean"
         },
+        "order-field": {
+          "type": "string"
+        },
         "publish": {
           "type": "boolean"
+        },
+        "report": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "section-field": {
+          "type": "string"
+        },
+        "slug-map": {
+          "type": "string"
+        },
+        "toggles": {
+          "type": "string"
         },
         "token-file": {
           "type": "string"
@@ -208,6 +247,9 @@
         "locales": {
           "type": "string"
         },
+        "owner-email": {
+          "type": "string"
+        },
         "owner-name": {
           "type": "string"
         },
@@ -231,6 +273,9 @@
     "invite": [
       {
         "days": {
+          "type": "string"
+        },
+        "email": {
           "type": "string"
         },
         "json": {
@@ -281,6 +326,53 @@
         },
         "remote": {
           "type": "boolean"
+        }
+      }
+    ],
+    "promote": [
+      {
+        "all": {
+          "type": "boolean"
+        },
+        "collection": {
+          "multiple": true,
+          "type": "string"
+        },
+        "dry-run": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "string"
+        },
+        "from-token-file": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "json": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "publish": {
+          "type": "boolean"
+        },
+        "since": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "to-token-file": {
+          "type": "string"
         }
       }
     ],

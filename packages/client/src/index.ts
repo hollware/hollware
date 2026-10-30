@@ -4,11 +4,19 @@ import type {
   getTranslations,
   listEntries,
   listRedirects,
+  Navigation,
   search,
 } from '@hollware/core'
 import type * as z from 'zod'
 
-export { signWebhook, verifyWebhook, type WebhookCheck } from '@hollware/core'
+export {
+  signWebhook,
+  verifyWebhook,
+  type Navigation,
+  type NavigationEntry,
+  type NavigationGroup,
+  type WebhookCheck,
+} from '@hollware/core'
 export {
   clearedPreviewCookie,
   exchangeHeaders,
@@ -23,6 +31,7 @@ export {
 export {
   createHollware,
   imageOf,
+  type CollectionNavigation,
   type EntryAnswer,
   type EntryPage,
   type GetEntryOptions,
@@ -30,6 +39,7 @@ export {
   type HollwareOptions,
   type ImageAttributes,
   type ListEntriesOptions,
+  type NavigationOptions,
   type PageDocument,
   type PageEntry,
   type PageImage,
@@ -40,6 +50,25 @@ export {
   type SiteDescription,
   type Translation,
 } from './hollware.ts'
+export {
+  hollwareAgentBindingClient,
+  hollwareAgentClient,
+  type AgentClientOptions,
+} from './agent.ts'
+export {
+  verifyAgentEvent,
+  type AgentDelivery,
+  type AgentGrant,
+  type HollwareAgentRpc,
+} from '@hollware/core'
+export {
+  createOpsClient,
+  type OperationInput,
+  type OperationOutput,
+  type OpsBinding,
+  type OpsClient,
+  type OpsClientOptions,
+} from './ops.ts'
 export {
   isPreviewRequest,
   previewCookieClear,
@@ -57,7 +86,7 @@ export type Format = 'markdown' | 'document' | 'html'
 export type SearchMode = 'fulltext' | 'semantic' | 'hybrid'
 
 /**
- * What a site reads from Hollware: the published content, through the six read methods. A
+ * What a site reads from Hollware: the published content, through the seven read methods. A
  * service binding to a Hollware Worker already has this shape; `createClient` gives the same over
  * HTTP, so a site can move from one transport to the other without changing a call.
  */
@@ -96,6 +125,15 @@ export interface HollwareReader {
     collection: string,
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
+  /**
+   * The published entries of a collection in a locale (the site's default when absent), grouped
+   * and ordered as the collection's navigation says, for a sidebar: at most 1,000 of them.
+   */
+  getNavigation(
+    site: string,
+    collection: string,
+    options?: { readonly locale?: string },
+  ): Promise<Navigation>
   describeSite(site: string): Promise<Output<typeof describeSite>>
   /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(
@@ -214,6 +252,8 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       }),
     getTranslations: (_site: string, collection: string, group: string) =>
       get(`${segment(collection)}/translations/${segment(group)}`),
+    getNavigation: (_site: string, collection: string, options: { locale?: string } = {}) =>
+      get(`${segment(collection)}/navigation`, { locale: options.locale }),
     describeSite: (_site: string) => get('site'),
     search: (
       _site: string,
@@ -263,6 +303,7 @@ export function createClient(options: ClientOptions): HollwareReader {
     getEntry: async (...args) => narrow(await reader.getEntry(...args)),
     listEntries: async (...args) => narrow(await reader.listEntries(...args)),
     getTranslations: async (...args) => narrow(await reader.getTranslations(...args)),
+    getNavigation: async (...args) => narrow(await reader.getNavigation(...args)),
     describeSite: async (...args) => narrow(await reader.describeSite(...args)),
     search: async (...args) => narrow(await reader.search(...args)),
     listRedirects: async (...args) => narrow(await reader.listRedirects(...args)),

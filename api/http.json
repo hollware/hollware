@@ -279,6 +279,60 @@
         }
       }
     },
+    "/v1/{collection}/navigation": {
+      "get": {
+        "operationId": "get_navigation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The published entries of the collection in the locale, grouped and ordered for a sidebar",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          },
+          "422": {
+            "description": "The collection has more than 1,000 published entries in the locale"
+          }
+        }
+      }
+    },
     "/v1/{collection}/translations/{group}": {
       "get": {
         "operationId": "get_translations",

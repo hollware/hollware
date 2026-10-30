@@ -185,6 +185,62 @@ describe('create-hollware <dir>', () => {
     })
   })
 
+  it('writes the provider of --auth into the Worker, its secret by name, and hands --owner-email to init', async () => {
+    const { io, calls, cwd, read, out } = world()
+
+    await create(
+      [
+        'blog-cms',
+        '--auth',
+        'microsoft',
+        '--client-id',
+        'app-id',
+        '--tenant',
+        'contoso.onmicrosoft.com',
+        '--owner-email',
+        'ops@contoso.com',
+        '--no-git',
+      ],
+      io,
+    )
+
+    expect(read('src/worker.ts')).toContain(
+      'createHollware({ auth: { providers: [{"kind":"microsoft","tenant":"contoso.onmicrosoft.com","clientId":"app-id","clientSecret":"MICROSOFT_CLIENT_SECRET"}] } })',
+    )
+    expect(calls.at(-1)?.args).toEqual([
+      'init',
+      '--site',
+      'my-site',
+      '--owner-email',
+      'ops@contoso.com',
+      '--local',
+    ])
+    expect(out.join('\n')).toContain('wrangler secret put MICROSOFT_CLIENT_SECRET')
+    expect(existsSync(join(cwd, 'blog-cms', 'src', 'worker.ts'))).toBe(true)
+  })
+
+  it('refuses an --auth it does not know, and one that lacks what its kind needs', async () => {
+    const { io } = world()
+
+    await expect(create(['blog-cms', '--auth', 'saml'], io)).rejects.toThrow(
+      '--auth is google, microsoft, github, oidc, cloudflare-access, not "saml"',
+    )
+    await expect(create(['blog-cms', '--auth', 'oidc', '--client-id', 'x'], io)).rejects.toThrow(
+      '--auth oidc needs --issuer',
+    )
+    await expect(create(['blog-cms', '--auth', 'cloudflare-access'], io)).rejects.toThrow(
+      '--auth cloudflare-access needs --team-domain',
+    )
+  })
+
+  it('leaves the Worker without a config when --auth is not given', async () => {
+    const { io, read } = world()
+
+    await create(['blog-cms', '--no-git', '--no-install'], io)
+
+    expect(read('src/worker.ts')).toContain('createHollware()')
+  })
+
   it('refuses a directory that is not empty, and writes nothing', async () => {
     const { io, cwd, calls } = world()
     mkdirSync(join(cwd, 'blog-cms'))

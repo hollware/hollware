@@ -1,4 +1,5 @@
 import { readAutomaticFields } from './automatic.ts'
+import { readNavigation } from './navigation.ts'
 import { BUILT_IN_CONTRACT_IDS, isBuiltInContract } from '../contracts/index.ts'
 import type { Contract, Phase, Severity } from '../contracts/types.ts'
 import type { Problems } from './config-error.ts'
@@ -545,6 +546,12 @@ export function readCollection(
     'Write the guidance as a Markdown string, or remove it.',
     problems,
   )
+  const navigation = readNavigation(
+    keyPath(path, 'navigation'),
+    raw['navigation'],
+    schema,
+    problems,
+  )
   if (schema === null) return null
   return {
     name,
@@ -558,5 +565,6 @@ export function readCollection(
     contracts,
     maxMarkdownBytes,
     styleGuide,
+    navigation,
   }
 }

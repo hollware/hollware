@@ -2,6 +2,7 @@ import {
   canSignPreviews,
   generatePersonalToken,
   generateReadToken,
+  HollwareError,
   hashPersonalToken,
   isId,
   isScope,
@@ -10,6 +11,8 @@ import {
   parseHollwareEvent,
   PERSONAL_TOKEN_TTL_DAYS,
   PREVIEW_QUERY_PARAM,
+  emailAddress,
+  type ResolvedAuth,
   type ResolvedSite,
   type Scope,
 } from '@hollware/core'
@@ -33,6 +36,7 @@ import {
   cleanName,
   createInvitation,
   endSessions,
+  identitiesOf,
   MAX_NAME_LENGTH,
   membershipsOf,
   passkeySummaries,
@@ -53,6 +57,7 @@ import {
 import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
 import type { GatewayEnv } from './types.ts'
+import * as agentsApi from './agents-api.ts'
 import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
 const INVITATION_DAYS = 7
@@ -61,6 +66,7 @@ const DELIVERIES_PAGE = 50
 const ACTIVITY_CSV_MAX = 10_000
 
 export interface AdminApiOptions {
+  readonly auth?: ResolvedAuth
   readonly sites: ReadonlySet<string>
   readonly site: (key: string) => ResolvedSite | undefined
   readonly audit: (c: Context<GatewayEnv>, principal: RequestPrincipal) => Promise<AuditLogFor>
@@ -436,13 +442,25 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       const db = connect(c.env.DB)
       const now = options.clock.now().toISOString()
       const people = await db
-        .select({ id: users.id, name: users.name, role: members.role, since: members.createdAt })
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: members.role,
+          kind: users.kind,
+          since: members.createdAt,
+        })
         .from(members)
         .innerJoin(users, eq(users.id, members.userId))
         .where(eq(members.siteId, person.site))
         .orderBy(members.createdAt, users.id)
       const pending = await db
-        .select({ id: invitations.id, role: invitations.role, expiresAt: invitations.expiresAt })
+        .select({
+          id: invitations.id,
+          role: invitations.role,
+          email: invitations.email,
+          expiresAt: invitations.expiresAt,
+        })
         .from(invitations)
         .where(
           and(
@@ -476,6 +494,12 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         return refused(
           'A site keeps at least one owner, and this is its last one.',
           'Make another person an owner first, then change this one.',
+          409,
+        )
+      case 'agent':
+        return refused(
+          'An agent member is an author, and its role does not change.',
+          'What an agent may do comes from the agents of its site in the config: change it there.',
           409,
         )
     }
@@ -562,20 +586,31 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       const days = invitationDays(input['days'], INVITATION_DAYS)
       if (days === null)
         return refused('days is a whole number from 1 to 365.', 'Leave it out for 7 days.')
+      const asked = input['email']
+      const blank = asked === undefined || asked === null || asked === ''
+      const email = !blank && typeof asked === 'string' ? emailAddress(asked) : null
+      if (!blank && email === null) {
+        return refused(
+          'email is not an email address.',
+          'Send the address the person signs in with, such as "ada@example.com", or leave it out.',
+        )
+      }
       const made = await createInvitation(connect(c.env.DB), {
         site: person.site,
         role,
         userId: null,
         now: options.clock.now(),
         days,
+        email,
       })
       note.target = { type: 'invitation', id: made.id }
-      note.detail = { role, days }
+      note.detail = email === null ? { role, days } : { role, days, email: true }
       const origin = options.oauth(c.env.HOLLWARE_PUBLIC_URL).issuer
       return json(
         {
           id: made.id,
           role,
+          email,
           expiresAt: made.expiresAt,
           link: `${origin}/setup#invitation=${made.secret}`,
         },
@@ -627,6 +662,42 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       }
       return json({ outcome: 'purged' })
     }),
+  )
+
+  app.get(
+    '/v1/admin/agents',
+    admin(null, async (c, person) => agentsApi.listAgents(c.env.DB, person.site)),
+  )
+
+  app.post(
+    '/v1/admin/agents',
+    admin('agent.create', async (c, person, note) =>
+      agentsApi.createAgent(
+        c.env.DB,
+        {
+          site: person.site,
+          name: (await body(c))['name'],
+          now: options.clock.now().toISOString(),
+        },
+        note,
+      ),
+    ),
+  )
+
+  app.delete(
+    '/v1/admin/agents/:id',
+    admin('agent.remove', async (c, person, note) =>
+      agentsApi.removeAgent(
+        c.env.DB,
+        { site: person.site, id: c.req.param('id') ?? '', now: options.clock.now().toISOString() },
+        note,
+      ),
+    ),
+  )
+
+  app.get(
+    '/v1/admin/agents/deliveries',
+    admin(null, async (c, person) => agentsApi.agentDeliveries(c.env.DB, person.site)),
   )
 
   app.get(
@@ -759,7 +830,19 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         apps.sort(
           (a, b) => b.createdAt.localeCompare(a.createdAt) || a.grantId.localeCompare(b.grantId),
         )
-        return json({ passkeys, apps })
+        const providers = options.auth?.providers ?? []
+        const identities = (await identitiesOf(connect(c.env.DB), person.userId)).map(
+          (identity) => ({
+            ...identity,
+            name: providers.find((p) => p.id === identity.provider)?.name ?? identity.provider,
+          }),
+        )
+        return json({
+          passkeys,
+          apps,
+          identities,
+          passkeysEnabled: options.auth?.passkeys ?? true,
+        })
       },
       { anyone: true },
     ),
@@ -787,9 +870,63 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           case 'last':
             return refused(
               'This is your last passkey: without it you could not sign in again.',
-              'Add another passkey first, then remove this one.',
+              'Add another passkey, or sign in once with an account of a provider, then remove this one.',
               409,
             )
+        }
+      },
+      { anyone: true, everySite: true },
+    ),
+  )
+
+  const enrolling = (c: Context<GatewayEnv>) => ({
+    db: connect(c.env.DB),
+    publicUrl: c.env.HOLLWARE_PUBLIC_URL,
+    now: options.clock.now(),
+  })
+  const passkeysOff = () =>
+    refused(
+      'This Hollware does not sign people in with passkeys.',
+      'Sign in with your account of a provider.',
+      403,
+    )
+
+  app.post(
+    '/v1/admin/account/passkeys/options',
+    admin(
+      null,
+      async (c, person) => {
+        if (options.auth?.passkeys === false) return passkeysOff()
+        const { enrollmentOptions } = await import('../identity/ceremonies.ts')
+        return json(await enrollmentOptions(enrolling(c), person.userId))
+      },
+      { anyone: true },
+    ),
+  )
+
+  app.post(
+    '/v1/admin/account/passkeys/verify',
+    admin(
+      'passkey.add',
+      async (c, person, note) => {
+        if (options.auth?.passkeys === false) return passkeysOff()
+        const input = await body(c)
+        const response = input['response']
+        if (typeof response !== 'object' || response === null || Array.isArray(response)) {
+          return refused('The body has no passkey.', 'Send the credential as JSON.')
+        }
+        const { verifyEnrollment } = await import('../identity/ceremonies.ts')
+        try {
+          const added = await verifyEnrollment(enrolling(c), person.userId, {
+            challengeId: typeof input['challengeId'] === 'string' ? input['challengeId'] : '',
+            response: JSON.parse(JSON.stringify(response)),
+            label: typeof input['label'] === 'string' ? input['label'] : '',
+          })
+          note.target = { type: 'passkey', id: added.id }
+          return json({ outcome: 'added', id: added.id }, 201)
+        } catch (error) {
+          if (error instanceof HollwareError) return refused(error.message, error.fix)
+          throw error
         }
       },
       { anyone: true, everySite: true },

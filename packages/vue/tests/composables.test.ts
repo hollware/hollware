@@ -7,6 +7,7 @@ import {
   provideHollware,
   useHollwareEntries,
   useHollwareEntry,
+  useHollwareNavigation,
 } from '../src/index.ts'
 
 const AT = '2026-10-01T00:00:00.000Z'
@@ -61,6 +62,24 @@ function fakeReader(options: { missing?: string[]; failing?: string[] } = {}) {
     },
     async getTranslations() {
       throw new Error('not read')
+    },
+    async getNavigation(...args) {
+      calls.push(['navigation', ...args])
+      const locale = args[2]?.locale ?? 'en'
+      await gate(`navigation:${locale}`)
+      return {
+        outcome: 'ok',
+        collection: args[1],
+        locale,
+        groups: [
+          {
+            name: 'start',
+            entries: [
+              { slug: `intro-${locale}`, title: 'Intro', description: null, path: null, order: 1 },
+            ],
+          },
+        ],
+      }
     },
     async describeSite() {
       throw new Error('not read')
@@ -216,5 +235,31 @@ describe('useHollwareEntries', () => {
     await nextTick()
     await fake.release('list:docs')
     expect(state.data.value?.entries.map((item) => item.slug)).toEqual(['in-docs'])
+  })
+})
+
+describe('useHollwareNavigation', () => {
+  it('reads the navigation of a collection in the locale, and again when it changes', async () => {
+    const fake = fakeReader()
+    const options = ref({ locale: 'en' })
+    const state = inApp(appWith(fake.reader), () => useHollwareNavigation('docs', options))
+    await fake.release('navigation:en')
+
+    expect(fake.calls[0]).toEqual(['navigation', 'my-site', 'docs', { locale: 'en' }])
+    expect(state.data.value).toEqual({
+      collection: 'docs',
+      locale: 'en',
+      groups: [
+        {
+          name: 'start',
+          entries: [{ slug: 'intro-en', title: 'Intro', description: null, path: null, order: 1 }],
+        },
+      ],
+    })
+
+    options.value = { locale: 'es' }
+    await nextTick()
+    await fake.release('navigation:es')
+    expect(state.data.value?.groups[0]?.entries[0]?.slug).toBe('intro-es')
   })
 })

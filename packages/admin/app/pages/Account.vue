@@ -8,6 +8,7 @@ import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { ApiError } from '../lib/api.ts'
 import { sortable } from '../lib/columns.ts'
 import { me } from '../lib/me.ts'
+import { canRemoveLast, enrollPasskey } from '../lib/passkeys.ts'
 import { api, auth } from '../lib/session.ts'
 
 type Passkey = { id: string; label: string; createdAt: string; lastUsedAt: string | null }
@@ -20,9 +21,18 @@ type App = {
   createdAt: string
   admin: boolean
 }
+type Identity = {
+  id: string
+  provider: string
+  name: string
+  email: string | null
+  createdAt: string
+}
 interface Account {
   passkeys: Passkey[]
   apps: Omit<App, 'id'>[]
+  identities: Identity[]
+  passkeysEnabled: boolean
 }
 
 const m = useMessages()
@@ -35,6 +45,11 @@ const passkeyColumns = computed<TableColumn<Passkey>[]>(() => [
   { accessorKey: 'createdAt', header: sortable(m.value.account.columns.created) },
   { accessorKey: 'lastUsedAt', header: sortable(m.value.account.columns.lastUsed) },
   { id: 'actions', header: '' },
+])
+const identityColumns = computed<TableColumn<Identity>[]>(() => [
+  { accessorKey: 'name', header: sortable(m.value.account.columns.provider) },
+  { accessorKey: 'email', header: sortable(m.value.account.columns.email) },
+  { accessorKey: 'createdAt', header: sortable(m.value.account.columns.since) },
 ])
 const appColumns = computed<TableColumn<App>[]>(() => [
   { accessorKey: 'name', header: sortable(m.value.account.columns.app) },
@@ -52,7 +67,40 @@ const apps = computed<App[]>(() => {
     ...all.filter((app) => !app.admin).map((app) => ({ ...app, id: app.grantId })),
   ]
 })
-const lastPasskey = computed(() => (data.value?.passkeys.length ?? 0) <= 1)
+const lastPasskey = computed(
+  () => !canRemoveLast(data.value?.passkeys.length ?? 0, data.value?.identities.length ?? 0),
+)
+
+const adding = ref(false)
+const addLabel = ref('')
+const addOpen = ref(false)
+
+async function addPasskey() {
+  adding.value = true
+  try {
+    await enrollPasskey(
+      {
+        admin: (path, body) => api.admin(path, body),
+        create: async (options) => {
+          const credential = await navigator.credentials.create({
+            publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(
+              JSON.parse(JSON.stringify(options)),
+            ),
+          })
+          return credential instanceof PublicKeyCredential ? credential.toJSON() : null
+        },
+      },
+      addLabel.value,
+    )
+    addOpen.value = false
+    toast.add({ title: m.value.account.passkeyAdded, color: 'success' })
+  } catch (error) {
+    toast.add({ title: m.value.account.notAdded, description: describe(error), color: 'error' })
+  } finally {
+    adding.value = false
+  }
+  await load()
+}
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
@@ -208,7 +256,17 @@ async function endAll() {
         </form>
 
         <section :aria-label="m.account.passkeys" class="space-y-2">
-          <h2 class="font-medium">{{ m.account.passkeys }}</h2>
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="font-medium">{{ m.account.passkeys }}</h2>
+            <UButton
+              v-if="data.passkeysEnabled"
+              :label="m.account.addPasskey"
+              icon="i-lucide-key-round"
+              variant="outline"
+              size="sm"
+              @click="addOpen = true"
+            />
+          </div>
           <p class="text-sm text-muted">{{ m.account.passkeysHelp }}</p>
           <DataTable :data="data.passkeys" :columns="passkeyColumns" :empty="m.account.noPasskeys">
             <template #label-cell="{ row }">
@@ -245,6 +303,24 @@ async function endAll() {
                 />
               </div>
             </template>
+          </DataTable>
+        </section>
+
+        <section :aria-label="m.account.identities" class="space-y-2">
+          <h2 class="font-medium">{{ m.account.identities }}</h2>
+          <p class="text-sm text-muted">{{ m.account.identitiesHelp }}</p>
+          <DataTable
+            :data="data.identities"
+            :columns="identityColumns"
+            :empty="m.account.noIdentities"
+          >
+            <template #name-cell="{ row }">
+              <span class="font-medium">{{ row.original.name }}</span>
+            </template>
+            <template #email-cell="{ row }">{{ row.original.email ?? '' }}</template>
+            <template #createdAt-cell="{ row }">{{
+              formatDateTime(row.original.createdAt)
+            }}</template>
           </DataTable>
         </section>
 
@@ -339,6 +415,19 @@ async function endAll() {
         </template>
       </UModal>
     </div>
+    <UModal v-model:open="addOpen" :title="m.account.addPasskeyTitle">
+      <template #body>
+        <form id="add-passkey" @submit.prevent="addPasskey">
+          <UFormField :label="m.account.passkeyLabel">
+            <UInput v-model="addLabel" maxlength="100" class="w-full" />
+          </UFormField>
+        </form>
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="addOpen = false" />
+        <UButton type="submit" form="add-passkey" :label="m.account.addPasskey" :loading="adding" />
+      </template>
+    </UModal>
     <UModal
       :open="renaming !== null"
       :title="m.account.renamePasskeyTitle"

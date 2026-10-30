@@ -54,6 +54,7 @@ const docs = defineCollection({
     order: z.number().int().min(0).max(999),
   }),
   routes: { en: '/docs/:slug/', es: '/es/docs/:slug/' },
+  navigation: { groupBy: 'section', orderBy: 'order' },
   components: {
     callout: defineComponent({
       props: z.strictObject({ type: z.enum(['note', 'tip', 'warning']) }),

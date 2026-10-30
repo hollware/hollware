@@ -207,7 +207,14 @@ describe('the metadata of the OAuth server', () => {
       issuer: PUBLIC_URL,
       authorization_endpoint: `${PUBLIC_URL}/authorize`,
       token_endpoint: `${PUBLIC_URL}/oauth/token`,
-      scopes_supported: ['content:read', 'content:write', 'content:publish', 'schema:admin'],
+      scopes_supported: [
+        'content:read',
+        'content:write',
+        'content:publish',
+        'schema:admin',
+        'review:read',
+        'review:comment',
+      ],
       code_challenge_methods_supported: ['S256'],
       client_id_metadata_document_supported: true,
       protected_resources: [MCP, `${PUBLIC_URL}/v1`],
@@ -291,7 +298,7 @@ describe('the authorization endpoint', () => {
     expect(tokens.scope).toBe('content:read content:publish')
     expect(onlyCall(worker.seen).context).toMatchObject({
       site: { key: OTHER_SITE_KEY },
-      principal: { scopes: ['content:read', 'content:publish'] },
+      principal: { scopes: ['content:read', 'content:publish', 'review:read'] },
     })
   })
 
@@ -391,7 +398,7 @@ describe('an access token', () => {
       userId,
       clientId,
       site: SITE_KEY,
-      scopes: ['content:read', 'content:write'],
+      scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
     })
   })
 
@@ -409,7 +416,7 @@ describe('an access token', () => {
 
     expect(tokens.scope).toBe(ALL)
     expect(onlyCall(worker.seen).context.principal).toMatchObject({
-      scopes: ['content:read', 'content:write'],
+      scopes: ['content:read', 'content:write', 'review:read', 'review:comment'],
     })
   })
 

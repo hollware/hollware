@@ -19,7 +19,7 @@ because the internal links in an entry's Markdown point at them (`src/routes.ts`
 ## How it reads Hollware
 
 `wrangler.jsonc` binds `HOLLWARE` to the `Hollware` entrypoint of the Worker `hollware-playground`.
-The binding has six methods, which `HollwareRpc` of `@hollware/server` types, and nothing that
+The binding has seven methods, which `HollwareRpc` of `@hollware/server` types, and nothing that
 writes. The Worker calls them in `src/index.ts`:
 
 - `listEntries` for the index, with the locale, the tag, a page of `PAGE_SIZE` entries and the

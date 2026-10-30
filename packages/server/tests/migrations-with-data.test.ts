@@ -50,6 +50,11 @@ const PEOPLE = [
     VALUES ('ses_1', 'demo', '${ID('usr')}', 'session-hash', '2099-01-01T00:00:00.000Z', '${T}', '${T}')`,
 ]
 
+const CHALLENGES = [
+  `INSERT INTO auth_challenges (id, challenge, purpose, invitation_id, user_id, expires_at, created_at, updated_at)
+    VALUES ('chl_1', 'challenge-1', 'authenticate', NULL, NULL, '2099-01-01T00:00:00.000Z', '${T}', '${T}')`,
+]
+
 const REVIEWS = [
   `INSERT INTO reviews (id, site_id, entry_id, revision_id, status, acknowledged, requested_by, created_at, updated_at)
     VALUES ('rvw_1', 'demo', '${ID('ent')}', '${ID('rev')}', 'pending', '[]', '${ID('usr')}', '${T}', '${T}')`,
@@ -81,6 +86,7 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
     if (file.startsWith('0006')) for (const statement of PEOPLE) db.exec(statement)
     if (file.startsWith('0008')) for (const statement of PUBLISHED) db.exec(statement)
     if (file.startsWith('0021')) for (const statement of REVIEWS) db.exec(statement)
+    if (file.startsWith('0028')) for (const statement of CHALLENGES) db.exec(statement)
     db.exec('BEGIN')
     for (const statement of statementsOf(file)) db.exec(statement)
     db.exec('COMMIT')
@@ -100,6 +106,19 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
   expect(db.prepare('SELECT user_id, credential_id FROM passkeys').all()).toEqual([
     { user_id: ID('usr'), credential_id: 'credential-1' },
   ])
+  expect(db.prepare('SELECT id, email, email_verified_at FROM users ORDER BY id').all()).toEqual([
+    { id: ID('usr'), email: null, email_verified_at: null },
+    { id: 'usr_reviewer', email: null, email_verified_at: null },
+  ])
+  expect(
+    db.prepare('SELECT id, challenge, purpose, provider, nonce FROM auth_challenges').all(),
+  ).toEqual([
+    { id: 'chl_1', challenge: 'challenge-1', purpose: 'authenticate', provider: null, nonce: null },
+  ])
+  expect(() =>
+    db.exec(`INSERT INTO auth_challenges (id, challenge, purpose, expires_at, created_at, updated_at)
+      VALUES ('chl_bad', 'c', 'guess', '${T}', '${T}', '${T}')`),
+  ).toThrow(/CHECK constraint failed: auth_challenges_purpose/)
   expect(db.prepare('SELECT user_id, hash FROM sessions').all()).toEqual([
     { user_id: ID('usr'), hash: 'session-hash' },
   ])
@@ -125,8 +144,34 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
       )
       .all(),
   ).toEqual([{ id: 'rvw_1', status: 'pending', body: 'Looks good' }])
+  const items = () =>
+    db
+      .prepare(
+        'SELECT id, review_id, entry_id, revision_id, base_revision_id, action, excluded, active FROM review_items',
+      )
+      .all()
+  expect(items()).toEqual([
+    {
+      id: 'rvi_1',
+      review_id: 'rvw_1',
+      entry_id: ID('ent'),
+      revision_id: ID('rev'),
+      base_revision_id: ID('rev'),
+      action: 'publish',
+      excluded: 0,
+      active: 1,
+    },
+  ])
   db.exec(
     `UPDATE reviews SET status = 'rejected', decided_by = '${ID('usr')}', decided_at = '${T}' WHERE id = 'rvw_1'`,
   )
+  expect(items()).toMatchObject([{ id: 'rvi_1', active: 0 }])
+  expect(
+    db
+      .prepare(
+        "SELECT json_extract(payload, '$.items') AS items FROM outbox WHERE kind = 'review.decided'",
+      )
+      .all(),
+  ).toEqual([{ items: `[{"entryId":"${ID('ent')}","action":"publish"}]` }])
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

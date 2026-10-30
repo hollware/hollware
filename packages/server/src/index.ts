@@ -4,6 +4,9 @@ import type {
   getTranslations,
   HollwareConfig,
   listEntries,
+  Navigation,
+  OperationByName,
+  OperationName,
   search,
   listRedirects,
 } from '@hollware/core'
@@ -120,6 +123,15 @@ export interface HollwareRpc {
     collection: string,
     translationGroup: string,
   ): Promise<Output<typeof getTranslations>>
+  /**
+   * The published entries of a collection in a locale (the site's default when absent), grouped
+   * and ordered as the collection's navigation says, for a sidebar: at most 1,000 of them.
+   */
+  getNavigation(
+    site: string,
+    collection: string,
+    options?: { readonly locale?: string },
+  ): Promise<Navigation>
   describeSite(site: string): Promise<Output<typeof describeSite>>
   /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(
@@ -146,6 +158,24 @@ export interface HollwareRpc {
       readonly cursor?: string
     },
   ): Promise<Output<typeof listRedirects>>
+}
+
+/**
+ * What another Worker of the same account calls over a service binding to the `HollwareOps`
+ * entrypoint: any operation, or MCP over `fetch`, always as the personal token it passes.
+ */
+export interface HollwareOpsRpc {
+  /**
+   * Runs one operation as the personal token (`hw_pat_…`) of `options`, on its site. A read token,
+   * or a token that is unknown, expired or revoked, is an `unauthorized` error.
+   */
+  ops<Name extends OperationName>(
+    name: Name,
+    input: z.input<OperationByName<Name>['input']>,
+    options: { readonly token: string },
+  ): Promise<z.output<OperationByName<Name>['output']>>
+  /** MCP, as the personal token of `Authorization: Bearer`, with no check of Host or Origin. */
+  fetch(request: Request): Promise<Response>
 }
 
 /**
@@ -176,6 +206,14 @@ export interface HollwareWorker {
     ctx: ExecutionContext,
     env: HollwareEnv,
   ) => WorkerEntrypoint<HollwareEnv> & HollwareRpc
+  /**
+   * The entrypoint of operations and MCP over a service binding, for the user's Worker to export
+   * under the name `HollwareOps`.
+   */
+  readonly HollwareOps: new (
+    ctx: ExecutionContext,
+    env: HollwareEnv,
+  ) => WorkerEntrypoint<HollwareEnv> & HollwareOpsRpc
 }
 
 /**

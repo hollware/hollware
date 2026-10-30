@@ -118,11 +118,13 @@ describe('the commands of ⌘K', () => {
       ['Settings: Collections', '/settings/collections'],
       ['Settings: Images', '/settings/site/images'],
       ['Settings: Webhooks', '/settings/site/webhooks'],
+      ['Settings: Agents', '/settings/site/agents'],
       ['Settings: Analytics', '/settings/site/analytics'],
       ['Settings: Backups', '/settings/site/backups'],
       ['Settings: Redirects', '/settings/site/redirects'],
       ['Settings: Danger zone', '/settings/site/danger'],
       ['Settings: People', '/settings/people'],
+      ['Settings: Sign-in', '/settings/site/signin'],
       ['Settings: Tokens', '/settings/tokens'],
       ['Settings: Activity', '/settings/activity'],
       ['Settings: Account', '/settings/account'],
@@ -130,6 +132,7 @@ describe('the commands of ⌘K', () => {
     ])
     expect(labels({ ...base, role: 'author' }, 'go')).not.toContain('Settings: Danger zone')
     expect(labels({ ...base, role: 'author' }, 'go')).not.toContain('Settings: Activity')
+    expect(labels({ ...base, role: 'editor' }, 'go')).not.toContain('Settings: Agents')
   })
 
   it('create an entry, a collection, a site, an invitation and a token', () => {

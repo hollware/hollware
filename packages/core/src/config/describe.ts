@@ -36,6 +36,16 @@ function describeCollection(
     contracts: [...builtIn, ...collection.contracts].map((contract) => describeContract(contract)),
     maxMarkdownBytes: collection.maxMarkdownBytes,
     styleGuide: collection.styleGuide,
+    ...(collection.navigation === null
+      ? {}
+      : {
+          navigation: {
+            groupBy: collection.navigation.groupBy,
+            groups:
+              collection.navigation.groups === null ? null : [...collection.navigation.groups],
+            orderBy: collection.navigation.orderBy,
+          },
+        }),
   }
 }
 

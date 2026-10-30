@@ -13,6 +13,8 @@ export const listEntries: OperationHandler<'list_entries'> = async (input, conte
     tag: input.tag,
     status: input.status,
     trashed: input.trashed,
+    changedSince:
+      input.changedSince === undefined ? undefined : new Date(input.changedSince).toISOString(),
     view: context.view,
     limit: input.limit,
     cursor: input.cursor,

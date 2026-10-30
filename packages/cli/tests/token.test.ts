@@ -206,7 +206,7 @@ describe('hollware token create', () => {
     [['--label', ''], /^hollware token create: invalid --label "": /],
     [
       ['--label', 'ci', '--scopes', 'content:admin'],
-      /^hollware token create: invalid --scopes: "content:admin" is not a scope\. Choose from content:read, content:write, content:publish, schema:admin\./,
+      /^hollware token create: invalid --scopes: "content:admin" is not a scope\. Choose from content:read, content:write, content:publish, schema:admin, review:read, review:comment\./,
     ],
     [
       ['--label', 'ci', '--expires-in-days', '0'],
