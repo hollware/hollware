@@ -1,6 +1,6 @@
 import { HollwareError } from '@hollware/core'
 import type { EntryFacts, EntryLookup, EntryRef } from '@hollware/core'
-import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm'
 
 import type {
   EntrySummaryView,
@@ -144,6 +144,11 @@ export function listEntriesQuery(
         ? eq(entries.status, query.status)
         : undefined,
       query.tag === undefined ? undefined : hasTag(site, query.tag),
+      query.changedSince === undefined
+        ? undefined
+        : query.view === 'head'
+          ? gte(entries.updatedAt, query.changedSince)
+          : sql`+${entries.updatedAt} >= ${query.changedSince}`,
       cursor === null
         ? undefined
         : sql`(${sortKey}, ${entries.id}) < (${cursor.key}, ${cursor.id})`,

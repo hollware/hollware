@@ -29,6 +29,7 @@ const COMMANDS = [
   { name: 'agent', summary: 'Add, list and remove the agent members of a site' },
   { name: 'import', summary: 'Import Markdown files over MCP' },
   { name: 'export', summary: 'Export entries as Markdown files over MCP' },
+  { name: 'promote', summary: 'Copy what one Hollware publishes to another, as one review' },
   { name: 'backup', summary: 'List the daily backups of a site, and write one as files' },
   {
     name: 'analytics',
@@ -87,6 +88,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
       'agent',
       'import',
       'export',
+      'promote',
       'backup',
       'analytics',
     ].includes(first)
@@ -128,6 +130,8 @@ async function run(command: string, args: string[], io: Io): Promise<number> {
       return (await import('./commands/agent.ts')).agent(args, io)
     case 'export':
       return (await import('./commands/export.ts')).exportContent(args, io)
+    case 'promote':
+      return (await import('./commands/promote.ts')).promote(args, io)
     case 'backup':
       return (await import('./commands/backup.ts')).backup(args, io)
     case 'analytics':

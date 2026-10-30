@@ -179,6 +179,33 @@ describe('list_entries', () => {
     ])
   })
 
+  it('lists with changedSince only the entries changed at or after that time, in both views, a time with an offset read as the same instant', async () => {
+    const { world, edge, borde } = await threeDrafts('list')
+    await publishPost(world, edge, '2026-10-13T10:30:00.000Z')
+    await publishPost(world, borde, '2026-10-13T10:40:00.000Z')
+
+    const head = await world.agent.listEntries({
+      collection: 'blog',
+      changedSince: '2026-10-13T10:20:00.000Z',
+    })
+    const offset = await world.agent.listEntries({
+      collection: 'blog',
+      changedSince: '2026-10-13T12:30:00.000+02:00',
+    })
+    const published = await world.reader.listEntries({
+      collection: 'blog',
+      changedSince: '2026-10-13T10:40:00.000Z',
+    })
+
+    expect(head.entries.map((entry) => entry.slug)).toEqual([
+      'cache-en-el-borde',
+      'edge-caching',
+      'agents-write',
+    ])
+    expect(offset.entries.map((entry) => entry.slug)).toEqual(['cache-en-el-borde', 'edge-caching'])
+    expect(published.entries.map((entry) => entry.slug)).toEqual(['cache-en-el-borde'])
+  })
+
   it('lists nothing for a collection that has no entries', async () => {
     const { agent } = await newWorld(env.DB, 'list')
 

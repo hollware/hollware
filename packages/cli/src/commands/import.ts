@@ -368,7 +368,7 @@ function sourceOf(
   )
 }
 
-interface PendingImage {
+export interface PendingImage {
   name: string
   key: string
   filename: string
@@ -843,10 +843,10 @@ function listSome(paths: readonly string[]): string {
     : shown.join(', ')
 }
 
-export function withAssetIds(
-  files: readonly ContentFile[],
+export function withAssetIds<File extends ContentFile>(
+  files: readonly File[],
   moved: ReadonlyMap<string, string>,
-): ContentFile[] {
+): File[] {
   if (moved.size === 0) return [...files]
   return files.map((file) => ({
     ...file,
@@ -889,7 +889,7 @@ function manifestImages(root: string, directory: string): Images | undefined {
   return { from: `of ${directory}/_assets`, list }
 }
 
-async function uploadImages(
+export async function uploadImages(
   session: Session,
   images: Images | undefined,
   dryRun: boolean,

@@ -63,6 +63,12 @@ export const listEntries = defineOperation({
       .describe(
         'true to list the entries in the trash, last trashed first, instead of the others.',
       ),
+    changedSince: z.iso
+      .datetime({ offset: true })
+      .optional()
+      .describe(
+        'Only the entries changed at or after this time, as an ISO 8601 date and time: a new revision, a publication, an unpublication, a move or the trash each change an entry. Give the latest updatedAt you read to list what changed since, in the same order.',
+      ),
     limit: z.number().int().min(1).max(100).default(20),
     cursor: z.string().min(1).optional(),
   }),

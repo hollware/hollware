@@ -101,6 +101,15 @@ The `hollware` command. Boundary rules for this package:
   out the trash. A token reads the one site it is of, so `--site` only checks that site's key.
   Bound by `tests/export.test.ts`.
 
+## Promote
+
+- `promote` reads the source over MCP and writes the destination as drafts, matched by collection,
+  locale and slug, then asks for one review (`request_review` with `group` and `unpublish`, 100
+  changes a review). Its state file, `.hollware/promote-<from>-<to>.json`, holds a cursor per
+  collection (the newest `updatedAt` the source listed, read again with `changedSince`, which is
+  inclusive) and, per entry, the revisions and the SHA-256 of what was promoted: a destination whose
+  published revision and Markdown both differ from those is a conflict. Bound by `tests/promote.test.ts`.
+
 ## Tests
 
 - A test's name says what fails it; `scripts/break-line.ts` on the line it guards proves it

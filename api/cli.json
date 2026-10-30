@@ -12,6 +12,7 @@
     "invite",
     "mcp-config",
     "migrate",
+    "promote",
     "token"
   ],
   "flags": {
@@ -325,6 +326,53 @@
         },
         "remote": {
           "type": "boolean"
+        }
+      }
+    ],
+    "promote": [
+      {
+        "all": {
+          "type": "boolean"
+        },
+        "collection": {
+          "multiple": true,
+          "type": "string"
+        },
+        "dry-run": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "string"
+        },
+        "from-token-file": {
+          "type": "string"
+        },
+        "help": {
+          "type": "boolean"
+        },
+        "json": {
+          "type": "boolean"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "publish": {
+          "type": "boolean"
+        },
+        "since": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "to-token-file": {
+          "type": "string"
         }
       }
     ],

@@ -71,6 +71,22 @@ const COMMANDS_HELP = [
       '--dry-run',
     ],
   ],
+  [
+    'promote',
+    [
+      '--from',
+      '--from-token-file',
+      '--to',
+      '--to-token-file',
+      '--collection',
+      '--since',
+      '--all',
+      '--state',
+      '--publish',
+      '--dry-run',
+      '--json',
+    ],
+  ],
 ] as const
 
 describe('hollware --help', () => {

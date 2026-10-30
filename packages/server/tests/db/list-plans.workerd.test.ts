@@ -39,6 +39,7 @@ interface Shape {
 
 const HEAD_AFTER = { key: '2026-10-12T10:00:00.000Z', id: 'blog_en_5_x' }
 const PUBLISHED_AFTER = { key: 'k020', id: 'blog_en_60_x' }
+const CHANGED_SINCE = '2026-10-12T06:00:00.000Z'
 
 const SHAPES: readonly Shape[] = [
   {
@@ -77,6 +78,36 @@ const SHAPES: readonly Shape[] = [
     query: { collection: 'blog', view: 'head', limit: 20, locale: 'en', tag: 'edge' },
     access:
       'SEARCH entries USING INDEX entries_head_locale (site_id=? AND collection=? AND locale=?)',
+  },
+  {
+    name: 'the head view of a collection changed since a time',
+    query: { collection: 'blog', view: 'head', limit: 20, changedSince: CHANGED_SINCE },
+    access: 'SEARCH entries USING INDEX entries_head (site_id=? AND collection=? AND updated_at>?)',
+  },
+  {
+    name: 'the head view of a locale changed since a time, after a cursor',
+    query: {
+      collection: 'blog',
+      view: 'head',
+      limit: 20,
+      locale: 'en',
+      changedSince: CHANGED_SINCE,
+    },
+    after: HEAD_AFTER,
+    access:
+      'SEARCH entries USING INDEX entries_head_locale (site_id=? AND collection=? AND locale=? AND updated_at>? AND (updated_at,id)<(?,?))',
+  },
+  {
+    name: 'the published view of a locale changed since a time',
+    query: {
+      collection: 'blog',
+      view: 'published',
+      limit: 20,
+      locale: 'en',
+      changedSince: CHANGED_SINCE,
+    },
+    access:
+      'SEARCH entries USING INDEX entries_published (site_id=? AND collection=? AND locale=?)',
   },
   {
     name: 'the published view of a locale',

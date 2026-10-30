@@ -138,6 +138,7 @@ export interface ListQuery {
   readonly status?: StoredEntry['status']
   /** The entries in the trash instead of the others; the published view has none. */
   readonly trashed?: boolean
+  readonly changedSince?: string
   readonly view: View
   readonly limit: number
   /** The `nextCursor` of the previous page. */
