@@ -1,17 +1,30 @@
 import { newId } from '@hollware/core'
 import { and, asc, desc, eq, getTableColumns, inArray, sql, type SQL } from 'drizzle-orm'
+import type { BatchItem } from 'drizzle-orm/batch'
 import type {
   Actor,
   Clock,
+  ReviewAction,
   ReviewStatus,
   StoredReview,
   StoredReviewComment,
+  StoredReviewItem,
   WriteRefusal,
 } from '../ports.ts'
+import { chunk } from './chunks.ts'
 import type { Db } from './d1.ts'
-import { isUniqueViolation } from './errors.ts'
+import { GUARD_FAILED, isGuardFailure, isUniqueViolation } from './errors.ts'
 import { parseAcknowledged } from './schedules.ts'
-import { entries, reviewComments, reviews, users } from './schema.ts'
+import {
+  entries,
+  outbox,
+  reviewComments,
+  reviewItems,
+  reviews,
+  revisions,
+  sites,
+  users,
+} from './schema.ts'
 import { valuesOf } from './statements.ts'
 
 const STATUSES: readonly ReviewStatus[] = [
@@ -57,6 +70,23 @@ function entryAt(site: string, entryId: string, version: number, also: readonly 
   )})`
 }
 
+function holding(db: Db, site: string, entryId: string, also: readonly SQL[] = []) {
+  return inArray(
+    reviews.id,
+    db
+      .select({ id: reviewItems.reviewId })
+      .from(reviewItems)
+      .where(
+        and(
+          eq(reviewItems.siteId, site),
+          eq(reviewItems.entryId, entryId),
+          eq(reviewItems.active, 1),
+          ...also,
+        ),
+      ),
+  )
+}
+
 export function cancelPendingReview(
   db: Db,
   site: string,
@@ -71,8 +101,8 @@ export function cancelPendingReview(
     .where(
       and(
         eq(reviews.siteId, site),
-        eq(reviews.entryId, entryId),
         eq(reviews.status, 'pending'),
+        holding(db, site, entryId),
         entryAt(site, entryId, version, also),
       ),
     )
@@ -92,9 +122,12 @@ export function approvePendingReview(
     .where(
       and(
         eq(reviews.siteId, site),
-        eq(reviews.entryId, entryId),
         eq(reviews.status, 'pending'),
-        sql`${reviews.revisionId} = (select ${entries.headRev} from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), eq(entries.version, version))})`,
+        holding(db, site, entryId, [
+          eq(reviewItems.action, 'publish'),
+          sql`${reviewItems.revisionId} = (select ${entries.headRev} from ${entries} where ${and(eq(entries.id, entryId), eq(entries.siteId, site), eq(entries.version, version))})`,
+        ]),
+        sql`(select count(*) from ${reviewItems} where ${and(eq(reviewItems.siteId, site), eq(reviewItems.reviewId, reviews.id))}) = 1`,
       ),
     )
 }
@@ -111,23 +144,57 @@ async function pendingOf(db: Db, site: string, entryId: string): Promise<StoredR
   return row === undefined ? null : toReview(row)
 }
 
+function heldBy(
+  db: Db,
+  site: string,
+  entryIds: readonly string[],
+): Promise<readonly { readonly reviewId: string; readonly entryId: string }[]> {
+  return db
+    .select({ reviewId: reviewItems.reviewId, entryId: reviewItems.entryId })
+    .from(reviewItems)
+    .where(
+      and(
+        eq(reviewItems.siteId, site),
+        inArray(reviewItems.entryId, [...entryIds]),
+        eq(reviewItems.active, 1),
+      ),
+    )
+}
+
 export async function requestReview(
   db: Db,
   clock: Clock,
   site: string,
   write: {
-    readonly entryId: string
-    readonly expectedVersion: number
+    readonly items: readonly {
+      readonly entryId: string
+      readonly expectedVersion: number
+      readonly action: ReviewAction
+    }[]
     readonly acknowledged: readonly { readonly contract: string; readonly path: string }[]
     readonly actor: Actor
   },
-  whyNothingChanged: () => Promise<WriteRefusal>,
-): Promise<{ readonly outcome: 'pending_review'; readonly review: StoredReview } | WriteRefusal> {
+  whyNothingChanged: (entryId: string) => Promise<WriteRefusal>,
+): Promise<
+  | { readonly outcome: 'pending_review'; readonly review: StoredReview }
+  | { readonly outcome: 'held'; readonly review: StoredReview; readonly entryId: string }
+  | (WriteRefusal & { readonly entryId: string })
+> {
+  const [first] = write.items
+  if (first === undefined) throw new Error('A review is asked for no entry')
   const now = clock.now().toISOString()
+  const id = newId('rvw')
+  const atVersion = (item: (typeof write.items)[number]) =>
+    and(
+      eq(entries.id, item.entryId),
+      eq(entries.siteId, site),
+      eq(entries.version, item.expectedVersion),
+      item.action === 'unpublish' ? eq(entries.status, 'published') : undefined,
+    )
   const row = {
-    id: newId('rvw'),
+    id,
     siteId: site,
-    entryId: write.entryId,
+    entryId: first.entryId,
     revisionId: entries.headRev,
     status: 'pending',
     acknowledged: JSON.stringify(write.acknowledged),
@@ -139,27 +206,130 @@ export async function requestReview(
     createdAt: now,
     updatedAt: now,
   }
-  let inserted: readonly { readonly id: string }[]
+  const statements: BatchItem<'sqlite'>[] = write.items.map((item) =>
+    db.insert(reviewItems).select(
+      sql`select ${valuesOf(reviewItems, {
+        id: newId('rvi'),
+        siteId: site,
+        reviewId: id,
+        entryId: item.entryId,
+        revisionId: item.action === 'publish' ? entries.headRev : null,
+        baseRevisionId: entries.publishedRev,
+        action: item.action,
+        excluded: 0,
+        active: 1,
+        createdAt: now,
+        updatedAt: now,
+      })} from ${entries} where ${and(
+        atVersion(item),
+        sql`exists (select 1 from ${reviews} where ${and(eq(reviews.id, id), eq(reviews.siteId, site))})`,
+      )}`,
+    ),
+  )
+  const items = write.items.map((item) => ({ entryId: item.entryId, action: item.action }))
   try {
-    inserted = await db
-      .insert(reviews)
-      .select(
-        sql`select ${valuesOf(reviews, row)} from ${entries} where ${and(
-          eq(entries.id, write.entryId),
-          eq(entries.siteId, site),
-          eq(entries.version, write.expectedVersion),
-        )}`,
-      )
-      .returning({ id: reviews.id })
+    await db.batch([
+      db
+        .insert(reviews)
+        .select(sql`select ${valuesOf(reviews, row)} from ${entries} where ${atVersion(first)}`),
+      ...statements,
+      db
+        .select({ failed: sql`json(${GUARD_FAILED})` })
+        .from(sites)
+        .where(
+          and(
+            eq(sites.id, site),
+            sql`(select count(*) from ${reviewItems} where ${and(eq(reviewItems.siteId, site), eq(reviewItems.reviewId, id))}) < ${write.items.length}`,
+          ),
+        ),
+      db
+        .update(outbox)
+        .set({
+          payload: sql`json_set(${outbox.payload}, '$.items', json(${JSON.stringify(items)}))`,
+        })
+        .where(
+          and(
+            eq(outbox.siteId, site),
+            eq(outbox.kind, 'review.requested'),
+            eq(outbox.entryId, first.entryId),
+            sql`${outbox.sentAt} is null`,
+            sql`json_extract(${outbox.payload}, '$.review.id') = ${id}`,
+          ),
+        ),
+    ])
   } catch (error) {
-    const pending = isUniqueViolation(error) ? await pendingOf(db, site, write.entryId) : null
-    if (pending === null) throw error
-    return { outcome: 'pending_review', review: pending }
+    if (isUniqueViolation(error)) {
+      const [held] = await heldBy(
+        db,
+        site,
+        write.items.map((item) => item.entryId),
+      )
+      const review =
+        held === undefined
+          ? await pendingOf(db, site, first.entryId)
+          : await findReview(db, site, held.reviewId)
+      if (review === null) throw error
+      return { outcome: 'held', review, entryId: held?.entryId ?? first.entryId }
+    }
+    if (!isGuardFailure(error)) throw error
+    for (const item of write.items) {
+      const why = await whyNothingChanged(item.entryId)
+      if (why.outcome !== 'conflict' || why.currentVersion !== item.expectedVersion) {
+        return { ...why, entryId: item.entryId }
+      }
+    }
+    const [moved] = write.items.filter((item) => item.action === 'unpublish')
+    const why = await whyNothingChanged(moved?.entryId ?? first.entryId)
+    return { ...why, entryId: moved?.entryId ?? first.entryId }
   }
-  if (inserted.length === 0) return whyNothingChanged()
-  const review = await findReview(db, site, row.id)
-  if (review === null) throw new Error(`The review ${row.id} that was just written is not there`)
+  const review = await findReview(db, site, id)
+  if (review === null) throw new Error(`The review ${id} that was just written is not there`)
   return { outcome: 'pending_review', review }
+}
+
+export async function reviewItemsOf(
+  db: Db,
+  site: string,
+  reviewIds: readonly string[],
+): Promise<ReadonlyMap<string, readonly StoredReviewItem[]>> {
+  const byReview = new Map<string, StoredReviewItem[]>()
+  for (const ids of chunk([...new Set(reviewIds)], 80)) {
+    const rows = await db
+      .select()
+      .from(reviewItems)
+      .where(and(eq(reviewItems.siteId, site), inArray(reviewItems.reviewId, ids)))
+      .orderBy(asc(reviewItems.reviewId), sql`${reviewItems}.rowid`)
+    for (const row of rows) {
+      const list = byReview.get(row.reviewId) ?? []
+      list.push({
+        reviewId: row.reviewId,
+        entryId: row.entryId,
+        revisionId: row.revisionId,
+        baseRevisionId: row.baseRevisionId,
+        action: row.action === 'unpublish' ? 'unpublish' : 'publish',
+        excluded: row.excluded === 1,
+        active: row.active === 1,
+      })
+      byReview.set(row.reviewId, list)
+    }
+  }
+  return byReview
+}
+
+export async function revisionMarkdown(
+  db: Db,
+  site: string,
+  ids: readonly string[],
+): Promise<ReadonlyMap<string, string>> {
+  const found = new Map<string, string>()
+  for (const some of chunk([...new Set(ids)], 80)) {
+    const rows = await db
+      .select({ id: revisions.id, markdown: revisions.markdown })
+      .from(revisions)
+      .where(and(eq(revisions.siteId, site), inArray(revisions.id, some)))
+    for (const row of rows) found.set(row.id, row.markdown)
+  }
+  return found
 }
 
 export async function findReview(db: Db, site: string, id: string): Promise<StoredReview | null> {
@@ -258,6 +428,9 @@ function toComment(
     authorName: row.authorName,
     authorMeta: metaOf(row.authorMeta),
     body: row.body,
+    entryId: row.entryId,
+    lines:
+      row.lineFrom === null || row.lineTo === null ? null : { from: row.lineFrom, to: row.lineTo },
     createdAt: row.createdAt,
   }
 }
@@ -266,7 +439,13 @@ export async function commentReview(
   db: Db,
   clock: Clock,
   site: string,
-  write: { readonly reviewId: string; readonly actor: Actor; readonly body: string },
+  write: {
+    readonly reviewId: string
+    readonly actor: Actor
+    readonly body: string
+    readonly entryId: string | null
+    readonly lines: { readonly from: number; readonly to: number } | null
+  },
 ): Promise<
   | { readonly outcome: 'commented'; readonly comment: StoredReviewComment }
   | { readonly outcome: 'not_pending' | 'not_found' }
@@ -276,8 +455,9 @@ export async function commentReview(
   const meta = write.actor.meta === null ? null : JSON.stringify(write.actor.meta)
   const inserted = await db.all<{ id: string }>(sql`
     insert into ${reviewComments}
-      (id, site_id, review_id, author_id, author_meta, body, created_at, updated_at)
-    select ${id}, ${site}, ${write.reviewId}, ${write.actor.userId}, ${meta}, ${write.body}, ${now}, ${now}
+      (id, site_id, review_id, author_id, author_meta, body, created_at, updated_at, entry_id, line_from, line_to)
+    select ${id}, ${site}, ${write.reviewId}, ${write.actor.userId}, ${meta}, ${write.body}, ${now}, ${now},
+      ${write.entryId}, ${write.lines?.from ?? null}, ${write.lines?.to ?? null}
     where exists (select 1 from ${reviews} where ${and(
       eq(reviews.id, write.reviewId),
       eq(reviews.siteId, site),

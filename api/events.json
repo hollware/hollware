@@ -137,6 +137,24 @@
           "description": "The id of the event, the same on every retry: ignore one you already have.",
           "type": "string"
         },
+        "items": {
+          "description": "Every entry the review changes, the entry above first, and what it does to each.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "enum": ["publish", "unpublish"],
+                "type": "string"
+              },
+              "entryId": {
+                "type": "string"
+              }
+            },
+            "required": ["entryId", "action"],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "kind": {
           "enum": ["review.requested", "review.decided"],
           "type": "string"

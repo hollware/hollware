@@ -18,6 +18,7 @@ const REQUIRED = [
   ['create_draft', 'content:write'],
   ['describe_site', 'content:read'],
   ['get_entry', 'content:read'],
+  ['get_review', 'content:read'],
   ['get_translations', 'content:read'],
   ['list_entries', 'content:read'],
   ['list_reviews', 'content:read'],

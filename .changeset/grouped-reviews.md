@@ -1,0 +1,7 @@
+---
+'@hollware/core': minor
+'@hollware/server': minor
+'@hollware/admin': minor
+---
+
+A review can hold several entries. `request_review` takes `group` (more entries to publish) and `unpublish` (published entries to take off the site), and `publish` without `content:publish` turns its `group` into one review; an entry is in one pending review at most, and asking with one that another review holds answers `conflict` with that `review` and the `failedEntry`. `approve_review` publishes and unpublishes every entry of the review in one step, all or none, but those in its new `exclude`, and answers the new outcome `conflict` with `failedEntry` when one moved since; a new revision of any of its entries cancels the whole review. The new tool `get_review` (`content:read`) reads a review with each entry: what is published, what is proposed and the unified diff between them (`unifiedDiff` of `@hollware/core`, three lines of context). `comment_review` takes `entryId` and `lines` to comment on an entry of the review or on lines of its proposal, and comments answer both. `list_reviews` answers how many entries each review holds (`items`), and the events of a review carry them (`items`). Migrations `0029_review_items.sql` and `0030_review_items_backfill.sql` add the table `review_items`, give each review of before its one entry, and add the anchor of a comment. The admin shows every entry of a review with its diff, lets you leave some out of the approval, approves them all at once, and takes comments on an entry and its lines.

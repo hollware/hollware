@@ -17,6 +17,7 @@ const handlers: Handlers = {
   delete_site: notYet,
   describe_site: notYet,
   get_entry: notYet,
+  get_review: notYet,
   get_structure: notYet,
   get_translations: notYet,
   list_entries: notYet,

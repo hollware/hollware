@@ -52,6 +52,8 @@ const OUTPUT_TOO_LARGE_FIX = {
     'The operation ran and its change may have been applied: read the entry with get_entry before you repeat it.',
   list_redirects: 'Ask for less: pass a smaller limit, and the nextCursor of a page for the next.',
   list_revisions: 'Ask for less: pass a smaller limit, and the nextCursor of a page for the next.',
+  get_review:
+    'The review does not fit in one answer: ask for one of its entries at a time with entryId.',
   get_revision:
     'The revision is larger than one answer holds: read the entry with get_entry, or its Markdown from an export.',
   restore_revision:

@@ -227,7 +227,18 @@ export const reviewComment = z.object({
     .describe('The name the client gave, such as hollware-agents for the agents; null for none.'),
   body: z.string(),
   at: z.string(),
+  entryId: entryId
+    .nullable()
+    .describe('The entry of the review the comment is about, or null for the whole review.'),
+  lines: z
+    .object({ from: z.number().int().min(1), to: z.number().int().min(1) })
+    .nullable()
+    .describe('The lines of the proposed Markdown of that entry it is about, or null.'),
 })
+
+export const reviewAction = z
+  .enum(['publish', 'unpublish'])
+  .describe('What approving the review does to the entry.')
 
 export const conflict = z.object({
   currentVersion: z.number().int().min(1),

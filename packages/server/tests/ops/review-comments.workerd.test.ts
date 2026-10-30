@@ -55,6 +55,8 @@ describe('comment_review', () => {
         client: 'hollware-agents',
         body: 'Add an example.',
         at: T1,
+        entryId: null,
+        lines: null,
       },
     })
     expect(

@@ -82,6 +82,9 @@ export const STORE: ContentStore = {
   rejectReview: unused,
   commentReview: unused,
   reviewComments: unused,
+  reviewItems: unused,
+  revisionMarkdown: unused,
+  approveReview: unused,
 }
 
 export const CLOCK: Clock = { now: () => new Date('2026-10-12T12:00:00.000Z') }
@@ -283,6 +286,8 @@ const ASSET = {
   createdAt: '2026-10-18T00:00:00.000Z',
 }
 
+const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
+
 export const CANNED: Canned = {
   approve_review: {
     published: {
@@ -296,6 +301,12 @@ export const CANNED: Canned = {
       review: REVIEW,
       entry: SUMMARY,
       verdict: VERDICT_WARNED,
+    },
+    conflict: {
+      outcome: 'conflict',
+      review: REVIEW,
+      conflict: { currentVersion: 3, headRevision: REVISION_ID },
+      failedEntry: ENTRY_ID,
     },
     not_pending: { outcome: 'not_pending', review: { ...REVIEW, status: 'cancelled' } },
     not_found: { outcome: 'not_found' },
@@ -331,6 +342,8 @@ export const CANNED: Canned = {
         client: null,
         body: 'Add an example.',
         at: '2026-10-13T11:00:00.000Z',
+        entryId: null,
+        lines: null,
       },
     },
     not_pending: { outcome: 'not_pending' },
@@ -377,6 +390,23 @@ export const CANNED: Canned = {
     disconnected: { outcome: 'disconnected' },
     not_connected: { outcome: 'not_connected' },
   },
+  get_review: {
+    ok: {
+      outcome: 'ok',
+      review: { ...REVIEW, comments: [] },
+      items: [
+        {
+          entry: SUMMARY,
+          action: 'publish',
+          excluded: false,
+          published: null,
+          proposed: MARKDOWN,
+          diff: '@@ -0,0 +1,4 @@\n+---\n+title: Hello world\n+---\n+Hello.\n',
+        },
+      ],
+    },
+    not_found: { outcome: 'not_found' },
+  },
   get_entry: {
     ok: { outcome: 'ok', entry: ENTRY },
     not_found: { outcome: 'not_found' },
@@ -410,8 +440,11 @@ export const CANNED: Canned = {
               client: 'hollware-agents',
               body: 'The second section needs an example.',
               at: '2026-10-13T11:00:00.000Z',
+              entryId: null,
+              lines: null,
             },
           ],
+          items: 1,
         },
       ],
     },
@@ -590,8 +623,6 @@ export function cannedOutput(tool: OperationName, outcome: string): unknown {
   return Object.entries(CANNED[tool]).find(([name]) => name === outcome)?.[1]
 }
 
-const MARKDOWN = '---\ntitle: Hello world\n---\nHello.'
-
 export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName<Name>['input']> } =
   {
     approve_review: { id: REVIEW_ID },
@@ -603,6 +634,7 @@ export const INPUTS: { readonly [Name in OperationName]: z.input<OperationByName
     disconnect_analytics: {},
     get_analytics: {},
     get_entry: { collection: 'blog', locale: 'en', slug: 'hello-world' },
+    get_review: { id: REVIEW_ID },
     get_translations: { collection: 'blog', translationGroup: 'hello' },
     list_entries: { collection: 'blog' },
     search: { query: 'words' },
@@ -709,6 +741,10 @@ export function fakeHandlers(
       'describe_site',
       overrides.describe_site ??
         (async () => pick(CANNED.describe_site, outcomes.describe_site ?? 'ok')),
+    ),
+    get_review: record(
+      'get_review',
+      overrides.get_review ?? (async () => pick(CANNED.get_review, outcomes.get_review ?? 'ok')),
     ),
     get_entry: record(
       'get_entry',

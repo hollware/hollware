@@ -33,6 +33,7 @@ it('has the tables of the @hollware/server migrations, and no others', async () 
     'publications',
     'redirects',
     'review_comments',
+    'review_items',
     'reviews',
     'revision_tags',
     'revisions',

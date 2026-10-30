@@ -59,6 +59,10 @@ export const reviewEvent = z.object({
       translationGroup: z.string().nullable(),
     })
     .describe('The entry the review asks to publish.'),
+  items: z
+    .array(z.object({ entryId: z.string(), action: z.enum(['publish', 'unpublish']) }))
+    .optional()
+    .describe('Every entry the review changes, the entry above first, and what it does to each.'),
   adminPath: z
     .string()
     .describe('Where a person reads the review in the admin, under the URL of this Hollware.'),

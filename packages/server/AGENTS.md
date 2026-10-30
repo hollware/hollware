@@ -76,9 +76,9 @@ serve them. Boundary rules for this package:
   to the library, which would answer a bare 503: it hands the error to the gateway, which throws
   it into the error handler.
 - Reviews (v0.3): `publish` from a principal without `content:publish` runs the same checks and
-  asks for a review (`src/db/reviews.ts`) instead of publishing. A write that moves the entry
-  closes its pending review in the same batch: a new revision cancels it, a publication approves
-  it. `approve_review` publishes through the `publish` handler itself, in the approver's name.
+  asks for a review (`src/db/reviews.ts`). Its entries are `review_items`, active while it is
+  pending, one active per entry. A new revision of one cancels the review whole, in its batch.
+  `approve_review` publishes one entry through `publish`, several in one batch.
 - Drafts store and answer what `formatMarkdown` gives; `unchanged` compares that canonical form
   (`tests/ops/drafts.workerd.test.ts`).
 - The trash of entries: `delete_entry` sets `entries.deleted_at` on a draft, and every read of the

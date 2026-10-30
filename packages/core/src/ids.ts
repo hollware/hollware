@@ -22,6 +22,7 @@ export const ID_PREFIXES = {
   revisionTag: 'tag',
   review: 'rvw',
   reviewComment: 'rvc',
+  reviewItem: 'rvi',
   schedule: 'sch',
   session: 'ses',
   siteChange: 'sit',

@@ -352,7 +352,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await review.getByRole('button', { name: 'Open on the site' }).click()
   await expect(owner.locator('body')).toHaveAttribute('data-opened', /\?hollware-preview=hw_prv_/)
   await review.getByRole('tab', { name: 'Changes' }).click()
-  await owner.getByRole('textbox', { name: 'Comment' }).fill('The title reads well.')
+  await owner.getByRole('textbox', { name: 'Comment', exact: true }).fill('The title reads well.')
   await owner.getByRole('button', { name: 'Comment', exact: true }).click()
   await expect(owner.getByText('The title reads well.')).toBeVisible()
   await shot(owner, 'review')

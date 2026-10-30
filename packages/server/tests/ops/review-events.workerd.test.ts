@@ -72,6 +72,7 @@ describe('the events of a review', () => {
         slug: 'edge-caching-guide',
         translationGroup: 'edge-caching-guide',
       },
+      items: [{ entryId: en.id, action: 'publish' }],
       adminPath: `/admin/reviews?review=${reviewId}`,
     })
   })
@@ -107,6 +108,7 @@ describe('the events of a review', () => {
       at: T2,
       review: { id: reviewId, status, requestedBy: 'Owner', note },
       entry: { id: en.id, slug: 'edge-caching-guide' },
+      items: [{ entryId: en.id, action: 'publish' }],
     })
   })
 

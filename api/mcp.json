@@ -23,6 +23,17 @@
             },
             "type": "array"
           },
+          "exclude": {
+            "default": [],
+            "description": "Entries of the review to leave as they are: the rest is published or unpublished, and the review is closed for all of them.",
+            "items": {
+              "description": "The id of an entry (ent_…), as the other operations return it.",
+              "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
           "id": {
             "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
@@ -37,6 +48,23 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "conflict": {
+            "additionalProperties": false,
+            "properties": {
+              "currentVersion": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "headRevision": {
+                "description": "The id of a revision (rev_…).",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              }
+            },
+            "required": ["currentVersion", "headRevision"],
+            "type": "object"
+          },
           "entry": {
             "additionalProperties": false,
             "properties": {
@@ -166,8 +194,20 @@
             ],
             "type": "object"
           },
+          "failedEntry": {
+            "description": "In a review of several entries, the entry that kept it from being approved: blocked, moved since the request, missing, or with a warning to acknowledge.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "outcome": {
-            "enum": ["published", "blocked", "needs_acknowledgement", "not_pending", "not_found"],
+            "enum": [
+              "published",
+              "blocked",
+              "needs_acknowledgement",
+              "conflict",
+              "not_pending",
+              "not_found"
+            ],
             "type": "string"
           },
           "review": {
@@ -363,10 +403,33 @@
             "minLength": 1,
             "type": "string"
           },
+          "entryId": {
+            "description": "The entry of the review the comment is about; the whole review without it.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "id": {
             "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
             "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "lines": {
+            "additionalProperties": false,
+            "description": "With entryId, the lines of its proposed Markdown the comment is about, as get_review numbers them.",
+            "properties": {
+              "from": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "to": {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": ["from", "to"],
+            "type": "object"
           }
         },
         "required": ["id", "body"],
@@ -397,11 +460,49 @@
                 "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
                 "type": ["string", "null"]
               },
+              "entryId": {
+                "anyOf": [
+                  {
+                    "description": "The id of an entry (ent_…), as the other operations return it.",
+                    "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The entry of the review the comment is about, or null for the whole review."
+              },
               "id": {
                 "type": "string"
+              },
+              "lines": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "from": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "to": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": ["from", "to"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The lines of the proposed Markdown of that entry it is about, or null."
               }
             },
-            "required": ["id", "author", "authorName", "client", "body", "at"],
+            "required": ["id", "author", "authorName", "client", "body", "at", "entryId", "lines"],
             "type": "object"
           },
           "outcome": {
@@ -3041,6 +3142,356 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "entryId": {
+            "description": "Only this entry of the review: for a review too large for one answer.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+            "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "name": "get_review",
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "description": "What approving the review does to the entry.",
+                  "enum": ["publish", "unpublish"],
+                  "type": "string"
+                },
+                "diff": {
+                  "description": "The unified diff from published to proposed, with three lines of context.",
+                  "type": "string"
+                },
+                "entry": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "collection": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                      "type": ["string", "null"]
+                    },
+                    "frontmatter": {
+                      "additionalProperties": {},
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "hasUnpublishedChanges": {
+                      "description": "Whether the latest revision differs from the published one.",
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "description": "The id of an entry (ent_…), as the other operations return it.",
+                      "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                      "type": "string"
+                    },
+                    "images": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alt": {
+                            "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                            "type": "string"
+                          },
+                          "height": {
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "srcset": {
+                            "type": ["string", "null"]
+                          },
+                          "width": {
+                            "anyOf": [
+                              {
+                                "maximum": 9007199254740991,
+                                "minimum": -9007199254740991,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["width", "height", "srcset"],
+                        "type": "object"
+                      },
+                      "description": "Where asset: references are read as URLs (a site over RPC or the read API, or the published view): the images its frontmatter names, by URL, with their size and srcset, to lay out a cover. Absent when it names none.",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "locale": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "description": "When the entry was first published, or null.",
+                      "type": ["string", "null"]
+                    },
+                    "scheduledAt": {
+                      "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                      "type": ["string", "null"]
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": ["draft", "scheduled", "published"],
+                      "type": "string"
+                    },
+                    "tags": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "translationGroup": {
+                      "type": ["string", "null"]
+                    },
+                    "translationOutdated": {
+                      "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                      "type": "boolean"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "collection",
+                    "locale",
+                    "slug",
+                    "translationGroup",
+                    "status",
+                    "version",
+                    "frontmatter",
+                    "tags",
+                    "hasUnpublishedChanges",
+                    "publishedAt",
+                    "scheduledAt",
+                    "deletedAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "excluded": {
+                  "description": "Whether the approval left this entry as it was.",
+                  "type": "boolean"
+                },
+                "proposed": {
+                  "anyOf": [
+                    {
+                      "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Markdown the review publishes, or null when it unpublishes."
+                },
+                "published": {
+                  "anyOf": [
+                    {
+                      "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The Markdown published when the review was asked, or null."
+                }
+              },
+              "required": ["entry", "action", "excluded", "published", "proposed", "diff"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outcome": {
+            "enum": ["ok", "not_found"],
+            "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "properties": {
+              "comments": {
+                "description": "What was said about it, oldest first.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "at": {
+                      "type": "string"
+                    },
+                    "author": {
+                      "description": "The user who wrote it, or whose token their agent used.",
+                      "type": "string"
+                    },
+                    "authorName": {
+                      "type": ["string", "null"]
+                    },
+                    "body": {
+                      "type": "string"
+                    },
+                    "client": {
+                      "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
+                      "type": ["string", "null"]
+                    },
+                    "entryId": {
+                      "anyOf": [
+                        {
+                          "description": "The id of an entry (ent_…), as the other operations return it.",
+                          "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The entry of the review the comment is about, or null for the whole review."
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "from": {
+                              "maximum": 9007199254740991,
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "to": {
+                              "maximum": 9007199254740991,
+                              "minimum": 1,
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["from", "to"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The lines of the proposed Markdown of that entry it is about, or null."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "author",
+                    "authorName",
+                    "client",
+                    "body",
+                    "at",
+                    "entryId",
+                    "lines"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "decidedAt": {
+                "type": ["string", "null"]
+              },
+              "decidedBy": {
+                "type": ["string", "null"]
+              },
+              "entryId": {
+                "description": "The id of an entry (ent_…), as the other operations return it.",
+                "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "id": {
+                "description": "The id of a review (rvw_…), as publish and list_reviews return it.",
+                "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "note": {
+                "description": "What the reviewer asked to change, or null.",
+                "type": ["string", "null"]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "requestedBy": {
+                "description": "The user who asked.",
+                "type": "string"
+              },
+              "requestedByName": {
+                "description": "The name of the user who asked, if they gave one.",
+                "type": ["string", "null"]
+              },
+              "revision": {
+                "description": "The revision asked for.",
+                "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+                "type": "string"
+              },
+              "status": {
+                "description": "pending until someone decides; cancelled when a new revision of the entry is saved.",
+                "enum": ["pending", "approved", "changes_requested", "rejected", "cancelled"],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "entryId",
+              "revision",
+              "status",
+              "requestedBy",
+              "requestedByName",
+              "requestedAt",
+              "decidedBy",
+              "decidedAt",
+              "note",
+              "comments"
+            ],
+            "type": "object"
+          }
+        },
+        "required": ["outcome"],
+        "type": "object"
+      },
+      "scopes": ["content:read"],
+      "title": "Read a review"
+    },
+    {
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
           "id": {
             "description": "The id of a revision (rev_…).",
             "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
@@ -4398,11 +4849,58 @@
                         "description": "The name the client gave, such as hollware-agents for the agents; null for none.",
                         "type": ["string", "null"]
                       },
+                      "entryId": {
+                        "anyOf": [
+                          {
+                            "description": "The id of an entry (ent_…), as the other operations return it.",
+                            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The entry of the review the comment is about, or null for the whole review."
+                      },
                       "id": {
                         "type": "string"
+                      },
+                      "lines": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "from": {
+                                "maximum": 9007199254740991,
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "to": {
+                                "maximum": 9007199254740991,
+                                "minimum": 1,
+                                "type": "integer"
+                              }
+                            },
+                            "required": ["from", "to"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "The lines of the proposed Markdown of that entry it is about, or null."
                       }
                     },
-                    "required": ["id", "author", "authorName", "client", "body", "at"],
+                    "required": [
+                      "id",
+                      "author",
+                      "authorName",
+                      "client",
+                      "body",
+                      "at",
+                      "entryId",
+                      "lines"
+                    ],
                     "type": "object"
                   },
                   "type": "array"
@@ -4552,6 +5050,12 @@
                   "pattern": "^rvw_[0-9A-HJKMNP-TV-Z]{26}$",
                   "type": "string"
                 },
+                "items": {
+                  "description": "How many entries the review changes: get_review shows each one.",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
                 "note": {
                   "description": "What the reviewer asked to change, or null.",
                   "type": ["string", "null"]
@@ -4590,6 +5094,7 @@
                 "decidedAt",
                 "note",
                 "entry",
+                "items",
                 "comments"
               ],
               "type": "object"
@@ -5626,10 +6131,58 @@
             },
             "type": "array"
           },
+          "group": {
+            "default": [],
+            "description": "Other entries to publish in the same review, each with the version you read: the review publishes all of them, or none.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version of the entry you read. A change against an older version answers conflict.",
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["id", "version"],
+              "type": "object"
+            },
+            "maxItems": 99,
+            "type": "array"
+          },
           "id": {
             "description": "The id of an entry (ent_…), as the other operations return it.",
             "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
+          },
+          "unpublish": {
+            "default": [],
+            "description": "Published entries the same review takes off the site, each with the version you read.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "version": {
+                  "description": "The version of the entry you read. A change against an older version answers conflict.",
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": ["id", "version"],
+              "type": "object"
+            },
+            "maxItems": 99,
+            "type": "array"
           },
           "version": {
             "description": "The version of the entry you read. A change against an older version answers conflict.",
@@ -5792,13 +6345,18 @@
             ],
             "type": "object"
           },
+          "failedEntry": {
+            "description": "The entry that kept the review from being asked: blocked, stale, missing, not published, in another pending review, or with a warning to acknowledge.",
+            "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+            "type": "string"
+          },
           "outcome": {
             "enum": ["pending_review", "blocked", "needs_acknowledgement", "conflict", "not_found"],
             "type": "string"
           },
           "review": {
             "additionalProperties": false,
-            "description": "With pending_review: the request, as list_reviews shows it.",
+            "description": "With pending_review: the request, as list_reviews shows it. With conflict: the pending review that already holds failedEntry, when one does.",
             "properties": {
               "decidedAt": {
                 "type": ["string", "null"]

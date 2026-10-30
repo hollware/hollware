@@ -24,6 +24,7 @@ import { publish } from './publish.ts'
 import {
   approveReview,
   commentReview,
+  getReview,
   listReviews,
   rejectReview,
   requestChanges,
@@ -50,6 +51,7 @@ export const handlers = defineHandlers({
   get_asset: getAsset,
   update_asset: updateAsset,
   get_entry: getEntry,
+  get_review: getReview,
   get_revision: getRevision,
   get_structure: getStructure,
   get_translations: getTranslations,

@@ -13,16 +13,28 @@ import type {
   OutboxEvent,
   PublishWrite,
   StoredRedirect,
+  StoredReview,
   StoredRevision,
+  UnpublishWrite,
   WriteRefusal,
 } from '../ports.ts'
 import type { Db } from './d1.ts'
-import { isUniqueViolation } from './errors.ts'
+import { GUARD_FAILED, isGuardFailure, isUniqueViolation } from './errors.ts'
 import { findEntryById, findRevision } from './reads.ts'
-import { approvePendingReview, cancelPendingReview } from './reviews.ts'
+import { approvePendingReview, cancelPendingReview, findReview } from './reviews.ts'
 import { dropSchedule, dropUnpublish } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
-import { entries, outbox, publications, redirects, revisions, schedules, sites } from './schema.ts'
+import {
+  entries,
+  outbox,
+  publications,
+  redirects,
+  reviewItems,
+  reviews,
+  revisions,
+  schedules,
+  sites,
+} from './schema.ts'
 import { tooLarge } from './size.ts'
 import { valuesOf } from './statements.ts'
 import {
@@ -275,6 +287,66 @@ export async function appendRevision(
   }
 }
 
+function beforePublish(
+  db: Db,
+  site: string,
+  write: PublishWrite,
+  now: string,
+  closesReviews: boolean,
+): BatchItem<'sqlite'>[] {
+  return [
+    dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
+    insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
+      eq(entries.version, write.expectedVersion),
+    ]),
+    ...(closesReviews
+      ? [
+          approvePendingReview(
+            db,
+            site,
+            write.entryId,
+            write.expectedVersion,
+            write.actor.userId,
+            now,
+          ),
+          cancelPendingReview(db, site, write.entryId, write.expectedVersion, now),
+        ]
+      : []),
+  ]
+}
+
+function publishedAt(db: Db, site: string, write: PublishWrite, now: string) {
+  return db
+    .update(entries)
+    .set({
+      status: 'published',
+      scheduledAt: null,
+      publishedRev: entries.headRev,
+      publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
+      publishedSortKey: write.sortKey,
+      version: sql`${entries.version} + 1`,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(entries.id, write.entryId),
+        eq(entries.siteId, site),
+        eq(entries.version, write.expectedVersion),
+      ),
+    )
+    .returning(entryFields)
+}
+
+function publicationOf(site: string, write: PublishWrite, now: string) {
+  return publicationRow({
+    site,
+    entryId: write.entryId,
+    now,
+    actor: write.actor,
+    publish: { revisionId: newId('rev'), verdict: write.verdict, acknowledged: write.acknowledged },
+  })
+}
+
 export async function publish(
   db: Db,
   clock: Clock,
@@ -282,43 +354,15 @@ export async function publish(
   write: PublishWrite,
 ): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal> {
   const now = clock.now().toISOString()
-  const row = publicationRow({
-    site,
-    entryId: write.entryId,
-    now,
-    actor: write.actor,
-    publish: { revisionId: newId('rev'), verdict: write.verdict, acknowledged: write.acknowledged },
-  })
+  const row = publicationOf(site, write, now)
   const refusal = tooLarge(row)
   if (refusal !== null) return refusal
   const results = await db.batch([
     insertPublishAtVersion(db, row, write.expectedVersion),
-    dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
-    insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
-      eq(entries.version, write.expectedVersion),
-    ]),
-    approvePendingReview(db, site, write.entryId, write.expectedVersion, write.actor.userId, now),
-    db
-      .update(entries)
-      .set({
-        status: 'published',
-        scheduledAt: null,
-        publishedRev: entries.headRev,
-        publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
-        publishedSortKey: write.sortKey,
-        version: sql`${entries.version} + 1`,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(entries.id, write.entryId),
-          eq(entries.siteId, site),
-          eq(entries.version, write.expectedVersion),
-        ),
-      )
-      .returning(entryFields),
+    ...beforePublish(db, site, write, now, true),
+    publishedAt(db, site, write, now),
   ])
-  const [changed] = results[4]
+  const [changed] = results.at(-1) ?? []
   if (changed === undefined) return whyNothingChanged(db, site, write.entryId)
   const entry = toEntry(changed)
   const revision =
@@ -329,7 +373,71 @@ export async function publish(
   return { outcome: 'published', view: { entry, revision } }
 }
 
-const GROUP_MOVED = 'hollware: an entry of the group is not at its version'
+function unpublishStatements(db: Db, site: string, write: UnpublishWrite, now: string) {
+  const atVersion = and(
+    eq(entries.id, write.entryId),
+    eq(entries.siteId, site),
+    eq(entries.version, write.expectedVersion),
+    eq(entries.status, 'published'),
+  )
+  const row = publicationRow({
+    site,
+    entryId: write.entryId,
+    now,
+    actor: write.actor,
+    publish: null,
+  })
+  return {
+    id: row.id,
+    statements: [
+      db
+        .insert(publications)
+        .select(sql`select ${valuesOf(publications, row)} from ${entries} where ${atVersion}`),
+      insertEventWhere(db, site, write.entryId, write.event, 'entry.unpublished', now, [
+        eq(entries.version, write.expectedVersion),
+        eq(entries.status, 'published'),
+      ]),
+      dropSchedule(db, site, write.entryId),
+      dropUnpublish(db, site, write.entryId),
+      db
+        .update(entries)
+        .set({
+          status: 'draft',
+          scheduledAt: null,
+          publishedRev: null,
+          publishedSortKey: null,
+          version: sql`${entries.version} + 1`,
+          updatedAt: now,
+        })
+        .where(atVersion),
+    ],
+  }
+}
+
+function guardOf(db: Db, site: string, failed: SQL) {
+  return db
+    .select({ failed: sql`json(${GUARD_FAILED})` })
+    .from(sites)
+    .where(and(eq(sites.id, site), failed))
+}
+
+function publicationsMissing(site: string, ids: readonly string[]) {
+  return sql`(select count(*) from ${publications} where ${and(eq(publications.siteId, site), inArray(publications.id, [...ids]))}) < ${ids.length}`
+}
+
+async function movedOf(
+  db: Db,
+  site: string,
+  writes: readonly { readonly entryId: string; readonly expectedVersion: number }[],
+): Promise<(WriteRefusal & { readonly entryId: string }) | null> {
+  for (const write of writes) {
+    const why = await whyNothingChanged(db, site, write.entryId)
+    if (why.outcome === 'not_found' || why.currentVersion !== write.expectedVersion) {
+      return { ...why, entryId: write.entryId }
+    }
+  }
+  return null
+}
 
 export async function publishGroup(
   db: Db,
@@ -344,72 +452,26 @@ export async function publishGroup(
   const statements: BatchItem<'sqlite'>[] = []
   const appended: string[] = []
   for (const write of group) {
-    const row = publicationRow({
-      site,
-      entryId: write.entryId,
-      now,
-      actor: write.actor,
-      publish: {
-        revisionId: newId('rev'),
-        verdict: write.verdict,
-        acknowledged: write.acknowledged,
-      },
-    })
+    const row = publicationOf(site, write, now)
     const refusal = tooLarge(row)
     if (refusal !== null) return { ...refusal, entryId: write.entryId }
     appended.push(row.id)
     statements.push(
       insertPublishAtVersion(db, row, write.expectedVersion),
-      dropScheduleAtVersion(db, site, write.entryId, write.expectedVersion),
-      insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.published', now, [
-        eq(entries.version, write.expectedVersion),
-      ]),
-      approvePendingReview(db, site, write.entryId, write.expectedVersion, write.actor.userId, now),
-      db
-        .update(entries)
-        .set({
-          status: 'published',
-          scheduledAt: null,
-          publishedRev: entries.headRev,
-          publishedAt: sql`coalesce(${entries.publishedAt}, ${now})`,
-          publishedSortKey: write.sortKey,
-          version: sql`${entries.version} + 1`,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(entries.id, write.entryId),
-            eq(entries.siteId, site),
-            eq(entries.version, write.expectedVersion),
-          ),
-        ),
+      ...beforePublish(db, site, write, now, true),
+      publishedAt(db, site, write, now),
     )
   }
-  const guard = db
-    .select({ moved: sql`json(${GROUP_MOVED})` })
-    .from(sites)
-    .where(
-      and(
-        eq(sites.id, site),
-        sql`(select count(*) from ${publications} where ${and(eq(publications.siteId, site), inArray(publications.id, appended))}) < ${group.length}`,
-      ),
-    )
   try {
-    const [first, ...rest]: BatchItem<'sqlite'>[] = [...statements, guard]
+    const [first, ...rest]: BatchItem<'sqlite'>[] = [
+      ...statements,
+      guardOf(db, site, publicationsMissing(site, appended)),
+    ]
     if (first !== undefined) await db.batch([first, ...rest])
   } catch (error) {
-    if (
-      !(error instanceof Error) ||
-      !/malformed JSON/i.test(`${error.message} ${String(error.cause)}`)
-    ) {
-      throw error
-    }
-    for (const write of group) {
-      const why = await whyNothingChanged(db, site, write.entryId)
-      if (why.outcome === 'not_found' || why.currentVersion !== write.expectedVersion) {
-        return { ...why, entryId: write.entryId }
-      }
-    }
+    if (!isGuardFailure(error)) throw error
+    const moved = await movedOf(db, site, group)
+    if (moved !== null) return moved
     throw new Error('A group publish failed, and every entry of the group is at its version', {
       cause: error,
     })
@@ -421,6 +483,87 @@ export async function publishGroup(
     views.push(view)
   }
   return { outcome: 'published', views }
+}
+
+export async function approveReview(
+  db: Db,
+  clock: Clock,
+  site: string,
+  write: {
+    readonly reviewId: string
+    readonly userId: string
+    readonly publishes: readonly PublishWrite[]
+    readonly unpublishes: readonly UnpublishWrite[]
+    readonly excluded: readonly string[]
+  },
+): Promise<
+  | { readonly outcome: 'approved' | 'not_pending'; readonly review: StoredReview }
+  | { readonly outcome: 'not_found' }
+  | (WriteRefusal & { readonly entryId: string })
+> {
+  const now = clock.now().toISOString()
+  const pending = and(
+    eq(reviews.id, write.reviewId),
+    eq(reviews.siteId, site),
+    eq(reviews.status, 'pending'),
+  )
+  const statements: BatchItem<'sqlite'>[] = [
+    guardOf(db, site, sql`not exists (select 1 from ${reviews} where ${pending})`),
+  ]
+  const appended: string[] = []
+  for (const publish of write.publishes) {
+    const row = publicationOf(site, publish, now)
+    const refusal = tooLarge(row)
+    if (refusal !== null) return { ...refusal, entryId: publish.entryId }
+    appended.push(row.id)
+    statements.push(
+      insertPublishAtVersion(db, row, publish.expectedVersion),
+      ...beforePublish(db, site, publish, now, false),
+      publishedAt(db, site, publish, now),
+    )
+  }
+  for (const unpublish of write.unpublishes) {
+    const written = unpublishStatements(db, site, unpublish, now)
+    appended.push(written.id)
+    statements.push(...written.statements)
+  }
+  const [first, ...rest]: BatchItem<'sqlite'>[] = [
+    ...statements,
+    db
+      .update(reviewItems)
+      .set({ excluded: 1, updatedAt: now })
+      .where(
+        and(
+          eq(reviewItems.siteId, site),
+          eq(reviewItems.reviewId, write.reviewId),
+          inArray(reviewItems.entryId, [...write.excluded]),
+        ),
+      ),
+    db
+      .update(reviews)
+      .set({ status: 'approved', decidedBy: write.userId, decidedAt: now, updatedAt: now })
+      .where(pending),
+    guardOf(db, site, publicationsMissing(site, appended)),
+  ]
+  try {
+    if (first !== undefined) await db.batch([first, ...rest])
+  } catch (error) {
+    if (!isGuardFailure(error)) throw error
+    const review = await findReview(db, site, write.reviewId)
+    if (review === null) return { outcome: 'not_found' }
+    if (review.status !== 'pending') return { outcome: 'not_pending', review }
+    const moved = await movedOf(db, site, [...write.publishes, ...write.unpublishes])
+    if (moved !== null) return moved
+    const [unpublished] = write.unpublishes
+    if (unpublished === undefined) throw error
+    return {
+      ...(await whyNothingChanged(db, site, unpublished.entryId)),
+      entryId: unpublished.entryId,
+    }
+  }
+  const review = await findReview(db, site, write.reviewId)
+  if (review === null) throw new Error(`The review ${write.reviewId} is gone after its approval`)
+  return { outcome: 'approved', review }
 }
 
 export async function unpublish(

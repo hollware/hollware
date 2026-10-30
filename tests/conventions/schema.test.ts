@@ -88,6 +88,7 @@ describe('D1 schema', () => {
       'publications',
       'redirects',
       'review_comments',
+      'review_items',
       'reviews',
       'revision_tags',
       'revisions',

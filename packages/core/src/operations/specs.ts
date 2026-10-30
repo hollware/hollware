@@ -11,6 +11,7 @@ import {
   locale,
   markdown,
   review,
+  reviewAction,
   reviewId,
   revisionId,
   revisionSummary,
@@ -339,7 +340,7 @@ export const publish = defineOperation({
   name: 'publish',
   title: 'Publish an entry',
   description:
-    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group. Without content:publish, the same checks run and the answer is pending_review: a person who may publish approves the revision or asks for changes, and a new revision of the entry cancels the request. A review is for one entry, now: never with group or publishAt.',
+    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group. Without content:publish, the same checks run and the answer is pending_review: a person who may publish approves the revision, with its group, or asks for changes, and a new revision of any of them cancels the request. A review is for now: never with publishAt.',
   input: z.strictObject({
     id: entryId,
     version,
@@ -555,6 +556,48 @@ export const restoreEntry = defineOperation({
   },
 })
 
+export const getReview = defineOperation({
+  name: 'get_review',
+  title: 'Read a review',
+  description:
+    'Reads one review with every entry it changes: for each, what is published, what is proposed and the unified diff between them, and the comments, those about an entry or its lines included.',
+  input: z.strictObject({
+    id: reviewId,
+    entryId: entryId
+      .optional()
+      .describe('Only this entry of the review: for a review too large for one answer.'),
+  }),
+  output: z.object({
+    outcome: z.enum(['ok', 'not_found']),
+    review: review
+      .extend({
+        comments: z.array(reviewComment).describe('What was said about it, oldest first.'),
+      })
+      .optional(),
+    items: z
+      .array(
+        z.object({
+          entry: entrySummary,
+          action: reviewAction,
+          excluded: z.boolean().describe('Whether the approval left this entry as it was.'),
+          published: markdown
+            .nullable()
+            .describe('The Markdown published when the review was asked, or null.'),
+          proposed: markdown
+            .nullable()
+            .describe('The Markdown the review publishes, or null when it unpublishes.'),
+          diff: z
+            .string()
+            .describe('The unified diff from published to proposed, with three lines of context.'),
+        }),
+      )
+      .optional(),
+  }),
+  scopes: ['content:read'],
+  effect: 'read',
+  outcomes: { ok: { isError: false }, not_found: { isError: true } },
+})
+
 export const listReviews = defineOperation({
   name: 'list_reviews',
   title: 'List the reviews',
@@ -570,6 +613,11 @@ export const listReviews = defineOperation({
     reviews: z.array(
       review.extend({
         entry: entrySummary,
+        items: z
+          .number()
+          .int()
+          .min(0)
+          .describe('How many entries the review changes: get_review shows each one.'),
         comments: z.array(reviewComment).describe('What was said about it, oldest first.'),
       }),
     ),
@@ -583,19 +631,39 @@ export const approveReview = defineOperation({
   name: 'approve_review',
   title: 'Approve a review',
   description:
-    'Publishes the revision a review asked for, in your name, after the contracts run again as publish runs them. The warnings the request acknowledged count as acknowledged; a new one answers needs_acknowledgement, and you approve again with it in acknowledgeWarnings.',
+    'Publishes what a review asked for, in your name, after the contracts run again as publish runs them: every entry of the review in one step, all or none, but those you exclude. The warnings the request acknowledged count as acknowledged; a new one answers needs_acknowledgement, and you approve again with it in acknowledgeWarnings.',
   input: z.strictObject({
     id: reviewId,
     acknowledgeWarnings: z
       .array(acknowledgedWarning)
       .default([])
       .describe('Warnings you accept besides those the request acknowledged.'),
+    exclude: z
+      .array(entryId)
+      .max(100)
+      .default([])
+      .describe(
+        'Entries of the review to leave as they are: the rest is published or unpublished, and the review is closed for all of them.',
+      ),
   }),
   output: z.object({
-    outcome: z.enum(['published', 'blocked', 'needs_acknowledgement', 'not_pending', 'not_found']),
+    outcome: z.enum([
+      'published',
+      'blocked',
+      'needs_acknowledgement',
+      'conflict',
+      'not_pending',
+      'not_found',
+    ]),
     review: review.optional(),
     entry: entrySummary.optional(),
     verdict: verdict.optional(),
+    conflict: conflict.optional(),
+    failedEntry: entryId
+      .optional()
+      .describe(
+        'In a review of several entries, the entry that kept it from being approved: blocked, moved since the request, missing, or with a warning to acknowledge.',
+      ),
   }),
   scopes: ['content:publish'],
   effect: 'write',
@@ -603,6 +671,7 @@ export const approveReview = defineOperation({
     published: { isError: false },
     blocked: { isError: true },
     needs_acknowledgement: { isError: false },
+    conflict: { isError: true },
     not_pending: { isError: true },
     not_found: { isError: true },
   },
@@ -612,7 +681,7 @@ export const requestReview = defineOperation({
   name: 'request_review',
   title: 'Ask for a review',
   description:
-    'Asks a person who may publish to review the latest revision of an entry, after the same checks publish makes, if the entry is still at the version you read. It never publishes, whatever your scopes: the answer is pending_review, or why not (blocked by the contracts, warnings to acknowledge, a conflict). A new revision of the entry cancels the request.',
+    'Asks a person who may publish to review the latest revision of an entry, after the same checks publish makes, if the entry is still at the version you read. With group and unpublish, one review holds every change, which the reviewer approves as one step. It never publishes, whatever your scopes: the answer is pending_review, or why not (blocked by the contracts, warnings to acknowledge, a conflict). A new revision of any of its entries cancels the request.',
   input: z.strictObject({
     id: entryId,
     version,
@@ -620,6 +689,20 @@ export const requestReview = defineOperation({
       .array(acknowledgedWarning)
       .default([])
       .describe('The warnings you accept, as needs_acknowledgement listed them.'),
+    group: z
+      .array(z.strictObject({ id: entryId, version }))
+      .max(99)
+      .default([])
+      .describe(
+        'Other entries to publish in the same review, each with the version you read: the review publishes all of them, or none.',
+      ),
+    unpublish: z
+      .array(z.strictObject({ id: entryId, version }))
+      .max(99)
+      .default([])
+      .describe(
+        'Published entries the same review takes off the site, each with the version you read.',
+      ),
   }),
   output: z.object({
     outcome: z.enum([
@@ -634,7 +717,14 @@ export const requestReview = defineOperation({
     conflict: conflict.optional(),
     review: review
       .optional()
-      .describe('With pending_review: the request, as list_reviews shows it.'),
+      .describe(
+        'With pending_review: the request, as list_reviews shows it. With conflict: the pending review that already holds failedEntry, when one does.',
+      ),
+    failedEntry: entryId
+      .optional()
+      .describe(
+        'The entry that kept the review from being asked: blocked, stale, missing, not published, in another pending review, or with a warning to acknowledge.',
+      ),
   }),
   scopes: ['content:write'],
   effect: 'write',
@@ -655,6 +745,15 @@ export const commentReview = defineOperation({
   input: z.strictObject({
     id: reviewId,
     body: z.string().trim().min(1).max(4000).describe('The comment, in Markdown.'),
+    entryId: entryId
+      .optional()
+      .describe('The entry of the review the comment is about; the whole review without it.'),
+    lines: z
+      .strictObject({ from: z.number().int().min(1), to: z.number().int().min(1) })
+      .optional()
+      .describe(
+        'With entryId, the lines of its proposed Markdown the comment is about, as get_review numbers them.',
+      ),
   }),
   output: z.object({
     outcome: z.enum(['commented', 'not_pending', 'not_found']),
@@ -1244,6 +1343,7 @@ export const OPERATIONS = [
   getAnalytics,
   getAsset,
   getEntry,
+  getReview,
   getRevision,
   getStructure,
   getTranslations,

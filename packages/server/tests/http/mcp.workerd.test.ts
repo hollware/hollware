@@ -24,6 +24,7 @@ const TOOLS = [
   'get_analytics',
   'get_asset',
   'get_entry',
+  'get_review',
   'get_revision',
   'get_structure',
   'get_translations',

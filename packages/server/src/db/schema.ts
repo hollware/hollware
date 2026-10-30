@@ -575,6 +575,56 @@ export const reviews = sqliteTable(
   ],
 )
 
+export const reviewItems = sqliteTable(
+  'review_items',
+  {
+    id: id('rvi'),
+    siteId: siteId(),
+    reviewId: text('review_id').notNull(),
+    entryId: text('entry_id').notNull(),
+    revisionId: text('revision_id'),
+    baseRevisionId: text('base_revision_id'),
+    action: text('action').notNull(),
+    excluded: integer('excluded').notNull().default(0),
+    active: integer('active').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('review_items_id_site').on(t.id, t.siteId),
+    uniqueIndex('review_items_active')
+      .on(t.siteId, t.entryId)
+      .where(sql`${t.active} = 1`),
+    index('review_items_review').on(t.siteId, t.reviewId),
+    foreignKey({ name: 'review_items_site', columns: [t.siteId], foreignColumns: [sites.id] }),
+    foreignKey({
+      name: 'review_items_review_fk',
+      columns: [t.reviewId, t.siteId],
+      foreignColumns: [reviews.id, reviews.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_entry',
+      columns: [t.entryId, t.siteId],
+      foreignColumns: [entries.id, entries.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_revision',
+      columns: [t.revisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    foreignKey({
+      name: 'review_items_base',
+      columns: [t.baseRevisionId, t.siteId],
+      foreignColumns: [revisions.id, revisions.siteId],
+    }),
+    check('review_items_action', sql`${t.action} IN ('publish', 'unpublish')`),
+    check(
+      'review_items_revision_of_action',
+      sql`(${t.action} = 'publish') = (${t.revisionId} IS NOT NULL)`,
+    ),
+    check('review_items_flags', sql`${t.excluded} IN (0, 1) AND ${t.active} IN (0, 1)`),
+  ],
+)
+
 export const entryEmbeddings = sqliteTable(
   'entry_embeddings',
   {
@@ -679,6 +729,9 @@ export const reviewComments = sqliteTable(
     authorMeta: text('author_meta'),
     body: text('body').notNull(),
     ...timestamps(),
+    entryId: text('entry_id'),
+    lineFrom: integer('line_from'),
+    lineTo: integer('line_to'),
   },
   (t) => [
     unique('review_comments_id_site').on(t.id, t.siteId),

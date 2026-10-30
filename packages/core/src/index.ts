@@ -109,6 +109,7 @@ export {
   type SiteDefinitionData,
   type SiteDefinitionInput,
 } from './structure/index.ts'
+export { unifiedDiff } from './diff.ts'
 export { HollwareError, type ErrorCode } from './errors.ts'
 export { FORMER_PERSON, ID_PREFIXES, isId, newId, ulid, type IdPrefix } from './ids.ts'
 export type {
@@ -151,6 +152,7 @@ export {
   getAnalytics,
   getAsset,
   getEntry,
+  getReview,
   getRevision,
   getTranslations,
   listBackups,

@@ -113,5 +113,7 @@ export function reviewCommentView(comment: StoredReviewComment) {
     client: typeof name === 'string' ? name : null,
     body: comment.body,
     at: comment.createdAt,
+    entryId: comment.entryId,
+    lines: comment.lines === null ? null : { from: comment.lines.from, to: comment.lines.to },
   }
 }

@@ -14,6 +14,7 @@ export {
   getAsset,
   updateAsset,
   getEntry,
+  getReview,
   getRevision,
   getTranslations,
   listAssets,

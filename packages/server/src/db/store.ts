@@ -49,9 +49,12 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     listRedirects: (site, query) => writes.listRedirects(database, site, query),
     restoreEntry: (site, entryId) => writes.restoreEntry(database, clock, site, entryId),
     requestReview: (site, write) =>
-      reviews.requestReview(database, clock, site, write, () =>
-        writes.whyNothingChanged(database, site, write.entryId),
+      reviews.requestReview(database, clock, site, write, (entryId) =>
+        writes.whyNothingChanged(database, site, entryId),
       ),
+    reviewItems: (site, reviewIds) => reviews.reviewItemsOf(database, site, reviewIds),
+    revisionMarkdown: (site, ids) => reviews.revisionMarkdown(database, site, ids),
+    approveReview: (site, write) => writes.approveReview(database, clock, site, write),
     findReview: (site, id) => reviews.findReview(database, site, id),
     listReviews: (site, query) => reviews.listReviews(database, site, query),
     requestChanges: (site, write) => reviews.requestChanges(database, clock, site, write),

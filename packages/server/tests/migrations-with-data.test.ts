@@ -144,8 +144,34 @@ it('runs every migration after 0003 over the content of a deployment, and keeps 
       )
       .all(),
   ).toEqual([{ id: 'rvw_1', status: 'pending', body: 'Looks good' }])
+  const items = () =>
+    db
+      .prepare(
+        'SELECT id, review_id, entry_id, revision_id, base_revision_id, action, excluded, active FROM review_items',
+      )
+      .all()
+  expect(items()).toEqual([
+    {
+      id: 'rvi_1',
+      review_id: 'rvw_1',
+      entry_id: ID('ent'),
+      revision_id: ID('rev'),
+      base_revision_id: ID('rev'),
+      action: 'publish',
+      excluded: 0,
+      active: 1,
+    },
+  ])
   db.exec(
     `UPDATE reviews SET status = 'rejected', decided_by = '${ID('usr')}', decided_at = '${T}' WHERE id = 'rvw_1'`,
   )
+  expect(items()).toMatchObject([{ id: 'rvi_1', active: 0 }])
+  expect(
+    db
+      .prepare(
+        "SELECT json_extract(payload, '$.items') AS items FROM outbox WHERE kind = 'review.decided'",
+      )
+      .all(),
+  ).toEqual([{ items: `[{"entryId":"${ID('ent')}","action":"publish"}]` }])
   expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([])
 })

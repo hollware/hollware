@@ -3,7 +3,8 @@ import { newId } from '@hollware/core'
 const PURGED = 'EXISTS (SELECT 1 FROM entry_purges WHERE site_id = ?1 AND entry_id = ?2)'
 
 const CHILDREN = [
-  `DELETE FROM review_comments WHERE site_id = ?1 AND review_id IN (SELECT id FROM reviews WHERE site_id = ?1 AND entry_id = ?2) AND ${PURGED}`,
+  `DELETE FROM review_comments WHERE site_id = ?1 AND (entry_id = ?2 OR review_id IN (SELECT id FROM reviews WHERE site_id = ?1 AND entry_id = ?2)) AND ${PURGED}`,
+  `DELETE FROM review_items WHERE site_id = ?1 AND (entry_id = ?2 OR review_id IN (SELECT id FROM reviews WHERE site_id = ?1 AND entry_id = ?2)) AND ${PURGED}`,
   `DELETE FROM reviews WHERE site_id = ?1 AND entry_id = ?2 AND ${PURGED}`,
   `DELETE FROM deliveries WHERE site_id = ?1 AND event_id IN (SELECT id FROM outbox WHERE site_id = ?1 AND entry_id = ?2) AND ${PURGED}`,
   `DELETE FROM outbox WHERE site_id = ?1 AND entry_id = ?2 AND ${PURGED}`,

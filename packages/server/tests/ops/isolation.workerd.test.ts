@@ -326,6 +326,24 @@ const STRANGER: {
     expect(answer).toEqual({ outcome: 'not_found' })
     expect(await theirPendingReviews(pair)).toEqual([{ id: review, comments: 0 }])
   },
+  get_review: async (pair) => {
+    const review = await theirReview(pair)
+
+    const answer = await run(spec('get_review'), { id: review }, pair.ports.caller)
+    const grouped = await run(
+      spec('request_review'),
+      {
+        id: pair.mine.draft.id,
+        version: 1,
+        unpublish: [{ id: pair.theirs.english.id, version: 1 }],
+      },
+      pair.ports.caller,
+    )
+
+    expect(answer).toEqual({ outcome: 'not_found' })
+    expect(grouped).toMatchObject({ outcome: 'not_found', failedEntry: pair.theirs.english.id })
+    expect(await theirPendingReviews(pair)).toEqual([{ id: review, comments: 0 }])
+  },
   list_reviews: async (pair) => {
     const own = await reviewIn(pair.ports.caller, pair.mine.draft)
     pair.time.set('2026-10-14T10:00:00.000Z')
