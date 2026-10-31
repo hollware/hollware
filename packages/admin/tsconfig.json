@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "types": ["node"],
     "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },

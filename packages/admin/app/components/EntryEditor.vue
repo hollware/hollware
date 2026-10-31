@@ -320,11 +320,11 @@ const blockAt = ref(0)
           color="neutral"
           variant="ghost"
           size="sm"
-          :class="ui.handle()"
+          :class="ui.handle?.()"
           :aria-label="m.editor.block.insert"
           @click="
             () => {
-              const node = onClick()
+              const node = onClick?.()
               ;(provided as Handlers)['suggestion']?.execute(editor, { pos: node?.pos }).run()
             }
           "
@@ -332,14 +332,14 @@ const blockAt = ref(0)
         <UDropdownMenu
           :items="blockMenu(editor, provided as Handlers, blockAt)"
           :content="{ side: 'left' }"
-          @update:open="(isOpen: boolean) => isOpen && (blockAt = onClick()?.pos ?? 0)"
+          @update:open="(isOpen: boolean) => isOpen && (blockAt = onClick?.()?.pos ?? 0)"
         >
           <UButton
             icon="i-lucide-grip-vertical"
             color="neutral"
             variant="ghost"
             size="sm"
-            :class="ui.handle()"
+            :class="ui.handle?.()"
             :aria-label="m.editor.block.actions"
           />
         </UDropdownMenu>

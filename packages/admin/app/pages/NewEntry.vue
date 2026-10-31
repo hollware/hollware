@@ -25,7 +25,7 @@ const collection = ref('')
 const locale = ref('')
 const slug = ref('')
 const title = ref('')
-const refusal = ref<Output<'create_draft'>['verdict'] | null>(null)
+const refusal = ref<NonNullable<Output<'create_draft'>['verdict']> | null>(null)
 const failure = ref<string | null>(null)
 const saving = ref(false)
 

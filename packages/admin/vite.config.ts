@@ -3,7 +3,7 @@ import { defineConfig } from 'vite-plus'
 export default defineConfig({
   pack: {
     entry: ['src/index.ts'],
-    dts: { generator: 'tsgo' },
+    dts: true,
     exports: {
       devExports: true,
       customExports: (exports, { isPublish }) =>

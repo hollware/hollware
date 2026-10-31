@@ -19,8 +19,8 @@ const inputs = computed(() => (entry.value === undefined ? [] : paramInputs(entr
 const m = useMessages()
 const NONE = computed(() => m.value.common.none)
 const severities = computed(() => [
-  { label: m.value.severity.error, value: 'error' },
-  { label: m.value.severity.warning, value: 'warning' },
+  { label: m.value.severity.error, value: 'error' as const },
+  { label: m.value.severity.warning, value: 'warning' as const },
 ])
 const names = computed(() => props.catalog.map((candidate) => candidate.name))
 

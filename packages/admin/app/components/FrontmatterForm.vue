@@ -165,7 +165,7 @@ function number(field: Field): number | undefined {
       <USelect
         v-else-if="field.kind === 'choice'"
         :model-value="text(field)"
-        :items="field.options"
+        :items="[...field.options]"
         class="w-full"
         @update:model-value="set(field.key, $event)"
       />

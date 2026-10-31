@@ -34,7 +34,8 @@
   "scripts": {
     "build": "vp pack && vp build -c vite.app.config.ts",
     "test": "vp test",
-    "publint": "publint --strict"
+    "publint": "publint --strict",
+    "types:check": "vue-tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@codemirror/commands": "catalog:",
@@ -71,10 +72,11 @@
     "pinia": "catalog:",
     "publint": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:vue",
     "vite-plus": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",
+    "vue-tsc": "catalog:vue",
     "yaml": "catalog:",
     "zod": "catalog:"
   },

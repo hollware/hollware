@@ -16,8 +16,8 @@ The review and approval UI. Boundary rules for this package:
   and every action has a name and a shortcut or a menu, never only a hover.
 - Fonts and icons travel in the bundle (`vite.app.config.ts` finds the Lucide icons the app names):
   the admin's policy lets it fetch nothing from another origin.
-- The type-check of the repository does not read single-file components, only the build does: logic
-  goes in `app/lib/`, where the tests and the type-check reach it.
+- Single-file components are type-checked by `vue-tsc` (`types:check`), on TypeScript 6.0.3 of the
+  `vue` catalog: TypeScript 7 has no API for it to call. Logic still goes in `app/lib/`, where tests reach it.
 - What the server holds is read with `useQuery` of Pinia Colada (`operation`, `admin` of
   `app/lib/queries.ts`), never into a page's own `ref`: every write invalidates every query, so no page
   reloads by hand, and a form keeps its own copy, which a refetch never overwrites while it has edits.

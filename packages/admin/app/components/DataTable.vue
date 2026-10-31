@@ -5,6 +5,7 @@ import {
   getPaginationRowModel,
   type RowSelectionState,
   type SortingState,
+  type Table,
 } from '@tanstack/vue-table'
 import { computed, h, ref, useTemplateRef, watch } from 'vue'
 import { useMessages } from '../i18n/index.ts'
@@ -36,7 +37,7 @@ const props = withDefaults(
 const m = useMessages()
 const filterText = computed(() => props.filterLabel ?? m.value.table.filter)
 
-const table = useTemplateRef('table')
+const table = useTemplateRef<{ tableApi: Table<Row> | undefined }>('table')
 const filter = ref('')
 const sorting = ref<SortingState>([])
 const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
@@ -79,15 +80,14 @@ const allColumns = computed<TableColumn<Row>[]>(() =>
               modelValue: api.getIsSomePageRowsSelected()
                 ? 'indeterminate'
                 : api.getIsAllPageRowsSelected(),
-              'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+              'onUpdate:modelValue': (value: unknown) =>
                 api.toggleAllPageRowsSelected(value === true),
               'aria-label': m.value.table.selectPage,
             }),
           cell: ({ row }) =>
             h(UCheckbox, {
               modelValue: row.getIsSelected(),
-              'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
-                row.toggleSelected(value === true),
+              'onUpdate:modelValue': (value: unknown) => row.toggleSelected(value === true),
               'aria-label': m.value.table.selectRow(
                 props.rowLabel?.(row.original) ?? props.rowKey(row.original),
               ),
