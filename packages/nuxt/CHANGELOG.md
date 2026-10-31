@@ -1,5 +1,14 @@
 # @hollware/nuxt
 
+## 1.3.0
+
+### Patch Changes
+
+- [#89](https://github.com/hollware/hollware/pull/89) [`ac0553d`](https://github.com/hollware/hollware/commit/ac0553d353d78ecba792d2bbf3731c87a69b52d0) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The auto-imports keep their types in a site: Nuxt and Nitro name each file of the runtime without its extension, which TypeScript resolves to a `.d.ts` and never to the `.d.mts` the package shipped alone, so `useHollware(event).reader`, the composables and the components came out `any`. Every declaration of the runtime now has a `.d.ts` beside it.
+- Updated dependencies [[`ac0553d`](https://github.com/hollware/hollware/commit/ac0553d353d78ecba792d2bbf3731c87a69b52d0)]:
+  - @hollware/core@1.3.0
+  - @hollware/client@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes
