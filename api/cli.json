@@ -381,6 +381,9 @@
     ],
     "token": [
       {
+        "expires-at": {
+          "type": "string"
+        },
         "expires-in-days": {
           "type": "string"
         },
@@ -391,6 +394,9 @@
           "type": "boolean"
         },
         "label": {
+          "type": "string"
+        },
+        "member": {
           "type": "string"
         },
         "no-expiry": {

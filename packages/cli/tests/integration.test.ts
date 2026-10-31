@@ -327,7 +327,7 @@ describe('hollware on a real local D1', () => {
       (out[0] ?? '')
         .split('\n')
         .slice(1)
-        .map((line) => [line.split(/\s{2,}/)[0], line.split(/\s{2,}/)[2]]),
+        .map((line) => [line.split(/\s{2,}/)[0], line.split(/\s{2,}/)[3]]),
     )
     expect(statuses).toEqual({
       [state.firstTokenId]: 'active',

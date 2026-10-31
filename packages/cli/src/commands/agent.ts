@@ -29,7 +29,7 @@ export const AGENT_USAGE = [
   'Commands:',
   '  add     Add an agent member to a site and print its id',
   '  list    List the agent members of a site',
-  '  remove  Remove an agent member from a site and revoke its grants',
+  '  remove  Remove an agent member from a site and revoke its grants and tokens',
   '',
   'An agent member is the member an agent of the site definition acts as. Run',
   '"hollware agent <command> --help" for the options of a command.',
@@ -61,7 +61,7 @@ export const AGENT_LIST_USAGE = [
 export const AGENT_REMOVE_USAGE = [
   'Usage: hollware agent remove <id> [--site <key>] [--local | --remote] [--database <name>]',
   '',
-  'Removes an agent member from a site and revokes its live grants at once. A person is never',
+  'Removes an agent member from a site and revokes its live grants and tokens at once. A person is never',
   'removed. "hollware agent list" shows the ids.',
   '',
   'Options:',
@@ -205,7 +205,7 @@ async function removeAgent(argv: readonly string[], io: Io): Promise<number> {
   const database = resolveDatabase(io.cwd, values.database)
   const site = await siteOf(siteFlag, io, target, database)
 
-  const [, removed = []] = await query(
+  const [, , removed = []] = await query(
     io.wrangler,
     database,
     target,
@@ -217,7 +217,7 @@ async function removeAgent(argv: readonly string[], io: Io): Promise<number> {
     )
   }
   io.out(
-    `Removed the agent ${id} from the site "${site}" and revoked its grants. Take it out of the "agents" of the site definition too.`,
+    `Removed the agent ${id} from the site "${site}" and revoked its grants and tokens. Take it out of the "agents" of the site definition too.`,
   )
   return 0
 }

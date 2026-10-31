@@ -101,13 +101,16 @@ export async function removeAgent(
       404,
     )
   }
-  await db
-    .prepare(
-      `UPDATE agent_grants SET revoked_at = ?3, updated_at = ?3
-        WHERE site_id = ?1 AND user_id = ?2 AND revoked_at IS NULL`,
-    )
-    .bind(input.site, input.id, input.now)
-    .run()
+  await db.batch(
+    ['agent_grants', 'tokens'].map((table) =>
+      db
+        .prepare(
+          `UPDATE ${table} SET revoked_at = ?3, updated_at = ?3
+            WHERE site_id = ?1 AND user_id = ?2 AND revoked_at IS NULL`,
+        )
+        .bind(input.site, input.id, input.now),
+    ),
+  )
   await removeMember(db, { site: input.site, userId: input.id })
   return json({ outcome: 'removed' })
 }
