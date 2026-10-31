@@ -7,7 +7,7 @@ export interface AdminParityInput {
 }
 
 function calledIn(text: string): string[] {
-  return [...text.matchAll(/\bcall\(\s*'([a-z_]+)'/g)].flatMap((match) =>
+  return [...text.matchAll(/\b(?:call|operation)\(\s*'([a-z_]+)'/g)].flatMap((match) =>
     match[1] === undefined ? [] : [match[1]],
   )
 }
