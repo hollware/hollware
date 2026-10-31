@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 1.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Tokens makes a lasting token for an agent member as well as for you: choose the agent under For, or follow the key of the agent in Agents. Its scopes are those an agent may hold, a read token is not offered, and a token of any kind may end on a date (Expires on) as well as after a number of days or never. The table marks the tokens of agents.
+
 ## 1.1.0
 
 ### Minor Changes

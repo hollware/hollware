@@ -1,5 +1,13 @@
 # @hollware/client
 
+## 1.2.0
+
+### Patch Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `zod` is a dependency of `@hollware/client`, no longer a peer: its types resolve on a site that never installed zod, where the answers of `search` and `getTranslations` were `any`.
+- Updated dependencies []:
+  - @hollware/core@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes

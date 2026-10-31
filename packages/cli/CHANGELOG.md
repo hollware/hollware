@@ -1,5 +1,19 @@
 # hollware
 
+## 1.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An agent member can hold a lasting personal token, for an agent that hears no events, such as an MCP gateway: `hollware token create --member <usr_…>` and `member` of `POST /v1/admin/tokens`, for an owner only and never over MCP. Its scopes are an author's at most (content:publish and schema:admin are refused with their fix), what it writes is the agent's, and its publish asks for a review. A token expires when asked like Cloudflare's: in days, at a date (`--expires-at`, `expiresAt`) or never. Removing an agent revokes its tokens with its grants; `hollware token list` and `GET /v1/admin/tokens` say whose each token is.
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware import --from nuxt-content --public-dir <dir>` uploads the images the pages show by path, `/blog/x.webp` from that folder and `./x.webp` from the folder of the page, in the Markdown or as a value of the frontmatter, once each however many pages show them, and writes `asset:ast_…` in their place. A missing image, or one over 10 MB, stops the import before anything is sent, with how to fix it.
+
+### Patch Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The CLI trusts the certificates of the system besides Node's, so `import`, `export`, `promote` and every command with `--url` work behind a proxy that inspects TLS, such as Cloudflare WARP or Gateway, instead of failing with `SELF_SIGNED_CERT_IN_CHAIN`.
+- Updated dependencies []:
+  - @hollware/core@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
