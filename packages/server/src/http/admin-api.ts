@@ -1,4 +1,5 @@
 import {
+  AGENT_SCOPE_CEILING,
   canSignPreviews,
   generatePersonalToken,
   generateReadToken,
@@ -134,6 +135,52 @@ function daysFrom(value: unknown, fallback: number | null): number | null | unde
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 365
     ? value
     : undefined
+}
+
+function expiryFrom(
+  input: Record<string, unknown>,
+  kind: 'personal' | 'read',
+  now: Date,
+): string | null | Response {
+  const at = input['expiresAt']
+  if (at !== undefined) {
+    if (input['expiresInDays'] !== undefined) {
+      return refused(
+        'A token takes expiresInDays or expiresAt, not both.',
+        'Send one of them, or neither for the default.',
+      )
+    }
+    const instant = typeof at === 'string' ? Date.parse(at) : Number.NaN
+    if (Number.isNaN(instant) || instant <= now.getTime()) {
+      return refused(
+        'expiresAt is a time of the future, in ISO 8601.',
+        'Send a time such as "2027-06-30T00:00:00Z", or expiresInDays instead.',
+      )
+    }
+    return new Date(instant).toISOString()
+  }
+  const days = daysFrom(
+    input['expiresInDays'],
+    kind === 'personal' ? PERSONAL_TOKEN_TTL_DAYS : null,
+  )
+  if (days === undefined) {
+    return refused(
+      'expiresInDays is a whole number from 1 to 365, or null.',
+      `Leave it out for ${PERSONAL_TOKEN_TTL_DAYS} days (a read token: never), or send null for a token that never expires.`,
+    )
+  }
+  return days === null ? null : new Date(now.getTime() + days * 86_400_000).toISOString()
+}
+
+async function agentMember(db: D1Database, site: string, userId: string): Promise<boolean> {
+  const found = await db
+    .prepare(
+      `SELECT 1 AS found FROM members AS m JOIN users AS u ON u.id = m.user_id
+        WHERE m.site_id = ?1 AND m.user_id = ?2 AND u.kind = 'agent'`,
+    )
+    .bind(site, userId)
+    .first<{ found: number }>()
+  return found !== null
 }
 
 const GRANT_PAGES = 10
@@ -331,6 +378,8 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           label: tokens.label,
           scopes: tokens.scopes,
           user: users.name,
+          userId: tokens.userId,
+          userKind: users.kind,
           expiresAt: tokens.expiresAt,
           revokedAt: tokens.revokedAt,
           lastUsedAt: tokens.lastUsedAt,
@@ -374,6 +423,36 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           : Array.isArray(input['scopes'])
             ? input['scopes'].filter((s) => typeof s === 'string')
             : []
+      const member = input['member']
+      if (member !== undefined) {
+        if (kind !== 'personal') {
+          return refused(
+            'An agent member gets a personal token, never a read token.',
+            'Leave kind out, or leave member out for a read token of your own.',
+          )
+        }
+        if (
+          typeof member !== 'string' ||
+          !isId('usr', member) ||
+          !(await agentMember(c.env.DB, person.site, member))
+        ) {
+          return refused(
+            'That is no agent member of this site.',
+            'Pick an agent from the list of agents, or leave member out for a token of your own.',
+            404,
+          )
+        }
+        const beyond = asked.filter(
+          (scope) => isScope(scope) && !AGENT_SCOPE_CEILING.includes(scope),
+        )
+        if (beyond.length > 0) {
+          return refused(
+            `An agent's token never holds ${beyond.join(', ')}.`,
+            `Choose among ${AGENT_SCOPE_CEILING.join(', ')}: an agent writes drafts and asks for review, and a person publishes.`,
+            403,
+          )
+        }
+      }
       const scopes = person.scopes.filter((scope) => asked.includes(scope))
       if (scopes.length === 0) {
         return refused(
@@ -381,26 +460,19 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           `Choose among ${person.scopes.join(', ')}.`,
         )
       }
-      const days = daysFrom(
-        input['expiresInDays'],
-        kind === 'personal' ? PERSONAL_TOKEN_TTL_DAYS : null,
-      )
-      if (days === undefined)
-        return refused(
-          'expiresInDays is a whole number from 1 to 365, or null.',
-          `Leave it out for ${PERSONAL_TOKEN_TTL_DAYS} days (a read token: never), or send null for a token that never expires.`,
-        )
       const now = options.clock.now()
+      const expiresAt = expiryFrom(input, kind, now)
+      if (expiresAt instanceof Response) return expiresAt
       const secret = kind === 'read' ? generateReadToken() : generatePersonalToken()
       const row = {
         id: newId('tok'),
         kind,
         siteId: person.site,
-        userId: person.userId,
+        userId: typeof member === 'string' ? member : person.userId,
         label,
         hash: await hashPersonalToken(secret),
         scopes: JSON.stringify(scopes),
-        expiresAt: days === null ? null : new Date(now.getTime() + days * 86_400_000).toISOString(),
+        expiresAt,
         revokedAt: null,
         lastUsedAt: null,
         createdAt: now.toISOString(),
@@ -408,8 +480,17 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
       }
       await connect(c.env.DB).insert(tokens).values(row)
       note.target = { type: 'token', id: row.id }
-      note.detail = { kind, label, scopes, expiresAt: row.expiresAt }
-      return json({ id: row.id, kind, label, scopes, expiresAt: row.expiresAt, secret }, 201)
+      note.detail = {
+        kind,
+        label,
+        scopes,
+        expiresAt: row.expiresAt,
+        ...(row.userId === person.userId ? {} : { member: row.userId }),
+      }
+      return json(
+        { id: row.id, kind, label, scopes, userId: row.userId, expiresAt: row.expiresAt, secret },
+        201,
+      )
     }),
   )
 

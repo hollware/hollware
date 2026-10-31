@@ -1,4 +1,4 @@
-import { generateAgentGrant, hashPersonalToken, newId } from '@hollware/core'
+import { generateAgentGrant, generatePersonalToken, hashPersonalToken, newId } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
@@ -34,6 +34,36 @@ async function seedGrant(scopes: readonly string[], kind = 'agent'): Promise<str
       await hashPersonalToken(token),
       JSON.stringify(scopes),
       EXPIRES,
+      CREATED,
+    ),
+  ])
+  return token
+}
+
+async function seedAgentToken(scopes: readonly string[]): Promise<string> {
+  const userId = newId('usr')
+  const token = generatePersonalToken()
+  await env.DB.batch([
+    env.DB.prepare(
+      'INSERT OR IGNORE INTO sites (id, created_at, updated_at) VALUES (?1, ?2, ?2)',
+    ).bind(SITE_KEY, CREATED),
+    env.DB.prepare(
+      `INSERT INTO users (id, name, role, kind, created_at, updated_at)
+        VALUES (?1, 'gateway', 'reviewer', 'agent', ?2, ?2)`,
+    ).bind(userId, CREATED),
+    env.DB.prepare(
+      `INSERT INTO members (id, site_id, user_id, role, created_at, updated_at)
+        VALUES (?1, ?2, ?3, 'author', ?4, ?4)`,
+    ).bind(newId('mbr'), SITE_KEY, userId, CREATED),
+    env.DB.prepare(
+      `INSERT INTO tokens (id, site_id, user_id, label, hash, scopes, expires_at, created_at, updated_at)
+        VALUES (?1, ?2, ?3, 'gateway', ?4, ?5, NULL, ?6, ?6)`,
+    ).bind(
+      newId('tok'),
+      SITE_KEY,
+      userId,
+      await hashPersonalToken(token),
+      JSON.stringify(scopes),
       CREATED,
     ),
   ])
@@ -85,6 +115,24 @@ describe('what a token may do with reviews', () => {
       list_reviews: 200,
       publish: 403,
       approve_review: 403,
+    })
+  })
+
+  it("never lets an agent's personal token approve, unpublish or change the site, whatever scopes its row holds", async () => {
+    const token = await seedAgentToken([
+      'content:read',
+      'content:write',
+      'content:publish',
+      'schema:admin',
+    ])
+
+    expect(
+      await statusesOf(token, ['create_draft', 'approve_review', 'unpublish', 'update_site']),
+    ).toEqual({
+      create_draft: 200,
+      approve_review: 403,
+      unpublish: 403,
+      update_site: 403,
     })
   })
 

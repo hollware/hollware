@@ -168,6 +168,7 @@ describe('--json', () => {
       site: 'blog',
       tokenId: expect.stringMatching(/^tok_[0-9A-Z]{26}$/),
       kind: 'read',
+      member: null,
       label: 'ci',
       scopes: ['content:read'],
       token: `hw_read_${'2'.repeat(52)}`,

@@ -87,6 +87,16 @@ export function parseExpiresInDays(value: string): number {
   return days
 }
 
+export function parseExpiresAt(value: string, now: Date): string {
+  const instant = /^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(value) ? Date.parse(value) : Number.NaN
+  if (Number.isNaN(instant) || instant <= now.getTime()) {
+    throw new UsageError(
+      `invalid --expires-at ${shown(value)}: use a date or time of the future, such as 2027-06-30 or 2027-06-30T18:00:00Z.`,
+    )
+  }
+  return new Date(instant).toISOString()
+}
+
 export function parseTokenId(value: string): string {
   if (!isId('tok', value)) {
     throw new UsageError(
@@ -259,7 +269,11 @@ export function revokeInvitation(id: string, site: string, now: string): string 
 }
 
 export function listTokens(site: string): string {
-  return `SELECT id, label, scopes, expires_at, revoked_at, last_used_at, created_at FROM tokens WHERE site_id = ${quote(site)} ORDER BY created_at, id;`
+  return `SELECT tokens.id AS id, tokens.label AS label, tokens.scopes AS scopes, tokens.expires_at AS expires_at, tokens.revoked_at AS revoked_at, tokens.last_used_at AS last_used_at, tokens.created_at AS created_at, users.name AS user_name, users.kind AS user_kind FROM tokens JOIN users ON users.id = tokens.user_id WHERE tokens.site_id = ${quote(site)} ORDER BY tokens.created_at, tokens.id;`
+}
+
+export function agentMemberQuery(site: string, userId: string): string {
+  return `SELECT users.id AS id, users.name AS name FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = ${quote(site)} AND members.user_id = ${quote(userId)} AND users.kind = 'agent';`
 }
 
 export function revokeToken(id: string, site: string | undefined, now: string): string {
@@ -311,6 +325,7 @@ export function removeAgentMember(userId: string, site: string, now: string): st
   const agent = "user_id IN (SELECT id FROM users WHERE kind = 'agent')"
   return [
     `UPDATE agent_grants SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND revoked_at IS NULL AND ${agent};`,
+    `UPDATE tokens SET revoked_at = ${quote(now)}, updated_at = ${quote(now)} WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND revoked_at IS NULL AND ${agent};`,
     `DELETE FROM members WHERE site_id = ${quote(site)} AND user_id = ${quote(userId)} AND ${agent} RETURNING user_id AS id;`,
   ].join(' ')
 }

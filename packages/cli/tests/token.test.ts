@@ -70,6 +70,104 @@ describe('hollware token create', () => {
     expect(out.join('\n').split(SECRET)).toHaveLength(2)
   })
 
+  it("makes the token of an agent member with --member, which it checks, of an author's scopes at most", async () => {
+    const agent = 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
+    const wrangler = fakeWrangler(
+      d1([{ id: 'blog' }], [{ id: OWNER_ID }]),
+      d1([{ id: agent, name: 'gateway' }]),
+      d1([]),
+    )
+    const project = setup(wrangler)
+
+    const { code, out, err } = await project.run([
+      'token',
+      'create',
+      '--label',
+      'executor',
+      '--member',
+      agent,
+      '--expires-at',
+      '2027-06-30',
+    ])
+    const publishing = await project.run([
+      'token',
+      'create',
+      '--label',
+      'executor',
+      '--member',
+      agent,
+      '--scopes',
+      'content:read,content:publish',
+    ])
+
+    expect([code, err]).toEqual([0, []])
+    expect(wrangler.calls.map((call) => call.args[6])).toEqual([
+      CONTEXT_QUERY,
+      `SELECT users.id AS id, users.name AS name FROM members JOIN users ON users.id = members.user_id WHERE members.site_id = 'blog' AND members.user_id = '${agent}' AND users.kind = 'agent';`,
+      insertSql(
+        "'executor'",
+        '["content:read","content:write"]',
+        '2027-06-30T00:00:00.000Z',
+      ).replace(`'${OWNER_ID}'`, `'${agent}'`),
+    ])
+    expect(out[0]?.split('\n').slice(0, 5)).toEqual([
+      `Created token ${TOKEN_ID} for the agent ${agent} of the site "blog".`,
+      '',
+      'Label    executor',
+      'Scopes   content:read content:write',
+      'Expires  2027-06-30T00:00:00.000Z (in 261 days)',
+    ])
+    expect([publishing.code, publishing.err]).toEqual([
+      1,
+      [
+        'hollware token create: an agent\'s token never holds content:publish: choose among content:read, content:write, review:read, review:comment. An agent writes drafts and asks for review, and a person publishes. Run "hollware token create --help" for the options.',
+      ],
+    ])
+    expect(wrangler.calls).toHaveLength(3)
+    expect(
+      (await project.run(['token', 'create', '--label', 'x', '--member', agent, '--read'])).err,
+    ).toEqual([
+      'hollware token create: --member and --read cannot be used together: an agent gets a personal token. Run "hollware token create --help" for the options.',
+    ])
+  })
+
+  it('refuses --member for a user that is no agent member of the site, and writes nothing', async () => {
+    const person = 'usr_01JAB3XQ8ZK4M6N2P5R7S9T0VX'
+    const wrangler = fakeWrangler(d1([{ id: 'blog' }], [{ id: OWNER_ID }]), d1([]))
+    const project = setup(wrangler)
+
+    const { code, err } = await project.run(['token', 'create', '--label', 'x', '--member', person])
+
+    expect([code, err]).toEqual([
+      1,
+      [
+        `hollware token create: ${person} is no agent member of the site "blog". "hollware agent list" shows the ones that are.`,
+      ],
+    ])
+    expect(wrangler.calls).toHaveLength(2)
+  })
+
+  it('refuses an --expires-at of the past or that is no date, before it calls wrangler', async () => {
+    const wrangler = fakeWrangler()
+    const project = setup(wrangler)
+
+    const past = await project.run([
+      'token',
+      'create',
+      '--label',
+      'x',
+      '--expires-at',
+      '2026-10-12',
+    ])
+    const word = await project.run(['token', 'create', '--label', 'x', '--expires-at', 'tomorrow'])
+
+    expect([past.code, word.code]).toEqual([1, 1])
+    expect(past.err).toEqual([
+      'hollware token create: invalid --expires-at "2026-10-12": use a date or time of the future, such as 2027-06-30 or 2027-06-30T18:00:00Z. Run "hollware token create --help" for the options.',
+    ])
+    expect(wrangler.calls).toEqual([])
+  })
+
   it('makes a read token with --read: hw_read_, content:read and the kind read, printed once', async () => {
     const wrangler = fakeWrangler(...createAnswers())
     const project = setup(wrangler)
@@ -222,7 +320,7 @@ describe('hollware token create', () => {
     ],
     [
       ['--label', 'ci', '--expires-in-days', '30', '--no-expiry'],
-      /^hollware token create: --expires-in-days and --no-expiry cannot be used together\./,
+      /^hollware token create: use one of --expires-in-days, --expires-at and --no-expiry\./,
     ],
     [['--label', 'ci', '--site', 'Blog'], /^hollware token create: invalid --site "Blog": /],
     [
@@ -301,10 +399,10 @@ describe('hollware token create', () => {
 })
 
 const LIST_SQL =
-  "SELECT id, label, scopes, expires_at, revoked_at, last_used_at, created_at FROM tokens WHERE site_id = 'blog' ORDER BY created_at, id;"
+  "SELECT tokens.id AS id, tokens.label AS label, tokens.scopes AS scopes, tokens.expires_at AS expires_at, tokens.revoked_at AS revoked_at, tokens.last_used_at AS last_used_at, tokens.created_at AS created_at, users.name AS user_name, users.kind AS user_kind FROM tokens JOIN users ON users.id = tokens.user_id WHERE tokens.site_id = 'blog' ORDER BY tokens.created_at, tokens.id;"
 
 describe('hollware token list', () => {
-  it('shows the tokens of the site as a table, and never a hash', async () => {
+  it('shows the tokens of the site as a table, whose each is, and never a hash', async () => {
     const wrangler = fakeWrangler(
       d1([{ id: 'blog' }]),
       d1([
@@ -316,6 +414,8 @@ describe('hollware token list', () => {
           revoked_at: null,
           last_used_at: '2026-10-12T11:00:00.000Z',
           created_at: '2026-10-12T10:00:00.000Z',
+          user_name: 'Sergio',
+          user_kind: 'person',
           hash: 'f'.repeat(64),
         },
         {
@@ -326,6 +426,8 @@ describe('hollware token list', () => {
           revoked_at: null,
           last_used_at: null,
           created_at: '2026-09-01T00:00:00.000Z',
+          user_name: 'gateway',
+          user_kind: 'agent',
           hash: 'e'.repeat(64),
         },
         {
@@ -361,10 +463,10 @@ describe('hollware token list', () => {
     expect(wrangler.calls[1]?.args[6]).not.toContain('hash')
     expect(out).toEqual([
       [
-        'ID                              LABEL          STATUS   EXPIRES                   LAST USED                 SCOPES',
-        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW  hollware init  active   2027-01-10T12:00:00.000Z  2026-10-12T11:00:00.000Z  content:read content:write content:publish schema:admin',
-        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VX  ci             expired  2026-10-01T00:00:00.000Z  never                     content:read',
-        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VY  old laptop     revoked  2027-01-10T12:00:00.000Z  never                     content:read content:write',
+        'ID                              LABEL          WHOSE          STATUS   EXPIRES                   LAST USED                 SCOPES',
+        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW  hollware init  Sergio         active   2027-01-10T12:00:00.000Z  2026-10-12T11:00:00.000Z  content:read content:write content:publish schema:admin',
+        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VX  ci             agent gateway  expired  2026-10-01T00:00:00.000Z  never                     content:read',
+        'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VY  old laptop     owner          revoked  2027-01-10T12:00:00.000Z  never                     content:read content:write',
       ].join('\n'),
     ])
     expect(out.join('\n')).not.toMatch(/[def]{64}/)
@@ -399,7 +501,7 @@ describe('hollware token list', () => {
     const statuses = out[0]
       ?.split('\n')
       .slice(1)
-      .map((line) => line.split(/\s{2,}/)[2])
+      .map((line) => line.split(/\s{2,}/)[3])
     expect(statuses).toEqual(['expired', 'active'])
   })
 
@@ -434,7 +536,7 @@ describe('hollware token list', () => {
 
     expect(out[0]).not.toContain('\u001B')
     expect(out[0]?.split('\n')[1]).toBe(
-      'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW  evil?[2Jlabel  active  never    never      not json ?[31m',
+      'tok_01JAB3XQ8ZK4M6N2P5R7S9T0VW  evil?[2Jlabel  owner  active  never    never      not json ?[31m',
     )
   })
 
