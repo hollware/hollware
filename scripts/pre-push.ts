@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url'
 
 export const RELEASE = 'refs/heads/release'
 export const KEPT = 50
+export const HOOK = 'node scripts/pre-push.ts'
+export const CHECK = ['vp', 'run', 'check:local'] as const
 
 export interface PushedRef {
   readonly localSha: string
@@ -114,7 +116,8 @@ export function main(args: readonly string[], cwd: string, stdin: string): numbe
       console.error(
         'pre-push: running vp run check:local. GitHub may close the connection while it runs; once it passes, push again and it is instant. vp run check:local before git push avoids the wait.',
       )
-      const run = spawnSync('vp', ['run', 'check:local'], {
+      const [command, ...args] = CHECK
+      const run = spawnSync(command, args, {
         cwd,
         stdio: ['ignore', 'inherit', 'inherit'],
       })

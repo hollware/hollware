@@ -10,6 +10,7 @@ export const CI_ONLY: Readonly<Record<string, string>> = {
 
 export interface PrePushInput {
   readonly hook: string | undefined
+  readonly delegate?: { readonly hook: string; readonly command: readonly string[] }
   readonly graph: Readonly<Record<string, readonly string[]>>
   readonly ci: string
 }
@@ -45,7 +46,11 @@ export function checkPrePush(input: PrePushInput): Violation[] {
   const report = (rule: string, file: string, message: string) =>
     violations.push({ rule: `pre-push/${rule}`, file, message })
 
-  if (input.hook === undefined || !vpRunTasks(input.hook).includes(LOCAL)) {
+  const delegated =
+    input.delegate !== undefined &&
+    input.hook?.includes(input.delegate.hook) === true &&
+    vpRunTasks(input.delegate.command.join(' ')).includes(LOCAL)
+  if (input.hook === undefined || !(vpRunTasks(input.hook).includes(LOCAL) || delegated)) {
     report('hook', '.vite-hooks/pre-push', `the hook must run "vp run ${LOCAL}"`)
   }
   if (input.graph[LOCAL] === undefined) {

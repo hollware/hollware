@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+import { CHECK, HOOK as DELEGATE } from '../../scripts/pre-push.ts'
 import rootConfig from '../../vite.config.ts'
 import { checkPrePush } from '../guards/pre-push.ts'
 import { describeViolations } from '../guards/types.ts'
@@ -17,6 +18,7 @@ describe('pre-push', () => {
       describeViolations(
         checkPrePush({
           hook,
+          delegate: { hook: DELEGATE, command: CHECK },
           graph: taskGraph(rootConfig),
           ci: readText('.github/workflows/ci.yml'),
         }),
@@ -37,6 +39,38 @@ describe('pre-push', () => {
           message: 'the hook must run "vp run check:local"',
         },
       ])
+    })
+
+    it('accepts a hook that runs a script which runs check:local, and no script that runs less', () => {
+      const hook = 'exec node scripts/pre-push.ts\n'
+      const delegate = (command: readonly string[]) => ({
+        hook: 'node scripts/pre-push.ts',
+        command,
+      })
+      expect(
+        checkPrePush({
+          hook,
+          delegate: delegate(['vp', 'run', 'check:local']),
+          graph: GRAPH,
+          ci: CI,
+        }),
+      ).toEqual([])
+      expect(
+        checkPrePush({
+          hook,
+          delegate: delegate(['vp', 'run', 'check:push']),
+          graph: GRAPH,
+          ci: CI,
+        }).map((violation) => violation.rule),
+      ).toEqual(['pre-push/hook'])
+      expect(
+        checkPrePush({
+          hook: 'exec node scripts/other.ts\n',
+          delegate: delegate(['vp', 'run', 'check:local']),
+          graph: GRAPH,
+          ci: CI,
+        }).map((violation) => violation.rule),
+      ).toEqual(['pre-push/hook'])
     })
 
     it('reports a task of CI that check:local misses, and one only check:local runs', () => {
