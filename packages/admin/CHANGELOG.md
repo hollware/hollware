@@ -1,5 +1,17 @@
 # @hollware/admin
 
+## 1.4.0
+
+### Minor Changes
+
+- [#92](https://github.com/hollware/hollware/pull/92) [`5a5417b`](https://github.com/hollware/hollware/commit/5a5417b38d26786b09f1ba70f7b8081086545b47) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin shows what the server holds as it changes: pages read through shared queries of Pinia Colada, every write refreshes what is on screen (the count of reviews in the sidebar, the sites, the collections), and coming back to the tab, or the network, reads again. Reviews and the count of what waits are read again every few seconds while the tab is visible, an entry follows a change made elsewhere when it has no unsaved edits, and a settings form saves against the version it was filled from.
+
+- [#91](https://github.com/hollware/hollware/pull/91) [`66289d3`](https://github.com/hollware/hollware/commit/66289d36d0b71126d34fdd9739ba157be11c8940) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A translation behind its source is no longer a view of Entries, which are the states of an entry: Home lists the translations behind their source, and the entry shows what changed in the source since the translation was saved, beside a link to it.
+
+### Patch Changes
+
+- [#93](https://github.com/hollware/hollware/pull/93) [`2abcc5d`](https://github.com/hollware/hollware/commit/2abcc5dcbf37adfcff71a158e29c306fc96f20a5) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The single-file components of the admin are type-checked, with `vue-tsc` on TypeScript 6.0.3, and the errors it found are fixed.
+
 ## 1.3.0
 
 ### Minor Changes
