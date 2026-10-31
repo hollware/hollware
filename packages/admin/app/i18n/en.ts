@@ -742,6 +742,7 @@ export const en = {
     notMade: 'Not made',
     noMembers: 'No agent members yet.',
     removeMember: (name: string) => `Remove ${name}`,
+    makeToken: (name: string) => `Make a token for ${name}`,
     removeTitle: (name: string) => `Remove ${name}?`,
     removeBody:
       'It leaves this site at once, and the subscriptions that name it stop being delivered. What it wrote stays.',
@@ -1065,6 +1066,13 @@ export const en = {
     notMade: 'Not made',
     revokedToast: (label: string) => `Revoked ${label}`,
     notRevoked: 'Not revoked',
+    whose: 'For',
+    forMe: 'You',
+    forAgent: (name: string) => `Agent ${name}`,
+    until: 'Expires on',
+    agent: 'agent',
+    agentNote:
+      "What the agent writes with this token is the agent's. It writes drafts and asks for review: a person publishes. Removing the agent revokes it.",
   },
   frontmatter: {
     markdownOnly: (fields: string) =>

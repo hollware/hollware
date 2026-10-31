@@ -278,6 +278,13 @@ function deliveryLine(delivery: AgentDeliveryRow): string {
             }}</span>
             <span class="text-xs text-dimmed">{{ formatDateTime(member.since) }}</span>
             <UButton
+              icon="i-lucide-key-round"
+              variant="ghost"
+              size="xs"
+              :to="{ path: '/settings/tokens', query: { member: member.id } }"
+              :aria-label="m.agents.makeToken(member.name)"
+            />
+            <UButton
               icon="i-lucide-user-minus"
               color="error"
               variant="ghost"

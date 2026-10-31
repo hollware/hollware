@@ -758,6 +758,7 @@ export const es: Messages = {
     notMade: 'No se creó',
     noMembers: 'Todavía no hay miembros agentes.',
     removeMember: (name: string) => `Eliminar a ${name}`,
+    makeToken: (name: string) => `Crear un token para ${name}`,
     removeTitle: (name: string) => `¿Eliminar a ${name}?`,
     removeBody:
       'Sale de este sitio de inmediato y las suscripciones que lo nombran dejan de recibir entregas. Lo que escribió se conserva.',
@@ -1091,6 +1092,13 @@ export const es: Messages = {
     notMade: 'No se creó',
     revokedToast: (label: string) => `Se revocó ${label}`,
     notRevoked: 'No se revocó',
+    whose: 'Para',
+    forMe: 'Ti',
+    forAgent: (name: string) => `Agente ${name}`,
+    until: 'Vence el',
+    agent: 'agente',
+    agentNote:
+      'Lo que el agente escriba con este token queda a su nombre. Escribe borradores y pide revisión: publica una persona. Eliminar al agente lo revoca.',
   },
   frontmatter: {
     markdownOnly: (fields: string) =>

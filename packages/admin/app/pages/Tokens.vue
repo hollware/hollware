@@ -4,13 +4,15 @@ import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ApiError } from '../lib/api.ts'
 import { formatDate, useMessages } from '../i18n/index.ts'
 import { runAll, countOutcomes } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
 import { api } from '../lib/session.ts'
-import { tokenRequest } from '../lib/tokens.ts'
+import { scopesFor, tokenRequest } from '../lib/tokens.ts'
+import type { AgentMember } from '../lib/agents.ts'
 import { PERSONAL_TOKEN_TTL_DAYS } from '@hollware/core'
 
 type Token = {
@@ -19,20 +21,12 @@ type Token = {
   label: string
   scopes: string[]
   user: string | null
+  userKind: 'person' | 'agent' | null
   expiresAt: string | null
   revokedAt: string | null
   lastUsedAt: string | null
   createdAt: string
 }
-
-const SCOPES = [
-  'content:read',
-  'content:write',
-  'content:publish',
-  'schema:admin',
-  'review:read',
-  'review:comment',
-]
 
 const m = useMessages()
 const columns = computed<TableColumn<Token>[]>(() => [
@@ -46,15 +40,30 @@ const columns = computed<TableColumn<Token>[]>(() => [
 ])
 
 const toast = useToast()
+const route = useRoute()
 const tokens = ref<Token[]>([])
+const agents = ref<AgentMember[]>([])
 const failure = ref<string | null>(null)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
 const days = ref<number | undefined>(undefined)
+const until = ref('')
 const never = ref(false)
 const read = ref(false)
+const member = ref(typeof route.query['member'] === 'string' ? route.query['member'] : '')
 const secret = ref<string | null>(null)
 const busy = ref(false)
+
+const owners = computed(() => [
+  { label: m.value.tokens.forMe, value: '' },
+  ...agents.value.map((agent) => ({ label: m.value.tokens.forAgent(agent.name), value: agent.id })),
+])
+const scopes = computed(() => scopesFor(member.value))
+
+watch(member, (chosenMember) => {
+  if (chosenMember !== '') read.value = false
+  chosen.value = chosen.value.filter((scope) => scopesFor(chosenMember).includes(scope))
+})
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
@@ -69,7 +78,15 @@ async function list() {
   }
 }
 
-onMounted(list)
+async function listAgents() {
+  try {
+    agents.value = (await api.admin<{ agents: AgentMember[] }>('agents')).agents
+  } catch {
+    agents.value = []
+  }
+}
+
+onMounted(() => Promise.all([list(), listAgents()]))
 
 function toggle(scope: string, on: boolean) {
   chosen.value = on ? [...chosen.value, scope] : chosen.value.filter((s) => s !== scope)
@@ -85,7 +102,9 @@ async function make() {
         read: read.value,
         scopes: chosen.value,
         days: days.value,
+        until: until.value,
         never: never.value,
+        member: member.value,
       }),
     )
     secret.value = made.secret
@@ -155,6 +174,9 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
               required
             />
           </UFormField>
+          <UFormField v-if="agents.length > 0" :label="m.tokens.whose">
+            <USelect v-model="member" :items="owners" class="w-56" />
+          </UFormField>
           <UFormField :label="m.tokens.days">
             <UInput
               v-model.number="days"
@@ -162,12 +184,16 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
               :min="1"
               :max="365"
               :placeholder="read ? m.tokens.never : m.tokens.defaultDays(PERSONAL_TOKEN_TTL_DAYS)"
-              :disabled="never && !read"
+              :disabled="(never && !read) || until !== ''"
               class="w-40"
             />
           </UFormField>
+          <UFormField :label="m.tokens.until">
+            <UInput v-model="until" type="date" :disabled="never && !read" class="w-44" />
+          </UFormField>
           <UCheckbox v-if="!read" v-model="never" :label="m.tokens.never" />
           <UCheckbox
+            v-if="member === ''"
             v-model="read"
             :label="m.tokens.read"
             :description="m.tokens.readDescription"
@@ -175,13 +201,14 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
           <fieldset v-if="!read" class="flex flex-wrap gap-3">
             <legend class="sr-only">{{ m.tokens.scopes }}</legend>
             <UCheckbox
-              v-for="scope in SCOPES"
+              v-for="scope in scopes"
               :key="scope"
               :label="scope"
               :model-value="chosen.includes(scope)"
               @update:model-value="(on) => toggle(scope, on === true)"
             />
           </fieldset>
+          <p v-if="member !== ''" class="w-full text-sm text-muted">{{ m.tokens.agentNote }}</p>
           <UButton type="submit" :label="m.tokens.make" :loading="busy" />
         </form>
         <UAlert
@@ -215,6 +242,17 @@ const day = (value: string | null) => (value === null ? '—' : formatDate(value
           </template>
           <template #label-cell="{ row }">
             <span class="font-medium">{{ row.original.label }}</span>
+          </template>
+          <template #user-cell="{ row }">
+            <span>{{ row.original.user ?? '—' }}</span>
+            <UBadge
+              v-if="row.original.userKind === 'agent'"
+              :label="m.tokens.agent"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+              class="ml-2"
+            />
           </template>
           <template #scopes-cell="{ row }">
             <span class="font-mono text-xs">{{ row.original.scopes.join(' ') }}</span>
