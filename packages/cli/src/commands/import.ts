@@ -26,7 +26,8 @@ import {
   type NotionOptions,
   type ReadRecords,
 } from '../import/from-notion.ts'
-import { corpusFromNuxtContent } from '../import/from-nuxt-content.ts'
+import { corpusFromNuxtContent, type NuxtContentOptions } from '../import/from-nuxt-content.ts'
+import { localImages, type LocalImages } from '../import/local-images.ts'
 import { openSession, ToolFailure, type Session } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
@@ -53,6 +54,8 @@ export const IMPORT_USAGE = [
   '  --locale-dirs        nuxt-content: the first folder of each page is its locale',
   '  --group-field <name> nuxt-content: the field of a translation group (default',
   '                       translationGroup)',
+  '  --public-dir <dir>   nuxt-content: upload the images the pages show by path, /x.webp from this',
+  "                       folder and x.webp from the page's, and write asset:ast_… in their place",
   '  --root <page>        notion: the id or the address of the top page',
   '  --section-field <f>  notion: the field of the title of the top page above it (default section)',
   '  --order-field <f>    notion: the field of its place among its siblings, from 1 (default order)',
@@ -85,6 +88,7 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       locale: { type: 'string' },
       'locale-dirs': { type: 'boolean' },
       'group-field': { type: 'string' },
+      'public-dir': { type: 'string' },
       root: { type: 'string' },
       'section-field': { type: 'string' },
       'order-field': { type: 'string' },
@@ -126,6 +130,9 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       dryRun: values['dry-run'] === true,
     })
   }
+  if (from !== 'nuxt-content' && values['public-dir'] !== undefined) {
+    throw new UsageError('--public-dir is for --from nuxt-content.')
+  }
   if (from === 'nuxt-content' && values.collection === undefined) {
     throw new UsageError('--from nuxt-content needs --collection: the collection its pages go to.')
   }
@@ -141,11 +148,18 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
   const endpoint = mcpEndpoint(values.url)
   const root = resolve(io.cwd, directory)
   if (!isDirectory(root)) throw new CliError(`${directory} is not a directory.`)
+  const publicDir =
+    values['public-dir'] === undefined ? undefined : resolve(io.cwd, values['public-dir'])
+  if (publicDir !== undefined && !isDirectory(publicDir)) {
+    throw new CliError(`${values['public-dir']} is not a directory.`)
+  }
+  const found = publicDir === undefined ? undefined : localImages(publicDir)
   const corpus = await sourceOf(from, root, {
     collection: values.collection ?? '',
     locale: values.locale ?? 'en',
     localeDirs: values['locale-dirs'] === true,
     groupField: values['group-field'] ?? 'translationGroup',
+    ...(found === undefined ? {} : { images: { found, shown: values['public-dir'] ?? '' } }),
   })
   const token = await readToken(io, values['token-file'])
   try {
@@ -155,7 +169,11 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       endpoint,
       directory,
       early: corpus,
-      load: () => Promise.resolve({ corpus, images: manifestImages(root, directory) }),
+      load: () =>
+        Promise.resolve({
+          corpus,
+          images: found === undefined ? manifestImages(root, directory) : pendingOf(found),
+        }),
       publish: values.publish === true,
       dryRun: values['dry-run'] === true,
     })
@@ -361,7 +379,7 @@ export function withoutToken(error: unknown, token: string): CliError {
 function sourceOf(
   from: 'markdown' | 'nuxt-content',
   root: string,
-  options: { collection: string; locale: string; localeDirs: boolean; groupField: string },
+  options: NuxtContentOptions,
 ): Promise<Corpus> {
   return Promise.resolve(
     from === 'markdown' ? readCorpus(root) : corpusFromNuxtContent(root, options),
@@ -858,6 +876,23 @@ export function withAssetIds<File extends ContentFile>(
       },
     ),
   }))
+}
+
+function pendingOf(found: LocalImages): Images | undefined {
+  const byKey = new Map([...found.byPath.values()].map((image) => [image.key, image]))
+  if (byKey.size === 0) return undefined
+  return {
+    from: 'that the pages show',
+    list: [...byKey.values()]
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+      .map((image) => ({
+        name: image.filename,
+        key: image.key,
+        filename: image.filename,
+        alt: image.alt,
+        data: () => readFileSync(image.path).toString('base64'),
+      })),
+  }
 }
 
 function manifestImages(root: string, directory: string): Images | undefined {
