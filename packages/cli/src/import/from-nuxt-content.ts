@@ -2,12 +2,14 @@ import { schemas } from '@hollware/core'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ContentFile, Corpus } from './corpus.ts'
+import { withLocalImages, type LocalImages } from './local-images.ts'
 
 export interface NuxtContentOptions {
   readonly collection: string
   readonly locale: string
   readonly localeDirs: boolean
   readonly groupField: string
+  readonly images?: { readonly found: LocalImages; readonly shown: string }
 }
 
 const BOM = String.fromCharCode(0xfeff)
@@ -73,7 +75,16 @@ export function corpusFromNuxtContent(root: string, options: NuxtContentOptions)
         continue
       }
       bySlug.set(key, where)
-      const read = readFileSync(join(directory, entry.name), 'utf8')
+      const raw = readFileSync(join(directory, entry.name), 'utf8')
+      const imaged =
+        options.images === undefined
+          ? { ok: true as const, markdown: raw }
+          : withLocalImages(raw, directory, options.images.found, options.images.shown)
+      if (!imaged.ok) {
+        problems.push({ path: where, reason: imaged.reason })
+        continue
+      }
+      const read = imaged.markdown
       const heading = /^#[ \t]+(.+?)[ \t]*$/m.exec(read)?.[1]
       const text = withField(read, 'title', heading ?? slug)
       files.push({

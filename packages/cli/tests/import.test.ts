@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, truncateSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
@@ -1108,6 +1108,92 @@ describe('hollware import --from', () => {
     expect(out[0]).toBe(`Found 2 entries in ${dir} (docs: 2).`)
     expect([...stub.entries.keys()]).toEqual(['docs/en/guide-install', 'docs/en/index'])
     expect(stub.entries.get('docs/en/guide-install')?.revisions).toEqual([page])
+  })
+
+  it('--public-dir uploads the images the pages show by path, once each, and writes their asset', async () => {
+    const stub = await serve()
+    const dir = temp.make({
+      'content/blog/a.md':
+        '---\ntitle: A\nimage: /blog/cover.png\n---\n\n![The cover](/blog/cover.png)\n![](./local.png "Local")\n![Remote](https://example.com/x.png)\n[Link](/blog/cover.png)\n',
+      'content/blog/b.md': '---\ntitle: B\n---\n\n![Again](</blog/cover.png>)\n',
+    })
+    mkdirSync(join(dir, 'public', 'blog'), { recursive: true })
+    writeFileSync(join(dir, 'public', 'blog', 'cover.png'), 'cover bytes')
+    writeFileSync(join(dir, 'content', 'blog', 'local.png'), 'local bytes')
+
+    const { code, out, err } = await runImport(join(dir, 'content'), stub.url, [
+      '--from',
+      'nuxt-content',
+      '--collection',
+      'blog',
+      '--public-dir',
+      join(dir, 'public'),
+    ])
+
+    expect(err).toEqual([])
+    expect(code).toBe(0)
+    expect(out).toContain('Images: 2 uploaded, 0 already there.')
+    const byName = new Map([...stub.assets.values()].map((asset) => [asset.filename, asset]))
+    expect([...byName.keys()].sort()).toEqual(['cover.png', 'local.png'])
+    expect(byName.get('cover.png')?.alt).toBe('The cover')
+    expect(byName.get('local.png')?.alt).toBe('local')
+    const cover = byName.get('cover.png')?.id
+    const local = byName.get('local.png')?.id
+    expect(stub.entries.get('blog/en/blog-a')?.revisions).toEqual([
+      `---\ntitle: A\nimage: asset:${cover}\n---\n\n![The cover](asset:${cover})\n![](asset:${local} "Local")\n![Remote](https://example.com/x.png)\n[Link](/blog/cover.png)\n`,
+    ])
+    expect(stub.entries.get('blog/en/blog-b')?.revisions).toEqual([
+      `---\ntitle: B\n---\n\n![Again](asset:${cover})\n`,
+    ])
+    expect(tools(stub.calls).filter((tool) => tool === 'upload_asset')).toHaveLength(2)
+  })
+
+  it('--public-dir sends nothing when an image is missing or over 10 MB, and says how to fix it', async () => {
+    const stub = await serve()
+    const dir = temp.make({
+      'content/a.md': '# A\n\n![Gone](/gone.png)\n',
+      'content/b.md': '# B\n\n![Big](/big.gif)\n',
+    })
+    mkdirSync(join(dir, 'public'))
+    writeFileSync(join(dir, 'public', 'big.gif'), '')
+    truncateSync(join(dir, 'public', 'big.gif'), 11 * 1024 * 1024)
+
+    const { code, err } = await runImport(join(dir, 'content'), stub.url, [
+      '--from',
+      'nuxt-content',
+      '--collection',
+      'blog',
+      '--public-dir',
+      join(dir, 'public'),
+    ])
+
+    expect(code).toBe(1)
+    expect(err.join('\n')).toContain(
+      `  a.md: the image /gone.png is not in ${join(dir, 'public')}\n  b.md: the image /big.gif is 11.0 MB, over the 10 MB an image may have: recompress it; a GIF with ffmpeg at fewer fps or a smaller width\n`,
+    )
+    expect(stub.calls).toEqual([])
+  })
+
+  it('--public-dir counts the images on a dry run, and is for --from nuxt-content only', async () => {
+    const stub = await serve()
+    const dir = temp.make({ 'content/a.md': '# A\n\n![One](/one.png)\n' })
+    mkdirSync(join(dir, 'public'))
+    writeFileSync(join(dir, 'public', 'one.png'), 'one')
+
+    const dry = await runImport(join(dir, 'content'), stub.url, [
+      '--from',
+      'nuxt-content',
+      '--collection',
+      'blog',
+      '--public-dir',
+      join(dir, 'public'),
+      '--dry-run',
+    ])
+    const markdown = await runImport(join(dir, 'content'), stub.url, ['--public-dir', 'public'])
+
+    expect(dry.out).toContain('Would upload 1 image that the pages show.')
+    expect(tools(stub.calls)).not.toContain('upload_asset')
+    expect(markdown.err.join('\n')).toContain('--public-dir is for --from nuxt-content.')
   })
 
   it('asks for what a source needs, and refuses one it does not know', async () => {

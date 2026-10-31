@@ -195,6 +195,9 @@
         "order-field": {
           "type": "string"
         },
+        "public-dir": {
+          "type": "string"
+        },
         "publish": {
           "type": "boolean"
         },
