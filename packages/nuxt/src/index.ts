@@ -95,7 +95,9 @@ export default defineNuxtModule<ModuleOptions>({
         'useHollwareEntries',
         'useHollwareNavigation',
         'useHollwareSite',
+        'useHollwareTags',
         'useHollwareTranslations',
+        'hollwareTags',
       ].map((imported) => ({ name: imported, from: resolve('./runtime/composables') })),
     )
     addComponent({

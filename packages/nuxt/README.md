@@ -45,6 +45,18 @@ const { data } = await useHollwareEntry('blog', 'en', useRoute().params.slug as 
 | `useHollwareSite()`                             | The site: its locales and collections                |
 | `<HollwareContent :entry :components>`          | Renders the document with `@comark/vue`              |
 | `useHollware(event)` (server)                   | The reader itself, for routes of your own            |
+| `useHollwareTags(tags)`, `hollwareTags`         | The cache tags of what a route of your own read      |
+
+Each composable takes `{ lazy, server }` last, as `useFetch` does: with `server: false`, a
+prerendered page reads in the browser only.
+
+A route of your own that reads through `useHollware(event).reader` tags its own answer. A page
+that reads that route gives the page the same tags, so `cache: 'purge'` keeps and purges it:
+
+```ts
+const { data } = await useFetch('/api/jobs')
+useHollwareTags(hollwareTags.list('jobs', 'es', data.value?.entries ?? []))
+```
 
 Every page carries `<meta name="generator" content="Hollware">`; set `hollware.generator: false`
 to leave it out.

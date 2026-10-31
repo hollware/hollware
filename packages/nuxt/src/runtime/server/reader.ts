@@ -36,7 +36,6 @@ export function useHollware(event: H3Event): { site: string; reader: HollwareRea
 
 function tagging(event: H3Event, reader: HollwareReader): HollwareReader {
   return {
-    ...reader,
     getEntry: async (...args) => {
       const answer = await reader.getEntry(...args)
       if (args[4]?.preview === undefined) recordTags(event, entryTags(answer.entry))
@@ -62,5 +61,7 @@ function tagging(event: H3Event, reader: HollwareReader): HollwareReader {
       recordTags(event, siteTags())
       return answer
     },
+    search: (...args) => reader.search(...args),
+    listRedirects: (...args) => reader.listRedirects(...args),
   }
 }
