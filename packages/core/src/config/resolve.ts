@@ -10,6 +10,7 @@ import { readCors, readEvents, readSiteUrl } from './events.ts'
 import { LOCALE_TAG } from './constants.ts'
 import { isSiteKey, SITE_KEY_MAX_LENGTH } from './site-key.ts'
 import type {
+  AdminPath,
   ResolvedAdmin,
   ResolvedAuth,
   ResolvedCollection,
@@ -204,20 +205,36 @@ function readSites(raw: unknown, problems: Problems): Map<string, ResolvedSite> 
 }
 
 const FAVICON_FIX = "Write admin: { favicon: 'https://example.com/icon.png' }, or leave it out."
+const PATH_FIX =
+  "Write admin: { path: '/' } for the admin at the root of its origin, or leave it out for /admin."
+const ADMIN_PATHS: readonly AdminPath[] = ['/admin', '/']
 
 function readAdmin(raw: unknown, problems: Problems): ResolvedAdmin {
-  if (raw === undefined) return { favicon: null }
+  const none: ResolvedAdmin = { favicon: null, path: '/admin' }
+  if (raw === undefined) return none
   if (!isRecord(raw)) {
     problems.add('admin', wrongType(raw, 'an object'), FAVICON_FIX)
-    return { favicon: null }
+    return none
   }
   const favicon = raw['favicon']
-  if (favicon === undefined) return { favicon: null }
-  if (typeof favicon !== 'string' || URL.parse(favicon)?.protocol !== 'https:') {
-    problems.add('admin.favicon', wrongType(favicon, 'an https:// URL'), FAVICON_FIX)
-    return { favicon: null }
+  const path = raw['path']
+  let admin = none
+  if (favicon !== undefined) {
+    if (typeof favicon === 'string' && URL.parse(favicon)?.protocol === 'https:') {
+      admin = { ...admin, favicon }
+    } else {
+      problems.add('admin.favicon', wrongType(favicon, 'an https:// URL'), FAVICON_FIX)
+    }
   }
-  return { favicon }
+  if (path !== undefined) {
+    const known = ADMIN_PATHS.find((candidate) => candidate === path)
+    if (known === undefined) {
+      problems.add('admin.path', wrongType(path, "'/admin' or '/'"), PATH_FIX)
+    } else {
+      admin = { ...admin, path: known }
+    }
+  }
+  return admin
 }
 
 /**
@@ -261,7 +278,7 @@ export function resolveConfig(config: unknown): ResolvedConfig {
   const problems = new Problems()
   let sites = new Map<string, ResolvedSite>()
   let auth: ResolvedAuth = { dynamicClientRegistration: false, passkeys: true, providers: [] }
-  let admin: ResolvedAdmin = { favicon: null }
+  let admin: ResolvedAdmin = { favicon: null, path: '/admin' }
   if (isRecord(config)) {
     sites = readSites(config['sites'], problems)
     auth = readAuth(config['auth'], problems)

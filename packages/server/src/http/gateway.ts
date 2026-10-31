@@ -74,6 +74,7 @@ export function createGateway(options: GatewayOptions): Gateway {
     sites: siteKeys,
     clock,
     dynamicClientRegistration: auth.dynamicClientRegistration,
+    adminPath: options.admin?.path ?? '/admin',
     log,
   })
 
@@ -326,7 +327,11 @@ export function createGateway(options: GatewayOptions): Gateway {
       return sites
     },
   })
-  installAdmin(app, { oauth, favicon: options.admin?.favicon ?? null })
+  installAdmin(app, {
+    oauth,
+    favicon: options.admin?.favicon ?? null,
+    path: options.admin?.path ?? '/admin',
+  })
 
   installAdminApi(app, {
     auth,

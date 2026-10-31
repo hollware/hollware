@@ -174,7 +174,14 @@ export interface AdminDefinition {
    * The Worker serves it from its own origin, so the pages' policy stays `img-src 'self'`.
    */
   readonly favicon?: string
+  /**
+   * Where the admin lives on the Worker's origin: `'/admin'` (the default), or `'/'` for an origin
+   * of its own, such as `https://admin.example.com/`. Its files stay under `/admin/assets/`.
+   */
+  readonly path?: AdminPath
 }
+
+export type AdminPath = '/admin' | '/'
 
 /**
  * A provider people sign in with. A client secret is the name of the Worker secret that holds
@@ -370,6 +377,7 @@ export interface ResolvedConfig {
 /** The admin once the config is resolved: `favicon` is `null` for Hollware's own. */
 export interface ResolvedAdmin {
   readonly favicon: string | null
+  readonly path: AdminPath
 }
 
 /** The OAuth server once the config is resolved. */

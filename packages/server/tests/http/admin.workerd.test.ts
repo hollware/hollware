@@ -55,6 +55,64 @@ describe('the admin', () => {
     expect(asked).toEqual(['/admin/', '/admin/'])
   })
 
+  it('lives at the root of its origin with path /, and sends /admin there', async () => {
+    const { fetcher, asked } = assets()
+    const worker = boot({ assets: fetcher, admin: { path: '/' } })
+
+    const pages = await Promise.all(
+      [
+        '/',
+        '/entries',
+        '/entries/blog/en/hello',
+        '/reviews',
+        '/images',
+        '/settings/site',
+        '/callback',
+      ].map((path) => worker.send(path)),
+    )
+    const moved = await Promise.all(
+      ['/admin', '/admin/', '/admin/settings/tokens?member=usr_1'].map((path) => worker.send(path)),
+    )
+    const file = await worker.send('/admin/favicon.svg')
+    const config = await (await worker.send('/admin/config.json')).json()
+
+    expect(pages.map((page) => page.status)).toEqual([200, 200, 200, 200, 200, 200, 200])
+    expect(pages[0]?.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+    expect(asked.filter((path) => path === '/admin/')).toHaveLength(7)
+    expect(moved.map((answer) => [answer.status, answer.headers.get('location')])).toEqual([
+      [301, '/'],
+      [301, '/'],
+      [301, '/settings/tokens?member=usr_1'],
+    ])
+    expect([file.status, await file.text()]).toEqual([200, '<svg/>'])
+    expect(config).toMatchObject({ redirectUri: `${PUBLIC_URL}/callback` })
+  })
+
+  it('registers another client when a deployment moves its admin to the root, whose callback is /callback', async () => {
+    const before = await (
+      await boot({ assets: assets().fetcher }).send('/admin/config.json')
+    ).json()
+    const after = await (
+      await boot({ assets: assets().fetcher, admin: { path: '/' } }).send('/admin/config.json')
+    ).json()
+
+    expect([before, after]).toMatchObject([
+      { redirectUri: `${PUBLIC_URL}/admin/callback` },
+      { redirectUri: `${PUBLIC_URL}/callback` },
+    ])
+    expect(Reflect.get(Object(after), 'clientId')).not.toBe(Reflect.get(Object(before), 'clientId'))
+  })
+
+  it('serves at the root every first segment of the routes of the admin app', async () => {
+    const source = await import('../../../admin/app/main.ts?raw').then((module) =>
+      String(module.default),
+    )
+    const first = new Set([...source.matchAll(/path: '(\/[a-z]+)/g)].map((match) => match[1]))
+    const { ROOT_PAGES } = await import('../../src/http/admin.ts')
+
+    expect([...first].filter((segment) => !ROOT_PAGES.includes(segment ?? ''))).toEqual([])
+  })
+
   it('says nothing of HTTPS when the public URL is http, as in local development', async () => {
     const { fetcher } = assets()
     const worker = boot({ assets: fetcher, publicUrl: 'http://localhost' })

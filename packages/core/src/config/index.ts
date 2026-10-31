@@ -1,6 +1,7 @@
 export { defineCollection, defineComponent, defineConfig, defineContract } from './define.ts'
 export type {
   AdminDefinition,
+  AdminPath,
   AgentDefinition,
   AgentEventKind,
   ResolvedAgent,

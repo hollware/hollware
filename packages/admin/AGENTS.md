@@ -18,3 +18,5 @@ The review and approval UI. Boundary rules for this package:
   the admin's policy lets it fetch nothing from another origin.
 - The type-check of the repository does not read single-file components, only the build does: logic
   goes in `app/lib/`, where the tests and the type-check reach it.
+- It lives on the Worker's own origin, at `/admin` or at `/` (`admin.path`), and never on a path of a
+  site's domain: it keeps its token in `sessionStorage`, which any script of that origin can read.
