@@ -4,6 +4,7 @@ import { mkdtempSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { trustSystemCertificates } from './certificates.ts'
 import type { DevExit, DevHost } from './dev-host.ts'
 import { CliError, UsageError } from './errors.ts'
 import { printable } from './format.ts'
@@ -247,5 +248,6 @@ function processDevHost(): DevHost {
 }
 
 if (isEntryPoint()) {
+  trustSystemCertificates()
   process.exitCode = await main(process.argv.slice(2), processIo())
 }

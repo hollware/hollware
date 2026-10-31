@@ -1,4 +1,6 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:https'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -89,6 +91,71 @@ describe('hollware import, run as a process', () => {
       expect(new Set(stub.authorizations)).toEqual(new Set([`Bearer ${token}`]))
     } finally {
       await stub.close()
+    }
+  })
+})
+
+describe('hollware behind a proxy that inspects TLS, run as a process', () => {
+  it('trusts the certificates of the system, not only those of Node', SLOW, async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'hollware-cli-tls-'))
+    const key = join(directory, 'key.pem')
+    const cert = join(directory, 'cert.pem')
+    spawnSync('openssl', [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      key,
+      '-out',
+      cert,
+      '-days',
+      '1',
+      '-subj',
+      '/CN=localhost',
+      '-addext',
+      'subjectAltName=DNS:localhost',
+    ])
+    const system = join(directory, 'system.mjs')
+    writeFileSync(
+      system,
+      [
+        "import tls from 'node:tls'",
+        'const original = tls.getCACertificates',
+        `tls.getCACertificates = (type) => (type === 'system' ? [${JSON.stringify(readFileSync(cert, 'utf8'))}] : original(type))`,
+      ].join('\n'),
+    )
+    writeFileSync(join(directory, 'token'), `hw_pat_${'a'.repeat(52)}\n`)
+    const server = createServer(
+      { key: readFileSync(key), cert: readFileSync(cert) },
+      (_request, response) => {
+        response.statusCode = 404
+        response.end()
+      },
+    )
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    const url = `https://localhost:${typeof address === 'object' && address !== null ? address.port : 0}`
+    try {
+      const { code, stderr } = await exec([
+        '--import',
+        pathToFileURL(system).href,
+        installed.bin,
+        'analytics',
+        'status',
+        '--url',
+        url,
+        '--token-file',
+        join(directory, 'token'),
+      ])
+      expect(stderr).toBe(
+        `hollware analytics: there is no MCP endpoint at ${url}/mcp (404). Check --url.\n`,
+      )
+      expect(code).toBe(1)
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+      rmSync(directory, { recursive: true, force: true })
     }
   })
 })
