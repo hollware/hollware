@@ -107,10 +107,13 @@ export default defineConfig({
       'check:local': {
         command: [
           'node scripts/commit-subjects.ts',
+          'EVENT_NAME=local bash .github/scripts/changeset-check.sh',
           'vp run check:push',
+          'node scripts/api-check.ts --against-promise',
           'vp run test:acceptance',
           'vp run e2e:admin',
           'vp run test:conformance',
+          'node scripts/pre-push.ts --record',
         ],
         cache: false,
       },

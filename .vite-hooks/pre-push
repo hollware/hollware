@@ -1,3 +1,1 @@
-while read -r _local_ref _local_sha remote_ref _remote_sha; do
-  [ "$remote_ref" = "refs/heads/release" ] || exec vp run check:local
-done
+exec node scripts/pre-push.ts

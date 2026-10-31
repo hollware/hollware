@@ -11,24 +11,24 @@ a claim, the claim belongs in a test.
 
 ## Commands
 
-| Command                       | What it does                                                                      |
-| ----------------------------- | --------------------------------------------------------------------------------- |
-| `pnpm install`                | Install dependencies (pnpm version comes from `packageManager`)                   |
-| `vp check`                    | Format, lint and type-check the whole repo                                        |
-| `vp test`                     | Run every test project; `vp test --project <name>` runs one                       |
-| `vp run -r build`             | Build every package                                                               |
-| `vp run bench`                | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95 |
-| `vp run check:budgets`        | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup |
-| `vp run check:push`           | The CI check job: check, test, bench, build, budgets, publint, types              |
-| `vp run check:local`          | Pre-push hook: check:push, acceptance, e2e:admin, conformance, commit subjects    |
-| `vp run test:conformance`     | MCP conformance: the suite against `wrangler dev`, for both revisions             |
-| `vp run test:acceptance`      | The acceptance suite of the stage, against the built playground and example site  |
-| `vp run e2e:admin`            | Admin in Chromium, virtual passkey and axe (`playwright install chromium` once)   |
-| `vp run e2e:install`          | `create-hollware` from this checkout, then MCP, publish and a read token          |
-| `vp run e2e:upgrade`          | A project of 0.3.0 (`-- --from <version>`) from npm, moved here and migrated      |
-| `vp run e2e:integrations`     | The Nuxt, Astro and React Router examples over the built playground, previews too |
-| `vp run eval:search`          | Search quality against a deployment with semantic search (`-- --hollware <url>`)  |
-| `node scripts/api.ts --write` | Writes the public API, `api/`; `api-check.ts --against <ref>`: breaks             |
+| Command                       | What it does                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pnpm install`                | Install dependencies (pnpm version comes from `packageManager`)                                  |
+| `vp check`                    | Format, lint and type-check the whole repo                                                       |
+| `vp test`                     | Run every test project; `vp test --project <name>` runs one                                      |
+| `vp run -r build`             | Build every package                                                                              |
+| `vp run bench`                | Benchmark the Markdown pipeline: fails when a write takes over 3 ms of CPU at p95                |
+| `vp run check:budgets`        | Fails when the built Worker is over a ceiling of `budgets.json`; logs its startup                |
+| `vp run check:push`           | The CI check job: check, test, bench, build, budgets, publint, types                             |
+| `vp run check:local`          | Pre-push hook: CI but e2e:install and e2e:upgrade, on a clean tree; a passed tree pushes at once |
+| `vp run test:conformance`     | MCP conformance: the suite against `wrangler dev`, for both revisions                            |
+| `vp run test:acceptance`      | The acceptance suite of the stage, against the built playground and example site                 |
+| `vp run e2e:admin`            | Admin in Chromium, virtual passkey and axe (`playwright install chromium` once)                  |
+| `vp run e2e:install`          | `create-hollware` from this checkout, then MCP, publish and a read token                         |
+| `vp run e2e:upgrade`          | A project of 0.3.0 (`-- --from <version>`) from npm, moved here and migrated                     |
+| `vp run e2e:integrations`     | The Nuxt, Astro and React Router examples over the built playground, previews too                |
+| `vp run eval:search`          | Search quality against a deployment with semantic search (`-- --hollware <url>`)                 |
+| `node scripts/api.ts --write` | Writes the public API, `api/`; `api-check.ts --against <ref>`: breaks                            |
 
 The mutation probe, `node scripts/break-line.ts --file <f> --find <s> --replace <s> -- <cmd>`,
 prints `CAUGHT`, `NOT CAUGHT` or `ERROR`.
