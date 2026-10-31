@@ -1115,6 +1115,32 @@ test('the owner lets a domain in with no invitation, in Sign-in, then turns it o
   await expect(allow).not.toBeChecked()
 })
 
+test('the owner makes a lasting token for an agent member, with a date it ends, from Agents', async () => {
+  await owner.goto('/admin/settings/site/agents')
+  await owner
+    .getByRole('textbox', { name: /^(Name of the member|Nombre del miembro)$/ })
+    .fill('executor')
+  await owner
+    .getByRole('button', { name: /^(Make an agent member|Crear un miembro agente)$/ })
+    .click()
+  await owner
+    .getByRole('link', { name: /^(Make a token for|Crear un token para) executor$/ })
+    .click()
+  await expect(owner).toHaveURL(/\/admin\/settings\/tokens\?member=usr_/)
+  await expect(owner.getByRole('checkbox', { name: 'content:publish' })).toHaveCount(0)
+  await expect(
+    owner.getByRole('checkbox', { name: /^(Read token|Token de lectura)$/ }),
+  ).toHaveCount(0)
+  await owner.getByRole('textbox', { name: /^(Label|Etiqueta)$/ }).fill('executor gateway')
+  await owner.getByLabel(/^(Expires on|Vence el)$/).fill('2099-06-30')
+  await owner.getByRole('button', { name: /^(Make a token|Crear un token)$/ }).click()
+  await expect(owner.getByText(/^hw_pat_/)).toBeVisible()
+  const row = owner.getByRole('row').filter({ hasText: 'executor gateway' })
+  await expect(row).toContainText(/executor\s*(agent|agente)/)
+  await expect(row).toContainText('content:read content:write')
+  await expectAccessible(owner)
+})
+
 test('the owner sees their passkey and the admin in Tu cuenta, then signs out', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByRole('heading', { name: 'Inicio', level: 1 })).toBeVisible()

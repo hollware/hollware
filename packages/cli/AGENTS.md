@@ -10,7 +10,8 @@ The `hollware` command. Boundary rules for this package:
   command takes from outside: the streams, the working directory, the clock, random bytes, stdin,
   wrangler and a temporary directory. The entry-point block at the bottom of `src/index.ts` builds
   the real one, and is the only code that touches `process`. Bound by `tests/boundary.test.ts`,
-  which scans `src` for `process`.
+  which scans `src` for `process`. It also trusts the certificates of the system besides Node's,
+  for proxies that inspect TLS (Cloudflare WARP or Gateway). Bound by `tests/bin.test.ts`.
 - Never read `process.env`: configuration arrives as arguments. A child process still inherits the
   environment, which is where wrangler finds its Cloudflare credentials.
 - A command is loaded when it runs (`run` in `src/index.ts`), so `--help` and `--version` do not
@@ -87,6 +88,9 @@ The `hollware` command. Boundary rules for this package:
   messages that say what to do.
 - `--from notion` builds the corpus from a public Notion tree (`src/import/from-notion.ts`, with
   `notion-client` loaded only then) and hands it to the same phases. Bound by `tests/from-notion.test.ts`.
+- `--from nuxt-content --public-dir` uploads the images the pages show by path
+  (`src/import/local-images.ts`), each file once, and a missing one or one over 10 MB stops the
+  import before it connects. Bound by `tests/import.test.ts`.
 
 ## Export
 

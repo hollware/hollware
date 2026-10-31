@@ -39,10 +39,10 @@
   "dependencies": {
     "@comark/vue": "catalog:",
     "@hollware/client": "workspace:*",
-    "@hollware/core": "workspace:*",
-    "@nuxt/kit": "catalog:"
+    "@hollware/core": "workspace:*"
   },
   "devDependencies": {
+    "@nuxt/kit": "catalog:",
     "@types/node": "catalog:",
     "h3": "catalog:",
     "nitropack": "catalog:",
@@ -53,6 +53,7 @@
     "vue": "catalog:"
   },
   "peerDependencies": {
+    "@nuxt/kit": "^4.6.0",
     "h3": "^1.15.0",
     "nitropack": "^2.13.0",
     "nuxt": "^4.6.0",

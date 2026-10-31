@@ -154,17 +154,17 @@ describe('hollware agent list', () => {
 })
 
 describe('hollware agent remove', () => {
-  it('revokes the live grants and deletes the membership of an agent only', async () => {
-    const { wrangler, run: agent } = project(d1([{ id: 'blog' }]), d1([], [{ id: AGENT_ID }]))
+  it('revokes the live grants and tokens and deletes the membership of an agent only', async () => {
+    const { wrangler, run: agent } = project(d1([{ id: 'blog' }]), d1([], [], [{ id: AGENT_ID }]))
 
     const { code, out, err } = await agent(['agent', 'remove', AGENT_ID])
 
     expect([code, err]).toEqual([0, []])
     expect(wrangler.calls[1]?.args[6]).toBe(
-      `UPDATE agent_grants SET revoked_at = '${NOW}', updated_at = '${NOW}' WHERE site_id = 'blog' AND user_id = '${AGENT_ID}' AND revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE kind = 'agent'); DELETE FROM members WHERE site_id = 'blog' AND user_id = '${AGENT_ID}' AND user_id IN (SELECT id FROM users WHERE kind = 'agent') RETURNING user_id AS id;`,
+      `UPDATE agent_grants SET revoked_at = '${NOW}', updated_at = '${NOW}' WHERE site_id = 'blog' AND user_id = '${AGENT_ID}' AND revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE kind = 'agent'); UPDATE tokens SET revoked_at = '${NOW}', updated_at = '${NOW}' WHERE site_id = 'blog' AND user_id = '${AGENT_ID}' AND revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE kind = 'agent'); DELETE FROM members WHERE site_id = 'blog' AND user_id = '${AGENT_ID}' AND user_id IN (SELECT id FROM users WHERE kind = 'agent') RETURNING user_id AS id;`,
     )
     expect(out).toEqual([
-      `Removed the agent ${AGENT_ID} from the site "blog" and revoked its grants. Take it out of the "agents" of the site definition too.`,
+      `Removed the agent ${AGENT_ID} from the site "blog" and revoked its grants and tokens. Take it out of the "agents" of the site definition too.`,
     ])
   })
 

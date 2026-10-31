@@ -9,14 +9,32 @@ export type { PageEntry } from './types.ts'
 
 type Answer<Method extends keyof HollwareReader> = Awaited<ReturnType<HollwareReader[Method]>>
 
+export interface HollwareFetching {
+  readonly lazy?: boolean
+  readonly server?: boolean
+}
+
 function pageRequest() {
-  return import.meta.server ? useRequestEvent() : undefined
+  return useRequestEvent()
+}
+
+export const hollwareTags = {
+  entry: entryTags,
+  list: listTags,
+  group: groupTags,
+  navigation: navigationTags,
+  site: siteTags,
+}
+
+export function useHollwareTags(tags: readonly string[]): void {
+  recordTags(pageRequest(), tags)
 }
 
 export function useHollwareEntry(
   collection: MaybeRefOrGetter<string>,
   locale: MaybeRefOrGetter<string>,
   slug: MaybeRefOrGetter<string>,
+  fetching: HollwareFetching = {},
 ) {
   const path = computed(
     () =>
@@ -24,6 +42,7 @@ export function useHollwareEntry(
   )
   const event = pageRequest()
   return useFetch<{ outcome: 'ok'; entry: PageEntry }>(path, {
+    ...fetching,
     transform: (answer) => {
       recordTags(event, entryTags(answer.entry))
       return answer
@@ -45,7 +64,7 @@ export function useHollwareEntries(
     limit?: number
     cursor?: string
   }> = {},
-  fetching: { lazy?: boolean } = {},
+  fetching: HollwareFetching = {},
 ) {
   const path = computed(() => `/_hollware/entries/${encodeURIComponent(toValue(collection))}`)
   const event = pageRequest()
@@ -62,6 +81,7 @@ export function useHollwareEntries(
 export function useHollwareTranslations(
   collection: MaybeRefOrGetter<string>,
   group: MaybeRefOrGetter<string>,
+  fetching: HollwareFetching = {},
 ) {
   const path = computed(
     () =>
@@ -69,6 +89,7 @@ export function useHollwareTranslations(
   )
   const event = pageRequest()
   return useFetch<{ outcome: 'ok'; entries: PageEntry[] }>(path, {
+    ...fetching,
     transform: (answer) => {
       recordTags(event, groupTags(toValue(collection), toValue(group), answer.entries))
       return answer
@@ -79,7 +100,7 @@ export function useHollwareTranslations(
 export function useHollwareNavigation(
   collection: MaybeRefOrGetter<string>,
   options: MaybeRefOrGetter<{ locale?: string }> = {},
-  fetching: { lazy?: boolean } = {},
+  fetching: HollwareFetching = {},
 ) {
   const path = computed(() => `/_hollware/navigation/${encodeURIComponent(toValue(collection))}`)
   const event = pageRequest()
@@ -93,9 +114,10 @@ export function useHollwareNavigation(
   })
 }
 
-export function useHollwareSite() {
+export function useHollwareSite(fetching: HollwareFetching = {}) {
   const event = pageRequest()
   return useFetch<Answer<'describeSite'>>('/_hollware/site', {
+    ...fetching,
     transform: (answer) => {
       recordTags(event, siteTags())
       return answer

@@ -188,16 +188,17 @@ describe('AC-0.1-16: init and tokens', () => {
 
     const listed = await project.hollware('token', 'list', '--local', '--site', SITE_KEY)
     expect(cells(listed.output)).toEqual([
-      ['ID', 'LABEL', 'STATUS', 'EXPIRES', 'LAST USED', 'SCOPES'],
+      ['ID', 'LABEL', 'WHOSE', 'STATUS', 'EXPIRES', 'LAST USED', 'SCOPES'],
       [
         '<tok>',
         'hollware init',
+        'owner',
         'active',
         '<time>',
         'never',
         'content:read content:write content:publish schema:admin review:read review:comment',
       ],
-      ['<tok>', 'acceptance reader', 'active', '<time>', usedOrNot, 'content:read'],
+      ['<tok>', 'acceptance reader', 'owner', 'active', '<time>', usedOrNot, 'content:read'],
     ])
 
     const revoked = await project.hollware('token', 'revoke', '--local', String(id))
@@ -216,7 +217,11 @@ describe('AC-0.1-16: init and tokens', () => {
       `Bearer realm="hollware", resource_metadata="${url}/.well-known/oauth-protected-resource/mcp", error="invalid_token", scope="content:read"`,
     ])
     const relisted = await project.hollware('token', 'list', '--local', '--site', SITE_KEY)
-    expect(cells(relisted.output)[2]?.slice(1, 3)).toEqual(['acceptance reader', 'revoked'])
+    expect(cells(relisted.output)[2]?.slice(1, 4)).toEqual([
+      'acceptance reader',
+      'owner',
+      'revoked',
+    ])
   })
 
   describe('AC-0.1-9: import', () => {

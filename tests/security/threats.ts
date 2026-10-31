@@ -1687,4 +1687,48 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-132',
+    area: 'Agents',
+    threat:
+      "An owner, or someone with an owner's session, gives an agent member a personal token with more than an author's scopes, or one of a person passed off as an agent",
+    mitigation:
+      "Only an owner makes a token for a member, over the CLI and `/v1/admin` and never over MCP; `member` must be an agent member of the site; content:publish and schema:admin are refused with their fix, and the token's scopes are cut to an author's (`AGENT_SCOPE_CEILING`)",
+    guards: [
+      {
+        file: 'packages/server/tests/http/agents-admin.workerd.test.ts',
+        test: "gives an agent member a token of an author's scopes at most, of the expiry asked, that writes as the agent and asks for review instead of publishing",
+      },
+      {
+        file: 'packages/cli/tests/token.test.ts',
+        test: "makes the token of an agent member with --member, which it checks, of an author's scopes at most",
+      },
+      {
+        file: 'packages/cli/tests/token.test.ts',
+        test: 'refuses --member for a user that is no agent member of the site, and writes nothing',
+      },
+    ],
+  },
+  {
+    id: 'T-133',
+    area: 'Agents',
+    threat:
+      "An agent's lasting personal token publishes, approves, unpublishes or changes the site, or outlives the agent",
+    mitigation:
+      "The token's scopes are intersected with the member's role at every request, and an agent member stays an author, so its publish asks for a review; removing the agent revokes its tokens with its grants, in the admin and the CLI",
+    guards: [
+      {
+        file: 'packages/server/tests/agents/scopes.workerd.test.ts',
+        test: "never lets an agent's personal token approve, unpublish or change the site, whatever scopes its row holds",
+      },
+      {
+        file: 'packages/server/tests/http/agents-admin.workerd.test.ts',
+        test: 'makes an agent member, lists it apart from people, refuses its name twice and removes it with its grants and tokens',
+      },
+      {
+        file: 'packages/cli/tests/agent.test.ts',
+        test: 'revokes the live grants and tokens and deletes the membership of an agent only',
+      },
+    ],
+  },
 ]

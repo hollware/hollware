@@ -1,4 +1,9 @@
-import { hashPersonalToken, PERSONAL_TOKEN_TTL_DAYS, type Scope } from '@hollware/core'
+import {
+  AGENT_SCOPE_CEILING,
+  hashPersonalToken,
+  PERSONAL_TOKEN_TTL_DAYS,
+  type Scope,
+} from '@hollware/core'
 import { parseFlags } from '../args.ts'
 import { chooseTarget, query, resolveDatabase, type Row } from '../d1.ts'
 import { inDays, newId, newPersonalToken, newReadToken } from '../entropy.ts'
@@ -7,13 +12,16 @@ import { printable, table } from '../format.ts'
 import type { Io } from '../io.ts'
 import { publicUrlOf } from '../public-url.ts'
 import {
+  agentMemberQuery,
   insertToken,
   listTokens,
+  parseExpiresAt,
   parseExpiresInDays,
   parseLabel,
   parseScopes,
   parseSiteKey,
   parseTokenId,
+  parseUserId,
   revokeToken,
   sitesAndOwnerQuery,
   sitesQuery,
@@ -40,35 +48,39 @@ export const TOKEN_USAGE = [
 ].join('\n')
 
 export const TOKEN_CREATE_USAGE = [
-  'Usage: hollware token create --label <text> [--scopes <list> | --read]',
-  '                             [--expires-in-days <n> | --no-expiry]',
+  'Usage: hollware token create --label <text> [--scopes <list> | --read] [--member <usr_…>]',
+  '                             [--expires-in-days <n> | --expires-at <date> | --no-expiry]',
   '                             [--token-file <path> [--force]] [--json]',
   '                             [--site <key>] [--local | --remote] [--database <name>]',
   '',
   "Creates a personal token for the site's owner and prints it once; Hollware keeps only its hash.",
   'With --read, a read token (hw_read_): it reads the published content of the site over the read',
   'API (GET /v1/...) and nothing else, so a site may use it at build time or in the browser.',
+  "With --member, the token is an agent member's: what it writes is the agent's, and it holds an",
+  "author's scopes at most, so it asks for review instead of publishing.",
   '',
   'Options:',
   '  --label <text>          What the token is for, 1 to 64 characters (required)',
   '  --read                  A read token: content:read, published content, the read API only',
+  '  --member <usr_…>        A token of this agent member of the site ("hollware agent list" shows them)',
   '  --scopes <list>         Comma-separated: content:read, content:write, content:publish, schema:admin',
   '                          (default: content:read,content:write)',
   `  --expires-in-days <n>   Days until it expires, 1 to 365 (default: ${PERSONAL_TOKEN_TTL_DAYS}; a read token never expires)`,
+  '  --expires-at <date>     When it expires: a date or time of the future, such as 2027-06-30',
   '  --no-expiry             A token that never expires, until "hollware token revoke"',
   '  --token-file <path>     Write the token to this file (mode 0600) and print its path instead of the',
   '                          token; it refuses a file that exists, unless --force',
   '  --force                 Replace the file of --token-file',
-  '  --json                  One JSON object on stdout and nothing else: site, tokenId, kind, label,',
-  '                          scopes, token or tokenFile, expiresAt (null: never), mcpUrl, readApiUrl',
-  '                          (a URL that is not known is null)',
+  '  --json                  One JSON object on stdout and nothing else: site, tokenId, kind, member',
+  '                          (null: the owner), label, scopes, token or tokenFile, expiresAt (null:',
+  '                          never), mcpUrl, readApiUrl (a URL that is not known is null)',
   ...WHERE_FLAGS,
 ].join('\n')
 
 export const TOKEN_LIST_USAGE = [
   'Usage: hollware token list [--site <key>] [--local | --remote] [--database <name>]',
   '',
-  'Lists the tokens of a site: id, label, status, expiry, last use and scopes. Never the hashes.',
+  'Lists the tokens of a site: id, label, whose, status, expiry, last use and scopes. Never the hashes.',
   '',
   'Options:',
   ...WHERE_FLAGS,
@@ -122,7 +134,9 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       label: { type: 'string' },
       scopes: { type: 'string' },
       read: { type: 'boolean' },
+      member: { type: 'string' },
       'expires-in-days': { type: 'string' },
+      'expires-at': { type: 'string' },
       'no-expiry': { type: 'boolean' },
       'token-file': { type: 'string' },
       force: { type: 'boolean' },
@@ -149,15 +163,33 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
     : values.scopes === undefined
       ? DEFAULT_SCOPES
       : parseScopes(values.scopes)
-  if (values['no-expiry'] === true && values['expires-in-days'] !== undefined) {
-    throw new UsageError('--expires-in-days and --no-expiry cannot be used together.')
+  const member = values.member === undefined ? undefined : parseUserId(values.member)
+  if (member !== undefined) {
+    if (read) {
+      throw new UsageError(
+        '--member and --read cannot be used together: an agent gets a personal token.',
+      )
+    }
+    const beyond = scopes.filter((scope) => !AGENT_SCOPE_CEILING.includes(scope))
+    if (beyond.length > 0) {
+      throw new UsageError(
+        `an agent's token never holds ${beyond.join(', ')}: choose among ${AGENT_SCOPE_CEILING.join(', ')}. An agent writes drafts and asks for review, and a person publishes.`,
+      )
+    }
   }
-  const days =
-    values['expires-in-days'] !== undefined
-      ? parseExpiresInDays(values['expires-in-days'])
-      : values['no-expiry'] === true || read
-        ? null
-        : PERSONAL_TOKEN_TTL_DAYS
+  const expiries = [values['expires-in-days'], values['expires-at'], values['no-expiry']]
+  if (expiries.filter((value) => value !== undefined).length > 1) {
+    throw new UsageError('use one of --expires-in-days, --expires-at and --no-expiry.')
+  }
+  const now = io.now()
+  const expiresAt =
+    values['expires-at'] !== undefined
+      ? parseExpiresAt(values['expires-at'], now)
+      : values['expires-in-days'] !== undefined
+        ? inDays(now, parseExpiresInDays(values['expires-in-days']))
+        : values['no-expiry'] === true || read
+          ? null
+          : inDays(now, PERSONAL_TOKEN_TTL_DAYS)
   const tokenFile = tokenFileOf(io, values['token-file'], values.force)
   const target = chooseTarget(values)
   const database = resolveDatabase(io.cwd, values.database)
@@ -173,11 +205,17 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   if (ownerId === undefined) {
     throw new CliError('the database has no owner yet. Run "hollware init --site <key>" first.')
   }
+  if (member !== undefined) {
+    const [agents = []] = await query(io.wrangler, database, target, agentMemberQuery(site, member))
+    if (agents.length === 0) {
+      throw new CliError(
+        `${member} is no agent member of the site "${site}". "hollware agent list" shows the ones that are.`,
+      )
+    }
+  }
 
-  const now = io.now()
   const id = newId(io, 'token')
   const secret = read ? newReadToken(io) : newPersonalToken(io)
-  const expiresAt = days === null ? null : inDays(now, days)
   await query(
     io.wrangler,
     database,
@@ -186,7 +224,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
       ...(read ? { kind: 'read' as const } : {}),
       id,
       site,
-      userId: ownerId,
+      userId: member ?? ownerId,
       label,
       hash: await hashPersonalToken(secret),
       scopes,
@@ -202,6 +240,7 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
         site,
         tokenId: id,
         kind: read ? 'read' : 'personal',
+        member: member ?? null,
         label,
         scopes,
         ...delivered,
@@ -214,13 +253,13 @@ async function createToken(argv: readonly string[], io: Io): Promise<number> {
   }
   io.out(
     [
-      `Created ${read ? 'read token' : 'token'} ${id} for the site "${site}".`,
+      `Created ${read ? 'read token' : 'token'} ${id} for ${member === undefined ? '' : `the agent ${member} of `}the site "${site}".`,
       '',
       `Label    ${label}`,
       `Scopes   ${scopes.join(' ')}`,
-      days === null || expiresAt === null
+      expiresAt === null
         ? 'Expires  never (revoke it with hollware token revoke)'
-        : `Expires  ${expiresAt} (in ${days} ${days === 1 ? 'day' : 'days'})`,
+        : `Expires  ${expiresAt}${inWords(now, expiresAt)}`,
       '',
       ...('tokenFile' in delivered
         ? [
@@ -256,10 +295,11 @@ async function listTokenRows(argv: readonly string[], io: Io): Promise<number> {
   const now = io.now()
   io.out(
     table(
-      ['ID', 'LABEL', 'STATUS', 'EXPIRES', 'LAST USED', 'SCOPES'],
+      ['ID', 'LABEL', 'WHOSE', 'STATUS', 'EXPIRES', 'LAST USED', 'SCOPES'],
       rows.map((row) => [
         text(row.id),
         text(row.label),
+        row.user_kind === 'agent' ? `agent ${text(row.user_name)}` : text(row.user_name, 'owner'),
         statusOf(row, now),
         text(row.expires_at, 'never'),
         text(row.last_used_at, 'never'),
@@ -359,4 +399,9 @@ function scopesOf(value: unknown): string {
     }
   } catch {}
   return printable(value)
+}
+
+function inWords(now: Date, expiresAt: string): string {
+  const days = Math.round((Date.parse(expiresAt) - now.getTime()) / 86_400_000)
+  return days < 1 ? '' : ` (in ${days} ${days === 1 ? 'day' : 'days'})`
 }
