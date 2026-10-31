@@ -329,6 +329,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
   await expect(
     owner.getByRole('button', { name: /Hola mundo, otra vez.*asked by Ana/ }),
   ).toBeVisible()
+  await expect(owner.getByRole('link', { name: /^Reviews\s*1$/ })).toBeVisible()
   await expect(owner.getByText('Choose a review to read its changes.')).toBeVisible()
   await owner.keyboard.press('?')
   const help = owner.getByRole('dialog', { name: 'Keyboard shortcuts' })
@@ -361,6 +362,7 @@ test('AC-0.3-2: an author publishes through review, and the owner approves it', 
 
   await expect(owner.getByText('Approved and published').first()).toBeVisible()
   await expect(owner.getByText('Nothing waits for review.')).toBeVisible()
+  await expect(owner.getByRole('link', { name: 'Reviews', exact: true })).toBeVisible()
 
   await author.reload()
   await writeMarkdown(author, post('Hola mundo, rechazado', 'hello-world'))

@@ -1,12 +1,14 @@
 import { expect, it } from 'vite-plus/test'
 
-import { ApiError, createApi } from '../app/lib/api.ts'
+import { OPERATIONS } from '@hollware/core'
+import { ApiError, createApi, READS } from '../app/lib/api.ts'
 import type { Auth } from '../app/lib/auth.ts'
 
 function world(answer: () => Response) {
   const sent: { url: string; method: string; authorization: string | null; body: string }[] = []
   const signIns: string[] = []
   let forgotten = false
+  let writes = 0
   const auth: Auth = {
     signIn: async (returnTo) => void signIns.push(returnTo),
     switchSite: async (_site, returnTo) => void signIns.push(returnTo),
@@ -31,8 +33,11 @@ function world(answer: () => Response) {
     },
     auth,
     here: () => '/admin/reviews',
+    written: () => {
+      writes++
+    },
   })
-  return { api, sent, signIns, forgotten: () => forgotten }
+  return { api, sent, signIns, forgotten: () => forgotten, writes: () => writes }
 }
 
 it('calls an operation and an admin route with the token', async () => {
@@ -99,4 +104,28 @@ it('answers an error in words as an ApiError, with its code and its fix', async 
     new ApiError('forbidden', 'Only the admin may do this.', 'Sign in.'),
   )
   await expect(w.api.admin('tokens')).rejects.toMatchObject({ code: 'forbidden', fix: 'Sign in.' })
+})
+
+it('tells of every write once it is done, and of no read, so what the admin shows is read again', async () => {
+  const w = world(() => Response.json({ outcome: 'ok' }))
+  await w.api.call('list_reviews', { status: 'pending' })
+  await w.api.admin('tokens')
+  await w.api.file('assets/ast_1')
+  expect(w.writes()).toBe(0)
+  await w.api.call('approve_review', { id: 'rvw_01J0000000000000000000000A' })
+  await w.api.admin('tokens/tok_1/revoke', {})
+  await w.api.adminDelete('webhooks/whk_1')
+  expect(w.writes()).toBe(3)
+
+  const failing = world(() => Response.json({ code: 'conflict' }, { status: 409 }))
+  await expect(failing.api.call('publish', { id: 'ent_1', version: 1 })).rejects.toThrow()
+  expect(failing.writes()).toBe(0)
+})
+
+it('reads only the operations that core says read', () => {
+  expect(
+    OPERATIONS.filter((operation) => operation.effect === 'read')
+      .map((operation) => operation.name)
+      .sort(),
+  ).toEqual([...READS].sort())
 })

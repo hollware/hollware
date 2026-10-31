@@ -15,13 +15,22 @@ const imageWidths = ref('')
 const keepOriginals = ref(true)
 const imageWidthsError = ref<string | null>(null)
 
-const { structure, change, load, save } = useSiteSettings((read) => {
-  imageFormat.value = read.definition.media.format
-  imageQuality.value = read.definition.media.quality
-  imageMaxWidth.value = read.definition.media.maxWidth
-  imageWidths.value = read.definition.media.widths.join(', ')
-  keepOriginals.value = read.definition.media.keepOriginals
-  imageWidthsError.value = null
+const { structure, change, load, save } = useSiteSettings({
+  fill: (read) => {
+    imageFormat.value = read.definition.media.format
+    imageQuality.value = read.definition.media.quality
+    imageMaxWidth.value = read.definition.media.maxWidth
+    imageWidths.value = read.definition.media.widths.join(', ')
+    keepOriginals.value = read.definition.media.keepOriginals
+    imageWidthsError.value = null
+  },
+  values: () => [
+    imageFormat.value,
+    imageQuality.value,
+    imageMaxWidth.value,
+    imageWidths.value,
+    keepOriginals.value,
+  ],
 })
 
 async function saveImages() {

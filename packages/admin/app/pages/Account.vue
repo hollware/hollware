@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref, watch } from 'vue'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
@@ -9,6 +10,7 @@ import { ApiError } from '../lib/api.ts'
 import { sortable } from '../lib/columns.ts'
 import { me } from '../lib/me.ts'
 import { canRemoveLast, enrollPasskey } from '../lib/passkeys.ts'
+import { admin } from '../lib/queries.ts'
 import { api, auth } from '../lib/session.ts'
 
 type Passkey = { id: string; label: string; createdAt: string; lastUsedAt: string | null }
@@ -37,8 +39,11 @@ interface Account {
 
 const m = useMessages()
 const toast = useToast()
-const data = ref<Account | null>(null)
-const failure = ref<string | null>(null)
+const accountQuery = useQuery(admin<Account>('account'))
+const data = computed(() => accountQuery.data.value ?? null)
+const failure = computed(() =>
+  accountQuery.error.value === null ? null : describe(accountQuery.error.value),
+)
 
 const passkeyColumns = computed<TableColumn<Passkey>[]>(() => [
   { accessorKey: 'label', header: sortable(m.value.account.columns.label) },
@@ -99,23 +104,11 @@ async function addPasskey() {
   } finally {
     adding.value = false
   }
-  await load()
 }
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
-
-async function load() {
-  try {
-    data.value = await api.admin<Account>('account')
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
-
-onMounted(load)
 
 const name = ref('')
 const savingName = ref(false)
@@ -133,9 +126,6 @@ async function saveName() {
   try {
     const answer = await api.admin<{ name: string }>('account/name', { name: name.value })
     name.value = answer.name
-    if (me.value?.user !== undefined) {
-      me.value = { ...me.value, user: { ...me.value.user, name: answer.name } }
-    }
     toast.add({ title: m.value.account.nameSaved, color: 'success' })
   } catch (error) {
     toast.add({ title: m.value.account.notSaved, description: describe(error), color: 'error' })
@@ -165,7 +155,6 @@ async function renamePasskey() {
   } catch (error) {
     toast.add({ title: m.value.account.notSaved, description: describe(error), color: 'error' })
   }
-  await load()
 }
 
 const removing = ref<Passkey | null>(null)
@@ -186,7 +175,6 @@ async function removePasskey() {
   } catch (error) {
     toast.add({ title: m.value.account.notRemoved, description: describe(error), color: 'error' })
   }
-  await load()
 }
 
 const revoking = ref<App | null>(null)
@@ -207,7 +195,6 @@ async function revokeApp() {
   } catch (error) {
     toast.add({ title: m.value.account.notRevoked, description: describe(error), color: 'error' })
   }
-  await load()
 }
 
 const endOpen = ref(false)

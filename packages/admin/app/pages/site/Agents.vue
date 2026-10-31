@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
 import { ApiError } from '../../lib/api.ts'
 import { formatDateTime, useMessages } from '../../i18n/index.ts'
@@ -23,15 +25,18 @@ import {
   type AgentMember,
   type AgentSubscription,
 } from '../../lib/agents.ts'
+import { admin } from '../../lib/queries.ts'
 import { api } from '../../lib/session.ts'
 import { useSiteSettings } from '../../lib/site-settings.ts'
 
 const toast = useToast()
 const m = useMessages()
 
-const members = ref<AgentMember[]>([])
-const deliveries = ref<AgentDeliveryRow[]>([])
-const failure = ref<string | null>(null)
+const membersQuery = useQuery(admin<{ agents: AgentMember[] }>('agents'))
+const members = computed(() => membersQuery.data.value?.agents ?? [])
+const deliveriesQuery = useQuery(admin<{ deliveries: AgentDeliveryRow[] }>('agents/deliveries'))
+const deliveries = computed(() => deliveriesQuery.data.value?.deliveries ?? [])
+const clipboard = useClipboard({ legacy: true })
 const memberName = ref('')
 const making = ref(false)
 const removing = ref<AgentMember | null>(null)
@@ -42,34 +47,21 @@ const editing = ref<string | null>(null)
 const tried = ref(false)
 const requireAgents = ref(false)
 
-const { structure, change, load, save } = useSiteSettings((read) => {
-  requireAgents.value = read.definition.review.requireAgents
+const { structure, change, load, save } = useSiteSettings({
+  fill: (read) => {
+    requireAgents.value = read.definition.review.requireAgents
+  },
+  values: () => null,
 })
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
-async function loadMembers() {
-  try {
-    members.value = (await api.admin<{ agents: AgentMember[] }>('agents')).agents
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
-
-async function loadDeliveries() {
-  try {
-    deliveries.value = (
-      await api.admin<{ deliveries: AgentDeliveryRow[] }>('agents/deliveries')
-    ).deliveries
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
-
-onMounted(() => Promise.all([loadMembers(), loadDeliveries()]))
+const failure = computed(() => {
+  const error = membersQuery.error.value ?? deliveriesQuery.error.value
+  return error === null ? null : describe(error)
+})
 
 const subscriptions = computed<readonly AgentSubscription[]>(
   () => structure.value?.definition.agents ?? [],
@@ -112,7 +104,6 @@ async function makeMember() {
     })
     memberName.value = ''
     toast.add({ title: m.value.agents.memberMade(made.name), color: 'success' })
-    await loadMembers()
   } catch (error) {
     toast.add({ title: m.value.agents.notMade, description: describe(error), color: 'error' })
   } finally {
@@ -130,7 +121,6 @@ async function removeMember() {
   } catch (error) {
     toast.add({ title: m.value.agents.notRemoved, description: describe(error), color: 'error' })
   }
-  await loadMembers()
 }
 
 function startNew() {
@@ -203,7 +193,7 @@ async function makeSecret(webhook: string) {
 }
 
 async function copySecret() {
-  if (madeSecret.value !== null) await navigator.clipboard.writeText(madeSecret.value.secret)
+  if (madeSecret.value !== null) await clipboard.copy(madeSecret.value.secret)
 }
 
 async function sendAgain(event: string) {
@@ -211,7 +201,6 @@ async function sendAgain(event: string) {
   try {
     await api.admin(`events/${event}/retry`, {})
     toast.add({ title: m.value.site.sentAgain, color: 'success' })
-    await loadDeliveries()
   } catch (error) {
     toast.add({ title: m.value.site.notSentAgain, description: describe(error), color: 'error' })
   } finally {

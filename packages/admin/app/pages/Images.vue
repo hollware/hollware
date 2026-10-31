@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
-import { onMounted, ref } from 'vue'
+import { useInfiniteQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref, useTemplateRef } from 'vue'
 import Page from '../components/Page.vue'
 import { formatDate, useMessages } from '../i18n/index.ts'
 import { ApiError, type Output } from '../lib/api.ts'
@@ -11,13 +13,11 @@ type Asset = NonNullable<Output<'get_asset'>['asset']>
 
 const m = useMessages()
 const toast = useToast()
-const assets = ref<Asset[]>([])
-const next = ref<string | null>(null)
-const failure = ref<string | null>(null)
 const file = ref<File | null>(null)
 const alt = ref('')
 const busy = ref(false)
-const input = ref<HTMLInputElement | null>(null)
+const input = useTemplateRef('input')
+const clipboard = useClipboard({ legacy: true })
 const editing = ref<Asset | null>(null)
 const editedAlt = ref('')
 
@@ -25,19 +25,20 @@ function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
-async function load(cursor?: string) {
-  try {
-    const answer = await api.call('list_assets', {
-      limit: 24,
-      ...(cursor === undefined ? {} : { cursor }),
-    })
-    assets.value = cursor === undefined ? answer.assets : [...assets.value, ...answer.assets]
-    next.value = answer.nextCursor
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
+const assetsQuery = useInfiniteQuery({
+  key: ['pages', 'list_assets', { limit: 24 }],
+  query: ({ pageParam }) =>
+    api.call('list_assets', { limit: 24, ...(pageParam === null ? {} : { cursor: pageParam }) }),
+  initialPageParam: null as string | null,
+  getNextPageParam: (last) => last.nextCursor,
+})
+const { hasNextPage, loadNextPage } = assetsQuery
+const assets = computed<Asset[]>(
+  () => assetsQuery.data.value?.pages.flatMap((page) => page.assets) ?? [],
+)
+const failure = computed(() =>
+  assetsQuery.error.value === null ? null : describe(assetsQuery.error.value),
+)
 
 function choose(event: Event) {
   const target = event.target
@@ -68,7 +69,6 @@ async function upload() {
     file.value = null
     alt.value = ''
     if (input.value !== null) input.value.value = ''
-    await load()
   } catch (error) {
     toast.add({ title: m.value.images.refused, description: describe(error), color: 'error' })
   } finally {
@@ -77,7 +77,7 @@ async function upload() {
 }
 
 async function copy(asset: Asset) {
-  await navigator.clipboard.writeText(`![${asset.alt}](${asset.reference})`)
+  await clipboard.copy(`![${asset.alt}](${asset.reference})`)
   toast.add({ title: m.value.images.copied, color: 'success' })
 }
 
@@ -91,11 +91,7 @@ async function saveAlt() {
   if (asset === null || editedAlt.value.trim() === '') return
   busy.value = true
   try {
-    const answer = await api.call('update_asset', { id: asset.id, alt: editedAlt.value.trim() })
-    if (answer.asset !== undefined) {
-      const saved = answer.asset
-      assets.value = assets.value.map((one) => (one.id === saved.id ? saved : one))
-    }
+    await api.call('update_asset', { id: asset.id, alt: editedAlt.value.trim() })
     toast.add({ title: m.value.images.altSaved, color: 'success' })
     editing.value = null
   } catch (error) {
@@ -104,8 +100,6 @@ async function saveAlt() {
     busy.value = false
   }
 }
-
-onMounted(() => load())
 </script>
 
 <template>
@@ -175,7 +169,9 @@ onMounted(() => load())
       </li>
     </ul>
 
-    <UButton v-if="next !== null" variant="ghost" @click="load(next)">{{ m.images.more }}</UButton>
+    <UButton v-if="hasNextPage" variant="ghost" @click="loadNextPage()">{{
+      m.images.more
+    }}</UButton>
     <UModal
       :open="editing !== null"
       :title="m.images.editAlt"

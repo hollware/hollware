@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
 import { ApiError } from '../../lib/api.ts'
 import { formatDateTime, useMessages } from '../../i18n/index.ts'
+import { admin } from '../../lib/queries.ts'
 import { api } from '../../lib/session.ts'
 import { useSiteSettings, type Definition } from '../../lib/site-settings.ts'
 
@@ -31,14 +34,10 @@ interface Delivery {
   readonly abandonedAt: string | null
 }
 
-const failed = ref<Delivery[]>([])
+const deliveriesQuery = useQuery(admin<{ deliveries: Delivery[] }>('deliveries'))
+const failed = computed(() => deliveriesQuery.data.value?.deliveries ?? [])
 const sending = ref<string | null>(null)
-
-async function loadDeliveries() {
-  failed.value = (await api.admin<{ deliveries: Delivery[] }>('deliveries')).deliveries
-}
-
-onMounted(loadDeliveries)
+const clipboard = useClipboard({ legacy: true })
 
 const webhooks = computed(() => structure.value?.definition.events.webhooks ?? [])
 const validHook = computed(
@@ -90,7 +89,6 @@ async function sendAgain(event: string) {
   try {
     await api.admin(`events/${event}/retry`, {})
     toast.add({ title: m.value.site.sentAgain, color: 'success' })
-    await loadDeliveries()
   } catch (error) {
     toast.add({ title: m.value.site.notSentAgain, description: describe(error), color: 'error' })
   } finally {
@@ -99,7 +97,7 @@ async function sendAgain(event: string) {
 }
 
 async function copySecret() {
-  if (madeSecret.value !== null) await navigator.clipboard.writeText(madeSecret.value.secret)
+  if (madeSecret.value !== null) await clipboard.copy(madeSecret.value.secret)
 }
 </script>
 

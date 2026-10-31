@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import { ApiError } from '../../lib/api.ts'
 import { useMessages } from '../../i18n/index.ts'
+import { admin } from '../../lib/queries.ts'
 import { api, auth } from '../../lib/session.ts'
 
 interface Me {
@@ -13,14 +15,10 @@ interface Me {
 
 const toast = useToast()
 const m = useMessages()
-const me = ref<Me | null>(null)
+const meQuery = useQuery(admin<Me>('me'))
+const me = computed(() => meQuery.data.value ?? null)
 const deleteOpen = ref(false)
 const deleteEntries = ref<number | null>(null)
-
-async function load() {
-  me.value = await api.admin<Me>('me')
-}
-onMounted(load)
 
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)

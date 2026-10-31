@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Page from '../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref, toRaw, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import RuleEditor from '../components/RuleEditor.vue'
 import StructureDialogs from '../components/StructureDialogs.vue'
@@ -19,6 +20,7 @@ import {
   type BuilderSchema,
 } from '../lib/schema-builder.ts'
 import { useMessages } from '../i18n/index.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 
@@ -30,8 +32,9 @@ type Collection = Structure['definition']['collections'][string]
 const toast = useToast()
 const m = useMessages()
 const router = useRouter()
-const structure = ref<Structure | null>(null)
-const missing = ref(false)
+const structureQuery = useQuery(operation('get_structure', {}))
+const structure = computed(() => structureQuery.data.value ?? null)
+const filled = ref<{ name: string; version: number; snapshot: string } | null>(null)
 const builder = ref<BuilderSchema | null>(null)
 const collection = ref<Collection | null>(null)
 const components = ref('')
@@ -56,17 +59,30 @@ const componentsData = collectionDefinitionData.shape.components
 
 const BOUNDED: readonly BuilderKind[] = ['text', 'list', 'number', 'integer']
 
-async function load() {
-  const read = await api.call('get_structure', {})
-  structure.value = read
+const snapshot = () => JSON.stringify([collection.value, builder.value, components.value])
+const dirty = computed(() => filled.value !== null && snapshot() !== filled.value.snapshot)
+const missing = computed(() => filled.value !== null && collection.value === null)
+
+function fill(read: Structure | undefined, force: boolean) {
+  if (read === undefined) return
+  const current = filled.value
+  if (!force && current?.name === props.name && (dirty.value || current.version === read.version))
+    return
   const found = read.definition.collections[props.name]
-  missing.value = found === undefined
-  if (found === undefined) return
-  collection.value = structuredClone(found)
-  builder.value = fieldsFromSchema(found.schema)
-  components.value = JSON.stringify(found.components, null, 2)
+  collection.value = found === undefined ? null : structuredClone(toRaw(found))
+  builder.value = found === undefined ? null : fieldsFromSchema(found.schema)
+  components.value = found === undefined ? '' : JSON.stringify(found.components, null, 2)
+  filled.value = { name: props.name, version: read.version, snapshot: snapshot() }
 }
-watch(() => props.name, load, { immediate: true })
+watch(
+  () => [structureQuery.data.value, props.name] as const,
+  ([read]) => fill(read, false),
+  { immediate: true },
+)
+
+async function load() {
+  fill((await structureQuery.refetch()).data, true)
+}
 
 const fieldKeys = computed(() => (builder.value?.fields ?? []).map((field) => field.key))
 const NONE = computed(() => m.value.common.none)
@@ -139,7 +155,7 @@ function edited(): Collection | null {
 
 async function save() {
   const next = edited()
-  const version = structure.value?.version
+  const version = filled.value?.version
   if (next === null || version === undefined) return
   await change.run((confirm) =>
     api.call('set_collection', { version, name: props.name, collection: next, confirm }),
@@ -148,7 +164,7 @@ async function save() {
 
 async function remove() {
   removeOpen.value = false
-  const version = structure.value?.version
+  const version = filled.value?.version
   if (version === undefined) return
   await change.run(async (confirm) => {
     const answer = await api.call('set_collection', {
@@ -398,6 +414,7 @@ async function remove() {
           :rule="rule"
           :catalog="structure.catalog"
           :fields="fieldKeys"
+          @update:rule="collection.rules[index] = $event"
           @remove="collection.rules.splice(index, 1)"
         />
       </section>

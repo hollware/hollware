@@ -13,13 +13,16 @@ const emails = ref('')
 const role = ref<ProvisionRole>('author')
 const error = ref<string | null>(null)
 
-const { structure, change, load, save } = useSiteSettings((read) => {
-  const form = accessForm(read.definition.access)
-  on.value = form.on
-  domains.value = form.domains
-  emails.value = form.emails
-  role.value = form.role
-  error.value = null
+const { structure, change, load, save } = useSiteSettings({
+  fill: (read) => {
+    const form = accessForm(read.definition.access)
+    on.value = form.on
+    domains.value = form.domains
+    emails.value = form.emails
+    role.value = form.role
+    error.value = null
+  },
+  values: () => [on.value, domains.value, emails.value, role.value],
 })
 
 async function saveAccess() {

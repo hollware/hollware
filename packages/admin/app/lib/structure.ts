@@ -17,6 +17,7 @@ export function useStructureChange(onDone: (answer: Change) => Promise<void> | v
   async function run(attempt: (confirm: boolean) => Promise<Change>, confirm = false) {
     busy.value = true
     problems.value = []
+    conflict.value = false
     failure.value = null
     try {
       const answer = await attempt(confirm)

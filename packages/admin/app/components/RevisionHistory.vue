@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
-import { ref, watch } from 'vue'
+import { useInfiniteQuery, useQuery } from '@pinia/colada'
+import { computed, ref, watch } from 'vue'
 import DiffView from './DiffView.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { personName } from '../lib/people.ts'
 
@@ -19,42 +21,40 @@ type Revision = NonNullable<Output<'list_revisions'>['revisions']>[number]
 
 const m = useMessages()
 const toast = useToast()
-const revisions = ref<Revision[]>([])
-const next = ref<string | null>(null)
-const loading = ref(false)
 const open = ref(false)
 const chosen = ref<Revision | null>(null)
-const chosenMarkdown = ref('')
 const busy = ref(false)
 
-async function load(cursor?: string) {
-  loading.value = true
-  try {
-    const answer = await api.call('list_revisions', {
+const revisionsQuery = useInfiniteQuery({
+  key: () => ['pages', 'list_revisions', { id: props.entryId, limit: 20 }],
+  query: ({ pageParam }) =>
+    api.call('list_revisions', {
       id: props.entryId,
       limit: 20,
-      ...(cursor === undefined ? {} : { cursor }),
-    })
-    const page = answer.revisions ?? []
-    revisions.value = cursor === undefined ? page : [...revisions.value, ...page]
-    next.value = answer.nextCursor ?? null
-  } finally {
-    loading.value = false
-  }
-}
-
+      ...(pageParam === null ? {} : { cursor: pageParam }),
+    }),
+  initialPageParam: null as string | null,
+  getNextPageParam: (last) => last.nextCursor ?? null,
+})
+const { hasNextPage, loadNextPage } = revisionsQuery
+const revisions = computed<Revision[]>(
+  () => revisionsQuery.data.value?.pages.flatMap((page) => page.revisions ?? []) ?? [],
+)
+const loading = computed(() => revisionsQuery.isLoading.value)
 watch(
-  () => [props.entryId, props.version],
-  () => void load(),
-  { immediate: true },
+  () => props.version,
+  () => void revisionsQuery.refetch(),
 )
 
-async function show(revision: Revision) {
+const revisionQuery = useQuery(() => ({
+  ...operation('get_revision', { id: chosen.value?.id ?? '' }),
+  enabled: open.value && chosen.value !== null,
+}))
+const chosenMarkdown = computed(() => revisionQuery.data.value?.revision?.markdown ?? '')
+
+function show(revision: Revision) {
   chosen.value = revision
-  chosenMarkdown.value = ''
   open.value = true
-  const answer = await api.call('get_revision', { id: revision.id })
-  chosenMarkdown.value = answer.revision?.markdown ?? ''
 }
 
 async function restore() {
@@ -134,12 +134,12 @@ function author(revision: Revision): string {
       </li>
     </ol>
     <UButton
-      v-if="next !== null"
+      v-if="hasNextPage"
       :label="m.history.older"
       variant="ghost"
       size="sm"
       :loading="loading"
-      @click="load(next)"
+      @click="loadNextPage()"
     />
 
     <UModal

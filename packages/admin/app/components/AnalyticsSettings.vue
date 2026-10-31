@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import type { AnalyticsProvider, AnalyticsSettings } from '@hollware/core'
-import { ApiError, type Output } from '../lib/api.ts'
+import { ApiError } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 
 const KEY_PAGES: Record<AnalyticsProvider, string> = {
@@ -17,7 +19,8 @@ const PROVIDERS: readonly AnalyticsProvider[] = ['cloudflare', 'posthog', 'plaus
 
 const toast = useToast()
 const m = useMessages()
-const status = ref<Output<'get_analytics'> | null>(null)
+const statusQuery = useQuery(operation('get_analytics', {}))
+const status = computed(() => statusQuery.data.value ?? null)
 const editing = ref(false)
 const busy = ref(false)
 const provider = ref<AnalyticsProvider>('cloudflare')
@@ -65,10 +68,6 @@ function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
-async function load() {
-  status.value = await api.call('get_analytics', {})
-}
-
 async function connect() {
   busy.value = true
   failure.value = null
@@ -86,7 +85,7 @@ async function connect() {
         formatNumber(answer.views ?? 0),
         formatNumber(answer.paths ?? 0),
       )
-      await load()
+      await statusQuery.refresh()
     } else if (answer.outcome === 'unavailable') {
       failure.value = { message: m.value.analytics.unavailable, fix: '' }
     } else {
@@ -105,15 +104,12 @@ async function disconnect() {
     await api.call('disconnect_analytics', {})
     result.value = null
     toast.add({ title: m.value.analytics.disconnected, color: 'success' })
-    await load()
   } catch (error) {
     toast.add({ title: m.value.analytics.failed, description: describe(error), color: 'error' })
   } finally {
     busy.value = false
   }
 }
-
-onMounted(load)
 </script>
 
 <template>

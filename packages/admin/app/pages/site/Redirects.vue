@@ -1,18 +1,13 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
-import { onMounted, ref } from 'vue'
-import type { Output } from '../../lib/api.ts'
+import { useQuery } from '@pinia/colada'
+import { computed } from 'vue'
 import { useMessages } from '../../i18n/index.ts'
-import { api } from '../../lib/session.ts'
-
-type Redirect = Output<'list_redirects'>['redirects'][number]
+import { operation } from '../../lib/queries.ts'
 
 const m = useMessages()
-const redirects = ref<Redirect[] | null>(null)
-
-onMounted(async () => {
-  redirects.value = (await api.call('list_redirects', { limit: 500 })).redirects
-})
+const redirectsQuery = useQuery(operation('list_redirects', { limit: 500 }))
+const redirects = computed(() => redirectsQuery.data.value?.redirects ?? null)
 </script>
 
 <template>

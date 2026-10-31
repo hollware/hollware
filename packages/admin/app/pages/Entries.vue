@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EntryList from '../components/EntryList.vue'
 import Page from '../components/Page.vue'
@@ -10,10 +11,10 @@ import { useMessages } from '../i18n/index.ts'
 import { entryPath, titleOf } from '../lib/entries.ts'
 import { matches } from '../lib/entry-list.ts'
 import { me } from '../lib/me.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 
-type Site = Output<'describe_site'>['site']
 type Entry = Output<'list_entries'>['entries'][number]
 type Status = Entry['status']
 type Row = Entry & { title: string }
@@ -26,10 +27,8 @@ const MOST = 2000
 const m = useMessages()
 const route = useRoute()
 const router = useRouter()
-const site = ref<Site | null>(null)
-const entries = ref<Entry[]>([])
-const loading = ref(false)
-const truncated = ref(false)
+const siteQuery = useQuery(operation('describe_site', {}))
+const site = computed(() => siteQuery.data.value?.site ?? null)
 
 function queried(name: string, fallback: string): string {
   const value = route.query[name]
@@ -46,41 +45,49 @@ const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === collection.value),
 )
 
-onMounted(async () => {
-  site.value = (await api.call('describe_site', {})).site
-  if (!site.value.collections.some((candidate) => candidate.name === collection.value)) {
-    collection.value = site.value.collections[0]?.name ?? ''
-  }
-  await load()
-})
+watch(
+  site,
+  (described) => {
+    if (described === null) return
+    if (!described.collections.some((candidate) => candidate.name === collection.value)) {
+      collection.value = described.collections[0]?.name ?? ''
+    }
+  },
+  { immediate: true },
+)
 
-async function load() {
-  if (collection.value === '') return
-  loading.value = true
-  try {
-    const all: Entry[] = []
-    let cursor: string | null = null
-    do {
-      const answer: Output<'list_entries'> = await api.call('list_entries', {
-        collection: collection.value,
-        limit: 100,
-        ...(locale.value === ALL ? {} : { locale: locale.value }),
-        ...(status.value === ALL
-          ? {}
-          : status.value === TRASH
-            ? { trashed: true }
-            : { status: status.value as Status }),
-        ...(cursor === null ? {} : { cursor }),
-      })
-      all.push(...answer.entries)
-      cursor = answer.nextCursor
-    } while (cursor !== null && all.length < MOST)
-    entries.value = all
-    truncated.value = cursor !== null
-  } finally {
-    loading.value = false
+const entriesQuery = useQuery(() => {
+  const filters = {
+    collection: collection.value,
+    ...(locale.value === ALL ? {} : { locale: locale.value }),
+    ...(status.value === ALL
+      ? {}
+      : status.value === TRASH
+        ? { trashed: true }
+        : { status: status.value as Status }),
   }
-}
+  return {
+    key: ['entries', filters],
+    query: async ({ signal }: { signal: AbortSignal }) => {
+      const all: Entry[] = []
+      let cursor: string | null = null
+      do {
+        const answer: Output<'list_entries'> = await api.call(
+          'list_entries',
+          { ...filters, limit: 100, ...(cursor === null ? {} : { cursor }) },
+          signal,
+        )
+        all.push(...answer.entries)
+        cursor = answer.nextCursor
+      } while (cursor !== null && all.length < MOST)
+      return { entries: all, truncated: cursor !== null }
+    },
+    enabled: collection.value !== '',
+  }
+})
+const entries = computed(() => entriesQuery.data.value?.entries ?? [])
+const truncated = computed(() => entriesQuery.data.value?.truncated ?? false)
+const loading = computed(() => collection.value !== '' && entriesQuery.isPending.value)
 
 watch(
   () => route.query,
@@ -102,7 +109,6 @@ watch([collection, locale, status], async () => {
       ].filter(([, value]) => value !== '' && value !== ALL),
     ),
   })
-  await load()
 })
 
 const filter = ref(queried('q', ''))
@@ -184,7 +190,6 @@ async function publishMany(
       }),
     )
     reportBulk(countOutcomes(results))
-    await load()
     warnedAt = at
     warned.value = results.flatMap((result) =>
       'answer' in result && result.answer.outcome === 'needs_acknowledgement'
@@ -225,7 +230,6 @@ async function unpublishMany() {
   busy.value = true
   try {
     reportBulk(countOutcomes(await runAll(rows, (row) => api.call('unpublish', { id: row.id }))))
-    await load()
   } finally {
     busy.value = false
   }
@@ -241,7 +245,6 @@ async function trashMany() {
       return { outcome: answer.outcome === 'published' ? 'not_draft' : answer.outcome }
     })
     reportBulk(countOutcomes(results))
-    await load()
   } finally {
     busy.value = false
   }
@@ -257,7 +260,6 @@ async function purgeMany() {
         await runAll(rows, (row) => api.admin<{ outcome: string }>(`entries/${row.id}/purge`, {})),
       ),
     )
-    await load()
   } finally {
     busy.value = false
   }
@@ -269,7 +271,6 @@ async function restoreMany(rows: readonly Row[]) {
     reportBulk(
       countOutcomes(await runAll(rows, (row) => api.call('restore_entry', { id: row.id }))),
     )
-    await load()
   } finally {
     busy.value = false
   }
