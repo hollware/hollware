@@ -18,6 +18,7 @@ const m = useMessages()
 const stats = ref<Stats | null>(null)
 const reviews = ref<Review[] | null>(null)
 const drafts = ref<Entry[] | null>(null)
+const behind = ref<Entry[]>([])
 const audit = ref<Entry | null>(null)
 const entryCount = ref<number | null>(null)
 const tokens = ref<readonly TokenOfSite[] | null>(null)
@@ -61,6 +62,10 @@ onMounted(async () => {
   drafts.value = everything
     .filter((entry) => entry.status !== 'published' || entry.hasUnpublishedChanges)
     .filter((entry) => !entry.slug.startsWith('audit-'))
+    .sort(newest)
+    .slice(0, 6)
+  behind.value = everything
+    .filter((entry) => entry.translationOutdated === true)
     .sort(newest)
     .slice(0, 6)
   audit.value =
@@ -240,16 +245,36 @@ const totalViews = computed(() =>
           </ul>
         </section>
 
-        <section v-if="audit !== null" aria-labelledby="audit" class="space-y-3">
-          <h2 id="audit" class="font-semibold">{{ m.home.lastAudit }}</h2>
-          <RouterLink
-            :to="entryPath(audit)"
-            class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
-          >
-            <p class="font-medium">{{ titleOf(audit) }}</p>
-            <p class="text-muted">{{ m.home.written(formatDateTime(audit.updatedAt)) }}</p>
-          </RouterLink>
-        </section>
+        <div v-if="behind.length > 0 || audit !== null" class="space-y-6">
+          <section v-if="behind.length > 0" aria-labelledby="behind" class="space-y-3">
+            <h2 id="behind" class="font-semibold">{{ m.home.behind }}</h2>
+            <ul class="divide-y divide-default rounded-lg border border-default text-sm">
+              <li
+                v-for="entry in behind"
+                :key="entry.id"
+                class="flex items-center gap-3 px-4 py-2.5"
+              >
+                <RouterLink
+                  :to="entryPath(entry)"
+                  class="min-w-0 flex-1 truncate font-medium hover:underline"
+                  >{{ titleOf(entry) }}</RouterLink
+                >
+                <span class="font-mono text-xs text-muted">{{ entry.locale }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section v-if="audit !== null" aria-labelledby="audit" class="space-y-3">
+            <h2 id="audit" class="font-semibold">{{ m.home.lastAudit }}</h2>
+            <RouterLink
+              :to="entryPath(audit)"
+              class="block rounded-lg border border-default p-4 text-sm hover:bg-elevated"
+            >
+              <p class="font-medium">{{ titleOf(audit) }}</p>
+              <p class="text-muted">{{ m.home.written(formatDateTime(audit.updatedAt)) }}</p>
+            </RouterLink>
+          </section>
+        </div>
       </div>
 
       <section v-if="database !== null" aria-labelledby="database" class="space-y-1 text-sm">

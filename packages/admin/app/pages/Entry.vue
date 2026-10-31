@@ -7,6 +7,7 @@ import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
 import RevisionHistory from '../components/RevisionHistory.vue'
+import SourceChanges from '../components/SourceChanges.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { ApiError, type Output } from '../lib/api.ts'
@@ -155,6 +156,9 @@ const untranslated = computed(() =>
     : (site.value?.locales ?? []).filter(
         (locale) => !translations.value.some((other) => other.locale === locale),
       ),
+)
+const original = computed(() =>
+  translations.value.find((other) => other.locale === site.value?.defaultLocale),
 )
 const canPublish = computed(
   () =>
@@ -1072,6 +1076,11 @@ const stateLabel = computed(
                 icon="i-lucide-languages"
                 class="max-w-full"
                 :ui="{ label: 'whitespace-normal' }"
+              />
+              <SourceChanges
+                v-if="entry.translationOutdated === true && original !== undefined"
+                :source="original"
+                :revision="entry.revision"
               />
             </nav>
           </dd>
