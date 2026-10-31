@@ -85,6 +85,11 @@ catalog:
   yaml: 2.9.1
   zod: 4.6.7
 
+catalogs:
+  vue:
+    typescript: 6.0.3
+    vue-tsc: 3.3.14
+
 overrides:
   undici@7.29.1: 'catalog:'
   vite@*: 'catalog:'

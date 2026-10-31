@@ -39,8 +39,6 @@ const locale = ref(queried('locale', ALL))
 const status = ref(queried('status', ALL))
 const selected = ref<string[]>([])
 
-const inTrash = computed(() => status.value === TRASH)
-
 const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === collection.value),
 )

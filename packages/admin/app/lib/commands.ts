@@ -9,7 +9,7 @@ export interface Command {
   readonly suffix?: string
   readonly description?: string
   readonly to?: string
-  readonly kbds?: readonly string[]
+  readonly kbds?: string[]
   readonly disabled?: boolean
   readonly onSelect?: () => void
 }
@@ -17,7 +17,7 @@ export interface Command {
 export interface CommandGroup {
   readonly id: string
   readonly label: string
-  readonly items: readonly Command[]
+  readonly items: Command[]
   readonly ignoreFilter?: boolean
 }
 

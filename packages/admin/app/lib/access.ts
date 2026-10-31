@@ -2,8 +2,8 @@ export type ProvisionRole = 'author' | 'editor'
 
 export interface Access {
   readonly autoProvision: {
-    readonly domains: readonly string[]
-    readonly emails: readonly string[]
+    readonly domains: string[]
+    readonly emails: string[]
     readonly role: ProvisionRole
   } | null
 }
