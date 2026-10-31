@@ -1,5 +1,12 @@
 # @hollware/vue
 
+## 1.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89)]:
+  - @hollware/client@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes

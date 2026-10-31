@@ -1,5 +1,17 @@
 # @hollware/server
 
+## 1.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An agent member can hold a lasting personal token, for an agent that hears no events, such as an MCP gateway: `hollware token create --member <usr_…>` and `member` of `POST /v1/admin/tokens`, for an owner only and never over MCP. Its scopes are an author's at most (content:publish and schema:admin are refused with their fix), what it writes is the agent's, and its publish asks for a review. A token expires when asked like Cloudflare's: in days, at a date (`--expires-at`, `expiresAt`) or never. Removing an agent revokes its tokens with its grants; `hollware token list` and `GET /v1/admin/tokens` say whose each token is.
+
+### Patch Changes
+
+- [#86](https://github.com/hollware/hollware/pull/86) [`aaae242`](https://github.com/hollware/hollware/commit/aaae2421de5d8d9e35371b6acf46b94be81558d8) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `api/ops.json` records the methods of `HollwareOps`, so semver covers them, and a break of the deliveries to agents (`api/agents.json`) is found as one. The documentation of `HollwareOpsRpc` says it takes an agent grant (`hw_agt_…`) as well as a personal token.
+- Updated dependencies []:
+  - @hollware/core@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes

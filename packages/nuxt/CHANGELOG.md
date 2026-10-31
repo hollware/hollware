@@ -1,5 +1,18 @@
 # @hollware/nuxt
 
+## 1.2.0
+
+### Minor Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Every composable takes `{ lazy, server }` last, as `useFetch` does, so a prerendered page can read in the browser only. `useHollwareTags(tags)` and `hollwareTags` give a page the cache tags of what a route of its own read, so `cache: 'purge'` keeps and purges it. `@nuxt/kit` is a peer dependency, so a site installs the one its Nuxt brings.
+
+### Patch Changes
+
+- [#88](https://github.com/hollware/hollware/pull/88) [`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `useHollware(event).reader` answers `search` and `listRedirects` over a service binding: the methods of an RPC stub live on its prototype, and the reader now wraps each one instead of spreading the stub.
+- Updated dependencies [[`0cfa409`](https://github.com/hollware/hollware/commit/0cfa409f4f2c3f21326f281241e7d7889f018e89)]:
+  - @hollware/client@1.2.0
+  - @hollware/core@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
