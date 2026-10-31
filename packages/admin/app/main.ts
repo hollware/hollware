@@ -1,10 +1,13 @@
 import { addCollection } from '@iconify/vue'
 import ui from '@nuxt/ui/vue-plugin'
+import { PiniaColada, useQueryCache } from '@pinia/colada'
+import { useDebounceFn } from '@vueuse/core'
+import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { adminBase } from './lib/base.ts'
-import { auth } from './lib/session.ts'
+import { afterEveryWrite, auth } from './lib/session.ts'
 import { isStaleFile, loadAgainOnce, sessionStore } from './lib/stale.ts'
 import './app.css'
 
@@ -75,4 +78,14 @@ window.addEventListener('vite:preloadError', (event) => {
   if (loadNewVersion()) event.preventDefault()
 })
 
-createApp(App).use(router).use(ui).mount('#app')
+const app = createApp(App)
+  .use(createPinia())
+  .use(PiniaColada, { queryOptions: { staleTime: 10_000 } })
+  .use(router)
+  .use(ui)
+app.runWithContext(() => {
+  const cache = useQueryCache()
+  const invalidate = useDebounceFn(() => void cache.invalidateQueries(), 100, { maxWait: 2_000 })
+  afterEveryWrite(() => void invalidate())
+})
+app.mount('#app')

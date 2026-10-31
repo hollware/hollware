@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
 import Page from '../components/Page.vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
@@ -8,69 +10,77 @@ import { databaseSize } from '../lib/database.ts'
 import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
 import { me } from '../lib/me.ts'
 import { personName } from '../lib/people.ts'
+import { admin, operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
-type Stats = Output<'content_stats'>
-type Review = Output<'list_reviews'>['reviews'][number]
 
 const m = useMessages()
-const stats = ref<Stats | null>(null)
-const reviews = ref<Review[] | null>(null)
-const drafts = ref<Entry[] | null>(null)
-const behind = ref<Entry[]>([])
-const audit = ref<Entry | null>(null)
-const entryCount = ref<number | null>(null)
-const tokens = ref<readonly TokenOfSite[] | null>(null)
-const peopleCount = ref<number | null>(null)
-const database = ref<ReturnType<typeof databaseSize> | null>(null)
 const mcpLine = `claude mcp add --transport http hollware ${window.location.origin}/mcp --header "Authorization: Bearer <token>"`
 
 const owner = computed(
   () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role === 'owner',
 )
 
-watch(
-  owner,
-  async (isOwner) => {
-    if (!isOwner) return
-    const [made, team, size] = await Promise.all([
-      api.admin<{ tokens: TokenOfSite[] }>('tokens'),
-      api.admin<{ people: unknown[]; invitations: unknown[] }>('people'),
-      api.admin<{ bytes: number }>('database'),
-    ])
-    tokens.value = made.tokens
-    peopleCount.value = team.people.length + team.invitations.length
-    database.value = databaseSize(size.bytes)
-  },
-  { immediate: true },
+const tokensQuery = useQuery({ ...admin<{ tokens: TokenOfSite[] }>('tokens'), enabled: owner })
+const peopleQuery = useQuery({
+  ...admin<{ people: unknown[]; invitations: unknown[] }>('people'),
+  enabled: owner,
+})
+const databaseQuery = useQuery({ ...admin<{ bytes: number }>('database'), enabled: owner })
+const tokens = computed(() => tokensQuery.data.value?.tokens ?? null)
+const peopleCount = computed(() =>
+  peopleQuery.data.value === undefined
+    ? null
+    : peopleQuery.data.value.people.length + peopleQuery.data.value.invitations.length,
+)
+const database = computed(() =>
+  databaseQuery.data.value === undefined ? null : databaseSize(databaseQuery.data.value.bytes),
 )
 
-onMounted(async () => {
-  const { site } = await api.call('describe_site', {})
-  const names = site.collections.map((collection) => collection.name)
-  const [read, pending, ...lists] = await Promise.all([
-    api.call('content_stats', { days: 30, limit: 8 }),
-    api.call('list_reviews', { status: 'pending', limit: 5 }),
-    ...names.map((collection) => api.call('list_entries', { collection, limit: 50 })),
-  ])
-  stats.value = read
-  reviews.value = pending.reviews
-  const everything = lists.flatMap((list) => list.entries)
-  entryCount.value = everything.length
-  const newest = (a: Entry, b: Entry) => b.updatedAt.localeCompare(a.updatedAt)
-  drafts.value = everything
-    .filter((entry) => entry.status !== 'published' || entry.hasUnpublishedChanges)
-    .filter((entry) => !entry.slug.startsWith('audit-'))
-    .sort(newest)
-    .slice(0, 6)
-  behind.value = everything
-    .filter((entry) => entry.translationOutdated === true)
-    .sort(newest)
-    .slice(0, 6)
-  audit.value =
-    everything.filter((entry) => entry.slug.startsWith('audit-')).sort(newest)[0] ?? null
-})
+const statsQuery = useQuery(operation('content_stats', { days: 30, limit: 8 }))
+const reviewsQuery = useQuery(operation('list_reviews', { status: 'pending', limit: 5 }))
+const siteQuery = useQuery(operation('describe_site', {}))
+const names = computed(
+  () => siteQuery.data.value?.site.collections.map((collection) => collection.name) ?? null,
+)
+const everythingQuery = useQuery(() => ({
+  key: ['home', 'entries', ...(names.value ?? [])],
+  query: async () =>
+    (
+      await Promise.all(
+        (names.value ?? []).map((collection) =>
+          api.call('list_entries', { collection, limit: 50 }),
+        ),
+      )
+    ).flatMap((list) => list.entries),
+  enabled: names.value !== null,
+}))
+
+const stats = computed(() => statsQuery.data.value ?? null)
+const reviews = computed(() => reviewsQuery.data.value?.reviews ?? null)
+const everything = computed(() => everythingQuery.data.value ?? null)
+const entryCount = computed(() => everything.value?.length ?? null)
+const newest = (a: Entry, b: Entry) => b.updatedAt.localeCompare(a.updatedAt)
+const drafts = computed(
+  () =>
+    everything.value
+      ?.filter((entry) => entry.status !== 'published' || entry.hasUnpublishedChanges)
+      .filter((entry) => !entry.slug.startsWith('audit-'))
+      .sort(newest)
+      .slice(0, 6) ?? null,
+)
+const behind = computed(
+  () =>
+    everything.value
+      ?.filter((entry) => entry.translationOutdated === true)
+      .sort(newest)
+      .slice(0, 6) ?? [],
+)
+const audit = computed(
+  () =>
+    everything.value?.filter((entry) => entry.slug.startsWith('audit-')).sort(newest)[0] ?? null,
+)
 
 const steps = computed(() =>
   tokens.value === null ||
@@ -87,9 +97,8 @@ const steps = computed(() =>
       }),
 )
 
-async function copyLine() {
-  await navigator.clipboard.writeText(mcpLine)
-}
+const { copy } = useClipboard({ legacy: true })
+const copyLine = () => copy(mcpLine)
 
 const topViews = computed(() =>
   Math.max(1, ...(stats.value?.pages ?? []).map((page) => page.views)),

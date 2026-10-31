@@ -2,6 +2,12 @@ import { useMessages } from '../i18n/index.ts'
 import { createApi } from './api.ts'
 import { createAuth } from './auth.ts'
 
+let wrote = () => {}
+
+export function afterEveryWrite(listener: () => void) {
+  wrote = listener
+}
+
 export const auth = createAuth({
   fetch: (input, init) => fetch(input, init),
   navigate: (url) => {
@@ -17,4 +23,5 @@ export const api = createApi({
   auth,
   here: () => `${window.location.pathname}${window.location.search}`,
   text: () => useMessages().value.api,
+  written: () => wrote(),
 })

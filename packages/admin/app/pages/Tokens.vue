@@ -4,12 +4,15 @@ import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ApiError } from '../lib/api.ts'
 import { formatDate, useMessages } from '../i18n/index.ts'
 import { runAll, countOutcomes } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
+import { admin } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { scopesFor, tokenRequest } from '../lib/tokens.ts'
 import type { AgentMember } from '../lib/agents.ts'
@@ -41,9 +44,13 @@ const columns = computed<TableColumn<Token>[]>(() => [
 
 const toast = useToast()
 const route = useRoute()
-const tokens = ref<Token[]>([])
-const agents = ref<AgentMember[]>([])
-const failure = ref<string | null>(null)
+const tokensQuery = useQuery(admin<{ tokens: Token[] }>('tokens'))
+const tokens = computed(() => tokensQuery.data.value?.tokens ?? [])
+const agentsQuery = useQuery(admin<{ agents: AgentMember[] }>('agents'))
+const agents = computed(() => agentsQuery.data.value?.agents ?? [])
+const failure = computed(() =>
+  tokensQuery.error.value === null ? null : describe(tokensQuery.error.value),
+)
 const label = ref('')
 const chosen = ref<string[]>(['content:read', 'content:write'])
 const days = ref<number | undefined>(undefined)
@@ -69,25 +76,6 @@ function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
-async function list() {
-  try {
-    tokens.value = (await api.admin<{ tokens: Token[] }>('tokens')).tokens
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
-
-async function listAgents() {
-  try {
-    agents.value = (await api.admin<{ agents: AgentMember[] }>('agents')).agents
-  } catch {
-    agents.value = []
-  }
-}
-
-onMounted(() => Promise.all([list(), listAgents()]))
-
 function toggle(scope: string, on: boolean) {
   chosen.value = on ? [...chosen.value, scope] : chosen.value.filter((s) => s !== scope)
 }
@@ -109,7 +97,6 @@ async function make() {
     )
     secret.value = made.secret
     label.value = ''
-    await list()
   } catch (error) {
     toast.add({ title: m.value.tokens.notMade, description: describe(error), color: 'error' })
   } finally {
@@ -121,7 +108,6 @@ async function revoke(token: Token) {
   try {
     await api.admin(`tokens/${token.id}/revoke`, {})
     toast.add({ title: m.value.tokens.revokedToast(token.label), color: 'success' })
-    await list()
   } catch (error) {
     toast.add({ title: m.value.tokens.notRevoked, description: describe(error), color: 'error' })
   }
@@ -145,11 +131,12 @@ async function revokeMany() {
     return { outcome: 'revoked' }
   })
   reportBulk(countOutcomes(results))
-  await list()
 }
 
+const clipboard = useClipboard({ legacy: true })
+
 async function copy() {
-  if (secret.value !== null) await navigator.clipboard.writeText(secret.value)
+  if (secret.value !== null) await clipboard.copy(secret.value)
 }
 
 const day = (value: string | null) => (value === null ? '—' : formatDate(value))

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useQuery } from '@pinia/colada'
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import Page from '../components/Page.vue'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
-import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DiffView from '../components/DiffView.vue'
 import VerdictList from '../components/VerdictList.vue'
@@ -12,6 +14,7 @@ import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
 import { nextIndex } from '../lib/entry-list.ts'
 import { anchorOf, commentsOn, exclusionOf, indexAfterReload } from '../lib/reviews.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { personName } from '../lib/people.ts'
 import { agentStatusColor, clientBadge, isAgentComment, isOwnerOf } from '../lib/agents.ts'
@@ -24,7 +27,6 @@ const ReviewPreview = defineAsyncComponent(() => import('../components/ReviewPre
 type Review = Output<'list_reviews'>['reviews'][number]
 type Detail = Required<Output<'get_review'>>
 type Item = Detail['items'][number]
-type Site = Output<'describe_site'>['site']
 type Verdict = Output<'validate'>['verdict']
 type Warning = Verdict['warnings'][number]
 type Said = Review['comments'][number]
@@ -34,12 +36,12 @@ const toast = useToast()
 const m = useMessages()
 const route = useRoute()
 const wanted = typeof route.query['review'] === 'string' ? route.query['review'] : null
-const reviews = ref<Review[]>([])
-const site = ref<Site | null>(null)
+const listQuery = useQuery(operation('list_reviews', {}))
+const reviews = computed(() => listQuery.data.value?.reviews ?? [])
+const siteQuery = useQuery(operation('describe_site', {}))
+const site = computed(() => siteQuery.data.value?.site ?? null)
 const view = ref<'changes' | 'preview'>('changes')
-const askedDocument = ref<unknown>(null)
 const chosen = ref<Review | null>(null)
-const detail = ref<Detail | null>(null)
 const excluded = ref(new Set<string>())
 const itemComment = ref<Record<string, { body: string; from: number | null; to: number | null }>>(
   {},
@@ -64,9 +66,55 @@ const focused = ref(-1)
 const listEl = ref<HTMLElement | null>(null)
 const noteOpen = ref(false)
 
+const detailQuery = useQuery(() => {
+  const review = chosen.value
+  return {
+    key: ['review', review?.id ?? null],
+    query: async () => {
+      if (review === null) return null
+      const [read, head] = await Promise.all([
+        api.call('get_review', { id: review.id }),
+        api.call('get_entry', {
+          collection: review.entry.collection,
+          locale: review.entry.locale,
+          slug: review.entry.slug,
+          formats: ['document'],
+        }),
+      ])
+      return {
+        detail:
+          read.review === undefined || read.items === undefined
+            ? null
+            : ({ outcome: read.outcome, review: read.review, items: read.items } as Detail),
+        document: head.entry?.document ?? null,
+        verdict: head.entry?.verdict ?? null,
+      }
+    },
+    enabled: review !== null,
+  }
+})
+const detail = computed(() => detailQuery.data.value?.detail ?? null)
+const askedDocument = computed(() => detailQuery.data.value?.document ?? null)
+watch(
+  () => detailQuery.data.value,
+  (read) => {
+    verdict.value = read?.verdict ?? null
+  },
+)
+
+const visibility = useDocumentVisibility()
+useIntervalFn(() => {
+  if (visibility.value !== 'visible') return
+  void listQuery.refetch()
+  if (chosen.value !== null) void detailQuery.refetch()
+}, 15_000)
+
 async function list() {
+  await listQuery.refetch()
+}
+
+function reconcile() {
   const previous = focused.value
-  reviews.value = (await api.call('list_reviews', {})).reviews
   const open = new Set(reviews.value.map((review) => review.id))
   picked.value = new Set([...picked.value].filter((id) => open.has(id)))
   const index = indexAfterReload(
@@ -79,17 +127,12 @@ async function list() {
     focused.value = -1
     chosen.value = null
   } else if (next.id !== chosen.value?.id) {
-    await choose(next, index)
+    choose(next, index)
   } else {
     focused.value = index
     chosen.value = next
   }
 }
-
-onMounted(async () => {
-  const [described] = await Promise.all([api.call('describe_site', {}), list()])
-  site.value = described.site
-})
 
 const views = computed(() => [
   { label: m.value.reviews.changes, value: 'changes', slot: 'changes' as const },
@@ -207,7 +250,7 @@ async function askChangesMany() {
   }
 }
 
-async function choose(review: Review, index = reviews.value.indexOf(review)) {
+function choose(review: Review, index = reviews.value.indexOf(review)) {
   chosen.value = review
   overriding.value = false
   focused.value = index
@@ -215,21 +258,6 @@ async function choose(review: Review, index = reviews.value.indexOf(review)) {
   comment.value = ''
   excluded.value = new Set()
   itemComment.value = {}
-  const [read, head] = await Promise.all([
-    api.call('get_review', { id: review.id }),
-    api.call('get_entry', {
-      collection: review.entry.collection,
-      locale: review.entry.locale,
-      slug: review.entry.slug,
-      formats: ['document'],
-    }),
-  ])
-  detail.value =
-    read.review === undefined || read.items === undefined
-      ? null
-      : { outcome: read.outcome, review: read.review, items: read.items }
-  askedDocument.value = head.entry?.document ?? null
-  verdict.value = head.entry?.verdict ?? null
 }
 
 const items = computed(() => detail.value?.items ?? [])
@@ -272,14 +300,7 @@ async function commentItem(item: Item) {
       body: draft.body,
       ...anchorOf(item.entry.id, draft.from, draft.to),
     })
-    if (answer.outcome === 'commented' && answer.comment !== undefined && detail.value !== null) {
-      detail.value = {
-        ...detail.value,
-        review: {
-          ...detail.value.review,
-          comments: [...detail.value.review.comments, answer.comment],
-        },
-      }
+    if (answer.outcome === 'commented') {
       itemComment.value[item.entry.id] = { body: '', from: null, to: null }
     } else {
       toast.add({ title: m.value.reviews.closed, color: 'warning' })
@@ -356,17 +377,7 @@ async function addComment() {
   busy.value = true
   try {
     const answer = await api.call('comment_review', { id: chosen.value.id, body: comment.value })
-    if (answer.outcome === 'commented' && answer.comment !== undefined) {
-      chosen.value = { ...chosen.value, comments: [...chosen.value.comments, answer.comment] }
-      if (detail.value !== null) {
-        detail.value = {
-          ...detail.value,
-          review: {
-            ...detail.value.review,
-            comments: [...detail.value.review.comments, answer.comment],
-          },
-        }
-      }
+    if (answer.outcome === 'commented') {
       comment.value = ''
     } else {
       toast.add({ title: m.value.reviews.closed, color: 'warning' })
@@ -422,10 +433,16 @@ async function move(step: 1 | -1) {
   const index = nextIndex(focused.value, reviews.value.length, step)
   const review = reviews.value[index]
   if (review === undefined) return
-  await choose(review, index)
+  choose(review, index)
   await nextTick()
   listEl.value?.querySelector<HTMLElement>(`[data-index="${index}"] button`)?.focus()
 }
+
+watch(
+  () => listQuery.data.value,
+  () => reconcile(),
+  { immediate: true },
+)
 
 const dialogOpen = computed(
   () =>

@@ -23,7 +23,28 @@ export interface ApiDeps {
   readonly auth: Auth
   readonly here: () => string
   readonly text?: () => Messages['api']
+  readonly written?: () => void
 }
+
+export const READS: ReadonlySet<OperationName> = new Set<OperationName>([
+  'content_stats',
+  'describe_site',
+  'get_analytics',
+  'get_asset',
+  'get_entry',
+  'get_review',
+  'get_revision',
+  'get_structure',
+  'get_translations',
+  'list_assets',
+  'list_backups',
+  'list_entries',
+  'list_redirects',
+  'list_reviews',
+  'list_revisions',
+  'search',
+  'validate',
+])
 
 function pageLeftForSignIn(): Promise<never> {
   return new Promise<never>(() => {})
@@ -60,14 +81,25 @@ export function createApi(deps: ApiDeps) {
   }
   const send = (path: string, init: RequestInit): Promise<unknown> =>
     sendFor(path, init, (response) => response.json() as Promise<unknown>)
+  async function write<Answer>(answer: Promise<Answer>): Promise<Answer> {
+    const done = await answer
+    deps.written?.()
+    return done
+  }
 
   return {
-    async call<Name extends OperationName>(name: Name, input: Input<Name>): Promise<Output<Name>> {
-      return (await send(`/v1/ops/${name}`, {
+    async call<Name extends OperationName>(
+      name: Name,
+      input: Input<Name>,
+      signal?: AbortSignal,
+    ): Promise<Output<Name>> {
+      const answer = send(`/v1/ops/${name}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
-      })) as Output<Name>
+        ...(signal === undefined ? {} : { signal }),
+      }) as Promise<Output<Name>>
+      return READS.has(name) ? answer : write(answer)
     },
 
     async file(path: string): Promise<Blob> {
@@ -80,21 +112,24 @@ export function createApi(deps: ApiDeps) {
       )
     },
 
-    async admin<Answer>(path: string, body?: unknown): Promise<Answer> {
-      return (await send(
-        `/v1/admin/${path}`,
-        body === undefined
-          ? { method: 'GET' }
-          : {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(body),
-            },
-      )) as Answer
+    async admin<Answer>(path: string, body?: unknown, signal?: AbortSignal): Promise<Answer> {
+      if (body === undefined) {
+        return (await send(`/v1/admin/${path}`, {
+          method: 'GET',
+          ...(signal === undefined ? {} : { signal }),
+        })) as Answer
+      }
+      return write(
+        send(`/v1/admin/${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }) as Promise<Answer>,
+      )
     },
 
     async adminDelete<Answer>(path: string): Promise<Answer> {
-      return (await send(`/v1/admin/${path}`, { method: 'DELETE' })) as Answer
+      return write(send(`/v1/admin/${path}`, { method: 'DELETE' }) as Promise<Answer>)
     },
   }
 }

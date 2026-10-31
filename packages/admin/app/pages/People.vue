@@ -6,10 +6,13 @@ import { sortable } from '../lib/columns.ts'
 import { byKind, invitationBody } from '../lib/people.ts'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref } from 'vue'
 import { ApiError } from '../lib/api.ts'
 import { countOutcomes, runAll } from '../lib/bulk.ts'
 import { useBulkReport } from '../lib/bulk-report.ts'
+import { admin } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 
 type Member = {
@@ -54,9 +57,12 @@ const roleItems = (roles: readonly string[]) =>
   roles.map((value) => ({ label: m.value.roles[value] ?? value, value }))
 
 const toast = useToast()
-const data = ref<People | null>(null)
+const peopleQuery = useQuery(admin<People>('people'))
+const data = computed(() => peopleQuery.data.value ?? null)
 const members = computed(() => byKind(data.value?.people ?? []))
-const failure = ref<string | null>(null)
+const failure = computed(() =>
+  peopleQuery.error.value === null ? null : describe(peopleQuery.error.value),
+)
 const role = ref<'editor' | 'author'>('author')
 const email = ref('')
 const link = ref<string | null>(null)
@@ -66,17 +72,6 @@ function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
 
-async function load() {
-  try {
-    data.value = await api.admin<People>('people')
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  }
-}
-
-onMounted(load)
-
 async function invite() {
   busy.value = true
   try {
@@ -84,7 +79,6 @@ async function invite() {
       await api.admin<{ link: string }>('invitations', invitationBody(role.value, email.value))
     ).link
     email.value = ''
-    await load()
   } catch (error) {
     toast.add({ title: m.value.people.notInvited, description: describe(error), color: 'error' })
   } finally {
@@ -107,7 +101,6 @@ async function revoke() {
   try {
     await api.admin(`invitations/${invitation.id}/revoke`, {})
     toast.add({ title: m.value.people.revoked, color: 'success' })
-    await load()
   } catch (error) {
     toast.add({ title: m.value.people.notRevoked, description: describe(error), color: 'error' })
   }
@@ -127,8 +120,8 @@ async function setRole(userId: string, next: unknown) {
     toast.add({ title: m.value.people.roleChanged, color: 'success' })
   } catch (error) {
     toast.add({ title: m.value.people.notChanged, description: describe(error), color: 'error' })
+    await peopleQuery.refetch()
   }
-  await load()
 }
 
 async function remove() {
@@ -141,7 +134,6 @@ async function remove() {
   } catch (error) {
     toast.add({ title: m.value.people.notRemoved, description: describe(error), color: 'error' })
   }
-  await load()
 }
 
 const anonymizing = ref<Former | null>(null)
@@ -162,7 +154,6 @@ async function anonymize() {
   } catch (error) {
     toast.add({ title: m.value.people.notAnonymized, description: describe(error), color: 'error' })
   }
-  await load()
 }
 
 const reportBulk = useBulkReport()
@@ -188,7 +179,6 @@ async function setRoleMany(members: readonly Member[], next: string) {
     return { outcome: 'changed' }
   })
   reportBulk(countOutcomes(results))
-  await load()
 }
 
 async function removeMany() {
@@ -199,11 +189,12 @@ async function removeMany() {
     return { outcome: 'removed' }
   })
   reportBulk(countOutcomes(results))
-  await load()
 }
 
+const clipboard = useClipboard({ legacy: true })
+
 async function copy() {
-  if (link.value !== null) await navigator.clipboard.writeText(link.value)
+  if (link.value !== null) await clipboard.copy(link.value)
 }
 </script>
 

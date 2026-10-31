@@ -18,5 +18,8 @@ The review and approval UI. Boundary rules for this package:
   the admin's policy lets it fetch nothing from another origin.
 - The type-check of the repository does not read single-file components, only the build does: logic
   goes in `app/lib/`, where the tests and the type-check reach it.
+- What the server holds is read with `useQuery` of Pinia Colada (`operation`, `admin` of
+  `app/lib/queries.ts`), never into a page's own `ref`: every write invalidates every query, so no page
+  reloads by hand, and a form keeps its own copy, which a refetch never overwrites while it has edits.
 - It lives on the Worker's own origin, at `/admin` or at `/` (`admin.path`), and never on a path of a
   site's domain: it keeps its token in `sessionStorage`, which any script of that origin can read.

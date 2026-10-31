@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useQuery } from '@pinia/colada'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -25,6 +26,7 @@ import {
 import { openEntry } from '../lib/open-entry.ts'
 import { me } from '../lib/me.ts'
 import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
 import { openPreview } from '../lib/site-preview.ts'
@@ -54,11 +56,29 @@ const toast = useToast()
 const m = useMessages()
 const route = useRoute()
 const router = useRouter()
-const site = ref<Site | null>(null)
-const references = ref<Record<string, Reference> | null>(null)
+const siteQuery = useQuery(operation('describe_site', {}))
+const site = computed<Site | null>(() => siteQuery.data.value?.site ?? null)
+const structureQuery = useQuery(operation('get_structure', {}))
+const references = computed<Record<string, Reference> | null>(() =>
+  structureQuery.data.value === undefined
+    ? null
+    : referencesOf(
+        structureQuery.data.value.definition.collections[props.collection]?.rules ?? [],
+        props.locale,
+      ),
+)
 const entry = ref<Entry | null>(null)
 const related = ref<Summary[]>([])
-const translations = ref<Summary[]>([])
+const translationsQuery = useQuery(() => ({
+  ...operation('get_translations', {
+    collection: props.collection,
+    translationGroup: entry.value?.translationGroup ?? '',
+  }),
+  enabled: (entry.value?.translationGroup ?? null) !== null,
+}))
+const translations = computed<Summary[]>(() =>
+  entry.value?.translationGroup === null ? [] : (translationsQuery.data.value?.entries ?? []),
+)
 const missing = ref(false)
 const text = ref('')
 const saved = ref('')
@@ -67,7 +87,15 @@ const busy = ref(false)
 const saveState = ref<SaveState>('saved')
 const lossy = ref(false)
 const conflictOpen = ref(false)
-const pendingReview = ref<PendingReview | null>(null)
+const reviewQuery = useQuery(() => ({
+  ...operation('list_reviews', { status: 'pending', entryId: entry.value?.id ?? '', limit: 1 }),
+  enabled: entry.value !== null,
+}))
+const savedOver = ref<string | null>(null)
+const pendingReview = computed<PendingReview | null>(() => {
+  const review = reviewQuery.data.value?.reviews[0] ?? null
+  return review === null || review.id === savedOver.value ? null : review
+})
 const overrideReview = ref(false)
 const heldOpen = ref(false)
 const warnings = ref<Warning[]>([])
@@ -170,25 +198,20 @@ const checks = computed(() => ({
   warnings: verdict.value?.warnings.length ?? 0,
 }))
 
-async function load() {
-  const [described, structure, read] = await Promise.all([
-    site.value === null ? api.call('describe_site', {}) : null,
-    references.value === null ? api.call('get_structure', {}) : null,
-    api.call('get_entry', { ...ref_.value, formats: ['markdown'], related: true }),
-  ])
-  if (described !== null) site.value = described.site
-  if (structure !== null) {
-    references.value = referencesOf(
-      structure.definition.collections[props.collection]?.rules ?? [],
-      props.locale,
-    )
-  }
+const entryQuery = useQuery(() =>
+  operation('get_entry', { ...ref_.value, formats: ['markdown'], related: true }),
+)
+let shown: string | null = null
+let forcing = false
+
+async function show(read: Output<'get_entry'>) {
   if (read.outcome === 'not_found' || read.entry === undefined) {
     missing.value = true
     return
   }
   missing.value = false
   lossy.value = false
+  shown = read.entry.id
   entry.value = read.entry
   related.value = read.related ?? []
   text.value = read.entry.markdown ?? ''
@@ -196,6 +219,7 @@ async function load() {
   verdict.value = read.entry.verdict
   saveState.value = 'saved'
   overrideReview.value = false
+  savedOver.value = null
   if (me.value === null) {
     await new Promise<void>((resolve) => {
       const stop = watch(me, (value) => {
@@ -210,20 +234,35 @@ async function load() {
     { version: read.entry.version, markdown: saved.value },
   )
   if (restored.value.kind === 'same') text.value = restored.value.markdown
-  const [asked, grouped] = await Promise.all([
-    api.call('list_reviews', { status: 'pending', entryId: read.entry.id, limit: 1 }),
-    read.entry.translationGroup === null
-      ? null
-      : api.call('get_translations', {
-          collection: props.collection,
-          translationGroup: read.entry.translationGroup,
-        }),
-  ])
-  pendingReview.value = asked.reviews[0] ?? null
-  translations.value = grouped?.entries ?? []
 }
 
-watch(ref_, load, { immediate: true })
+function follow(read: Output<'get_entry'> | undefined) {
+  if (read === undefined || forcing) return
+  const current = entry.value
+  if (read.entry === undefined || current === null || shown !== read.entry.id) {
+    void show(read)
+    return
+  }
+  if (read.entry.version === current.version) {
+    entry.value = { ...read.entry, markdown: current.markdown }
+    related.value = read.related ?? []
+    if (!dirty.value) verdict.value = read.entry.verdict
+    return
+  }
+  if (!dirty.value && saveState.value === 'saved') void show(read)
+}
+
+watch(() => entryQuery.data.value, follow, { immediate: true, flush: 'sync' })
+
+async function load() {
+  forcing = true
+  try {
+    const { data } = await entryQuery.refetch()
+    if (data !== undefined) await show(data)
+  } finally {
+    forcing = false
+  }
+}
 
 function report(error: unknown, heading: string) {
   const description = error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
@@ -358,7 +397,8 @@ document.addEventListener('visibilitychange', saveWhenHidden)
 async function saveOverReview() {
   overrideReview.value = true
   heldOpen.value = false
-  if (await save()) pendingReview.value = null
+  const held = pendingReview.value
+  if ((await save()) && held !== null) savedOver.value = held.id
 }
 
 function openReview() {

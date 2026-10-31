@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { titleOf } from '../lib/entries.ts'
 import {
@@ -34,33 +35,37 @@ const pickerOpen = computed({
     if (!open) picking.value = null
   },
 })
-const choices = ref<Record<string, { label: string; value: string }[]>>({})
-
-watch(
-  () => props.references,
-  async (references) => {
-    const entries = Object.entries(references ?? {})
-    const lists = await Promise.all(
-      entries.map(([, reference]) =>
-        api.call('list_entries', {
-          collection: reference.collection,
-          locale: reference.locale,
-          limit: 100,
-        }),
-      ),
-    )
-    choices.value = Object.fromEntries(
-      entries.map(([key], index) => [
-        key,
-        (lists[index]?.entries ?? []).map((entry) => ({
-          label: titleOf(entry),
-          value: entry.slug,
-        })),
-      ]),
-    )
-  },
-  { immediate: true },
-)
+const choicesQuery = useQuery(() => {
+  const entries = Object.entries(props.references ?? {})
+  return {
+    key: [
+      'choices',
+      entries.map(([key, reference]) => [key, reference.collection, reference.locale]),
+    ],
+    query: async ({ signal }: { signal: AbortSignal }) => {
+      const lists = await Promise.all(
+        entries.map(([, reference]) =>
+          api.call(
+            'list_entries',
+            { collection: reference.collection, locale: reference.locale, limit: 100 },
+            signal,
+          ),
+        ),
+      )
+      return Object.fromEntries(
+        entries.map(([key], index) => [
+          key,
+          (lists[index]?.entries ?? []).map((entry) => ({
+            label: titleOf(entry),
+            value: entry.slug,
+          })),
+        ]),
+      )
+    },
+    enabled: entries.length > 0,
+  }
+})
+const choices = computed(() => choicesQuery.data.value ?? {})
 
 function pick(image: { src: string }) {
   if (picking.value !== null) set(picking.value, image.src)

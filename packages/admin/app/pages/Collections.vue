@@ -4,26 +4,23 @@ import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { sortable } from '../lib/columns.ts'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import StructureDialogs from '../components/StructureDialogs.vue'
-import type { Output } from '../lib/api.ts'
 import { collectionPreset, type Preset } from '@hollware/core'
 import { useMessages } from '../i18n/index.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { useStructureChange } from '../lib/structure.ts'
 
 const toast = useToast()
 const m = useMessages()
 const router = useRouter()
-const structure = ref<Output<'get_structure'> | null>(null)
+const structureQuery = useQuery(operation('get_structure', {}))
+const structure = computed(() => structureQuery.data.value ?? null)
 const name = ref('')
 const preset = ref<Preset>('blog')
-
-async function load() {
-  structure.value = await api.call('get_structure', {})
-}
-onMounted(load)
 
 const collections = computed(() => Object.entries(structure.value?.definition.collections ?? {}))
 type Row = { name: string; fields: number; rules: number; path: string }
@@ -49,6 +46,7 @@ const validName = computed(
 )
 
 const change = useStructureChange(async () => {
+  await structureQuery.refetch()
   toast.add({ title: m.value.collections.created(name.value), color: 'success' })
   await router.push(`/settings/collections/${name.value}`)
 })
@@ -127,7 +125,7 @@ const PRESETS = computed(() => [
           :failure="change.failure.value"
           @confirm="change.confirmPending"
           @cancel="change.cancel"
-          @reload="load"
+          @reload="structureQuery.refetch()"
         />
       </form>
     </div>

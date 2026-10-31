@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
-import { ApiError, type Output } from '../../lib/api.ts'
+import { ApiError } from '../../lib/api.ts'
 import { formatNumber, useMessages } from '../../i18n/index.ts'
 import { BACKUP_RETENTION_MAX_DAYS, BACKUP_RETENTION_MIN_DAYS } from '@hollware/core'
+import { operation } from '../../lib/queries.ts'
 import { api } from '../../lib/session.ts'
 import { useSiteSettings } from '../../lib/site-settings.ts'
 
@@ -14,16 +16,16 @@ const m = useMessages()
 const backupsOn = ref(true)
 const backupsDays = ref<number | undefined>(30)
 const backupsError = ref<string | null>(null)
-const backupList = ref<Output<'list_backups'> | null>(null)
+const backupsQuery = useQuery(operation('list_backups', {}))
+const backupList = computed(() => backupsQuery.data.value ?? null)
 
-const { structure, change, load, save } = useSiteSettings((read) => {
-  backupsOn.value = read.definition.backups.enabled
-  backupsDays.value = read.definition.backups.retentionDays
-  backupsError.value = null
-})
-
-onMounted(async () => {
-  backupList.value = await api.call('list_backups', {})
+const { structure, change, load, save } = useSiteSettings({
+  fill: (read) => {
+    backupsOn.value = read.definition.backups.enabled
+    backupsDays.value = read.definition.backups.retentionDays
+    backupsError.value = null
+  },
+  values: () => [backupsOn.value, backupsDays.value],
 })
 
 async function saveBackups() {

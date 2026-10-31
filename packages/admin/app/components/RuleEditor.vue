@@ -7,14 +7,14 @@ import { useMessages } from '../i18n/index.ts'
 type Rule = Output<'get_structure'>['definition']['collections'][string]['rules'][number]
 type CatalogRule = Output<'get_structure'>['catalog'][number]
 
+const rule = defineModel<Rule>('rule', { required: true })
 const props = defineProps<{
-  rule: Rule
   catalog: readonly CatalogRule[]
   fields: readonly string[]
 }>()
 const emit = defineEmits<{ remove: [] }>()
 
-const entry = computed(() => props.catalog.find((candidate) => candidate.name === props.rule.rule))
+const entry = computed(() => props.catalog.find((candidate) => candidate.name === rule.value.rule))
 const inputs = computed(() => (entry.value === undefined ? [] : paramInputs(entry.value.params)))
 const m = useMessages()
 const NONE = computed(() => m.value.common.none)
@@ -25,7 +25,7 @@ const severities = computed(() => [
 const names = computed(() => props.catalog.map((candidate) => candidate.name))
 
 function value(key: string): unknown {
-  return props.rule.params[key]
+  return rule.value.params[key]
 }
 function texts(key: string): string[] {
   const found = value(key)
@@ -36,11 +36,13 @@ function numberOf(key: string): number | undefined {
   return typeof found === 'number' ? found : undefined
 }
 function set(key: string, next: unknown) {
-  props.rule.params = { ...props.rule.params, [key]: next }
+  rule.value = { ...rule.value, params: { ...rule.value.params, [key]: next } }
 }
 function setRule(name: string) {
-  props.rule.rule = name
-  props.rule.params = {}
+  rule.value = { ...rule.value, rule: name, params: {} }
+}
+function setSeverity(severity: Rule['severity']) {
+  rule.value = { ...rule.value, severity }
 }
 </script>
 
@@ -56,7 +58,12 @@ function setRule(name: string) {
         />
       </UFormField>
       <UFormField :label="m.rule.severity">
-        <USelect v-model="rule.severity" :items="severities" class="w-32" />
+        <USelect
+          :model-value="rule.severity"
+          :items="severities"
+          class="w-32"
+          @update:model-value="setSeverity"
+        />
       </UFormField>
       <UButton
         icon="i-lucide-trash-2"

@@ -20,12 +20,17 @@ describe('admin parity', () => {
   })
 
   describe('self-test: the guard fails on a bad fixture', () => {
-    const admin = [file('Page.vue', "await api.call('publish', { id })\napi.call( 'search', {})")]
+    const admin = [
+      file(
+        'Page.vue',
+        "await api.call('publish', { id })\napi.call( 'search', {})\nuseQuery(operation('list_assets', {}))",
+      ),
+    ]
 
     it('accepts operations the admin calls, or that the list explains', () => {
       expect(
         checkAdminParity({
-          operations: ['publish', 'search', 'get_asset'],
+          operations: ['publish', 'search', 'list_assets', 'get_asset'],
           admin,
           exceptions: ['get_asset'],
         }),

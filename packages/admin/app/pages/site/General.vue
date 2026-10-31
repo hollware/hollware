@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Page from '../../components/Page.vue'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref } from 'vue'
+import { useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import StructureDialogs from '../../components/StructureDialogs.vue'
 import { ApiError } from '../../lib/api.ts'
 import { formatDateTime, useMessages } from '../../i18n/index.ts'
@@ -9,6 +10,7 @@ import { sitePreset, type Preset } from '@hollware/core'
 import { AUDIT_RETENTION_MAX_DAYS, AUDIT_RETENTION_MIN_DAYS } from '@hollware/core'
 import { api, auth } from '../../lib/session.ts'
 import { parseRetention } from '../../lib/activity.ts'
+import { admin } from '../../lib/queries.ts'
 import { useSiteSettings } from '../../lib/site-settings.ts'
 
 interface Me {
@@ -19,7 +21,8 @@ interface Me {
 
 const toast = useToast()
 const m = useMessages()
-const me = ref<Me | null>(null)
+const meQuery = useQuery(admin<Me>('me'))
+const me = computed(() => meQuery.data.value ?? null)
 const locales = ref<string[]>([])
 const defaultLocale = ref('')
 const url = ref('')
@@ -34,22 +37,29 @@ const newLocales = ref<string[]>(['en'])
 const newPreset = ref<Preset>('blog')
 const busy = ref(false)
 
-const { structure, change, load, save } = useSiteSettings((read) => {
-  locales.value = [...read.definition.locales]
-  defaultLocale.value = read.definition.defaultLocale
-  url.value = read.definition.url ?? ''
-  origins.value = [...read.definition.cors.origins]
-  styleGuide.value = read.definition.styleGuide ?? ''
-  ipAddresses.value = read.definition.audit.ipAddresses
-  keepForever.value = read.definition.audit.retentionDays === null
-  retentionDays.value = read.definition.audit.retentionDays ?? undefined
-  retentionError.value = null
+const { structure, change, load, save } = useSiteSettings({
+  fill: (read) => {
+    locales.value = [...read.definition.locales]
+    defaultLocale.value = read.definition.defaultLocale
+    url.value = read.definition.url ?? ''
+    origins.value = [...read.definition.cors.origins]
+    styleGuide.value = read.definition.styleGuide ?? ''
+    ipAddresses.value = read.definition.audit.ipAddresses
+    keepForever.value = read.definition.audit.retentionDays === null
+    retentionDays.value = read.definition.audit.retentionDays ?? undefined
+    retentionError.value = null
+  },
+  values: () => [
+    locales.value,
+    defaultLocale.value,
+    url.value,
+    origins.value,
+    styleGuide.value,
+    ipAddresses.value,
+    keepForever.value,
+    retentionDays.value,
+  ],
 })
-
-async function loadMe() {
-  me.value = await api.admin<Me>('me')
-}
-onMounted(loadMe)
 
 async function saveSettings() {
   await save((definition) => ({
@@ -100,7 +110,6 @@ async function createSite() {
         ],
       })
       newKey.value = ''
-      await loadMe()
     } else {
       toast.add({
         title: m.value.common.notCreated,
@@ -122,7 +131,6 @@ async function restore(site: string) {
   try {
     await api.call('restore_site', { key: site })
     toast.add({ title: m.value.site.restored(site), color: 'success' })
-    await loadMe()
   } catch (error) {
     toast.add({ title: m.value.site.notRestored, description: describe(error), color: 'error' })
   }

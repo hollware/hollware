@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useQuery } from '@pinia/colada'
 import Page from '../components/Page.vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VerdictList from '../components/VerdictList.vue'
 import { ApiError, type Output } from '../lib/api.ts'
 import { useMessages } from '../i18n/index.ts'
+import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { newEntryMarkdown } from '../lib/template.ts'
 
@@ -17,7 +19,8 @@ function queried(name: string): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 const group = queried('group')
-const site = ref<Output<'describe_site'>['site'] | null>(null)
+const siteQuery = useQuery(operation('describe_site', {}))
+const site = computed(() => siteQuery.data.value?.site ?? null)
 const collection = ref('')
 const locale = ref('')
 const slug = ref('')
@@ -26,18 +29,22 @@ const refusal = ref<Output<'create_draft'>['verdict'] | null>(null)
 const failure = ref<string | null>(null)
 const saving = ref(false)
 
-onMounted(async () => {
-  site.value = (await api.call('describe_site', {})).site
-  const asked = queried('collection')
-  collection.value = site.value.collections.some((c) => c.name === asked)
-    ? (asked ?? '')
-    : (site.value.collections[0]?.name ?? '')
-  const askedLocale = queried('locale')
-  locale.value =
-    askedLocale !== undefined && site.value.locales.includes(askedLocale)
-      ? askedLocale
-      : site.value.defaultLocale
-})
+watch(
+  site,
+  (described) => {
+    if (described === null || collection.value !== '') return
+    const asked = queried('collection')
+    collection.value = described.collections.some((c) => c.name === asked)
+      ? (asked ?? '')
+      : (described.collections[0]?.name ?? '')
+    const askedLocale = queried('locale')
+    locale.value =
+      askedLocale !== undefined && described.locales.includes(askedLocale)
+        ? askedLocale
+        : described.defaultLocale
+  },
+  { immediate: true },
+)
 
 const validSlug = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value))
 

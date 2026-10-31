@@ -2,7 +2,8 @@
 import type { TableColumn } from '@nuxt/ui'
 import { AUDIT_ACTIONS } from '@hollware/core'
 import { useToast } from '@nuxt/ui/composables'
-import { computed, onMounted, ref, watch } from 'vue'
+import { useInfiniteQuery, useQuery } from '@pinia/colada'
+import { computed, ref } from 'vue'
 import DataTable from '../components/DataTable.vue'
 import Page from '../components/Page.vue'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
@@ -14,6 +15,7 @@ import {
   type ActivityPage,
 } from '../lib/activity.ts'
 import { ApiError } from '../lib/api.ts'
+import { admin } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 
 type Row = ActivityLine & Record<string, unknown>
@@ -32,11 +34,6 @@ const columns = computed<TableColumn<Row>[]>(() => [
   { id: 'detail', header: '' },
 ])
 
-const lines = ref<Row[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const failure = ref<string | null>(null)
-const people = ref<{ id: string; name: string | null }[]>([])
 const actor = ref(ALL)
 const action = ref(ALL)
 const from = ref('')
@@ -57,6 +54,29 @@ const filters = computed(() => ({
   from: from.value,
   to: to.value,
 }))
+const linesQuery = useInfiniteQuery(() => {
+  const chosen = filters.value
+  return {
+    key: ['admin', 'activity', chosen],
+    query: ({ pageParam }: { pageParam: string | null }) =>
+      api.admin<ActivityPage>(
+        `activity?${activityQuery(chosen, { limit: PAGE, cursor: pageParam })}`,
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page: ActivityPage) => page.nextCursor,
+  }
+})
+const lines = computed(
+  () => (linesQuery.data.value?.pages.flatMap((page) => page.lines) ?? []) as Row[],
+)
+const loading = computed(() => linesQuery.isLoading.value)
+const more = computed(() => linesQuery.hasNextPage.value)
+const failure = computed(() =>
+  linesQuery.error.value === null ? null : describe(linesQuery.error.value),
+)
+const peopleQuery = useQuery(admin<{ people: { id: string; name: string | null }[] }>('people'))
+const people = computed(() => peopleQuery.data.value?.people ?? [])
+
 const filtered = computed(
   () => actor.value !== ALL || action.value !== ALL || from.value !== '' || to.value !== '',
 )
@@ -73,34 +93,6 @@ const actorItems = computed(() => [
 function describe(error: unknown): string {
   return error instanceof ApiError ? `${error.message} ${error.fix}` : String(error)
 }
-
-async function load(more: boolean) {
-  loading.value = true
-  try {
-    const query = activityQuery(filters.value, {
-      limit: PAGE,
-      cursor: more ? nextCursor.value : null,
-    })
-    const page = await api.admin<ActivityPage>(`activity?${query}`)
-    lines.value = more ? [...lines.value, ...(page.lines as Row[])] : (page.lines as Row[])
-    nextCursor.value = page.nextCursor
-    failure.value = null
-  } catch (error) {
-    failure.value = describe(error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  await load(false)
-  try {
-    people.value = (
-      await api.admin<{ people: { id: string; name: string | null }[] }>('people')
-    ).people
-  } catch {}
-})
-watch(filters, () => void load(false))
 
 function clearFilters() {
   actor.value = ALL
@@ -256,13 +248,13 @@ const json = (value: unknown) => JSON.stringify(value, null, 2)
             </div>
           </template>
         </DataTable>
-        <div v-if="nextCursor !== null" class="flex justify-center">
+        <div v-if="more" class="flex justify-center">
           <UButton
             :label="m.activity.loadMore"
             color="neutral"
             variant="outline"
             :loading="loading"
-            @click="load(true)"
+            @click="linesQuery.loadNextPage()"
           />
         </div>
       </template>

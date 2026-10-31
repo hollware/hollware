@@ -1,36 +1,46 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
+import { useQuery } from '@pinia/colada'
+import { refDebounced, useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { defineShortcuts } from '@nuxt/ui/composables'
 import ShortcutsHelp from './components/ShortcutsHelp.vue'
 import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i18n/index.ts'
-import type { Output } from './lib/api.ts'
 import { commandGroups } from './lib/commands.ts'
 import { me, useSiteMenu, type Me } from './lib/me.ts'
 import { openEntry } from './lib/open-entry.ts'
+import { admin, operation } from './lib/queries.ts'
 import { settingsGroups } from './lib/settings.ts'
 import { api, auth } from './lib/session.ts'
 
 const route = useRoute()
 const m = useMessages()
-const pending = ref(0)
-const collections = ref<string[]>([])
+const signed = computed(() => route.matched.length > 0 && route.meta['open'] !== true)
 
+const meQuery = useQuery({ ...admin<Me>('me'), enabled: signed })
 watch(
-  () => route.matched.length > 0 && route.meta['open'] !== true,
-  async (signed) => {
-    if (!signed || me.value !== null) return
-    me.value = await api.admin<Me>('me')
-    const [reviews, site] = await Promise.all([
-      api.call('list_reviews', { status: 'pending', limit: 50 }),
-      api.call('describe_site', {}),
-    ])
-    pending.value = reviews.reviews.length
-    collections.value = site.site.collections.map((collection) => collection.name)
+  () => meQuery.data.value,
+  (read) => {
+    if (read !== undefined) me.value = read
   },
   { immediate: true },
 )
+
+const waitingQuery = useQuery({
+  ...operation('list_reviews', { status: 'pending', limit: 50 }),
+  enabled: signed,
+})
+const siteQuery = useQuery({ ...operation('describe_site', {}), enabled: signed })
+const pending = computed(() => waitingQuery.data.value?.reviews.length ?? 0)
+const collections = computed(
+  () => siteQuery.data.value?.site.collections.map((collection) => collection.name) ?? [],
+)
+
+const visibility = useDocumentVisibility()
+useIntervalFn(() => {
+  if (signed.value && visibility.value === 'visible') void waitingQuery.refetch()
+}, 30_000)
 
 const roleKey = computed(
   () => me.value?.sites.find((membership) => membership.site === me.value?.site)?.role ?? '',
@@ -103,39 +113,30 @@ defineShortcuts({
 
 const searchOpen = ref(false)
 const term = ref('')
-const searching = ref(false)
-type Entry = Output<'list_entries'>['entries'][number]
-const found = ref<Output<'search'>['results']>([])
-const drafts = ref<Entry[] | null>(null)
-const waiting = ref<Output<'list_reviews'>['reviews']>([])
-
-watch(searchOpen, async (open) => {
-  if (!open || drafts.value !== null) return
-  const lists = await Promise.all(
-    collections.value.map((collection) =>
-      api.call('list_entries', { collection, status: 'draft', limit: 100 }),
-    ),
-  )
-  drafts.value = lists.flatMap((list) => list.entries)
-  waiting.value = (await api.call('list_reviews', { status: 'pending', limit: 50 })).reviews
-})
-
-let timer: ReturnType<typeof setTimeout> | undefined
-watch(term, (query) => {
-  clearTimeout(timer)
-  if (query.trim().length < 2) {
-    found.value = []
-    return
-  }
-  timer = setTimeout(async () => {
-    searching.value = true
-    try {
-      found.value = (await api.call('search', { query, limit: 8 })).results
-    } finally {
-      searching.value = false
-    }
-  }, 250)
-})
+const query = refDebounced(
+  computed(() => term.value.trim()),
+  250,
+)
+const foundQuery = useQuery(() => ({
+  ...operation('search', { query: query.value, limit: 8 }),
+  enabled: query.value.length >= 2,
+}))
+const found = computed(() =>
+  query.value.length >= 2 ? (foundQuery.data.value?.results ?? []) : [],
+)
+const searching = computed(() => foundQuery.isLoading.value)
+const draftsQuery = useQuery(() => ({
+  key: ['drafts', ...collections.value],
+  query: async () =>
+    (
+      await Promise.all(
+        collections.value.map((collection) =>
+          api.call('list_entries', { collection, status: 'draft', limit: 100 }),
+        ),
+      )
+    ).flatMap((list) => list.entries),
+  enabled: searchOpen.value && collections.value.length > 0,
+}))
 
 const searchGroups = computed(() =>
   commandGroups(
@@ -147,8 +148,8 @@ const searchGroups = computed(() =>
       collections: collections.value,
       entry: openEntry.value,
       found: found.value,
-      drafts: drafts.value ?? [],
-      waiting: waiting.value,
+      drafts: draftsQuery.data.value ?? [],
+      waiting: waitingQuery.data.value?.reviews ?? [],
       switchSite: (site) => void auth.switchSite(site, '/admin/'),
     },
     m.value,
