@@ -27,6 +27,7 @@ export {
   SITE_KEY_MAX_LENGTH,
   withAutomaticFields,
   type AdminDefinition,
+  type AdminPath,
   type AgentDefinition,
   type AgentEventKind,
   type AuthDefinition,

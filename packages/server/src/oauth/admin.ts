@@ -9,14 +9,14 @@ export interface AdminClient {
 }
 
 export async function adminClient(oauth: OAuth, env: HollwareEnv): Promise<AdminClient> {
-  const redirectUri = `${oauth.issuer}/admin/callback`
-  const stored = await env.OAUTH_KV.get(`${KEY}${oauth.issuer}`)
+  const redirectUri = oauth.adminCallback
+  const stored = await env.OAUTH_KV.get(`${KEY}${redirectUri}`)
   if (stored !== null) return { clientId: stored, redirectUri }
   const client = await oauth.authorizationServer.getOAuthApi(env).createClient({
     clientName: 'Hollware admin',
     redirectUris: [redirectUri],
     tokenEndpointAuthMethod: 'none',
   })
-  await env.OAUTH_KV.put(`${KEY}${oauth.issuer}`, client.clientId)
+  await env.OAUTH_KV.put(`${KEY}${redirectUri}`, client.clientId)
   return { clientId: client.clientId, redirectUri }
 }

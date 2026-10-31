@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite-plus'
+import { shimRuntimeDeclarations } from './declaration-shims.ts'
 
 export default defineConfig({
   pack: {
@@ -6,6 +7,7 @@ export default defineConfig({
     unbundle: true,
     external: [/^[^./]/],
     dts: { generator: 'tsgo' },
+    onSuccess: shimRuntimeDeclarations,
     exports: {
       devExports: true,
       customExports: (_exports, { isPublish }) =>

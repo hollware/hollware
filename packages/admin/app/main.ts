@@ -3,13 +3,14 @@ import ui from '@nuxt/ui/vue-plugin'
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
+import { adminBase } from './lib/base.ts'
 import { auth } from './lib/session.ts'
 import { isStaleFile, loadAgainOnce, sessionStore } from './lib/stale.ts'
 import './app.css'
 
 if (__HOLLWARE_ICONS__ !== null) addCollection(__HOLLWARE_ICONS__)
 
-const BASE = '/admin'
+const BASE = adminBase(window.location.pathname)
 
 const router = createRouter({
   history: createWebHistory(`${BASE}/`),

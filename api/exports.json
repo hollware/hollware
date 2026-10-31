@@ -156,6 +156,7 @@
       "AUTOMATIC_KINDS": "value",
       "AcknowledgedWarning": "type",
       "AdminDefinition": "type",
+      "AdminPath": "type",
       "AgentDefinition": "type",
       "AgentDelivery": "type",
       "AgentEventKind": "type",

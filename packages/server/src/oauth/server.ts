@@ -1,4 +1,11 @@
-import { isAgentGrant, isPersonalToken, isReadToken, isScope, SCOPES } from '@hollware/core'
+import {
+  isAgentGrant,
+  isPersonalToken,
+  isReadToken,
+  isScope,
+  SCOPES,
+  type AdminPath,
+} from '@hollware/core'
 import {
   OAuthAuthorizationServer,
   OAuthResourceServer,
@@ -36,11 +43,13 @@ export interface OAuthOptions {
   readonly sites: ReadonlySet<string>
   readonly clock: Clock
   readonly dynamicClientRegistration: boolean
+  readonly adminPath: AdminPath
   readonly log: (entry: OAuthErrorLog) => void
 }
 
 export interface OAuth {
   readonly issuer: string
+  readonly adminCallback: string
   readonly authorizationServer: OAuthAuthorizationServer<HollwareEnv>
   readonly resources: Readonly<Record<ResourceName, string>>
   readonly metadataUrls: Readonly<Record<ResourceName, string>>
@@ -178,6 +187,7 @@ function build(issuer: string, options: OAuthOptions): OAuth {
 
   return {
     issuer,
+    adminCallback: `${issuer}${options.adminPath === '/' ? '' : '/admin'}/callback`,
     authorizationServer,
     resources,
     metadataUrls,

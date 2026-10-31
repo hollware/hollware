@@ -1,5 +1,5 @@
 import { PAGE_ISOLATION } from '../identity/pages.ts'
-import { SCOPES } from '@hollware/core'
+import { SCOPES, type AdminPath } from '@hollware/core'
 import type { Context, Hono } from 'hono'
 import { adminClient } from '../oauth/admin.ts'
 import type { OAuth } from '../oauth/server.ts'
@@ -51,9 +51,23 @@ async function ownIcon(url: string): Promise<Response> {
   })
 }
 
+export const ROOT_PAGES: readonly string[] = [
+  '/entries',
+  '/entries/*',
+  '/reviews',
+  '/images',
+  '/settings',
+  '/settings/*',
+  '/callback',
+]
+
 export function installAdmin(
   app: Hono<GatewayEnv>,
-  options: { readonly oauth: (publicUrl: string) => OAuth; readonly favicon: string | null },
+  options: {
+    readonly oauth: (publicUrl: string) => OAuth
+    readonly favicon: string | null
+    readonly path: AdminPath
+  },
 ): void {
   app.get('/admin/config.json', async (c) => {
     const oauth = options.oauth(c.env.HOLLWARE_PUBLIC_URL)
@@ -85,8 +99,13 @@ export function installAdmin(
     for (const [name, value] of Object.entries(PAGE_ISOLATION)) headers.set(name, value)
     return new Response(answer.body, { status: 200, headers })
   }
-  app.get('/admin', (c) => c.redirect('/admin/', 301))
-  app.get('/admin/', page)
+  const atRoot = options.path === '/'
+  const toRoot = (c: Context<GatewayEnv>): Response => {
+    const url = new URL(c.req.url)
+    return c.redirect(`${url.pathname.slice('/admin'.length) || '/'}${url.search}`, 301)
+  }
+  app.get('/admin', (c) => (atRoot ? toRoot(c) : c.redirect('/admin/', 301)))
+  app.get('/admin/', async (c) => (atRoot ? toRoot(c) : page(c)))
   app.get('/admin/*', async (c) => {
     if (options.favicon !== null && ADMIN_ICONS.has(c.req.path)) return ownIcon(options.favicon)
     if (/\.[a-z0-9]+$/i.test(c.req.path)) {
@@ -94,6 +113,10 @@ export function installAdmin(
       if (assets === undefined) return notInstalled()
       return assets.fetch(c.req.raw)
     }
-    return page(c)
+    return atRoot ? toRoot(c) : page(c)
   })
+  if (atRoot) {
+    app.get('/', page)
+    for (const path of ROOT_PAGES) app.get(path, page)
+  }
 }

@@ -185,7 +185,7 @@ export function compileSites(definitions: Readonly<Record<string, unknown>>): Re
     return {
       sites: new Map(),
       auth: { dynamicClientRegistration: false, passkeys: true, providers: [] },
-      admin: { favicon: null },
+      admin: { favicon: null, path: '/admin' },
     }
   }
   return resolveConfig({ sites })
