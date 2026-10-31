@@ -21,7 +21,6 @@ type Warning = Output<'validate'>['verdict']['warnings'][number]
 
 const ALL = 'all'
 const TRASH = 'trash'
-const OUTDATED = 'outdated'
 const MOST = 2000
 
 const m = useMessages()
@@ -66,7 +65,7 @@ async function load() {
         collection: collection.value,
         limit: 100,
         ...(locale.value === ALL ? {} : { locale: locale.value }),
-        ...(status.value === ALL || status.value === OUTDATED
+        ...(status.value === ALL
           ? {}
           : status.value === TRASH
             ? { trashed: true }
@@ -109,7 +108,6 @@ watch([collection, locale, status], async () => {
 const filter = ref(queried('q', ''))
 const rows = computed<Row[]>(() =>
   entries.value
-    .filter((entry) => status.value !== OUTDATED || entry.translationOutdated === true)
     .map((entry) => ({ ...entry, title: titleOf(entry) }))
     .filter((row) => matches(row, filter.value)),
 )
@@ -282,7 +280,6 @@ const views = computed(() => [
   { label: m.value.entries.views.drafts, value: 'draft' },
   { label: m.value.entries.views.scheduled, value: 'scheduled' },
   { label: m.value.entries.views.published, value: 'published' },
-  { label: m.value.entries.views.outdated, value: OUTDATED },
   { label: m.value.entries.views.trash, value: TRASH },
 ])
 const locales = computed(() => [

@@ -680,12 +680,13 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
   await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toBeVisible()
   await owner.getByRole('textbox', { name: 'Filter by title, slug or tag' }).fill('')
-  await owner.getByRole('tab', { name: 'Behind their source' }).click()
   await expect(owner.getByRole('listitem', { name: /^Hello world/ })).toContainText(
     'behind its source',
   )
-  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
-  await owner.getByRole('tab', { name: 'All', exact: true }).click()
+  await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).not.toContainText(
+    'behind its source',
+  )
+  await expect(owner.getByRole('tab', { name: /behind/i })).toHaveCount(0)
 
   await owner.getByRole('button', { name: /^Search/ }).click()
   await owner.getByPlaceholder('Search entries, or go anywhere…').fill('hello')
@@ -701,6 +702,27 @@ test('finds an entry from ⌘K, and filters the table of entries', async () => {
   await owner.getByRole('option', { name: /^View Markdown/ }).click()
   await expect(owner).toHaveURL(/[?&]view=markdown/)
   await expect(owner.locator('.cm-content').first()).toBeVisible()
+})
+
+test('Home lists a translation behind its source, and the entry shows what changed in the source since', async () => {
+  await owner.goto('/admin/')
+  const behind = owner.getByRole('region', { name: 'Translations behind their source' })
+  await expect(behind.getByRole('listitem')).toHaveText([/^Hello world\s*en$/])
+  await behind.getByRole('link', { name: 'Hello world' }).click()
+
+  await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
+  await owner.getByRole('button', { name: 'See what changed' }).click()
+  const dialog = owner.getByRole('dialog', { name: 'What changed in the source, es' })
+  await expect(dialog).toContainText('as it is now, on the right')
+  await expect(dialog.locator('.cm-changedLine')).toHaveText([
+    'title: Hola mundo',
+    'title: Hola mundo, otra vez',
+  ])
+  await expectAccessible(owner)
+  await shot(owner, 'source-changes')
+  await dialog.getByRole('link', { name: 'Open the source, es' }).click()
+  await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
+  await expect(owner.getByRole('button', { name: 'See what changed' })).toHaveCount(0)
 })
 
 test('AC-0.3-4: the other pages of the admin and the sign-in page', async () => {
