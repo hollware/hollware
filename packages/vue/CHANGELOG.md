@@ -1,5 +1,12 @@
 # @hollware/vue
 
+## 1.6.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.6.0
+
 ## 1.5.1
 
 ### Patch Changes
