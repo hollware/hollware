@@ -1,5 +1,13 @@
 # @hollware/admin
 
+## 1.6.0
+
+### Minor Changes
+
+- [#96](https://github.com/hollware/hollware/pull/96) [`22066b4`](https://github.com/hollware/hollware/commit/22066b4dc9257329fb9caba4179e643ba3acfdf7) Thanks [@fforres](https://github.com/fforres)! - The library of the admin takes videos (MP4, WebM) and PDFs besides images, and streams each file to `PUT /v1/assets` instead of sending it in base64: a video plays in its card, a PDF opens in a new tab, and "Copy for Markdown" gives a link, `[alt](asset:ast_…)`, for either. The image picker of the editor lists only images. Settings › Images sets the largest video or PDF the site takes, in megabytes.
+
+- [#97](https://github.com/hollware/hollware/pull/97) [`a166b61`](https://github.com/hollware/hollware/commit/a166b61169538916ecb4364c98a337e21066c8b1) Thanks [@fforres](https://github.com/fforres)! - The library of the admin sends a file past 50 MiB in parts through `/v1/uploads`, so a video larger than one request of the zone's plan carries goes up whole; a part that fails aborts the upload.
+
 ## 1.5.1
 
 No changes in this release.

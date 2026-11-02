@@ -1,5 +1,18 @@
 # @hollware/server
 
+## 1.6.0
+
+### Minor Changes
+
+- [#96](https://github.com/hollware/hollware/pull/96) [`22066b4`](https://github.com/hollware/hollware/commit/22066b4dc9257329fb9caba4179e643ba3acfdf7) Thanks [@fforres](https://github.com/fforres)! - A site takes videos (MP4, WebM) and PDFs besides images, kept as they arrive, up to the new `maxBytes` of its media setting (100 MB by default, up to 5 GB). `PUT /v1/assets?filename=…&alt=…` streams the body of the request to R2 as it arrives, so the size of a file is bounded by that setting and the plan of the zone, not by the memory of the Worker; `upload_asset` streams a URL that declares its `Content-Length` the same way. Assets are served with `Range`, so a video seeks, and a link in Markdown may name an asset: `[the policy](asset:ast_…)`. Images stay at 10 MB, what Cloudflare Images converts. The CLI exports and backs up videos and PDFs with the images.
+
+- [#97](https://github.com/hollware/hollware/pull/97) [`a166b61`](https://github.com/hollware/hollware/commit/a166b61169538916ecb4364c98a337e21066c8b1) Thanks [@fforres](https://github.com/fforres)! - A file larger than one request carries goes up in parts of 50 MiB, each streamed to R2 as it arrives: `POST /v1/uploads` with its filename, alt and bytes, `PUT /v1/uploads/<id>/parts/<n>` for each part, then `POST /v1/uploads/<id>/complete` with the etags, which makes the asset as `PUT /v1/assets` does; `DELETE /v1/uploads/<id>` aborts it. Only the person who started an upload may continue it, and the cron trigger aborts an upload left unfinished for 24 hours.
+
+### Patch Changes
+
+- Updated dependencies [[`22066b4`](https://github.com/hollware/hollware/commit/22066b4dc9257329fb9caba4179e643ba3acfdf7), [`a166b61`](https://github.com/hollware/hollware/commit/a166b61169538916ecb4364c98a337e21066c8b1)]:
+  - @hollware/core@1.6.0
+
 ## 1.5.1
 
 ### Patch Changes
