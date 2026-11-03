@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ collection: 'features' | 'compare' | 'glossary' }>()
+const props = defineProps<{ collection: 'glossary' }>()
 const route = useRoute()
 const { locale, m, to } = useLocale()
 const slug = computed(() => String(route.params['slug']))

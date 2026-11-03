@@ -15,9 +15,13 @@ describe('the path of a page', () => {
     expect(pathOf('pages', 'home', 'en')).toBe('/')
     expect(pathOf('pages', 'home', 'es')).toBe('/es/')
     expect(pathOf('pages', 'install', 'es')).toBe('/es/install/')
-    expect(pathOf('compare', 'wordpress', 'en')).toBe('/compare/wordpress/')
+    expect(pathOf('glossary', 'content-contracts', 'en')).toBe('/glossary/content-contracts/')
+    expect(pathOf('pages', 'compare', 'es')).toBe('/es/compare/')
     expect(markdownPathOf('pages', 'home', 'es')).toBe('/es/index.md')
-    expect(markdownPathOf('features', 'agents', 'en')).toBe('/features/agents.md')
+    expect(markdownPathOf('glossary', 'content-contracts', 'en')).toBe(
+      '/glossary/content-contracts.md',
+    )
+    expect(markdownPathOf('pages', 'features', 'en')).toBe('/features.md')
   })
 
   it('reads the entry a .md path names, and leaves every other path alone', () => {
@@ -58,7 +62,9 @@ describe('the path of a page', () => {
       '/es',
       '/es/',
       '/features/',
-      '/es/compare/wordpress/',
+      '/es/compare/',
+      '/glossary/',
+      '/es/glossary/content-contracts/',
       '/install/',
       '/es/media-kit/',
     ]) {
@@ -70,6 +76,7 @@ describe('the path of a page', () => {
       '/reference/events/',
       '/featuresx/',
       '/home/',
+      '/compare/wordpress/',
     ]) {
       expect(ownsHead(path), path).toBe(false)
     }

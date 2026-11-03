@@ -15,8 +15,7 @@ export const es: Messages = {
     demo: 'Demo',
     github: 'Hollware en GitHub',
   },
-  footer:
-    'Hollware es de código abierto, con licencia MIT. Hecho para agentes, cuidado por personas.',
+  footer: { license: 'Código abierto, MIT', by: 'Hecho por', author: 'Sergio Azócar' },
   pages: {
     notFound: 'Página no encontrada',
     unavailable: 'Hollware no responde en este momento: intenta de nuevo en un minuto',

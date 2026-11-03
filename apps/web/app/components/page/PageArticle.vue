@@ -5,6 +5,7 @@ const props = defineProps<{
   entry: PageEntry | null
   untranslated: boolean
   crumbs: readonly { name: string; to: string }[]
+  wide?: boolean
 }>()
 const { locale, m } = useLocale()
 const front = computed(() => props.entry?.frontmatter ?? {})
@@ -63,7 +64,7 @@ const markdown = computed(() =>
         class="mt-6 max-w-3xl"
       />
       <USeparator class="my-10" />
-      <div class="prose landing-article">
+      <div class="prose landing-article" :class="wide ? 'landing-wide' : ''">
         <PageBody :entry="entry" />
       </div>
       <section v-if="sources.length > 0" class="mt-14 max-w-3xl border-t border-default pt-6">

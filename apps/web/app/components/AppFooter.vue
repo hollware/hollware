@@ -5,7 +5,14 @@ const { m } = useLocale()
 <template>
   <UFooter class="border-t border-default">
     <template #left>
-      <p class="text-sm text-muted">{{ m.footer }}</p>
+      <p class="text-sm text-muted">
+        {{ m.footer.license }} · {{ m.footer.by }}
+        <a
+          href="https://sergioazocar.com"
+          class="text-highlighted underline decoration-(--ui-border-accented) underline-offset-4 hover:decoration-current"
+          >{{ m.footer.author }}</a
+        >
+      </p>
     </template>
     <template #right>
       <UButton

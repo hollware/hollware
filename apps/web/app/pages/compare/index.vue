@@ -1,3 +1,3 @@
 <template>
-  <PageIndexView collection="compare" />
+  <PageStandalone slug="compare" wide />
 </template>

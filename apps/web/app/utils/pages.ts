@@ -3,10 +3,10 @@ import hollwarePackage from '@hollware/core/package.json'
 
 export const ORIGIN = 'https://hollware.com'
 
-export const PAGE_COLLECTIONS = ['pages', 'features', 'compare', 'glossary'] as const
+export const PAGE_COLLECTIONS = ['pages', 'glossary'] as const
 export type PageCollection = (typeof PAGE_COLLECTIONS)[number]
 
-export const LISTED = ['features', 'compare', 'glossary'] as const
+export const LISTED = ['glossary'] as const
 
 export const FACTS = {
   tools: String(OPERATIONS.length),
@@ -45,7 +45,7 @@ export interface MarkdownTarget {
 }
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*'
-const IN_COLLECTION = new RegExp(`^(/es)?/(docs|features|compare|glossary)/(${SLUG})\\.md$`)
+const IN_COLLECTION = new RegExp(`^(/es)?/(docs|glossary)/(${SLUG})\\.md$`)
 const A_PAGE = new RegExp(`^(/es)?/(${SLUG})\\.md$`)
 
 export function markdownTarget(pathname: string): MarkdownTarget | null {
@@ -127,7 +127,7 @@ export function formatDay(day: string, locale: string): string {
 }
 
 const OWN_HEAD =
-  /^(\/es)?(?:\/|\/(?:(?:features|compare|glossary)(?:\/.*)?|install\/?|media-kit\/?))?$/
+  /^(\/es)?(?:\/|\/(?:glossary(?:\/.*)?|features\/?|compare\/?|install\/?|media-kit\/?))?$/
 
 export function ownsHead(path: string): boolean {
   return OWN_HEAD.test(path)

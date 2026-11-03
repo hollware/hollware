@@ -1,3 +1,3 @@
 <template>
-  <PageIndexView collection="features" />
+  <PageStandalone slug="features" wide />
 </template>

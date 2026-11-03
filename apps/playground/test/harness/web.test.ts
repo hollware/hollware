@@ -46,14 +46,13 @@ const HOME = {
     ':::install-prompt',
     'Install Hollware following https://hollware.com/install.md',
     ':::',
+    '::',
     '',
-    '#session',
-    ':::agent-session',
+    '::agent-session',
     '```text',
     '> create_draft blog/en/launch',
     '! /frontmatter/description: missing',
     '```',
-    ':::',
     '::',
     '',
     '::section{id="admin"}',
@@ -91,15 +90,14 @@ const HOME = {
   ].join('\n'),
 }
 
-const FEATURE = [
+const TERM = [
   '---',
-  'title: Agents and MCP',
-  'description: The agents of Hollware, written by a test.',
-  'order: 1',
-  'icon: bot',
+  'title: Content contracts',
+  'description: The rules of every write, written by a test.',
+  'term: Content contracts',
   '---',
   '',
-  'Every tool asks for one scope.',
+  'Rules a CMS checks on every write.',
   '',
 ].join('\n')
 
@@ -163,10 +161,10 @@ beforeAll(async () => {
     await publishNew(agent, { collection: 'pages', locale, slug: 'home', markdown: HOME[locale] })
   }
   await publishNew(agent, {
-    collection: 'features',
+    collection: 'glossary',
     locale: 'en',
-    slug: 'agents',
-    markdown: FEATURE,
+    slug: 'content-contracts',
+    markdown: TERM,
   })
   await publishNew(agent, {
     collection: 'pages',
@@ -299,17 +297,19 @@ describe('hollware.com', () => {
     const kit = await webFetch(server, '/media-kit/')
     const sitemap = await (await webFetch(server, '/sitemap.xml')).text()
     const robots = await (await webFetch(server, '/robots.txt')).text()
-    const feature = await webFetch(server, '/features/agents.md')
+    const term = await webFetch(server, '/glossary/content-contracts.md')
     const llms = await (await webFetch(server, '/llms.txt')).text()
 
     expect(kit.headers.get('x-robots-tag')).toBe('noindex')
     expect(await kit.text()).toContain('<meta name="robots" content="noindex, follow">')
-    expect(sitemap).toContain('<loc>https://hollware.com/features/agents/</loc>')
+    expect(sitemap).toContain('<loc>https://hollware.com/glossary/content-contracts/</loc>')
     expect(sitemap).toContain('<loc>https://hollware.com/docs/first-steps/</loc>')
     expect(sitemap).not.toContain('media-kit')
     expect(robots).toContain('Sitemap: https://hollware.com/sitemap.xml')
-    expect(await feature.text()).toBe(FEATURE)
-    expect(llms).toContain('- [Agents and MCP](https://hollware.com/features/agents.md)')
+    expect(await term.text()).toBe(TERM)
+    expect(llms).toContain(
+      '- [Content contracts](https://hollware.com/glossary/content-contracts.md)',
+    )
     expect(llms).not.toContain('media-kit')
   })
 

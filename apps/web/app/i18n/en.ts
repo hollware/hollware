@@ -13,7 +13,7 @@ export const en = {
     demo: 'Demo',
     github: 'Hollware on GitHub',
   },
-  footer: 'Hollware is open source, MIT. Made for agents, kept by people.',
+  footer: { license: 'Open source, MIT', by: 'Made by', author: 'Sergio Azócar' },
   pages: {
     notFound: 'Page not found',
     unavailable: 'Hollware is not answering right now: try again in a minute',

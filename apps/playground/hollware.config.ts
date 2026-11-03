@@ -122,9 +122,9 @@ const PAGE_COMPONENTS = {
   hero: defineComponent({
     props: NONE,
     description:
-      'The opening of a page: #eyebrow, #title (the h1), #lead, #session (an agent-session) and the default slot (an install-prompt).',
+      'The opening of a page, beside the living mark of Hollware: #eyebrow, #title (the h1), #lead, and the default slot (an install-prompt, shown as one button).',
     example:
-      '::hero\n#eyebrow\nThe CMS your agents write to\n\n#title\nLet your agents publish.\n\n#lead\nContracts check every write.\n::',
+      '::hero\n#title\nThe headless CMS your agents can run.\n\n#lead\nAgents write over MCP.\n::',
   }),
   section: defineComponent({
     props: z.strictObject({ id: z.string().regex(/^[a-z][a-z0-9-]*$/) }),
@@ -263,31 +263,6 @@ const pages = defineCollection({
   styleGuide: PAGE_STYLE,
 })
 
-const features = defineCollection({
-  schema: z.object({ ...pageFields, order: z.number().int().min(0).max(99), icon: ICONS }),
-  routes: { en: '/features/:slug/', es: '/es/features/:slug/' },
-  components: PAGE_COMPONENTS,
-  contracts: PAGE_CONTRACTS,
-  styleGuide: PAGE_STYLE,
-})
-
-const compare = defineCollection({
-  schema: z.object({
-    ...pageFields,
-    order: z.number().int().min(0).max(99),
-    products: z.array(z.string().min(1).max(40)).min(1).max(4),
-    sources: z
-      .array(z.string().regex(/^https:\/\/\S+$/))
-      .min(1)
-      .max(20),
-    reviewed: z.iso.date(),
-  }),
-  routes: { en: '/compare/:slug/', es: '/es/compare/:slug/' },
-  components: PAGE_COMPONENTS,
-  contracts: PAGE_CONTRACTS,
-  styleGuide: `${PAGE_STYLE} A comparison is fair: every claim about another product has a public source in sources, and reviewed is the day they were read.`,
-})
-
 const glossary = defineCollection({
   schema: z.object({
     ...pageFields,
@@ -306,7 +281,7 @@ export default defineConfig({
       locales: ['en', 'es'],
       defaultLocale: 'en',
       url: 'https://hollware.com',
-      collections: { docs, pages, features, compare, glossary },
+      collections: { docs, pages, glossary },
       styleGuide:
         'Plain international English, and neutral Spanish with tú and no regional idioms. A page in Spanish keeps the slug of its English page.',
     },

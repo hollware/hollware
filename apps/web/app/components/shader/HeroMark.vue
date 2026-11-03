@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const props = defineProps<{ variant: 'hero' | 'order' | 'cta'; progress?: number }>()
 const root = useTemplateRef('root')
 const wanted = ref(false)
 const visible = ref(false)
@@ -14,13 +13,10 @@ onMounted(() => {
   const saving =
     (navigator as { connection?: { saveData?: boolean } }).connection?.saveData === true
   if (!motion || saving || !('gpu' in navigator) || root.value === null) return
-  observer = new IntersectionObserver(
-    ([entry]) => {
-      visible.value = entry?.isIntersecting === true
-      if (visible.value) wanted.value = true
-    },
-    { rootMargin: '200px' },
-  )
+  observer = new IntersectionObserver(([entry]) => {
+    visible.value = entry?.isIntersecting === true
+    if (visible.value) wanted.value = true
+  })
   observer.observe(root.value)
   document.addEventListener('visibilitychange', seen)
 })
@@ -34,15 +30,18 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="root"
-    class="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+    class="hero-mark relative mx-auto aspect-[430/512] w-full max-w-[26rem]"
     aria-hidden="true"
   >
-    <div :class="`shader-fallback shader-fallback-${props.variant}`" />
+    <img
+      src="/brand/hollware-mark.svg"
+      alt=""
+      class="hero-mark-still absolute inset-[14%] size-[72%] transition-opacity duration-700"
+      :class="shown ? 'opacity-0' : 'opacity-100'"
+    />
     <ClientOnly>
       <LazyShaderScene
         v-if="wanted && !failed"
-        :variant="props.variant"
-        :progress="props.progress"
         :active="visible && !hidden"
         class="absolute inset-0 transition-opacity duration-1000"
         :class="shown ? 'opacity-100' : 'opacity-0'"
@@ -50,6 +49,5 @@ onBeforeUnmount(() => {
         @unavailable="failed = true"
       />
     </ClientOnly>
-    <div :class="`shader-scrim shader-scrim-${props.variant}`" />
   </div>
 </template>

@@ -181,60 +181,28 @@ body {
   }
 }
 
-.shader-fallback {
-  position: absolute;
-  inset: 0;
+.hero-mark {
+  mask-image: radial-gradient(closest-side, black 55%, transparent 100%);
 }
-.shader-fallback-hero {
-  background:
-    radial-gradient(
-      ellipse 60% 55% at 72% 18%,
-      color-mix(in oklab, var(--color-flame-500) 22%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 45% 40% at 20% 0%,
-      color-mix(in oklab, var(--color-flame-800) 30%, transparent),
-      transparent 70%
-    );
+.hero-mark-still {
+  filter: drop-shadow(0 0 2.5rem color-mix(in oklab, var(--color-flame-400) 45%, transparent));
 }
-.shader-fallback-order {
-  background: radial-gradient(
-    ellipse 70% 60% at 50% 50%,
-    color-mix(in oklab, var(--color-flame-900) 35%, transparent),
-    transparent 75%
-  );
+@media (prefers-reduced-motion: no-preference) {
+  .hero-mark-still {
+    animation: candle 3.2s ease-in-out infinite;
+  }
 }
-.shader-fallback-cta {
-  background: radial-gradient(
-    ellipse 55% 70% at 50% 0%,
-    color-mix(in oklab, var(--color-flame-400) 18%, transparent),
-    transparent 72%
-  );
-}
-.shader-scrim {
-  position: absolute;
-  inset: 0;
-}
-.shader-scrim-hero {
-  background:
-    linear-gradient(
-      to right,
-      var(--ui-bg) 0%,
-      color-mix(in oklab, var(--ui-bg) 80%, transparent) 45%,
-      transparent 75%
-    ),
-    linear-gradient(to bottom, transparent 60%, var(--ui-bg) 100%);
-}
-.shader-scrim-order,
-.shader-scrim-cta {
-  background: linear-gradient(
-    to bottom,
-    var(--ui-bg) 0%,
-    transparent 25%,
-    transparent 75%,
-    var(--ui-bg) 100%
-  );
+@keyframes candle {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2.2rem color-mix(in oklab, var(--color-flame-400) 40%, transparent));
+  }
+  45% {
+    filter: drop-shadow(0 0 3.2rem color-mix(in oklab, var(--color-flame-400) 60%, transparent));
+  }
+  70% {
+    filter: drop-shadow(0 0 2.6rem color-mix(in oklab, var(--color-flame-400) 48%, transparent));
+  }
 }
 
 .landing-copy {
@@ -409,5 +377,38 @@ body {
 @media (min-width: 64rem) {
   .landing-article .page-cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.landing-article.landing-wide {
+  max-width: none;
+  & > p,
+  & > ul,
+  & > h2 {
+    max-width: 50rem;
+  }
+  & table {
+    font-size: 0.85rem;
+  }
+  & th:first-child,
+  & td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--ui-bg);
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+    min-width: 9rem;
+  }
+  & th:nth-child(2),
+  & td:nth-child(2) {
+    background: color-mix(in oklab, var(--color-flame-400) 8%, var(--ui-bg));
+    color: var(--ui-text-highlighted);
+  }
+  & th:nth-child(2) {
+    color: var(--color-flame-300);
+  }
+  & td {
+    min-width: 8.5rem;
   }
 }

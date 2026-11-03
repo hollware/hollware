@@ -1,5 +1,8 @@
 <script setup lang="ts">
-const props = defineProps<{ slug: 'install' | 'media-kit' }>()
+const props = defineProps<{
+  slug: 'install' | 'media-kit' | 'features' | 'compare'
+  wide?: boolean
+}>()
 const { locale, m, to } = useLocale()
 const page = await usePage('pages', props.slug)
 const crumbs = computed(() => [
@@ -24,5 +27,10 @@ usePageHead('pages', page, (entry) => [
 </script>
 
 <template>
-  <PageArticle :entry="page.entry.value" :untranslated="page.untranslated.value" :crumbs="crumbs" />
+  <PageArticle
+    :entry="page.entry.value"
+    :untranslated="page.untranslated.value"
+    :crumbs="crumbs"
+    :wide="wide"
+  />
 </template>

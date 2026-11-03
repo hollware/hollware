@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { definitionsFromConfig, type HollwareConfig } from '../packages/core/src/index.ts'
 
-export const WEB_COLLECTIONS = ['pages', 'features', 'compare', 'glossary'] as const
+export const WEB_COLLECTIONS = ['pages', 'glossary'] as const
 
 export function webCollections(config: HollwareConfig): Record<string, unknown> {
   const docs = definitionsFromConfig(config)['docs']

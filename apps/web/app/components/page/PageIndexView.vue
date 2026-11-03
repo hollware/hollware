@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PageEntry } from '@hollware/nuxt'
 
-const props = defineProps<{ collection: 'features' | 'compare' | 'glossary' }>()
+const props = defineProps<{ collection: 'glossary' }>()
 const { locale, m, to } = useLocale()
 const page = await usePage('pages', props.collection)
 const [own, english] = await Promise.all([

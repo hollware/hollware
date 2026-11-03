@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const slots = useSlots()
 const { m } = useLocale()
+const compact = inject('install-compact', false)
 const tab = ref<'claude' | 'codex' | 'cursor' | 'other'>('claude')
 const copied = ref(false)
 const prompt = () => textOfVNodes(slots.default?.()).replace(/\s+/g, ' ').trim()
@@ -43,7 +44,7 @@ const tabs = computed(() =>
         :label="copied ? m.pages.install.copied : m.pages.install.button"
         @click="copy"
       />
-      <div class="flex gap-1" role="tablist" :aria-label="m.pages.install.agents">
+      <div v-if="!compact" class="flex gap-1" role="tablist" :aria-label="m.pages.install.agents">
         <UButton
           v-for="item in tabs"
           :key="item.value"
@@ -57,10 +58,12 @@ const tabs = computed(() =>
         />
       </div>
     </div>
-    <p class="mt-4 text-xs text-dimmed">
+    <p v-if="compact" class="sr-only">{{ prompt() }}</p>
+    <p v-if="!compact" class="mt-4 text-xs text-dimmed">
       {{ tab === 'claude' || tab === 'codex' ? m.pages.install.terminal : m.pages.install.paste }}
     </p>
     <pre
+      v-if="!compact"
       class="mt-2 overflow-x-auto rounded-lg border border-default bg-muted/60 px-4 py-3 font-mono text-[13px] leading-relaxed whitespace-pre-wrap text-highlighted"
       >{{ shownFor() }}</pre>
     <div v-if="$slots.note" class="mt-4 text-sm text-muted landing-copy">

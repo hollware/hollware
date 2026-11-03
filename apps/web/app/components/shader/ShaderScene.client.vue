@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-  Aurora,
-  CursorRipples,
-  DotGrid,
-  FilmGrain,
-  FlowingGradient,
-  Godrays,
-  Shader,
-} from 'shaders/vue'
+import { Fog, Glow, ImageTexture, Shader, WaveDistortion } from 'shaders/vue'
 import { BRAND } from '../../utils/brand'
 
 interface Controls {
@@ -17,25 +9,41 @@ interface Controls {
   resume: () => void
 }
 
-const props = defineProps<{
-  variant: 'hero' | 'order' | 'cta'
-  progress?: number
-  active: boolean
-}>()
+const props = defineProps<{ active: boolean }>()
 const emit = defineEmits<{ ready: []; unavailable: [] }>()
 const shader = useTemplateRef<Controls>('shader')
-const disorder = computed(() => 0.9 * (1 - Math.min(1, Math.max(0, props.progress ?? 0))))
+const flame = ref(0.9)
+let frame = 0
+let started = 0
+
+function flicker(now: number) {
+  const t = (now - started) / 1000
+  flame.value =
+    0.85 + 0.18 * Math.sin(t * 2.1) + 0.08 * Math.sin(t * 5.3 + 1.7) + 0.05 * Math.sin(t * 11.9)
+  frame = requestAnimationFrame(flicker)
+}
 
 function ready() {
   shader.value?.setFrameRateCap(30)
-  shader.value?.setResolutionScale(0.6)
   emit('ready')
 }
 
 watch(
   () => props.active,
-  (active) => (active ? shader.value?.resume() : shader.value?.pause()),
+  (active) => {
+    if (active) {
+      shader.value?.resume()
+      started = performance.now()
+      frame = requestAnimationFrame(flicker)
+    } else {
+      shader.value?.pause()
+      cancelAnimationFrame(frame)
+    }
+  },
+  { immediate: true },
 )
+
+onBeforeUnmount(() => cancelAnimationFrame(frame))
 </script>
 
 <template>
@@ -47,43 +55,19 @@ watch(
     @ready="ready"
     @unavailable="emit('unavailable')"
   >
-    <template v-if="variant === 'hero'">
-      <Aurora
-        :color-a="BRAND.flame800"
-        :color-b="BRAND.flame400"
-        :color-c="BRAND.flame950"
-        color-space="oklch"
-        :intensity="42"
-        :curtain-count="3"
-        :speed="1.4"
-        :waviness="38"
-        :height="95"
-      />
-      <CursorRipples :intensity="4" :decay="12" :radius="0.35" :chromatic-split="0" />
-      <FilmGrain :strength="0.12" :animated="true" />
-    </template>
-    <template v-else-if="variant === 'order'">
-      <FlowingGradient
-        :color-a="BRAND.carbon950"
-        :color-b="BRAND.carbon900"
-        :color-c="BRAND.flame950"
-        :color-d="BRAND.flame800"
-        :speed="0.6"
-        :distortion="disorder"
-      />
-      <DotGrid :color="BRAND.flame600" :density="48" :dot-size="0.12" :twinkle="disorder" />
-      <FilmGrain :strength="0.1" />
-    </template>
-    <template v-else>
-      <Godrays
-        :center="{ x: 0.5, y: -0.1 }"
-        :density="0.22"
-        :intensity="0.55"
-        :spotty="0.6"
-        :speed="0.25"
-        :ray-color="BRAND.flame400"
-      />
-      <FilmGrain :strength="0.12" :animated="true" />
-    </template>
+    <Fog
+      :color-a="BRAND.carbon800"
+      :color-b="BRAND.flame950"
+      :speed="0.25"
+      :turbulence="0.5"
+      :detail="8"
+      :blending="0.6"
+      :mouse-influence="0.05"
+    />
+    <Glow :intensity="flame" :threshold="0.25" :size="48">
+      <WaveDistortion :strength="0.012" :frequency="2.5" :speed="0.7" :angle="90">
+        <ImageTexture url="/brand/hollware-mark.png" object-fit="contain" />
+      </WaveDistortion>
+    </Glow>
   </Shader>
 </template>
