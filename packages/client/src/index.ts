@@ -190,11 +190,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+type Shape = Readonly<Record<string, Readonly<Record<string, 'array' | 'object' | 'string'>>>>
+
+const SHAPES = {
+  getEntry: { ok: { entry: 'object' }, not_found: {} },
+  listEntries: { ok: { entries: 'array' } },
+  getTranslations: { ok: { entries: 'array' }, not_found: {} },
+  getNavigation: { ok: { collection: 'string', locale: 'string', groups: 'array' } },
+  describeSite: { ok: { site: 'object' } },
+  search: { ok: { results: 'array' } },
+  listRedirects: { ok: { redirects: 'array' } },
+} as const satisfies Readonly<Record<keyof HollwareReader, Shape>>
+
+function fits(body: Record<string, unknown>, shape: Shape): boolean {
+  const fields = shape[String(body['outcome'])]
+  if (fields === undefined) return false
+  return Object.entries(fields).every(([key, kind]) => {
+    const value = body[key]
+    return kind === 'array'
+      ? Array.isArray(value)
+      : kind === 'object'
+        ? isRecord(value)
+        : typeof value === kind
+  })
+}
+
 function httpReader(url: string, token: string, send: (request: Request) => Promise<Response>) {
   const base = withoutTrailingSlashes(url)
   async function get(
     path: string,
+    shape: Shape,
     query: Record<string, string | undefined> = {},
+    preview?: string,
   ): Promise<unknown> {
     const params = new URLSearchParams()
     for (const [key, value] of Object.entries(query)) {
@@ -203,12 +230,24 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
     const search = params.toString()
     const response = await send(
       new Request(`${base}/v1/${path}${search === '' ? '' : `?${search}`}`, {
-        headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: 'application/json',
+          ...(preview === undefined ? {} : { 'hollware-preview': preview }),
+        },
       }),
     )
     const body: unknown = await response.json().catch(() => null)
     if (response.status === 200 || response.status === 404) {
-      if (isRecord(body) && typeof body['outcome'] === 'string') return body
+      if (isRecord(body) && typeof body['outcome'] === 'string') {
+        if (fits(body, shape)) return body
+        throw new HollwareClientError(
+          response.status,
+          'invalid_response',
+          `Hollware answered ${path} with a body this client does not know.`,
+          'Use a version of @hollware/client that matches the version of the Hollware it reads.',
+        )
+      }
     }
     const field = (key: string) =>
       isRecord(body) && typeof body[key] === 'string' ? body[key] : null
@@ -233,28 +272,32 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
         readonly preview?: string
       },
     ) =>
-      get(`${segment(collection)}/${segment(locale)}/${segment(slug)}`, {
-        formats: options?.formats?.join(','),
-        related: options?.related === true ? 'true' : undefined,
-        references: options?.references === true ? 'true' : undefined,
-        preview: options?.preview,
-      }),
+      get(
+        `${segment(collection)}/${segment(locale)}/${segment(slug)}`,
+        SHAPES.getEntry,
+        {
+          formats: options?.formats?.join(','),
+          related: options?.related === true ? 'true' : undefined,
+          references: options?.references === true ? 'true' : undefined,
+        },
+        options?.preview,
+      ),
     listEntries: (
       _site: string,
       collection: string,
       options: { locale?: string; tag?: string; limit?: number; cursor?: string } = {},
     ) =>
-      get(segment(collection), {
+      get(segment(collection), SHAPES.listEntries, {
         locale: options.locale,
         tag: options.tag,
         limit: options.limit === undefined ? undefined : String(options.limit),
         cursor: options.cursor,
       }),
     getTranslations: (_site: string, collection: string, group: string) =>
-      get(`${segment(collection)}/translations/${segment(group)}`),
+      get(`${segment(collection)}/translations/${segment(group)}`, SHAPES.getTranslations),
     getNavigation: (_site: string, collection: string, options: { locale?: string } = {}) =>
-      get(`${segment(collection)}/navigation`, { locale: options.locale }),
-    describeSite: (_site: string) => get('site'),
+      get(`${segment(collection)}/navigation`, SHAPES.getNavigation, { locale: options.locale }),
+    describeSite: (_site: string) => get('site', SHAPES.describeSite),
     search: (
       _site: string,
       query: string,
@@ -267,7 +310,7 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
         minScore?: number
       } = {},
     ) =>
-      get('search', {
+      get('search', SHAPES.search, {
         q: query,
         collection: options.collection,
         locale: options.locale,
@@ -280,7 +323,7 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       _site: string,
       options: { collection?: string; locale?: string; limit?: number; cursor?: string } = {},
     ) =>
-      get('redirects', {
+      get('redirects', SHAPES.listRedirects, {
         collection: options.collection,
         locale: options.locale,
         limit: options.limit === undefined ? undefined : String(options.limit),

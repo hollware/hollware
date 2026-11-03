@@ -89,9 +89,14 @@ describe('POST /v1/admin/preview', () => {
     const previewed = await worker.send(`/v1/blog/en/${DRAFT}?preview=${made.token}`, {
       token: seeded.token,
     })
+    const inHeader = await worker.send(`/v1/blog/en/${DRAFT}`, {
+      token: seeded.token,
+      headers: { 'hollware-preview': made.token },
+    })
 
     expect(without.status).toBe(404)
-    expect(previewed.status).toBe(200)
+    expect([previewed.status, inHeader.status]).toEqual([200, 200])
+    expect(inHeader.headers.get('cache-control')).toBe('no-store')
     expect(previewed.headers.get('cache-control')).toBe('no-store')
     expect(previewed.headers.get('etag')).toBeNull()
     expect(
@@ -198,8 +203,14 @@ describe('the read API with a preview token', () => {
     const expired = await worker.send(`/v1/blog/en/${DRAFT}?preview=${made.token}`, {
       token: seeded.token,
     })
+    const expiredInHeader = await worker.send(`/v1/blog/en/${DRAFT}`, {
+      token: seeded.token,
+      headers: { 'hollware-preview': made.token },
+    })
 
     expect([another.status, missing.status, expired.status]).toEqual([404, 404, 400])
+    expect(expiredInHeader.status).toBe(400)
+    expect(expiredInHeader.headers.get('cache-control')).toBe('no-store')
     expect(await another.json()).toEqual(await missing.json())
     expect(expired.headers.get('cache-control')).toBe('no-store')
     expect(await expired.json()).toEqual({
