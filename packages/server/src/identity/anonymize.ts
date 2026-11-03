@@ -28,8 +28,10 @@ const IN_SITE = [
   `DELETE FROM invitations WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
   `DELETE FROM tokens WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
   `DELETE FROM agent_grants WHERE site_id = ?1 AND user_id = ?2 AND ${OPEN}`,
-  `DELETE FROM uploads WHERE site_id = ?1 AND created_by = ?2 AND ${OPEN}`,
 ]
+
+const UPLOADS_EXPIRE = `UPDATE uploads SET created_by = ${FORMER}, expires_at = ?3, updated_at = ?3
+  WHERE site_id = ?1 AND created_by = ?2 AND ${OPEN}`
 
 const GONE = [
   'members WHERE user_id = ?1',
@@ -102,6 +104,7 @@ export async function anonymizePerson(
       )
       .bind(input.site, input.userId, newId('anm'), input.now),
     ...IN_SITE.map((statement) => db.prepare(statement).bind(input.site, input.userId)),
+    db.prepare(UPLOADS_EXPIRE).bind(input.site, input.userId, input.now),
     db
       .prepare('DELETE FROM anonymizations WHERE site_id = ?1 AND user_id = ?2')
       .bind(input.site, input.userId),

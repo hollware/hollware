@@ -1802,7 +1802,7 @@ export const THREATS: readonly Threat[] = [
     threat:
       'A writer streams a file larger than it declares or the site takes, or starts uploads in parts it never finishes, to fill R2 or hold the Worker',
     mitigation:
-      "The declared Content-Length or bytes are checked against the site's media maxBytes before a byte is read; each body goes to R2 through a FixedLengthStream that refuses one shorter or longer than declared; only the person who started an upload in parts may continue it, and the cron trigger aborts it after 24 hours",
+      "The declared Content-Length or bytes are checked against the site's media maxBytes before a byte is read; each body goes to R2 through a FixedLengthStream that refuses one shorter or longer than declared; only the person who started an upload in parts may continue it, one person keeps at most ten open in a site, one request at a time finishes it, and the cron trigger aborts it after 24 hours, with those of a person anonymized",
     guards: [
       {
         file: 'packages/server/tests/http/assets.workerd.test.ts',
@@ -1815,6 +1815,18 @@ export const THREATS: readonly Threat[] = [
       {
         file: 'packages/server/tests/http/uploads.workerd.test.ts',
         test: 'aborts on DELETE, refuses an upload past its 24 hours, and the cron aborts it',
+      },
+      {
+        file: 'packages/server/tests/http/uploads.workerd.test.ts',
+        test: 'keeps at most ten uploads open for one person',
+      },
+      {
+        file: 'packages/server/tests/http/uploads.workerd.test.ts',
+        test: 'finishes an upload once when two requests complete it at the same time',
+      },
+      {
+        file: 'packages/server/tests/identity/anonymize.workerd.test.ts',
+        test: 'hands the open uploads of the person to the cron, which aborts their parts in R2',
       },
     ],
   },

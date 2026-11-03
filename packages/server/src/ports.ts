@@ -845,14 +845,17 @@ export interface UploadRow {
   readonly partBytes: number
   readonly createdBy: string
   readonly expiresAt: string
+  readonly claimedAt: string | null
   readonly createdAt: string
 }
 
 export interface UploadCatalog {
-  insert(row: UploadRow): Promise<void>
+  insert(row: UploadRow, most: number): Promise<boolean>
   byId(site: string, id: string): Promise<UploadRow | null>
+  claim(site: string, id: string, at: string): Promise<boolean>
+  release(site: string, id: string): Promise<void>
   delete(site: string, id: string): Promise<void>
-  expired(site: string, now: string): Promise<readonly UploadRow[]>
+  expired(site: string, now: string, stale: string): Promise<readonly UploadRow[]>
 }
 
 /** What an image is, as the binding reads it; an SVG has no size. */

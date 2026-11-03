@@ -846,6 +846,7 @@ export const uploads = sqliteTable(
     partBytes: integer('part_bytes').notNull(),
     createdBy: text('created_by').notNull(),
     expiresAt: text('expires_at').notNull(),
+    claimedAt: text('claimed_at'),
     ...timestamps(),
   },
   (t) => [
