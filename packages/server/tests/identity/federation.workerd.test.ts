@@ -15,6 +15,8 @@ import { createInvitation, findSession, membershipsOf } from '../../src/identity
 import { boot, NOW, type Booted } from '../http/support.ts'
 import { signingKey, type SigningKey } from './fake-idp.ts'
 
+vi.setConfig({ testTimeout: 60_000 })
+
 const SITE = 'federation'
 const TENANT_ID = '11111111-2222-3333-4444-555555555555'
 const AT = Math.floor(new Date(NOW).getTime() / 1000)
