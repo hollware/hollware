@@ -7,7 +7,8 @@ import {
   eyePaths,
   hop,
   MARK_PATH,
-  moodOf,
+  beatOf,
+  flicker,
   stepEmber,
   TINTS,
 } from '../app/utils/embers.ts'
@@ -51,20 +52,34 @@ describe('the embers of the mark', () => {
   })
 })
 
-describe('the mood of the companion', () => {
-  it('follows the section in view, and keeps calm in any other', () => {
-    expect(
-      [
-        'hero',
-        'cta',
-        'agents',
-        'contracts',
-        'admin',
-        'cloudflare',
-        'faq',
-        'cms',
-        'constructor',
-      ].map(moodOf),
-    ).toEqual(['away', 'away', 'typing', 'alarm', 'nod', 'cloud', 'curious', 'calm', 'calm'])
+describe('what the head does in each section', () => {
+  it('writes in agents, walks the cards, breaks and fixes a write, and changes its shape', () => {
+    expect(beatOf('agents', 3).glyphs).toBe(true)
+    expect([0, 0.95, 1.85, 9].map((seconds) => beatOf('cms', seconds).step)).toEqual([0, 1, 2, 10])
+    expect(beatOf('contracts', 1)).toEqual({
+      shape: 'flame',
+      step: 0,
+      tint: 'alarm',
+      shake: true,
+      glyphs: false,
+      sparks: true,
+    })
+    expect(beatOf('contracts', 3).shape).toBe('check')
+    expect([beatOf('admin', 1).shape, beatOf('admin', 2).shape]).toEqual(['flame', 'check'])
+    expect([beatOf('cloudflare', 1).shape, beatOf('cloudflare', 2).shape]).toEqual([
+      'flame',
+      'cloud',
+    ])
+    expect(beatOf('cloudflare', 1).tint).toBe('cloud')
+    expect([beatOf('faq', 1).shape, beatOf('faq', 2).shape]).toEqual(['flame', 'question'])
+    expect(beatOf('hero', 2)).toEqual(beatOf('somewhere', 2))
+    expect(beatOf('hero', 2).shape).toBe('flame')
+  })
+
+  it('flickers the top of the flame and keeps its base still', () => {
+    const base = flicker(100, 243, 0.3, 1.2)
+    const tip = flicker(100, 20, 0.3, 1.2)
+    expect([base.x, base.y]).toEqual([0, -0])
+    expect(Math.abs(tip.x) + Math.abs(tip.y)).toBeGreaterThan(1)
   })
 })

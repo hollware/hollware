@@ -102,18 +102,62 @@ export function arc(progress: number, height: number): number {
   return Math.sin(Math.PI * Math.min(1, Math.max(0, progress))) * height
 }
 
-export type Mood = 'away' | 'calm' | 'typing' | 'alarm' | 'nod' | 'cloud' | 'curious'
+export type Shape = 'flame' | 'check' | 'cloud' | 'question'
 
-const MOODS: Readonly<Record<string, Mood>> = {
-  hero: 'away',
-  cta: 'away',
-  agents: 'typing',
-  contracts: 'alarm',
-  admin: 'nod',
-  cloudflare: 'cloud',
-  faq: 'curious',
+export interface Beat {
+  readonly shape: Shape
+  readonly step: number
+  readonly tint: 'alarm' | 'cloud' | null
+  readonly shake: boolean
+  readonly glyphs: boolean
+  readonly sparks: boolean
 }
 
-export function moodOf(section: string): Mood {
-  return Object.hasOwn(MOODS, section) ? (MOODS[section] ?? 'calm') : 'calm'
+const CALM: Beat = {
+  shape: 'flame',
+  step: 0,
+  tint: null,
+  shake: false,
+  glyphs: false,
+  sparks: false,
+}
+
+function alternate(seconds: number, flame: number, shape: number): boolean {
+  return seconds % (flame + shape) >= flame
+}
+
+export function beatOf(section: string, seconds: number): Beat {
+  switch (section) {
+    case 'agents':
+      return { ...CALM, glyphs: true }
+    case 'cms':
+      return { ...CALM, step: Math.floor(seconds / 0.9) }
+    case 'contracts': {
+      const fixed = Math.floor(seconds / 2.6) % 2 === 1
+      return fixed
+        ? { ...CALM, shape: 'check', step: 1 }
+        : { ...CALM, tint: 'alarm', shake: true, sparks: true }
+    }
+    case 'admin':
+      return { ...CALM, shape: alternate(seconds, 1.6, 1.8) ? 'check' : 'flame' }
+    case 'cloudflare':
+      return {
+        ...CALM,
+        shape: alternate(seconds, 1.4, 2.2) ? 'cloud' : 'flame',
+        tint: 'cloud',
+        sparks: true,
+      }
+    case 'faq':
+      return { ...CALM, shape: alternate(seconds, 1.6, 2) ? 'question' : 'flame' }
+    default:
+      return CALM
+  }
+}
+
+export function flicker(px: number, py: number, phase: number, seconds: number): Point {
+  const height = Math.max(0, 1 - py / MARK_HEIGHT) ** 1.6
+  return {
+    x: Math.sin(seconds * 3.1 + py * 0.09 + phase * 4) * 6 * height,
+    y: -Math.abs(Math.sin(seconds * 2.3 + px * 0.05 + phase * 3)) * 9 * height,
+  }
 }

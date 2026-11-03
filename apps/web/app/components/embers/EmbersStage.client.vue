@@ -13,16 +13,27 @@ interface Spot {
   readonly scale: number
 }
 
+interface Glyph {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  text: string
+}
+
 const COUNT = 2200
-const HOP_MS = 820
+const HOP_MS = 760
 const MOUTH = { x: 102, y: 200 }
+const GLYPHS = ['#', '<', '/>', '*', '-', '[', ']', '`', 'md', '{', '}', '>']
 
 const live = useState('embers-live', () => false)
 const surface = ref<HTMLCanvasElement | null>(null)
 
-let marks: Point[] = []
+let shapes: Record<Shape, Point[]> = { flame: [], check: [], cloud: [], question: [] }
 let embers: Ember[] = []
 let sparks: Ember[] = []
+let glyphs: Glyph[] = []
 let frame = 0
 let ratio = 1
 let width = 0
@@ -32,14 +43,18 @@ let burst: { x: number; y: number; until: number } | null = null
 let section = 'hero'
 let sections: Element[] = []
 let observer: IntersectionObserver | null = null
-let moodSince = 0
-let lastSpark = 0
+let since = 0
+let act = ''
+let lastEmit = 0
 let flight: { from: Head; key: string; start: number } | null = null
 let landed = ''
-let swirled = ''
-const head: Head = { x: 0, y: 0, scale: 0, turn: 0 }
+let shape: Shape = 'flame'
+let previous: Shape = 'flame'
+let morphStart = 0
+let lit: Element | null = null
 let pulse = 1
 let lift = 0
+const head: Head = { x: 0, y: 0, scale: 0, turn: 0 }
 
 function seededRandom(seed: number): () => number {
   let state = seed
@@ -49,7 +64,7 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-function sampleMark(): Point[] {
+function sampleShape(paint: (context: CanvasRenderingContext2D) => void, count: number): Point[] {
   const zoom = 4
   const shape = document.createElement('canvas')
   shape.width = MARK_WIDTH * zoom
@@ -57,11 +72,11 @@ function sampleMark(): Point[] {
   const context = shape.getContext('2d')
   if (context === null) return []
   context.scale(zoom, zoom)
-  context.fill(new Path2D(MARK_PATH), 'evenodd')
+  paint(context)
   const pixels = context.getImageData(0, 0, shape.width, shape.height).data
   let filled = 0
   for (let index = 3; index < pixels.length; index += 4) if ((pixels[index] ?? 0) > 128) filled++
-  const step = Math.max(1, Math.sqrt(filled / COUNT))
+  const step = Math.max(1, Math.sqrt(filled / count))
   const random = seededRandom(7)
   const points: Point[] = []
   for (let y = 0; y < shape.height; y += step) {
@@ -75,6 +90,54 @@ function sampleMark(): Point[] {
   return points
 }
 
+function fitted(points: Point[], count: number, seed: number): Point[] {
+  if (points.length === 0) return []
+  const random = seededRandom(seed)
+  const shuffled = points
+    .map((point) => ({ point, key: random() }))
+    .sort((a, b) => a.key - b.key)
+    .map(({ point }) => point)
+  return Array.from(
+    { length: count },
+    (_, index) => shuffled[index % shuffled.length] ?? { x: 0, y: 0 },
+  )
+}
+
+function buildShapes() {
+  const flame = sampleShape((context) => context.fill(new Path2D(MARK_PATH), 'evenodd'), COUNT)
+  const count = flame.length
+  const check = sampleShape((context) => {
+    context.lineWidth = 34
+    context.lineCap = 'round'
+    context.lineJoin = 'round'
+    context.stroke(new Path2D('M38 132 L86 182 L170 70'))
+  }, count)
+  const cloud = sampleShape((context) => {
+    for (const [x, y, r] of [
+      [62, 142, 38],
+      [108, 116, 52],
+      [150, 146, 36],
+    ] as const) {
+      context.beginPath()
+      context.arc(x, y, r, 0, Math.PI * 2)
+      context.fill()
+    }
+    context.fillRect(60, 140, 92, 42)
+  }, count)
+  const question = sampleShape((context) => {
+    context.font = 'bold 220px system-ui, sans-serif'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText('?', MARK_WIDTH / 2, MARK_HEIGHT / 2 + 8)
+  }, count)
+  shapes = {
+    flame,
+    check: fitted(check, count, 3),
+    cloud: fitted(cloud, count, 5),
+    question: fitted(question, count, 9),
+  }
+}
+
 function resize() {
   if (surface.value === null) return
   ratio = window.devicePixelRatio || 1
@@ -84,12 +147,13 @@ function resize() {
   surface.value.height = height
 }
 
+const narrow = () => window.innerWidth < 768
+const smallScale = () => ((narrow() ? 58 : 96) / MARK_HEIGHT) * ratio
+
 function slotSpot(name: 'hero' | 'cta'): Spot | null {
-  const slot = document.querySelector(`[data-ember-slot="${name}"]`)
-  const box = slot?.getBoundingClientRect()
+  const box = document.querySelector(`[data-ember-slot="${name}"]`)?.getBoundingClientRect()
   if (box === undefined || box.height === 0) return null
-  const inView = box.bottom > window.innerHeight * 0.3 && box.top < window.innerHeight * 0.8
-  if (!inView) return null
+  if (box.bottom < window.innerHeight * 0.3 || box.top > window.innerHeight * 0.8) return null
   return {
     key: name,
     x: (box.left + box.width / 2) * ratio,
@@ -98,27 +162,105 @@ function slotSpot(name: 'hero' | 'cta'): Spot | null {
   }
 }
 
-function sectionSpot(): Spot {
-  const element = sections.find((candidate) => candidate.getAttribute('id') === section)
-  const narrow = window.innerWidth < 768
-  const size = (narrow ? 56 : 92) / MARK_HEIGHT
-  const title = element?.querySelector(narrow ? '.page-chapter' : 'h2')?.getBoundingClientRect()
+function besideTitle(key: string, element: Element | undefined): Spot {
+  const title = element?.querySelector(narrow() ? '.page-chapter' : 'h2')?.getBoundingClientRect()
   const box = element?.getBoundingClientRect()
-  const right = Math.min(
-    window.innerWidth - (narrow ? 44 : 120),
-    (box?.right ?? window.innerWidth) - 120,
-  )
+  const x = narrow()
+    ? window.innerWidth - 44
+    : Math.min(window.innerWidth - 120, (box?.right ?? window.innerWidth) - 140)
   const y = title === undefined ? window.innerHeight / 2 : title.top + title.height / 2
   return {
-    key: section,
-    x: (narrow ? window.innerWidth - 44 : right) * ratio,
-    y: Math.min(window.innerHeight - 60, Math.max(90, y)) * ratio,
-    scale: size * ratio,
+    key,
+    x: x * ratio,
+    y: Math.min(window.innerHeight - 70, Math.max(100, y)) * ratio,
+    scale: smallScale(),
   }
 }
 
-function spotNow(): Spot {
-  return slotSpot('hero') ?? slotSpot('cta') ?? sectionSpot()
+function over(key: string, element: Element | null | undefined, fallback: Spot): Spot {
+  const box = element?.getBoundingClientRect()
+  if (box === undefined || box.bottom < 80 || box.top > window.innerHeight - 40) return fallback
+  return {
+    key,
+    x: Math.min(window.innerWidth - 40, box.right - 18) * ratio,
+    y: Math.max(90, box.top + 6) * ratio,
+    scale: smallScale(),
+  }
+}
+
+function light(card: Element | null) {
+  if (lit === card) return
+  lit?.classList.remove('page-card-lit')
+  card?.classList.add('page-card-lit')
+  lit = card
+}
+
+function direct(seconds: number): { spot: Spot; beat: Beat } {
+  const hero = slotSpot('hero')
+  if (hero !== null) return { spot: hero, beat: beatOf('hero', seconds) }
+  const cta = slotSpot('cta')
+  if (cta !== null) return { spot: cta, beat: beatOf('cta', seconds) }
+  const element = sections.find((candidate) => candidate.getAttribute('id') === section)
+  const beside = besideTitle(section, element)
+  const beat = beatOf(section, seconds)
+  if (section === 'cms') {
+    const cards = [...(element?.querySelectorAll('.page-card') ?? [])]
+    const index = beat.step % Math.max(1, cards.length)
+    const card = cards[index] ?? null
+    light(card)
+    return { spot: over(`cms:${index}`, card, beside), beat }
+  }
+  light(null)
+  if (section === 'contracts') {
+    const box = element?.querySelector(beat.step === 1 ? '.chaos-after' : '.chaos-before')
+    return { spot: over(`contracts:${beat.step}`, box, beside), beat }
+  }
+  if (section === 'admin') {
+    const image = element?.querySelector('img')?.getBoundingClientRect()
+    if (image !== undefined && image.top < window.innerHeight * 0.7 && image.bottom > 120) {
+      return {
+        spot: {
+          key: 'admin',
+          x: (image.left + image.width * 0.82) * ratio,
+          y: Math.max(110, image.top + image.height * 0.18) * ratio,
+          scale: smallScale() * 1.2,
+        },
+        beat,
+      }
+    }
+  }
+  return { spot: beside, beat }
+}
+
+function place(spot: Spot, now: number) {
+  if (spot.key !== landed && (flight === null || flight.key !== spot.key)) {
+    flight = { from: { ...head }, key: spot.key, start: now }
+  }
+  if (flight !== null) {
+    const progress = Math.min(1, (now - flight.start) / HOP_MS)
+    const far = Math.hypot(spot.x - flight.from.x, spot.y - flight.from.y)
+    head.x = hop(flight.from.x, spot.x, progress)
+    head.y = hop(flight.from.y, spot.y, progress) - arc(progress, Math.min(160 * ratio, far * 0.35))
+    head.scale = hop(flight.from.scale, spot.scale, progress)
+    head.turn = Math.sin(progress * Math.PI) * 0.4 * Math.sign(spot.x - flight.from.x || 1)
+    if (progress >= 1) {
+      landed = flight.key
+      flight = null
+    }
+    return
+  }
+  head.x += (spot.x - head.x) * 0.25
+  head.y += (spot.y - head.y) * 0.25
+  head.scale += (spot.scale - head.scale) * 0.2
+  head.turn *= 0.9
+}
+
+function toScreen(point: Point): Point {
+  const dx = (point.x - MARK_WIDTH / 2) * head.scale * pulse
+  const dy = (point.y - MARK_HEIGHT / 2) * head.scale * pulse
+  const cos = Math.cos(head.turn)
+  const sin = Math.sin(head.turn)
+  return { x: head.x + dx * cos - dy * sin, y: head.y - lift + dx * sin + dy * cos }
 }
 
 function emit(x: number, y: number, vx: number, vy: number, heat = 0.9) {
@@ -133,107 +275,68 @@ function emit(x: number, y: number, vx: number, vy: number, heat = 0.9) {
     heat,
     phase: Math.random(),
   })
-  if (sparks.length > 160) sparks.shift()
+  if (sparks.length > 220) sparks.shift()
 }
 
-function place(spot: Spot, now: number) {
-  if (spot.key !== landed && (flight === null || flight.key !== spot.key)) {
-    flight = { from: { ...head }, key: spot.key, start: now }
-    moodSince = now
-  }
-  if (flight !== null) {
-    const progress = Math.min(1, (now - flight.start) / HOP_MS)
-    head.x = hop(flight.from.x, spot.x, progress)
-    head.y = hop(flight.from.y, spot.y, progress) - arc(progress, 140 * ratio)
-    head.scale = hop(flight.from.scale, spot.scale, progress)
-    head.turn = flight.from.turn * (1 - progress) + Math.sin(progress * Math.PI) * 0.35
-    if (progress >= 1) {
-      landed = flight.key
-      flight = null
-    }
-    return
-  }
-  head.x += (spot.x - head.x) * 0.3
-  head.y += (spot.y - head.y) * 0.3
-  head.scale += (spot.scale - head.scale) * 0.2
-  head.turn *= 0.9
-}
-
-function react(mood: Mood, now: number) {
-  const since = (now - moodSince) / 1000
-  const mouth = toScreen(MOUTH.x, MOUTH.y)
-  let tint: Tint = null
-  let amount = 0
-  let jitter = 0
-  pulse = 1
-  lift = 0
-  if (mood === 'typing' && now - lastSpark > 110) {
-    lastSpark = now
-    emit(mouth.x, mouth.y, (2 + Math.random() * 2.5) * ratio, (-0.6 - Math.random()) * ratio)
-  }
-  if (mood === 'calm') pulse = 1 + 0.04 * Math.sin(since * 2.2)
-  if (mood === 'calm' && swirled !== landed && flight === null) {
-    swirled = landed
-    for (const ember of embers) {
-      const dx = ember.x - head.x
-      const dy = ember.y - head.y
-      ember.vx += -dy * 0.06
-      ember.vy += dx * 0.06
-    }
-  }
-  if (mood === 'alarm') {
-    const phase = since % 3
-    if (phase < 1.1) {
-      tint = TINTS.alarm
-      amount = 0.85
-      jitter = 1.6 * ratio
-    } else {
-      pulse = 1 + 0.14 * Math.max(0, 1 - (phase - 1.1) * 3)
-    }
-  }
-  if (mood === 'nod' && since % 2.4 < 0.8) {
-    lift = Math.abs(Math.sin((since % 2.4) * Math.PI * 2.5)) * 12 * ratio
-  }
-  if (mood === 'cloud') {
-    tint = TINTS.cloud
-    amount = 0.7
-    if (now - lastSpark > 160) {
-      lastSpark = now
-      emit(
-        head.x + (Math.random() - 0.5) * 60 * head.scale,
-        head.y - 80 * head.scale,
-        (Math.random() - 0.5) * ratio,
-        -1.5 * ratio,
-        1,
-      )
-    }
-  }
-  if (mood === 'curious') head.turn = 0.22 * Math.sin(since * 1.6)
-  if (mood === 'away') pulse = 1 + 0.02 * Math.sin(since * 1.8)
-  return { tint, amount, jitter }
-}
-
-function toScreen(px: number, py: number): Point {
-  const dx = (px - MARK_WIDTH / 2) * head.scale * pulse
-  const dy = (py - MARK_HEIGHT / 2) * head.scale * pulse
-  const cos = Math.cos(head.turn)
-  const sin = Math.sin(head.turn)
-  return { x: head.x + dx * cos - dy * sin, y: head.y - lift + dx * sin + dy * cos }
+function spit(now: number, element: Element | undefined) {
+  if (now - lastEmit < 130) return
+  lastEmit = now
+  const mouth = toScreen(MOUTH)
+  const target = element?.querySelector('figure')?.getBoundingClientRect()
+  const tx =
+    target === undefined
+      ? mouth.x - 200 * ratio
+      : (target.left + target.width * (0.2 + Math.random() * 0.6)) * ratio
+  const ty =
+    target === undefined ? mouth.y + 100 * ratio : (target.top + 40 + Math.random() * 80) * ratio
+  const frames = 46
+  glyphs.push({
+    x: mouth.x,
+    y: mouth.y,
+    vx: (tx - mouth.x) / frames,
+    vy: (ty - mouth.y) / frames - 2.2 * ratio,
+    life: frames,
+    text: GLYPHS[Math.floor(Math.random() * GLYPHS.length)] ?? '#',
+  })
+  if (glyphs.length > 60) glyphs.shift()
 }
 
 function draw(now: number) {
   const context = surface.value?.getContext('2d')
   if (context === null || context === undefined) return
-  const spot = spotNow()
+  const { spot, beat } = direct((now - since) / 1000)
+  const scene = spot.key.split(':')[0] ?? ''
+  if (scene !== act) {
+    act = scene
+    since = now
+  }
   place(spot, now)
-  const mood =
-    flight === null
-      ? spot.key === 'hero' || spot.key === 'cta'
-        ? 'away'
-        : moodOf(spot.key)
-      : 'away'
-  const { tint, amount, jitter } = react(mood, now)
-  const small = Math.min(1, Math.max(0.42, head.scale / (1.6 * ratio)))
+  const ghost = now / 1000
+  const small = Math.min(1, Math.max(0.36, head.scale / (1.6 * ratio)))
+  const resting = flight === null
+  pulse = 1 + 0.025 * Math.sin(ghost * 1.7)
+  lift = (Math.sin(ghost * 1.3) * 9 + Math.sin(ghost * 2.9) * 3) * ratio * Math.max(0.5, small)
+  head.turn += Math.sin(ghost * 1.1) * 0.05
+  const next = resting ? beat.shape : 'flame'
+  if (next !== shape) {
+    previous = shape
+    shape = next
+    morphStart = now
+  }
+  const morph = Math.min(1, (now - morphStart) / 520)
+  const tint: Tint = beat.tint === null || !resting ? null : TINTS[beat.tint]
+  const amount = tint === null ? 0 : 0.8
+  const element = sections.find((candidate) => candidate.getAttribute('id') === section)
+  if (resting && beat.glyphs) spit(now, element)
+  if (resting && beat.sparks && Math.random() < 0.35) {
+    emit(
+      head.x + (Math.random() - 0.5) * 120 * head.scale,
+      head.y - 60 * head.scale,
+      (Math.random() - 0.5) * ratio,
+      -1.4 * ratio,
+      1,
+    )
+  }
   const pull =
     burst !== null && now < burst.until
       ? { x: burst.x, y: burst.y, radius: 260 * head.scale, strength: 10 * ratio }
@@ -245,45 +348,81 @@ function draw(now: number) {
             radius: Math.max(40 * ratio, 110 * head.scale),
             strength: 4 * ratio,
           }
-  context.clearRect(0, 0, width, height)
+
+  context.globalCompositeOperation = 'destination-out'
+  context.fillStyle = `rgba(0, 0, 0, ${resting ? 0.32 : 0.16})`
+  context.fillRect(0, 0, width, height)
   context.globalCompositeOperation = 'lighter'
-  const time = now / 1000
+
+  const reach = 170 * head.scale
+  const aura = context.createRadialGradient(head.x, head.y - lift, 0, head.x, head.y - lift, reach)
+  const glow = tint === null ? '240, 169, 59' : `${tint[0]}, ${tint[1]}, ${tint[2]}`
+  aura.addColorStop(0, `rgba(${glow}, ${(0.1 * small).toFixed(3)})`)
+  aura.addColorStop(1, `rgba(${glow}, 0)`)
+  context.fillStyle = aura
+  context.fillRect(head.x - reach, head.y - lift - reach, reach * 2, reach * 2)
+
+  const from = shapes[previous]
+  const to = shapes[shape]
+  const every = small < 0.5 ? 3 : small < 0.7 ? 2 : 1
+  const dim = small < 0.7 ? 0.55 + small * 0.4 : 1
+  const flame = shape === 'flame' ? morph : previous === 'flame' ? 1 - morph : 0
   embers.forEach((ember, index) => {
-    const home = toScreen(marks[index]?.x ?? 0, marks[index]?.y ?? 0)
+    const a = from[index] ?? { x: 0, y: 0 }
+    const b = to[index] ?? a
+    const wave = flicker(a.x, a.y, ember.phase, ghost)
+    const home = toScreen({
+      x: a.x + (b.x - a.x) * morph + wave.x * flame,
+      y: a.y + (b.y - a.y) * morph + wave.y * flame,
+    })
     ember.homeX = home.x
     ember.homeY = home.y
-    stepEmber(ember, pull, flight === null ? 0.06 : 0.035, 0.84)
-    if (jitter > 0) {
-      ember.x += (Math.random() - 0.5) * jitter
-      ember.y += (Math.random() - 0.5) * jitter
+    stepEmber(ember, pull, resting ? 0.07 : 0.03, 0.83)
+    if (beat.shake && resting) {
+      ember.x += (Math.random() - 0.5) * 2.2 * ratio
+      ember.y += (Math.random() - 0.5) * 2.2 * ratio
     }
-    const glow = 0.5 + 0.5 * Math.sin(time * 3 + ember.phase * 6)
-    const size = ember.size * ratio * small * (0.8 + glow * 0.4)
+    if (index % every !== 0) return
+    const shine = 0.5 + 0.5 * Math.sin(ghost * 3 + ember.phase * 6)
+    const size = ember.size * ratio * Math.max(0.55, small) * (0.8 + shine * 0.4)
     if (small > 0.6) {
-      context.fillStyle = emberColor(ember.heat, glow, 0.1, tint, amount)
+      context.fillStyle = emberColor(ember.heat, shine, 0.08, tint, amount)
       context.fillRect(ember.x - size * 1.2, ember.y - size * 1.2, size * 2.4, size * 2.4)
     }
-    context.fillStyle = emberColor(ember.heat, glow, 1, tint, amount)
+    context.fillStyle = emberColor(ember.heat * dim, shine * dim, dim, tint, amount)
     context.fillRect(ember.x - size / 2, ember.y - size / 2, size, size)
   })
+
   sparks = sparks.filter((spark) => spark.heat > 0)
   for (const spark of sparks) {
-    spark.x += spark.vx
+    spark.x += spark.vx + Math.sin(ghost * 3 + spark.phase * 9) * 0.3 * ratio
     spark.y += spark.vy
-    spark.vy -= 0.02 * ratio
+    spark.vy -= 0.015 * ratio
     spark.heat -= 0.012
     context.fillStyle = emberColor(spark.heat, spark.heat, 1, tint, amount)
     const size = spark.size * ratio
     context.fillRect(spark.x, spark.y, size, size)
   }
-  if (flight === null && mood === 'away' && Math.random() < 0.25) {
+  if (resting && shape === 'flame' && Math.random() < 0.3) {
+    const top = toScreen({ x: 110 + (Math.random() - 0.5) * 40, y: 30 })
     emit(
-      head.x + (Math.random() - 0.5) * 80 * head.scale,
-      head.y - 70 * head.scale,
+      top.x,
+      top.y,
       (Math.random() - 0.5) * 0.4 * ratio,
-      (-0.4 - Math.random() * 0.8) * ratio,
+      (-0.5 - Math.random() * 0.8) * ratio,
       0.7,
     )
+  }
+
+  glyphs = glyphs.filter((glyph) => glyph.life > 0)
+  context.font = `${Math.round(13 * ratio)}px "JetBrains Mono Variable", ui-monospace, monospace`
+  for (const glyph of glyphs) {
+    glyph.x += glyph.vx
+    glyph.y += glyph.vy
+    glyph.vy += 0.1 * ratio
+    glyph.life -= 1
+    context.fillStyle = `rgba(246, 193, 99, ${Math.min(1, glyph.life / 18).toFixed(3)})`
+    context.fillText(glyph.text, glyph.x, glyph.y)
   }
   context.globalCompositeOperation = 'source-over'
 }
@@ -299,8 +438,9 @@ const left = () => (pointer = null)
 function tapped(event: PointerEvent) {
   const x = event.clientX * ratio
   const y = event.clientY * ratio
-  if (Math.hypot(x - head.x, y - head.y) < 140 * head.scale)
+  if (Math.hypot(x - head.x, y - head.y) < 140 * head.scale) {
     burst = { x, y, until: performance.now() + 220 }
+  }
 }
 const paused = () => {
   cancelAnimationFrame(frame)
@@ -310,8 +450,8 @@ const paused = () => {
 onMounted(() => {
   if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return
   resize()
-  marks = sampleMark()
-  embers = embersOf(marks, seededRandom(11))
+  buildShapes()
+  embers = embersOf(shapes.flame, seededRandom(11))
   sections = [...document.querySelectorAll('.landing section[id]')]
   observer = new IntersectionObserver(
     (entries) => {
@@ -322,11 +462,13 @@ onMounted(() => {
     { rootMargin: '-40% 0px -55% 0px' },
   )
   for (const element of sections) observer.observe(element)
-  const start = spotNow()
+  const start = direct(0).spot
   Object.assign(head, { x: start.x, y: start.y, scale: start.scale, turn: 0 })
   landed = start.key
+  act = start.key
+  since = performance.now()
   for (const [index, ember] of embers.entries()) {
-    const home = toScreen(marks[index]?.x ?? 0, marks[index]?.y ?? 0)
+    const home = toScreen(shapes.flame[index] ?? { x: 0, y: 0 })
     Object.assign(ember, { x: home.x, y: home.y })
   }
   window.addEventListener('resize', resize)
@@ -341,6 +483,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(frame)
   observer?.disconnect()
+  light(null)
   live.value = false
   window.removeEventListener('resize', resize)
   window.removeEventListener('pointermove', moved)
