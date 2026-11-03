@@ -51,3 +51,45 @@ it('turns a refused navigation into an error with its code and fix', async () =>
   expect(refused).toBeInstanceOf(HollwareClientError)
   expect(refused).toMatchObject({ status: 422, code: 'output_too_large', fix: 'Page.' })
 })
+
+const ENTRY = { outcome: 'ok', entry: { slug: 'hello', frontmatter: {} } }
+
+it('sends a preview token in a header, never in the url', async () => {
+  const { reader, sent } = overHttp(200, ENTRY)
+
+  await reader.getEntry('site', 'blog', 'hello', 'en', { preview: 'hw_prv_secret', related: true })
+
+  expect(sent[0]?.url).toBe('https://cms.test/v1/blog/en/hello?related=true')
+  expect(sent[0]?.headers.get('hollware-preview')).toBe('hw_prv_secret')
+})
+
+it('refuses an answer whose outcome or fields this client does not know', async () => {
+  const answers = [
+    { outcome: 'ok' },
+    { outcome: 'ok', entry: 'hello' },
+    { outcome: 'gone', entry: {} },
+  ]
+  const errors = await Promise.all(
+    answers.map((body) =>
+      overHttp(200, body)
+        .reader.getEntry('site', 'blog', 'hello', 'en')
+        .then(
+          () => null,
+          (error: unknown) => error,
+        ),
+    ),
+  )
+  const navigation = await overHttp(200, { ...NAVIGATION, groups: null })
+    .reader.getNavigation('site', 'docs')
+    .catch((error: unknown) => error)
+
+  for (const error of [...errors, navigation]) {
+    expect(error).toBeInstanceOf(HollwareClientError)
+    expect(error).toMatchObject({ status: 200, code: 'invalid_response' })
+  }
+  expect(
+    await overHttp(404, { outcome: 'not_found' }).reader.getEntry('site', 'b', 'x', 'en'),
+  ).toEqual({
+    outcome: 'not_found',
+  })
+})

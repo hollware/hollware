@@ -45,11 +45,14 @@ function readRoute<Path extends string>(
       return c.json(
         { code: error.code, message: error.message, fix: error.fix },
         STATUS[error.code] ?? 500,
-        c.req.query('preview') === undefined ? {} : { 'cache-control': 'no-store' },
+        previewOf(c) === undefined ? {} : { 'cache-control': 'no-store' },
       )
     }
   }
 }
+
+const previewOf = (c: Context<GatewayEnv>) =>
+  c.req.header('hollware-preview') ?? c.req.query('preview')
 
 async function etagOf(body: string): Promise<string> {
   const digest = new Uint8Array(
@@ -101,7 +104,10 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
       if (crossOrigin !== null && options.anyCorsOrigin(crossOrigin)) {
         headers.set('access-control-allow-origin', crossOrigin)
         headers.set('access-control-allow-methods', 'GET, HEAD')
-        headers.set('access-control-allow-headers', 'authorization, if-none-match')
+        headers.set(
+          'access-control-allow-headers',
+          'authorization, if-none-match, hollware-preview',
+        )
         headers.set('access-control-max-age', String(PREFLIGHT_MAX_AGE))
       }
       return new Response(null, { status: 204, headers })
@@ -240,7 +246,7 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     '/v1/:collection/:locale/:slug',
     readRoute<'/v1/:collection/:locale/:slug'>(async (c) => {
       const formats = c.req.query('formats')
-      const preview = c.req.query('preview')
+      const preview = previewOf(c)
       const base = {
         ...(c.req.query('related') === 'true' ? { related: true } : {}),
         ...(c.req.query('references') === 'true' ? { references: true } : {}),
@@ -300,7 +306,7 @@ export function openApiDocument(): object {
     },
     '403': { description: 'The token lacks content:read.' },
   }
-  const param = (name: string, location: 'path' | 'query', required: boolean) => ({
+  const param = (name: string, location: 'path' | 'query' | 'header', required: boolean) => ({
     name,
     in: location,
     required,
@@ -395,6 +401,7 @@ export function openApiDocument(): object {
             param('related', 'query', false),
             param('references', 'query', false),
             param('preview', 'query', false),
+            param('hollware-preview', 'header', false),
           ],
           responses: {
             '200': ok(

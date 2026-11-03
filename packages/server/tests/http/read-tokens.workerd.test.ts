@@ -61,7 +61,7 @@ describe('the read API from a page', () => {
     expect(Object.fromEntries(preflight.headers)).toMatchObject({
       'access-control-allow-origin': PAGE,
       'access-control-allow-methods': 'GET, HEAD',
-      'access-control-allow-headers': 'authorization, if-none-match',
+      'access-control-allow-headers': 'authorization, if-none-match, hollware-preview',
     })
     expect(read.status).toBe(200)
     expect(Object.fromEntries(read.headers)).toMatchObject({
