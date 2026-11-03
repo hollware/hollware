@@ -52,14 +52,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.backdrop-grid {
-  background-image:
-    linear-gradient(to right, var(--ui-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--ui-border) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
-}
-
 @theme {
   --color-cloudflare: #f6821f;
 }

@@ -53,17 +53,26 @@ describe('the path of a page', () => {
   })
 
   it('knows the pages that write their own head', () => {
-    expect(
-      ['/features/', '/es/compare/wordpress/', '/install/', '/es/media-kit/', '/home/'].map(
-        ownsHead,
-      ),
-    ).toEqual([true, true, true, true, true])
-    expect(['/', '/docs/deploy/', '/reference/events/', '/featuresx/'].map(ownsHead)).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ])
+    for (const path of [
+      '/',
+      '/es',
+      '/es/',
+      '/features/',
+      '/es/compare/wordpress/',
+      '/install/',
+      '/es/media-kit/',
+    ]) {
+      expect(ownsHead(path), path).toBe(true)
+    }
+    for (const path of [
+      '/docs/deploy/',
+      '/es/docs/',
+      '/reference/events/',
+      '/featuresx/',
+      '/home/',
+    ]) {
+      expect(ownsHead(path), path).toBe(false)
+    }
   })
 })
 
