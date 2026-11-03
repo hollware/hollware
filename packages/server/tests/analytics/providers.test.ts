@@ -6,6 +6,7 @@ import { plausibleSource } from '../../src/analytics/plausible.ts'
 import { pagesHogql, posthogSource } from '../../src/analytics/posthog.ts'
 import { OPEN_WORLD_TIMEOUT_MS } from '../../src/limits.ts'
 import {
+  MAX_ANSWER_BYTES,
   messageOf,
   ProviderError,
   request,
@@ -377,5 +378,60 @@ describe('a provider that does not answer', () => {
     })
     expect(signals[0]).toBeInstanceOf(AbortSignal)
     expect(REQUEST_TIMEOUT_MS).toBeLessThan(OPEN_WORLD_TIMEOUT_MS)
+  })
+})
+
+describe('a provider that answers too much', () => {
+  const huge = (headers: HeadersInit = {}) => {
+    let sent = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1024 * 1024
+        controller.enqueue(new Uint8Array(1024 * 1024).fill(32))
+        if (sent > 8 * 1024 * 1024) controller.close()
+      },
+    })
+    return {
+      fetch: (async () => new Response(body, { headers })) satisfies Fetch,
+      read: () => sent,
+    }
+  }
+
+  it('stops reading past 2 MB, whatever it declares', async () => {
+    const endless = huge()
+
+    const failure = await request(endless.fetch, 'plausible', 'https://plausible.io/', {}).catch(
+      (error: unknown) => error,
+    )
+
+    expect(failure instanceof ProviderError).toBe(true)
+    expect(failure).toMatchObject({
+      kind: 'invalid',
+      message: 'plausible answered more than 2 MB.',
+    })
+    expect(MAX_ANSWER_BYTES).toBe(2097152)
+    expect(endless.read()).toBeLessThanOrEqual(4 * 1024 * 1024)
+  })
+
+  it('reads nothing of an answer that declares more than 2 MB', async () => {
+    const declared = huge({ 'content-length': '2097153' })
+
+    const failure = await request(declared.fetch, 'posthog', 'https://us.posthog.com/', {}).catch(
+      (error: unknown) => error,
+    )
+
+    expect(failure instanceof ProviderError).toBe(true)
+    expect(failure).toMatchObject({ kind: 'invalid' })
+    expect(declared.read()).toBeLessThanOrEqual(1024 * 1024)
+  })
+
+  it('reads an answer of exactly 2 MB', async () => {
+    const text = `"${'a'.repeat(MAX_ANSWER_BYTES - 2)}"`
+    const exact: Fetch = async () => new Response(text)
+
+    const answer = await request(exact, 'posthog', 'https://us.posthog.com/', {})
+
+    expect(answer.status).toBe(200)
+    expect(typeof answer.body === 'string' ? answer.body.length : 0).toBe(MAX_ANSWER_BYTES - 2)
   })
 })

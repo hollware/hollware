@@ -1,5 +1,7 @@
 export const REQUEST_TIMEOUT_MS = 25_000
 
+export const MAX_ANSWER_BYTES = 2 * 1024 * 1024
+
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
 export class ProviderError extends Error {
@@ -68,5 +70,39 @@ export async function request(
       'Try again in a minute. If it keeps failing, check that the provider is up.',
     )
   }
-  return { status: response.status, body: jsonOrText(await response.text()) }
+  return { status: response.status, body: jsonOrText(await textOf(response, provider)) }
+}
+
+async function textOf(response: Response, provider: string): Promise<string> {
+  const tooLarge = () =>
+    new ProviderError(
+      'invalid',
+      `${provider} answered more than ${MAX_ANSWER_BYTES / 1024 / 1024} MB.`,
+      'Ask for fewer pages, or check that the url points at the provider.',
+    )
+  if (Number(response.headers.get('content-length') ?? 0) > MAX_ANSWER_BYTES) {
+    await response.body?.cancel()
+    throw tooLarge()
+  }
+  if (response.body === null) return ''
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > MAX_ANSWER_BYTES) {
+      await reader.cancel()
+      throw tooLarge()
+    }
+    chunks.push(value)
+  }
+  const whole = new Uint8Array(size)
+  let at = 0
+  for (const chunk of chunks) {
+    whole.set(chunk, at)
+    at += chunk.byteLength
+  }
+  return new TextDecoder().decode(whole)
 }
