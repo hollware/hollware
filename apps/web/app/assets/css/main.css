@@ -52,14 +52,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.backdrop-grid {
-  background-image:
-    linear-gradient(to right, var(--ui-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--ui-border) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
-}
-
 @theme {
   --color-cloudflare: #f6821f;
 }
@@ -187,4 +179,284 @@ body {
   & hr {
     border-color: var(--ui-border);
   }
+}
+
+.embers-still {
+  filter: drop-shadow(0 0 2.5rem color-mix(in oklab, var(--color-flame-400) 40%, transparent));
+}
+
+.landing-copy {
+  & > * + * {
+    margin-top: 0.85em;
+  }
+  & a {
+    color: var(--ui-text-highlighted);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--color-flame-400) 50%, transparent);
+    text-underline-offset: 3px;
+  }
+  & strong {
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+  }
+  & :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    color: var(--ui-text-highlighted);
+  }
+}
+
+.landing-code pre,
+.landing pre {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  padding: 1rem 1.15rem;
+  border-radius: calc(var(--ui-radius) * 2);
+  background: color-mix(in oklab, var(--ui-bg-muted) 85%, transparent);
+  border: 1px solid var(--ui-border);
+  overflow-x: auto;
+  color: var(--ui-text-highlighted);
+}
+.chaos-before pre {
+  border-color: color-mix(in oklab, var(--ui-error) 45%, var(--ui-border));
+}
+.chaos-after pre {
+  border-color: color-mix(in oklab, var(--ui-success) 45%, var(--ui-border));
+}
+
+.page-facts ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  & li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  & li::before {
+    content: '';
+    width: 0.35rem;
+    height: 0.35rem;
+    background: var(--color-flame-400);
+  }
+}
+
+.page-steps {
+  counter-reset: step;
+  & .page-step::before {
+    counter-increment: step;
+    content: counter(step, decimal-leading-zero);
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ui-text-dimmed);
+  }
+}
+
+.page-stack ul {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: calc(var(--ui-radius) * 3);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-border);
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  @media (min-width: 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 64rem) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  & li {
+    background: var(--ui-bg);
+    padding: 1.25rem 1.4rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--ui-text-muted);
+  }
+  & strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    color: var(--ui-text-highlighted);
+  }
+}
+
+.page-card p:first-child a {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ui-text-highlighted);
+  text-decoration: none;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.page-faq {
+  display: grid;
+  max-width: 52rem;
+  & h3 {
+    padding-top: 1.4rem;
+    margin-top: 1.4rem;
+    border-top: 1px solid var(--ui-border);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ui-text-highlighted);
+  }
+  & h3:first-child {
+    margin-top: 0;
+  }
+  & p {
+    margin-top: 0.5rem;
+    color: var(--ui-text-muted);
+    line-height: 1.7;
+  }
+}
+
+.landing-article {
+  max-width: 50rem;
+  & table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+    font-size: 0.9rem;
+    border-collapse: collapse;
+  }
+  & th,
+  & td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  & th {
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+  }
+}
+
+.prose .not-prose {
+  & ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  & li + li {
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 64rem) {
+  .landing-article .page-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.landing-article.landing-wide {
+  max-width: none;
+  & > p,
+  & > ul,
+  & > h2 {
+    max-width: 50rem;
+  }
+  & table {
+    font-size: 0.85rem;
+  }
+  & th:first-child,
+  & td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--ui-bg);
+    color: var(--ui-text-highlighted);
+    font-weight: 600;
+    min-width: 9rem;
+  }
+  & th:nth-child(2),
+  & td:nth-child(2) {
+    background: color-mix(in oklab, var(--color-flame-400) 8%, var(--ui-bg));
+    color: var(--ui-text-highlighted);
+  }
+  & th:nth-child(2) {
+    color: var(--color-flame-300);
+  }
+  & td {
+    min-width: 8.5rem;
+  }
+}
+
+.landing {
+  counter-reset: chapter;
+}
+.landing .page-section {
+  counter-increment: chapter;
+  border-top: 1px solid var(--ui-border);
+}
+.landing .page-section:nth-of-type(even) {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 0% 0%,
+      color-mix(in oklab, var(--color-flame-900) 22%, transparent),
+      transparent 70%
+    ),
+    var(--color-carbon-900);
+}
+.landing .page-chapter::before {
+  content: counter(chapter, decimal-leading-zero) ' · ';
+  color: var(--ui-text-dimmed);
+}
+
+.landing {
+  counter-reset: chapter;
+}
+.landing .page-section {
+  counter-increment: chapter;
+  border-top: 1px solid var(--ui-border);
+}
+.landing .page-section:nth-of-type(even) {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 0% 0%,
+      color-mix(in oklab, var(--color-flame-900) 22%, transparent),
+      transparent 70%
+    ),
+    var(--color-carbon-900);
+}
+.landing .page-chapter::before {
+  content: counter(chapter, decimal-leading-zero) ' · ';
+  color: var(--ui-text-dimmed);
+}
+
+.page-collapsible {
+  & summary::-webkit-details-marker {
+    display: none;
+  }
+  &[open] .page-collapsible-icon {
+    rotate: 180deg;
+  }
+  & ul {
+    display: grid;
+    gap: 0.35rem;
+  }
+  & a {
+    word-break: break-all;
+  }
+}
+
+.page-card.page-card-lit {
+  border-color: color-mix(in oklab, var(--color-flame-400) 70%, transparent);
+  background: color-mix(in oklab, var(--color-flame-400) 8%, var(--ui-bg-elevated));
+  box-shadow: 0 0 2.5rem -0.5rem color-mix(in oklab, var(--color-flame-400) 45%, transparent);
+  transition:
+    border-color 0.3s,
+    background 0.3s,
+    box-shadow 0.3s;
 }

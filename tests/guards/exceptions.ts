@@ -149,23 +149,15 @@ export const ADMIN_TEXT_LITERALS: ExceptionList = {
 }
 
 export const WEB_TEXT_LITERALS: ExceptionList = {
-  max: 4,
+  max: 2,
   entries: [
     {
       value: 'llms.txt',
       reason: 'The name of a file of the site for language models, the same in every language.',
     },
     {
-      value: 'GitHub',
-      reason: 'The name of a service, on the button that leads to the repository.',
-    },
-    {
       value: 'Hollware',
       reason: 'The name of the product, the title of the header in every language.',
-    },
-    {
-      value: 'agent → hollware /mcp',
-      reason: 'The title bar of the agent session on the landing page: an endpoint, not words.',
     },
   ],
 }

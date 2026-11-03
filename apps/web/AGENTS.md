@@ -1,7 +1,17 @@
 # hollware.com
 
 The landing page and the docs. The pages read the `docs` site of Hollware over the `HOLLWARE`
-service binding; no page text lives in this repository.
+service binding: the docs, and the collections `pages` (home, install, media kit), `features`,
+`compare` and `glossary`, defined in `apps/playground/hollware.config.ts` and applied to the demo
+with `set_collection` from `node scripts/web-structure.ts`. Only the words of the interface live in
+`app/i18n`.
+
+- Copy goes in the body and the slots of a component, never in its props: the contracts, search,
+  the Markdown of a page and llms.txt read the body. A prop is an enum, a pattern or an id.
+- A comparison cites a public source for every claim about another product, with the day it was
+  read, and names no price.
+- The mark lives as embers (`app/components/embers/`): a 2D canvas, paused out of view, still
+  with reduced motion; the companion head reacts to the section in view by its id.
 
 ## How Hollware speaks
 
@@ -15,8 +25,8 @@ The site, the docs, the admin, the CLI and every error speak alike:
 - English first; Spanish is a careful translation, not a new text.
 - The same words everywhere: entry, draft, contract, verdict, review, publish, collection, site
   (entrada, borrador, contrato, veredicto, revisión, publicar, colección, sitio).
-- The headline is "The CMS your agents write to." and the sign-off "Made for agents, kept by
-  people."
+- The headline is "Let your agents publish. Nothing ships broken.", under the category "The CMS
+  your agents write to", and the sign-off "Made for agents, kept by people."
 
 ## Build
 

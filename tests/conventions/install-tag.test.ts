@@ -34,7 +34,6 @@ describe('the install command', () => {
       expect.arrayContaining([
         'README.md',
         'packages/create-hollware/README.md',
-        'apps/web/app/pages/index.vue',
         'apps/web/server/routes/llms.txt.ts',
         'templates/starter/README.md',
       ]),

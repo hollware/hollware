@@ -8,6 +8,8 @@ const pages = computed(() =>
 )
 
 const links = computed(() => [
+  { label: m.value.nav.features, to: to('/features/'), icon: 'i-lucide-layers' },
+  { label: m.value.nav.compare, to: to('/compare/'), icon: 'i-lucide-scale' },
   { label: m.value.nav.docs, to: to('/docs/'), icon: 'i-lucide-book-open' },
   { label: m.value.nav.tools, to: to('/reference/mcp-tools/'), icon: 'i-lucide-wrench' },
   {

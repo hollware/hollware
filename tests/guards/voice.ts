@@ -1,23 +1,39 @@
 import type { TextFile, Violation } from './types.ts'
 
-const NEVER = [
-  /\bAI-[p]owered\b/i,
-  /\bauto[p]ilot\b/i,
-  /\bseam[l]ess(ly)?\b/i,
-  /\bun[l]eash(es|ed|ing)?\b/i,
-  /\bnext-[g]en\b/i,
-  /\bb[l]azing(ly)? fast\b/i,
-  /\bspo[o]ky\b/i,
+const NEVER_WORDS = [
+  'AI-[p]owered',
+  'auto[p]ilot',
+  'seam[l]ess',
+  'seam[l]essly',
+  'un[l]eash',
+  'un[l]eashes',
+  'un[l]eashed',
+  'un[l]eashing',
+  'next-[g]en',
+  'b[l]azing fast',
+  'b[l]azingly fast',
+  'spo[o]ky',
 ]
 
-const PRICES = [
-  /\$\d/,
-  /\b(for|is|it's) free\b/i,
-  /\bfree to start\b/i,
-  /\bzero cost\b/i,
-  /\bgratis\b/i,
-  /\bsin pagar\b/i,
+const PRICE_WORDS = [
+  'is [f]ree',
+  'for [f]ree',
+  "it's [f]ree",
+  '[f]ree to start',
+  'zero [c]ost',
+  'gr[a]tis',
+  'sin [p]agar',
 ]
+
+const asWord = (word: string) => new RegExp(`\\b${word}\\b`, 'i')
+
+const NEVER = NEVER_WORDS.map(asWord)
+
+const PRICES = [/\$\d/, ...PRICE_WORDS.map(asWord)]
+
+export const VOICE_WORDS: readonly string[] = [...NEVER_WORDS, ...PRICE_WORDS].map((word) =>
+  word.replace(/[[\]]/g, ''),
+)
 
 const PUBLIC_COPY =
   /^(README\.md|packages\/[^/]+\/README\.md|templates\/[^/]+\/README\.md|apps\/web\/app\/i18n\/[^/]+\.ts)$/

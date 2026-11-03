@@ -19,9 +19,18 @@ useSeoMeta({
 })
 useHead({
   htmlAttrs: { lang: locale },
+  script: [
+    {
+      key: 'jsonld-site',
+      type: 'application/ld+json',
+      innerHTML: jsonLdOf([organization(), website('en')]),
+    },
+  ],
   link: () => {
+    if (ownsHead(route.path)) return []
     const path = basePath(route.path)
     return [
+      { rel: 'canonical', href: `https://hollware.com${route.path}` },
       { rel: 'alternate', hreflang: 'en', href: `https://hollware.com${path}` },
       { rel: 'alternate', hreflang: 'es', href: `https://hollware.com${pathIn('es', path)}` },
       { rel: 'alternate', hreflang: 'x-default', href: `https://hollware.com${path}` },

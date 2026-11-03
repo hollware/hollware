@@ -38,6 +38,18 @@ export default defineNuxtConfig({
       ],
     },
   },
+  routeRules: {
+    '/media-kit/**': { headers: { 'x-robots-tag': 'noindex' } },
+    '/es/media-kit/**': { headers: { 'x-robots-tag': 'noindex' } },
+    '/media-kit.md': { headers: { 'x-robots-tag': 'noindex' } },
+    '/es/media-kit.md': { headers: { 'x-robots-tag': 'noindex' } },
+    '/**': {
+      headers: {
+        'content-security-policy-report-only':
+          "default-src 'self'; connect-src 'self'; img-src 'self' data: https://cms.demo.hollware.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'",
+      },
+    },
+  },
   nitro: {
     preset: 'cloudflare_module',
     cloudflare: { deployConfig: true, nodeCompat: false },
