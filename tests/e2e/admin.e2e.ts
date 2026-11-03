@@ -280,6 +280,36 @@ test('the editor saves what the owner typed before it opens a translation, and n
   expect(await keptCopies(owner)).toEqual([])
 })
 
+test('the editor keeps the owner on an entry it could not save, until they choose to leave', async () => {
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  const body = owner.getByRole('textbox', { name: 'Body of the entry' })
+  await body.getByText('Plain words, one idea, and nothing that links anywhere.').click()
+  await owner.route('**/v1/ops/update_draft', (route) => route.abort('internetdisconnected'))
+  await owner.keyboard.press('End')
+  await owner.keyboard.type(' Sin red.')
+  const entries = owner
+    .getByRole('navigation', { name: 'Admin' })
+    .getByRole('link', { name: 'Entries' })
+  await entries.click()
+  const unsaved = owner.getByRole('dialog', { name: 'Your change is not saved' })
+  await expect(unsaved).toBeVisible()
+  await unsaved.getByRole('button', { name: 'Stay' }).click()
+  await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
+  await expect(body).toContainText('Y algo más. Sin red.')
+  await entries.click()
+  await unsaved.getByRole('button', { name: 'Leave without saving' }).click()
+  await expect(owner).toHaveURL(/\/admin\/entries$/)
+  await owner.unroute('**/v1/ops/update_draft')
+  await owner.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('hollware:working-copy:')) localStorage.removeItem(key)
+    }
+  })
+  await owner.goto('/admin/entries/blog/es/hola-mundo')
+  await expect(body).toContainText('Y algo más.')
+  await expect(body).not.toContainText('Sin red.')
+})
+
 test('the owner deletes a draft of the trash for ever, and the activity log keeps that', async () => {
   await owner.goto('/admin/entries/new')
   await owner.getByRole('combobox', { name: 'Locale' }).click()

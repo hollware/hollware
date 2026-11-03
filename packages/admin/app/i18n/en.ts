@@ -341,6 +341,11 @@ export const en = {
     conflictBody:
       'The entry is at a newer version than the one you edited. Copy what you wrote if you need it, then load the newer version.',
     keepEditing: 'Keep editing',
+    leaveTitle: 'Your change is not saved',
+    leaveBody:
+      'Hollware could not save what you wrote. Stay and save it again, or leave without it.',
+    leaveAnyway: 'Leave without saving',
+    stay: 'Stay',
     loadNewer: 'Load the newer version',
     acknowledgeTitle: 'Publish with these warnings?',
     publishAnyway: 'Publish anyway',

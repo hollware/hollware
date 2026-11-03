@@ -3,7 +3,13 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import { useQuery } from '@pinia/colada'
 import { defineShortcuts, useToast } from '@nuxt/ui/composables'
 import { computed, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
-import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+  type RouteLocationNormalized,
+} from 'vue-router'
 import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
@@ -23,6 +29,7 @@ import {
   withBody,
   type Reference,
 } from '../lib/frontmatter.ts'
+import { newestOnly } from '../lib/newest.ts'
 import { openEntry } from '../lib/open-entry.ts'
 import { can, me } from '../lib/me.ts'
 import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review.ts'
@@ -335,10 +342,12 @@ function save(): Promise<boolean> {
 
 let autosave: ReturnType<typeof setTimeout> | undefined
 let validation: ReturnType<typeof setTimeout> | undefined
+const validations = newestOnly()
 let firstChange: number | null = null
 watch(text, (markdown) => {
   clearTimeout(autosave)
   clearTimeout(validation)
+  validations.skip()
   if (markdown === saved.value) {
     if (saveState.value === 'unsaved') saveState.value = 'saved'
     firstChange = null
@@ -362,18 +371,40 @@ watch(text, (markdown) => {
       entry.value === null ? null : { markdown, version: entry.value.version },
     )
   }
-  validation = setTimeout(async () => {
-    verdict.value = (await api.call('validate', { ...ref_.value, markdown })).verdict
-  }, 600)
+  validation = setTimeout(() => void validate(markdown), 600)
 })
 
-async function saveBeforeLeaving() {
+async function validate(markdown: string) {
+  const answer = await validations.run(() => api.call('validate', { ...ref_.value, markdown }))
+  if (answer !== null) verdict.value = answer.value.verdict
+}
+
+const leaveOpen = ref(false)
+let leavingTo: RouteLocationNormalized | null = null
+let leaveUnsaved = false
+
+async function saveBeforeLeaving(to: RouteLocationNormalized) {
   clearTimeout(autosave)
-  if (dirty.value) await save()
-  return true
+  if (leaveUnsaved) {
+    leaveUnsaved = false
+    return true
+  }
+  if (!dirty.value || (await save()) || missing.value || heldOpen.value) return true
+  if (!conflictOpen.value) {
+    leavingTo = to
+    leaveOpen.value = true
+  }
+  return false
 }
 onBeforeRouteLeave(saveBeforeLeaving)
-onBeforeRouteUpdate((to, from) => (to.path === from.path ? true : saveBeforeLeaving()))
+onBeforeRouteUpdate((to, from) => (to.path === from.path ? true : saveBeforeLeaving(to)))
+
+function leaveWithoutSaving() {
+  leaveOpen.value = false
+  if (leavingTo === null) return
+  leaveUnsaved = true
+  void router.push(leavingTo.fullPath)
+}
 
 function discardChange() {
   clearTimeout(autosave)
@@ -652,7 +683,8 @@ async function reloadTheirs() {
 }
 
 async function check() {
-  verdict.value = (await api.call('validate', { ...ref_.value, markdown: text.value })).verdict
+  clearTimeout(validation)
+  await validate(text.value)
   setQuery('panel', null)
 }
 
@@ -695,6 +727,8 @@ watchEffect(() => {
         }
 })
 onBeforeUnmount(() => {
+  clearTimeout(validation)
+  validations.skip()
   openEntry.value = null
   document.removeEventListener('visibilitychange', saveWhenHidden)
 })
@@ -1229,6 +1263,16 @@ const stateLabel = computed(
         <UButton :label="m.entry.discardChange" variant="ghost" @click="discardChange" />
         <UButton :label="m.entry.reviewIt" variant="outline" @click="openReview" />
         <UButton :label="m.entry.saveOverReview" color="warning" @click="saveOverReview" />
+      </template>
+    </UModal>
+
+    <UModal v-model:open="leaveOpen" :title="m.entry.leaveTitle">
+      <template #body>
+        <p>{{ m.entry.leaveBody }}</p>
+      </template>
+      <template #footer>
+        <UButton :label="m.entry.leaveAnyway" variant="ghost" @click="leaveWithoutSaving" />
+        <UButton :label="m.entry.stay" color="neutral" @click="leaveOpen = false" />
       </template>
     </UModal>
 
