@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { firstSteps } from '../app/lib/first-steps.ts'
+import {
+  firstSteps,
+  markStepsDone,
+  stepsMarkedDone,
+  type StepsStorage,
+} from '../app/lib/first-steps.ts'
 
 const NOW = '2026-10-28T12:00:00.000Z'
 const START = { tokens: [], people: 1, entries: 0, analytics: false, now: NOW }
@@ -42,5 +47,41 @@ describe('the first steps of a site', () => {
       ['invite', true],
       ['analytics', true],
     ])
+  })
+})
+
+describe('the first steps marked as done', () => {
+  const memory = (): StepsStorage & { entries: Record<string, string> } => {
+    const entries: Record<string, string> = {}
+    return {
+      entries,
+      getItem: (key) => entries[key] ?? null,
+      setItem: (key, value) => {
+        entries[key] = value
+      },
+    }
+  }
+
+  it('stays done for the site marked, and only for it', () => {
+    const storage = memory()
+    expect(stepsMarkedDone(storage, 'blog')).toBe(false)
+    markStepsDone(storage, 'blog')
+    expect(storage.entries).toEqual({ 'hollware:first-steps-done:blog': 'true' })
+    expect(stepsMarkedDone(storage, 'blog')).toBe(true)
+    expect(stepsMarkedDone(storage, 'docs')).toBe(false)
+  })
+
+  it('shows the steps when the browser keeps nothing', () => {
+    const throwing: StepsStorage = {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => {
+        throw new Error('full')
+      },
+    }
+    expect(() => markStepsDone(throwing, 'blog')).not.toThrow()
+    expect(stepsMarkedDone(throwing, 'blog')).toBe(false)
+    expect(stepsMarkedDone(undefined, 'blog')).toBe(false)
   })
 })

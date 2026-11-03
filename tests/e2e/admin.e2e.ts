@@ -663,6 +663,11 @@ test('the owner connects analytics in Analytics, and the provider is asked befor
     /^Invite a person, done/,
     /^Connect the analytics of your site, to do/,
   ])
+  await owner.getByRole('button', { name: 'Mark as done' }).click()
+  await expect(owner.getByRole('list', { name: 'Get started' })).toHaveCount(0)
+  await owner.reload()
+  await expect(owner.getByText('No analytics connected.')).toBeVisible()
+  await expect(owner.getByRole('list', { name: 'Get started' })).toHaveCount(0)
   await expect(owner.getByRole('heading', { name: 'Last audit' })).toHaveCount(0)
   await owner.getByRole('link', { name: 'Connect analytics' }).click()
 
