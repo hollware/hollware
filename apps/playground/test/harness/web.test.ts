@@ -27,6 +27,99 @@ const page = (title: string, section: string, order: number, body: string) =>
     '',
   ].join('\n')
 
+const HOME = {
+  en: [
+    '---',
+    'title: Let your agents publish.',
+    'seoTitle: "Hollware: the CMS your agents write to"',
+    'description: Hollware is an open-source headless CMS, written by a test.',
+    '---',
+    '',
+    '::hero',
+    '#eyebrow',
+    'The CMS your agents write to',
+    '',
+    '#title',
+    'Let your agents publish.',
+    '',
+    '#default',
+    ':::install-prompt',
+    'Install Hollware following https://hollware.com/install.md',
+    ':::',
+    '',
+    '#session',
+    ':::agent-session',
+    '```text',
+    '> create_draft blog/en/launch',
+    '! /frontmatter/description: missing',
+    '```',
+    ':::',
+    '::',
+    '',
+    '::section{id="admin"}',
+    '#title',
+    'Where a person has the last word',
+    '',
+    '#default',
+    '![The Reviews page of the Hollware admin](/admin-review.webp)',
+    '',
+    'Start with [the first steps](/docs/first-steps/), :fact{name="tools"} tools.',
+    '::',
+    '',
+    '::faq',
+    '### Is it open source?',
+    'Yes, MIT.',
+    '::',
+    '',
+  ].join('\n'),
+  es: [
+    '---',
+    'title: Deja que tus agentes publiquen.',
+    'description: Hollware es un CMS headless de código abierto, escrito por un test.',
+    '---',
+    '',
+    '::hero',
+    '#eyebrow',
+    'El CMS en el que escriben tus agentes',
+    '',
+    '#title',
+    'Deja que tus agentes publiquen.',
+    '::',
+    '',
+    'Empieza por [los primeros pasos](/es/docs/first-steps/).',
+    '',
+  ].join('\n'),
+}
+
+const FEATURE = [
+  '---',
+  'title: Agents and MCP',
+  'description: The agents of Hollware, written by a test.',
+  'order: 1',
+  'icon: bot',
+  '---',
+  '',
+  'Every tool asks for one scope.',
+  '',
+].join('\n')
+
+const MEDIA_KIT = [
+  '---',
+  'title: Media kit',
+  'description: The logos of Hollware, written by a test.',
+  'noindex: true',
+  '---',
+  '',
+  '::copy-block',
+  '#label',
+  'One line',
+  '',
+  '#default',
+  'Hollware is the CMS your agents write to.',
+  '::',
+  '',
+].join('\n')
+
 beforeAll(async () => {
   await server.listen()
   await migrate(server)
@@ -65,6 +158,21 @@ beforeAll(async () => {
     locale: 'en',
     slug: 'unfinished',
     markdown: page('Unfinished', 'guides', 1, 'Not yet.'),
+  })
+  for (const locale of ['en', 'es'] as const) {
+    await publishNew(agent, { collection: 'pages', locale, slug: 'home', markdown: HOME[locale] })
+  }
+  await publishNew(agent, {
+    collection: 'features',
+    locale: 'en',
+    slug: 'agents',
+    markdown: FEATURE,
+  })
+  await publishNew(agent, {
+    collection: 'pages',
+    locale: 'en',
+    slug: 'media-kit',
+    markdown: MEDIA_KIT,
   })
 })
 
@@ -134,7 +242,7 @@ describe('hollware.com', () => {
     expect(text).not.toContain('unfinished')
   })
 
-  it('generates the reference of the MCP tools, and shows the install command and every use case at home', async () => {
+  it('generates the reference of the MCP tools, and reads the home from the pages of Hollware', async () => {
     const tools = await (await webFetch(server, '/reference/mcp-tools/')).text()
     const home = await (await webFetch(server, '/')).text()
 
@@ -146,55 +254,63 @@ describe('hollware.com', () => {
     expect(text.match(/^## /gm)).toHaveLength(41)
     expect(text).toContain('## create_draft')
     expect(text).toContain('## get_review')
-    expect(home).toContain('npm create hollware my-cms')
     expect(home).toContain('<meta name="generator" content="Hollware">')
     expect(home).toContain('<meta property="og:image" content="https://hollware.com/og.png">')
     expect(home).toContain(
       '<meta property="og:title" content="Hollware: the CMS your agents write to">',
     )
-    expect(home).toMatch(
-      /<meta property="og:description" content="Hollware is an open-source headless CMS/,
-    )
+    expect(home).toContain('<link rel="canonical" href="https://hollware.com/">')
+    expect(home).toContain('Install Hollware following https://hollware.com/install.md')
+    expect(home).toContain('create_draft blog/en/launch')
+    expect(home.replace(/<!--[^>]*-->/g, '')).toMatch(/41<\/span> tools/)
+    expect(home).toContain('"@type":"FAQPage"')
+    expect(home).toContain('"name":"Is it open source?"')
     expect(tools).toContain('<meta property="og:title" content="MCP tools · Hollware">')
     const page = await (await webFetch(server, '/docs/first-steps/')).text()
     expect(page).toContain('<meta property="og:title" content="First steps · Hollware">')
     const image = await webFetch(server, '/og.png')
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/png'])
-    expect(home.match(/role="tabpanel"/g)).toHaveLength(6)
-    expect(home).toContain('Docs that follow the code')
-    expect(home).toContain('41 MCP tools, each with the scopes it needs.')
-    expect(home).not.toContain('main door')
-    const opening = home.indexOf('Every refusal carries its fix')
-    expect(opening).toBeGreaterThan(-1)
-    expect(opening).toBeLessThan(
-      home.indexOf('From a prompt to a live page, with checks in between'),
-    )
   })
 
-  it('shows the Reviews page of the admin at home, after how it works, as an image the site serves', async () => {
+  it('shows the admin at home as an image the site serves, and sends /home/ to the home', async () => {
     const home = await (await webFetch(server, '/')).text()
-    const spanish = await (await webFetch(server, '/es/')).text()
     const image = await webFetch(server, '/admin-review.webp')
+    const preview = await webFetch(server, '/home/?hollware-preview=x', 'manual')
 
     expect(home).toMatch(
-      /<img src="\/admin-review\.webp" alt="The Reviews page of the Hollware admin: Ana asks to publish/,
-    )
-    expect(spanish).toMatch(/<img src="\/admin-review\.webp" alt="La página Revisiones del admin/)
-    expect(home.indexOf('Where a person has the last word')).toBeGreaterThan(
-      home.indexOf('From a prompt to a live page, with checks in between'),
+      /<img src="\/admin-review\.webp" alt="The Reviews page of the Hollware admin"/,
     )
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/webp'])
+    expect([preview.status, preview.headers.get('location')]).toEqual([302, '/?hollware-preview=x'])
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {
     const home = await (await webFetch(server, '/es/')).text()
 
     expect(home).toMatch(/<html[^>]* lang="es"/)
-    expect(home).toContain('El CMS en el que escriben tus')
+    expect(home).toContain('El CMS en el que escriben tus agentes')
     expect(home).toContain('href="/es/docs/"')
     expect(home).toContain('<link rel="alternate" hreflang="en" href="https://hollware.com/">')
     expect(home).toContain('<link rel="alternate" hreflang="es" href="https://hollware.com/es/">')
     expect(await (await webFetch(server, '/')).text()).toMatch(/<html[^>]* lang="en"/)
+  })
+
+  it('keeps the media kit out of search, and lists every other page in the sitemap and as Markdown', async () => {
+    const kit = await webFetch(server, '/media-kit/')
+    const sitemap = await (await webFetch(server, '/sitemap.xml')).text()
+    const robots = await (await webFetch(server, '/robots.txt')).text()
+    const feature = await webFetch(server, '/features/agents.md')
+    const llms = await (await webFetch(server, '/llms.txt')).text()
+
+    expect(kit.headers.get('x-robots-tag')).toBe('noindex')
+    expect(await kit.text()).toContain('<meta name="robots" content="noindex, follow">')
+    expect(sitemap).toContain('<loc>https://hollware.com/features/agents/</loc>')
+    expect(sitemap).toContain('<loc>https://hollware.com/docs/first-steps/</loc>')
+    expect(sitemap).not.toContain('media-kit')
+    expect(robots).toContain('Sitemap: https://hollware.com/sitemap.xml')
+    expect(await feature.text()).toBe(FEATURE)
+    expect(llms).toContain('- [Agents and MCP](https://hollware.com/features/agents.md)')
+    expect(llms).not.toContain('media-kit')
   })
 
   it('reads a page of the docs in Spanish, or in English with a notice until it is translated', async () => {

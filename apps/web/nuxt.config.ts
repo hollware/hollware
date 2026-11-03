@@ -39,9 +39,7 @@ export default defineNuxtConfig({
     },
   },
   routeRules: {
-    '/media-kit': { headers: { 'x-robots-tag': 'noindex' } },
     '/media-kit/**': { headers: { 'x-robots-tag': 'noindex' } },
-    '/es/media-kit': { headers: { 'x-robots-tag': 'noindex' } },
     '/es/media-kit/**': { headers: { 'x-robots-tag': 'noindex' } },
     '/media-kit.md': { headers: { 'x-robots-tag': 'noindex' } },
     '/es/media-kit.md': { headers: { 'x-robots-tag': 'noindex' } },
