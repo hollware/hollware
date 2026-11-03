@@ -16,9 +16,9 @@ const lines = [
     class="relative overflow-hidden rounded-lg border border-default bg-muted/80 text-left shadow-2xl shadow-black/40"
   >
     <div class="flex items-center gap-2 border-b border-default px-4 py-3">
-      <span class="size-2.5 rounded-full bg-(--ui-border-accented)" />
-      <span class="size-2.5 rounded-full bg-(--ui-border-accented)" />
-      <span class="size-2.5 rounded-full bg-(--ui-border-accented)" />
+      <span class="size-2.5 rounded-xs bg-(--ui-border-accented)" />
+      <span class="size-2.5 rounded-xs bg-(--ui-border-accented)" />
+      <span class="size-2.5 rounded-xs bg-(--ui-border-accented)" />
       <span class="ml-3 font-mono text-xs text-dimmed">agent → hollware /mcp</span>
     </div>
     <ol class="space-y-1.5 p-5 font-mono text-[13px] leading-relaxed">

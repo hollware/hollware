@@ -3,7 +3,8 @@ import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vite-plus/test'
 
-import { readText, REPO_ROOT } from '../support/repo.ts'
+import { BRAND } from '../../apps/web/app/utils/brand.ts'
+import { readRepoFiles, readText, REPO_ROOT } from '../support/repo.ts'
 
 const SITE_CSS = 'apps/web/app/assets/css/main.css'
 const ADMIN_CSS = 'packages/admin/app/app.css'
@@ -103,8 +104,17 @@ describe('the look of Hollware', () => {
       expect(css).not.toContain('--ui-radius:')
       expect(css).not.toContain('--ui-container:')
     }
-    expect(readText('apps/web/app/pages/index.vue')).not.toContain('rounded-full')
+    const pages = readRepoFiles((path) => /^apps\/web\/app\/.+\.vue$/.test(path))
+    expect(pages.length).toBeGreaterThan(20)
+    for (const page of pages) expect(page.text, page.path).not.toContain('rounded-full')
     expect(readText('packages/admin/app/App.vue')).not.toMatch(/rounded-full border/)
+  })
+
+  it('paints the shaders of hollware.com with colors of the theme', () => {
+    const theme = readText(SITE_CSS)
+    const colors = Object.values(BRAND)
+    expect(colors.length).toBeGreaterThan(3)
+    for (const color of colors) expect(theme).toContain(`: ${color};`)
   })
 
   it('gives Nuxt UI the theme and nothing else: no slot of a component restyled', () => {
