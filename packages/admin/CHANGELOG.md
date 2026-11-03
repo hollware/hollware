@@ -1,5 +1,15 @@
 # @hollware/admin
 
+## 1.7.0
+
+### Minor Changes
+
+- [#104](https://github.com/hollware/hollware/pull/104) [`67c01e8`](https://github.com/hollware/hollware/commit/67c01e8ed7fda844f734138674d27e62b574c09e) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The owner can mark the first steps of Home as done, and this browser stops showing them for that site.
+
+### Patch Changes
+
+- [#105](https://github.com/hollware/hollware/pull/105) [`7b1e3b8`](https://github.com/hollware/hollware/commit/7b1e3b84034ae4165edecdd4fb69b540b74236ef) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The editor keeps the owner on an entry it could not save and asks before they leave without it, and a validation that answers late no longer replaces the checks of newer text.
+
 ## 1.6.0
 
 ### Minor Changes

@@ -1,5 +1,13 @@
 # @hollware/client
 
+## 1.7.0
+
+### Patch Changes
+
+- [#107](https://github.com/hollware/hollware/pull/107) [`b8c2841`](https://github.com/hollware/hollware/commit/b8c28412a15dfb660334a26c6c0170800da44c16) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The HTTP client sends a preview token in the `hollware-preview` header, not in the URL, and the read API accepts it there (the `preview` query parameter still works). The client also refuses an answer whose outcome or fields it does not know, as `invalid_response`, instead of handing it on.
+- Updated dependencies []:
+  - @hollware/core@1.7.0
+
 ## 1.6.0
 
 ### Patch Changes

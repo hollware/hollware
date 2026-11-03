@@ -1,5 +1,13 @@
 # hollware
 
+## 1.7.0
+
+### Patch Changes
+
+- [#108](https://github.com/hollware/hollware/pull/108) [`b47357d`](https://github.com/hollware/hollware/commit/b47357da68fbcda24040bc0aac00bf2cd87680a0) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware doctor --remote` checks with wrangler that no R2 bucket of the project is open to the internet (no r2.dev URL, no custom domain), and fails when it cannot confirm it. A new project turns on Workers observability (logs).
+- Updated dependencies []:
+  - @hollware/core@1.7.0
+
 ## 1.6.0
 
 ### Minor Changes
