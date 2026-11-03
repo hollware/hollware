@@ -262,7 +262,7 @@ describe('hollware.com', () => {
     expect(home).toContain('<link rel="canonical" href="https://hollware.com/">')
     expect(home).toContain('Install Hollware following https://hollware.com/install.md')
     expect(home).toContain('create_draft blog/en/launch')
-    expect(home.replace(/<!--[^>]*-->/g, '')).toMatch(/41<\/span> tools/)
+    expect(home).toMatch(/>41(?:<!--[^>]*-->)*<\/span>(?:<!--[^>]*-->)* tools/)
     expect(home).toContain('"@type":"FAQPage"')
     expect(home).toContain('"name":"Is it open source?"')
     expect(tools).toContain('<meta property="og:title" content="MCP tools · Hollware">')
