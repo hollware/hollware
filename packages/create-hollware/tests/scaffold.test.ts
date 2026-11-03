@@ -73,6 +73,9 @@ describe('create-hollware <dir>', () => {
     expect(read('wrangler.jsonc')).toContain('"dead_letter_queue": "blog-cms-events-dlq"')
     expect(read('wrangler.jsonc')).toContain('{ "queue": "blog-cms-events-dlq" }')
     expect(read('wrangler.jsonc')).toContain('"bucket_name": "blog-cms-backups"')
+    expect(read('wrangler.jsonc')).toContain(
+      '"observability": { "enabled": true, "head_sampling_rate": 1 }',
+    )
     expect(read('wrangler.jsonc')).not.toContain('my-hollware')
     expect(existsSync(join(cwd, 'blog-cms', 'hollware.config.ts'))).toBe(false)
     expect(read('README.md')).toContain(

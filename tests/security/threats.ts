@@ -1818,4 +1818,26 @@ export const THREATS: readonly Threat[] = [
       },
     ],
   },
+  {
+    id: 'T-137',
+    area: 'Content',
+    threat:
+      'A bucket of R2 answers the internet without the Worker, through an r2.dev URL or a custom domain, and hands anyone the originals, the backups and the files of drafts',
+    mitigation:
+      'Hollware never opens a bucket: the Worker serves only the converted files at /assets, and the originals and backups only to a token of the site; `hollware doctor --remote` fails while wrangler does not confirm that a bucket has its r2.dev URL off and no custom domain',
+    guards: [
+      {
+        file: 'packages/cli/tests/doctor.test.ts',
+        test: 'checks with wrangler that no R2 bucket of the remote project is open to the internet',
+      },
+      {
+        file: 'packages/server/tests/http/assets.workerd.test.ts',
+        test: 'gives the original to a person of the site, and to no one else',
+      },
+      {
+        file: 'packages/server/tests/backup/backup.workerd.test.ts',
+        test: 'serves a backup to an owner of the site, and to no one else, from BACKUPS before MEDIA',
+      },
+    ],
+  },
 ]
