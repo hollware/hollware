@@ -18,7 +18,7 @@ export const DOCTOR_USAGE = [
   '',
   'Options:',
   '  --local   Check the local database (the default)',
-  '  --remote  Check the database in Cloudflare',
+  '  --remote  Check the database in Cloudflare, and that no R2 bucket is open to the internet',
   '  --json    One JSON object on stdout: { ok, checks: [{ name, ok, message, fix }] }; the exit code',
   '            is the same (fix is "" for a check that passed)',
   '  --help    Show this help',
@@ -331,6 +331,46 @@ async function databaseSize(io: Io): Promise<Finding> {
   )
 }
 
+const DEV_URL_OFF = /Public access via the r2\.dev URL is disabled/
+const NO_DOMAINS = /There are no custom domains connected to this bucket/
+
+async function answerOf(io: Io, args: string[]): Promise<{ code: number; text: string }> {
+  try {
+    const result = await io.wrangler(args)
+    return { code: result.code, text: `${result.stdout}\n${result.stderr}` }
+  } catch (error) {
+    return { code: 1, text: String(error) }
+  }
+}
+
+async function checkBucketsPrivate(io: Io, config: Json): Promise<Finding[]> {
+  const names = records(config['r2_buckets']).flatMap((entry) =>
+    typeof entry['bucket_name'] === 'string' ? [entry['bucket_name']] : [],
+  )
+  const findings: Finding[] = []
+  for (const name of names) {
+    const devUrl = await answerOf(io, ['r2', 'bucket', 'dev-url', 'get', name])
+    const domains = await answerOf(io, ['r2', 'bucket', 'domain', 'list', name])
+    const open = [
+      ...(devUrl.code === 0 && DEV_URL_OFF.test(devUrl.text) ? [] : ['its r2.dev URL is off']),
+      ...(domains.code === 0 && NO_DOMAINS.test(domains.text) ? [] : ['it has no custom domain']),
+    ]
+    findings.push(
+      open.length === 0
+        ? pass(
+            'bucket-private',
+            `the R2 bucket "${name}" is reached only through the Worker: no r2.dev URL, no custom domain`,
+          )
+        : fail(
+            'bucket-private',
+            `the R2 bucket "${name}" may be open to the internet: wrangler did not confirm that ${open.join(' and ')}`,
+            `Run "wrangler r2 bucket dev-url disable ${name}" and remove what "wrangler r2 bucket domain list ${name}" lists: the Worker serves the files, and backups and originals only to a token.`,
+          ),
+    )
+  }
+  return findings
+}
+
 export async function doctor(argv: readonly string[], io: Io): Promise<number> {
   const { values } = parseFlags({
     args: [...argv],
@@ -363,6 +403,7 @@ export async function doctor(argv: readonly string[], io: Io): Promise<number> {
     ...checkConfig(io.cwd, config),
     ...checkProviderSecrets(io.cwd, config, target),
     ...(await checkDatabase(io, target)),
+    ...(target === 'remote' ? await checkBucketsPrivate(io, config) : []),
   ]
   const failed = findings.filter((finding) => !finding.ok).length
   if (values.json === true) {

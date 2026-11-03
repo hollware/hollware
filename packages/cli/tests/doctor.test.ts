@@ -38,6 +38,12 @@ const INSTALLED = {
 
 const NONE_PENDING = '✅ No migrations to apply!'
 
+const DEV_URL_OFF = ok('Public access via the r2.dev URL is disabled.')
+const NO_DOMAINS = ok(
+  "Listing custom domains connected to bucket 'b'...\nThere are no custom domains connected to this bucket.",
+)
+const PRIVATE = [DEV_URL_OFF, NO_DOMAINS, DEV_URL_OFF, NO_DOMAINS]
+
 describe('hollware doctor', () => {
   it('passes a project like the starter, migrated and with an owner', async () => {
     const wrangler = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1', site: 'blog' }]))
@@ -86,7 +92,12 @@ describe('hollware doctor', () => {
     const withThem = await run(['doctor'], { cwd: set, wrangler: owner().run })
     const remote = await run(['doctor', '--remote'], {
       cwd: missing,
-      wrangler: fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]), failed('not logged in')).run,
+      wrangler: fakeWrangler(
+        ok(NONE_PENDING),
+        d1([{ id: 'usr_1' }]),
+        failed('not logged in'),
+        ...PRIVATE,
+      ).run,
     })
 
     expect(without.code).toBe(1)
@@ -188,18 +199,24 @@ describe('hollware doctor', () => {
       ok(NONE_PENDING),
       d1([{ id: 'usr_1' }]),
       ok('{"name":"x","database_size":12345678}'),
+      ...PRIVATE,
     )
-    const silent = fakeWrangler(ok(NONE_PENDING), d1([{ id: 'usr_1' }]), failed('not logged in'))
+    const silent = fakeWrangler(
+      ok(NONE_PENDING),
+      d1([{ id: 'usr_1' }]),
+      failed('not logged in'),
+      ...PRIVATE,
+    )
     const cwd = temp.make({ 'wrangler.jsonc': STARTER, ...INSTALLED })
 
     const told = await run(['doctor', '--remote'], { cwd, wrangler: sized.run })
     const unknown = await run(['doctor', '--remote'], { cwd, wrangler: silent.run })
 
-    expect(told.out[0]?.split('\n').at(-1)).toBe(
+    expect(told.out[0]?.split('\n').at(-3)).toBe(
       'ok    the remote database holds 12.3 MB, of the 500 MB a D1 database holds on the Free plan, or 10 GB on Paid',
     )
-    expect(sized.calls.at(-1)?.args).toEqual(['d1', 'info', 'DB', '--json'])
-    expect(unknown.out[0]?.split('\n').at(-1)).toBe(
+    expect(sized.calls.at(2)?.args).toEqual(['d1', 'info', 'DB', '--json'])
+    expect(unknown.out[0]?.split('\n').at(-3)).toBe(
       'ok    wrangler did not say how big the remote database is',
     )
   })
@@ -209,6 +226,7 @@ describe('hollware doctor', () => {
       ok(
         'Migrations to be applied:\n┌──────────┐\n│ Name     │\n├──────────┤\n│ 0007.sql │\n└──────────┘\n',
       ),
+      ...PRIVATE,
     )
     const noOwner = fakeWrangler(ok(NONE_PENDING), d1([]))
     const cwd = temp.make({ 'wrangler.jsonc': STARTER, ...INSTALLED })
@@ -217,17 +235,62 @@ describe('hollware doctor', () => {
     const second = await run(['doctor'], { cwd, wrangler: noOwner.run })
 
     expect(first.code).toBe(1)
-    expect(first.out[0]?.split('\n').slice(-2)).toEqual([
+    expect(first.out[0]?.split('\n').slice(-4, -2)).toEqual([
       'FAIL  the remote database lacks 1 migration',
       '      Run "hollware migrate --remote".',
     ])
-    expect(pending.calls.map((call) => call.args)).toEqual([
-      ['d1', 'migrations', 'list', 'DB', '--remote'],
+    expect(pending.calls.map((call) => call.args)[0]).toEqual([
+      'd1',
+      'migrations',
+      'list',
+      'DB',
+      '--remote',
     ])
     expect(second.out[0]?.split('\n').slice(-2)).toEqual([
       'FAIL  the local database has no owner yet',
       '      Run "hollware init --site <key> --local", with the key your site is to have, such as my-site.',
     ])
     expect(second.err).toEqual(['hollware doctor: 1 problem to fix.'])
+  })
+
+  it('checks with wrangler that no R2 bucket of the remote project is open to the internet', async () => {
+    const cwd = temp.make({ 'wrangler.jsonc': STARTER, ...INSTALLED })
+    const database = () => [ok(NONE_PENDING), d1([{ id: 'usr_1' }]), ok('{}')]
+    const closed = fakeWrangler(...database(), ...PRIVATE)
+    const open = fakeWrangler(
+      ...database(),
+      ok("Public access is enabled at 'https://pub-0123.r2.dev'."),
+      NO_DOMAINS,
+      DEV_URL_OFF,
+      ok("Listing custom domains connected to bucket 'b'...\nfiles.example.com  active"),
+    )
+    const unknown = fakeWrangler(...database(), failed('not logged in'))
+
+    const passed = await run(['doctor', '--remote'], { cwd, wrangler: closed.run })
+    const failedOpen = await run(['doctor', '--remote'], { cwd, wrangler: open.run })
+    const failedUnknown = await run(['doctor', '--remote'], { cwd, wrangler: unknown.run })
+
+    expect(passed.code).toBe(0)
+    expect(passed.out[0]?.split('\n').slice(-2)).toEqual([
+      'ok    the R2 bucket "my-hollware-media" is reached only through the Worker: no r2.dev URL, no custom domain',
+      'ok    the R2 bucket "my-hollware-backups" is reached only through the Worker: no r2.dev URL, no custom domain',
+    ])
+    expect(closed.calls.slice(3).map((call) => call.args)).toEqual([
+      ['r2', 'bucket', 'dev-url', 'get', 'my-hollware-media'],
+      ['r2', 'bucket', 'domain', 'list', 'my-hollware-media'],
+      ['r2', 'bucket', 'dev-url', 'get', 'my-hollware-backups'],
+      ['r2', 'bucket', 'domain', 'list', 'my-hollware-backups'],
+    ])
+    expect(failedOpen.code).toBe(1)
+    expect(failedOpen.out[0]?.split('\n').slice(-4)).toEqual([
+      'FAIL  the R2 bucket "my-hollware-media" may be open to the internet: wrangler did not confirm that its r2.dev URL is off',
+      '      Run "wrangler r2 bucket dev-url disable my-hollware-media" and remove what "wrangler r2 bucket domain list my-hollware-media" lists: the Worker serves the files, and backups and originals only to a token.',
+      'FAIL  the R2 bucket "my-hollware-backups" may be open to the internet: wrangler did not confirm that it has no custom domain',
+      '      Run "wrangler r2 bucket dev-url disable my-hollware-backups" and remove what "wrangler r2 bucket domain list my-hollware-backups" lists: the Worker serves the files, and backups and originals only to a token.',
+    ])
+    expect(failedUnknown.code).toBe(1)
+    expect(failedUnknown.out[0]).toContain(
+      'FAIL  the R2 bucket "my-hollware-media" may be open to the internet: wrangler did not confirm that its r2.dev URL is off and it has no custom domain',
+    )
   })
 })
