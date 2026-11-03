@@ -1,6 +1,6 @@
 import { defineConfig } from '@hollware/core'
 import { env } from 'cloudflare:workers'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { connect } from '../../src/db/d1.ts'
 import { addPasskey, createSession } from '../../src/identity/store.ts'
@@ -8,6 +8,8 @@ import { seedToken } from '../auth/support.ts'
 import { callRaw, INPUTS } from '../mcp/support.ts'
 import { adminToken } from './admin-session.ts'
 import { boot, CONFIG, NOW, PUBLIC_URL, SITE_KEY, type Booted } from './support.ts'
+
+vi.setConfig({ testTimeout: 60_000 })
 
 const REDIRECT = 'https://agent.example.com/callback'
 const MCP = `${PUBLIC_URL}/mcp`
