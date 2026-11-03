@@ -221,6 +221,11 @@ const PAGE_COMPONENTS = {
     description: 'The logos of Hollware to download, its colors and its fonts.',
     example: '::brand-assets\n::',
   }),
+  collapsible: defineComponent({
+    props: NONE,
+    description: 'Content folded away until a reader opens it: #summary names it.',
+    example: '::collapsible\n#summary\nSources\n\n#default\n- https://example.com\n::',
+  }),
   'copy-block': defineComponent({
     props: NONE,
     description: 'A text to copy with one click: #label names it, the default slot is the text.',

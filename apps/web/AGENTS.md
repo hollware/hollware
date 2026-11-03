@@ -10,8 +10,8 @@ with `set_collection` from `node scripts/web-structure.ts`. Only the words of th
   the Markdown of a page and llms.txt read the body. A prop is an enum, a pattern or an id.
 - A comparison cites a public source for every claim about another product, with the day it was
   read, and names no price.
-- The shaders of `shaders` load only in `app/components/shader/ShaderScene.client.vue`, lazily, with
-  telemetry off; a CSS ground is the design without WebGPU or with reduced motion.
+- The mark lives as embers (`app/components/embers/`): a 2D canvas, paused out of view, still
+  with reduced motion; the companion head reacts to the section in view by its id.
 
 ## How Hollware speaks
 

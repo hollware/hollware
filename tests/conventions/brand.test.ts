@@ -110,7 +110,7 @@ describe('the look of Hollware', () => {
     expect(readText('packages/admin/app/App.vue')).not.toMatch(/rounded-full border/)
   })
 
-  it('paints the shaders of hollware.com with colors of the theme', () => {
+  it('gives the media kit of hollware.com the colors of the theme', () => {
     const theme = readText(SITE_CSS)
     const colors = Object.values(BRAND)
     expect(colors.length).toBeGreaterThan(3)
@@ -172,6 +172,7 @@ describe('the look of Hollware', () => {
     ]) {
       expect(readText(file)).toContain(`d="${mark}"`)
     }
+    expect(readText('apps/web/app/utils/embers.ts')).toContain(`'${mark}'`)
     for (const logo of ['apps/web/app/components/AppLogo.vue', 'packages/admin/app/App.vue']) {
       expect(readText(logo)).toContain('w-auto shrink-0 fill-secondary')
     }

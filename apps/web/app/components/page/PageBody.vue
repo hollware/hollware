@@ -23,6 +23,7 @@ const components = {
   callout: resolveComponent('DocsCallout'),
   'brand-assets': resolveComponent('PageBrandAssets'),
   'copy-block': resolveComponent('PageCopyBlock'),
+  collapsible: resolveComponent('PageCollapsible'),
 }
 </script>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { m } = useLocale()
+const { m, to } = useLocale()
 </script>
 
 <template>
@@ -15,6 +15,13 @@ const { m } = useLocale()
       </p>
     </template>
     <template #right>
+      <UButton
+        :to="to('/media-kit/')"
+        :label="m.nav.mediaKit"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+      />
       <UButton
         to="/llms.txt"
         label="llms.txt"

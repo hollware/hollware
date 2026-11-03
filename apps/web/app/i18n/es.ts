@@ -11,6 +11,7 @@ export const es: Messages = {
     docs: 'Documentación',
     features: 'Funciones',
     compare: 'Comparar',
+    mediaKit: 'Media kit',
     tools: 'Herramientas',
     demo: 'Demo',
     github: 'Hollware en GitHub',

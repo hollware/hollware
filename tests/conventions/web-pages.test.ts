@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import config from '../../apps/playground/hollware.config.ts'
 import { webCollections } from '../../scripts/web-structure.ts'
 import { VOICE_WORDS } from '../guards/voice.ts'
-import { readRepoFiles, readText } from '../support/repo.ts'
+import { readText } from '../support/repo.ts'
 
 interface Schema {
   readonly type?: string
@@ -50,18 +50,5 @@ describe('the pages of hollware.com, read from Hollware', () => {
       const banned = collection.rules.find((rule) => rule.rule === 'banned-words')
       expect(banned?.params['words']).toEqual(VOICE_WORDS)
     }
-  })
-})
-
-describe('shaders', () => {
-  it('are imported by one component, which turns their telemetry off on every canvas', () => {
-    const importers = readRepoFiles((path) => /^apps\/web\/(app|server)\/.+\.(vue|ts)$/.test(path))
-      .filter((file) => /from 'shaders(\/[a-z]+)?'/.test(file.text))
-      .map((file) => file.path)
-    expect(importers).toEqual(['apps/web/app/components/shader/ShaderScene.client.vue'])
-    const scene = readText('apps/web/app/components/shader/ShaderScene.client.vue')
-    const canvases = scene.match(/<Shader\b[^>]*>/g) ?? []
-    expect(canvases.length).toBeGreaterThan(0)
-    for (const canvas of canvases) expect(canvas).toContain(':disable-telemetry="true"')
   })
 })

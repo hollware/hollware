@@ -26,7 +26,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/schema.test.ts`: each D1 table has an `id` primary key and timestamps; one outside `TABLES_WITHOUT_SITE` has `site_id`, its foreign key to `sites` and `UNIQUE(id, site_id)`, and its foreign keys to site tables carry `site_id`.
 - `tests/conventions/shipped-migrations.test.ts`: no migration of a `@hollware/server@*` release tag is edited or removed, and the tags are there to compare.
 - `tests/conventions/declared-imports.test.ts`: every bare import is declared by its package; `virtual:` only per `VIRTUAL_IMPORTS`.
-- `tests/conventions/brand.test.ts`: site and admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), text at 4.5:1; the sign-in pages its ground and accent; every logo and icon one mark; no `rounded-full`; shaders in theme colors.
+- `tests/conventions/brand.test.ts`: site and admin share one dark look (one theme block, the same Nuxt UI colors, radius and width, no slot changed), text at 4.5:1; the sign-in pages its ground and accent; every logo and icon one mark; no `rounded-full`; the media kit in theme colors.
 - `tests/conventions/starter-template.test.ts`: create-hollware's template comes from `templates/starter` via `scripts/sync-starter.ts` on build or pack, never committed: its files, the catalog's exact versions, `HOLLWARE_VERSION`, a standalone tsconfig.
 - `tests/conventions/install-tag.test.ts`: READMEs, hollware.com and the starter install with the tag of the pre mode of changesets, none after.
 - `tests/conventions/catalog-deps.test.ts`: every dependency is `catalog:` or `workspace:*`, except a caret-range peer that is also a catalog dev dependency.
@@ -47,7 +47,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/reserved-collections.test.ts`: the `/v1/` segments of routes are the reserved collection names.
 - `tests/conventions/admin-parity.test.ts`: the admin calls every MCP operation, or says why not.
 - `tests/conventions/voice.test.ts`: no word Hollware never says; no price in public copy.
-- `tests/conventions/web-pages.test.ts`: hollware.com's collections: each component rendered, no free-text prop, voice words banned; one `shaders` import, telemetry off.
+- `tests/conventions/web-pages.test.ts`: hollware.com's collections: each component rendered, no free-text prop, voice words banned.
 - `tests/conventions/issue-forms.test.ts`: the issue forms are valid for GitHub and ask what `CONTRIBUTING.md` says.
 - `tests/conventions/advisory-url.test.ts`: one private vulnerability reporting address in the docs.
 - `tests/conventions/principles.test.ts`: the README principles are the feature request dropdown options; no MCP tool manages people or tokens.

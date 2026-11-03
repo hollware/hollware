@@ -3,7 +3,7 @@ provide('install-compact', true)
 </script>
 
 <template>
-  <section class="relative isolate overflow-hidden border-b border-default">
+  <section data-landing="hero" class="relative isolate overflow-hidden border-b border-default">
     <div class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem] backdrop-glow" />
     <UContainer
       class="grid items-center gap-10 py-20 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:py-28"
@@ -27,7 +27,10 @@ provide('install-compact', true)
           <slot />
         </div>
       </div>
-      <ShaderHeroMark class="order-first lg:order-none" />
+      <EmbersSlot
+        name="hero"
+        class="order-first max-w-[13rem] sm:max-w-[20rem] lg:order-none lg:max-w-[28rem]"
+      />
     </UContainer>
   </section>
 </template>

@@ -3,12 +3,12 @@ defineProps<{ id?: string }>()
 </script>
 
 <template>
-  <section :id="id" class="scroll-mt-24 py-20 lg:py-28">
+  <section :id="id" class="page-section scroll-mt-24 py-20 lg:py-28">
     <UContainer>
       <div class="max-w-2xl">
         <p
           v-if="$slots.eyebrow"
-          class="font-mono text-xs tracking-[0.18em] text-secondary uppercase"
+          class="page-chapter font-mono text-xs tracking-[0.18em] text-secondary uppercase"
         >
           <slot name="eyebrow" />
         </p>

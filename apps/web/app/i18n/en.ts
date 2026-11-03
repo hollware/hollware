@@ -9,6 +9,7 @@ export const en = {
     docs: 'Docs',
     features: 'Features',
     compare: 'Compare',
+    mediaKit: 'Media kit',
     tools: 'Tools',
     demo: 'Demo',
     github: 'Hollware on GitHub',

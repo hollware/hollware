@@ -181,28 +181,8 @@ body {
   }
 }
 
-.hero-mark {
-  mask-image: radial-gradient(closest-side, black 55%, transparent 100%);
-}
-.hero-mark-still {
-  filter: drop-shadow(0 0 2.5rem color-mix(in oklab, var(--color-flame-400) 45%, transparent));
-}
-@media (prefers-reduced-motion: no-preference) {
-  .hero-mark-still {
-    animation: candle 3.2s ease-in-out infinite;
-  }
-}
-@keyframes candle {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 2.2rem color-mix(in oklab, var(--color-flame-400) 40%, transparent));
-  }
-  45% {
-    filter: drop-shadow(0 0 3.2rem color-mix(in oklab, var(--color-flame-400) 60%, transparent));
-  }
-  70% {
-    filter: drop-shadow(0 0 2.6rem color-mix(in oklab, var(--color-flame-400) 48%, transparent));
-  }
+.embers-still {
+  filter: drop-shadow(0 0 2.5rem color-mix(in oklab, var(--color-flame-400) 40%, transparent));
 }
 
 .landing-copy {
@@ -410,5 +390,63 @@ body {
   }
   & td {
     min-width: 8.5rem;
+  }
+}
+
+.landing {
+  counter-reset: chapter;
+}
+.landing .page-section {
+  counter-increment: chapter;
+  border-top: 1px solid var(--ui-border);
+}
+.landing .page-section:nth-of-type(even) {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 0% 0%,
+      color-mix(in oklab, var(--color-flame-900) 22%, transparent),
+      transparent 70%
+    ),
+    var(--color-carbon-900);
+}
+.landing .page-chapter::before {
+  content: counter(chapter, decimal-leading-zero) ' · ';
+  color: var(--ui-text-dimmed);
+}
+
+.landing {
+  counter-reset: chapter;
+}
+.landing .page-section {
+  counter-increment: chapter;
+  border-top: 1px solid var(--ui-border);
+}
+.landing .page-section:nth-of-type(even) {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 0% 0%,
+      color-mix(in oklab, var(--color-flame-900) 22%, transparent),
+      transparent 70%
+    ),
+    var(--color-carbon-900);
+}
+.landing .page-chapter::before {
+  content: counter(chapter, decimal-leading-zero) ' · ';
+  color: var(--ui-text-dimmed);
+}
+
+.page-collapsible {
+  & summary::-webkit-details-marker {
+    display: none;
+  }
+  &[open] .page-collapsible-icon {
+    rotate: 180deg;
+  }
+  & ul {
+    display: grid;
+    gap: 0.35rem;
+  }
+  & a {
+    word-break: break-all;
   }
 }

@@ -19,7 +19,6 @@
     "@nuxt/ui": "catalog:",
     "h3": "catalog:",
     "nuxt": "catalog:",
-    "shaders": "catalog:",
     "tailwindcss": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",

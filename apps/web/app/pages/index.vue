@@ -15,5 +15,6 @@ usePageHead('pages', page, (entry) => [
 <template>
   <div class="landing">
     <PageBody :entry="page.entry.value" />
+    <ClientOnly><LazyEmbersStage /></ClientOnly>
   </div>
 </template>
