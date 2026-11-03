@@ -347,6 +347,11 @@ export const es: Messages = {
     conflictBody:
       'La entrada está en una versión más nueva que la que editaste. Copia lo que escribiste si lo necesitas y luego carga la versión más nueva.',
     keepEditing: 'Seguir editando',
+    leaveTitle: 'Tu cambio no está guardado',
+    leaveBody:
+      'Hollware no pudo guardar lo que escribiste. Quédate y guárdalo de nuevo, o sal sin él.',
+    leaveAnyway: 'Salir sin guardar',
+    stay: 'Quedarme',
     loadNewer: 'Cargar la versión más nueva',
     acknowledgeTitle: '¿Publicar con estas advertencias?',
     publishAnyway: 'Publicar de todos modos',
