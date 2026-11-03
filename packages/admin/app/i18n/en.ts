@@ -167,6 +167,7 @@ export const en = {
     behind: 'Translations behind their source',
     written: (at: string) => `Written ${at}`,
     start: 'Get started',
+    markStepsDone: 'Mark as done',
     done: 'done',
     toDo: 'to do',
     steps: {

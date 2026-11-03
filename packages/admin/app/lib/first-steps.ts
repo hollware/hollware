@@ -32,3 +32,24 @@ export function firstSteps(input: {
     { key: 'analytics', to: '/settings/site/analytics', done: input.analytics },
   ]
 }
+
+export interface StepsStorage {
+  getItem(key: string): string | null
+  setItem(key: string, value: string): void
+}
+
+const doneKey = (site: string): string => `hollware:first-steps-done:${site}`
+
+export function stepsMarkedDone(storage: StepsStorage | undefined, site: string): boolean {
+  try {
+    return storage?.getItem(doneKey(site)) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function markStepsDone(storage: StepsStorage | undefined, site: string): void {
+  try {
+    storage?.setItem(doneKey(site), 'true')
+  } catch {}
+}

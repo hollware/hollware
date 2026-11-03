@@ -172,6 +172,7 @@ export const es: Messages = {
     behind: 'Traducciones atrasadas',
     written: (at: string) => `Escrito el ${at}`,
     start: 'Primeros pasos',
+    markStepsDone: 'Marcar como listo',
     done: 'hecho',
     toDo: 'pendiente',
     steps: {

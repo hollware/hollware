@@ -2,16 +2,17 @@
 import { useQuery } from '@pinia/colada'
 import { useClipboard } from '@vueuse/core'
 import Page from '../components/Page.vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Output } from '../lib/api.ts'
 import { formatDateTime, formatNumber, useMessages } from '../i18n/index.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import { databaseSize } from '../lib/database.ts'
-import { firstSteps, type TokenOfSite } from '../lib/first-steps.ts'
+import { firstSteps, markStepsDone, stepsMarkedDone, type TokenOfSite } from '../lib/first-steps.ts'
 import { can, me } from '../lib/me.ts'
 import { personName } from '../lib/people.ts'
 import { admin, operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
+import { browserStorage } from '../lib/working-copy.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
 
@@ -95,6 +96,15 @@ const steps = computed(() =>
       }),
 )
 
+const markedNow = ref(false)
+const stepsDone = computed(
+  () => markedNow.value || (me.value !== null && stepsMarkedDone(browserStorage(), me.value.site)),
+)
+const markDone = () => {
+  if (me.value !== null) markStepsDone(browserStorage(), me.value.site)
+  markedNow.value = true
+}
+
 const { copy } = useClipboard({ legacy: true })
 const copyLine = () => copy(mcpLine)
 
@@ -110,11 +120,21 @@ const totalViews = computed(() =>
   <Page :title="m.home.title">
     <div class="space-y-8">
       <section
-        v-if="steps.some((step) => !step.done)"
+        v-if="!stepsDone && steps.some((step) => !step.done)"
         aria-labelledby="start"
         class="space-y-4 rounded-lg border border-default p-5"
       >
-        <h2 id="start" class="font-semibold">{{ m.home.start }}</h2>
+        <div class="flex items-center justify-between gap-3">
+          <h2 id="start" class="font-semibold">{{ m.home.start }}</h2>
+          <UButton
+            :label="m.home.markStepsDone"
+            icon="i-lucide-check"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="markDone"
+          />
+        </div>
         <ol :aria-label="m.home.start" class="space-y-4">
           <li v-for="step in steps" :key="step.key" class="flex gap-3">
             <UIcon
