@@ -1,5 +1,17 @@
 # @hollware/server
 
+## 1.7.0
+
+### Patch Changes
+
+- [#106](https://github.com/hollware/hollware/pull/106) [`abc0ca1`](https://github.com/hollware/hollware/commit/abc0ca143b958f074fdb6fd2834712fe2142197c) Thanks [@sergioazoc](https://github.com/sergioazoc)! - An analytics provider that answers more than 2 MB is refused as invalid instead of being read whole into the Worker's memory.
+
+- [#107](https://github.com/hollware/hollware/pull/107) [`b8c2841`](https://github.com/hollware/hollware/commit/b8c28412a15dfb660334a26c6c0170800da44c16) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The HTTP client sends a preview token in the `hollware-preview` header, not in the URL, and the read API accepts it there (the `preview` query parameter still works). The client also refuses an answer whose outcome or fields it does not know, as `invalid_response`, instead of handing it on.
+
+- [#109](https://github.com/hollware/hollware/pull/109) [`4542157`](https://github.com/hollware/hollware/commit/4542157604d25941044c6e81f70754293d60243c) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Uploads in parts: one request at a time finishes an upload (another answers 409 and touches nothing in R2), one person keeps at most ten open in a site (429 past that), the cron also aborts an upload whose finish never ended, and anonymizing a person hands their open uploads to the cron instead of leaving their parts in R2 (migration `0035_upload_claims`).
+- Updated dependencies []:
+  - @hollware/core@1.7.0
+
 ## 1.6.0
 
 ### Minor Changes
