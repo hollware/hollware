@@ -73,7 +73,8 @@ export type Tint = readonly [number, number, number] | null
 
 export const TINTS = {
   alarm: [229, 72, 77],
-  cloud: [246, 130, 31],
+  cloud: [243, 128, 32],
+  cloudLight: [251, 173, 65],
 } as const
 
 export function emberColor(
@@ -102,7 +103,7 @@ export function arc(progress: number, height: number): number {
   return Math.sin(Math.PI * Math.min(1, Math.max(0, progress))) * height
 }
 
-export type Shape = 'flame' | 'check' | 'cloud' | 'question'
+export type Shape = 'flame' | 'check' | 'cloudflare'
 
 export interface Beat {
   readonly shape: Shape
@@ -138,17 +139,21 @@ export function beatOf(section: string, seconds: number): Beat {
         ? { ...CALM, shape: 'check', step: 1 }
         : { ...CALM, tint: 'alarm', shake: true, sparks: true }
     }
-    case 'admin':
-      return { ...CALM, shape: alternate(seconds, 1.6, 1.8) ? 'check' : 'flame' }
+    case 'admin': {
+      const press = seconds % 3.6 >= 2.4
+      return { ...CALM, step: press ? 1 : 0, sparks: press }
+    }
     case 'cloudflare':
       return {
         ...CALM,
-        shape: alternate(seconds, 1.4, 2.2) ? 'cloud' : 'flame',
+        shape: alternate(seconds, 1.2, 2.8) ? 'cloudflare' : 'flame',
         tint: 'cloud',
         sparks: true,
       }
     case 'faq':
-      return { ...CALM, shape: alternate(seconds, 1.6, 2) ? 'question' : 'flame' }
+      return { ...CALM, step: Math.floor(seconds / 2.8) }
+    case 'cta':
+      return { ...CALM, glyphs: true }
     default:
       return CALM
   }

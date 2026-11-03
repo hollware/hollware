@@ -30,7 +30,10 @@ const GLYPHS = ['#', '<', '/>', '*', '-', '[', ']', '`', 'md', '{', '}', '>']
 const live = useState('embers-live', () => false)
 const surface = ref<HTMLCanvasElement | null>(null)
 
-let shapes: Record<Shape, Point[]> = { flame: [], check: [], cloud: [], question: [] }
+let shapes: Record<Shape, Point[]> = { flame: [], check: [], cloudflare: [] }
+let lightCloud: boolean[] = []
+let squash = 0
+let pressed = ''
 let embers: Ember[] = []
 let sparks: Ember[] = []
 let glyphs: Glyph[] = []
@@ -90,7 +93,7 @@ function sampleShape(paint: (context: CanvasRenderingContext2D) => void, count: 
   return points
 }
 
-function fitted(points: Point[], count: number, seed: number): Point[] {
+function fitted<P extends Point>(points: P[], count: number, seed: number): (P | Point)[] {
   if (points.length === 0) return []
   const random = seededRandom(seed)
   const shuffled = points
@@ -112,29 +115,40 @@ function buildShapes() {
     context.lineJoin = 'round'
     context.stroke(new Path2D('M38 132 L86 182 L170 70'))
   }, count)
-  const cloud = sampleShape((context) => {
-    for (const [x, y, r] of [
-      [62, 142, 38],
-      [108, 116, 52],
-      [150, 146, 36],
-    ] as const) {
+  const big = sampleShape((context) => {
+    context.beginPath()
+    context.arc(98, 132, 50, Math.PI, 0)
+    context.arc(150, 150, 28, Math.PI * 1.25, 0)
+    context.lineTo(178, 178)
+    context.lineTo(26, 178)
+    context.arc(44, 160, 20, Math.PI * 0.5, Math.PI * 1.5)
+    context.closePath()
+    context.fill()
+  }, count)
+  const small = sampleShape(
+    (context) => {
       context.beginPath()
-      context.arc(x, y, r, 0, Math.PI * 2)
+      context.arc(168, 158, 22, Math.PI, 0)
+      context.lineTo(196, 178)
+      context.lineTo(140, 178)
+      context.closePath()
       context.fill()
-    }
-    context.fillRect(60, 140, 92, 42)
-  }, count)
-  const question = sampleShape((context) => {
-    context.font = 'bold 220px system-ui, sans-serif'
-    context.textAlign = 'center'
-    context.textBaseline = 'middle'
-    context.fillText('?', MARK_WIDTH / 2, MARK_HEIGHT / 2 + 8)
-  }, count)
+    },
+    Math.round(count * 0.25),
+  )
+  const cloud = fitted(
+    [
+      ...big.map((point) => ({ ...point, light: false })),
+      ...small.map((point) => ({ ...point, light: true })),
+    ],
+    count,
+    5,
+  )
+  lightCloud = cloud.map((point) => 'light' in point && point.light === true)
   shapes = {
     flame,
     check: fitted(check, count, 3),
-    cloud: fitted(cloud, count, 5),
-    question: fitted(question, count, 9),
+    cloudflare: cloud,
   }
 }
 
@@ -217,18 +231,56 @@ function direct(seconds: number): { spot: Spot; beat: Beat } {
   }
   if (section === 'admin') {
     const image = element?.querySelector('img')?.getBoundingClientRect()
-    if (image !== undefined && image.top < window.innerHeight * 0.7 && image.bottom > 120) {
+    if (image !== undefined && image.top < window.innerHeight * 0.75 && image.bottom > 140) {
+      if (beat.step === 1) {
+        return {
+          spot: {
+            key: 'admin:press',
+            x: (image.left + image.width * 0.9) * ratio,
+            y: Math.max(110, image.top + image.height * 0.05) * ratio,
+            scale: smallScale(),
+          },
+          beat,
+        }
+      }
+      const progress = (((performance.now() - since) / 1000) % 3.6) / 2.4
       return {
         spot: {
-          key: 'admin',
-          x: (image.left + image.width * 0.82) * ratio,
-          y: Math.max(110, image.top + image.height * 0.18) * ratio,
-          scale: smallScale() * 1.2,
+          key: 'admin:read',
+          x: (image.left + image.width * (0.5 + 0.42 * progress)) * ratio,
+          y:
+            Math.max(
+              110,
+              image.top + image.height * (0.3 + 0.05 * Math.sin(progress * Math.PI * 6)),
+            ) * ratio,
+          scale: smallScale(),
         },
         beat,
       }
     }
   }
+  if (section === 'faq') {
+    const questions = [...(element?.querySelectorAll('h3') ?? [])]
+    const index = beat.step % Math.max(1, questions.length)
+    const question = questions[index]?.getBoundingClientRect()
+    const block = element?.querySelector('.page-faq')?.getBoundingClientRect()
+    if (question !== undefined && question.bottom > 100 && question.top < window.innerHeight - 60) {
+      const doubt = Math.sin(((performance.now() - since) / 1000) * 2.2)
+      return {
+        spot: {
+          key: `faq:${index}`,
+          x:
+            (narrow()
+              ? window.innerWidth - 44
+              : (block?.right ?? question.right) + 70 - doubt * 26) * ratio,
+          y: (question.top + question.height / 2) * ratio,
+          scale: smallScale(),
+        },
+        beat,
+      }
+    }
+  }
+  if (section === 'cloudflare') return { spot: { ...beside, scale: beside.scale * 1.7 }, beat }
   return { spot: beside, beat }
 }
 
@@ -256,8 +308,8 @@ function place(spot: Spot, now: number) {
 }
 
 function toScreen(point: Point): Point {
-  const dx = (point.x - MARK_WIDTH / 2) * head.scale * pulse
-  const dy = (point.y - MARK_HEIGHT / 2) * head.scale * pulse
+  const dx = (point.x - MARK_WIDTH / 2) * head.scale * pulse * (1 + squash * 0.25)
+  const dy = (point.y - MARK_HEIGHT / 2) * head.scale * pulse * (1 - squash * 0.35)
   const cos = Math.cos(head.turn)
   const sin = Math.sin(head.turn)
   return { x: head.x + dx * cos - dy * sin, y: head.y - lift + dx * sin + dy * cos }
@@ -278,11 +330,10 @@ function emit(x: number, y: number, vx: number, vy: number, heat = 0.9) {
   if (sparks.length > 220) sparks.shift()
 }
 
-function spit(now: number, element: Element | undefined) {
+function spit(now: number, target: DOMRect | undefined) {
   if (now - lastEmit < 130) return
   lastEmit = now
   const mouth = toScreen(MOUTH)
-  const target = element?.querySelector('figure')?.getBoundingClientRect()
   const tx =
     target === undefined
       ? mouth.x - 200 * ratio
@@ -316,7 +367,8 @@ function draw(now: number) {
   const resting = flight === null
   pulse = 1 + 0.025 * Math.sin(ghost * 1.7)
   lift = (Math.sin(ghost * 1.3) * 9 + Math.sin(ghost * 2.9) * 3) * ratio * Math.max(0.5, small)
-  head.turn += Math.sin(ghost * 1.1) * 0.05
+  if (shape === 'flame') head.turn += Math.sin(ghost * 1.1) * 0.05
+  else head.turn *= 0.7
   const next = resting ? beat.shape : 'flame'
   if (next !== shape) {
     previous = shape
@@ -327,7 +379,22 @@ function draw(now: number) {
   const tint: Tint = beat.tint === null || !resting ? null : TINTS[beat.tint]
   const amount = tint === null ? 0 : 0.8
   const element = sections.find((candidate) => candidate.getAttribute('id') === section)
-  if (resting && beat.glyphs) spit(now, element)
+  const agent = act === 'cta'
+  if (resting && beat.glyphs) {
+    const into = agent
+      ? document.querySelector('[data-landing="cta"] pre')
+      : element?.querySelector('figure')
+    spit(now, into?.getBoundingClientRect())
+  }
+  squash *= 0.86
+  if (landed === 'admin:press' && pressed !== landed) {
+    squash = 1
+    for (let count = 0; count < 24; count++) {
+      const angle = Math.random() * Math.PI * 2
+      emit(head.x, head.y, Math.cos(angle) * 3 * ratio, Math.sin(angle) * 3 * ratio - ratio, 1)
+    }
+  }
+  pressed = landed
   if (resting && beat.sparks && Math.random() < 0.35) {
     emit(
       head.x + (Math.random() - 0.5) * 120 * head.scale,
@@ -367,6 +434,7 @@ function draw(now: number) {
   const every = small < 0.5 ? 3 : small < 0.7 ? 2 : 1
   const dim = small < 0.7 ? 0.55 + small * 0.4 : 1
   const flame = shape === 'flame' ? morph : previous === 'flame' ? 1 - morph : 0
+  const scan = head.y - lift + Math.sin(ghost * 2.4) * MARK_HEIGHT * 0.32 * head.scale
   embers.forEach((ember, index) => {
     const a = from[index] ?? { x: 0, y: 0 }
     const b = to[index] ?? a
@@ -389,7 +457,18 @@ function draw(now: number) {
       context.fillStyle = emberColor(ember.heat, shine, 0.08, tint, amount)
       context.fillRect(ember.x - size * 1.2, ember.y - size * 1.2, size * 2.4, size * 2.4)
     }
-    context.fillStyle = emberColor(ember.heat * dim, shine * dim, dim, tint, amount)
+    const tone =
+      tint !== null && shape === 'cloudflare' && lightCloud[index] === true
+        ? TINTS.cloudLight
+        : tint
+    const scanned = agent && Math.abs(ember.y - scan) < 10 * ratio ? 1 : 0
+    context.fillStyle = emberColor(
+      Math.min(1, ember.heat * dim + scanned),
+      Math.min(1, shine * dim + scanned),
+      shape === 'cloudflare' ? dim * 0.75 : dim,
+      tone,
+      tone === null ? 0 : 1,
+    )
     context.fillRect(ember.x - size / 2, ember.y - size / 2, size, size)
   })
 
@@ -423,6 +502,47 @@ function draw(now: number) {
     glyph.life -= 1
     context.fillStyle = `rgba(246, 193, 99, ${Math.min(1, glyph.life / 18).toFixed(3)})`
     context.fillText(glyph.text, glyph.x, glyph.y)
+  }
+  if (agent && resting) {
+    for (let star = 0; star < 3; star++) {
+      const angle = ghost * 1.4 + (star * Math.PI * 2) / 3
+      const x = head.x + Math.cos(angle) * 130 * head.scale
+      const y = head.y - lift + Math.sin(angle) * 60 * head.scale - 20 * head.scale
+      const size = (5 + 2 * Math.sin(ghost * 4 + star)) * ratio
+      context.fillStyle = 'rgba(252, 235, 201, 0.95)'
+      context.beginPath()
+      context.moveTo(x, y - size * 2)
+      context.quadraticCurveTo(x, y, x + size * 2, y)
+      context.quadraticCurveTo(x, y, x, y + size * 2)
+      context.quadraticCurveTo(x, y, x - size * 2, y)
+      context.quadraticCurveTo(x, y, x, y - size * 2)
+      context.fill()
+    }
+  }
+  if (act === 'faq' && resting) {
+    for (let dot = 0; dot < 3; dot++) {
+      const on = Math.floor(ghost * 3) % 4 > dot
+      const x = head.x + (dot - 1) * 13 * ratio
+      const y = head.y - lift - 150 * head.scale
+      context.fillStyle = `rgba(246, 193, 99, ${on ? 0.95 : 0.2})`
+      context.beginPath()
+      context.arc(x, y, 3.2 * ratio, 0, Math.PI * 2)
+      context.fill()
+    }
+    head.turn = Math.sin(ghost * 2.2) * 0.28
+  }
+  if (landed === 'admin:read') {
+    const beam = context.createLinearGradient(head.x, head.y, head.x, head.y + 140 * ratio)
+    beam.addColorStop(0, 'rgba(246, 193, 99, 0.22)')
+    beam.addColorStop(1, 'rgba(246, 193, 99, 0)')
+    context.fillStyle = beam
+    context.beginPath()
+    context.moveTo(head.x - 8 * ratio, head.y + 20 * ratio)
+    context.lineTo(head.x + 8 * ratio, head.y + 20 * ratio)
+    context.lineTo(head.x + 70 * ratio, head.y + 140 * ratio)
+    context.lineTo(head.x - 70 * ratio, head.y + 140 * ratio)
+    context.closePath()
+    context.fill()
   }
   context.globalCompositeOperation = 'source-over'
 }

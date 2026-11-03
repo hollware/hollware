@@ -41,7 +41,7 @@ describe('the embers of the mark', () => {
     expect(emberColor(1, 1)).toBe('rgba(246, 230, 160, 1.000)')
     expect(emberColor(1, 1, 0.1)).toBe('rgba(246, 230, 160, 0.100)')
     expect(emberColor(1, 1, 1, TINTS.alarm, 1)).toBe('rgba(229, 72, 77, 1.000)')
-    expect(emberColor(1, 1, 1, TINTS.cloud, 0.5)).toBe('rgba(246, 180, 96, 1.000)')
+    expect(emberColor(1, 1, 1, TINTS.cloud, 0.5)).toBe('rgba(245, 179, 96, 1.000)')
   })
 
   it('hop between sections along an eased arc that lands where it aims', () => {
@@ -53,7 +53,7 @@ describe('the embers of the mark', () => {
 })
 
 describe('what the head does in each section', () => {
-  it('writes in agents, walks the cards, breaks and fixes a write, and changes its shape', () => {
+  it('writes in agents, walks the cards, fixes a write, reads a review, doubts and works as an agent', () => {
     expect(beatOf('agents', 3).glyphs).toBe(true)
     expect([0, 0.95, 1.85, 9].map((seconds) => beatOf('cms', seconds).step)).toEqual([0, 1, 2, 10])
     expect(beatOf('contracts', 1)).toEqual({
@@ -65,13 +65,15 @@ describe('what the head does in each section', () => {
       sparks: true,
     })
     expect(beatOf('contracts', 3).shape).toBe('check')
-    expect([beatOf('admin', 1).shape, beatOf('admin', 2).shape]).toEqual(['flame', 'check'])
+    expect([1, 2.5, 3.7].map((seconds) => beatOf('admin', seconds).step)).toEqual([0, 1, 0])
     expect([beatOf('cloudflare', 1).shape, beatOf('cloudflare', 2).shape]).toEqual([
       'flame',
-      'cloud',
+      'cloudflare',
     ])
     expect(beatOf('cloudflare', 1).tint).toBe('cloud')
-    expect([beatOf('faq', 1).shape, beatOf('faq', 2).shape]).toEqual(['flame', 'question'])
+    expect([0, 2.9, 6].map((seconds) => beatOf('faq', seconds).step)).toEqual([0, 1, 2])
+    expect(beatOf('faq', 1).shape).toBe('flame')
+    expect(beatOf('cta', 1).glyphs).toBe(true)
     expect(beatOf('hero', 2)).toEqual(beatOf('somewhere', 2))
     expect(beatOf('hero', 2).shape).toBe('flame')
   })
