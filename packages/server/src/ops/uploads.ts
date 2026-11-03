@@ -40,6 +40,22 @@ const NO_UPLOAD = refused(
   404,
 )
 
+const BUSY = refused(
+  'This upload is being finished by another request.',
+  'Wait for that request to answer, then start the upload again if it failed.',
+  409,
+)
+
+const MAX_OPEN_UPLOADS = 10
+
+const TOO_MANY = refused(
+  `You have ${MAX_OPEN_UPLOADS} uploads open in this site, the most one person may have.`,
+  'Complete or abort one with POST /v1/uploads/<id>/complete or DELETE /v1/uploads/<id>, then start this one.',
+  429,
+)
+
+const CLAIM_MINUTES = 15
+
 const partsOf = (bytes: number, partBytes: number) => Math.ceil(bytes / partBytes)
 
 const lengthOfPart = (upload: UploadRow, part: number) =>
@@ -51,9 +67,10 @@ async function ownUpload(
   media: Media,
   context: OperationContext,
   id: string,
-): Promise<UploadRow | null> {
+): Promise<UploadRow | typeof BUSY | null> {
   const upload = await media.uploads.byId(context.site.key, id)
   if (upload === null || upload.createdBy !== actorOf(context).userId) return null
+  if (upload.claimedAt !== null) return BUSY
   return upload.expiresAt > context.clock.now().toISOString() ? upload : null
 }
 
@@ -80,9 +97,13 @@ export async function startUpload(
     partBytes: MULTIPART_PART_BYTES,
     createdBy: actorOf(context).userId,
     expiresAt: new Date(now.getTime() + UPLOAD_HOURS * 3_600_000).toISOString(),
+    claimedAt: null,
     createdAt: now.toISOString(),
   }
-  await media.uploads.insert(upload)
+  if (!(await media.uploads.insert(upload, MAX_OPEN_UPLOADS))) {
+    await media.files.abortParts(key, multipartId)
+    return TOO_MANY
+  }
   return {
     outcome: 'started',
     upload: {
@@ -106,9 +127,9 @@ export async function uploadPart(
     return { outcome: 'unavailable', problem: NO_BUCKET }
   }
   const upload = await ownUpload(media, context, id)
-  if (upload === null) {
+  if (upload === null || 'outcome' in upload) {
     await streamed.body.cancel()
-    return NO_UPLOAD
+    return upload ?? NO_UPLOAD
   }
   const parts = partsOf(upload.bytes, upload.partBytes)
   if (!Number.isSafeInteger(part) || part < 1 || part > parts) {
@@ -151,7 +172,7 @@ export async function finishUpload(
   const media = context.media ?? null
   if (media === null) return { outcome: 'unavailable', problem: NO_BUCKET }
   const upload = await ownUpload(media, context, id)
-  if (upload === null) return NO_UPLOAD
+  if (upload === null || 'outcome' in upload) return upload ?? NO_UPLOAD
   const expected = partsOf(upload.bytes, upload.partBytes)
   const numbers = parts.map(({ part }) => part).sort((a, b) => a - b)
   if (numbers.length !== expected || numbers.some((part, at) => part !== at + 1)) {
@@ -161,12 +182,20 @@ export async function finishUpload(
       400,
     )
   }
+  if (!(await media.uploads.claim(upload.site, upload.id, context.clock.now().toISOString()))) {
+    return BUSY
+  }
   try {
     await media.files.finishParts(upload.key, upload.multipartId, parts)
-    await media.uploads.delete(upload.site, upload.id)
+  } catch (error) {
+    await media.uploads.release(upload.site, upload.id)
+    throw error
+  }
+  try {
     return await adoptUpload(media, context, upload, upload.key, upload.bytes)
   } finally {
     await media.files.delete(upload.key)
+    await media.uploads.delete(upload.site, upload.id)
   }
 }
 
@@ -177,16 +206,18 @@ export async function abortUpload(
   const media = context.media ?? null
   if (media === null) return { outcome: 'unavailable', problem: NO_BUCKET }
   const upload = await ownUpload(media, context, id)
-  if (upload === null) return NO_UPLOAD
+  if (upload === null || 'outcome' in upload) return upload ?? NO_UPLOAD
   await media.files.abortParts(upload.key, upload.multipartId)
   await media.uploads.delete(upload.site, upload.id)
   return { outcome: 'aborted' }
 }
 
 export async function abortExpiredUploads(media: Media, site: string, now: Date): Promise<number> {
-  const expired = await media.uploads.expired(site, now.toISOString())
+  const stale = new Date(now.getTime() - CLAIM_MINUTES * 60_000).toISOString()
+  const expired = await media.uploads.expired(site, now.toISOString(), stale)
   for (const upload of expired) {
     await media.files.abortParts(upload.key, upload.multipartId).catch(() => undefined)
+    await media.files.delete(upload.key)
     await media.uploads.delete(site, upload.id)
   }
   return expired.length

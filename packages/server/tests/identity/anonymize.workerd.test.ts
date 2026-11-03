@@ -327,6 +327,27 @@ describe('the anonymization of a former member', () => {
     ).toEqual({ name: 'Bea Both', email: 1, passkeys: 1, sessions: 1, identities: 1 })
   })
 
+  it('hands the open uploads of the person to the cron, which aborts their parts in R2', async () => {
+    const world = await newWorld(env.DB, 'anonymize-uploads')
+    const site = world.tenant.key
+    const cy = await seedPerson('Cy Uploads', [world])
+    const later = '2026-10-29T10:00:00.000Z'
+    await env.DB.prepare(
+      `INSERT INTO uploads (id, site_id, key, multipart_id, filename, alt, bytes, part_bytes, created_by, expires_at, created_at, updated_at)
+        VALUES (?5, ?1, 'uploads/x', 'mp', 'a.mp4', 'A', 6000000, 5242880, ?2, ?3, ?4, ?4)`,
+    )
+      .bind(site, cy.userId, later, NOW, newId('upl'))
+      .run()
+    await leaves(site, world.tenant.userId, cy.userId)
+
+    expect(await anonymizePerson(env.DB, { site, userId: cy.userId, now: NOW })).toBe('gone')
+    expect(
+      await env.DB.prepare('SELECT created_by, expires_at FROM uploads WHERE site_id = ?1')
+        .bind(site)
+        .all(),
+    ).toMatchObject({ results: [{ created_by: FORMER_PERSON, expires_at: NOW }] })
+  })
+
   it('keeps a person another site has as a member, or whom its activity log names, as actor or as target', async () => {
     const world = await newWorld(env.DB, 'anonymize-logged')
     const elsewhere = await newWorld(env.DB, 'anonymize-logging')

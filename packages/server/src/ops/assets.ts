@@ -49,9 +49,13 @@ export function assetView(row: AssetRow, media: Media) {
   }
 }
 
-const STATUS_OF_PROBLEM = new WeakMap<object, 400 | 404 | 413 | 415>()
+const STATUS_OF_PROBLEM = new WeakMap<object, 400 | 404 | 409 | 413 | 415 | 429>()
 
-export const refused = (message: string, fix: string, status?: 400 | 404 | 413 | 415) => {
+export const refused = (
+  message: string,
+  fix: string,
+  status?: 400 | 404 | 409 | 413 | 415 | 429,
+) => {
   const problem = { message, fix }
   if (status !== undefined) STATUS_OF_PROBLEM.set(problem, status)
   return { outcome: 'refused', problem } as const

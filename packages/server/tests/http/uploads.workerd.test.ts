@@ -137,4 +137,78 @@ describe('an upload in parts', () => {
     expect([expired.status, gone.status]).toEqual([404, 404])
     expect(await uploads(SITE_KEY)).toBe(0)
   })
+
+  it('finishes an upload once when two requests complete it at the same time', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+    const file = video(4096)
+    const api = client(worker, writer.token)
+    const { upload } = await (await api.start(file.length)).json<Started>()
+    const part = await api.part(upload.id, 1, file)
+    const parts = [{ part: 1, etag: (await part.json<{ etag: string }>()).etag }]
+
+    const answers = await Promise.all([
+      api.complete(upload.id, parts),
+      api.complete(upload.id, parts),
+    ])
+    const done = answers.find((answer) => answer.status === 201)
+    const asset = (await done?.json<{ asset: { id: string } }>())?.asset.id ?? ''
+    const served = await worker.send(`/assets/${SITE_KEY}/${asset}`)
+
+    expect(answers.map((answer) => answer.status).sort((a, b) => a - b)).toEqual([201, 409])
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(file)
+    expect(await uploads(SITE_KEY)).toBe(0)
+    expect((await env.MEDIA.list({ prefix: `uploads/${SITE_KEY}/` })).objects).toEqual([])
+  })
+
+  it('keeps at most ten uploads open for one person', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const other = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+    const api = client(worker, writer.token)
+    const open: string[] = []
+    for (let at = 0; at < 10; at += 1) {
+      open.push((await (await api.start(1024)).json<Started>()).upload.id)
+    }
+
+    const eleventh = await api.start(1024)
+    const someoneElse = await client(worker, other.token).start(1024)
+    await api.abort(open.pop() ?? '')
+    const afterAbort = await api.start(1024)
+
+    expect([eleventh.status, someoneElse.status, afterAbort.status]).toEqual([429, 201, 201])
+    expect((await eleventh.json<{ problem: { message: string } }>()).problem.message).toBe(
+      'You have 10 uploads open in this site, the most one person may have.',
+    )
+    await env.DB.prepare('DELETE FROM uploads WHERE site_id = ?').bind(SITE_KEY).run()
+  })
+
+  it('leaves an upload being finished alone, and the cron aborts one whose finish never ended', async () => {
+    const writer = await seedToken(env.DB, SITE_KEY, { expiresAt: LATER })
+    const worker = boot({ bindings: { MEDIA: env.MEDIA } })
+    const api = client(worker, writer.token)
+    const { upload } = await (await api.start(1024)).json<Started>()
+    const expiry = Date.parse(NOW) + 24 * 3_600_000
+    const claimed = new Date(expiry - 5 * 60_000).toISOString()
+    await env.DB.prepare('UPDATE uploads SET claimed_at = ? WHERE id = ?')
+      .bind(claimed, upload.id)
+      .run()
+    const cron = async (at: number) => {
+      worker.clock.set(new Date(at).toISOString())
+      await worker.worker.scheduled(
+        { scheduledTime: at, cron: '* * * * *', noRetry: () => undefined },
+        worker.env,
+        worker.ctx,
+      )
+      await worker.settle()
+      return uploads(SITE_KEY)
+    }
+
+    const busy = await api.part(upload.id, 1, new Uint8Array(1024))
+    const whileFinishing = await cron(expiry + 60_000)
+    const afterStale = await cron(expiry + 20 * 60_000)
+    worker.clock.set(NOW)
+
+    expect([busy.status, whileFinishing, afterStale]).toEqual([409, 1, 0])
+  })
 })

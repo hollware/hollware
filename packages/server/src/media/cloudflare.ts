@@ -295,6 +295,7 @@ interface UploadRecord {
   readonly part_bytes: number
   readonly created_by: string
   readonly expires_at: string
+  readonly claimed_at: string | null
   readonly created_at: string
 }
 
@@ -309,17 +310,20 @@ const uploadOf = (row: UploadRecord): UploadRow => ({
   partBytes: row.part_bytes,
   createdBy: row.created_by,
   expiresAt: row.expires_at,
+  claimedAt: row.claimed_at,
   createdAt: row.created_at,
 })
 
 export function d1Uploads(db: D1Database): UploadCatalog {
   return {
-    async insert(upload) {
-      await db
+    async insert(upload, most) {
+      const result = await db
         .prepare(
           `INSERT INTO uploads (id, site_id, key, multipart_id, filename, alt, bytes, part_bytes,
              created_by, expires_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11
+            WHERE (SELECT count(*) FROM uploads
+                    WHERE site_id = ?2 AND created_by = ?9 AND expires_at > ?11) < ?12`,
         )
         .bind(
           upload.id,
@@ -333,9 +337,10 @@ export function d1Uploads(db: D1Database): UploadCatalog {
           upload.createdBy,
           upload.expiresAt,
           upload.createdAt,
-          upload.createdAt,
+          most,
         )
         .run()
+      return result.meta.changes === 1
     },
     async byId(site, id) {
       const row = await db
@@ -344,13 +349,32 @@ export function d1Uploads(db: D1Database): UploadCatalog {
         .first<UploadRecord>()
       return row === null ? null : uploadOf(row)
     },
+    async claim(site, id, at) {
+      const result = await db
+        .prepare(
+          'UPDATE uploads SET claimed_at = ?3, updated_at = ?3 WHERE site_id = ?1 AND id = ?2 AND claimed_at IS NULL',
+        )
+        .bind(site, id, at)
+        .run()
+      return result.meta.changes === 1
+    },
+    async release(site, id) {
+      await db
+        .prepare('UPDATE uploads SET claimed_at = NULL WHERE site_id = ? AND id = ?')
+        .bind(site, id)
+        .run()
+    },
     async delete(site, id) {
       await db.prepare('DELETE FROM uploads WHERE site_id = ? AND id = ?').bind(site, id).run()
     },
-    async expired(site, now) {
+    async expired(site, now, stale) {
       const { results } = await db
-        .prepare('SELECT * FROM uploads WHERE site_id = ? AND expires_at <= ? LIMIT 50')
-        .bind(site, now)
+        .prepare(
+          `SELECT * FROM uploads
+            WHERE site_id = ?1 AND expires_at <= ?2 AND (claimed_at IS NULL OR claimed_at <= ?3)
+            LIMIT 50`,
+        )
+        .bind(site, now, stale)
         .all<UploadRecord>()
       return results.map(uploadOf)
     },
