@@ -62,6 +62,8 @@ import type { OAuth, Proceed } from '../oauth/server.ts'
 import type { Clock } from '../ports.ts'
 import type { GatewayEnv, GatewayLogEntry } from './types.ts'
 import * as agentsApi from './agents-api.ts'
+import { isNewer, latestRelease } from './release.ts'
+import manifest from '../../package.json' with { type: 'json' }
 import type { GrantSummary, OAuthHelpers } from '@cloudflare/workers-oauth-provider'
 
 const INVITATION_DAYS = 7
@@ -237,6 +239,7 @@ function siteOf(metadata: unknown): string | null {
 }
 
 export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions): void {
+  const latest = latestRelease((input, init) => fetch(input, init))
   const admin =
     (
       action: AuditAction | null,
@@ -324,6 +327,22 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           .filter((row) => owned.has(row.id))
           .map((row) => ({ site: row.id, deletedAt: row.deleted_at }))
         return json({ user, site: person.site, scopes: person.scopes, sites, trash })
+      },
+      { anyone: true },
+    ),
+  )
+
+  app.get(
+    '/v1/admin/version',
+    admin(
+      null,
+      async () => {
+        const release = await latest(options.clock.now().getTime())
+        return json({
+          installed: manifest.version,
+          latest: release,
+          newer: release !== null && isNewer(release, manifest.version),
+        })
       },
       { anyone: true },
     ),

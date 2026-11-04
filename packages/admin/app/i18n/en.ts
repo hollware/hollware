@@ -54,6 +54,11 @@ export const en = {
     account: 'Account',
     signOut: 'Sign out',
   },
+  release: {
+    installed: (version: string) => `Hollware ${version}`,
+    available: (version: string) => `Hollware ${version} is out`,
+    notes: (version: string) => `What is new in Hollware ${version}`,
+  },
   search: {
     placeholder: 'Search entries, or go anywhere…',
     published: 'Published',
