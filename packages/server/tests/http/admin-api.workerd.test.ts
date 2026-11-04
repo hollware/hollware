@@ -7,6 +7,7 @@ import { seedToken } from '../auth/support.ts'
 import { insertEntries } from '../db/support.ts'
 import { adminPerson, adminToken, call } from './admin-session.ts'
 import { boot, NOW, OTHER_SITE_KEY, SITE_KEY } from './support.ts'
+import manifest from '../../package.json' with { type: 'json' }
 
 vi.setConfig({ testTimeout: 60_000 })
 
@@ -39,6 +40,37 @@ describe("the admin's own routes", () => {
       sites: [{ site: SITE_KEY, role: 'author' }],
     })
     expect(tokens.status).toBe(403)
+  })
+
+  it('tell anyone signed in the version installed, and a newer one npm has', async () => {
+    const asked: string[] = []
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      asked.push(new Request(input).url)
+      return Response.json({ name: 'hollware', version: '99.0.0' })
+    })
+    try {
+      const worker = boot()
+      const author = await adminToken(worker, 'author')
+      const owner = await seedToken(env.DB, SITE_KEY)
+
+      const answer = await call(worker, author, '/v1/admin/version')
+      const again = await call(worker, author, '/v1/admin/version')
+      const personal = await call(worker, owner.token, '/v1/admin/version')
+
+      expect(answer.status).toBe(200)
+      expect(await answer.json()).toEqual({
+        installed: manifest.version,
+        latest: '99.0.0',
+        newer: true,
+      })
+      expect(await again.json()).toMatchObject({ latest: '99.0.0' })
+      expect(asked.filter((url) => url.startsWith('https://registry.npmjs.org/'))).toEqual([
+        'https://registry.npmjs.org/hollware/latest',
+      ])
+      expect(personal.status).toBe(403)
+    } finally {
+      fetch.mockRestore()
+    }
   })
 
   it('list the sites in the trash that the person owns, and no other', async () => {

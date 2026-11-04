@@ -10,6 +10,7 @@ import { currentLocale, LANGUAGES, setLocale, uiLocale, useMessages } from './i1
 import { commandGroups } from './lib/commands.ts'
 import { me, useSiteMenu, type Me } from './lib/me.ts'
 import { openEntry } from './lib/open-entry.ts'
+import { releaseNotesUrl, type Release } from './lib/release.ts'
 import { admin, operation } from './lib/queries.ts'
 import { settingsGroups } from './lib/settings.ts'
 import { api, auth } from './lib/session.ts'
@@ -25,6 +26,16 @@ watch(
     if (read !== undefined) me.value = read
   },
   { immediate: true },
+)
+
+const releaseQuery = useQuery({
+  ...admin<Release>('version'),
+  enabled: signed,
+  staleTime: 3_600_000,
+})
+const release = computed(() => releaseQuery.data.value)
+const update = computed(() =>
+  release.value?.newer === true && release.value.latest !== null ? release.value.latest : null,
 )
 
 const waitingQuery = useQuery({
@@ -307,24 +318,51 @@ const initial = computed(() => (me.value?.user?.name ?? '?').trim().charAt(0).to
         </template>
 
         <template #footer="{ collapsed }">
-          <UDropdownMenu
-            :items="personItems"
-            :content="{ align: 'start', side: 'top' }"
-            :ui="{ content: 'w-56' }"
-          >
+          <div class="flex w-full flex-col gap-1">
             <UButton
-              color="neutral"
-              variant="ghost"
-              block
+              v-if="update !== null"
+              :to="releaseNotesUrl(update)"
+              target="_blank"
+              rel="noopener noreferrer"
+              :label="collapsed ? undefined : m.release.available(update)"
+              :aria-label="m.release.notes(update)"
+              icon="i-lucide-circle-arrow-up"
+              color="primary"
+              variant="soft"
+              size="sm"
               :square="collapsed"
-              class="data-[state=open]:bg-elevated"
-              :aria-label="collapsed ? `${me?.user?.name ?? m.person.you} · ${role}` : undefined"
+              block
+              class="justify-start"
+              data-testid="release-available"
+            />
+            <p
+              v-if="release !== undefined && !collapsed"
+              class="px-2.5 font-mono text-xs text-dimmed"
+              data-testid="release-installed"
             >
-              <UAvatar :text="initial" size="2xs" aria-hidden="true" />
-              <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? m.person.you }}</span>
-              <span v-if="!collapsed" class="ms-auto font-mono text-xs text-muted">{{ role }}</span>
-            </UButton>
-          </UDropdownMenu>
+              {{ m.release.installed(release.installed) }}
+            </p>
+            <UDropdownMenu
+              :items="personItems"
+              :content="{ align: 'start', side: 'top' }"
+              :ui="{ content: 'w-56' }"
+            >
+              <UButton
+                color="neutral"
+                variant="ghost"
+                block
+                :square="collapsed"
+                class="data-[state=open]:bg-elevated"
+                :aria-label="collapsed ? `${me?.user?.name ?? m.person.you} · ${role}` : undefined"
+              >
+                <UAvatar :text="initial" size="2xs" aria-hidden="true" />
+                <span v-if="!collapsed" class="truncate">{{ me?.user?.name ?? m.person.you }}</span>
+                <span v-if="!collapsed" class="ms-auto font-mono text-xs text-muted">{{
+                  role
+                }}</span>
+              </UButton>
+            </UDropdownMenu>
+          </div>
         </template>
       </UDashboardSidebar>
 

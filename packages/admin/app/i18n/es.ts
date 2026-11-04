@@ -50,6 +50,11 @@ export const es: Messages = {
     account: 'Tu cuenta',
     signOut: 'Cerrar sesión',
   },
+  release: {
+    installed: (version: string) => `Hollware ${version}`,
+    available: (version: string) => `Ya salió Hollware ${version}`,
+    notes: (version: string) => `Novedades de Hollware ${version}`,
+  },
   search: {
     placeholder: 'Busca entradas o ve a cualquier parte…',
     published: 'Publicadas',

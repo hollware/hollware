@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { expect, test, type Page } from '@playwright/test'
+import manifest from '../../packages/server/package.json' with { type: 'json' }
 import {
   entryAction,
   expectAccessible,
@@ -1070,7 +1071,7 @@ test('the owner moves a draft to the trash from the editor, finds it there and r
   await expect(owner.getByRole('listitem', { name: /^Hola mundo/ })).toHaveCount(0)
 })
 
-test('the bar of every page names the site it is of, with the menu to switch to another', async () => {
+test('the bar of every page names the site it is of, with the menu to switch to another, and the Hollware installed', async () => {
   await owner.goto('/admin/settings/collections')
   const site = owner.getByRole('button', { name: 'Sitio playground: cambiar a otro' })
   await expect(site).toBeVisible()
@@ -1078,6 +1079,7 @@ test('the bar of every page names the site it is of, with the menu to switch to 
   await site.click()
   await expect(owner.getByRole('menuitemcheckbox', { name: /playground/ })).toBeChecked()
   await owner.keyboard.press('Escape')
+  await expect(owner.getByTestId('release-installed')).toHaveText(`Hollware ${manifest.version}`)
 })
 
 test('signing in goes back to a page of this Hollware, and never to another host', async () => {
