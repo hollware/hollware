@@ -56,6 +56,13 @@ function tagging(event: H3Event, reader: HollwareReader): HollwareReader {
       recordTags(event, navigationTags(args[1], answer.locale))
       return answer
     },
+    resolvePath: async (...args) => {
+      const answer = await reader.resolvePath(...args)
+      if (answer.outcome !== 'not_found' && args[2]?.preview === undefined) {
+        recordTags(event, navigationTags(answer.collection, answer.locale))
+      }
+      return answer
+    },
     describeSite: async (...args) => {
       const answer = await reader.describeSite(...args)
       recordTags(event, siteTags())

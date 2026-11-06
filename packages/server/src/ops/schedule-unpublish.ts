@@ -16,9 +16,18 @@ export const scheduleUnpublish: OperationHandler<'schedule_unpublish'> = async (
   const at = new Date(input.unpublishAt)
   if (at.getTime() <= context.clock.now().getTime()) {
     const now = await unpublish({ id: input.id }, context)
-    return now.outcome === 'unpublished'
-      ? { outcome: 'unpublished', ...(now.entry === undefined ? {} : { entry: now.entry }) }
-      : { outcome: 'not_found' }
+    switch (now.outcome) {
+      case 'unpublished':
+        return { outcome: 'unpublished', ...(now.entry === undefined ? {} : { entry: now.entry }) }
+      case 'has_children':
+        return {
+          outcome: 'has_children',
+          ...(now.entry === undefined ? {} : { entry: now.entry }),
+          ...(now.children === undefined ? {} : { children: now.children }),
+        }
+      case 'not_found':
+        return { outcome: 'not_found' }
+    }
   }
   const written = await context.store.scheduleUnpublish(site, {
     entryId: input.id,

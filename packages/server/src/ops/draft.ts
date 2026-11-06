@@ -3,6 +3,7 @@ import {
   type FormattedMarkdown,
   processMarkdown,
   type EntryLookup,
+  parentViolation,
   runContracts,
   type Phase,
   type ProcessedMarkdown,
@@ -20,6 +21,11 @@ function optionsFor(site: ResolvedSite, collection: ResolvedCollection): Process
     components: [...collection.components.keys()],
     maxMarkdownBytes: collection.maxMarkdownBytes,
     routes: Object.fromEntries([...site.collections].map(([name, other]) => [name, other.routes])),
+    depths: Object.fromEntries(
+      [...site.collections].flatMap(([name, other]) =>
+        other.nesting === null ? [] : [[name, other.nesting.maxDepth]],
+      ),
+    ),
   }
 }
 
@@ -43,9 +49,24 @@ export interface Target {
   readonly locale: string
   readonly slug: string
   readonly entryId: string | null
+  readonly slugPath?: string
 }
 
-export function judge(
+async function unpublishedAncestor(
+  collection: ResolvedCollection,
+  target: Target,
+  entries: EntryLookup,
+): Promise<string | null> {
+  const ancestors = (target.slugPath ?? target.slug).split('/').slice(0, -1)
+  if (collection.nesting === null || ancestors.length === 0) return null
+  const found = await entries.lookupMany(
+    ancestors.map((slug) => ({ collection: collection.name, locale: target.locale, slug })),
+  )
+  const index = found.findIndex((facts) => facts === null || facts.status !== 'published')
+  return index === -1 ? null : (ancestors[index] ?? null)
+}
+
+export async function judge(
   context: OperationContext,
   collection: ResolvedCollection,
   target: Target,
@@ -53,7 +74,7 @@ export function judge(
   phase: Phase,
   entries: EntryLookup = context.store.lookup(context.site.key),
 ): Promise<Verdict> {
-  return runContracts({
+  const verdict = await runContracts({
     site: context.site,
     collection,
     locale: target.locale,
@@ -63,6 +84,19 @@ export function judge(
     markdown,
     entries,
   })
+  const parent = phase === 'publish' ? await unpublishedAncestor(collection, target, entries) : null
+  if (parent === null) return verdict
+  return {
+    ...verdict,
+    ok: false,
+    errors: [
+      ...verdict.errors,
+      parentViolation('unpublished', {
+        parent,
+        maxDepth: collection.nesting?.maxDepth ?? null,
+      }),
+    ],
+  }
 }
 
 type Frontmatter = Readonly<Record<string, unknown>>

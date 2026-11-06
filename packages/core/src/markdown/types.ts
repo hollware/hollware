@@ -20,6 +20,8 @@ export interface LinkTarget {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  /** In a nested collection, the slugs of the path the link names, joined by `/`. */
+  readonly slugPath?: string
 }
 
 /**
@@ -99,6 +101,8 @@ export interface ProcessMarkdownOptions {
   readonly maxMarkdownBytes: number
   /** The routes of the site's collections, by collection and then by locale, to find internal links. */
   readonly routes: Readonly<Record<string, Readonly<Record<string, string>>>>
+  /** The levels of the nested collections, by collection: their routes take that many slugs. */
+  readonly depths?: Readonly<Record<string, number>>
 }
 
 /**

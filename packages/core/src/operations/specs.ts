@@ -189,6 +189,18 @@ export const getEntry = defineOperation({
   output: z.object({
     outcome: z.enum(['ok', 'not_found']),
     entry: entry.optional(),
+    ancestors: z
+      .array(
+        z.object({
+          slug: z.string(),
+          title: z.string().describe("Its frontmatter's title, or its slug when it has none."),
+          path: z.string().nullable().describe('Its public path, or null without a route.'),
+        }),
+      )
+      .optional()
+      .describe(
+        'In a nested collection, the ancestors of the entry from the root down, for breadcrumbs.',
+      ),
     related: z.array(entrySummary).optional().describe('When related was asked for.'),
     references: z
       .record(z.string(), z.array(entrySummary))
@@ -225,7 +237,17 @@ export const createDraft = defineOperation({
   title: 'Create a draft',
   description:
     'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back. Hollware stores the canonical Markdown of Comark, which means what you wrote: keep editing from the markdown of the answer.',
-  input: z.strictObject({ collection: collectionName, locale, slug, markdown }),
+  input: z.strictObject({
+    collection: collectionName,
+    locale,
+    slug,
+    markdown,
+    parent: slug
+      .optional()
+      .describe(
+        'In a nested collection, the slug of the entry of the same collection and locale to create it under, as its last child. Refused when that entry does not exist or the new one would be deeper than nesting.maxDepth.',
+      ),
+  }),
   output: z.object({
     outcome: z.enum(['saved', 'refused', 'in_trash']),
     entry: entrySummary
@@ -411,12 +433,20 @@ export const unpublish = defineOperation({
     'Takes an entry off the public site and keeps it, with its revisions, as a draft. An entry that is not published stays as it is.',
   input: z.strictObject({ id: entryId }),
   output: z.object({
-    outcome: z.enum(['unpublished', 'not_found']),
+    outcome: z.enum(['unpublished', 'has_children', 'not_found']),
     entry: entrySummary.optional(),
+    children: z
+      .array(entrySummary)
+      .optional()
+      .describe('With has_children, its published children: unpublish them first.'),
   }),
   scopes: ['content:publish'],
   effect: 'destructive',
-  outcomes: { unpublished: { isError: false }, not_found: { isError: true } },
+  outcomes: {
+    unpublished: { isError: false },
+    has_children: { isError: true },
+    not_found: { isError: true },
+  },
 })
 
 const redirect = z.object({
@@ -434,14 +464,38 @@ const redirect = z.object({
 
 export const moveEntry = defineOperation({
   name: 'move_entry',
-  title: 'Change the slug of an entry',
+  title: 'Move an entry',
   description:
-    "Gives an entry another slug, and so another path on the site, if the entry is still at the version you read; it keeps its revisions and its translations. An entry that was ever published keeps its old slug as a redirect (list_redirects), so a site answers the old path with a 301 and links and search engines follow. Moving a published entry takes content:publish; the site's pages of it are purged. A slug another entry of the collection and locale holds answers taken.",
-  input: z.strictObject({ id: entryId, version, slug: slug.describe('The new slug.') }),
+    "Gives an entry another slug, another parent or another place among its siblings, and so another path on the site, if the entry is still at the version you read; it keeps its revisions and its translations, and its children move with it. An entry that was ever published keeps its old slug as a redirect (list_redirects), and a site answers any old path of it or of its descendants with a 301 to the new one. Moving a published entry takes content:publish; the site's pages of it are purged. A slug another entry of the collection and locale holds answers taken; a parent that cannot take it answers invalid_parent, with the reason.",
+  input: z.strictObject({
+    id: entryId,
+    version,
+    slug: slug.optional().describe('The new slug.'),
+    parent: slug
+      .nullable()
+      .optional()
+      .describe(
+        'In a nested collection, the slug of its new parent, of the same collection and locale; null moves it to the root.',
+      ),
+    index: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        'In a nested collection, its place among the children of its parent, from 0; past the end, it goes last. Without it, an entry that changes parent goes last.',
+      ),
+  }),
   output: z.object({
-    outcome: z.enum(['moved', 'unchanged', 'taken', 'conflict', 'not_found']),
+    outcome: z.enum(['moved', 'unchanged', 'taken', 'invalid_parent', 'conflict', 'not_found']),
     entry: entrySummary.optional(),
     redirect: redirect.optional().describe('With moved, for an entry that was ever published.'),
+    reason: z
+      .enum(['not_nested', 'missing', 'cycle', 'too_deep', 'unpublished'])
+      .optional()
+      .describe(
+        'With invalid_parent: the collection is flat, the parent does not exist, it is the entry or one of its descendants, the entry and its descendants would be deeper than nesting.maxDepth, or a published entry would go under one that is not published.',
+      ),
     conflict: conflict.optional(),
   }),
   scopes: ['content:write'],
@@ -450,6 +504,7 @@ export const moveEntry = defineOperation({
     moved: { isError: false },
     unchanged: { isError: false },
     taken: { isError: true },
+    invalid_parent: { isError: true },
     conflict: { isError: true },
     not_found: { isError: true },
   },
@@ -499,7 +554,7 @@ export const scheduleUnpublish = defineOperation({
   name: 'schedule_unpublish',
   title: 'Unpublish an entry at a time',
   description:
-    'Takes a published entry off the site at a time, as an ISO 8601 date and time: for an offer, an event or a notice that ends. It stays published until then, and the cron unpublishes it within a minute of the time, in your name, if you may still publish. A time that has passed unpublishes it now. Scheduling again moves the time; unpublishAt null cancels it. get_entry says when, as unpublishAt.',
+    'Takes a published entry off the site at a time, as an ISO 8601 date and time: for an offer, an event or a notice that ends. It stays published until then, and the cron unpublishes it within a minute of the time, in your name, if you may still publish. A time that has passed unpublishes it now; an entry with published children answers has_children and stays published. Scheduling again moves the time; unpublishAt null cancels it. get_entry says when, as unpublishAt.',
   input: z.strictObject({
     id: entryId,
     unpublishAt: z.iso
@@ -508,8 +563,19 @@ export const scheduleUnpublish = defineOperation({
       .describe('When to unpublish it, or null to cancel the unpublication it has.'),
   }),
   output: z.object({
-    outcome: z.enum(['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found']),
+    outcome: z.enum([
+      'scheduled',
+      'unpublished',
+      'cancelled',
+      'has_children',
+      'not_published',
+      'not_found',
+    ]),
     entry: entrySummary.optional(),
+    children: z
+      .array(entrySummary)
+      .optional()
+      .describe('With has_children, its published children: unpublish them first.'),
     unpublishAt: z.string().nullable().optional().describe('With scheduled: the time, in UTC.'),
   }),
   scopes: ['content:publish'],
@@ -518,6 +584,7 @@ export const scheduleUnpublish = defineOperation({
     scheduled: { isError: false },
     unpublished: { isError: false },
     cancelled: { isError: false },
+    has_children: { isError: true },
     not_published: { isError: true },
     not_found: { isError: true },
   },
@@ -527,11 +594,12 @@ export const deleteEntry = defineOperation({
   name: 'delete_entry',
   title: 'Move an entry to the trash',
   description:
-    'Moves a draft to the trash, if it is still at the version you read: every operation treats it as gone, its pending review is cancelled, and nothing is deleted. It keeps its slug and translation, and restore_entry brings it back as the draft it was. A published or scheduled entry answers published: unpublish it first.',
+    'Moves a draft to the trash, if it is still at the version you read: every operation treats it as gone, its pending review is cancelled, and nothing is deleted. It keeps its slug and translation, and restore_entry brings it back as the draft it was. A published or scheduled entry answers published: unpublish it first. An entry with children answers has_children: move them or trash them first.',
   input: z.strictObject({ id: entryId, version }),
   output: z.object({
-    outcome: z.enum(['trashed', 'published', 'conflict', 'not_found']),
+    outcome: z.enum(['trashed', 'published', 'has_children', 'conflict', 'not_found']),
     entry: entrySummary.optional(),
+    children: z.array(entrySummary).optional().describe('With has_children, the children it has.'),
     conflict: conflict.optional(),
   }),
   scopes: ['content:write'],
@@ -539,6 +607,7 @@ export const deleteEntry = defineOperation({
   outcomes: {
     trashed: { isError: false },
     published: { isError: true },
+    has_children: { isError: true },
     conflict: { isError: true },
     not_found: { isError: true },
   },
@@ -548,10 +617,10 @@ export const restoreEntry = defineOperation({
   name: 'restore_entry',
   title: 'Bring an entry back from the trash',
   description:
-    'Brings an entry back from the trash as the draft it was, with its revisions, at the next version. An entry that is not in the trash answers not_trashed.',
+    'Brings an entry back from the trash as the draft it was, with its revisions, at the next version. An entry that is not in the trash answers not_trashed; one whose parent is in the trash answers parent_in_trash: restore the parent first.',
   input: z.strictObject({ id: entryId }),
   output: z.object({
-    outcome: z.enum(['restored', 'not_trashed', 'not_found']),
+    outcome: z.enum(['restored', 'not_trashed', 'parent_in_trash', 'not_found']),
     entry: entrySummary.optional(),
   }),
   scopes: ['content:write'],
@@ -559,6 +628,7 @@ export const restoreEntry = defineOperation({
   outcomes: {
     restored: { isError: false },
     not_trashed: { isError: true },
+    parent_in_trash: { isError: true },
     not_found: { isError: true },
   },
 })

@@ -21,9 +21,11 @@ export type {
   HollwareConfig,
   ResolveConfig,
   NavigationDefinition,
+  NestingDefinition,
   ResolvedCollection,
   ResolvedConfig,
   ResolvedNavigation,
+  ResolvedNesting,
   ResolvedSite,
   SchemaOutput,
   SiteDefinition,
@@ -48,7 +50,12 @@ export {
   type AutomaticField,
   type AutomaticKind,
 } from './automatic.ts'
-export { DEFAULT_MAX_MARKDOWN_BYTES, MAX_MARKDOWN_BYTES_CEILING } from './constants.ts'
+export {
+  DEFAULT_MAX_MARKDOWN_BYTES,
+  MAX_MARKDOWN_BYTES_CEILING,
+  MAX_NESTING_DEPTH,
+  MIN_NESTING_DEPTH,
+} from './constants.ts'
 export { describeResolvedSite, type SiteDescription } from './describe.ts'
 export { resolveAdmin, resolveConfig } from './resolve.ts'
 export { resolveAuth } from './auth.ts'

@@ -66,6 +66,9 @@ function collectionOf(
               : { orderBy: collection.navigation.orderBy }),
           },
         }),
+    ...(collection.nesting === undefined
+      ? {}
+      : { nesting: { maxDepth: collection.nesting.maxDepth } }),
   }
 }
 

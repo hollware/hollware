@@ -4,6 +4,10 @@ export interface PageEntry {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  /** In a nested collection, the slug of its parent; `null` at the root and in a flat one. */
+  readonly parent?: string | null
+  /** The slugs of its ancestors and its own, joined by `/`. */
+  readonly slugPath?: string
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]

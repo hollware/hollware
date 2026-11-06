@@ -28,16 +28,19 @@ export async function purgeEntry(
     readonly purgedBy: string
     readonly now: string
   },
-): Promise<'purged' | 'not_found' | 'not_in_trash'> {
+): Promise<'purged' | 'not_found' | 'not_in_trash' | 'has_children'> {
   const found = await db
-    .prepare('SELECT deleted_at FROM entries WHERE site_id = ?1 AND id = ?2')
+    .prepare(
+      'SELECT deleted_at, EXISTS (SELECT 1 FROM entries AS c WHERE c.site_id = ?1 AND c.parent_id = ?2) AS has_children FROM entries WHERE site_id = ?1 AND id = ?2',
+    )
     .bind(input.site, input.entryId)
-    .first<{ deleted_at: string | null }>()
+    .first<{ deleted_at: string | null; has_children: number }>()
   if (found === null) return 'not_found'
+  if (found.has_children === 1) return 'has_children'
   const [recorded] = await db.batch([
     db
       .prepare(
-        'INSERT INTO entry_purges (id, site_id, entry_id, purged_by, created_at, updated_at) SELECT ?3, ?1, ?2, ?4, ?5, ?5 WHERE EXISTS (SELECT 1 FROM entries WHERE site_id = ?1 AND id = ?2 AND deleted_at IS NOT NULL)',
+        'INSERT INTO entry_purges (id, site_id, entry_id, purged_by, created_at, updated_at) SELECT ?3, ?1, ?2, ?4, ?5, ?5 WHERE EXISTS (SELECT 1 FROM entries WHERE site_id = ?1 AND id = ?2 AND deleted_at IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM entries WHERE site_id = ?1 AND parent_id = ?2)',
       )
       .bind(input.site, input.entryId, newId('prg'), input.purgedBy, input.now),
     ...CHILDREN.map((statement) => db.prepare(statement).bind(input.site, input.entryId)),

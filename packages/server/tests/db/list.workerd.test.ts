@@ -165,6 +165,10 @@ describe('listEntries in the head view', () => {
           collection: 'blog',
           locale: 'en',
           slug: 'a',
+          parentId: null,
+          parent: null,
+          position: null,
+          slugPath: 'a',
           translationGroup: 'g',
           status: 'draft',
           version: 1,
@@ -437,7 +441,7 @@ function revisionColumns(statement: string): string[] {
     .toSorted()
 }
 
-const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."code_words", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
+const SELECT_A_SUMMARY = `select "entries"."id", "entries"."collection", "entries"."locale", "entries"."slug", "entries"."parent_id", "entries"."position", "entries"."slug_path", "entries"."translation_group", "entries"."status", "entries"."version", "entries"."head_rev", "entries"."published_rev", "entries"."published_at", "entries"."scheduled_at", "entries"."deleted_at", "entries"."updated_at", "revisions"."id", "revisions"."frontmatter", "revisions"."word_count", "revisions"."code_words", "revisions"."created_at", (select json_group_array("revision_tags"."tag") from "revision_tags" where ("revision_tags"."revision_id" = "revisions"."id" and "revision_tags"."site_id" = "revisions"."site_id")), "entries"."published_sort_key"`
 
 describe('the statements of a listing', () => {
   it('read the id, frontmatter, word count and date of a revision and no other column of it: never the Markdown, the document or the verdict', async () => {

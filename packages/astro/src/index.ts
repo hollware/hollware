@@ -26,7 +26,9 @@ export type {
   HollwareReader,
   NavigationEntry,
   NavigationGroup,
+  PageAncestor,
 } from '@hollware/client'
+export { flattenNavigation, trailOf } from '@hollware/client'
 export {
   contentNodes,
   elementOf,
@@ -42,6 +44,7 @@ export { hollwarePreview, refusePreview, type HollwarePreviewLocals } from './pr
 function withMetadata(html: string, entry: SourceEntry) {
   const metadata = {
     ...(entry.document === undefined ? {} : { document: entry.document }),
+    ...(entry.ancestors === undefined ? {} : { ancestors: entry.ancestors }),
     ...(entry.images === undefined ? {} : { images: entry.images }),
   }
   return Object.keys(metadata).length === 0 ? { html } : { html, metadata }
@@ -53,7 +56,8 @@ export type HollwareLoaderOptions = SourceOptions & ReaderOptions
 /**
  * A content loader for `defineCollection` in `src/content.config.ts`: it reads the published
  * entries of one collection of a Hollware site at build time (and when the content layer is
- * refreshed), over HTTP with a read token or through any reader. An entry's id is its slug, its
+ * refreshed), over HTTP with a read token or through any reader. An entry's id is its slug (in a
+ * nested collection, the slugs of its ancestors and its own joined by `/`, for `[...path]`), its
  * data the frontmatter, and its `rendered.html` the HTML Hollware made, so Astro's `render(entry)`
  * works. A schema in `defineCollection` validates the frontmatter.
  */

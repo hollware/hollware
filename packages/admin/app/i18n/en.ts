@@ -113,6 +113,8 @@ export const en = {
       purged: (n: number) => `${n} deleted for ever`,
       not_draft: (n: number) => `${n} published or scheduled: unpublish them first`,
       not_trashed: (n: number) => `${n} not in the trash`,
+      has_children: (n: number) => `${n} with children: move or deal with them first`,
+      parent_in_trash: (n: number) => `${n} inside an entry in the trash: restore it first`,
       failed: (n: number) => `${n} failed`,
     },
     publish: (n: number) => `Publish ${n}`,
@@ -226,6 +228,28 @@ export const en = {
     onSite: (title: string) => `${title} on the site`,
     truncated: (most: number) =>
       `The first ${most} entries: narrow the list by locale or status to see the others.`,
+    tree: {
+      label: 'Entries as a tree',
+      toggle: (title: string) => `Open or close ${title}`,
+      actions: (title: string) => `Move ${title}`,
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      indent: 'Into the one above',
+      outdent: 'Out to its parent',
+      addChild: 'New entry inside',
+      inLocale: (locale: string) =>
+        `The tree of ${locale}. Drag an entry to move it, with its children.`,
+      notMoved: 'Not moved',
+      reasons: {
+        not_nested: 'The collection is not nested.',
+        missing: 'The entry it would go under is gone.',
+        cycle: 'An entry cannot go inside itself or one of its children.',
+        too_deep: 'It would be deeper than the collection allows.',
+        unpublished: 'A published entry cannot go under one that is not published.',
+        taken: 'Another entry has that slug.',
+        conflict: 'Someone changed it since: the tree is up to date again.',
+      },
+    },
   },
   newEntry: {
     title: 'New entry',
@@ -241,6 +265,7 @@ export const en = {
     notCreated: 'Not created',
     inTrash:
       'An entry in the trash holds this slug or this translation. Restore it from the trash of the entries.',
+    inside: 'It goes inside ',
   },
   history: {
     title: 'History of the entry',
@@ -320,6 +345,10 @@ export const en = {
     moved: 'The URL changed',
     notMoved: 'The URL did not change',
     slugTaken: 'Another entry of this collection and locale has that slug.',
+    parent: 'Inside',
+    parentHelp: 'The entry it goes under; its children move with it.',
+    atRoot: 'At the root',
+    addChild: 'New entry inside',
     publishes: (at: string) => `publishes ${at}`,
     version: (version: number) => `v${version}`,
     unsaved: 'unsaved',
@@ -406,6 +435,8 @@ export const en = {
     trashed: 'Moved to the trash',
     trashedBody: 'Restore it from the trash, in the list of entries.',
     notTrashed: 'Not moved to the trash',
+    hasChildren: (names: string) =>
+      `It has entries inside it (${names}): move them, or unpublish or trash them, first.`,
   },
   reviews: {
     title: 'Reviews',
@@ -519,6 +550,11 @@ export const en = {
     tagsHelp: 'A list of texts.',
     newestFirst: 'Newest first by',
     newestFirstHelp: 'A date; the first publication otherwise.',
+    nesting: 'Nested entries',
+    nestingHelp:
+      'An entry can go under another, as the pages of a help center: its path holds the slugs of its parents, and the site shows them as a tree.',
+    maxDepth: 'Most levels',
+    maxDepthHelp: 'From 2 to 10. It cannot go below the deepest entry there is.',
     rules: 'Rules',
     addRule: 'Add a rule',
     rulesNote:

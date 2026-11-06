@@ -11,4 +11,13 @@ const blog = defineLiveCollection({
   }),
 })
 
-export const collections = { blog }
+const help = defineLiveCollection({
+  loader: hollwareLiveLoader({
+    site: 'playground',
+    collection: 'help',
+    locale: 'es',
+    reader: () => hollwareBinding(env.HOLLWARE),
+  }),
+})
+
+export const collections = { blog, help }

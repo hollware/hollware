@@ -23,6 +23,9 @@ function post(slug: string, title: string): Published {
     collection: 'blog',
     locale: 'en',
     slug,
+    parent: null,
+    slugPath: slug,
+    position: null,
     translationGroup: null,
     status: 'published',
     version: 1,
@@ -83,7 +86,15 @@ function fakeReader(published: readonly Published[]) {
           {
             name: null,
             entries: [
-              { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+              {
+                slug: 'hello',
+                title: 'Hello',
+                description: null,
+                path: '/hello/',
+                order: null,
+                parent: null,
+                children: [],
+              },
             ],
           },
         ],
@@ -96,6 +107,9 @@ function fakeReader(published: readonly Published[]) {
       throw new Error('not read')
     },
     async listRedirects() {
+      throw new Error('not read')
+    },
+    async resolvePath() {
       throw new Error('not read')
     },
   }
@@ -246,6 +260,34 @@ describe('hollwareLiveLoader', () => {
   })
 })
 
+describe('a nested collection', () => {
+  const NESTED = [
+    { ...post('billing', 'Billing'), slugPath: 'billing' },
+    { ...post('refunds', 'Refunds'), parent: 'billing', slugPath: 'billing/refunds' },
+  ]
+
+  it('gives each entry the path of its slugs as id, for a [...path] route', async () => {
+    const { reader } = fakeReader(NESTED)
+
+    const listed = await createSource({ ...base, reader }).list()
+
+    expect(listed.map((entry) => [entry.id, entry.parent])).toEqual([
+      ['billing', null],
+      ['billing/refunds', 'billing'],
+    ])
+  })
+
+  it('reads an entry by its path, by its last slug, and answers the path it has now', async () => {
+    const { reader, calls } = fakeReader(NESTED)
+    const loader = hollwareLiveLoader({ ...base, reader })
+
+    const entry = await loader.loadEntry({ collection: 'blog', filter: { id: 'old/refunds' } })
+
+    expect(entry && 'id' in entry ? entry.id : entry).toBe('billing/refunds')
+    expect(calls).toEqual(['get playground blog en refunds html,document'])
+  })
+})
+
 describe('loadInto', () => {
   function fakeContext(initial: string[] = []) {
     const entries = new Map<
@@ -350,7 +392,15 @@ describe('hollwareNavigation', () => {
         {
           name: null,
           entries: [
-            { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+            {
+              slug: 'hello',
+              title: 'Hello',
+              description: null,
+              path: '/hello/',
+              order: null,
+              parent: null,
+              children: [],
+            },
           ],
         },
       ],

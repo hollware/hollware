@@ -6,6 +6,7 @@ import {
   type HollwareOptions,
   type ListEntriesOptions,
   type NavigationOptions,
+  type PageAnswer,
   type PageEntry,
 } from '@hollware/client'
 import {
@@ -117,4 +118,13 @@ export function useHollwareNavigation(
   options: MaybeRefOrGetter<NavigationOptions> = {},
 ): HollwareState<CollectionNavigation> {
   return useRead((hollware) => hollware.getNavigation(toValue(collection), toValue(options)))
+}
+
+/**
+ * The entry a path of the site names, by the routes of its collections: the one route a nested
+ * collection needs. `data` is a `PageAnswer`: `ok` with the entry and its ancestors, `redirect`
+ * with the path it has now, or `not_found`.
+ */
+export function useHollwarePage(path: MaybeRefOrGetter<string>): HollwareState<PageAnswer> {
+  return useRead((hollware) => hollware.getPage(toValue(path)))
 }

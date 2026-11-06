@@ -1,0 +1,33 @@
+---
+import type { NavigationEntry } from '@hollware/astro'
+
+interface Props {
+  entries: readonly NavigationEntry[]
+  current: string
+}
+const { entries, current } = Astro.props
+const holds = (entry: NavigationEntry): boolean =>
+  entry.slug === current || entry.children.some(holds)
+---
+
+<ul>
+  {
+    entries.map((entry) => {
+      const link = (
+        <a href={entry.path ?? undefined} aria-current={entry.slug === current ? 'page' : undefined}>
+          {entry.title}
+        </a>
+      )
+      return entry.children.length === 0 ? (
+        <li>{link}</li>
+      ) : (
+        <li>
+          <details open={holds(entry)}>
+            <summary>{link}</summary>
+            <Astro.self entries={entry.children} current={current} />
+          </details>
+        </li>
+      )
+    })
+  }
+</ul>

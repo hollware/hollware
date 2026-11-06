@@ -28,6 +28,11 @@ it('serves the site of hollware.config.ts over RPC', async () => {
           tagsField: null,
           sortByField: null,
         },
+        {
+          name: 'help',
+          routes: { es: '/ayuda/:slug/', en: '/en/help/:slug/' },
+          nesting: { maxDepth: 3 },
+        },
       ],
     },
   })

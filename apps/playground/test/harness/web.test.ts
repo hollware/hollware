@@ -215,7 +215,7 @@ describe('hollware.com', () => {
     expect(api).toContain('id="get_entry"')
     expect(api).toContain('/v1/{collection}/{locale}/{slug}')
     expect(api).toContain('href="/reference/events/"')
-    expect(apiMarkdown.match(/^## GET /gm)).toHaveLength(7)
+    expect(apiMarkdown.match(/^## GET /gm)).toHaveLength(8)
     expect(apiMarkdown).toContain('## GET /v1/search')
     expect(apiMarkdown).toContain('## GET /v1/{collection}/navigation')
     expect(api).toContain('id="get_navigation"')

@@ -10,7 +10,9 @@ import type {
   SearchHit,
   SearchQuery,
   StoredPublication,
+  SiblingsRef,
   StoredRevision,
+  TreeNode,
   View,
 } from '../ports.ts'
 import { chunk, rowsPerStatement } from './chunks.ts'
@@ -28,7 +30,14 @@ import {
   toRevision,
   toRevisionSummary,
 } from './rows.ts'
-import { entries, entryEmbeddings, publications, revisions, revisionTags } from './schema.ts'
+import {
+  entries,
+  entryEmbeddings,
+  publications,
+  redirects,
+  revisions,
+  revisionTags,
+} from './schema.ts'
 
 const publishedOnly = sql`${entries.status} = 'published'`
 
@@ -214,6 +223,103 @@ export async function findSummaries(
   })
 }
 
+export async function childrenOf(
+  db: Db,
+  site: string,
+  ref: SiblingsRef,
+  view: View,
+): Promise<readonly EntrySummaryView[]> {
+  const rows = await summaryQuery(db, view, [
+    eq(entries.siteId, site),
+    eq(entries.collection, ref.collection),
+    eq(entries.locale, ref.locale),
+    ref.parentId === null ? isNull(entries.parentId) : eq(entries.parentId, ref.parentId),
+  ]).orderBy(entries.position, entries.id)
+  return rows.map(toEntrySummaryView)
+}
+
+export function descendantRange(slugPath: string): SQL | undefined {
+  return and(gte(entries.slugPath, `${slugPath}/`), sql`${entries.slugPath} < ${`${slugPath}0`}`)
+}
+
+export async function descendantsOf(
+  db: Db,
+  site: string,
+  ref: { readonly collection: string; readonly locale: string; readonly slugPath: string },
+): Promise<readonly TreeNode[]> {
+  const rows = await db
+    .select({ entry: entryFields })
+    .from(entries)
+    .where(
+      and(
+        eq(entries.siteId, site),
+        eq(entries.collection, ref.collection),
+        eq(entries.locale, ref.locale),
+        descendantRange(ref.slugPath),
+      ),
+    )
+    .orderBy(entries.slugPath)
+  return rows.map((row) => toEntry(row.entry))
+}
+
+export async function summariesBySlug(
+  db: Db,
+  site: string,
+  ref: { readonly collection: string; readonly locale: string },
+  slugs: readonly string[],
+  view: View,
+): Promise<readonly EntrySummaryView[]> {
+  if (slugs.length === 0) return []
+  const rows = await summaryQuery(db, view, [
+    eq(entries.siteId, site),
+    eq(entries.collection, ref.collection),
+    eq(entries.locale, ref.locale),
+    inArray(entries.slug, [...slugs]),
+  ])
+  const bySlug = new Map(rows.map((row) => [row.entry.slug, toEntrySummaryView(row)]))
+  return slugs.flatMap((slug) => {
+    const entry = bySlug.get(slug)
+    return entry === undefined ? [] : [entry]
+  })
+}
+
+export async function redirectOf(
+  db: Db,
+  site: string,
+  ref: EntryRef & { readonly slugPath: string },
+): Promise<{ readonly entryId: string; readonly exact: boolean } | null> {
+  const [row] = await db
+    .select({ entryId: redirects.entryId, fromPath: redirects.fromPath })
+    .from(redirects)
+    .where(
+      and(
+        eq(redirects.siteId, site),
+        eq(redirects.collection, ref.collection),
+        eq(redirects.locale, ref.locale),
+        or(eq(redirects.fromPath, ref.slugPath), eq(redirects.fromSlug, ref.slug)),
+      ),
+    )
+    .orderBy(
+      desc(sql`${redirects.fromPath} = ${ref.slugPath}`),
+      desc(redirects.updatedAt),
+      desc(redirects.id),
+    )
+    .limit(1)
+  return row === undefined ? null : { entryId: row.entryId, exact: row.fromPath === ref.slugPath }
+}
+
+export async function deepestDepth(db: Db, site: string, collection: string): Promise<number> {
+  const [row] = await db
+    .select({
+      depth: sql<
+        number | null
+      >`max(length(${entries.slugPath}) - length(replace(${entries.slugPath}, '/', '')) + 1)`,
+    })
+    .from(entries)
+    .where(and(eq(entries.siteId, site), eq(entries.collection, collection)))
+  return row?.depth ?? 0
+}
+
 export async function relatedOf(
   db: Db,
   site: string,
@@ -320,6 +426,7 @@ const factFields = {
   slug: entries.slug,
   status: entries.status,
   translationGroup: entries.translationGroup,
+  slugPath: entries.slugPath,
 }
 
 function refKey(ref: EntryRef): string {
@@ -353,6 +460,7 @@ export function lookup(db: Db, site: string): EntryLookup {
           id: row.id,
           status: entryStatus(row.status),
           translationGroup: row.translationGroup,
+          slugPath: row.slugPath,
         })
       }
       return refs.map((ref) => found.get(refKey(ref)) ?? null)

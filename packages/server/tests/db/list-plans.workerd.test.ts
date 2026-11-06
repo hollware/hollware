@@ -13,10 +13,11 @@ const ENTRIES = 3 * 3 * 120
 async function seedCollections(site: string): Promise<void> {
   await env.DB.prepare(
     `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 120)
-      INSERT INTO entries (id, site_id, collection, locale, slug, translation_group, status, version,
-        head_rev, published_rev, published_at, published_sort_key, created_at, updated_at)
+      INSERT INTO entries (id, site_id, collection, locale, slug, slug_path, translation_group,
+        status, version, head_rev, published_rev, published_at, published_sort_key, created_at,
+        updated_at)
       SELECT c.collection || '_' || l.locale || '_' || n.i || '_' || ?1, ?1, c.collection, l.locale,
-        'slug-' || n.i, 'group-' || n.i,
+        'slug-' || n.i, 'slug-' || n.i, 'group-' || n.i,
         CASE WHEN n.i % 2 = 0 THEN 'published' ELSE 'draft' END, 1, 'rev_' || n.i,
         CASE WHEN n.i % 2 = 0 THEN 'rev_' || n.i END,
         CASE WHEN n.i % 2 = 0 THEN '2026-10-01T00:00:00.000Z' END,

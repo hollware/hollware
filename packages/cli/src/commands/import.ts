@@ -4,6 +4,7 @@ import {
   describeSite,
   getEntry,
   isPersonalToken,
+  moveEntry,
   publish,
   schemas,
   updateDraft,
@@ -38,9 +39,10 @@ export const IMPORT_USAGE = [
   '       hollware import --from notion --root <page> --collection <name> --url <hollware url>',
   '',
   'Sends the Markdown files of a directory to a running Hollware over MCP, as drafts. The files',
-  'are <directory>/<collection>/<locale>/<slug>.md. Every file is validated first: if one would be',
-  'refused, nothing is written. Running it again changes nothing: an entry that is already',
-  'there with the same Markdown is "unchanged".',
+  'are <directory>/<collection>/<locale>/<slug>.md; in a nested collection, a file in a folder',
+  'goes under the entry of that folder, as <locale>/billing/refunds.md under billing.md. Every file',
+  'is validated first: if one would be refused, nothing is written. Running it again changes',
+  'nothing: an entry that is already there with the same Markdown is "unchanged".',
   '',
   'Options:',
   '  --url <url>          The address of your Hollware, such as https://cms.example.com (MCP is at <url>/mcp)',
@@ -59,6 +61,8 @@ export const IMPORT_USAGE = [
   '  --root <page>        notion: the id or the address of the top page',
   '  --section-field <f>  notion: the field of the title of the top page above it (default section)',
   '  --order-field <f>    notion: the field of its place among its siblings, from 1 (default order)',
+  '                       In a nested collection, each page goes under its parent instead, the',
+  '                       pages below the root at the root, in their order, with no such fields',
   '  --callouts <mode>    notion: components (::callout, the default) or alerts (> [!NOTE])',
   '  --toggles <mode>     notion: details (::details, the default) or flatten (a bold line)',
   '  --slug-map <file>    notion: a JSON object of page id to slug, which wins over the title',
@@ -339,7 +343,11 @@ async function targetOf(
       `the site has no collection ${printable(collection)}: it has ${site.collections.map((one) => printable(one.name)).join(', ') || 'none'}.`,
     )
   }
-  return { components: found.components.map((one) => one.name), route: found.routes[locale] }
+  return {
+    components: found.components.map((one) => one.name),
+    route: found.routes[locale],
+    maxDepth: found.nesting?.maxDepth ?? null,
+  }
 }
 
 function readSlugMap(io: Io, file: string): Record<string, string> {
@@ -432,6 +440,7 @@ async function importFiles({
   try {
     const { corpus, images } = await load(session, out)
     if (early === undefined) checkCorpus(corpus, directory, out)
+    const nested = await checkNesting(session, corpus.files)
     const moved = await uploadImages(session, images, dryRun, out)
     const files = withAssetIds(corpus.files, moved)
     const checks = await validateAll(session, files)
@@ -457,6 +466,17 @@ async function importFiles({
         `${count(drafts.failed, 'file')} could not be imported (see above).${publishToo ? ' Nothing was published.' : ''} Fix ${drafts.failed === 1 ? 'it' : 'them'} and run the import again: what is already there stays unchanged.`,
       )
     }
+    const arranged = await arrange(session, drafts.entries, nested, out)
+    if (arranged.moved > 0 || arranged.failed > 0) {
+      out(
+        `Tree: ${arranged.moved} moved${arranged.failed === 0 ? '' : `, ${arranged.failed} could not move`}.`,
+      )
+    }
+    if (arranged.failed > 0) {
+      throw new CliError(
+        `${count(arranged.failed, 'entry', 'entries')} could not go to its place in the tree (see above).${publishToo ? ' Nothing was published.' : ''} Run the import again once what blocked ${arranged.failed === 1 ? 'it' : 'them'} is fixed.`,
+      )
+    }
     if (!publishToo) return 0
 
     const toPublish = drafts.entries.filter((imported) => imported.summary.hasUnpublishedChanges)
@@ -474,6 +494,115 @@ async function importFiles({
   } finally {
     await session.close()
   }
+}
+
+async function checkNesting(
+  session: Session,
+  files: readonly ContentFile[],
+): Promise<ReadonlySet<string>> {
+  if (files.every((file) => file.parent === undefined && file.position === undefined)) {
+    return new Set()
+  }
+  const { site } = await session.call(describeSite, {})
+  const depths = new Map(
+    site.collections.map((one) => [one.name, one.nesting?.maxDepth ?? null] as const),
+  )
+  const seen = new Set<string>()
+  const problems: string[] = []
+  for (const file of files) {
+    const at = (slug: string) => `${file.collection}\u0000${file.locale}\u0000${slug}`
+    seen.add(at(file.slug))
+    if (file.parent === undefined) continue
+    const maxDepth = depths.get(file.collection) ?? null
+    const levels = file.path.split('/').length - 2
+    if (maxDepth === null) {
+      problems.push(
+        `  ${printable(file.path)}: it is in a folder below its locale, and collection ${printable(file.collection)} is not nested: move it up to ${printable(file.collection)}/${printable(file.locale)}/, or give the collection nesting.`,
+      )
+      continue
+    }
+    if (levels > maxDepth) {
+      problems.push(
+        `  ${printable(file.path)}: it is ${levels} levels deep, and collection ${printable(file.collection)} allows ${maxDepth}: move it nearer the root, or raise its nesting.maxDepth.`,
+      )
+      continue
+    }
+    if (seen.has(at(file.parent))) continue
+    const there = await session.call(getEntry, {
+      collection: file.collection,
+      locale: file.locale,
+      slug: file.parent,
+    })
+    if (there.outcome === 'not_found') {
+      problems.push(
+        `  ${printable(file.path)}: its folder names ${printable(file.parent)}, which is neither a file of the import nor an entry of the site: add ${printable(file.parent)}.md beside the folder, or create it first.`,
+      )
+    }
+  }
+  if (problems.length > 0) {
+    throw new CliError(
+      [
+        `${count(problems.length, 'file')} cannot be imported, so nothing was sent:`,
+        ...problems,
+        'Fix them and run the import again.',
+      ].join('\n'),
+    )
+  }
+  return new Set(site.collections.filter((one) => one.nesting !== undefined).map((one) => one.name))
+}
+
+async function arrange(
+  session: Session,
+  entries: readonly Imported[],
+  nested: ReadonlySet<string>,
+  out: (message: string) => void,
+): Promise<{ readonly moved: number; readonly failed: number }> {
+  let moved = 0
+  let failed = 0
+  const placed = new Map<string, number>()
+  const touched = new Set<string>()
+  for (const { file, summary } of entries) {
+    if (!nested.has(file.collection)) continue
+    const parent = file.parent ?? null
+    const siblings = `${file.collection}\u0000${file.locale}\u0000${parent ?? ''}`
+    const index = placed.get(siblings) ?? 0
+    placed.set(siblings, index + 1)
+    const ordered = file.position !== undefined
+    const fits = (entry: { readonly parent: string | null; readonly position: number | null }) =>
+      entry.parent === parent && (!ordered || entry.position === index)
+    if (!touched.has(siblings) && fits(summary)) continue
+    const label = printable(file.path.replace(/\.md$/, ''))
+    try {
+      const current = await session.call(getEntry, {
+        collection: file.collection,
+        locale: file.locale,
+        slug: file.slug,
+      })
+      if (current.entry === undefined) throw new ToolFailure('get_entry not_found')
+      if (fits(current.entry)) continue
+      const answer = await session.call(moveEntry, {
+        id: current.entry.id,
+        version: current.entry.version,
+        ...(current.entry.parent === parent ? {} : { parent }),
+        ...(ordered ? { index } : {}),
+      })
+      if (answer.outcome !== 'moved' && answer.outcome !== 'unchanged') {
+        throw new ToolFailure(
+          `move_entry ${answer.outcome}${answer.reason === undefined ? '' : ` (${answer.reason})`}`,
+        )
+      }
+      touched.add(siblings)
+      if (current.entry.parent !== parent)
+        touched.add(`${file.collection}\u0000${file.locale}\u0000${current.entry.parent ?? ''}`)
+      moved += 1
+      out(`moved      ${label}  ${current.entry.id}`)
+    } catch (error) {
+      if (!(error instanceof ToolFailure)) throw error
+      failed += 1
+      out(`failed     ${label}  ${error.message}`)
+    }
+  }
+  return { moved, failed }
 }
 
 function checkCorpus(corpus: Corpus, directory: string, out: (message: string) => void): void {
@@ -683,6 +812,7 @@ async function writeDrafts(
           locale: file.locale,
           slug: file.slug,
           markdown: file.markdown,
+          ...(file.parent === undefined ? {} : { parent: file.parent }),
         })
         if (created.outcome !== 'saved' || created.entry === undefined) {
           throw new ToolFailure(`create_draft ${created.outcome}${refusalReasons(created.verdict)}`)

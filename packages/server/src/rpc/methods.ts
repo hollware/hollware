@@ -6,6 +6,7 @@ import {
   listEntries as listEntriesSpec,
   listRedirects as listRedirectsSpec,
   navigationInput,
+  resolvePathInput,
   verifyPreviewToken,
   search as searchSpec,
   type ErrorCode,
@@ -17,6 +18,7 @@ import { createD1Store } from '../db/index.ts'
 import type { HollwareEnv, HollwareRpc } from '../index.ts'
 import { describeError } from '../mcp/errors.ts'
 import { getNavigation } from '../ops/navigation.ts'
+import { resolvePath } from '../ops/resolve.ts'
 import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Clock } from '../ports.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
@@ -262,6 +264,27 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         () => ({ collection, ...readOptions(options, ['locale']) }),
         (input, context) => getNavigation(input, context),
       ),
+    resolvePath: (site, path, options) => {
+      const read: { preview: unknown } = { preview: undefined }
+      return run(
+        deps,
+        env,
+        'resolvePath',
+        site,
+        resolvePathInput,
+        () => {
+          const { preview } = readOptions(options, ['preview'])
+          read.preview = preview
+          return { path }
+        },
+        (input, context) => resolvePath(input, context),
+        async (key) => {
+          if (read.preview === undefined) return 'published'
+          await checkPreview(deps, env, key, read.preview)
+          return 'head'
+        },
+      )
+    },
     getTranslations: (site, collection, translationGroup) =>
       run(
         deps,

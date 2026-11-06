@@ -123,6 +123,37 @@ async function memberProblems(
     }))
 }
 
+function lowered(current: SiteDefinitionData, next: SiteDefinitionData) {
+  return Object.entries(next.collections).flatMap(([name, collection]) => {
+    const before = current.collections[name]?.nesting?.maxDepth ?? 1
+    const after = collection.nesting?.maxDepth ?? 1
+    return current.collections[name] === undefined || after >= before
+      ? []
+      : [{ collection: name, maxDepth: after }]
+  })
+}
+
+async function nestingProblems(
+  context: OperationContext,
+  current: SiteDefinitionData,
+  next: SiteDefinitionData,
+) {
+  const problems: { path: string; message: string; fix: string }[] = []
+  for (const { collection: name, maxDepth: after } of lowered(current, next)) {
+    const deepest = await context.store.deepestDepth(context.site.key, name)
+    if (deepest <= after) continue
+    problems.push({
+      path: `sites.${context.site.key}.collections.${name}.nesting`,
+      message:
+        after === 1
+          ? `is flat, but entries of "${name}" are nested ${deepest} levels deep`
+          : `allows ${after} levels, but entries of "${name}" are nested ${deepest} levels deep`,
+      fix: `Move the deepest entries nearer the root with move_entry first, or keep maxDepth at ${deepest} or more.`,
+    })
+  }
+  return problems
+}
+
 async function change(
   context: OperationContext,
   version: number,
@@ -136,6 +167,8 @@ async function change(
   if (current.version !== version) return conflict(version, current.version)
   const members = await memberProblems(structure, context.site.key, next, current.definition)
   if (members.length > 0) return { outcome: 'invalid' as const, problems: members }
+  const nesting = await nestingProblems(context, current.definition, next)
+  if (nesting.length > 0) return { outcome: 'invalid' as const, problems: nesting }
   if (canonicalJson(current.definition) === canonicalJson(next)) {
     return { outcome: 'unchanged' as const, version }
   }
@@ -160,7 +193,14 @@ async function change(
     definition: next,
     actor: actor(context),
     event,
+    depths: lowered(current.definition, next),
   })
+  if (written === 'too_deep') {
+    const problems = await nestingProblems(context, current.definition, next)
+    return problems.length > 0
+      ? { outcome: 'invalid' as const, problems }
+      : conflict(version, (await currentOf(context)).version)
+  }
   if (written === 'conflict') {
     return conflict(version, (await currentOf(context)).version)
   }

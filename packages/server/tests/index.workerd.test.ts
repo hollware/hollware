@@ -34,6 +34,7 @@ it('builds a Worker from a config, with the read methods of the entrypoint', () 
     'getTranslations',
     'listEntries',
     'listRedirects',
+    'resolvePath',
     'search',
   ])
 })

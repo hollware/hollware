@@ -9,12 +9,16 @@ function trimmed(path: string): string {
 export function entryRefOf(site: ResolvedSite, path: string): EntryRef | null {
   const wanted = trimmed(path)
   for (const [collection, resolved] of site.collections) {
+    const depth = resolved.nesting?.maxDepth ?? 1
     for (const [locale, route] of Object.entries(resolved.routes)) {
       const [before, after, ...rest] = trimmed(route).split(':slug')
       if (before === undefined || after === undefined || rest.length > 0) continue
       if (!wanted.startsWith(before) || !wanted.endsWith(after)) continue
-      const slug = wanted.slice(before.length, wanted.length - after.length)
-      if (slug !== '' && !slug.includes('/')) return { collection, locale, slug }
+      const slugs = wanted.slice(before.length, wanted.length - after.length).split('/')
+      const slug = slugs[slugs.length - 1] ?? ''
+      if (slugs.length <= depth && slugs.every((one) => one !== '')) {
+        return { collection, locale, slug }
+      }
     }
   }
   return null

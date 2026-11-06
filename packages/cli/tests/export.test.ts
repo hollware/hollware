@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { readCorpus } from '../src/import/corpus.ts'
 import { run } from './support/io.ts'
 import { tempDirs } from './support/project.ts'
 import {
@@ -219,6 +220,44 @@ describe('hollware export', () => {
       '---\ntitle: Filled\ndate: 2020-01-01\nminutes: 3\nmodified: "2026-10-20"\n---\n\n# Filled\n',
     )
     expect(readFileSync(join(base, 'backup/blog/en/filled.md'), 'utf8')).toBe(markdown)
+  })
+
+  it('writes a nested entry in the folders of its ancestors, which an import reads back as its parents', async () => {
+    const stub = await serve({
+      site: { key: 'help', locales: ['es'], collections: ['help'] },
+      declared: { help: { maxDepth: 3 } },
+    })
+    for (const [n, slugPath] of ['facturacion', 'facturacion/pagos'].entries()) {
+      const slug = slugPath.split('/').at(-1) ?? slugPath
+      stub.entries.set(`help/es/${slug}`, {
+        id: id(980 + n),
+        collection: 'help',
+        locale: 'es',
+        slug,
+        slugPath,
+        position: 0,
+        version: 1,
+        revisions: [post(slug)],
+        published: null,
+      })
+    }
+    const base = temp.make()
+
+    const exported = await runExport(base, 'out', stub.url)
+
+    expect(exported.code).toBe(0)
+    expect(filesOf(join(base, 'out'))).toEqual([
+      '_order.json',
+      'help/es/facturacion.md',
+      'help/es/facturacion/pagos.md',
+    ])
+    expect(JSON.parse(readFileSync(join(base, 'out', '_order.json'), 'utf8'))).toEqual({
+      'help/es': ['facturacion', 'facturacion/pagos'],
+    })
+    expect(readCorpus(join(base, 'out')).files.map((file) => [file.slug, file.parent])).toEqual([
+      ['facturacion', undefined],
+      ['pagos', 'facturacion'],
+    ])
   })
 
   it('--collection and --locale narrow it to what they name, and repeat', async () => {

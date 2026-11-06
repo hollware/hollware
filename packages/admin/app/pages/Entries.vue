@@ -2,7 +2,9 @@
 import { useQuery } from '@pinia/colada'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '@nuxt/ui/composables'
 import EntryList from '../components/EntryList.vue'
+import EntryTree from '../components/EntryTree.vue'
 import Page from '../components/Page.vue'
 import type { Output } from '../lib/api.ts'
 import { countOutcomes, runAll } from '../lib/bulk.ts'
@@ -13,6 +15,7 @@ import { matches } from '../lib/entry-list.ts'
 import { can, me } from '../lib/me.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
+import type { MoveTarget } from '../lib/entry-tree.ts'
 import { pageUrl } from '../lib/site.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
@@ -132,7 +135,43 @@ function translationsOf(entry: Entry): Entry[] {
 
 function liveUrl(entry: Entry): string | null {
   if (entry.status !== 'published' || definition.value === undefined) return null
-  return pageUrl(site.value?.url ?? null, definition.value.routes, entry.locale, entry.slug)
+  return pageUrl(site.value?.url ?? null, definition.value.routes, entry.locale, entry.slugPath)
+}
+
+const toast = useToast()
+const maxDepth = computed(() => definition.value?.nesting?.maxDepth ?? null)
+const treeLocale = computed(() =>
+  locale.value === ALL ? (site.value?.defaultLocale ?? '') : locale.value,
+)
+const asTree = computed(
+  () => maxDepth.value !== null && status.value !== TRASH && filter.value.trim() === '',
+)
+const treeRows = computed(() => rows.value.filter((row) => row.locale === treeLocale.value))
+const moving = ref(false)
+
+async function move(entry: Row, target: MoveTarget) {
+  moving.value = true
+  try {
+    const answer = await api.call('move_entry', {
+      id: entry.id,
+      version: entry.version,
+      parent: target.parent,
+      index: target.index,
+    })
+    if (answer.outcome !== 'moved' && answer.outcome !== 'unchanged') {
+      const reasons = m.value.entries.tree.reasons
+      const reason =
+        answer.outcome === 'invalid_parent' && answer.reason !== undefined
+          ? reasons[answer.reason]
+          : answer.outcome === 'taken' || answer.outcome === 'conflict'
+            ? reasons[answer.outcome]
+            : undefined
+      toast.add({ title: m.value.entries.tree.notMoved, description: reason, color: 'error' })
+    }
+  } finally {
+    moving.value = false
+    await entriesQuery.refetch()
+  }
 }
 
 const reportBulk = useBulkReport()
@@ -335,7 +374,26 @@ const locales = computed(() => [
         />
       </div>
     </template>
-    <EntryList v-model:selected="selected" :rows="rows" :loading="loading" :empty="m.entries.empty">
+    <template v-if="asTree && maxDepth !== null">
+      <p class="border-b border-default px-4 py-2 text-xs text-muted sm:px-6">
+        {{ m.entries.tree.inLocale(treeLocale) }}
+      </p>
+      <EntryTree
+        :rows="treeRows"
+        :max-depth="maxDepth"
+        :loading="loading"
+        :busy="moving"
+        :empty="m.entries.empty"
+        @move="move"
+      />
+    </template>
+    <EntryList
+      v-else
+      v-model:selected="selected"
+      :rows="rows"
+      :loading="loading"
+      :empty="m.entries.empty"
+    >
       <template #locales="{ row }">
         <RouterLink
           v-for="other in translationsOf(row)"

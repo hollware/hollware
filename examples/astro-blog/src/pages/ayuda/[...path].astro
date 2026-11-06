@@ -1,0 +1,51 @@
+---
+import { hollwareBinding, hollwareNavigation, refusePreview, type PageAncestor } from '@hollware/astro'
+import HollwareContent from '@hollware/astro/HollwareContent.astro'
+import { getLiveEntry } from 'astro:content'
+import { env } from 'cloudflare:workers'
+import HelpTree from '../../components/HelpTree.astro'
+import Page from '../../layouts/Page.astro'
+
+const preview = Astro.locals.hollwarePreview
+const path = (Astro.params.path ?? '').replace(/\/$/, '')
+
+const { entry, error } = await getLiveEntry('help', { id: path, preview })
+if (error || !entry) {
+  if (error) refusePreview(Astro.locals, error)
+  return new Response('Not found', { status: 404 })
+}
+if (entry.id !== path) return Astro.redirect(`/ayuda/${entry.id}/`, 301)
+
+const navigation = await hollwareNavigation({
+  site: 'playground',
+  collection: 'help',
+  locale: 'es',
+  reader: () => hollwareBinding(env.HOLLWARE),
+})
+const listed: unknown = entry.rendered?.metadata?.['ancestors']
+const ancestors: PageAncestor[] = Array.isArray(listed)
+  ? listed.filter(
+      (one): one is PageAncestor => typeof one === 'object' && one !== null && 'slug' in one,
+    )
+  : []
+const slug = entry.id.split('/').at(-1) ?? entry.id
+const title = String(entry.data['title'] ?? slug)
+---
+
+<Page title={title}>
+  <div class="help">
+    <nav aria-label="Help">
+      {navigation.groups.map((group) => <section><HelpTree entries={group.entries} current={slug} /></section>)}
+    </nav>
+    <article>
+      <nav aria-label="Breadcrumbs">
+        <ol>
+          {ancestors.map((ancestor) => <li><a href={ancestor.path ?? undefined}>{ancestor.title}</a></li>)}
+          <li><span aria-current="page">{title}</span></li>
+        </ol>
+      </nav>
+      <h1>{title}</h1>
+      <HollwareContent entry={entry} />
+    </article>
+  </div>
+</Page>

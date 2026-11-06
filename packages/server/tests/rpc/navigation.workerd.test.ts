@@ -140,9 +140,9 @@ async function seed(seeds: readonly Seed[]): Promise<void> {
     const at = new Date(Date.parse(NOW) + index * 1000).toISOString()
     return [
       env.DB.prepare(
-        `INSERT INTO entries (id, site_id, collection, locale, slug, status, version, head_rev,
-          published_rev, published_at, published_sort_key, created_at, updated_at)
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?8, ?9, ?9, ?10, ?10)`,
+        `INSERT INTO entries (id, site_id, collection, locale, slug, slug_path, status, version,
+          head_rev, published_rev, published_at, published_sort_key, created_at, updated_at)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, 1, ?7, ?8, ?9, ?9, ?10, ?10)`,
       ).bind(
         entry,
         KEY,
@@ -186,7 +186,7 @@ function link(
   path: string,
   description: string | null = null,
 ) {
-  return { slug, title, description, path, order }
+  return { slug, title, description, path, order, parent: null, children: [] }
 }
 
 const DOCS_EN = {

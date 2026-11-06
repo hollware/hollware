@@ -5,5 +5,6 @@
   "getTranslations": "getTranslations( site: string, collection: string, translationGroup: string): Promise<Output<typeof getTranslations>>",
   "listEntries": "listEntries( site: string, collection: string, options?: { readonly locale?: string readonly tag?: string readonly limit?: number readonly cursor?: string }): Promise<Output<typeof listEntries>>",
   "listRedirects": "listRedirects( site: string, options?: { readonly collection?: string readonly locale?: string readonly limit?: number readonly cursor?: string }): Promise<Output<typeof listRedirects>>",
+  "resolvePath": "resolvePath( site: string, path: string, options?: { readonly preview?: string }): Promise<ResolvedPath>",
   "search": "search( site: string, query: string, options?: { readonly collection?: string readonly locale?: string readonly limit?: number readonly mode?: 'fulltext' | 'semantic' | 'hybrid' readonly passages?: boolean readonly minScore?: number }): Promise<Output<typeof search>>"
 }

@@ -128,7 +128,7 @@ function finish(read: ReadMarkdown, options: ProcessMarkdownOptions): ProcessRes
   const { frontmatter, document } = read
   const analysis = analyzeDocument(document, {
     components: new Set(options.components),
-    routes: compileRoutes(options.routes),
+    routes: compileRoutes(options.routes, options.depths),
     lineOffset: read.lineOffset,
   })
   if (analysis.problem !== undefined) {

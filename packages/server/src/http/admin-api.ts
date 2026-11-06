@@ -31,6 +31,7 @@ import type { AuditLogFor } from '../mcp/index.ts'
 import { connect } from '../db/d1.ts'
 import { failedDeliveries, sendAgain, type FailedDelivery } from '../db/events.ts'
 import { purgeEntry } from '../db/purge.ts'
+import { entryPath } from '../ops/event.ts'
 import { enqueue } from '../events/run.ts'
 import { createD1Store } from '../db/index.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
@@ -102,11 +103,12 @@ function refusalCode(status: number): string {
 
 function pageUrlOf(
   site: ResolvedSite,
-  entry: { readonly collection: string; readonly locale: string; readonly slug: string },
+  entry: { readonly collection: string; readonly locale: string; readonly slugPath: string },
 ): string | null {
-  const route = site.collections.get(entry.collection)?.routes[entry.locale]
-  if (site.url === null || route === undefined) return null
-  return `${withoutTrailingSlashes(site.url)}${route.replace(/:slug(?![A-Za-z0-9_])/, entry.slug)}`
+  const collection = site.collections.get(entry.collection)
+  const path = collection === undefined ? null : entryPath(collection, entry.locale, entry.slugPath)
+  if (site.url === null || path === null) return null
+  return `${withoutTrailingSlashes(site.url)}${path}`
 }
 
 interface AuditNote {
@@ -917,6 +919,13 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
           return refused(
             'Only an entry in the trash is deleted for ever.',
             'Move it to the trash first; a published one is unpublished before.',
+            409,
+          )
+        }
+        if (outcome === 'has_children') {
+          return refused(
+            'This entry has children, which would be left with no parent.',
+            'Delete its children for ever first, or move them under another entry.',
             409,
           )
         }

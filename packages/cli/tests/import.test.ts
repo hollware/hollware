@@ -1210,3 +1210,128 @@ describe('hollware import --from', () => {
     expect(stub.calls).toEqual([])
   })
 })
+
+describe('hollware import of folders, as nested entries', () => {
+  it('creates each entry under the folder it is in, parents first', async () => {
+    const stub = await serve({
+      site: { key: 'help-site', locales: ['es'], collections: ['help'] },
+      declared: { help: { maxDepth: 3 } },
+    })
+    const dir = temp.make({
+      'help/es/facturacion/pagos.md': post('Pagos'),
+      'help/es/facturacion.md': post('Facturación'),
+      'help/es/facturacion/pagos/reembolsos.md': post('Reembolsos'),
+    })
+
+    const { code } = await runImport(dir, stub.url)
+
+    expect(code).toBe(0)
+    expect(
+      stub.calls
+        .filter((call) => call.tool === 'create_draft')
+        .map((call) => [call.args['slug'], call.args['parent']]),
+    ).toEqual([
+      ['facturacion', undefined],
+      ['pagos', 'facturacion'],
+      ['reembolsos', 'pagos'],
+    ])
+  })
+
+  it('sends nothing when a folder is in a flat collection, or deeper than the collection allows', async () => {
+    const stub = await serve({
+      site: { key: 'two', locales: ['es'], collections: ['blog', 'help'] },
+      declared: { help: { maxDepth: 2 } },
+    })
+    const dir = temp.make({
+      'blog/es/viejo/post.md': post('Post'),
+      'help/es/a.md': post('A'),
+      'help/es/a/b.md': post('B'),
+      'help/es/a/b/c.md': post('C'),
+    })
+
+    const { code, err } = await runImport(dir, stub.url)
+
+    expect(code).not.toBe(0)
+    expect(err.join('\n')).toContain(
+      'blog/es/viejo/post.md: it is in a folder below its locale, and collection blog is not nested',
+    )
+    expect(err.join('\n')).toContain(
+      'help/es/a/b/c.md: it is 3 levels deep, and collection help allows 2',
+    )
+    expect(tools(stub.calls)).not.toContain('create_draft')
+  })
+})
+
+describe('hollware import puts each entry in its place in the tree', () => {
+  const helpSite = () =>
+    serve({
+      site: { key: 'help-site', locales: ['es'], collections: ['help'] },
+      declared: { help: { maxDepth: 3 } },
+    })
+  const placesOf = (stub: StubServer) =>
+    [...stub.entries.values()]
+      .map((entry) => [entry.slugPath ?? entry.slug, entry.position ?? null])
+      .sort(([a], [b]) => String(a).localeCompare(String(b)))
+
+  it('moves an entry that is already there into the folder it is in now', async () => {
+    const stub = await helpSite()
+    const first = temp.make({
+      'help/es/pagos.md': post('Pagos'),
+      'help/es/facturacion.md': post('F'),
+    })
+    await runImport(first, stub.url)
+    const second = temp.make({
+      'help/es/facturacion.md': post('F'),
+      'help/es/facturacion/pagos.md': post('Pagos'),
+    })
+
+    const { code, out } = await runImport(second, stub.url)
+
+    expect(code).toBe(0)
+    expect(placesOf(stub)).toEqual([
+      ['facturacion', 0],
+      ['facturacion/pagos', 0],
+    ])
+    expect(out.some((line) => line.startsWith('moved      help/es/facturacion/pagos'))).toBe(true)
+  })
+
+  it('orders siblings as the order file of an export says, and leaves the order alone without one', async () => {
+    const stub = await helpSite()
+    const files = {
+      'help/es/p.md': post('P'),
+      'help/es/p/a.md': post('A'),
+      'help/es/p/b.md': post('B'),
+      'help/es/p/c.md': post('C'),
+    }
+    await runImport(temp.make(files), stub.url)
+    const ordered = temp.make({
+      ...files,
+      '_order.json': JSON.stringify({ 'help/es': ['p', 'p/c', 'p/a', 'p/b'] }),
+    })
+
+    await runImport(ordered, stub.url)
+    const after = placesOf(stub)
+    await runImport(temp.make(files), stub.url)
+
+    expect(after).toEqual([
+      ['p', 0],
+      ['p/a', 1],
+      ['p/b', 2],
+      ['p/c', 0],
+    ])
+    expect(placesOf(stub)).toEqual(after)
+  })
+
+  it('sends nothing when a folder names a parent that is neither in the import nor on the site', async () => {
+    const stub = await helpSite()
+    const dir = temp.make({ 'help/es/nadie/hija.md': post('Hija') })
+
+    const { code, err } = await runImport(dir, stub.url)
+
+    expect(code).not.toBe(0)
+    expect(err.join('\n')).toContain(
+      'help/es/nadie/hija.md: its folder names nadie, which is neither a file of the import nor an entry of the site',
+    )
+    expect(tools(stub.calls)).not.toContain('create_draft')
+  })
+})

@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable } from '../format.ts'
+import { ORDER_FILE, orderOf, type Placed } from '../import/order.ts'
 import { openSession } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
@@ -33,6 +34,8 @@ interface BackupEntry {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  readonly slugPath?: string
+  readonly position?: number | null
   readonly status: string
   readonly deletedAt: string | null
   readonly markdown: string
@@ -83,9 +86,11 @@ function isBackupEntry(value: unknown): value is BackupEntry {
     const field: unknown = Reflect.get(value, key)
     return field === null || typeof field === 'string'
   }
+  const slugPath: unknown = Reflect.get(value, 'slugPath')
   return (
     ['collection', 'locale', 'slug', 'status', 'markdown'].every(text) &&
-    ['deletedAt', 'published'].every(textOrNull)
+    ['deletedAt', 'published'].every(textOrNull) &&
+    (slugPath === undefined || typeof slugPath === 'string')
   )
 }
 
@@ -165,6 +170,7 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
   const entries: BackupEntry[] = Array.isArray(listed) ? listed.filter(isBackupEntry) : []
   const definition: unknown = Reflect.get(record, 'definition') ?? null
   const written: string[] = []
+  const placed: Placed[] = []
   for (const entry of entries) {
     if (entry.deletedAt !== null) continue
     const markdown =
@@ -174,20 +180,31 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
           : null
         : entry.markdown
     if (markdown === null) continue
+    const slugPath = entry.slugPath ?? entry.slug
     if (
       ![entry.collection, entry.locale].every((part) => SAFE_SEGMENT.test(part)) ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)
+      !slugPath.split('/').every((one) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(one))
     ) {
       throw new CliError(
-        `the backup names ${printable(`${entry.collection}/${entry.locale}/${entry.slug}`)}, which is not a path an entry has. Nothing more was written.`,
+        `the backup names ${printable(`${entry.collection}/${entry.locale}/${slugPath}`)}, which is not a path an entry has. Nothing more was written.`,
       )
     }
-    const path = join(entry.collection, entry.locale, `${entry.slug}.md`)
+    const path = join(entry.collection, entry.locale, ...`${slugPath}.md`.split('/'))
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), markdown, { flag: 'wx' })
     written.push(path)
+    placed.push({
+      collection: entry.collection,
+      locale: entry.locale,
+      slugPath,
+      position: typeof entry.position === 'number' ? entry.position : null,
+    })
   }
   mkdirSync(root, { recursive: true })
+  const order = orderOf(placed)
+  if (order !== null) {
+    writeFileSync(join(root, ORDER_FILE), `${JSON.stringify(order, null, 2)}\n`, { flag: 'wx' })
+  }
   writeFileSync(join(root, 'site.json'), `${JSON.stringify(definition, null, 2)}\n`, {
     flag: 'wx',
   })

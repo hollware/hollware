@@ -89,3 +89,7 @@ Where things are:
 - `contractsHash` is the SHA-256 of the canonical JSON of the input JSON Schemas and the id,
   severity and phases of the contracts of the run: it names rules, not content
   (`tests/contracts/hash.test.ts`).
+- A nested entry's path is the slugs of its ancestors and its own in place of `:slug`. Slugs stay
+  unique per collection and locale, so a path resolves by its last slug and any older path of the
+  entry redirects; parent and position are structure, set by `move_entry`, not frontmatter
+  (`tests/markdown/routes.test.ts`, `packages/server/tests/ops/tree.workerd.test.ts`).

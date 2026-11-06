@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vite-plus/test'
 
 const script = join(import.meta.dirname, '..', '..', '.github', 'scripts', 'promotion-check.sh')
@@ -22,29 +22,86 @@ function git(...args: string[]): string {
   return run.stdout.trim()
 }
 
-function commit(
-  subject: string,
-  files: Record<string, string> = {},
-  removed: string[] = [],
-): string {
-  writeFileSync(join(root, 'file.txt'), subject)
-  for (const [path, text] of Object.entries(files)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), text)
-  }
-  for (const path of removed) git('rm', '-q', path)
-  git('add', '-A')
-  git(
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-q',
-    '-m',
-    subject,
+interface Planned {
+  readonly name: keyof History
+  readonly branch: string
+  readonly from?: keyof History
+  readonly files?: Readonly<Record<string, string>>
+  readonly removed?: readonly string[]
+}
+
+function data(text: string): string {
+  return `data ${new TextEncoder().encode(text).length}\n${text}\n`
+}
+
+function importHistory(planned: readonly Planned[]): History {
+  const marks = join(root, '.git', 'marks')
+  const stream = planned
+    .map((one, index) => {
+      const subject = SUBJECTS[one.name]
+      const from =
+        one.from === undefined
+          ? ''
+          : `from :${planned.findIndex((other) => other.name === one.from) + 1}\n`
+      const changes = [
+        `M 100644 inline file.txt\n${data(subject)}`,
+        ...Object.entries(one.files ?? {}).map(
+          ([path, text]) => `M 100644 inline ${path}\n${data(text)}`,
+        ),
+        ...(one.removed ?? []).map((path) => `D ${path}\n`),
+      ]
+      return [
+        `commit refs/heads/${one.branch}\n`,
+        `mark :${index + 1}\n`,
+        `committer Test <test@example.invalid> ${1_760_000_000 + index} +0000\n`,
+        data(`${subject}\n`),
+        from,
+        ...changes,
+      ].join('')
+    })
+    .join('')
+  const run = spawnSync('git', ['fast-import', '--quiet', `--export-marks=${marks}`], {
+    cwd: root,
+    input: stream,
+    encoding: 'utf8',
+    env: { PATH: process.env.PATH ?? '', ...gitEnvWithoutUserConfig },
+  })
+  if (run.status !== 0) throw new Error(`git fast-import: ${run.stderr}`)
+  const shas = new Map(
+    readFileSync(marks, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => {
+        const [mark = '', sha = ''] = line.split(' ')
+        return [Number(mark.slice(1)), sha] as const
+      }),
   )
-  return git('rev-parse', 'HEAD')
+  const sha = (name: keyof History) => {
+    const found = shas.get(planned.findIndex((one) => one.name === name) + 1)
+    if (found === undefined) throw new Error(`git fast-import made no commit ${name}`)
+    return found
+  }
+  return {
+    first: sha('first'),
+    second: sha('second'),
+    third: sha('third'),
+    pending: sha('pending'),
+    versioned: sha('versioned'),
+    later: sha('later'),
+    side: sha('side'),
+    unmerged: sha('unmerged'),
+  }
+}
+
+const SUBJECTS: Readonly<Record<keyof History, string>> = {
+  first: 'feat: first',
+  second: 'feat: second',
+  third: 'feat: third',
+  pending: 'feat: add',
+  versioned: 'chore: version packages',
+  later: 'feat: a change with a changeset',
+  side: 'feat: side branch',
+  unmerged: 'feat: not on main yet',
 }
 
 function mainIs(sha: string): void {
@@ -67,33 +124,40 @@ let history: History
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), 'promotion-check-'))
   git('init', '-q')
-  const first = commit('feat: first')
-  const second = commit('feat: second')
-  const third = commit('feat: third')
-  const pending = commit('feat: add', {
-    '.changeset/brave-lions.md': '---\n"@hollware/core": patch\n---\n\nFix.\n',
-    '.changeset/quiet-owls.md': '---\n---\n',
-  })
-  const versioned = commit(
-    'chore: version packages',
+  history = importHistory([
+    { name: 'first', branch: 'main' },
+    { name: 'second', branch: 'main' },
+    { name: 'third', branch: 'main' },
     {
-      '.changeset/README.md': '# Changesets\n',
-      '.changeset/config.json': '{}\n',
-      '.changeset/pre.json': '{}\n',
-      '.changeset/notes/draft.md': 'not a changeset\n',
-      'docs/note.md': 'a markdown file elsewhere\n',
+      name: 'pending',
+      branch: 'main',
+      files: {
+        '.changeset/brave-lions.md': '---\n"@hollware/core": patch\n---\n\nFix.\n',
+        '.changeset/quiet-owls.md': '---\n---\n',
+      },
     },
-    ['.changeset/brave-lions.md', '.changeset/quiet-owls.md'],
-  )
-  const later = commit('feat: a change with a changeset', {
-    '.changeset/tidy-foxes.md': '---\n---\n',
-  })
-  mainIs(later)
-  git('checkout', '-q', '-b', 'side', first)
-  const side = commit('feat: side branch')
-  git('checkout', '-q', '-b', 'ahead', later)
-  const unmerged = commit('feat: not on main yet')
-  history = { first, second, third, pending, versioned, later, side, unmerged }
+    {
+      name: 'versioned',
+      branch: 'main',
+      files: {
+        '.changeset/README.md': '# Changesets\n',
+        '.changeset/config.json': '{}\n',
+        '.changeset/pre.json': '{}\n',
+        '.changeset/notes/draft.md': 'not a changeset\n',
+        'docs/note.md': 'a markdown file elsewhere\n',
+      },
+      removed: ['.changeset/brave-lions.md', '.changeset/quiet-owls.md'],
+    },
+    {
+      name: 'later',
+      branch: 'main',
+      files: { '.changeset/tidy-foxes.md': '---\n---\n' },
+    },
+    { name: 'side', branch: 'side', from: 'first' },
+    { name: 'unmerged', branch: 'ahead', from: 'later' },
+  ])
+  mainIs(history.later)
+  git('checkout', '-q', 'ahead')
 })
 
 afterAll(() => {

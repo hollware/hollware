@@ -709,3 +709,48 @@ describe('hollware import --from notion', () => {
     ])
   })
 })
+
+describe('a Notion tree imported into a nested collection', () => {
+  const nested = (maxDepth: number) =>
+    convert({ target: { components: ['callout', 'details'], route: '/docs/:slug', maxDepth } })
+
+  it('puts each page under its parent, the pages below the root at the root, with its title alone', async () => {
+    const { corpus } = await nested(3)
+
+    expect(corpus.files.map((file) => file.position)).toEqual([1, 1, 2, 3, 4, 1, 1, 5])
+    expect(corpus.files.map((file) => [file.path, file.parent])).toEqual([
+      ['docs/en/guide.md', undefined],
+      ['docs/en/blocks.md', undefined],
+      ['docs/en/callouts.md', undefined],
+      ['docs/en/gallery.md', undefined],
+      ['docs/en/links.md', undefined],
+      ['docs/en/links/deep.md', 'links'],
+      ['docs/en/links/deep/deeper.md', 'deep'],
+      ['docs/en/links-2.md', undefined],
+    ])
+    expect(corpus.files.find((file) => file.slug === 'deeper')?.markdown).toBe(
+      '---\ntitle: "Deeper"\n---\n\nBottom\n',
+    )
+    expect(corpus.problems).toEqual([])
+  })
+
+  it('links a page by the path of its slugs', async () => {
+    const { corpus } = await nested(3)
+
+    expect(corpus.files.find((file) => file.slug === 'links')?.markdown).toContain(
+      '[deeper](/docs/links/deep/deeper)',
+    )
+  })
+
+  it('reports a page deeper than the collection allows', async () => {
+    const { corpus } = await nested(2)
+
+    expect(corpus.problems).toEqual([
+      {
+        path: 'docs/en/links/deep/deeper.md',
+        reason:
+          'it is 3 levels deep, and collection docs allows 2: raise its nesting.maxDepth, or import a page further down with --root.',
+      },
+    ])
+  })
+})

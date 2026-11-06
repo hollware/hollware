@@ -389,6 +389,32 @@ async function remove() {
             />
           </UFormField>
         </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <UFormField
+            :label="m.collection.nesting"
+            :help="m.collection.nestingHelp"
+            class="sm:col-span-2"
+          >
+            <USwitch
+              :model-value="collection.nesting !== null"
+              :label="m.collection.nesting"
+              @update:model-value="collection.nesting = $event ? { maxDepth: 3 } : null"
+            />
+          </UFormField>
+          <UFormField
+            v-if="collection.nesting !== null"
+            :label="m.collection.maxDepth"
+            :help="m.collection.maxDepthHelp"
+          >
+            <UInputNumber
+              :model-value="collection.nesting.maxDepth"
+              :min="2"
+              :max="10"
+              class="w-full"
+              @update:model-value="collection.nesting = { maxDepth: Number($event ?? 3) }"
+            />
+          </UFormField>
+        </div>
       </section>
 
       <section aria-labelledby="rules" class="space-y-3">

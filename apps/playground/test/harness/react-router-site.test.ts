@@ -7,7 +7,9 @@ import {
   agentWith,
   createDraft,
   migrate,
+  moveHelpEntry,
   previewTokenFor,
+  publishHelpTree,
   publishNew,
   seedOwnerToken,
 } from './support.ts'
@@ -22,6 +24,7 @@ function cookie(token: string) {
 
 let draftId = ''
 let publishedId = ''
+let helpAgent: ReturnType<typeof agentWith> | undefined
 
 const server = createReactRouterHarness()
 
@@ -29,6 +32,8 @@ beforeAll(async () => {
   await server.listen()
   await migrate(server)
   const agent = agentWith(server, await seedOwnerToken(server))
+  helpAgent = agent
+  await publishHelpTree(agent)
   publishedId = await publishNew(agent, {
     locale: 'en',
     slug: 'from-draft-to-published',
@@ -180,5 +185,38 @@ describe('a React Router site with @hollware/react', () => {
     expect(
       ['invalid_preview', 'hollware_preview', 'ZodError'].filter((s) => bundle.includes(s)),
     ).toEqual([])
+  })
+})
+
+describe('a help center of nested entries with @hollware/react', () => {
+  it('renders an entry three levels deep with its breadcrumbs and the tree open on its branch', async () => {
+    const page = await reactRouterFetch(server, '/ayuda/facturacion/pagos/reembolsos/')
+    const html = await page.text()
+
+    expect(page.status).toBe(200)
+    expect(html).toMatch(/<h1[^>]*>Reembolsos<\/h1>/)
+    const breadcrumbs = html.match(/<nav aria-label="Breadcrumbs">.*?<\/nav>/)?.[0] ?? ''
+    expect(breadcrumbs.replaceAll(/<a [^>]*href="([^"]+)"[^>]*>/g, '<a href="$1">')).toBe(
+      '<nav aria-label="Breadcrumbs"><ol><li><a href="/ayuda/facturacion/">Facturación</a></li><li><a href="/ayuda/facturacion/pagos/">Pagos</a></li><li><span aria-current="page">Reembolsos</span></li></ol></nav>',
+    )
+    expect(html).toMatch(/<details open=""><summary><a [^>]*href="\/ayuda\/facturacion\/pagos\/"/)
+    expect(html).toMatch(
+      /<a [^>]*aria-current="page"[^>]*href="\/ayuda\/facturacion\/pagos\/reembolsos\/"|<a [^>]*href="\/ayuda\/facturacion\/pagos\/reembolsos\/"[^>]*aria-current="page"/,
+    )
+  })
+
+  it('answers the old path of an entry whose parent moved with a 301 to where it is now', async () => {
+    const agent = helpAgent
+    if (agent === undefined) throw new Error('no agent')
+    await moveHelpEntry(agent, 'pagos', 'cuenta')
+
+    const old = await reactRouterFetch(server, '/ayuda/facturacion/pagos/reembolsos/', MANUAL)
+    const missing = await reactRouterFetch(server, '/ayuda/cuenta/nada/')
+
+    expect([old.status, old.headers.get('location')]).toEqual([
+      301,
+      '/ayuda/cuenta/pagos/reembolsos/',
+    ])
+    expect(missing.status).toBe(404)
   })
 })

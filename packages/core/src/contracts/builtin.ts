@@ -14,7 +14,8 @@ import type { Contract } from './types.ts'
  * - Always on, found before the contracts run: `size-limit` (made by the pipeline for
  *   `maxMarkdownBytes` and by the store for the row, with `sizeLimitViolation`),
  *   `frontmatter-syntax` and `comark-parse` (made by the pipeline), and `unique-slug` and
- *   `unique-translation` (made when the store finds the slug or the translation group taken). A
+ *   `unique-translation` (made when the store finds the slug or the translation group taken), and
+ *   `entry-parent` (made when a nested entry cannot go under the parent it names). A
  *   write with one of them is `refused`, so no verdict is made for it: they are
  *   `REFUSAL_CONTRACT_IDS`.
  */
@@ -33,6 +34,7 @@ export const BUILT_IN_CONTRACT_IDS = [
   'comark-parse',
   'unique-slug',
   'unique-translation',
+  'entry-parent',
 ] as const
 
 export type BuiltInContractId = (typeof BUILT_IN_CONTRACT_IDS)[number]
@@ -50,6 +52,7 @@ export const REFUSAL_CONTRACT_IDS: readonly string[] = [
   'comark-parse',
   'unique-slug',
   'unique-translation',
+  'entry-parent',
 ]
 
 export const SCHEMA_CONTRACT: Omit<Contract<unknown>, 'check'> = {
@@ -92,6 +95,12 @@ const PIPELINE_CONTRACTS: readonly Omit<Contract<unknown>, 'check'>[] = [
     id: 'unique-translation',
     severity: 'error',
     description: 'No other entry of the collection and locale belongs to the translation group.',
+  },
+  {
+    id: 'entry-parent',
+    severity: 'error',
+    description:
+      'In a nested collection, the parent exists in the collection and locale, and the entry is no deeper than nesting.maxDepth.',
   },
 ]
 

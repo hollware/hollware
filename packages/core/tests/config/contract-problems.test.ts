@@ -20,7 +20,7 @@ const CONTRACT_FIX = 'Write it as { id, severity, description, check }.'
 const ID_FIX = 'Name the rule with lowercase words joined by hyphens.'
 const ID_MUST = 'lowercase words joined by hyphens, such as "seo-title-length"'
 const RESERVED_FIX =
-  "Choose another id: schema, components, raw-html, unknown-component, disallowed-attribute, unsafe-url, translation-pair, internal-links-resolve, images-have-alt, size-limit, frontmatter-syntax, comark-parse, unique-slug, unique-translation belong to Hollware's built-in contracts, and the opt-in ones are listed as contracts.translationPair(), contracts.internalLinksResolve() and contracts.imagesHaveAlt()."
+  "Choose another id: schema, components, raw-html, unknown-component, disallowed-attribute, unsafe-url, translation-pair, internal-links-resolve, images-have-alt, size-limit, frontmatter-syntax, comark-parse, unique-slug, unique-translation, entry-parent belong to Hollware's built-in contracts, and the opt-in ones are listed as contracts.translationPair(), contracts.internalLinksResolve() and contracts.imagesHaveAlt()."
 const DUPLICATE_FIX = 'Give every contract of the collection its own id.'
 const SEVERITY_FIX =
   'Use "error" for a rule that blocks publishing and "warning" for one that publishing asks to acknowledge.'

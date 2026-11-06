@@ -93,6 +93,7 @@ describe('test projects', () => {
       'apps/playground/test/harness/react-router-site.test.ts',
       'apps/playground/test/harness/rpc.test.ts',
       'apps/playground/test/harness/site.test.ts',
+      'apps/playground/test/harness/tree.test.ts',
       'apps/playground/test/harness/web.test.ts',
     ])
   }, 60_000)

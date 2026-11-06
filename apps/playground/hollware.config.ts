@@ -77,6 +77,15 @@ const docs = defineCollection({
   ].join(' '),
 })
 
+const help = defineCollection({
+  schema: z.object({
+    title: z.string().min(1),
+    description: z.string().min(1).max(160).optional(),
+  }),
+  routes: { es: '/ayuda/:slug/', en: '/en/help/:slug/' },
+  nesting: { maxDepth: 3 },
+})
+
 const VOICE = [
   'AI-[p]owered',
   'auto[p]ilot',
@@ -294,7 +303,7 @@ export default defineConfig({
       locales: ['es', 'en'],
       defaultLocale: 'es',
       url: 'https://demo.hollware.com',
-      collections: { blog, reports },
+      collections: { blog, reports, help },
       styleGuide: 'Spanish for Latin America, with tú, and plain international English.',
     },
   },

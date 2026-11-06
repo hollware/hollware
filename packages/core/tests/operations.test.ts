@@ -138,8 +138,8 @@ describe('operation specs', () => {
       delete_entry: {
         effect: 'destructive',
         scopes: ['content:write'],
-        outcomes: ['trashed', 'published', 'conflict', 'not_found'],
-        errors: ['published', 'conflict', 'not_found'],
+        outcomes: ['trashed', 'published', 'has_children', 'conflict', 'not_found'],
+        errors: ['published', 'has_children', 'conflict', 'not_found'],
       },
       delete_site: {
         effect: 'destructive',
@@ -191,8 +191,15 @@ describe('operation specs', () => {
       schedule_unpublish: {
         effect: 'destructive',
         scopes: ['content:publish'],
-        outcomes: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
-        errors: ['not_published', 'not_found'],
+        outcomes: [
+          'scheduled',
+          'unpublished',
+          'cancelled',
+          'has_children',
+          'not_published',
+          'not_found',
+        ],
+        errors: ['has_children', 'not_published', 'not_found'],
       },
       list_backups: {
         effect: 'read',
@@ -203,8 +210,8 @@ describe('operation specs', () => {
       move_entry: {
         effect: 'edit',
         scopes: ['content:write'],
-        outcomes: ['moved', 'unchanged', 'taken', 'conflict', 'not_found'],
-        errors: ['taken', 'conflict', 'not_found'],
+        outcomes: ['moved', 'unchanged', 'taken', 'invalid_parent', 'conflict', 'not_found'],
+        errors: ['taken', 'invalid_parent', 'conflict', 'not_found'],
       },
       list_redirects: { effect: 'read', scopes: ['content:read'], outcomes: ['ok'], errors: [] },
       list_revisions: {
@@ -266,8 +273,8 @@ describe('operation specs', () => {
       restore_entry: {
         effect: 'write',
         scopes: ['content:write'],
-        outcomes: ['restored', 'not_trashed', 'not_found'],
-        errors: ['not_trashed', 'not_found'],
+        outcomes: ['restored', 'not_trashed', 'parent_in_trash', 'not_found'],
+        errors: ['not_trashed', 'parent_in_trash', 'not_found'],
       },
       restore_site: {
         effect: 'write',
@@ -285,8 +292,8 @@ describe('operation specs', () => {
       unpublish: {
         effect: 'destructive',
         scopes: ['content:publish'],
-        outcomes: ['unpublished', 'not_found'],
-        errors: ['not_found'],
+        outcomes: ['unpublished', 'has_children', 'not_found'],
+        errors: ['has_children', 'not_found'],
       },
       update_draft: {
         effect: 'edit',

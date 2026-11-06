@@ -3,6 +3,7 @@ import {
   HollwareClientError,
   type CollectionNavigation,
   type HollwareReader,
+  type PageAncestor,
   type PageImage,
 } from '@hollware/client'
 
@@ -37,8 +38,15 @@ export type ReaderOptions =
 
 /** A published entry as the content layer takes it. */
 export interface SourceEntry {
-  /** The slug: Astro's id, unique within the locale. */
+  /**
+   * Astro's id: the slug, or in a nested collection the slugs of its ancestors and its own joined
+   * by `/`, for a `[...path]` route. Unique within the locale.
+   */
   readonly id: string
+  /** In a nested collection, the slug of its parent; `null` at the root and in a flat one. */
+  readonly parent: string | null
+  /** In a nested collection, its ancestors from the root down: only an entry read alone has them. */
+  readonly ancestors?: readonly PageAncestor[]
   /** The frontmatter of the entry. */
   readonly data: Record<string, unknown>
   /** The HTML Hollware renders from the Markdown: only an entry read alone has it. */
@@ -67,11 +75,13 @@ export interface ListOptions {
 export interface Source {
   list(options?: ListOptions): Promise<SourceEntry[]>
   /**
-   * The entry with this slug and its HTML, or `undefined` when it is not published. With a
+   * The entry with this id (its slug, or the path of slugs of a nested entry: the last slug names
+   * it) and its HTML, or `undefined` when it is not published. Its `id` is where it is now, so a
+   * page asked for an older path redirects to it. With a
    * `preview` token (made in the admin) it is the latest revision of the entry the token names,
    * a draft included; a token that does not hold is an error, never the published version.
    */
-  get(slug: string, options?: { readonly preview?: string }): Promise<SourceEntry | undefined>
+  get(id: string, options?: { readonly preview?: string }): Promise<SourceEntry | undefined>
   translations(group: string): Promise<Translation[]>
   /** The published entries of the locale, grouped and ordered as the collection's navigation says. */
   navigation(): Promise<CollectionNavigation>
@@ -104,7 +114,8 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
         })
         for (const entry of page.entries) {
           found.push({
-            id: entry.slug,
+            id: entry.slugPath,
+            parent: entry.parent,
             data: entry.frontmatter,
             updatedAt: entry.updatedAt,
             ...(entry.images === undefined ? {} : { images: entry.images }),
@@ -114,14 +125,21 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
       } while (cursor !== undefined)
       return found
     },
-    async get(slug, getOptions = {}) {
+    async get(id, getOptions = {}) {
+      const slug =
+        id
+          .split('/')
+          .filter((segment) => segment !== '')
+          .at(-1) ?? id
       const answer = await readerOf(options).getEntry(site, collection, slug, locale, {
         formats: ['html', 'document'],
         ...(getOptions.preview === undefined ? {} : { preview: getOptions.preview }),
       })
       if (answer.outcome === 'not_found' || answer.entry === undefined) return undefined
       return {
-        id: answer.entry.slug,
+        id: answer.entry.slugPath,
+        parent: answer.entry.parent,
+        ...(answer.ancestors === undefined ? {} : { ancestors: answer.ancestors }),
         data: answer.entry.frontmatter,
         html: answer.entry.html ?? '',
         updatedAt: answer.entry.updatedAt,

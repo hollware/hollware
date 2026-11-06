@@ -143,9 +143,10 @@ export async function insertEntries(
     statements.push(
       db
         .prepare(
-          `INSERT INTO entries (id, site_id, collection, locale, slug, translation_group, status,
-            version, head_rev, published_rev, published_at, published_sort_key, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11, ?12, ?12)`,
+          `INSERT INTO entries (id, site_id, collection, locale, slug, slug_path, translation_group,
+            status, version, head_rev, published_rev, published_at, published_sort_key, created_at,
+            updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7, 1, ?8, ?9, ?10, ?11, ?12, ?12)`,
         )
         .bind(
           spec.id,

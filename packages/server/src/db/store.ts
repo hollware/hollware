@@ -19,6 +19,12 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     findEntry: (site, ref, view) => reads.findEntry(database, site, ref, view),
     findEntryById: (site, id, view) => reads.findEntryById(database, site, id, view),
     listEntries: (site, query) => reads.listEntries(database, site, query),
+    childrenOf: (site, ref, view) => reads.childrenOf(database, site, ref, view),
+    descendantsOf: (site, ref) => reads.descendantsOf(database, site, ref),
+    summariesBySlug: (site, ref, slugs, view) =>
+      reads.summariesBySlug(database, site, ref, slugs, view),
+    deepestDepth: (site, collection) => reads.deepestDepth(database, site, collection),
+    redirectOf: (site, ref) => reads.redirectOf(database, site, ref),
     searchEntries: (site, query) => reads.searchEntries(database, site, query),
     findSummaries: (site, ids, view) => reads.findSummaries(database, site, ids, view),
     relatedOf: (site, entryId) => reads.relatedOf(database, site, entryId),
@@ -47,7 +53,8 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     trashEntry: (site, write) => writes.trashEntry(database, clock, site, write),
     moveEntry: (site, write) => writes.moveEntry(database, clock, site, write),
     listRedirects: (site, query) => writes.listRedirects(database, site, query),
-    restoreEntry: (site, entryId) => writes.restoreEntry(database, clock, site, entryId),
+    restoreEntry: (site, entryId, treeOf) =>
+      writes.restoreEntry(database, clock, site, entryId, treeOf),
     requestReview: (site, write) =>
       reviews.requestReview(database, clock, site, write, (entryId) =>
         writes.whyNothingChanged(database, site, entryId),

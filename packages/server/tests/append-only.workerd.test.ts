@@ -87,9 +87,9 @@ async function seed() {
       "INSERT INTO users (id, role, created_at, updated_at) VALUES (?1, 'owner', ?2, ?2)",
     ).bind(user, now),
     env.DB.prepare(
-      `INSERT INTO entries (id, site_id, collection, locale, slug, status, version, head_rev,
-        published_rev, published_at, published_sort_key, created_at, updated_at)
-        VALUES (?1, ?2, 'posts', 'en', 'hello', 'published', 1, ?3, ?3, ?4, ?4, ?4, ?4)`,
+      `INSERT INTO entries (id, site_id, collection, locale, slug, slug_path, status, version,
+        head_rev, published_rev, published_at, published_sort_key, created_at, updated_at)
+        VALUES (?1, ?2, 'posts', 'en', 'hello', 'hello', 'published', 1, ?3, ?3, ?4, ?4, ?4, ?4)`,
     ).bind(entry, site, ids.revisions, now),
     env.DB.prepare(INSERT_REVISION).bind(ids.revisions, site, entry, user, now),
     env.DB.prepare(

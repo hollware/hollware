@@ -74,6 +74,13 @@ export const collectionDefinitionData = z.strictObject({
     .describe(
       'How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title.',
     ),
+  nesting: z
+    .strictObject({ maxDepth: z.number().int() })
+    .nullable()
+    .default(null)
+    .describe(
+      'Nested entries: an entry may have a parent of its collection and locale, at most maxDepth levels deep (2 to 10), and its path is the slugs of its ancestors and its own in place of :slug. In a nested collection, getNavigation answers a tree whose children follow the order set by move_entry. null keeps entries flat.',
+    ),
 })
 
 export const webhookDefinition = z.strictObject({

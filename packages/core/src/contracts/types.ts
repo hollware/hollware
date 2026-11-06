@@ -69,6 +69,8 @@ export interface EntryFacts {
   readonly id: string
   readonly status: 'draft' | 'scheduled' | 'published'
   readonly translationGroup: string | null
+  /** The slugs of its ancestors and its own, joined by `/`. */
+  readonly slugPath?: string
 }
 
 /**

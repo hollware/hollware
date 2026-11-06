@@ -87,6 +87,20 @@ export const entrySummary = z.object({
   collection: z.string(),
   locale: z.string(),
   slug: z.string(),
+  parent: z
+    .string()
+    .nullable()
+    .describe('In a nested collection, the slug of its parent; null for an entry at the root.'),
+  slugPath: z
+    .string()
+    .describe(
+      "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
+    ),
+  position: z
+    .number()
+    .int()
+    .nullable()
+    .describe('In a nested collection, its place among its siblings, from 0; null in a flat one.'),
   translationGroup: z.string().nullable(),
   status: entryStatus,
   version: z.number().int().min(1),
@@ -310,6 +324,12 @@ export const collectionDescription = z.object({
     .optional()
     .describe(
       'How getNavigation arranges the published entries: the field that groups them, the groups in their order, and the number field that orders each group before the title. Absent when they are listed by title.',
+    ),
+  nesting: z
+    .object({ maxDepth: z.number().int() })
+    .optional()
+    .describe(
+      "Nested entries: create_draft takes a parent's slug, move_entry moves an entry under another or among its siblings, and an entry's path holds the slugs of its ancestors, at most maxDepth levels. Slugs stay unique in a collection and locale. Absent when entries are flat.",
     ),
 })
 

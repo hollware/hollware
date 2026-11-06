@@ -108,7 +108,7 @@ const TOOLS = [
   { name: 'list_reviews', title: 'List the reviews', annotations: READ },
   { name: 'list_revisions', title: 'List the revisions of an entry', annotations: READ },
   { name: 'make_webhook_secret', title: 'Make the secret of a webhook', annotations: CHANGE },
-  { name: 'move_entry', title: 'Change the slug of an entry', annotations: CHANGE },
+  { name: 'move_entry', title: 'Move an entry', annotations: CHANGE },
   { name: 'publish', title: 'Publish an entry', annotations: CHANGE },
   { name: 'reject_review', title: 'Reject a review', annotations: CHANGE },
   { name: 'request_changes', title: 'Ask for changes', annotations: CHANGE },
@@ -144,7 +144,7 @@ const OUTCOMES: Record<string, string[]> = {
   get_analytics: ['connected', 'not_connected'],
   create_draft: ['saved', 'refused', 'in_trash'],
   create_site: ['created', 'taken', 'invalid'],
-  delete_entry: ['trashed', 'published', 'conflict', 'not_found'],
+  delete_entry: ['trashed', 'published', 'has_children', 'conflict', 'not_found'],
   delete_site: ['trashed', 'needs_confirmation', 'not_found'],
   describe_site: ['ok'],
   get_entry: ['ok', 'not_found'],
@@ -159,9 +159,16 @@ const OUTCOMES: Record<string, string[]> = {
   list_backups: ['ok', 'unavailable'],
   get_asset: ['ok', 'not_found'],
   list_revisions: ['ok', 'not_found'],
-  move_entry: ['moved', 'unchanged', 'taken', 'conflict', 'not_found'],
+  move_entry: ['moved', 'unchanged', 'taken', 'invalid_parent', 'conflict', 'not_found'],
   list_redirects: ['ok'],
-  schedule_unpublish: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
+  schedule_unpublish: [
+    'scheduled',
+    'unpublished',
+    'cancelled',
+    'has_children',
+    'not_published',
+    'not_found',
+  ],
   get_revision: ['ok', 'not_found'],
   restore_revision: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   publish: [
@@ -176,11 +183,11 @@ const OUTCOMES: Record<string, string[]> = {
   reject_review: ['rejected', 'not_pending', 'not_found'],
   request_changes: ['changes_requested', 'not_pending', 'not_found'],
   request_review: ['pending_review', 'blocked', 'needs_acknowledgement', 'conflict', 'not_found'],
-  restore_entry: ['restored', 'not_trashed', 'not_found'],
+  restore_entry: ['restored', 'not_trashed', 'parent_in_trash', 'not_found'],
   restore_site: ['restored', 'not_found'],
   search: ['ok'],
   set_collection: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
-  unpublish: ['unpublished', 'not_found'],
+  unpublish: ['unpublished', 'has_children', 'not_found'],
   update_asset: ['updated', 'unchanged', 'not_found'],
   update_draft: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   update_site: ['updated', 'unchanged', 'invalid', 'needs_confirmation', 'conflict'],
@@ -238,7 +245,11 @@ describe('tools/list', () => {
       required: ['id'],
       additionalProperties: false,
     })
-    expect(Object.keys(unpublish?.outputSchema?.properties ?? {})).toEqual(['outcome', 'entry'])
+    expect(Object.keys(unpublish?.outputSchema?.properties ?? {})).toEqual([
+      'outcome',
+      'entry',
+      'children',
+    ])
     const publishTool = tools.find((tool) => tool.name === 'publish')
     expect(publishTool?.inputSchema.required).toEqual(['id', 'version'])
     for (const operation of OPERATIONS) {

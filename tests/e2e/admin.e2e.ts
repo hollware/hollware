@@ -959,6 +959,49 @@ test('the owner reads the activity log: what was done, by whom, and the detail o
   await shot(owner, 'activity-filtered')
 })
 
+test('the owner nests the pages of a help center, and moves them in the tree with the keyboard and by dragging', async () => {
+  for (const [slug, title, parent] of [
+    ['facturacion', 'Facturación', null],
+    ['pagos', 'Pagos', 'facturacion'],
+    ['tarjetas', 'Tarjetas', 'facturacion'],
+  ] as const) {
+    await owner.goto(
+      `/admin/entries/new?collection=help&locale=es${parent === null ? '' : `&parent=${parent}`}`,
+    )
+    await owner.getByLabel('Title').fill(title)
+    await owner.getByLabel('Slug').fill(slug)
+    await owner.getByRole('button', { name: 'Create the draft' }).click()
+    await expect(owner.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
+  }
+  await expect(owner.getByRole('navigation', { name: 'Where you are' })).toContainText(
+    'Facturación',
+  )
+
+  await owner.goto('/admin/entries?collection=help&locale=es')
+  const tree = owner.getByRole('tree', { name: 'Entries as a tree' })
+  const order = () =>
+    tree
+      .getByRole('treeitem')
+      .evaluateAll((items) =>
+        items.map(
+          (item) => `${item.getAttribute('aria-level')} ${item.querySelector('a')?.textContent}`,
+        ),
+      )
+      .catch(() => [])
+  await expect.poll(order).toEqual(['1 Facturación', '2 Pagos', '2 Tarjetas'])
+  await expectAccessible(owner)
+  await shot(owner, 'entries-tree')
+
+  await tree.getByRole('button', { name: 'Move Tarjetas' }).click()
+  await owner.getByRole('menuitem', { name: 'Move up' }).click()
+  await expect.poll(order).toEqual(['1 Facturación', '2 Tarjetas', '2 Pagos'])
+
+  await tree.locator('[data-slug="pagos"]').dragTo(tree.locator('[data-slug="facturacion"]'), {
+    targetPosition: { x: 80, y: 2 },
+  })
+  await expect.poll(order).toEqual(['1 Pagos', '1 Facturación', '2 Tarjetas'])
+})
+
 test('the owner switches the admin to Spanish from the person menu, and it stays Spanish', async () => {
   await owner.goto('/admin/')
   await expect(owner.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()

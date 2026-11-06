@@ -182,6 +182,23 @@ export function installReadApi(app: Hono<GatewayEnv>, options: ReadApiOptions): 
     }),
   )
   app.get(
+    '/v1/resolve',
+    readRoute(async (c) => {
+      const preview = previewOf(c)
+      return answer(
+        c,
+        await options
+          .read(c.env)
+          .resolvePath(
+            c.get('site'),
+            c.req.query('path') ?? '',
+            preview === undefined ? {} : { preview },
+          ),
+        { preview: preview !== undefined },
+      )
+    }),
+  )
+  app.get(
     '/v1/search',
     readRoute(async (c) => {
       const query = c.req.query()
@@ -332,6 +349,19 @@ export function openApiDocument(): object {
           ],
           responses: {
             '200': ok('The old paths of entries that moved, and where each goes now'),
+            ...common,
+          },
+        },
+      },
+      '/v1/resolve': {
+        get: {
+          operationId: 'resolve_path',
+          parameters: [param('path', 'query', true), param('preview', 'query', false)],
+          responses: {
+            '200': ok(
+              'The entry a path of the site names, or where it is now when it moved (redirect)',
+            ),
+            '404': { description: 'No entry has that path' },
             ...common,
           },
         },

@@ -34,5 +34,6 @@
   "0032_roles_and_invitations.sql": "04bf87218f32ff23f32bfd8f940d4eb3d2a11e7bc99f1f7fcc8fdbe8039cd556",
   "0033_media_files.sql": "5d1b66d44b249452991cd816a2658b485e08563f8b1d843ac66f257a5d0c667e",
   "0034_uploads.sql": "a0a2c2d3bd216b782c500ad8a29cd3b1fb5828e7214fbcbc5fdaa3258f2a1aa8",
-  "0035_upload_claims.sql": "44e71195a421eb76209031a3698b248bac1d411cb13da1c2dd62f14fcb86436b"
+  "0035_upload_claims.sql": "44e71195a421eb76209031a3698b248bac1d411cb13da1c2dd62f14fcb86436b",
+  "0036_entry_tree.sql": "b202ae5a518d096433f7f13fdfecf6a3b32a144969d1271b9edcc2b7be37d509"
 }

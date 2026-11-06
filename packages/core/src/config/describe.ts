@@ -46,6 +46,7 @@ function describeCollection(
             orderBy: collection.navigation.orderBy,
           },
         }),
+    ...(collection.nesting === null ? {} : { nesting: { maxDepth: collection.nesting.maxDepth } }),
   }
 }
 

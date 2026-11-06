@@ -118,6 +118,9 @@ export const es: Messages = {
           : `${n} publicadas o programadas: despublícalas primero`,
       not_trashed: (n: number) =>
         n === 1 ? '1 no estaba en la papelera' : `${n} no estaban en la papelera`,
+      has_children: (n: number) => `${n} con hijas: muévelas u ocúpate de ellas primero`,
+      parent_in_trash: (n: number) =>
+        `${n} dentro de una entrada en la papelera: restáurala primero`,
       failed: (n: number) => (n === 1 ? '1 falló' : `${n} fallaron`),
     },
     publish: (n: number) => `Publicar ${n}`,
@@ -231,6 +234,28 @@ export const es: Messages = {
     onSite: (title: string) => `${title} en el sitio`,
     truncated: (most: number) =>
       `Las primeras ${most} entradas: filtra la lista por idioma o estado para ver las demás.`,
+    tree: {
+      label: 'Entradas en árbol',
+      toggle: (title: string) => `Abrir o cerrar ${title}`,
+      actions: (title: string) => `Mover ${title}`,
+      moveUp: 'Subir',
+      moveDown: 'Bajar',
+      indent: 'Dentro de la de arriba',
+      outdent: 'Fuera, junto a su padre',
+      addChild: 'Nueva entrada dentro',
+      inLocale: (locale: string) =>
+        `El árbol de ${locale}. Arrastra una entrada para moverla, con sus hijas.`,
+      notMoved: 'No se movió',
+      reasons: {
+        not_nested: 'La colección no es anidada.',
+        missing: 'La entrada en la que iría ya no está.',
+        cycle: 'Una entrada no puede ir dentro de sí misma ni de una de sus hijas.',
+        too_deep: 'Quedaría más profunda de lo que la colección permite.',
+        unpublished: 'Una entrada publicada no puede ir dentro de una que no lo está.',
+        taken: 'Otra entrada tiene ese slug.',
+        conflict: 'Alguien la cambió mientras tanto: el árbol ya está al día.',
+      },
+    },
   },
   newEntry: {
     title: 'Nueva entrada',
@@ -246,6 +271,7 @@ export const es: Messages = {
     notCreated: 'No se creó',
     inTrash:
       'Una entrada en la papelera tiene este slug o esta traducción: restáurala desde la papelera de las entradas.',
+    inside: 'Va dentro de ',
   },
   history: {
     title: 'Historial de la entrada',
@@ -325,6 +351,10 @@ export const es: Messages = {
     moved: 'La URL cambió',
     notMoved: 'La URL no cambió',
     slugTaken: 'Otra entrada de esta colección e idioma ya tiene ese slug.',
+    parent: 'Dentro de',
+    parentHelp: 'La entrada en la que va; sus hijas se mueven con ella.',
+    atRoot: 'En la raíz',
+    addChild: 'Nueva entrada dentro',
     publishes: (at: string) => `se publica el ${at}`,
     version: (version: number) => `v${version}`,
     unsaved: 'sin guardar',
@@ -412,6 +442,8 @@ export const es: Messages = {
     trashed: 'Movida a la papelera',
     trashedBody: 'Restáurala desde la papelera, en la lista de entradas.',
     notTrashed: 'No se movió a la papelera',
+    hasChildren: (names: string) =>
+      `Tiene entradas dentro (${names}): muévelas, o despublícalas o envíalas a la papelera, primero.`,
   },
   reviews: {
     title: 'Revisiones',
@@ -527,6 +559,11 @@ export const es: Messages = {
     tagsHelp: 'Una lista de textos.',
     newestFirst: 'Más nuevas primero según',
     newestFirstHelp: 'Una fecha; si no, la primera publicación.',
+    nesting: 'Entradas anidadas',
+    nestingHelp:
+      'Una entrada puede ir dentro de otra, como las páginas de un centro de ayuda: su ruta lleva los slugs de sus padres, y el sitio las muestra como un árbol.',
+    maxDepth: 'Niveles como máximo',
+    maxDepthHelp: 'De 2 a 10. No puede quedar por debajo de la entrada más profunda que haya.',
     rules: 'Reglas',
     addRule: 'Agregar una regla',
     rulesNote:

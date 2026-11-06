@@ -38,6 +38,7 @@ export function collectionPreset(
     maxMarkdownBytes: null,
     styleGuide: null,
     navigation: null,
+    nesting: null,
   }
   switch (preset) {
     case 'empty':

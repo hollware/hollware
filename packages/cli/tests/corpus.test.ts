@@ -60,7 +60,7 @@ describe('readCorpus', () => {
     })
   })
 
-  it('reports a Markdown file elsewhere as skipped', () => {
+  it('reads a folder below the locale as the parent of its files, and skips Markdown elsewhere', () => {
     const root = temp.make({
       'README.md': 'readme',
       'blog/notes.md': 'notes',
@@ -70,8 +70,11 @@ describe('readCorpus', () => {
 
     const corpus = readCorpus(root)
 
-    expect(corpus.files.map((file) => file.path)).toEqual(['blog/en/ok.md'])
-    expect(corpus.skipped).toEqual(['README.md', 'blog/en/deep/post.md', 'blog/notes.md'])
+    expect(corpus.files.map((file) => [file.path, file.slug, file.parent])).toEqual([
+      ['blog/en/ok.md', 'ok', undefined],
+      ['blog/en/deep/post.md', 'post', 'deep'],
+    ])
+    expect(corpus.skipped).toEqual(['README.md', 'blog/notes.md'])
     expect(corpus.problems).toEqual([])
   })
 
@@ -140,5 +143,48 @@ describe('readCorpus', () => {
 
     expect(file?.markdown.codePointAt(0)).toBe(0xfeff)
     expect(file?.markdown.slice(1)).toBe('---\r\ntitle: A\r\n---\r\n\r\nbody  \r\n\r\n')
+  })
+
+  it('puts every parent before its children, level by level, and a slug before a longer one that starts with it', () => {
+    const root = temp.make({
+      'help/es/pagos/reembolsos.md': 'r',
+      'help/es/pagos.md': 'p',
+      'help/es/pagos-2.md': 'p2',
+      'help/es/a/b/c.md': 'c',
+      'help/es/a.md': 'a',
+      'help/es/a/b.md': 'b',
+    })
+
+    expect(readCorpus(root).files.map((file) => file.path)).toEqual([
+      'help/es/a.md',
+      'help/es/pagos.md',
+      'help/es/pagos-2.md',
+      'help/es/a/b.md',
+      'help/es/pagos/reembolsos.md',
+      'help/es/a/b/c.md',
+    ])
+  })
+
+  it('orders siblings by the order file of an export, and gives each its place among them', () => {
+    const root = temp.make({
+      '_order.json': JSON.stringify({ 'help/es': ['b', 'b/z', 'b/y', 'a'] }),
+      'help/es/a.md': 'a',
+      'help/es/b.md': 'b',
+      'help/es/b/y.md': 'y',
+      'help/es/b/z.md': 'z',
+    })
+
+    expect(readCorpus(root).files.map((file) => [file.path, file.position])).toEqual([
+      ['help/es/b.md', 0],
+      ['help/es/a.md', 1],
+      ['help/es/b/z.md', 0],
+      ['help/es/b/y.md', 1],
+    ])
+  })
+
+  it('reports an order file that is not JSON', () => {
+    const root = temp.make({ '_order.json': '{', 'help/es/a.md': 'a' })
+
+    expect(readCorpus(root).problems.map((problem) => problem.path)).toEqual(['_order.json'])
   })
 })

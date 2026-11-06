@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import { REFUSAL_CONTRACT_IDS } from '../../src/contracts/builtin.ts'
-import { uniqueSlugViolation, uniqueTranslationViolation } from '../../src/contracts/unique.ts'
+import {
+  parentViolation,
+  uniqueSlugViolation,
+  uniqueTranslationViolation,
+} from '../../src/contracts/unique.ts'
 
 describe('the unique-slug and unique-translation violations', () => {
   it('name the entry that holds the slug, and how to go on', () => {
@@ -33,5 +37,25 @@ describe('the unique-slug and unique-translation violations', () => {
   it('make the write refused', () => {
     expect(REFUSAL_CONTRACT_IDS).toContain(uniqueSlugViolation('x').contract)
     expect(REFUSAL_CONTRACT_IDS).toContain(uniqueTranslationViolation('x', 'group').contract)
+  })
+})
+
+describe('the violation of a nested entry that cannot go under its parent', () => {
+  it('says why, by the reason, and what to do', () => {
+    expect(parentViolation('too_deep', { parent: 'refunds', maxDepth: 3 })).toStrictEqual({
+      contract: 'entry-parent',
+      severity: 'error',
+      path: '',
+      message:
+        'Under "refunds", the entry would be deeper than the 3 levels the collection allows.',
+      fix: 'Put it under an entry nearer the root, or raise nesting.maxDepth with set_collection.',
+      params: { reason: 'too_deep', parent: 'refunds' },
+    })
+    expect(parentViolation('missing', { parent: 'billing', maxDepth: 3 }).message).toBe(
+      'The collection and locale have no entry "billing" to put it under.',
+    )
+    expect(parentViolation('not_nested', { parent: 'billing', maxDepth: null }).fix).toBe(
+      'Leave parent out, or give the collection nesting with set_collection.',
+    )
   })
 })

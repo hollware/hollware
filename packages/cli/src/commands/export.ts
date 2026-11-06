@@ -18,6 +18,7 @@ import { openSession, ToolFailure, type Session } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
 import { withFrontmatterValues } from '../import/frontmatter-values.ts'
+import { ORDER_FILE, orderOf } from '../import/order.ts'
 import { mcpEndpoint, readToken, redact, withoutToken } from './import.ts'
 
 export const EXPORT_USAGE = [
@@ -174,6 +175,7 @@ async function exportEntries(plan: Plan): Promise<number> {
   const { io, token, directory, root, published, dryRun } = plan
   const out = (message: string): void => io.out(redact(message, token))
   const session = await openSession(plan.endpoint, token, readVersion())
+  let order: Record<string, string[]> | null = null
   let files: ExportFile[]
   let images: ExportImage[]
   let moved: { from: string; to: string; status: 301 }[] = []
@@ -194,6 +196,7 @@ async function exportEntries(plan: Plan): Promise<number> {
     const locales =
       plan.locales === undefined ? [undefined] : chosen('locale', site.locales, plan.locales)
     const listed = await listAll(session, collections, locales, published)
+    order = orderOf(listed)
     files = await readAll(session, listed, published)
     images = await readImages(session, plan, files)
     if (published && (await session.has(listRedirects.name))) moved = await readRedirects(session)
@@ -222,7 +225,7 @@ async function exportEntries(plan: Plan): Promise<number> {
   }
   let written = 0
   for (const file of files) {
-    const target = join(root, file.collection, file.locale, `${file.slug}.md`)
+    const target = join(root, ...file.path.split('/'))
     try {
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, file.markdown, { flag: 'wx' })
@@ -243,6 +246,9 @@ async function exportEntries(plan: Plan): Promise<number> {
         `could not write ${printable(join(imagesShown, image.path))}: ${error instanceof Error ? error.message : String(error)}. Remove ${printable(directory)} and run the export again.`,
       )
     }
+  }
+  if (order !== null) {
+    writeFileSync(join(root, ORDER_FILE), `${JSON.stringify(order, null, 2)}\n`, { flag: 'wx' })
   }
   if (moved.length > 0) {
     writeFileSync(join(root, 'redirects.json'), `${JSON.stringify(moved, null, 2)}\n`, {
@@ -303,6 +309,8 @@ interface Listed {
   locale: string
   slug: string
   path: string
+  slugPath: string
+  position: number | null
 }
 
 async function listAll(
@@ -332,11 +340,11 @@ async function listAll(
           )
         }
         for (const summary of page.entries) {
-          const path = `${summary.collection}/${summary.locale}/${summary.slug}.md`
+          const path = `${summary.collection}/${summary.locale}/${summary.slugPath}.md`
           if (
             !SAFE_SEGMENT.test(summary.collection) ||
             !SAFE_SEGMENT.test(summary.locale) ||
-            !schemas.slug.safeParse(summary.slug).success
+            !summary.slugPath.split('/').every((one) => schemas.slug.safeParse(one).success)
           ) {
             throw new CliError(
               `the server listed an entry that cannot be a file below the directory: ${printable(JSON.stringify(path))}. Nothing was written.`,
@@ -347,6 +355,8 @@ async function listAll(
             locale: summary.locale,
             slug: summary.slug,
             path,
+            slugPath: summary.slugPath,
+            position: summary.position,
           })
         }
         cursor = page.nextCursor ?? undefined

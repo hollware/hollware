@@ -92,6 +92,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     maxMarkdownBytes: 524_288,
     styleGuide: null,
     navigation: null,
+    nesting: null,
   }
 }
 
@@ -224,7 +225,12 @@ export function fakeEntries(entries: readonly StoredEntry[] = []): {
           )
           return found === undefined
             ? null
-            : { id: found.id, status: found.status, translationGroup: found.translationGroup }
+            : {
+                id: found.id,
+                status: found.status,
+                translationGroup: found.translationGroup,
+                ...(found.slugPath === undefined ? {} : { slugPath: found.slugPath }),
+              }
         }),
       )
     },
