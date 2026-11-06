@@ -26,6 +26,8 @@ const PUBLIC_FIELDS = [
   'collection',
   'locale',
   'slug',
+  'parent',
+  'slugPath',
   'translationGroup',
   'frontmatter',
   'tags',

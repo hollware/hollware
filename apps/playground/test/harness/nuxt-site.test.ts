@@ -5,9 +5,12 @@ import {
   agentWith,
   createDraft,
   migrate,
+  moveHelpEntry,
   previewTokenFor,
+  publishHelpTree,
   publishNew,
   seedOwnerToken,
+  type Agent,
 } from './support.ts'
 import {
   createNuxtHarness,
@@ -27,6 +30,7 @@ function cookie(token: string) {
 
 let draftId = ''
 let publishedId = ''
+let helpAgent: Agent | undefined
 
 const server = createNuxtHarness()
 
@@ -34,6 +38,8 @@ beforeAll(async () => {
   await server.listen()
   await migrate(server)
   const agent = agentWith(server, await seedOwnerToken(server))
+  helpAgent = agent
+  await publishHelpTree(agent)
   publishedId = await publishNew(agent, {
     locale: 'en',
     slug: 'from-draft-to-published',
@@ -218,5 +224,35 @@ describe('a Nuxt site with @hollware/nuxt', () => {
 
     expect(answer.status).toBe(404)
     expect(await answer.text()).not.toContain('From draft to published')
+  })
+})
+
+describe('a help center of nested entries with @hollware/nuxt', () => {
+  it('renders an entry three levels deep with its breadcrumbs and the tree open on its branch', async () => {
+    const page = await nuxtFetch(server, '/ayuda/facturacion/pagos/reembolsos/')
+    const html = await page.text()
+
+    expect(page.status).toBe(200)
+    expect(html).toMatch(/<h1[^>]*>Reembolsos<\/h1>/)
+    const breadcrumbs = html.match(/<nav aria-label="Breadcrumbs">.*?<\/nav>/s)?.[0] ?? ''
+    expect(breadcrumbs.match(/href="[^"]+"/g)).toEqual([
+      'href="/ayuda/facturacion/"',
+      'href="/ayuda/facturacion/pagos/"',
+    ])
+    expect(breadcrumbs).toContain('<span aria-current="page">Reembolsos</span>')
+    expect(html).toMatch(/<details open[^>]*><summary><a [^>]*href="\/ayuda\/facturacion\/pagos\/"/)
+    expect(html).toMatch(/<a aria-current="page" href="\/ayuda\/facturacion\/pagos\/reembolsos\/"/)
+  })
+
+  it('answers the old path of an entry whose parent moved with a 301 to where it is now', async () => {
+    if (helpAgent === undefined) throw new Error('no agent')
+    await moveHelpEntry(helpAgent, 'pagos', 'cuenta')
+
+    const old = await nuxtFetch(server, '/ayuda/facturacion/pagos/reembolsos/', MANUAL)
+
+    expect([old.status, old.headers.get('location')]).toEqual([
+      301,
+      '/ayuda/cuenta/pagos/reembolsos/',
+    ])
   })
 })

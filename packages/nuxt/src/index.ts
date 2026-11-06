@@ -52,6 +52,7 @@ export interface ModuleOptions {
 }
 
 export type { PageEntry } from './runtime/types.ts'
+export type { NavigationEntry, NavigationGroup } from '@hollware/client'
 
 export const name = '@hollware/nuxt'
 
@@ -61,6 +62,7 @@ const ROUTES = [
   ['/_hollware/entry/:collection/:locale/:slug', 'entry'],
   ['/_hollware/translations/:collection/:group', 'translations'],
   ['/_hollware/navigation/:collection', 'navigation'],
+  ['/_hollware/page', 'page'],
 ] as const
 
 export default defineNuxtModule<ModuleOptions>({
@@ -94,6 +96,7 @@ export default defineNuxtModule<ModuleOptions>({
         'useHollwareEntry',
         'useHollwareEntries',
         'useHollwareNavigation',
+        'useHollwarePage',
         'useHollwareSite',
         'useHollwareTags',
         'useHollwareTranslations',

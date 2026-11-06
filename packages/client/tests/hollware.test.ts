@@ -91,6 +91,13 @@ function fakeReader(missing: readonly string[] = []) {
         ],
       }
     },
+    async resolvePath(...args) {
+      calls.push(['resolve', ...args])
+      const where = { collection: 'blog', locale: 'en', slug: 'hello', path: '/help/start/hello/' }
+      if (args[1] === '/help/start/hello/') return { outcome: 'ok', ...where }
+      if (args[1] === '/help/hello/') return { outcome: 'redirect', ...where }
+      return { outcome: 'not_found' }
+    },
     async describeSite(...args) {
       calls.push(['describe', ...args])
       return { outcome: 'ok', site: SITE }
@@ -193,6 +200,8 @@ describe('createHollware', () => {
         collection: 'blog',
         locale: 'en',
         slug: 'hello',
+        parent: null,
+        slugPath: 'hello',
         translationGroup: 'g1',
         frontmatter: { title: 'hello' },
         tags: ['a'],
@@ -265,6 +274,8 @@ describe('createHollware', () => {
         collection: 'blog',
         locale: 'en',
         slug: 'one',
+        parent: null,
+        slugPath: 'one',
         translationGroup: 'g1',
         frontmatter: { title: 'one' },
         tags: ['a'],
@@ -345,5 +356,38 @@ describe('hollwareBinding', () => {
       'Hollware: the Worker has no service binding HOLLWARE to the Hollware entrypoint: add it to services in wrangler.jsonc.',
     )
     expect(() => hollwareBinding({}, 'CMS')).toThrow('no service binding CMS')
+  })
+})
+
+describe('getPage', () => {
+  it('reads the entry a path names, with the preview of the request', async () => {
+    const { reader, calls } = fakeReader()
+    const hollware = createHollware({ site: 's', reader })
+    const request = new Request('https://site.test/help/start/hello/', {
+      headers: { cookie: `hollware_preview=${TOKEN}` },
+    })
+
+    const answer = await hollware.getPage('/help/start/hello/', { request })
+
+    expect(answer.outcome === 'ok' ? [answer.entry.slug, answer.preview] : answer).toEqual([
+      'hello',
+      true,
+    ])
+    expect(calls.slice(0, 2)).toEqual([
+      ['resolve', 's', '/help/start/hello/', { preview: TOKEN }],
+      ['get', 's', 'blog', 'hello', 'en', { formats: ['document'], preview: TOKEN }],
+    ])
+  })
+
+  it('answers where the entry is now for a path it had, and not_found for one no entry has', async () => {
+    const { reader, calls } = fakeReader()
+    const hollware = createHollware({ site: 's', reader })
+
+    expect(await hollware.getPage('/help/hello/')).toEqual({
+      outcome: 'redirect',
+      path: '/help/start/hello/',
+    })
+    expect(await hollware.getPage('/nothing/')).toEqual({ outcome: 'not_found' })
+    expect(calls.map(([kind]) => kind)).toEqual(['resolve', 'resolve'])
   })
 })

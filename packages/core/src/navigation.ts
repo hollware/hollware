@@ -166,7 +166,7 @@ export function arrangeNavigation(input: {
 }
 
 /** Every entry of a navigation, depth first, in the order a sidebar shows them: for previous and next. */
-export function flattenNavigation(navigation: Navigation): NavigationEntry[] {
+export function flattenNavigation(navigation: Pick<Navigation, 'groups'>): NavigationEntry[] {
   const flat: NavigationEntry[] = []
   const walk = (entries: readonly NavigationEntry[]) => {
     for (const entry of entries) {
@@ -179,7 +179,7 @@ export function flattenNavigation(navigation: Navigation): NavigationEntry[] {
 }
 
 /** The entries from the root down to the one with `slug`, itself last: for breadcrumbs. Empty when it is not there. */
-export function trailOf(navigation: Navigation, slug: string): NavigationEntry[] {
+export function trailOf(navigation: Pick<Navigation, 'groups'>, slug: string): NavigationEntry[] {
   const find = (entries: readonly NavigationEntry[]): NavigationEntry[] | null => {
     for (const entry of entries) {
       if (entry.slug === slug) return [entry]

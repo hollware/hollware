@@ -109,6 +109,9 @@ function fakeReader(published: readonly Published[]) {
     async listRedirects() {
       throw new Error('not read')
     },
+    async resolvePath() {
+      throw new Error('not read')
+    },
   }
   return { reader, calls, previews }
 }
@@ -254,6 +257,34 @@ describe('hollwareLiveLoader', () => {
     await loader.loadEntry({ collection: 'blog', filter: { id: 'hello' } })
 
     expect(calls).toEqual(['get playground blog en hello html,document'])
+  })
+})
+
+describe('a nested collection', () => {
+  const NESTED = [
+    { ...post('billing', 'Billing'), slugPath: 'billing' },
+    { ...post('refunds', 'Refunds'), parent: 'billing', slugPath: 'billing/refunds' },
+  ]
+
+  it('gives each entry the path of its slugs as id, for a [...path] route', async () => {
+    const { reader } = fakeReader(NESTED)
+
+    const listed = await createSource({ ...base, reader }).list()
+
+    expect(listed.map((entry) => [entry.id, entry.parent])).toEqual([
+      ['billing', null],
+      ['billing/refunds', 'billing'],
+    ])
+  })
+
+  it('reads an entry by its path, by its last slug, and answers the path it has now', async () => {
+    const { reader, calls } = fakeReader(NESTED)
+    const loader = hollwareLiveLoader({ ...base, reader })
+
+    const entry = await loader.loadEntry({ collection: 'blog', filter: { id: 'old/refunds' } })
+
+    expect(entry && 'id' in entry ? entry.id : entry).toBe('billing/refunds')
+    expect(calls).toEqual(['get playground blog en refunds html,document'])
   })
 })
 

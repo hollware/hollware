@@ -114,6 +114,33 @@ export function useHollwareNavigation(
   })
 }
 
+export interface PageAncestor {
+  readonly slug: string
+  readonly title: string
+  readonly path: string | null
+}
+
+export function useHollwarePage(path: MaybeRefOrGetter<string>, fetching: HollwareFetching = {}) {
+  const event = pageRequest()
+  return useFetch<
+    | { outcome: 'ok'; entry: PageEntry; ancestors: PageAncestor[] }
+    | { outcome: 'redirect'; path: string }
+  >('/_hollware/page', {
+    query: computed(() => ({ path: toValue(path) })),
+    ...fetching,
+    transform: (answer) => {
+      if (answer.outcome === 'ok') recordTags(event, entryTags(answer.entry))
+      return answer
+    },
+    onResponseError: ({ response }) => {
+      if (event === undefined) return
+      for (const cookie of response.headers.getSetCookie()) {
+        appendResponseHeader(event as unknown as H3Event, 'set-cookie', cookie)
+      }
+    },
+  })
+}
+
 export function useHollwareSite(fetching: HollwareFetching = {}) {
   const event = pageRequest()
   return useFetch<Answer<'describeSite'>>('/_hollware/site', {

@@ -2,6 +2,7 @@ export const name = '@hollware/vue'
 
 export {
   createHollware,
+  flattenNavigation,
   hollwareBinding,
   imageOf,
   isPreviewRequest,
@@ -9,6 +10,7 @@ export {
   previewCookieClear,
   previewHeaders,
   previewRedirect,
+  trailOf,
   type CollectionNavigation,
   type EntryAnswer,
   type EntryPage,
@@ -21,6 +23,8 @@ export {
   type NavigationEntry,
   type NavigationGroup,
   type NavigationOptions,
+  type PageAncestor,
+  type PageAnswer,
   type PageDocument,
   type PageEntry,
   type PageImage,
@@ -36,5 +40,6 @@ export {
   useHollwareEntries,
   useHollwareEntry,
   useHollwareNavigation,
+  useHollwarePage,
   type HollwareState,
 } from './composables.ts'

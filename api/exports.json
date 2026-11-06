@@ -52,6 +52,7 @@
       "LoadContext": "type",
       "NavigationEntry": "type",
       "NavigationGroup": "type",
+      "PageAncestor": "type",
       "ReaderOptions": "type",
       "Source": "type",
       "SourceEntry": "type",
@@ -59,6 +60,7 @@
       "Translation": "type",
       "contentNodes": "value",
       "elementOf": "value",
+      "flattenNavigation": "value",
       "hollwareBinding": "value",
       "hollwareLiveLoader": "value",
       "hollwareLoader": "value",
@@ -68,7 +70,8 @@
       "imageOf": "value",
       "loadInto": "value",
       "name": "value",
-      "refusePreview": "value"
+      "refusePreview": "value",
+      "trailOf": "value"
     }
   },
   "@hollware/client": {
@@ -99,12 +102,15 @@
       "OpsClient": "type",
       "OpsClientOptions": "type",
       "PREVIEW_COOKIE": "value",
+      "PageAncestor": "type",
+      "PageAnswer": "type",
       "PageDocument": "type",
       "PageEntry": "type",
       "PageImage": "type",
       "PageSummary": "type",
       "PreviewExchange": "type",
       "ReaderOptions": "type",
+      "ResolvedPath": "type",
       "SearchMode": "type",
       "SearchOptions": "type",
       "SearchPage": "type",
@@ -117,6 +123,7 @@
       "createOpsClient": "value",
       "exchangeHeaders": "value",
       "exchangePreviewLink": "value",
+      "flattenNavigation": "value",
       "hollwareAgentBindingClient": "value",
       "hollwareAgentClient": "value",
       "hollwareBinding": "value",
@@ -130,6 +137,7 @@
       "previewRedirect": "value",
       "previewTokenFromCookie": "value",
       "signWebhook": "value",
+      "trailOf": "value",
       "verifyAgentEvent": "value",
       "verifyWebhook": "value"
     },
@@ -441,6 +449,8 @@
   "@hollware/nuxt": {
     ".": {
       "ModuleOptions": "type",
+      "NavigationEntry": "type",
+      "NavigationGroup": "type",
       "PageEntry": "type",
       "name": "value"
     }
@@ -452,18 +462,25 @@
       "EntryPage": "type",
       "GetEntryOptions": "type",
       "Hollware": "type",
+      "HollwareBreadcrumbs": "value",
+      "HollwareBreadcrumbsProps": "type",
       "HollwareContent": "value",
       "HollwareContentProps": "type",
       "HollwareImage": "value",
       "HollwareImageProps": "type",
+      "HollwareLinkComponent": "type",
       "HollwareOptions": "type",
       "HollwareReader": "type",
+      "HollwareTree": "value",
+      "HollwareTreeProps": "type",
       "ImageAttributes": "type",
       "ListEntriesOptions": "type",
       "NavigationEntry": "type",
       "NavigationGroup": "type",
       "NavigationOptions": "type",
       "PREVIEW_COOKIE": "value",
+      "PageAncestor": "type",
+      "PageAnswer": "type",
       "PageDocument": "type",
       "PageEntry": "type",
       "PageImage": "type",
@@ -471,13 +488,15 @@
       "ReaderOptions": "type",
       "Translation": "type",
       "createHollware": "value",
+      "flattenNavigation": "value",
       "hollwareBinding": "value",
       "imageOf": "value",
       "isPreviewRequest": "value",
       "name": "value",
       "previewCookieClear": "value",
       "previewHeaders": "value",
-      "previewRedirect": "value"
+      "previewRedirect": "value",
+      "trailOf": "value"
     }
   },
   "@hollware/server": {
@@ -578,6 +597,8 @@
       "NavigationGroup": "type",
       "NavigationOptions": "type",
       "PREVIEW_COOKIE": "value",
+      "PageAncestor": "type",
+      "PageAnswer": "type",
       "PageDocument": "type",
       "PageEntry": "type",
       "PageImage": "type",
@@ -586,6 +607,7 @@
       "Translation": "type",
       "createHollware": "value",
       "createHollwarePlugin": "value",
+      "flattenNavigation": "value",
       "hollwareBinding": "value",
       "imageOf": "value",
       "isPreviewRequest": "value",
@@ -594,9 +616,11 @@
       "previewHeaders": "value",
       "previewRedirect": "value",
       "provideHollware": "value",
+      "trailOf": "value",
       "useHollwareEntries": "value",
       "useHollwareEntry": "value",
-      "useHollwareNavigation": "value"
+      "useHollwareNavigation": "value",
+      "useHollwarePage": "value"
     }
   },
   "create-hollware": {

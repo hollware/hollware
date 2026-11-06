@@ -5,16 +5,20 @@ import type {
   listEntries,
   listRedirects,
   Navigation,
+  ResolvedPath,
   search,
 } from '@hollware/core'
 import type * as z from 'zod'
 
 export {
+  flattenNavigation,
   signWebhook,
+  trailOf,
   verifyWebhook,
   type Navigation,
   type NavigationEntry,
   type NavigationGroup,
+  type ResolvedPath,
   type WebhookCheck,
 } from '@hollware/core'
 export {
@@ -40,6 +44,8 @@ export {
   type ImageAttributes,
   type ListEntriesOptions,
   type NavigationOptions,
+  type PageAncestor,
+  type PageAnswer,
   type PageDocument,
   type PageEntry,
   type PageImage,
@@ -86,7 +92,7 @@ export type Format = 'markdown' | 'document' | 'html'
 export type SearchMode = 'fulltext' | 'semantic' | 'hybrid'
 
 /**
- * What a site reads from Hollware: the published content, through the seven read methods. A
+ * What a site reads from Hollware: the published content, through the eight read methods. A
  * service binding to a Hollware Worker already has this shape; `createClient` gives the same over
  * HTTP, so a site can move from one transport to the other without changing a call.
  */
@@ -134,6 +140,19 @@ export interface HollwareReader {
     collection: string,
     options?: { readonly locale?: string },
   ): Promise<Navigation>
+  /**
+   * The published entry a path of the site names, by the routes of its collections: its
+   * collection, locale and slug, to read with `getEntry`. A path the entry had (an old slug, or the
+   * old place of it or of an ancestor) answers `redirect` with the path it has now.
+   */
+  resolvePath(
+    site: string,
+    path: string,
+    options?: {
+      /** A preview token (`hw_prv_…`): drafts are resolved too. */
+      readonly preview?: string
+    },
+  ): Promise<ResolvedPath>
   describeSite(site: string): Promise<Output<typeof describeSite>>
   /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(
@@ -197,6 +216,11 @@ const SHAPES = {
   listEntries: { ok: { entries: 'array' } },
   getTranslations: { ok: { entries: 'array' }, not_found: {} },
   getNavigation: { ok: { collection: 'string', locale: 'string', groups: 'array' } },
+  resolvePath: {
+    ok: { collection: 'string', locale: 'string', slug: 'string', path: 'string' },
+    redirect: { collection: 'string', locale: 'string', slug: 'string', path: 'string' },
+    not_found: {},
+  },
   describeSite: { ok: { site: 'object' } },
   search: { ok: { results: 'array' } },
   listRedirects: { ok: { redirects: 'array' } },
@@ -297,6 +321,8 @@ function httpReader(url: string, token: string, send: (request: Request) => Prom
       get(`${segment(collection)}/translations/${segment(group)}`, SHAPES.getTranslations),
     getNavigation: (_site: string, collection: string, options: { locale?: string } = {}) =>
       get(`${segment(collection)}/navigation`, SHAPES.getNavigation, { locale: options.locale }),
+    resolvePath: (_site: string, path: string, options: { preview?: string } = {}) =>
+      get('resolve', SHAPES.resolvePath, { path }, options.preview),
     describeSite: (_site: string) => get('site', SHAPES.describeSite),
     search: (
       _site: string,
@@ -347,6 +373,7 @@ export function createClient(options: ClientOptions): HollwareReader {
     listEntries: async (...args) => narrow(await reader.listEntries(...args)),
     getTranslations: async (...args) => narrow(await reader.getTranslations(...args)),
     getNavigation: async (...args) => narrow(await reader.getNavigation(...args)),
+    resolvePath: async (...args) => narrow(await reader.resolvePath(...args)),
     describeSite: async (...args) => narrow(await reader.describeSite(...args)),
     search: async (...args) => narrow(await reader.search(...args)),
     listRedirects: async (...args) => narrow(await reader.listRedirects(...args)),

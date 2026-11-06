@@ -111,6 +111,7 @@ export interface Draft {
   readonly locale: 'es' | 'en'
   readonly slug: string
   readonly markdown: string
+  readonly parent?: string
 }
 
 function entryOf(answer: ToolAnswer): { id: string; version: number } {
@@ -166,4 +167,32 @@ export async function previewTokenFor(
     now: new Date(Date.now() - (options.ageSeconds ?? 0) * 1000),
   })
   return token
+}
+
+export async function publishHelpTree(agent: Agent): Promise<void> {
+  const page = (slug: string, title: string, parent?: string) => ({
+    collection: 'help',
+    locale: 'es' as const,
+    slug,
+    markdown: `---\ntitle: ${title}\n---\n\nTexto de ${title}.\n`,
+    ...(parent === undefined ? {} : { parent }),
+  })
+  await publishNew(agent, page('cuenta', 'Cuenta'))
+  await publishNew(agent, page('facturacion', 'Facturación'))
+  await publishNew(agent, page('pagos', 'Pagos', 'facturacion'))
+  await publishNew(agent, page('reembolsos', 'Reembolsos', 'pagos'))
+}
+
+export async function moveHelpEntry(agent: Agent, slug: string, parent: string): Promise<void> {
+  const found = await agent.call('get_entry', { collection: 'help', locale: 'es', slug })
+  const entry: unknown = found.output['entry']
+  if (typeof entry !== 'object' || entry === null) throw new Error(`${slug} is not there`)
+  const moved = await agent.call('move_entry', {
+    id: Reflect.get(entry, 'id'),
+    version: Reflect.get(entry, 'version'),
+    parent,
+  })
+  if (moved.output['outcome'] !== 'moved') {
+    throw new Error(`${slug} did not move: ${JSON.stringify(moved.output)}`)
+  }
 }

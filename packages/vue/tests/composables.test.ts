@@ -101,6 +101,9 @@ function fakeReader(options: { missing?: string[]; failing?: string[] } = {}) {
     async listRedirects() {
       throw new Error('not read')
     },
+    async resolvePath() {
+      throw new Error('not read')
+    },
   }
   return {
     reader,
@@ -142,6 +145,8 @@ describe('useHollwareEntry', () => {
       collection: 'blog',
       locale: 'en',
       slug: 'hello',
+      parent: null,
+      slugPath: 'hello',
       translationGroup: 'g1',
       frontmatter: { title: 'hello' },
       tags: ['a'],

@@ -83,6 +83,10 @@ export interface PageSummary {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  /** In a nested collection, the slug of its parent; `null` at the root and in a flat one. */
+  readonly parent: string | null
+  /** The slugs of its ancestors and its own, joined by `/`: what takes the place of `:slug`. */
+  readonly slugPath: string
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]
@@ -121,7 +125,25 @@ export interface EntryAnswer {
   readonly preview: boolean
   /** With `references`: the published entries each reference field names, in its order. */
   readonly references?: Readonly<Record<string, PageSummary[]>>
+  /** In a nested collection, its ancestors from the root down: for breadcrumbs. */
+  readonly ancestors?: readonly PageAncestor[]
 }
+
+/** An ancestor of a nested entry, as a breadcrumb links to it. */
+export interface PageAncestor {
+  readonly slug: string
+  readonly title: string
+  readonly path: string | null
+}
+
+/**
+ * What `getPage` answers for a path of the site: the entry it names; the path the entry has now,
+ * for a path it had, to answer with a 301; or `not_found`.
+ */
+export type PageAnswer =
+  | ({ readonly outcome: 'ok' } & EntryAnswer)
+  | { readonly outcome: 'redirect'; readonly path: string }
+  | { readonly outcome: 'not_found' }
 
 /** The options of `getEntry`. */
 export interface GetEntryOptions {
@@ -223,6 +245,12 @@ export interface Hollware {
     slug: string,
     options?: GetEntryOptions,
   ): Promise<EntryAnswer | undefined>
+  /**
+   * The entry a path of the site names, by the routes of its collections, with `getEntry`'s
+   * options: the one route a site needs for a nested collection, whose paths have any number of
+   * slugs. A path the entry had answers `redirect` with the path it has now.
+   */
+  getPage(path: string, options?: GetEntryOptions): Promise<PageAnswer>
   /** The published entries of a collection, newest first. */
   listEntries(collection: string, options?: ListEntriesOptions): Promise<EntryPage>
   /** The published entries of a translation group of a collection, one per locale. */
@@ -259,6 +287,8 @@ interface SummaryFields {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  readonly parent: string | null
+  readonly slugPath: string
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]
@@ -273,6 +303,8 @@ function summaryOf(entry: SummaryFields): PageSummary {
     collection: entry.collection,
     locale: entry.locale,
     slug: entry.slug,
+    parent: entry.parent,
+    slugPath: entry.slugPath,
     translationGroup: entry.translationGroup,
     frontmatter: entry.frontmatter,
     tags: entry.tags,
@@ -280,6 +312,12 @@ function summaryOf(entry: SummaryFields): PageSummary {
     updatedAt: entry.updatedAt,
     ...(entry.images === undefined ? {} : { images: entry.images }),
   }
+}
+
+function previewOf(getOptions: GetEntryOptions): string | undefined {
+  return isPreviewToken(getOptions.preview)
+    ? getOptions.preview
+    : previewTokenFromCookie(getOptions.request?.headers.get('cookie'))
 }
 
 /**
@@ -295,11 +333,26 @@ function summaryOf(entry: SummaryFields): PageSummary {
  */
 export function createHollware(options: HollwareOptions): Hollware {
   const { site } = options
-  return {
+  const hollware: Hollware = {
+    async getPage(path, getOptions = {}) {
+      const preview = previewOf(getOptions)
+      const resolved = await readerOf(options).resolvePath(
+        site,
+        path,
+        preview === undefined ? {} : { preview },
+      )
+      if (resolved.outcome === 'not_found') return { outcome: 'not_found' }
+      if (resolved.outcome === 'redirect') return { outcome: 'redirect', path: resolved.path }
+      const answer = await hollware.getEntry(
+        resolved.collection,
+        resolved.locale,
+        resolved.slug,
+        getOptions,
+      )
+      return answer === undefined ? { outcome: 'not_found' } : { outcome: 'ok', ...answer }
+    },
     async getEntry(collection, locale, slug, getOptions = {}) {
-      const preview = isPreviewToken(getOptions.preview)
-        ? getOptions.preview
-        : previewTokenFromCookie(getOptions.request?.headers.get('cookie'))
+      const preview = previewOf(getOptions)
       const answer = await readerOf(options).getEntry(site, collection, slug, locale, {
         formats: ['document'],
         ...(preview === undefined ? {} : { preview }),
@@ -313,6 +366,7 @@ export function createHollware(options: HollwareOptions): Hollware {
           ...(document === undefined ? {} : { document }),
         },
         preview: preview !== undefined,
+        ...(answer.ancestors === undefined ? {} : { ancestors: answer.ancestors }),
         ...(answer.references === undefined
           ? {}
           : {
@@ -369,4 +423,5 @@ export function createHollware(options: HollwareOptions): Hollware {
       return (await readerOf(options).describeSite(site)).site
     },
   }
+  return hollware
 }
