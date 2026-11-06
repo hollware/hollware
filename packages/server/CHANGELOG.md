@@ -1,5 +1,12 @@
 # @hollware/server
 
+## 1.9.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/core@1.9.0
+
 ## 1.8.0
 
 ### Minor Changes

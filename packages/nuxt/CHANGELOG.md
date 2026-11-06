@@ -1,5 +1,13 @@
 # @hollware/nuxt
 
+## 1.9.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.9.0
+  - @hollware/core@1.9.0
+
 ## 1.8.0
 
 ### Minor Changes

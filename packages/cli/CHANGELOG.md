@@ -1,5 +1,16 @@
 # hollware
 
+## 1.9.0
+
+### Minor Changes
+
+- [#114](https://github.com/hollware/hollware/pull/114) [`143d90e`](https://github.com/hollware/hollware/commit/143d90efb5e27c224be945378a9149f4451d219b) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `hollware import --from notion` takes `--sections headings`, for a root that groups its pages under headings rather than under pages: each page below the root takes the heading above it on the root as its section, a heading inside a callout or a column too, and in a nested collection only those pages carry it. `--skip-root` imports the pages below the root and not the root itself, and points a link to the root at the route of the collection without a slug.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/core@1.9.0
+
 ## 1.8.0
 
 ### Minor Changes
