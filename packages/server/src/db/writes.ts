@@ -7,8 +7,11 @@ import { alias } from 'drizzle-orm/sqlite-core'
 import type {
   Actor,
   Clock,
+  EntryParent,
   EntryView,
   InTrash,
+  MoveWrite,
+  NewEntry,
   NewRevision,
   OutboxEvent,
   PublishWrite,
@@ -20,7 +23,7 @@ import type {
 } from '../ports.ts'
 import type { Db } from './d1.ts'
 import { GUARD_FAILED, isGuardFailure, isUniqueViolation } from './errors.ts'
-import { findEntryById, findRevision } from './reads.ts'
+import { descendantRange, findEntryById, findRevision } from './reads.ts'
 import { approvePendingReview, cancelPendingReview, findReview } from './reviews.ts'
 import { dropSchedule, dropUnpublish } from './schedules.ts'
 import { entryFields, toEntry } from './rows.ts'
@@ -160,12 +163,58 @@ function storedRevision(input: {
   }
 }
 
+function parentMoved(db: Db, site: string, parent: EntryParent) {
+  return guardOf(
+    db,
+    site,
+    sql`not exists (select 1 from ${entries} where ${and(
+      eq(entries.id, parent.id),
+      eq(entries.siteId, site),
+      eq(entries.slugPath, parent.slugPath),
+      isNull(entries.deletedAt),
+    )})`,
+  )
+}
+
+function lastPosition(site: string, entry: EntryRef, parentId: string | null) {
+  return sql<number>`(select coalesce(max(${entries.position}) + 1, 0) from ${entries} where ${and(
+    eq(entries.siteId, site),
+    eq(entries.collection, entry.collection),
+    eq(entries.locale, entry.locale),
+    sql`${entries.parentId} is ${parentId}`,
+  )})`
+}
+
+function hasChildren(db: Db, site: string, entryId: string, published: boolean) {
+  return guardOf(
+    db,
+    site,
+    sql`exists (select 1 from "entries" as "child" where "child"."site_id" = ${site} and "child"."parent_id" = ${entryId} and "child"."deleted_at" is null${published ? sql` and "child"."status" = 'published'` : sql``})`,
+  )
+}
+
+async function guarded<Result>(
+  run: Promise<Result>,
+): Promise<{ readonly done: Result } | { readonly guardFailed: true }> {
+  try {
+    return { done: await run }
+  } catch (error) {
+    if (isGuardFailure(error)) return { guardFailed: true }
+    throw error
+  }
+}
+
 export async function createEntry(
   db: Db,
   clock: Clock,
   site: string,
-  entry: EntryRef & { readonly translationGroup: string | null; readonly revision: NewRevision },
-): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal | InTrash> {
+  entry: NewEntry,
+): Promise<
+  | { readonly outcome: 'saved'; readonly view: EntryView }
+  | WriteRefusal
+  | InTrash
+  | { readonly outcome: 'parent_moved' }
+> {
   const now = clock.now().toISOString()
   const entryId = newId('ent')
   const revisionId = newId('rev')
@@ -173,52 +222,50 @@ export async function createEntry(
   const refusal = tooLarge(row)
   if (refusal !== null) return refusal
   const tags = distinctTags(entry.revision.tags)
-  const result = await attempt(
-    db.batch([
-      db.insert(entries).values({
-        id: entryId,
-        siteId: site,
-        collection: entry.collection,
-        locale: entry.locale,
-        slug: entry.slug,
-        translationGroup: entry.translationGroup,
-        status: 'draft',
-        version: 1,
-        headRev: revisionId,
-        publishedRev: null,
-        publishedAt: null,
-        publishedSortKey: null,
-        scheduledAt: null,
-        createdAt: now,
-        updatedAt: now,
-      }),
-      db.insert(revisions).values(row),
-      ...insertTags(db, { site, revisionId, tags, now }),
-    ]),
-    () => holderOfNewEntry(db, site, entry),
+  const parent = entry.parent ?? null
+  const slugPath = parent === null ? entry.slug : `${parent.slugPath}/${entry.slug}`
+  const insert = db.insert(entries).values({
+    id: entryId,
+    siteId: site,
+    collection: entry.collection,
+    locale: entry.locale,
+    slug: entry.slug,
+    parentId: parent?.id ?? null,
+    position: entry.nested === true ? lastPosition(site, entry, parent?.id ?? null) : null,
+    slugPath,
+    translationGroup: entry.translationGroup,
+    status: 'draft',
+    version: 1,
+    headRev: revisionId,
+    publishedRev: null,
+    publishedAt: null,
+    publishedSortKey: null,
+    scheduledAt: null,
+    createdAt: now,
+    updatedAt: now,
+  })
+  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] =
+    parent === null
+      ? [
+          insert,
+          db.insert(revisions).values(row),
+          ...insertTags(db, { site, revisionId, tags, now }),
+        ]
+      : [
+          parentMoved(db, site, parent),
+          insert,
+          db.insert(revisions).values(row),
+          ...insertTags(db, { site, revisionId, tags, now }),
+        ]
+  const outcome = await guarded(
+    attempt(db.batch(statements), () => holderOfNewEntry(db, site, entry)),
   )
+  if ('guardFailed' in outcome) return { outcome: 'parent_moved' }
+  const result = outcome.done
   if ('taken' in result) return result.taken
-  return {
-    outcome: 'saved',
-    view: {
-      entry: {
-        id: entryId,
-        collection: entry.collection,
-        locale: entry.locale,
-        slug: entry.slug,
-        translationGroup: entry.translationGroup,
-        status: 'draft',
-        version: 1,
-        headRevision: revisionId,
-        publishedRevision: null,
-        publishedAt: null,
-        scheduledAt: null,
-        deletedAt: null,
-        updatedAt: now,
-      },
-      revision: storedRevision({ id: revisionId, entryId, now, revision: entry.revision, tags }),
-    },
-  }
+  const stored = await findEntryById(db, site, entryId, 'head')
+  if (stored === null) throw new Error(`The entry ${entryId} is not there after its creation`)
+  return { outcome: 'saved', view: stored }
 }
 
 export async function appendRevision(
@@ -571,7 +618,9 @@ export async function unpublish(
   clock: Clock,
   site: string,
   write: { readonly entryId: string; readonly actor: Actor; readonly event?: OutboxEvent | null },
-): Promise<{ readonly outcome: 'unpublished'; readonly view: EntryView } | WriteRefusal> {
+): Promise<
+  { readonly outcome: 'unpublished' | 'has_children'; readonly view: EntryView } | WriteRefusal
+> {
   const now = clock.now().toISOString()
   const row = publicationRow({
     site,
@@ -582,33 +631,37 @@ export async function unpublish(
   })
   const refusal = tooLarge(row)
   if (refusal !== null) return refusal
-  await db.batch([
-    insertUnpublishIfPublished(db, row),
-    insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.unpublished', now, [
-      eq(entries.status, 'published'),
-    ]),
-    dropSchedule(db, site, write.entryId),
-    dropUnpublish(db, site, write.entryId),
-    db
-      .update(entries)
-      .set({
-        status: 'draft',
-        scheduledAt: null,
-        publishedRev: null,
-        publishedSortKey: null,
-        version: sql`${entries.version} + 1`,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(entries.id, write.entryId),
-          eq(entries.siteId, site),
-          inArray(entries.status, ['published', 'scheduled']),
+  const done = await guarded(
+    db.batch([
+      hasChildren(db, site, write.entryId, true),
+      insertUnpublishIfPublished(db, row),
+      insertEventWhere(db, site, write.entryId, write.event ?? null, 'entry.unpublished', now, [
+        eq(entries.status, 'published'),
+      ]),
+      dropSchedule(db, site, write.entryId),
+      dropUnpublish(db, site, write.entryId),
+      db
+        .update(entries)
+        .set({
+          status: 'draft',
+          scheduledAt: null,
+          publishedRev: null,
+          publishedSortKey: null,
+          version: sql`${entries.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(entries.id, write.entryId),
+            eq(entries.siteId, site),
+            inArray(entries.status, ['published', 'scheduled']),
+          ),
         ),
-      ),
-  ])
+    ]),
+  )
   const view = await findEntryById(db, site, write.entryId, 'head')
-  return view === null ? { outcome: 'not_found' } : { outcome: 'unpublished', view }
+  if (view === null) return { outcome: 'not_found' }
+  return { outcome: 'guardFailed' in done ? 'has_children' : 'unpublished', view }
 }
 
 export async function trashEntry(
@@ -617,27 +670,30 @@ export async function trashEntry(
   site: string,
   write: { readonly entryId: string; readonly expectedVersion: number },
 ): Promise<
-  | { readonly outcome: 'trashed' | 'not_draft'; readonly view: EntryView }
+  | { readonly outcome: 'trashed' | 'not_draft' | 'has_children'; readonly view: EntryView }
   | Extract<WriteRefusal, { readonly outcome: 'conflict' | 'not_found' }>
 > {
   const now = clock.now().toISOString()
   const trashable = [eq(entries.status, 'draft'), isNull(entries.deletedAt)]
-  const [, updated] = await db.batch([
-    cancelPendingReview(db, site, write.entryId, write.expectedVersion, now, trashable),
-    db
-      .update(entries)
-      .set({ deletedAt: now, version: sql`${entries.version} + 1`, updatedAt: now })
-      .where(
-        and(
-          eq(entries.id, write.entryId),
-          eq(entries.siteId, site),
-          eq(entries.version, write.expectedVersion),
-          ...trashable,
-        ),
-      )
-      .returning({ id: entries.id }),
-  ])
-  if (updated.length === 0) {
+  const done = await guarded(
+    db.batch([
+      hasChildren(db, site, write.entryId, false),
+      cancelPendingReview(db, site, write.entryId, write.expectedVersion, now, trashable),
+      db
+        .update(entries)
+        .set({ deletedAt: now, version: sql`${entries.version} + 1`, updatedAt: now })
+        .where(
+          and(
+            eq(entries.id, write.entryId),
+            eq(entries.siteId, site),
+            eq(entries.version, write.expectedVersion),
+            ...trashable,
+          ),
+        )
+        .returning({ id: entries.id }),
+    ]),
+  )
+  if ('guardFailed' in done || done.done[2].length === 0) {
     const view = await findEntryById(db, site, write.entryId, 'head')
     if (view === null) return { outcome: 'not_found' }
     if (view.entry.version !== write.expectedVersion) {
@@ -647,7 +703,7 @@ export async function trashEntry(
         headRevision: view.entry.headRevision,
       }
     }
-    return { outcome: 'not_draft', view }
+    return { outcome: 'guardFailed' in done ? 'has_children' : 'not_draft', view }
   }
   const view = await findTrashed(db, site, write.entryId)
   if (view === null)
@@ -661,18 +717,31 @@ export async function restoreEntry(
   site: string,
   entryId: string,
 ): Promise<
-  | { readonly outcome: 'restored' | 'not_trashed'; readonly view: EntryView }
+  | { readonly outcome: 'restored' | 'not_trashed' | 'parent_in_trash'; readonly view: EntryView }
   | { readonly outcome: 'not_found' }
 > {
   const now = clock.now().toISOString()
   const updated = await db
     .update(entries)
     .set({ deletedAt: null, version: sql`${entries.version} + 1`, updatedAt: now })
-    .where(and(eq(entries.id, entryId), eq(entries.siteId, site), isNotNull(entries.deletedAt)))
+    .where(
+      and(
+        eq(entries.id, entryId),
+        eq(entries.siteId, site),
+        isNotNull(entries.deletedAt),
+        sql`("entries"."parent_id" is null or exists (select 1 from "entries" as "parent" where "parent"."id" = "entries"."parent_id" and "parent"."site_id" = ${site} and "parent"."deleted_at" is null))`,
+      ),
+    )
     .returning({ id: entries.id })
+  if (updated.length > 0) {
+    const view = await findEntryById(db, site, entryId, 'head')
+    if (view === null) throw new Error(`Entry ${entryId} is not there after its restoring`)
+    return { outcome: 'restored', view }
+  }
   const view = await findEntryById(db, site, entryId, 'head')
-  if (view === null) return { outcome: 'not_found' }
-  return { outcome: updated.length === 0 ? 'not_trashed' : 'restored', view }
+  if (view !== null) return { outcome: 'not_trashed', view }
+  const trashed = await findTrashed(db, site, entryId)
+  return trashed === null ? { outcome: 'not_found' } : { outcome: 'parent_in_trash', view: trashed }
 }
 
 async function findTrashed(db: Db, site: string, entryId: string): Promise<EntryView | null> {
@@ -730,69 +799,82 @@ export async function moveEntry(
   db: Db,
   clock: Clock,
   site: string,
-  write: {
-    readonly entryId: string
-    readonly expectedVersion: number
-    readonly slug: string
-    readonly redirect: boolean
-    readonly event: OutboxEvent | null
-  },
-): Promise<{ readonly outcome: 'moved'; readonly view: EntryView } | WriteRefusal> {
+  write: MoveWrite,
+): Promise<
+  | { readonly outcome: 'moved'; readonly view: EntryView }
+  | WriteRefusal
+  | { readonly outcome: 'parent_moved' }
+> {
   const now = clock.now().toISOString()
+  const before = await findEntryById(db, site, write.entryId, 'head')
+  if (before === null) return { outcome: 'not_found' }
+  const { entry } = before
+  if (entry.version !== write.expectedVersion) {
+    return { outcome: 'conflict', currentVersion: entry.version, headRevision: entry.headRevision }
+  }
+  const renamed = write.slug !== entry.slug
+  const holderOfSlug = async (): Promise<Taken | null> => {
+    const [holder] = await db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.siteId, site),
+          eq(entries.collection, entry.collection),
+          eq(entries.locale, entry.locale),
+          eq(entries.slug, write.slug),
+          ne(entries.id, write.entryId),
+        ),
+      )
+    return holder === undefined ? null : { outcome: 'taken', field: 'slug', by: holder.id }
+  }
+  if (renamed) {
+    const taken = await holderOfSlug()
+    if (taken !== null) return taken
+  }
   const atVersion = and(
     eq(entries.id, write.entryId),
     eq(entries.siteId, site),
     eq(entries.version, write.expectedVersion),
     isNull(entries.deletedAt),
   )
-  const before = await findEntryById(db, site, write.entryId, 'head')
-  if (before === null) return { outcome: 'not_found' }
-  if (before.entry.version !== write.expectedVersion) {
-    return {
-      outcome: 'conflict',
-      currentVersion: before.entry.version,
-      headRevision: before.entry.headRevision,
-    }
-  }
-  const [holder] = await db
-    .select({ id: entries.id })
-    .from(entries)
-    .where(
-      and(
-        eq(entries.siteId, site),
-        eq(entries.collection, before.entry.collection),
-        eq(entries.locale, before.entry.locale),
-        eq(entries.slug, write.slug),
-      ),
-    )
-  if (holder !== undefined) return { outcome: 'taken', field: 'slug', by: holder.id }
-  const row = {
+  const sameRef = [
+    eq(entries.siteId, site),
+    eq(entries.collection, entry.collection),
+    eq(entries.locale, entry.locale),
+  ]
+  const redirect = {
     id: newId('rdr'),
     siteId: site,
-    collection: before.entry.collection,
-    locale: before.entry.locale,
-    fromSlug: before.entry.slug,
+    collection: entry.collection,
+    locale: entry.locale,
+    fromSlug: entry.slug,
     entryId: write.entryId,
     createdAt: now,
     updatedAt: now,
   }
   const statements: BatchItem<'sqlite'>[] = [
-    db
-      .delete(redirects)
-      .where(
-        and(
-          eq(redirects.siteId, site),
-          eq(redirects.collection, before.entry.collection),
-          eq(redirects.locale, before.entry.locale),
-          eq(redirects.fromSlug, write.slug),
-          sql`exists (select 1 from ${entries} where ${atVersion})`,
-        ),
-      ),
-    ...(write.redirect
+    guardOf(db, site, sql`not exists (select 1 from ${entries} where ${atVersion})`),
+    ...(write.parent === null ? [] : [parentMoved(db, site, write.parent)]),
+    ...(renamed
+      ? [
+          db
+            .delete(redirects)
+            .where(
+              and(
+                eq(redirects.siteId, site),
+                eq(redirects.collection, entry.collection),
+                eq(redirects.locale, entry.locale),
+                eq(redirects.fromSlug, write.slug),
+              ),
+            ),
+        ]
+      : []),
+    ...(renamed && write.redirect
       ? [
           db
             .insert(redirects)
-            .select(sql`select ${valuesOf(redirects, row)} from ${entries} where ${atVersion}`)
+            .values(redirect)
             .onConflictDoUpdate({
               target: [
                 redirects.siteId,
@@ -804,26 +886,66 @@ export async function moveEntry(
             }),
         ]
       : []),
-    insertEventWhere(db, site, write.entryId, write.event, 'entry.published', now, [
-      eq(entries.version, write.expectedVersion),
-      eq(entries.status, 'published'),
-    ]),
+    ...write.events.map(({ entryId, event }) =>
+      insertEventWhere(db, site, entryId, event, 'entry.published', now, [
+        eq(entries.status, 'published'),
+      ]),
+    ),
+    ...(write.subtree === null
+      ? []
+      : [
+          db
+            .update(entries)
+            .set({
+              slugPath: sql`${write.subtree.to} || substr(${entries.slugPath}, ${write.subtree.from.length + 1})`,
+              updatedAt: now,
+            })
+            .where(and(...sameRef, descendantRange(write.subtree.from))),
+        ]),
+    ...(write.positions.length === 0
+      ? []
+      : [
+          db
+            .update(entries)
+            .set({
+              position: sql`case ${entries.id} ${sql.join(
+                write.positions.map(({ id, position }) => sql`when ${id} then ${position}`),
+                sql` `,
+              )} else ${entries.position} end`,
+            })
+            .where(
+              and(
+                ...sameRef,
+                inArray(
+                  entries.id,
+                  write.positions.map(({ id }) => id),
+                ),
+              ),
+            ),
+        ]),
     db
       .update(entries)
-      .set({ slug: write.slug, version: sql`${entries.version} + 1`, updatedAt: now })
+      .set({
+        slug: write.slug,
+        parentId: write.parent?.id ?? null,
+        slugPath: write.slugPath,
+        position: write.position,
+        version: sql`${entries.version} + 1`,
+        updatedAt: now,
+      })
       .where(atVersion),
   ]
   const [first, ...rest] = statements
-  if (first !== undefined) await db.batch([first, ...rest])
+  if (first === undefined) throw new Error('A move has no statements')
+  const done = await guarded(attempt(db.batch([first, ...rest]), holderOfSlug))
+  if ('guardFailed' in done) {
+    const why = await whyNothingChanged(db, site, write.entryId)
+    if (why.outcome === 'not_found' || why.currentVersion !== write.expectedVersion) return why
+    return { outcome: 'parent_moved' }
+  }
+  if ('taken' in done.done) return done.done.taken
   const view = await findEntryById(db, site, write.entryId, 'head')
   if (view === null) return { outcome: 'not_found' }
-  if (view.entry.version !== write.expectedVersion + 1 || view.entry.slug !== write.slug) {
-    return {
-      outcome: 'conflict',
-      currentVersion: view.entry.version,
-      headRevision: view.entry.headRevision,
-    }
-  }
   return { outcome: 'moved', view }
 }
 
@@ -845,6 +967,7 @@ export async function listRedirects(
       from: redirects.fromSlug,
       entryId: redirects.entryId,
       to: entries.slug,
+      toSlugPath: entries.slugPath,
       createdAt: redirects.createdAt,
     })
     .from(redirects)

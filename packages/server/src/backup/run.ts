@@ -1,6 +1,6 @@
 import type { ResolvedSite } from '@hollware/core'
 import { widthsOf } from '../media/cloudflare.ts'
-import { entryPath } from '../ops/event.ts'
+import { entryPath, movedFrom } from '../ops/event.ts'
 import type { Backups } from '../ports.ts'
 
 export const BACKUP_HOUR_UTC = 3
@@ -29,6 +29,8 @@ export interface BackupEntry {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  readonly slugPath: string
+  readonly position: number | null
   readonly status: string
   readonly translationGroup: string | null
   readonly deletedAt: string | null
@@ -142,18 +144,22 @@ async function redirectsOf(
 ): Promise<BackupRedirect[]> {
   const { results } = await db
     .prepare(
-      `SELECT r.collection AS collection, r.locale AS locale, r.from_slug AS "from", e.slug AS "to", r.entry_id AS entryId
+      `SELECT r.collection AS collection, r.locale AS locale, r.from_slug AS "from", e.slug AS "to", e.slug_path AS toSlugPath, r.entry_id AS entryId
          FROM redirects AS r JOIN entries AS e ON e.id = r.entry_id AND e.site_id = r.site_id
         WHERE r.site_id = ?1
         ORDER BY r.collection, r.locale, r.from_slug`,
     )
     .bind(site.key)
-    .all<Omit<BackupRedirect, 'fromPath' | 'toPath'>>()
-  return results.map((redirect) => {
+    .all<Omit<BackupRedirect, 'fromPath' | 'toPath'> & { readonly toSlugPath: string }>()
+  return results.map(({ toSlugPath, ...redirect }) => {
     const collection = site.collections.get(redirect.collection)
-    const path = (slug: string) =>
-      collection === undefined ? null : entryPath(collection, redirect.locale, slug)
-    return { ...redirect, fromPath: path(redirect.from), toPath: path(redirect.to) }
+    const path = (slugPath: string) =>
+      collection === undefined ? null : entryPath(collection, redirect.locale, slugPath)
+    return {
+      ...redirect,
+      fromPath: path(movedFrom(toSlugPath, redirect.from)),
+      toPath: path(toSlugPath),
+    }
   })
 }
 
@@ -187,14 +193,14 @@ async function backUp(
   const { results } = await db
     .prepare(
       `SELECT e.id AS id, e.collection AS collection, e.locale AS locale, e.slug AS slug,
-              e.status AS status, e.translation_group AS translationGroup, e.deleted_at AS deletedAt,
+              e.slug_path AS slugPath, e.position AS position, e.status AS status, e.translation_group AS translationGroup, e.deleted_at AS deletedAt,
               h.markdown AS markdown,
               CASE WHEN e.published_rev IS NOT NULL AND e.published_rev <> e.head_rev
                    THEN (SELECT p.markdown FROM revisions AS p WHERE p.id = e.published_rev AND p.site_id = e.site_id)
                    ELSE NULL END AS published
          FROM entries AS e JOIN revisions AS h ON h.id = e.head_rev AND h.site_id = e.site_id
         WHERE e.site_id = ?1
-        ORDER BY e.collection, e.locale, e.slug`,
+        ORDER BY e.collection, e.locale, e.slug_path`,
     )
     .bind(site)
     .all<BackupEntry>()

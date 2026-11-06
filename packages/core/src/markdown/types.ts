@@ -99,6 +99,8 @@ export interface ProcessMarkdownOptions {
   readonly maxMarkdownBytes: number
   /** The routes of the site's collections, by collection and then by locale, to find internal links. */
   readonly routes: Readonly<Record<string, Readonly<Record<string, string>>>>
+  /** The levels of the nested collections, by collection: their routes take that many slugs. */
+  readonly depths?: Readonly<Record<string, number>>
 }
 
 /**

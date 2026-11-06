@@ -48,7 +48,7 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
   const verdict = await judge(
     context,
     collection,
-    { locale: entry.locale, slug: entry.slug, entryId: entry.id },
+    { locale: entry.locale, slug: entry.slug, entryId: entry.id, slugPath: entry.slugPath },
     processed.value,
     'publish',
   )
@@ -131,6 +131,7 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
       slug: entry.slug,
       translationGroup: entry.translationGroup,
     },
+    slugPath: entry.slugPath,
     at: context.clock.now().toISOString(),
   })
   const written = await context.store.publish(context.site.key, {

@@ -32,9 +32,10 @@ async function insert(row: Row): Promise<string> {
         NOW,
       ),
       env.DB.prepare(
-        `INSERT INTO entries (id, site_id, collection, locale, slug, status, version, head_rev,
-          published_rev, published_at, published_sort_key, scheduled_at, created_at, updated_at)
-          VALUES (?1, ?2, 'posts', 'en', 'hello', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)`,
+        `INSERT INTO entries (id, site_id, collection, locale, slug, slug_path, status, version,
+          head_rev, published_rev, published_at, published_sort_key, scheduled_at, created_at,
+          updated_at)
+          VALUES (?1, ?2, 'posts', 'en', 'hello', 'hello', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)`,
       ).bind(
         newId('ent'),
         site,

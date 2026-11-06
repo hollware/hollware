@@ -178,7 +178,7 @@ describe('the read API', () => {
     expect([anonymous.status, write.status]).toEqual([401, 405])
   })
 
-  it('describes its seven routes in OpenAPI 3.1', async () => {
+  it('describes its eight routes in OpenAPI 3.1', async () => {
     const document: unknown = await (await get('/v1/openapi.json')).json()
 
     expect(document).toMatchObject({ openapi: '3.1.0' })
@@ -189,6 +189,7 @@ describe('the read API', () => {
     ).toEqual([
       '/v1/site',
       '/v1/redirects',
+      '/v1/resolve',
       '/v1/search',
       '/v1/{collection}',
       '/v1/{collection}/navigation',

@@ -12,6 +12,9 @@ function entry(slug: string): Found {
     collection: 'blog',
     locale: 'en',
     slug,
+    parent: null,
+    slugPath: slug,
+    position: null,
     translationGroup: 'g1',
     status: 'published',
     version: 3,
@@ -73,7 +76,17 @@ function fakeReader(missing: readonly string[] = []) {
         groups: [
           {
             name: 'start',
-            entries: [{ slug: 'one', title: 'One', description: null, path: '/one/', order: 1 }],
+            entries: [
+              {
+                slug: 'one',
+                title: 'One',
+                description: null,
+                path: '/one/',
+                order: 1,
+                parent: null,
+                children: [],
+              },
+            ],
           },
         ],
       }
@@ -288,7 +301,17 @@ describe('createHollware', () => {
       groups: [
         {
           name: 'start',
-          entries: [{ slug: 'one', title: 'One', description: null, path: '/one/', order: 1 }],
+          entries: [
+            {
+              slug: 'one',
+              title: 'One',
+              description: null,
+              path: '/one/',
+              order: 1,
+              parent: null,
+              children: [],
+            },
+          ],
         },
       ],
     })

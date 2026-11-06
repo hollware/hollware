@@ -3,6 +3,7 @@ import { actorOf } from './actor.ts'
 import { collectionOfEntry } from './collections.ts'
 import { entrySummary } from './answers.ts'
 import { unexpectedAnswer } from './errors.ts'
+import { childrenView } from './tree.ts'
 import type { OperationHandler } from './types.ts'
 
 export const unpublish: OperationHandler<'unpublish'> = async (input, context) => {
@@ -21,6 +22,7 @@ export const unpublish: OperationHandler<'unpublish'> = async (input, context) =
       slug: entry.slug,
       translationGroup: entry.translationGroup,
     },
+    slugPath: entry.slugPath,
     at: context.clock.now().toISOString(),
   })
   const written = await context.store.unpublish(context.site.key, {
@@ -32,6 +34,12 @@ export const unpublish: OperationHandler<'unpublish'> = async (input, context) =
     case 'unpublished':
       if (entry.status === 'published') context.notify?.([event.id])
       return { outcome: 'unpublished', entry: entrySummary(written.view) }
+    case 'has_children':
+      return {
+        outcome: 'has_children',
+        entry: entrySummary(written.view),
+        children: await childrenView(context, written.view.entry, 'published'),
+      }
     case 'not_found':
       return { outcome: 'not_found' }
     case 'conflict':

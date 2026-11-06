@@ -168,6 +168,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -177,6 +194,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -210,6 +231,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -818,6 +842,23 @@
                         "locale": {
                           "type": "string"
                         },
+                        "parent": {
+                          "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                          "type": ["string", "null"]
+                        },
+                        "position": {
+                          "anyOf": [
+                            {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                        },
                         "publishedAt": {
                           "description": "When the entry was first published, or null.",
                           "type": ["string", "null"]
@@ -827,6 +868,10 @@
                           "type": ["string", "null"]
                         },
                         "slug": {
+                          "type": "string"
+                        },
+                        "slugPath": {
+                          "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                           "type": "string"
                         },
                         "status": {
@@ -860,6 +905,9 @@
                         "collection",
                         "locale",
                         "slug",
+                        "parent",
+                        "slugPath",
+                        "position",
                         "translationGroup",
                         "status",
                         "version",
@@ -926,6 +974,12 @@
           },
           "markdown": {
             "description": "The whole Markdown file: the YAML frontmatter between two --- lines, then the body. The collection schema in describe_site says what the frontmatter needs.",
+            "type": "string"
+          },
+          "parent": {
+            "description": "In a nested collection, the slug of the entry of the same collection and locale to create it under, as its last child. Refused when that entry does not exist or the new one would be deeper than nesting.maxDepth.",
+            "maxLength": 200,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "type": "string"
           },
           "slug": {
@@ -1018,6 +1072,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -1027,6 +1098,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -1060,6 +1135,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -1505,6 +1583,27 @@
                       "default": null,
                       "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
                     },
+                    "nesting": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "maxDepth": {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["maxDepth"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Nested entries: an entry may have a parent of its collection and locale, at most maxDepth levels deep (2 to 10), and its path is the slugs of its ancestors and its own in place of :slug. In a nested collection, getNavigation answers a tree whose children follow the order set by move_entry. null keeps entries flat."
+                    },
                     "routes": {
                       "additionalProperties": {
                         "type": "string"
@@ -1859,6 +1958,163 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "children": {
+            "description": "With has_children, the children it has.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                  "type": ["string", "null"]
+                },
+                "frontmatter": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hasUnpublishedChanges": {
+                  "description": "Whether the latest revision differs from the published one.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "images": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "alt": {
+                        "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                        "type": "string"
+                      },
+                      "height": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "srcset": {
+                        "type": ["string", "null"]
+                      },
+                      "width": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": ["width", "height", "srcset"],
+                    "type": "object"
+                  },
+                  "description": "Where asset: references are read as URLs (a site over RPC or the read API, or the published view): the images its frontmatter names, by URL, with their size and srcset, to lay out a cover. Absent when it names none.",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "parent": {
+                  "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                  "type": ["string", "null"]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                },
+                "publishedAt": {
+                  "description": "When the entry was first published, or null.",
+                  "type": ["string", "null"]
+                },
+                "scheduledAt": {
+                  "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "slugPath": {
+                  "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
+                  "type": "string"
+                },
+                "status": {
+                  "enum": ["draft", "scheduled", "published"],
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                },
+                "translationOutdated": {
+                  "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                  "type": "boolean"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "collection",
+                "locale",
+                "slug",
+                "parent",
+                "slugPath",
+                "position",
+                "translationGroup",
+                "status",
+                "version",
+                "frontmatter",
+                "tags",
+                "hasUnpublishedChanges",
+                "publishedAt",
+                "scheduledAt",
+                "deletedAt",
+                "updatedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "conflict": {
             "additionalProperties": false,
             "properties": {
@@ -1950,6 +2206,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -1959,6 +2232,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -1992,6 +2269,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -2006,7 +2286,7 @@
             "type": "object"
           },
           "outcome": {
-            "enum": ["trashed", "published", "conflict", "not_found"],
+            "enum": ["trashed", "published", "has_children", "conflict", "not_found"],
             "type": "string"
           }
         },
@@ -2179,6 +2459,19 @@
                         }
                       },
                       "required": ["groupBy", "groups", "orderBy"],
+                      "type": "object"
+                    },
+                    "nesting": {
+                      "additionalProperties": false,
+                      "description": "Nested entries: create_draft takes a parent's slug, move_entry moves an entry under another or among its siblings, and an entry's path holds the slugs of its ancestors, at most maxDepth levels. Slugs stay unique in a collection and locale. Absent when entries are flat.",
+                      "properties": {
+                        "maxDepth": {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["maxDepth"],
                       "type": "object"
                     },
                     "routes": {
@@ -2576,6 +2869,28 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "ancestors": {
+            "description": "In a nested collection, the ancestors of the entry from the root down, for breadcrumbs.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "description": "Its public path, or null without a route.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "description": "Its frontmatter's title, or its slug when it has none.",
+                  "type": "string"
+                }
+              },
+              "required": ["slug", "title", "path"],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "entry": {
             "additionalProperties": false,
             "properties": {
@@ -2844,6 +3159,23 @@
               "markdown": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -2858,6 +3190,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -3011,6 +3347,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -3108,6 +3447,23 @@
                   "locale": {
                     "type": "string"
                   },
+                  "parent": {
+                    "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                    "type": ["string", "null"]
+                  },
+                  "position": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                  },
                   "publishedAt": {
                     "description": "When the entry was first published, or null.",
                     "type": ["string", "null"]
@@ -3117,6 +3473,10 @@
                     "type": ["string", "null"]
                   },
                   "slug": {
+                    "type": "string"
+                  },
+                  "slugPath": {
+                    "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                     "type": "string"
                   },
                   "status": {
@@ -3150,6 +3510,9 @@
                   "collection",
                   "locale",
                   "slug",
+                  "parent",
+                  "slugPath",
+                  "position",
                   "translationGroup",
                   "status",
                   "version",
@@ -3247,6 +3610,23 @@
                 "locale": {
                   "type": "string"
                 },
+                "parent": {
+                  "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                  "type": ["string", "null"]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                },
                 "publishedAt": {
                   "description": "When the entry was first published, or null.",
                   "type": ["string", "null"]
@@ -3256,6 +3636,10 @@
                   "type": ["string", "null"]
                 },
                 "slug": {
+                  "type": "string"
+                },
+                "slugPath": {
+                  "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                   "type": "string"
                 },
                 "status": {
@@ -3289,6 +3673,9 @@
                 "collection",
                 "locale",
                 "slug",
+                "parent",
+                "slugPath",
+                "position",
                 "translationGroup",
                 "status",
                 "version",
@@ -3423,6 +3810,23 @@
                     "locale": {
                       "type": "string"
                     },
+                    "parent": {
+                      "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                      "type": ["string", "null"]
+                    },
+                    "position": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                    },
                     "publishedAt": {
                       "description": "When the entry was first published, or null.",
                       "type": ["string", "null"]
@@ -3432,6 +3836,10 @@
                       "type": ["string", "null"]
                     },
                     "slug": {
+                      "type": "string"
+                    },
+                    "slugPath": {
+                      "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                       "type": "string"
                     },
                     "status": {
@@ -3465,6 +3873,9 @@
                     "collection",
                     "locale",
                     "slug",
+                    "parent",
+                    "slugPath",
+                    "position",
                     "translationGroup",
                     "status",
                     "version",
@@ -4148,6 +4559,27 @@
                       "default": null,
                       "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
                     },
+                    "nesting": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "maxDepth": {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["maxDepth"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Nested entries: an entry may have a parent of its collection and locale, at most maxDepth levels deep (2 to 10), and its path is the slugs of its ancestors and its own in place of :slug. In a nested collection, getNavigation answers a tree whose children follow the order set by move_entry. null keeps entries flat."
+                    },
                     "routes": {
                       "additionalProperties": {
                         "type": "string"
@@ -4253,7 +4685,8 @@
                     "rules",
                     "maxMarkdownBytes",
                     "styleGuide",
-                    "navigation"
+                    "navigation",
+                    "nesting"
                   ],
                   "type": "object"
                 },
@@ -4580,6 +5013,23 @@
                 "locale": {
                   "type": "string"
                 },
+                "parent": {
+                  "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                  "type": ["string", "null"]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                },
                 "publishedAt": {
                   "description": "When the entry was first published, or null.",
                   "type": ["string", "null"]
@@ -4589,6 +5039,10 @@
                   "type": ["string", "null"]
                 },
                 "slug": {
+                  "type": "string"
+                },
+                "slugPath": {
+                  "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                   "type": "string"
                 },
                 "status": {
@@ -4622,6 +5076,9 @@
                 "collection",
                 "locale",
                 "slug",
+                "parent",
+                "slugPath",
+                "position",
                 "translationGroup",
                 "status",
                 "version",
@@ -4984,6 +5441,23 @@
                 "locale": {
                   "type": "string"
                 },
+                "parent": {
+                  "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                  "type": ["string", "null"]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                },
                 "publishedAt": {
                   "description": "When the entry was first published, or null.",
                   "type": ["string", "null"]
@@ -4993,6 +5467,10 @@
                   "type": ["string", "null"]
                 },
                 "slug": {
+                  "type": "string"
+                },
+                "slugPath": {
+                  "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                   "type": "string"
                 },
                 "status": {
@@ -5026,6 +5504,9 @@
                 "collection",
                 "locale",
                 "slug",
+                "parent",
+                "slugPath",
+                "position",
                 "translationGroup",
                 "status",
                 "version",
@@ -5367,6 +5848,23 @@
                     "locale": {
                       "type": "string"
                     },
+                    "parent": {
+                      "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                      "type": ["string", "null"]
+                    },
+                    "position": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                    },
                     "publishedAt": {
                       "description": "When the entry was first published, or null.",
                       "type": ["string", "null"]
@@ -5376,6 +5874,10 @@
                       "type": ["string", "null"]
                     },
                     "slug": {
+                      "type": "string"
+                    },
+                    "slugPath": {
+                      "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                       "type": "string"
                     },
                     "status": {
@@ -5409,6 +5911,9 @@
                     "collection",
                     "locale",
                     "slug",
+                    "parent",
+                    "slugPath",
+                    "position",
                     "translationGroup",
                     "status",
                     "version",
@@ -5668,6 +6173,26 @@
             "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
             "type": "string"
           },
+          "index": {
+            "description": "In a nested collection, its place among the children of its parent, from 0; past the end, it goes last. Without it, an entry that changes parent goes last.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "description": "The entry's path segment: lowercase letters and digits joined by hyphens, such as edge-caching-guide.",
+                "maxLength": 200,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In a nested collection, the slug of its new parent, of the same collection and locale; null moves it to the root."
+          },
           "slug": {
             "description": "The new slug.",
             "maxLength": 200,
@@ -5681,7 +6206,7 @@
             "type": "integer"
           }
         },
-        "required": ["id", "version", "slug"],
+        "required": ["id", "version"],
         "type": "object"
       },
       "name": "move_entry",
@@ -5780,6 +6305,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -5789,6 +6331,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -5822,6 +6368,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -5836,7 +6385,12 @@
             "type": "object"
           },
           "outcome": {
-            "enum": ["moved", "unchanged", "taken", "conflict", "not_found"],
+            "enum": ["moved", "unchanged", "taken", "invalid_parent", "conflict", "not_found"],
+            "type": "string"
+          },
+          "reason": {
+            "description": "With invalid_parent: the collection is flat, the parent does not exist, it is the entry or one of its descendants, the entry and its descendants would be deeper than nesting.maxDepth, or a published entry would go under one that is not published.",
+            "enum": ["not_nested", "missing", "cycle", "too_deep", "unpublished"],
             "type": "string"
           },
           "redirect": {
@@ -5879,7 +6433,7 @@
         "type": "object"
       },
       "scopes": ["content:write"],
-      "title": "Change the slug of an entry"
+      "title": "Move an entry"
     },
     {
       "effect": "write",
@@ -6045,6 +6599,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -6054,6 +6625,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -6087,6 +6662,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -6673,6 +7251,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -6682,6 +7277,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -6715,6 +7314,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -7013,6 +7615,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -7022,6 +7641,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -7055,6 +7678,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -7069,7 +7695,7 @@
             "type": "object"
           },
           "outcome": {
-            "enum": ["restored", "not_trashed", "not_found"],
+            "enum": ["restored", "not_trashed", "parent_in_trash", "not_found"],
             "type": "string"
           }
         },
@@ -7201,6 +7827,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -7210,6 +7853,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -7243,6 +7890,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -7519,6 +8169,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -7528,6 +8195,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -7561,6 +8232,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -7729,6 +8403,23 @@
                     "locale": {
                       "type": "string"
                     },
+                    "parent": {
+                      "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                      "type": ["string", "null"]
+                    },
+                    "position": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                    },
                     "publishedAt": {
                       "description": "When the entry was first published, or null.",
                       "type": ["string", "null"]
@@ -7738,6 +8429,10 @@
                       "type": ["string", "null"]
                     },
                     "slug": {
+                      "type": "string"
+                    },
+                    "slugPath": {
+                      "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                       "type": "string"
                     },
                     "status": {
@@ -7771,6 +8466,9 @@
                     "collection",
                     "locale",
                     "slug",
+                    "parent",
+                    "slugPath",
+                    "position",
                     "translationGroup",
                     "status",
                     "version",
@@ -7920,6 +8618,27 @@
                     ],
                     "default": null,
                     "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                  },
+                  "nesting": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "maxDepth": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          }
+                        },
+                        "required": ["maxDepth"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Nested entries: an entry may have a parent of its collection and locale, at most maxDepth levels deep (2 to 10), and its path is the slugs of its ancestors and its own in place of :slug. In a nested collection, getNavigation answers a tree whose children follow the order set by move_entry. null keeps entries flat."
                   },
                   "routes": {
                     "additionalProperties": {
@@ -8195,6 +8914,163 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "children": {
+            "description": "With has_children, its published children: unpublish them first.",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "collection": {
+                  "type": "string"
+                },
+                "deletedAt": {
+                  "description": "When the entry went to the trash, or null for one that is not in the trash.",
+                  "type": ["string", "null"]
+                },
+                "frontmatter": {
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "hasUnpublishedChanges": {
+                  "description": "Whether the latest revision differs from the published one.",
+                  "type": "boolean"
+                },
+                "id": {
+                  "description": "The id of an entry (ent_…), as the other operations return it.",
+                  "pattern": "^ent_[0-9A-HJKMNP-TV-Z]{26}$",
+                  "type": "string"
+                },
+                "images": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "alt": {
+                        "description": "What the image shows, as it was uploaded; absent from a Hollware before 1.0.0-rc.5.",
+                        "type": "string"
+                      },
+                      "height": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "srcset": {
+                        "type": ["string", "null"]
+                      },
+                      "width": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": ["width", "height", "srcset"],
+                    "type": "object"
+                  },
+                  "description": "Where asset: references are read as URLs (a site over RPC or the read API, or the published view): the images its frontmatter names, by URL, with their size and srcset, to lay out a cover. Absent when it names none.",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "locale": {
+                  "type": "string"
+                },
+                "parent": {
+                  "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                  "type": ["string", "null"]
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+                },
+                "publishedAt": {
+                  "description": "When the entry was first published, or null.",
+                  "type": ["string", "null"]
+                },
+                "scheduledAt": {
+                  "description": "When a scheduled entry will be published, or null for one that is not scheduled.",
+                  "type": ["string", "null"]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "slugPath": {
+                  "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
+                  "type": "string"
+                },
+                "status": {
+                  "enum": ["draft", "scheduled", "published"],
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "translationGroup": {
+                  "type": ["string", "null"]
+                },
+                "translationOutdated": {
+                  "description": "For a translation (an entry in a group, in another locale than the site's default): whether its source, the entry of the group in the default locale, was changed after it. Save the translation again to bring it up to date. Absent for any other entry.",
+                  "type": "boolean"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "version": {
+                  "maximum": 9007199254740991,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "collection",
+                "locale",
+                "slug",
+                "parent",
+                "slugPath",
+                "position",
+                "translationGroup",
+                "status",
+                "version",
+                "frontmatter",
+                "tags",
+                "hasUnpublishedChanges",
+                "publishedAt",
+                "scheduledAt",
+                "deletedAt",
+                "updatedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "entry": {
             "additionalProperties": false,
             "properties": {
@@ -8269,6 +9145,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -8278,6 +9171,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -8311,6 +9208,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -8325,7 +9225,7 @@
             "type": "object"
           },
           "outcome": {
-            "enum": ["unpublished", "not_found"],
+            "enum": ["unpublished", "has_children", "not_found"],
             "type": "string"
           }
         },
@@ -8616,6 +9516,23 @@
               "locale": {
                 "type": "string"
               },
+              "parent": {
+                "description": "In a nested collection, the slug of its parent; null for an entry at the root.",
+                "type": ["string", "null"]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "In a nested collection, its place among its siblings, from 0; null in a flat one."
+              },
               "publishedAt": {
                 "description": "When the entry was first published, or null.",
                 "type": ["string", "null"]
@@ -8625,6 +9542,10 @@
                 "type": ["string", "null"]
               },
               "slug": {
+                "type": "string"
+              },
+              "slugPath": {
+                "description": "The slugs of its ancestors and its own, joined by /: what takes the place of :slug in the collection's route. Its slug alone in a flat collection.",
                 "type": "string"
               },
               "status": {
@@ -8658,6 +9579,9 @@
               "collection",
               "locale",
               "slug",
+              "parent",
+              "slugPath",
+              "position",
               "translationGroup",
               "status",
               "version",
@@ -9107,6 +10031,27 @@
                       ],
                       "default": null,
                       "description": "How getNavigation arranges the published entries for a sidebar: grouped by groupBy, a string or enum field, the groups in the order of groups (or of the enum), and each group by orderBy, a number field, then by title. null lists them by title."
+                    },
+                    "nesting": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "maxDepth": {
+                              "maximum": 9007199254740991,
+                              "minimum": -9007199254740991,
+                              "type": "integer"
+                            }
+                          },
+                          "required": ["maxDepth"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Nested entries: an entry may have a parent of its collection and locale, at most maxDepth levels deep (2 to 10), and its path is the slugs of its ancestors and its own in place of :slug. In a nested collection, getNavigation answers a tree whose children follow the order set by move_entry. null keeps entries flat."
                     },
                     "routes": {
                       "additionalProperties": {

@@ -34,6 +34,7 @@ describe('BUILT_IN_CONTRACT_IDS', () => {
       'comark-parse',
       'unique-slug',
       'unique-translation',
+      'entry-parent',
     ])
   })
 })
@@ -46,6 +47,7 @@ describe('REFUSAL_CONTRACT_IDS', () => {
       'comark-parse',
       'unique-slug',
       'unique-translation',
+      'entry-parent',
     ])
   })
 
@@ -143,6 +145,13 @@ describe('describeBuiltInContracts', () => {
         description:
           'No other entry of the collection and locale belongs to the translation group.',
       },
+      {
+        id: 'entry-parent',
+        severity: 'error',
+        phases: BOTH,
+        description:
+          'In a nested collection, the parent exists in the collection and locale, and the entry is no deeper than nesting.maxDepth.',
+      },
     ])
   })
 
@@ -160,7 +169,7 @@ describe('describeBuiltInContracts', () => {
   it('answers with a new list each time', () => {
     const first = describeBuiltInContracts()
     first.pop()
-    expect(describeBuiltInContracts()).toHaveLength(11)
+    expect(describeBuiltInContracts()).toHaveLength(12)
   })
 })
 
@@ -274,6 +283,7 @@ describe('the module', () => {
       'describeCatalog',
       'describeContract',
       'isBuiltInContract',
+      'parentViolation',
       'referencedSlugs',
       'runContracts',
       'sizeLimitViolation',

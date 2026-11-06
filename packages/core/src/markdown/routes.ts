@@ -6,6 +6,7 @@ export interface CompiledRoute {
   readonly locale: string
   readonly segments: readonly string[]
   readonly slugAt: number
+  readonly maxDepth: number
 }
 
 const SLUG = ':slug'
@@ -18,16 +19,18 @@ function segmentsOf(path: string): string[] {
 
 export function compileRoutes(
   routes: Readonly<Record<string, Readonly<Record<string, string>>>>,
+  depths: Readonly<Record<string, number>> = {},
 ): CompiledRoute[] {
   const compiled: CompiledRoute[] = []
   for (const collection of Object.keys(routes).sort()) {
     const byLocale = routes[collection] ?? {}
+    const maxDepth = depths[collection] ?? 1
     for (const locale of Object.keys(byLocale).sort()) {
       const pattern = byLocale[locale] ?? ''
       if (!pattern.startsWith('/')) continue
       const segments = segmentsOf(pattern)
       const slugAt = segments.indexOf(SLUG)
-      if (slugAt !== -1) compiled.push({ collection, locale, segments, slugAt })
+      if (slugAt !== -1) compiled.push({ collection, locale, segments, slugAt, maxDepth })
     }
   }
   return compiled
@@ -41,20 +44,39 @@ function safeDecode(segment: string): string {
   }
 }
 
-function matchRoute(path: string, routes: readonly CompiledRoute[]): LinkTarget | undefined {
+function matchesAt(path: readonly string[], route: CompiledRoute, depth: number): boolean {
+  const tail = route.segments.length - route.slugAt - 1
+  if (path.length !== route.segments.length - 1 + depth) return false
+  for (let at = 0; at < route.slugAt; at++) {
+    if (path[at] !== route.segments[at]) return false
+  }
+  for (let at = route.slugAt; at < route.slugAt + depth; at++) {
+    if ((path[at] ?? '') === '') return false
+  }
+  for (let at = 0; at < tail; at++) {
+    if (path[route.slugAt + depth + at] !== route.segments[route.slugAt + 1 + at]) return false
+  }
+  return true
+}
+
+/**
+ * The entry a site path names, by the routes: the collection, the locale and the slug, the last
+ * of the segments that take the place of `:slug`; `slugPath` holds them all, joined by `/`.
+ */
+export function matchRoute(
+  path: string,
+  routes: readonly CompiledRoute[],
+): (LinkTarget & { readonly slugPath: string }) | undefined {
   const segments = segmentsOf(path)
   for (const route of routes) {
-    if (route.segments.length !== segments.length) continue
-    let matches = true
-    for (let at = 0; at < segments.length && matches; at++) {
-      const segment = segments[at] ?? ''
-      matches = at === route.slugAt ? segment !== '' : segment === route.segments[at]
-    }
-    if (matches) {
+    for (let depth = 1; depth <= route.maxDepth; depth++) {
+      if (!matchesAt(segments, route, depth)) continue
+      const slugs = segments.slice(route.slugAt, route.slugAt + depth).map(safeDecode)
       return {
         collection: route.collection,
         locale: route.locale,
-        slug: safeDecode(segments[route.slugAt] ?? ''),
+        slug: slugs[slugs.length - 1] ?? '',
+        slugPath: slugs.join('/'),
       }
     }
   }
@@ -72,8 +94,13 @@ export function classifyLink(href: string, routes: readonly CompiledRoute[]): Cl
   if (urlScheme(value) !== undefined || value.startsWith('//')) return { kind: 'external' }
   if (value.startsWith('/')) {
     const end = value.search(/[?#]/)
-    const target = matchRoute(end === -1 ? value : value.slice(0, end), routes)
-    if (target !== undefined) return { kind: 'internal', target }
+    const matched = matchRoute(end === -1 ? value : value.slice(0, end), routes)
+    if (matched !== undefined) {
+      return {
+        kind: 'internal',
+        target: { collection: matched.collection, locale: matched.locale, slug: matched.slug },
+      }
+    }
   }
   return { kind: 'site' }
 }

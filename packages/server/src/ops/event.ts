@@ -20,10 +20,15 @@ export type SiteEventPayload = SiteEvent
 export function entryPath(
   collection: ResolvedCollection,
   locale: string,
-  slug: string,
+  slugPath: string,
 ): string | null {
   const route = collection.routes[locale]
-  return route === undefined ? null : route.replace(/:slug(?![A-Za-z0-9_])/, slug)
+  return route === undefined ? null : route.replace(/:slug(?![A-Za-z0-9_])/, () => slugPath)
+}
+
+export function movedFrom(toSlugPath: string, from: string): string {
+  const slash = toSlugPath.lastIndexOf('/')
+  return slash === -1 ? from : `${toSlugPath.slice(0, slash + 1)}${from}`
 }
 
 export function eventFor(input: {
@@ -31,10 +36,11 @@ export function eventFor(input: {
   readonly site: ResolvedSite
   readonly collection: ResolvedCollection
   readonly entry: EntryEventPayload['entry']
+  readonly slugPath: string
   readonly at: string
 }): OutboxEvent {
   const id = newId('evt')
-  const path = entryPath(input.collection, input.entry.locale, input.entry.slug)
+  const path = entryPath(input.collection, input.entry.locale, input.slugPath)
   const payload: EntryEventPayload = {
     id,
     kind: input.kind,

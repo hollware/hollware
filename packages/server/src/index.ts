@@ -5,6 +5,7 @@ import type {
   HollwareConfig,
   listEntries,
   Navigation,
+  ResolvedPath,
   OperationByName,
   OperationName,
   search,
@@ -139,6 +140,19 @@ export interface HollwareRpc {
     collection: string,
     options?: { readonly locale?: string },
   ): Promise<Navigation>
+  /**
+   * The published entry a path of the site names, by the routes of its collections: its
+   * collection, locale and slug, to read with `getEntry`. A path the entry had (an old slug, or
+   * the old place of it or of an ancestor) answers `redirect` with the path it has now.
+   */
+  resolvePath(
+    site: string,
+    path: string,
+    options?: {
+      /** A preview token (`hw_prv_…`): drafts are resolved too. */
+      readonly preview?: string
+    },
+  ): Promise<ResolvedPath>
   describeSite(site: string): Promise<Output<typeof describeSite>>
   /** The published entries that match `query`, best first: by its words, by meaning, or both. */
   search(

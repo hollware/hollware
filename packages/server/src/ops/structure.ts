@@ -123,6 +123,30 @@ async function memberProblems(
     }))
 }
 
+async function nestingProblems(
+  context: OperationContext,
+  current: SiteDefinitionData,
+  next: SiteDefinitionData,
+) {
+  const problems: { path: string; message: string; fix: string }[] = []
+  for (const [name, collection] of Object.entries(next.collections)) {
+    const before = current.collections[name]?.nesting?.maxDepth ?? 1
+    const after = collection.nesting?.maxDepth ?? 1
+    if (current.collections[name] === undefined || after >= before) continue
+    const deepest = await context.store.deepestDepth(context.site.key, name)
+    if (deepest <= after) continue
+    problems.push({
+      path: `sites.${context.site.key}.collections.${name}.nesting`,
+      message:
+        after === 1
+          ? `is flat, but entries of "${name}" are nested ${deepest} levels deep`
+          : `allows ${after} levels, but entries of "${name}" are nested ${deepest} levels deep`,
+      fix: `Move the deepest entries nearer the root with move_entry first, or keep maxDepth at ${deepest} or more.`,
+    })
+  }
+  return problems
+}
+
 async function change(
   context: OperationContext,
   version: number,
@@ -136,6 +160,8 @@ async function change(
   if (current.version !== version) return conflict(version, current.version)
   const members = await memberProblems(structure, context.site.key, next, current.definition)
   if (members.length > 0) return { outcome: 'invalid' as const, problems: members }
+  const nesting = await nestingProblems(context, current.definition, next)
+  if (nesting.length > 0) return { outcome: 'invalid' as const, problems: nesting }
   if (canonicalJson(current.definition) === canonicalJson(next)) {
     return { outcome: 'unchanged' as const, version }
   }

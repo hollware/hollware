@@ -582,3 +582,68 @@ describe('update_site and the agents of a site', () => {
     ])
   })
 })
+
+describe('the nesting of a collection', () => {
+  const nested = (maxDepth: number | null) =>
+    collectionDefinitionData.parse({
+      schema: { type: 'object', properties: { title: { type: 'string' } } },
+      routes: { en: '/blog/:slug/', es: '/es/blog/:slug/' },
+      nesting: maxDepth === null ? null : { maxDepth },
+    })
+
+  it('refuses a depth below the deepest entry, or flat entries, and takes one that holds them', async () => {
+    const { key, context, registry } = await setUp()
+    await handlers.set_collection(
+      { version: 1, name: 'blog', collection: nested(3), confirm: false },
+      context,
+    )
+    const site = registry.sites.get(key)
+    if (site === undefined) throw new Error(`no site ${key}`)
+    const writer = { ...context, site }
+    for (const [slug, parent] of [
+      ['a', undefined],
+      ['b', 'a'],
+      ['c', 'b'],
+    ] as const) {
+      await handlers.create_draft(
+        {
+          collection: 'blog',
+          locale: 'en',
+          slug,
+          markdown: `---\ntitle: ${slug}\n---\n\n${slug}\n`,
+          ...(parent === undefined ? {} : { parent }),
+        },
+        writer,
+      )
+    }
+
+    const shallower = await handlers.set_collection(
+      { version: 2, name: 'blog', collection: nested(2), confirm: false },
+      context,
+    )
+    const flattened = await handlers.set_collection(
+      { version: 2, name: 'blog', collection: nested(null), confirm: false },
+      context,
+    )
+    const deeper = await handlers.set_collection(
+      { version: 2, name: 'blog', collection: nested(4), confirm: false },
+      context,
+    )
+
+    expect(shallower).toEqual({
+      outcome: 'invalid',
+      problems: [
+        {
+          path: `sites.${key}.collections.blog.nesting`,
+          message: 'allows 2 levels, but entries of "blog" are nested 3 levels deep',
+          fix: 'Move the deepest entries nearer the root with move_entry first, or keep maxDepth at 3 or more.',
+        },
+      ],
+    })
+    expect(flattened).toMatchObject({
+      outcome: 'invalid',
+      problems: [{ message: 'is flat, but entries of "blog" are nested 3 levels deep' }],
+    })
+    expect(deeper).toEqual({ outcome: 'updated', version: 3 })
+  })
+})

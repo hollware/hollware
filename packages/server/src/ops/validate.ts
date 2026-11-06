@@ -18,7 +18,12 @@ export const validate: OperationHandler<'validate'> = async (input, context) => 
   const verdict = await judge(
     context,
     collection,
-    { locale: input.locale, slug: input.slug, entryId: existing?.entry.id ?? null },
+    {
+      locale: input.locale,
+      slug: input.slug,
+      entryId: existing?.entry.id ?? null,
+      ...(existing === null ? {} : { slugPath: existing.entry.slugPath }),
+    },
     processed.value,
     'publish',
   )

@@ -15,6 +15,9 @@ export const entryFields = {
   collection: entries.collection,
   locale: entries.locale,
   slug: entries.slug,
+  parentId: entries.parentId,
+  position: entries.position,
+  slugPath: entries.slugPath,
   translationGroup: entries.translationGroup,
   status: entries.status,
   version: entries.version,
@@ -97,12 +100,21 @@ export function entryStatus(value: string): StoredEntry['status'] {
   return oneOf(['draft', 'scheduled', 'published'], value, 'the status')
 }
 
+export function parentSlugOf(slugPath: string): string | null {
+  const slugs = slugPath.split('/')
+  return slugs.length < 2 ? null : (slugs[slugs.length - 2] ?? null)
+}
+
 export function toEntry(row: EntryRow): StoredEntry {
   return {
     id: row.id,
     collection: row.collection,
     locale: row.locale,
     slug: row.slug,
+    parentId: row.parentId,
+    parent: parentSlugOf(row.slugPath),
+    position: row.position,
+    slugPath: row.slugPath,
     translationGroup: row.translationGroup,
     status: entryStatus(row.status),
     version: row.version,

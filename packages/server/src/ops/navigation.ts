@@ -33,7 +33,13 @@ export async function getNavigation(
       ...(cursor === undefined ? {} : { cursor }),
     })
     for (const view of page.entries) {
-      entries.push({ slug: view.entry.slug, frontmatter: summaryFor(context, view).frontmatter })
+      entries.push({
+        slug: view.entry.slug,
+        frontmatter: summaryFor(context, view).frontmatter,
+        parent: view.entry.parent,
+        position: view.entry.position,
+        slugPath: view.entry.slugPath,
+      })
     }
     if (entries.length > maxEntries) {
       throw new HollwareError(
@@ -48,7 +54,8 @@ export async function getNavigation(
     collection: collection.name,
     locale,
     navigation: collection.navigation,
+    nested: collection.nesting !== null,
     entries,
-    pathOf: (slug) => entryPath(collection, locale, slug),
+    pathOf: (slugPath) => entryPath(collection, locale, slugPath),
   })
 }

@@ -69,6 +69,17 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
    * by the number field `orderBy`, then by title.
    */
   readonly navigation?: NavigationDefinition
+  /**
+   * Nested entries: an entry may have a parent of its collection and locale, and its path is the
+   * slugs of its ancestors and its own, as `:slug` of the route. Without it, entries are flat.
+   */
+  readonly nesting?: NestingDefinition
+}
+
+/** How deep a collection's entries may nest. */
+export interface NestingDefinition {
+  /** The levels an entry's path may have, from 2 to 10: 3 lets a root have children and grandchildren. */
+  readonly maxDepth: number
 }
 
 /** How a collection's entries are arranged for navigation. */
@@ -262,6 +273,12 @@ export interface ResolvedCollection {
   readonly maxMarkdownBytes: number
   readonly styleGuide: string | null
   readonly navigation: ResolvedNavigation | null
+  readonly nesting: ResolvedNesting | null
+}
+
+/** A collection's nesting once resolved. */
+export interface ResolvedNesting {
+  readonly maxDepth: number
 }
 
 /** A collection's navigation once resolved: `groups` are the given ones, or the enum's values. */

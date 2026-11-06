@@ -20,6 +20,9 @@ function entry(slug: string): Found {
     collection: 'blog',
     locale: 'en',
     slug,
+    parent: null,
+    slugPath: slug,
+    position: null,
     translationGroup: 'g1',
     status: 'published',
     version: 3,
@@ -75,7 +78,15 @@ function fakeReader(options: { missing?: string[]; failing?: string[] } = {}) {
           {
             name: 'start',
             entries: [
-              { slug: `intro-${locale}`, title: 'Intro', description: null, path: null, order: 1 },
+              {
+                slug: `intro-${locale}`,
+                title: 'Intro',
+                description: null,
+                path: null,
+                order: 1,
+                parent: null,
+                children: [],
+              },
             ],
           },
         ],
@@ -252,7 +263,17 @@ describe('useHollwareNavigation', () => {
       groups: [
         {
           name: 'start',
-          entries: [{ slug: 'intro-en', title: 'Intro', description: null, path: null, order: 1 }],
+          entries: [
+            {
+              slug: 'intro-en',
+              title: 'Intro',
+              description: null,
+              path: null,
+              order: 1,
+              parent: null,
+              children: [],
+            },
+          ],
         },
       ],
     })

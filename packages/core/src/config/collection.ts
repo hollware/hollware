@@ -1,5 +1,6 @@
 import { readAutomaticFields } from './automatic.ts'
 import { readNavigation } from './navigation.ts'
+import { readNesting } from './nesting.ts'
 import { BUILT_IN_CONTRACT_IDS, isBuiltInContract } from '../contracts/index.ts'
 import type { Contract, Phase, Severity } from '../contracts/types.ts'
 import type { Problems } from './config-error.ts'
@@ -552,6 +553,7 @@ export function readCollection(
     schema,
     problems,
   )
+  const nesting = readNesting(keyPath(path, 'nesting'), raw['nesting'], problems)
   if (schema === null) return null
   return {
     name,
@@ -566,5 +568,6 @@ export function readCollection(
     maxMarkdownBytes,
     styleGuide,
     navigation,
+    nesting,
   }
 }

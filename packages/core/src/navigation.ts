@@ -22,6 +22,10 @@ export interface NavigationEntry {
   readonly path: string | null
   /** The value of the `orderBy` field, or `null`. */
   readonly order: number | null
+  /** In a nested collection, the slug of its parent; `null` at the root and in a flat one. */
+  readonly parent: string | null
+  /** In a nested collection, its children in their order; empty in a flat one. */
+  readonly children: readonly NavigationEntry[]
 }
 
 /** The entries of one group; `name` is `null` for those with no value in `groupBy`, which come last. */
@@ -42,6 +46,12 @@ export interface Navigation {
 export interface NavigationSource {
   readonly slug: string
   readonly frontmatter: Readonly<Record<string, unknown>>
+  /** In a nested collection: the slug of its parent, or `null` at the root. */
+  readonly parent?: string | null
+  /** In a nested collection: its place among its siblings. */
+  readonly position?: number | null
+  /** The slugs of its ancestors and its own, joined by `/`; its slug when absent. */
+  readonly slugPath?: string
 }
 
 function textOf(value: unknown): string | null {
@@ -63,6 +73,20 @@ function byOrder(locale: string) {
     compareText(a.slug, b.slug)
 }
 
+function byPosition(locale: string) {
+  const key = (entry: { readonly position: number | null }) =>
+    entry.position ?? Number.POSITIVE_INFINITY
+  return (a: Ranked, b: Ranked): number =>
+    Math.sign(key(a) - key(b) || 0) ||
+    a.entry.title.localeCompare(b.entry.title, locale) ||
+    compareText(a.entry.slug, b.entry.slug)
+}
+
+interface Ranked {
+  readonly entry: NavigationEntry
+  readonly position: number | null
+}
+
 function rankOf(groups: readonly string[] | null) {
   const key = (name: string | null): number => {
     if (name === null) return Number.POSITIVE_INFINITY
@@ -77,32 +101,58 @@ function rankOf(groups: readonly string[] | null) {
  * The entries arranged as `navigation` says: grouped by its `groupBy`, the groups in the order of
  * its `groups` and then by name, the group of entries with no value last; within a group by
  * `orderBy` (no value last), then by title in the locale, then by slug. Without a navigation, one
- * group of every entry by title.
+ * group of every entry by title. In a nested collection the groups hold the roots, and each entry
+ * its children, by their position, then title, then slug; an entry whose parent is not among the
+ * entries is a root.
  */
 export function arrangeNavigation(input: {
   readonly collection: string
   readonly locale: string
   readonly navigation: ResolvedNavigation | null
+  readonly nested?: boolean
   readonly entries: readonly NavigationSource[]
-  readonly pathOf: (slug: string) => string | null
+  readonly pathOf: (slugPath: string) => string | null
 }): Navigation {
   const orderBy = input.navigation?.orderBy ?? null
   const groupBy = input.navigation?.groupBy ?? null
-  const groups = new Map<string | null, NavigationEntry[]>()
+  const nested = input.nested === true
+  const present = new Set(input.entries.map((entry) => entry.slug))
+  const children = new Map<string, Ranked[]>()
+  const groups = new Map<string | null, Ranked[]>()
+  const built = new Map<string, NavigationEntry>()
   for (const entry of input.entries) {
     const order = orderBy === null ? null : entry.frontmatter[orderBy]
-    const name = groupBy === null ? null : textOf(entry.frontmatter[groupBy])
+    const parent = nested && entry.parent != null && present.has(entry.parent) ? entry.parent : null
     const linked: NavigationEntry = {
       slug: entry.slug,
       title: textOf(entry.frontmatter['title']) ?? entry.slug,
       description: textOf(entry.frontmatter['description']),
-      path: input.pathOf(entry.slug),
+      path: input.pathOf(entry.slugPath ?? entry.slug),
       order: typeof order === 'number' && Number.isFinite(order) ? order : null,
+      parent,
+      children: [],
     }
+    built.set(entry.slug, linked)
+    const ranked = { entry: linked, position: nested ? (entry.position ?? null) : null }
+    if (parent !== null) {
+      const siblings = children.get(parent)
+      if (siblings === undefined) children.set(parent, [ranked])
+      else siblings.push(ranked)
+      continue
+    }
+    const name = groupBy === null ? null : textOf(entry.frontmatter[groupBy])
     const group = groups.get(name)
-    if (group === undefined) groups.set(name, [linked])
-    else group.push(linked)
+    if (group === undefined) groups.set(name, [ranked])
+    else group.push(ranked)
   }
+  const sortSiblings = nested ? byPosition(input.locale) : null
+  const byOrderOf = byOrder(input.locale)
+  const finish = (ranked: Ranked[], seen: ReadonlySet<string>): NavigationEntry[] =>
+    ranked.sort(sortSiblings ?? ((a, b) => byOrderOf(a.entry, b.entry))).map(({ entry }) => {
+      const own = children.get(entry.slug)
+      if (own === undefined || seen.has(entry.slug)) return entry
+      return { ...entry, children: finish(own, new Set([...seen, entry.slug])) }
+    })
   const names = [...groups.keys()].sort(rankOf(input.navigation?.groups ?? null))
   return {
     outcome: 'ok',
@@ -110,7 +160,37 @@ export function arrangeNavigation(input: {
     locale: input.locale,
     groups: names.map((name) => ({
       name,
-      entries: (groups.get(name) ?? []).sort(byOrder(input.locale)),
+      entries: finish(groups.get(name) ?? [], new Set()),
     })),
   }
+}
+
+/** Every entry of a navigation, depth first, in the order a sidebar shows them: for previous and next. */
+export function flattenNavigation(navigation: Navigation): NavigationEntry[] {
+  const flat: NavigationEntry[] = []
+  const walk = (entries: readonly NavigationEntry[]) => {
+    for (const entry of entries) {
+      flat.push(entry)
+      walk(entry.children)
+    }
+  }
+  for (const group of navigation.groups) walk(group.entries)
+  return flat
+}
+
+/** The entries from the root down to the one with `slug`, itself last: for breadcrumbs. Empty when it is not there. */
+export function trailOf(navigation: Navigation, slug: string): NavigationEntry[] {
+  const find = (entries: readonly NavigationEntry[]): NavigationEntry[] | null => {
+    for (const entry of entries) {
+      if (entry.slug === slug) return [entry]
+      const below = find(entry.children)
+      if (below !== null) return [entry, ...below]
+    }
+    return null
+  }
+  for (const group of navigation.groups) {
+    const found = find(group.entries)
+    if (found !== null) return found
+  }
+  return []
 }

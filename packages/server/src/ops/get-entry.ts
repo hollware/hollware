@@ -1,10 +1,11 @@
 import { referencedSlugs, renderHtml, resolveAssetReferences } from '@hollware/core'
-import type { EntryView } from '../ports.ts'
+import type { EntryView, View } from '../ports.ts'
 import { assetUrlOf, forReaders, imagesNamed, readsUrls, summaryImages } from './assets.ts'
 import { automaticValues, summaryFor } from './automatic.ts'
 import { translationOutdated } from './translations.ts'
 import { publicationView, verdictView, type EntrySummary as EntrySummaryOutput } from './answers.ts'
 import { collectionOfEntry, requireCollection, requireLocale } from './collections.ts'
+import { entryPath } from './event.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
 export const getEntry: OperationHandler<'get_entry'> = async (input, context) => {
@@ -35,6 +36,7 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
         ])
       : new Map()
   const imageOf = (id: string) => images.get(id)
+  const ancestors = await ancestorsOf(context, found, input.published ? 'published' : context.view)
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
   const references = input.references ? await referencedEntries(context, found) : undefined
   return {
@@ -69,9 +71,30 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
           }
         : {}),
     },
+    ...(ancestors === null ? {} : { ancestors }),
     ...(related === undefined ? {} : { related }),
     ...(references === undefined ? {} : { references }),
   }
+}
+
+async function ancestorsOf(context: OperationContext, found: EntryView, view: View) {
+  const collection = collectionOfEntry(context.site, found.entry)
+  if (collection.nesting === null) return null
+  const slugs = found.entry.slugPath.split('/').slice(0, -1)
+  const views = await context.store.summariesBySlug(
+    context.site.key,
+    { collection: found.entry.collection, locale: found.entry.locale },
+    slugs,
+    view,
+  )
+  return views.map((ancestor) => {
+    const title = summaryFor(context, ancestor).frontmatter['title']
+    return {
+      slug: ancestor.entry.slug,
+      title: typeof title === 'string' && title !== '' ? title : ancestor.entry.slug,
+      path: entryPath(collection, ancestor.entry.locale, ancestor.entry.slugPath),
+    }
+  })
 }
 
 async function referencedEntries(context: OperationContext, found: EntryView) {

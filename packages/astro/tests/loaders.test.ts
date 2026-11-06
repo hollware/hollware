@@ -23,6 +23,9 @@ function post(slug: string, title: string): Published {
     collection: 'blog',
     locale: 'en',
     slug,
+    parent: null,
+    slugPath: slug,
+    position: null,
     translationGroup: null,
     status: 'published',
     version: 1,
@@ -83,7 +86,15 @@ function fakeReader(published: readonly Published[]) {
           {
             name: null,
             entries: [
-              { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+              {
+                slug: 'hello',
+                title: 'Hello',
+                description: null,
+                path: '/hello/',
+                order: null,
+                parent: null,
+                children: [],
+              },
             ],
           },
         ],
@@ -350,7 +361,15 @@ describe('hollwareNavigation', () => {
         {
           name: null,
           entries: [
-            { slug: 'hello', title: 'Hello', description: null, path: '/hello/', order: null },
+            {
+              slug: 'hello',
+              title: 'Hello',
+              description: null,
+              path: '/hello/',
+              order: null,
+              parent: null,
+              children: [],
+            },
           ],
         },
       ],

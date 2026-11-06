@@ -36,10 +36,12 @@ describe('the config module', () => {
       'DEFAULT_MEDIA',
       'INDEXNOW_KEY',
       'MAX_MARKDOWN_BYTES_CEILING',
+      'MAX_NESTING_DEPTH',
       'MEDIA_FORMATS',
       'MEDIA_MAX_WIDTH',
       'MEDIA_MAX_WIDTHS',
       'MEDIA_MIN_WIDTH',
+      'MIN_NESTING_DEPTH',
       'SITE_KEY_MAX_LENGTH',
       'SITE_KEY_PATTERN',
       'WORDS_PER_MINUTE',
@@ -102,5 +104,7 @@ describe('the config module', () => {
   it('has 512 KiB as the default size of a file and 768 KiB as the largest', () => {
     expect(config.DEFAULT_MAX_MARKDOWN_BYTES).toBe(524288)
     expect(config.MAX_MARKDOWN_BYTES_CEILING).toBe(786432)
+    expect(config.MAX_NESTING_DEPTH).toBe(10)
+    expect(config.MIN_NESTING_DEPTH).toBe(2)
   })
 })

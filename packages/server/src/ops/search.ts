@@ -94,7 +94,7 @@ async function passageOf(context: OperationContext, hit: SearchHit, query: strin
     (hit.piece === undefined ? undefined : chunks.find((piece) => piece.index === hit.piece)) ??
     bestByWords(chunks, query) ??
     chunks[0]
-  const path = entryPath(collectionOfEntry(context.site, entry), entry.locale, entry.slug)
+  const path = entryPath(collectionOfEntry(context.site, entry), entry.locale, entry.slugPath)
   const heading = chunk?.heading ?? null
   const text = chunk?.text ?? ''
   return {

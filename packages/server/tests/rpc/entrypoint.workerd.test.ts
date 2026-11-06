@@ -24,11 +24,12 @@ const RPC_METHODS: Record<keyof HollwareRpc, true> = {
   getTranslations: true,
   listEntries: true,
   listRedirects: true,
+  resolvePath: true,
   search: true,
 }
 
 describe('the Hollware class', () => {
-  it('has the seven methods of HollwareRpc and nothing else, own or inherited', () => {
+  it('has the eight methods of HollwareRpc and nothing else, own or inherited', () => {
     const { worker } = boot()
 
     expect(callableNames(worker.Hollware.prototype)).toEqual([
@@ -38,6 +39,7 @@ describe('the Hollware class', () => {
       'getTranslations',
       'listEntries',
       'listRedirects',
+      'resolvePath',
       'search',
     ])
     expect(Object.keys(RPC_METHODS).sort()).toEqual([
@@ -47,6 +49,7 @@ describe('the Hollware class', () => {
       'getTranslations',
       'listEntries',
       'listRedirects',
+      'resolvePath',
       'search',
     ])
   })

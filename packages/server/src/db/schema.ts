@@ -112,6 +112,9 @@ export const entries = sqliteTable(
     collection: text('collection').notNull(),
     locale: text('locale').notNull(),
     slug: text('slug').notNull(),
+    parentId: text('parent_id'),
+    position: integer('position'),
+    slugPath: text('slug_path').notNull().default(''),
     translationGroup: text('translation_group'),
     status: text('status').notNull(),
     version: integer('version').notNull(),
@@ -129,6 +132,8 @@ export const entries = sqliteTable(
     unique('entries_translation').on(t.siteId, t.collection, t.translationGroup, t.locale),
     index('entries_head').on(t.siteId, t.collection, t.updatedAt, t.id),
     index('entries_head_locale').on(t.siteId, t.collection, t.locale, t.updatedAt, t.id),
+    index('entries_children').on(t.siteId, t.collection, t.locale, t.parentId, t.position),
+    index('entries_slug_path').on(t.siteId, t.collection, t.locale, t.slugPath),
     index('entries_published')
       .on(t.siteId, t.collection, t.locale, t.publishedSortKey, t.id)
       .where(sql`${t.status} = 'published'`),

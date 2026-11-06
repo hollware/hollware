@@ -92,6 +92,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     maxMarkdownBytes: 524_288,
     styleGuide: null,
     navigation: null,
+    nesting: null,
   }
 }
 

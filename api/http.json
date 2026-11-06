@@ -80,6 +80,60 @@
         }
       }
     },
+    "/v1/resolve": {
+      "get": {
+        "operationId": "resolve_path",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "preview",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The entry a path of the site names, or where it is now when it moved (redirect)",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag of If-None-Match is current."
+          },
+          "401": {
+            "description": "No token, or one that is unknown, expired or revoked. The challenge names the protected resource metadata."
+          },
+          "403": {
+            "description": "The token lacks content:read."
+          },
+          "404": {
+            "description": "No entry has that path"
+          }
+        }
+      }
+    },
     "/v1/search": {
       "get": {
         "operationId": "search",

@@ -28,6 +28,14 @@ export interface StoredEntry {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  /** In a nested collection, the id of its parent, or `null` at the root. */
+  readonly parentId: string | null
+  /** The slug of its parent, the one before its own in `slugPath`; `null` at the root. */
+  readonly parent: string | null
+  /** In a nested collection, its place among its siblings, from 0; `null` in a flat one. */
+  readonly position: number | null
+  /** The slugs of its ancestors and its own, joined by `/`. */
+  readonly slugPath: string
   readonly translationGroup: string | null
   readonly status: 'draft' | 'scheduled' | 'published'
   /** Moves on every change of the entry; a write against an older one is a conflict. */
@@ -42,6 +50,48 @@ export interface StoredEntry {
   readonly deletedAt: string | null
   readonly updatedAt: string
 }
+
+/** The parent a new or moved entry goes under, as it was read: a write fails when its path moved. */
+export interface EntryParent {
+  readonly id: string
+  readonly slugPath: string
+}
+
+/** A new entry: its address, its place in the tree and its first revision. */
+export interface NewEntry extends EntryRef {
+  readonly translationGroup: string | null
+  readonly revision: NewRevision
+  /** Whether the collection is nested: a nested entry gets a position, last among its siblings. */
+  readonly nested?: boolean
+  /** The entry it goes under; at the root when absent. */
+  readonly parent?: EntryParent | null
+}
+
+/** The children of `parentId` in a collection and locale; the roots when it is `null`. */
+export interface SiblingsRef {
+  readonly collection: string
+  readonly locale: string
+  readonly parentId: string | null
+}
+
+/** A move of an entry, as its handler worked it out. */
+export interface MoveWrite {
+  readonly entryId: string
+  readonly expectedVersion: number
+  readonly slug: string
+  readonly slugPath: string
+  readonly parent: EntryParent | null
+  readonly position: number | null
+  /** The places of its siblings, old and new, the entry left out. */
+  readonly positions: readonly { readonly id: string; readonly position: number }[]
+  /** The path of slugs it had and has, when they differ: its descendants are rewritten. */
+  readonly subtree: { readonly from: string; readonly to: string } | null
+  readonly redirect: boolean
+  readonly events: readonly { readonly entryId: string; readonly event: OutboxEvent }[]
+}
+
+/** An entry of a subtree, as a move rewrites its path. */
+export type TreeNode = StoredEntry
 
 /** A revision as the store holds it. */
 export interface StoredRevision {
@@ -266,6 +316,8 @@ export interface StoredRedirect {
   readonly locale: string
   readonly from: string
   readonly to: string
+  /** The path of slugs of the entry it goes to: its slug alone in a flat collection. */
+  readonly toSlugPath: string
   readonly entryId: string
   readonly createdAt: string
 }
@@ -336,6 +388,24 @@ export interface ContentStore {
     ids: readonly string[],
     view: View,
   ): Promise<readonly EntrySummaryView[]>
+  /** The children of an entry, or the roots, that the view has, by their position. */
+  childrenOf(site: string, ref: SiblingsRef, view: View): Promise<readonly EntrySummaryView[]>
+  /** Every entry below the one at `slugPath`, the trash included, by their paths. */
+  descendantsOf(
+    site: string,
+    ref: { readonly collection: string; readonly locale: string; readonly slugPath: string },
+  ): Promise<readonly TreeNode[]>
+  /** The entries of a collection and locale with those slugs that the view has, in their order. */
+  summariesBySlug(
+    site: string,
+    ref: { readonly collection: string; readonly locale: string },
+    slugs: readonly string[],
+    view: View,
+  ): Promise<readonly EntrySummaryView[]>
+  /** The most levels a path of the collection has, the trash included; 0 without entries. */
+  deepestDepth(site: string, collection: string): Promise<number>
+  /** The id of the entry that moved from the slug of `ref`, or `null`. */
+  redirectOf(site: string, ref: EntryRef): Promise<string | null>
   /** The entries closest to one by meaning, closest first; `[]` when it has no vectors. */
   relatedOf(site: string, entryId: string): Promise<readonly RelatedEntry[]>
   /** The entries of a translation group, one per locale, in the given view. */
@@ -374,31 +444,41 @@ export interface ContentStore {
   ): Promise<(HistoryRevision & { readonly markdown: string }) | null>
   /**
    * Creates an entry at version 1 with its first revision, as a draft. A slug or a translation
-   * that an entry in the trash holds is `in_trash`, by that entry.
+   * that an entry in the trash holds is `in_trash`, by that entry. Under a parent whose path is no
+   * longer `parent.slugPath`, or that went to the trash, nothing is written: `parent_moved`.
    */
   createEntry(
     site: string,
-    entry: EntryRef & { readonly translationGroup: string | null; readonly revision: NewRevision },
-  ): Promise<{ readonly outcome: 'saved'; readonly view: EntryView } | WriteRefusal | InTrash>
+    entry: NewEntry,
+  ): Promise<
+    | { readonly outcome: 'saved'; readonly view: EntryView }
+    | WriteRefusal
+    | InTrash
+    | { readonly outcome: 'parent_moved' }
+  >
   /**
    * Moves a draft to the trash, if it is still at `expectedVersion`: the entry gets its
    * `deletedAt` and the next version, and its pending review is cancelled in the same batch. No
-   * row is deleted. An entry that is published or scheduled is `not_draft`, and nothing is written.
+   * row is deleted. An entry that is published or scheduled is `not_draft`, and one with a child
+   * out of the trash `has_children`: nothing is written.
    */
   trashEntry(
     site: string,
     write: { readonly entryId: string; readonly expectedVersion: number },
   ): Promise<
-    | { readonly outcome: 'trashed' | 'not_draft'; readonly view: EntryView }
+    | { readonly outcome: 'trashed' | 'not_draft' | 'has_children'; readonly view: EntryView }
     | Extract<WriteRefusal, { readonly outcome: 'conflict' | 'not_found' }>
   >
-  /** Brings an entry back from the trash as the draft it was, at the next version. */
+  /**
+   * Brings an entry back from the trash as the draft it was, at the next version; not while its
+   * parent is in the trash (`parent_in_trash`).
+   */
   restoreEntry(
     site: string,
     entryId: string,
   ): Promise<
     | { readonly outcome: 'restored'; readonly view: EntryView }
-    | { readonly outcome: 'not_trashed'; readonly view: EntryView }
+    | { readonly outcome: 'not_trashed' | 'parent_in_trash'; readonly view: EntryView }
     | { readonly outcome: 'not_found' }
   >
   /**
@@ -455,19 +535,20 @@ export interface ContentStore {
   /** Takes a scheduled entry back to a draft and drops its schedule. */
   cancelSchedule(site: string, entryId: string): Promise<void>
   /**
-   * Gives an entry another slug while it is at `expectedVersion`, keeping its old one as a
-   * redirect when `redirect` says so, with an event when it is published.
+   * Gives an entry another slug, parent or position while it is at `expectedVersion`, in one
+   * batch: the paths of its descendants follow `subtree`, its siblings take `positions`, its old
+   * slug stays as a redirect when `redirect` says so, and each event goes out for an entry that is
+   * published. Under a parent whose path moved since it was read, nothing is written:
+   * `parent_moved`.
    */
   moveEntry(
     site: string,
-    write: {
-      readonly entryId: string
-      readonly expectedVersion: number
-      readonly slug: string
-      readonly redirect: boolean
-      readonly event: OutboxEvent | null
-    },
-  ): Promise<{ readonly outcome: 'moved'; readonly view: EntryView } | WriteRefusal>
+    write: MoveWrite,
+  ): Promise<
+    | { readonly outcome: 'moved'; readonly view: EntryView }
+    | WriteRefusal
+    | { readonly outcome: 'parent_moved' }
+  >
   /** The redirects of the site, newest first, a page after `cursor`. */
   listRedirects(
     site: string,
@@ -590,11 +671,16 @@ export interface ContentStore {
     | { readonly outcome: 'rejected' | 'not_pending'; readonly review: StoredReview }
     | { readonly outcome: 'not_found' }
   >
-  /** Takes the entry off the public site and appends the unpublish. */
+  /**
+   * Takes the entry off the public site and appends the unpublish; not while a child of it is
+   * published (`has_children`), and then nothing is written.
+   */
   unpublish(
     site: string,
     write: { readonly entryId: string; readonly actor: Actor; readonly event?: OutboxEvent | null },
-  ): Promise<{ readonly outcome: 'unpublished'; readonly view: EntryView } | WriteRefusal>
+  ): Promise<
+    { readonly outcome: 'unpublished' | 'has_children'; readonly view: EntryView } | WriteRefusal
+  >
 }
 
 /** The time, so that tests can fix it. */

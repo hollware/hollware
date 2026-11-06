@@ -118,6 +118,7 @@ export async function checkChangeset(
           slug: entry.slug,
           translationGroup: entry.translationGroup,
         },
+        slugPath: entry.slugPath,
         at: now,
       }),
     })
@@ -147,7 +148,7 @@ export async function checkChangeset(
     const verdict = await judge(
       context,
       collection,
-      { locale: entry.locale, slug: entry.slug, entryId: entry.id },
+      { locale: entry.locale, slug: entry.slug, entryId: entry.id, slugPath: entry.slugPath },
       processed.value,
       'publish',
       lookup,
@@ -176,6 +177,7 @@ export async function checkChangeset(
             slug: entry.slug,
             translationGroup: entry.translationGroup,
           },
+          slugPath: entry.slugPath,
           at: now,
         }),
         entryId: entry.id,

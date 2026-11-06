@@ -58,6 +58,11 @@ export const STORE: ContentStore = {
   findEntry: unused,
   findEntryById: unused,
   listEntries: unused,
+  childrenOf: unused,
+  descendantsOf: unused,
+  summariesBySlug: unused,
+  deepestDepth: unused,
+  redirectOf: unused,
   searchEntries: unused,
   findSummaries: unused,
   relatedOf: unused,
@@ -191,6 +196,9 @@ export const SUMMARY: EntrySummary = {
   collection: 'blog',
   locale: 'en',
   slug: 'hello-world',
+  parent: null,
+  slugPath: 'hello-world',
+  position: null,
   translationGroup: 'hello',
   status: 'draft',
   version: 1,
@@ -523,6 +531,7 @@ export const CANNED: Canned = {
   },
   unpublish: {
     unpublished: { outcome: 'unpublished', entry: SUMMARY },
+    has_children: { outcome: 'has_children', entry: SUMMARY, children: [SUMMARY] },
     not_found: { outcome: 'not_found' },
   },
   update_draft: {
@@ -547,11 +556,13 @@ export const CANNED: Canned = {
     },
     published: { outcome: 'published', entry: { ...SUMMARY, status: 'published', version: 2 } },
     conflict: { outcome: 'conflict', conflict: { currentVersion: 2, headRevision: REVISION_ID } },
+    has_children: { outcome: 'has_children', entry: SUMMARY, children: [SUMMARY] },
     not_found: { outcome: 'not_found' },
   },
   restore_entry: {
     restored: { outcome: 'restored', entry: { ...SUMMARY, version: 3 } },
     not_trashed: { outcome: 'not_trashed', entry: SUMMARY },
+    parent_in_trash: { outcome: 'parent_in_trash', entry: SUMMARY },
     not_found: { outcome: 'not_found' },
   },
   delete_site: {
@@ -581,6 +592,7 @@ export const CANNED: Canned = {
     unchanged: { outcome: 'unchanged', entry: SUMMARY },
     taken: { outcome: 'taken' },
     conflict: { outcome: 'conflict', conflict: CONFLICT },
+    invalid_parent: { outcome: 'invalid_parent', reason: 'cycle' },
     not_found: { outcome: 'not_found' },
   },
   list_redirects: {

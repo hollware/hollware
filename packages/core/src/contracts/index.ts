@@ -30,4 +30,4 @@ export type {
   Verdict,
   Violation,
 } from './types.ts'
-export { uniqueSlugViolation, uniqueTranslationViolation } from './unique.ts'
+export { parentViolation, uniqueSlugViolation, uniqueTranslationViolation } from './unique.ts'
