@@ -19,6 +19,7 @@ function queried(name: string): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 const group = queried('group')
+const parent = queried('parent')
 const siteQuery = useQuery(operation('describe_site', {}))
 const site = computed(() => siteQuery.data.value?.site ?? null)
 const collection = ref('')
@@ -66,6 +67,7 @@ async function create() {
       locale: locale.value,
       slug: slug.value,
       markdown,
+      ...(parent === undefined || definition?.nesting === undefined ? {} : { parent }),
     })
     if (created.outcome === 'saved') {
       await router.push(`/entries/${collection.value}/${locale.value}/${slug.value}`)
@@ -89,6 +91,10 @@ async function create() {
     <form v-if="site !== null" class="max-w-lg space-y-4" @submit.prevent="create">
       <p v-if="group !== undefined" class="text-sm text-muted">
         {{ m.newEntry.joins }}<span class="font-mono">{{ group }}</span
+        >.
+      </p>
+      <p v-if="parent !== undefined" class="text-sm text-muted">
+        {{ m.newEntry.inside }}<span class="font-mono">{{ parent }}</span
         >.
       </p>
       <UFormField :label="m.newEntry.collection">

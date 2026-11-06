@@ -112,6 +112,56 @@ const trashOpen = ref(false)
 const scheduleOpen = ref(false)
 const moveOpen = ref(false)
 const newSlug = ref('')
+const ROOT = '\u0000root'
+const newParent = ref(ROOT)
+const ancestors = ref<NonNullable<Output<'get_entry'>['ancestors']>>([])
+const nesting = computed(() => definition.value?.nesting ?? null)
+const depth = computed(() => (entry.value?.slugPath ?? '').split('/').length)
+const siblingsQuery = useQuery(() => ({
+  key: ['entries', { collection: props.collection, locale: props.locale, every: true }],
+  query: async ({ signal }: { signal: AbortSignal }) => {
+    const entries: Output<'list_entries'>['entries'] = []
+    let cursor: string | null = null
+    do {
+      const page: Output<'list_entries'> = await api.call(
+        'list_entries',
+        {
+          collection: props.collection,
+          locale: props.locale,
+          limit: 100,
+          ...(cursor === null ? {} : { cursor }),
+        },
+        signal,
+      )
+      entries.push(...page.entries)
+      cursor = page.nextCursor
+    } while (cursor !== null && entries.length < 1000)
+    return { entries }
+  },
+  enabled: moveOpen.value && nesting.value !== null,
+}))
+const parentChoices = computed(() => {
+  const own = entry.value?.slugPath ?? ''
+  const height =
+    1 +
+    Math.max(
+      0,
+      ...(siblingsQuery.data.value?.entries ?? [])
+        .filter((other) => other.slugPath.startsWith(`${own}/`))
+        .map((other) => other.slugPath.split('/').length - depth.value),
+    )
+  return [
+    { label: m.value.entry.atRoot, value: ROOT },
+    ...(siblingsQuery.data.value?.entries ?? [])
+      .filter(
+        (other) =>
+          other.slugPath !== own &&
+          !other.slugPath.startsWith(`${own}/`) &&
+          other.slugPath.split('/').length + height <= (nesting.value?.maxDepth ?? 1),
+      )
+      .map((other) => ({ label: `${titleOf(other)} · ${other.slugPath}`, value: other.slug })),
+  ]
+})
 const slugValid = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newSlug.value))
 const scheduleMode = ref<'publish' | 'unpublish'>('publish')
 const publishAt = ref('')
@@ -177,13 +227,18 @@ const diagnostics = computed(() =>
 )
 const liveUrl = computed(() =>
   entry.value?.status === 'published' && definition.value !== undefined
-    ? pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug)
+    ? pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, entry.value.slugPath)
     : null,
 )
 const canPreviewOnSite = computed(
   () =>
     definition.value !== undefined &&
-    pageUrl(site.value?.url ?? null, definition.value.routes, props.locale, props.slug) !== null,
+    pageUrl(
+      site.value?.url ?? null,
+      definition.value.routes,
+      props.locale,
+      entry.value?.slugPath ?? props.slug,
+    ) !== null,
 )
 const untranslated = computed(() =>
   entry.value?.translationGroup === null || entry.value === null
@@ -222,6 +277,7 @@ async function show(read: Output<'get_entry'>) {
   shown = read.entry.id
   entry.value = read.entry
   related.value = read.related ?? []
+  ancestors.value = read.ancestors ?? []
   text.value = read.entry.markdown ?? ''
   saved.value = text.value
   verdict.value = read.entry.verdict
@@ -254,6 +310,7 @@ function follow(read: Output<'get_entry'> | undefined) {
   if (read.entry.version === current.version) {
     entry.value = { ...read.entry, markdown: current.markdown }
     related.value = read.related ?? []
+    ancestors.value = read.ancestors ?? []
     if (!dirty.value) verdict.value = read.entry.verdict
     return
   }
@@ -558,6 +615,7 @@ async function openMove() {
   if (entry.value === null) return
   if (dirty.value && !(await save())) return
   newSlug.value = entry.value.slug
+  newParent.value = entry.value.parent ?? ROOT
   moveOpen.value = true
 }
 
@@ -565,10 +623,12 @@ async function move() {
   if (entry.value === null) return
   busy.value = true
   try {
+    const parent = newParent.value === ROOT ? null : newParent.value
     const answer = await api.call('move_entry', {
       id: entry.value.id,
       version: entry.value.version,
       slug: newSlug.value,
+      ...(nesting.value === null || parent === entry.value.parent ? {} : { parent }),
     })
     switch (answer.outcome) {
       case 'moved':
@@ -581,6 +641,14 @@ async function move() {
         toast.add({
           title: m.value.entry.notMoved,
           description: m.value.entry.slugTaken,
+          color: 'error',
+        })
+        break
+      case 'invalid_parent':
+        toast.add({
+          title: m.value.entry.notMoved,
+          description:
+            answer.reason === undefined ? undefined : m.value.entries.tree.reasons[answer.reason],
           color: 'error',
         })
         break
@@ -777,6 +845,18 @@ const more = computed<DropdownMenuItem[][]>(() => {
         icon: 'i-lucide-link',
         onSelect: () => void openMove(),
       },
+      ...(nesting.value !== null && depth.value < nesting.value.maxDepth
+        ? [
+            {
+              label: m.value.entry.addChild,
+              icon: 'i-lucide-file-plus',
+              to: {
+                path: '/entries/new',
+                query: { collection: props.collection, locale: props.locale, parent: current.slug },
+              },
+            },
+          ]
+        : []),
       {
         label: m.value.entry.previewOnSite,
         icon: 'i-lucide-eye',
@@ -864,6 +944,14 @@ const stateLabel = computed(
             <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
             <span class="font-mono">{{ locale }}</span>
             <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
+            <template v-for="ancestor in ancestors" :key="ancestor.slug">
+              <ULink
+                :to="entryPath({ collection, locale, slug: ancestor.slug })"
+                class="truncate hover:text-highlighted"
+                >{{ ancestor.title }}</ULink
+              >
+              <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
+            </template>
           </nav>
         </template>
         <template v-if="entry !== null" #right>
@@ -1240,16 +1328,27 @@ const stateLabel = computed(
   <template v-if="entry !== null">
     <UModal v-model:open="moveOpen" :title="m.entry.moveTitle">
       <template #body>
-        <UFormField :label="m.entry.newSlug" :help="m.entry.moveHelp">
-          <UInput v-model="newSlug" class="w-full font-mono" />
-        </UFormField>
+        <div class="space-y-3">
+          <UFormField :label="m.entry.newSlug" :help="m.entry.moveHelp">
+            <UInput v-model="newSlug" class="w-full font-mono" />
+          </UFormField>
+          <UFormField v-if="nesting !== null" :label="m.entry.parent" :help="m.entry.parentHelp">
+            <USelectMenu
+              v-model="newParent"
+              :items="parentChoices"
+              value-key="value"
+              :loading="siblingsQuery.isPending.value"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
       </template>
       <template #footer>
         <UButton :label="m.common.cancel" variant="ghost" @click="moveOpen = false" />
         <UButton
           :label="m.entry.changeUrl"
           :loading="busy"
-          :disabled="!slugValid || newSlug === entry.slug"
+          :disabled="!slugValid || (newSlug === entry.slug && newParent === (entry.parent ?? ROOT))"
           @click="move"
         />
       </template>
