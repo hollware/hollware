@@ -59,10 +59,15 @@ export const IMPORT_USAGE = [
   '  --public-dir <dir>   nuxt-content: upload the images the pages show by path, /x.webp from this',
   "                       folder and x.webp from the page's, and write asset:ast_… in their place",
   '  --root <page>        notion: the id or the address of the top page',
-  '  --section-field <f>  notion: the field of the title of the top page above it (default section)',
+  '  --section-field <f>  notion: the field of the section of a page (default section)',
+  '  --sections <from>    notion: what names the section: pages, the title of the top page above it',
+  '                       (the default), or headings, the heading above that page on the root',
   '  --order-field <f>    notion: the field of its place among its siblings, from 1 (default order)',
   '                       In a nested collection, each page goes under its parent instead, the',
-  '                       pages below the root at the root, in their order, with no such fields',
+  '                       pages below the root at the root, in their order, with no order field and',
+  '                       a section only on those, with --sections headings',
+  '  --skip-root          notion: import the pages below the root, not the root itself; a link to',
+  '                       the root points at the route of the collection without a slug',
   '  --callouts <mode>    notion: components (::callout, the default) or alerts (> [!NOTE])',
   '  --toggles <mode>     notion: details (::details, the default) or flatten (a bold line)',
   '  --slug-map <file>    notion: a JSON object of page id to slug, which wins over the title',
@@ -96,6 +101,8 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       root: { type: 'string' },
       'section-field': { type: 'string' },
       'order-field': { type: 'string' },
+      sections: { type: 'string' },
+      'skip-root': { type: 'boolean' },
       callouts: { type: 'string' },
       toggles: { type: 'string' },
       'slug-map': { type: 'string' },
@@ -125,6 +132,8 @@ export async function importContent(argv: readonly string[], io: Io): Promise<nu
       locale: values.locale ?? 'en',
       sectionField: values['section-field'] ?? 'section',
       orderField: values['order-field'] ?? 'order',
+      sections: values.sections ?? 'pages',
+      skipRoot: values['skip-root'] === true,
       callouts: values.callouts ?? 'components',
       toggles: values.toggles ?? 'details',
       slugMap: values['slug-map'],
@@ -190,6 +199,8 @@ const NOTION_FLAGS = [
   'root',
   'section-field',
   'order-field',
+  'sections',
+  'skip-root',
   'callouts',
   'toggles',
   'slug-map',
@@ -207,6 +218,8 @@ interface NotionFlags {
   locale: string
   sectionField: string
   orderField: string
+  sections: string
+  skipRoot: boolean
   callouts: string
   toggles: string
   slugMap: string | undefined
@@ -235,6 +248,9 @@ async function importNotion(
       `--callouts takes components or alerts, not "${printable(flags.callouts)}".`,
     )
   }
+  if (flags.sections !== 'pages' && flags.sections !== 'headings') {
+    throw new UsageError(`--sections takes pages or headings, not "${printable(flags.sections)}".`)
+  }
   if (flags.toggles !== 'details' && flags.toggles !== 'flatten') {
     throw new UsageError(`--toggles takes details or flatten, not "${printable(flags.toggles)}".`)
   }
@@ -255,7 +271,7 @@ async function importNotion(
   }
   const endpoint = mcpEndpoint(flags.url)
   const slugMap = flags.slugMap === undefined ? {} : readSlugMap(io, flags.slugMap)
-  const { callouts, toggles, collection } = flags
+  const { callouts, toggles, collection, sections, skipRoot } = flags
   const token = await readToken(io, flags.tokenFile)
   try {
     return await importFiles({
@@ -271,6 +287,8 @@ async function importNotion(
           locale: flags.locale,
           sectionField: flags.sectionField,
           orderField: flags.orderField,
+          sections,
+          skipRoot,
           callouts,
           toggles,
           slugMap,

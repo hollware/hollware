@@ -61,6 +61,8 @@ function convert(options: Partial<NotionOptions> = {}) {
     locale: 'en',
     sectionField: 'section',
     orderField: 'order',
+    sections: 'pages',
+    skipRoot: false,
     callouts: 'components',
     toggles: 'details',
     slugMap: {},
@@ -627,6 +629,19 @@ describe('hollware import --from notion', () => {
     expect(second.out.at(-1)).toBe('Drafts: 0 created, 0 updated, 8 unchanged.')
   })
 
+  it('takes the sections from the headings of the root and leaves the root out, with --sections headings and --skip-root', async () => {
+    const stub = await serve(['callout', 'details'])
+    const cwd = temp.make()
+
+    const { code, out } = await runNotion(cwd, stub.url, ['--sections', 'headings', '--skip-root'])
+
+    expect(code).toBe(0)
+    expect(out[0]).toBe('Read 7 Notion pages: 4 with notes (--report <file> lists them), 4 images.')
+    expect(stub.entries.get('docs/en/gallery')?.revisions[0]).toMatch(
+      /^---\ntitle: "Gallery"\norder: 3\n---\n/,
+    )
+  })
+
   it('sends nothing when the collection does not declare a component the pages use', async () => {
     const stub = await serve([])
     const cwd = temp.make()
@@ -697,7 +712,19 @@ describe('hollware import --from notion', () => {
           '--callouts',
           'boxes',
         ],
+        [
+          'import',
+          '--from',
+          'notion',
+          '--root',
+          ROOT,
+          '--collection',
+          'docs',
+          '--sections',
+          'titles',
+        ],
         ['import', 'content', '--root', ROOT, '--url', 'https://cms.example.com'],
+        ['import', 'content', '--skip-root', '--url', 'https://cms.example.com'],
       ].map(async (argv) => (await run(argv, io)).err.join('\n')),
     )
 
@@ -705,7 +732,9 @@ describe('hollware import --from notion', () => {
       '--from notion needs --root: the id or the address of the top page',
       '--from notion needs --collection: the collection its pages go to',
       '--callouts takes components or alerts, not "boxes"',
+      '--sections takes pages or headings, not "titles"',
       '--root is for --from notion',
+      '--skip-root is for --from notion',
     ])
   })
 })
@@ -752,5 +781,128 @@ describe('a Notion tree imported into a nested collection', () => {
           'it is 3 levels deep, and collection docs allows 2: raise its nesting.maxDepth, or import a page further down with --root.',
       },
     ])
+  })
+})
+
+const ROOT_ID = '00000000-0000-4000-8000-000000000001'
+const GALLERY = '00000000000040008000000000000004'
+
+function textBlock(id: string, type: string, title: unknown, content: string[] = []) {
+  return {
+    role: 'reader',
+    value: { id, type, alive: true, properties: { title }, format: {}, content },
+  }
+}
+
+function sectionedWorkspace(): Record<string, NotionRecordMap> {
+  const page = (n: string) => `00000000-0000-4000-8000-00000000000${n}`
+  const root = WORKSPACE['00000000000040008000000000000001']
+  const gallery = WORKSPACE[GALLERY]
+  if (root === undefined || gallery === undefined) throw new Error('the fixture lost a page')
+  return {
+    ...WORKSPACE,
+    '00000000000040008000000000000001': {
+      ...root,
+      block: {
+        ...root.block,
+        [ROOT_ID]: textBlock(
+          ROOT_ID,
+          'page',
+          [['Guide']],
+          ['h-start', page('2'), 'box', page('5'), page('8')],
+        ),
+        'h-start': textBlock('h-start', 'sub_header', [['Start']]),
+        box: textBlock('box', 'callout', [], ['h-ref', 'rule', page('3'), page('4')]),
+        'h-ref': textBlock('h-ref', 'sub_sub_header', [['Reference']]),
+        rule: textBlock('rule', 'divider', []),
+      },
+    },
+    [GALLERY]: {
+      ...gallery,
+      block: {
+        ...gallery.block,
+        [page('4')]: textBlock(
+          page('4'),
+          'page',
+          [['Gallery']],
+          [
+            '00000000-0000-4000-9000-000000000039',
+            '00000000-0000-4000-9000-000000000038',
+            '00000000-0000-4000-9000-000000000040',
+            '00000000-0000-4000-9000-000000000041',
+            'home',
+          ],
+        ),
+        home: textBlock('home', 'text', [
+          ['Back home', [['a', `https://www.notion.so/${compactId(ROOT_ID)}`]]],
+        ]),
+      },
+    },
+  }
+}
+
+describe('the sections of a root that groups its pages under headings', () => {
+  const sectioned = sectionedWorkspace()
+  const sectionedLoader: NotionLoader = {
+    getPage: (id) => {
+      const found = sectioned[compactId(notionId(id) ?? '')]
+      return found === undefined
+        ? Promise.reject(new Error('no such page'))
+        : Promise.resolve(found)
+    },
+  }
+  const nestedWith = (options: Partial<NotionOptions>) =>
+    convert({
+      loader: sectionedLoader,
+      target: { components: ['callout', 'details'], route: '/docs/:slug/', maxDepth: 3 },
+      ...options,
+    })
+
+  it('names each page below the root by the heading above it, inside a callout too, and the deeper pages not at all', async () => {
+    const { corpus } = await nestedWith({ sections: 'headings', skipRoot: true })
+
+    expect(
+      corpus.files.map((file) => `${file.path} ${/^section: (.*)$/m.exec(file.markdown)?.[1]}`),
+    ).toEqual([
+      'docs/en/blocks.md "Start"',
+      'docs/en/callouts.md "Reference"',
+      'docs/en/gallery.md "Reference"',
+      'docs/en/links.md "Reference"',
+      'docs/en/links/deep.md undefined',
+      'docs/en/links/deep/deeper.md undefined',
+      'docs/en/links-2.md "Reference"',
+    ])
+  })
+
+  it('leaves out the section of a page with no heading above it', async () => {
+    const { corpus } = await convert({ sections: 'headings' })
+
+    expect(corpus.files.find((file) => file.slug === 'blocks')?.markdown).toMatch(
+      /^---\ntitle: "Blocks"\norder: 1\n---\n/,
+    )
+  })
+
+  it('in a flat collection, gives the deeper pages the section of their top page', async () => {
+    const { corpus } = await convert({ loader: sectionedLoader, sections: 'headings' })
+
+    expect(corpus.files.find((file) => file.slug === 'deeper')?.markdown).toBe(
+      '---\ntitle: "Deeper"\nsection: "Reference"\norder: 1\n---\n\nBottom\n',
+    )
+  })
+
+  it('skips the root with --skip-root, and points a link to it at the route without a slug', async () => {
+    const { corpus, ids } = await nestedWith({ sections: 'headings', skipRoot: true })
+
+    expect(Object.keys(ids)).not.toContain(compactId(ROOT_ID))
+    expect(corpus.files.map((file) => file.slug)).not.toContain('guide')
+    expect(corpus.files.find((file) => file.slug === 'gallery')?.markdown).toContain(
+      '[Back home](/docs/)',
+    )
+  })
+
+  it('keeps the root as an entry without --skip-root', async () => {
+    const { corpus } = await nestedWith({ sections: 'headings' })
+
+    expect(corpus.files[0]?.markdown).toMatch(/^---\ntitle: "Guide"\n---\n/)
   })
 })
