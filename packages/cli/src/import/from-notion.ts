@@ -18,6 +18,7 @@ export type Download = (url: string) => Promise<Response>
 export interface NotionTarget {
   readonly components: readonly string[]
   readonly route: string | undefined
+  readonly maxDepth?: number | null
 }
 
 export interface NotionOptions {
@@ -477,7 +478,7 @@ type Downloaded = { ok: true; key: string } | { ok: false; reason: string }
 interface Shared {
   readonly options: NotionOptions
   readonly pages: ReadonlyMap<string, Page>
-  readonly slugs: ReadonlyMap<string, string>
+  readonly paths: ReadonlyMap<string, string>
   readonly images: Map<string, NotionImage>
   readonly downloads: Map<string, Promise<Downloaded>>
 }
@@ -508,7 +509,7 @@ class PageWriter {
   }
 
   pageHref(id: string): string {
-    const slug = this.shared.slugs.get(id)
+    const slug = this.shared.paths.get(id)
     const { route } = this.shared.options.target
     if (slug === undefined) {
       const url = this.notionUrl(id)
@@ -547,7 +548,7 @@ class PageWriter {
     const absolute = relative ? `${NOTION_ORIGIN}${href}` : href
     const id = notionId(href)
     if (id === undefined) return absolute
-    if (!this.shared.slugs.has(id)) {
+    if (!this.shared.paths.has(id)) {
       this.note(`link to a Notion page outside the import kept as ${absolute}`)
       return absolute
     }
@@ -1028,10 +1029,22 @@ export async function corpusFromNotion(options: NotionOptions): Promise<NotionIm
   const pages = treeOrder(await crawl(rootId, options.loader))
   const problems: FileProblem[] = []
   const slugs = assignSlugs(pages, options.slugMap, problems)
+  const maxDepth = options.target.maxDepth ?? null
+  const parentOf = (page: Page): string | undefined =>
+    maxDepth !== null && page.parent !== undefined && page.parent !== rootId
+      ? page.parent
+      : undefined
+  const paths = new Map<string, string>()
+  for (const page of pages) {
+    const slug = slugs.get(page.id) ?? slugOf(page.title)
+    const parent = parentOf(page)
+    const above = parent === undefined ? undefined : paths.get(parent)
+    paths.set(page.id, above === undefined ? slug : `${above}/${slug}`)
+  }
   const shared: Shared = {
     options,
     pages: new Map(pages.map((page) => [page.id, page])),
-    slugs,
+    paths,
     images: new Map(),
     downloads: new Map(),
   }
@@ -1045,18 +1058,33 @@ export async function corpusFromNotion(options: NotionOptions): Promise<NotionIm
   const report: PageReport[] = []
   for (const { page, writer, body } of written) {
     const slug = slugs.get(page.id) ?? slugOf(page.title)
-    const path = `${options.collection}/${options.locale}/${slug}.md`
-    const head = frontmatter([
-      ['title', page.title],
-      [options.sectionField, page.section],
-      [options.orderField, page.position],
-    ])
+    const slugPath = paths.get(page.id) ?? slug
+    const path = `${options.collection}/${options.locale}/${slugPath}.md`
+    const parent = parentOf(page)
+    const head = frontmatter(
+      maxDepth === null
+        ? [
+            ['title', page.title],
+            [options.sectionField, page.section],
+            [options.orderField, page.position],
+          ]
+        : [['title', page.title]],
+    )
+    const depth = slugPath.split('/').length
+    if (maxDepth !== null && depth > maxDepth) {
+      problems.push({
+        path,
+        reason: `it is ${depth} levels deep, and collection ${options.collection} allows ${maxDepth}: raise its nesting.maxDepth, or import a page further down with --root.`,
+      })
+    }
+    const parentSlug = parent === undefined ? undefined : slugs.get(parent)
     files.push({
       path,
       collection: options.collection,
       locale: options.locale,
       slug,
       markdown: body === '' ? head : `${head}\n${body}\n`,
+      ...(parentSlug === undefined ? {} : { parent: parentSlug }),
     })
     for (const component of [...writer.components].sort()) {
       if (options.target.components.includes(component)) continue

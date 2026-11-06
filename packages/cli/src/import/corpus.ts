@@ -8,6 +8,7 @@ export interface ContentFile {
   locale: string
   slug: string
   markdown: string
+  parent?: string
 }
 
 export interface FileProblem {
@@ -26,7 +27,9 @@ export function readCorpus(root: string): Corpus {
   walk(root, [], corpus)
   corpus.files.sort(
     (a, b) =>
-      compare(a.collection, b.collection) || compare(a.locale, b.locale) || compare(a.slug, b.slug),
+      compare(a.collection, b.collection) ||
+      compare(a.locale, b.locale) ||
+      compareSegments(a.path.split('/'), b.path.split('/')),
   )
   corpus.skipped.sort(compare)
   corpus.problems.sort((a, b) => compare(a.path, b.path))
@@ -35,6 +38,14 @@ export function readCorpus(root: string): Corpus {
 
 function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0
+}
+
+function compareSegments(a: readonly string[], b: readonly string[]): number {
+  for (let at = 0; at < Math.min(a.length, b.length); at += 1) {
+    const order = compare((a[at] ?? '').replace(/\.md$/, ''), (b[at] ?? '').replace(/\.md$/, ''))
+    if (order !== 0) return order
+  }
+  return a.length - b.length
 }
 
 function walk(directory: string, segments: string[], corpus: Corpus): void {
@@ -50,24 +61,23 @@ function walk(directory: string, segments: string[], corpus: Corpus): void {
 
 function readFile(file: string, segments: string[], corpus: Corpus): void {
   const path = segments.join('/')
-  const [collection, locale, name] = segments
-  if (
-    segments.length !== 3 ||
-    collection === undefined ||
-    locale === undefined ||
-    name === undefined
-  ) {
+  const [collection, locale, ...rest] = segments
+  const name = rest.at(-1)
+  if (collection === undefined || locale === undefined || name === undefined) {
     corpus.skipped.push(path)
     return
   }
-  const slug = name.slice(0, -'.md'.length)
-  if (!schemas.slug.safeParse(slug).success) {
+  const slugs = [...rest.slice(0, -1), name.slice(0, -'.md'.length)]
+  const wrong = slugs.find((one) => !schemas.slug.safeParse(one).success)
+  if (wrong !== undefined) {
     corpus.problems.push({
       path,
-      reason: `${JSON.stringify(slug)} is not a slug: use lowercase letters and digits joined by hyphens, up to 200 characters.`,
+      reason: `${JSON.stringify(wrong)} is not a slug: use lowercase letters and digits joined by hyphens, up to 200 characters.`,
     })
     return
   }
+  const slug = slugs.at(-1) ?? ''
+  const parent = slugs.at(-2)
   let bytes: Buffer
   try {
     bytes = readFileSync(file)
@@ -85,5 +95,12 @@ function readFile(file: string, segments: string[], corpus: Corpus): void {
     corpus.problems.push({ path, reason: 'the file is not valid UTF-8.' })
     return
   }
-  corpus.files.push({ path, collection, locale, slug, markdown })
+  corpus.files.push({
+    path,
+    collection,
+    locale,
+    slug,
+    markdown,
+    ...(parent === undefined ? {} : { parent }),
+  })
 }

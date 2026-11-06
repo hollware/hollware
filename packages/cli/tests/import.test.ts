@@ -1210,3 +1210,54 @@ describe('hollware import --from', () => {
     expect(stub.calls).toEqual([])
   })
 })
+
+describe('hollware import of folders, as nested entries', () => {
+  it('creates each entry under the folder it is in, parents first', async () => {
+    const stub = await serve({
+      site: { key: 'help-site', locales: ['es'], collections: ['help'] },
+      declared: { help: { maxDepth: 3 } },
+    })
+    const dir = temp.make({
+      'help/es/facturacion/pagos.md': post('Pagos'),
+      'help/es/facturacion.md': post('Facturación'),
+      'help/es/facturacion/pagos/reembolsos.md': post('Reembolsos'),
+    })
+
+    const { code } = await runImport(dir, stub.url)
+
+    expect(code).toBe(0)
+    expect(
+      stub.calls
+        .filter((call) => call.tool === 'create_draft')
+        .map((call) => [call.args['slug'], call.args['parent']]),
+    ).toEqual([
+      ['facturacion', undefined],
+      ['pagos', 'facturacion'],
+      ['reembolsos', 'pagos'],
+    ])
+  })
+
+  it('sends nothing when a folder is in a flat collection, or deeper than the collection allows', async () => {
+    const stub = await serve({
+      site: { key: 'two', locales: ['es'], collections: ['blog', 'help'] },
+      declared: { help: { maxDepth: 2 } },
+    })
+    const dir = temp.make({
+      'blog/es/viejo/post.md': post('Post'),
+      'help/es/a.md': post('A'),
+      'help/es/a/b.md': post('B'),
+      'help/es/a/b/c.md': post('C'),
+    })
+
+    const { code, err } = await runImport(dir, stub.url)
+
+    expect(code).not.toBe(0)
+    expect(err.join('\n')).toContain(
+      'blog/es/viejo/post.md: it is in a folder below its locale, and collection blog is not nested',
+    )
+    expect(err.join('\n')).toContain(
+      'help/es/a/b/c.md: it is 3 levels deep, and collection help allows 2',
+    )
+    expect(tools(stub.calls)).not.toContain('create_draft')
+  })
+})

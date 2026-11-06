@@ -56,6 +56,7 @@ export interface StubEntry {
   collection: string
   locale: string
   slug: string
+  slugPath?: string
   version: number
   revisions: string[]
   published: number | null
@@ -104,7 +105,10 @@ export interface StubOptions {
   before?: (call: RecordedCall, entries: Map<string, StubEntry>) => void
   respond?: (request: Request) => Response | undefined
   site?: { key: string; locales: string[]; collections: string[] }
-  declared?: Record<string, { components?: string[]; routes?: Record<string, string> }>
+  declared?: Record<
+    string,
+    { components?: string[]; routes?: Record<string, string>; maxDepth?: number }
+  >
   pageSize?: number
   redirects?: { from: string; to: string; fromPath: string | null; toPath: string | null }[]
   backups?: { date: string; bytes: number }[]
@@ -227,8 +231,8 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       collection: entry.collection,
       locale: entry.locale,
       slug: entry.slug,
-      parent: null,
-      slugPath: entry.slug,
+      parent: entry.slugPath?.split('/').at(-2) ?? null,
+      slugPath: entry.slugPath ?? entry.slug,
       position: null,
       translationGroup: null,
       status: entry.published === null ? ('draft' as const) : ('published' as const),
@@ -485,6 +489,9 @@ export function startStub(options: StubOptions): Promise<StubServer> {
                 contracts: [],
                 maxMarkdownBytes: options.maxBytes ?? 8192,
                 styleGuide: null,
+                ...(options.declared?.[name]?.maxDepth === undefined
+                  ? {}
+                  : { nesting: { maxDepth: options.declared[name].maxDepth } }),
               })),
             },
           }),

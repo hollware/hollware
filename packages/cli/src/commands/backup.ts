@@ -33,6 +33,7 @@ interface BackupEntry {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  readonly slugPath?: string
   readonly status: string
   readonly deletedAt: string | null
   readonly markdown: string
@@ -83,9 +84,11 @@ function isBackupEntry(value: unknown): value is BackupEntry {
     const field: unknown = Reflect.get(value, key)
     return field === null || typeof field === 'string'
   }
+  const slugPath: unknown = Reflect.get(value, 'slugPath')
   return (
     ['collection', 'locale', 'slug', 'status', 'markdown'].every(text) &&
-    ['deletedAt', 'published'].every(textOrNull)
+    ['deletedAt', 'published'].every(textOrNull) &&
+    (slugPath === undefined || typeof slugPath === 'string')
   )
 }
 
@@ -174,15 +177,16 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
           : null
         : entry.markdown
     if (markdown === null) continue
+    const slugPath = entry.slugPath ?? entry.slug
     if (
       ![entry.collection, entry.locale].every((part) => SAFE_SEGMENT.test(part)) ||
-      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)
+      !slugPath.split('/').every((one) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(one))
     ) {
       throw new CliError(
-        `the backup names ${printable(`${entry.collection}/${entry.locale}/${entry.slug}`)}, which is not a path an entry has. Nothing more was written.`,
+        `the backup names ${printable(`${entry.collection}/${entry.locale}/${slugPath}`)}, which is not a path an entry has. Nothing more was written.`,
       )
     }
-    const path = join(entry.collection, entry.locale, `${entry.slug}.md`)
+    const path = join(entry.collection, entry.locale, ...`${slugPath}.md`.split('/'))
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), markdown, { flag: 'wx' })
     written.push(path)

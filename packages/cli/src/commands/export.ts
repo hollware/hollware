@@ -222,7 +222,7 @@ async function exportEntries(plan: Plan): Promise<number> {
   }
   let written = 0
   for (const file of files) {
-    const target = join(root, file.collection, file.locale, `${file.slug}.md`)
+    const target = join(root, ...file.path.split('/'))
     try {
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, file.markdown, { flag: 'wx' })
@@ -332,11 +332,11 @@ async function listAll(
           )
         }
         for (const summary of page.entries) {
-          const path = `${summary.collection}/${summary.locale}/${summary.slug}.md`
+          const path = `${summary.collection}/${summary.locale}/${summary.slugPath}.md`
           if (
             !SAFE_SEGMENT.test(summary.collection) ||
             !SAFE_SEGMENT.test(summary.locale) ||
-            !schemas.slug.safeParse(summary.slug).success
+            !summary.slugPath.split('/').every((one) => schemas.slug.safeParse(one).success)
           ) {
             throw new CliError(
               `the server listed an entry that cannot be a file below the directory: ${printable(JSON.stringify(path))}. Nothing was written.`,
