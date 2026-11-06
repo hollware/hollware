@@ -646,4 +646,42 @@ describe('the nesting of a collection', () => {
     })
     expect(deeper).toEqual({ outcome: 'updated', version: 3 })
   })
+
+  it('writes no depth below an entry that got deeper after the depth was read', async () => {
+    const { key, context, registry } = await setUp()
+    await handlers.set_collection(
+      { version: 1, name: 'blog', collection: nested(3), confirm: false },
+      context,
+    )
+    const site = registry.sites.get(key)
+    if (site === undefined) throw new Error(`no site ${key}`)
+    for (const [slug, parent] of [
+      ['a', undefined],
+      ['b', 'a'],
+      ['c', 'b'],
+    ] as const) {
+      await handlers.create_draft(
+        {
+          collection: 'blog',
+          locale: 'en',
+          slug,
+          markdown: `---\ntitle: ${slug}\n---\n\n${slug}\n`,
+          ...(parent === undefined ? {} : { parent }),
+        },
+        { ...context, site },
+      )
+    }
+    const stale = { ...context, store: { ...context.store, deepestDepth: async () => 1 } }
+
+    const answer = await handlers.set_collection(
+      { version: 2, name: 'blog', collection: nested(2), confirm: false },
+      stale,
+    )
+
+    expect(answer.outcome).toBe('conflict')
+    const row = await env.DB.prepare('SELECT version FROM sites WHERE id = ?1')
+      .bind(key)
+      .first<{ version: number }>()
+    expect(row?.version).toBe(2)
+  })
 })

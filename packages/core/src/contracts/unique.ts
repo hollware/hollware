@@ -27,7 +27,7 @@ export function uniqueTranslationViolation(holder: string, field: string): Viola
 
 /** A nested entry that cannot go under the parent it names. */
 export function parentViolation(
-  reason: 'not_nested' | 'missing' | 'too_deep' | 'unpublished',
+  reason: 'not_nested' | 'missing' | 'too_deep' | 'unpublished' | 'changed',
   params: { readonly parent: string; readonly maxDepth: number | null },
 ): Violation {
   const messages = {
@@ -38,6 +38,10 @@ export function parentViolation(
     missing: {
       message: `The collection and locale have no entry ${quote(params.parent)} to put it under.`,
       fix: `Use the slug of an entry of the collection and locale (list_entries lists them), or create ${quote(params.parent)} first.`,
+    },
+    changed: {
+      message: `The entries around ${quote(params.parent)} kept changing while this one was written.`,
+      fix: 'Write it again: nothing was saved.',
     },
     unpublished: {
       message: `Its parent ${quote(params.parent)} is not published, so the entry would have no page above it.`,
@@ -54,5 +58,18 @@ export function parentViolation(
     path: '',
     ...messages[reason],
     params: { reason, parent: params.parent },
+  }
+}
+
+/** An entry to unpublish whose published children would be left with no page above them. */
+export function childrenViolation(children: readonly string[]): Violation {
+  const names = children.map(quote).join(', ')
+  return {
+    contract: 'entry-parent',
+    severity: 'error',
+    path: '',
+    message: `Its published children ${names} would be left with no page above them.`,
+    fix: 'Unpublish its children in the same review, or before it.',
+    params: { reason: 'has_children', children: children.join(',') },
   }
 }

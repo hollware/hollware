@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
 import { printable } from '../format.ts'
+import { ORDER_FILE, orderOf, type Placed } from '../import/order.ts'
 import { openSession } from '../import/session.ts'
 import type { Io } from '../io.ts'
 import { readVersion } from '../version.ts'
@@ -34,6 +35,7 @@ interface BackupEntry {
   readonly locale: string
   readonly slug: string
   readonly slugPath?: string
+  readonly position?: number | null
   readonly status: string
   readonly deletedAt: string | null
   readonly markdown: string
@@ -168,6 +170,7 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
   const entries: BackupEntry[] = Array.isArray(listed) ? listed.filter(isBackupEntry) : []
   const definition: unknown = Reflect.get(record, 'definition') ?? null
   const written: string[] = []
+  const placed: Placed[] = []
   for (const entry of entries) {
     if (entry.deletedAt !== null) continue
     const markdown =
@@ -190,8 +193,18 @@ export async function backup(argv: readonly string[], io: Io): Promise<number> {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), markdown, { flag: 'wx' })
     written.push(path)
+    placed.push({
+      collection: entry.collection,
+      locale: entry.locale,
+      slugPath,
+      position: typeof entry.position === 'number' ? entry.position : null,
+    })
   }
   mkdirSync(root, { recursive: true })
+  const order = orderOf(placed)
+  if (order !== null) {
+    writeFileSync(join(root, ORDER_FILE), `${JSON.stringify(order, null, 2)}\n`, { flag: 'wx' })
+  }
   writeFileSync(join(root, 'site.json'), `${JSON.stringify(definition, null, 2)}\n`, {
     flag: 'wx',
   })

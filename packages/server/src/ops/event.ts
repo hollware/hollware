@@ -26,11 +26,6 @@ export function entryPath(
   return route === undefined ? null : route.replace(/:slug(?![A-Za-z0-9_])/, () => slugPath)
 }
 
-export function movedFrom(toSlugPath: string, from: string): string {
-  const slash = toSlugPath.lastIndexOf('/')
-  return slash === -1 ? from : `${toSlugPath.slice(0, slash + 1)}${from}`
-}
-
 export function eventFor(input: {
   readonly kind: EntryEventKind
   readonly site: ResolvedSite

@@ -18,12 +18,14 @@ describe('a site path, matched against routes of nested collections', () => {
       locale: 'en',
       slug: 'refunds',
       slugPath: 'billing/payments/refunds',
+      nested: true,
     })
     expect(matchRoute('/es/ayuda/facturacion/', routes)).toEqual({
       collection: 'help',
       locale: 'es',
       slug: 'facturacion',
       slugPath: 'facturacion',
+      nested: true,
     })
   })
 
@@ -42,6 +44,7 @@ describe('a site path, matched against routes of nested collections', () => {
       locale: 'en',
       slug: 'caching',
       slugPath: 'edge/caching',
+      nested: true,
     })
     expect(matchRoute('/talks/edge/caching/', routes)).toBeUndefined()
   })
@@ -50,10 +53,17 @@ describe('a site path, matched against routes of nested collections', () => {
     expect(matchRoute('/help/billing//refunds/', routes)).toBeUndefined()
   })
 
+  it('makes a flat path an internal link with no path of slugs', () => {
+    expect(classifyLink('/blog/hello/', routes)).toEqual({
+      kind: 'internal',
+      target: { collection: 'blog', locale: 'en', slug: 'hello' },
+    })
+  })
+
   it('makes a nested path an internal link to its last slug', () => {
     expect(classifyLink('/help/billing/refunds/#steps', routes)).toEqual({
       kind: 'internal',
-      target: { collection: 'help', locale: 'en', slug: 'refunds' },
+      target: { collection: 'help', locale: 'en', slug: 'refunds', slugPath: 'billing/refunds' },
     })
   })
 })

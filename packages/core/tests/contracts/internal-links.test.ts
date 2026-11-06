@@ -256,3 +256,41 @@ describe('the internal-links-resolve contract', () => {
     expect(verdict.ok).toBe(true)
   })
 })
+
+describe('a link into a nested collection', () => {
+  const nested = (href: string, slugPath: string): LinkRef => ({
+    href,
+    kind: 'internal',
+    line: 4,
+    target: { collection: 'blog', locale: 'es', slug: 'refunds', slugPath },
+  })
+  const refunds = { ...stored('es', 'refunds'), slugPath: 'billing/payments/refunds' }
+
+  it('passes a link at the path the entry has', async () => {
+    const { verdict } = await runLinks([refunds], {
+      links: [nested('/blog/billing/payments/refunds/', 'billing/payments/refunds')],
+    })
+
+    expect(verdict.errors).toEqual([])
+  })
+
+  it('reports a link at a path the entry had, which redirects, and names the path it has now', async () => {
+    const { verdict } = await runLinks([refunds], {
+      links: [nested('/blog/billing/refunds/', 'billing/refunds')],
+    })
+
+    expect(verdict.errors).toEqual([
+      {
+        contract: 'internal-links-resolve',
+        severity: 'error',
+        path: '/body',
+        message:
+          'The link "/blog/billing/refunds/" points at an old path of the entry blog/es/refunds, which redirects to where it is now.',
+        fix: 'Point the link at the path of the entry now, which ends in "billing/payments/refunds".',
+        line: 4,
+        code: 'internal-links-resolve.moved',
+        params: { href: '/blog/billing/refunds/', slugPath: 'billing/payments/refunds' },
+      },
+    ])
+  })
+})

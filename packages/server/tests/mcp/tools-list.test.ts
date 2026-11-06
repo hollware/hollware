@@ -161,7 +161,14 @@ const OUTCOMES: Record<string, string[]> = {
   list_revisions: ['ok', 'not_found'],
   move_entry: ['moved', 'unchanged', 'taken', 'invalid_parent', 'conflict', 'not_found'],
   list_redirects: ['ok'],
-  schedule_unpublish: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
+  schedule_unpublish: [
+    'scheduled',
+    'unpublished',
+    'cancelled',
+    'has_children',
+    'not_published',
+    'not_found',
+  ],
   get_revision: ['ok', 'not_found'],
   restore_revision: ['saved', 'unchanged', 'conflict', 'not_found', 'refused'],
   publish: [

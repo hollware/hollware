@@ -717,6 +717,7 @@ describe('a Notion tree imported into a nested collection', () => {
   it('puts each page under its parent, the pages below the root at the root, with its title alone', async () => {
     const { corpus } = await nested(3)
 
+    expect(corpus.files.map((file) => file.position)).toEqual([1, 1, 2, 3, 4, 1, 1, 5])
     expect(corpus.files.map((file) => [file.path, file.parent])).toEqual([
       ['docs/en/guide.md', undefined],
       ['docs/en/blocks.md', undefined],

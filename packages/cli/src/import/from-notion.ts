@@ -1085,6 +1085,7 @@ export async function corpusFromNotion(options: NotionOptions): Promise<NotionIm
       slug,
       markdown: body === '' ? head : `${head}\n${body}\n`,
       ...(parentSlug === undefined ? {} : { parent: parentSlug }),
+      ...(maxDepth === null ? {} : { position: page.position }),
     })
     for (const component of [...writer.components].sort()) {
       if (options.target.components.includes(component)) continue

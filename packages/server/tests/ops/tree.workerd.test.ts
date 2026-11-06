@@ -1,110 +1,13 @@
-import { defineCollection, defineConfig, resolveConfig, type ResolvedSite } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import * as z from 'zod'
 
-import { createD1Store } from '../../src/db/index.ts'
 import { getNavigation } from '../../src/ops/navigation.ts'
 import { resolvePath } from '../../src/ops/resolve.ts'
-import { fixedClock } from '../db/support.ts'
-import {
-  agent,
-  BINDING,
-  contextFor,
-  newTenant,
-  warmUpComark,
-  type ContextOptions,
-} from './support.ts'
-import { START } from './world.ts'
+import { newHelp, rowsOf } from './help.ts'
+import { agent, warmUpComark } from './support.ts'
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
-
-const help = defineCollection({
-  schema: z.looseObject({ title: z.string().min(1) }),
-  routes: { es: '/ayuda/:slug/', en: '/en/help/:slug/' },
-  nesting: { maxDepth: 3 },
-})
-
-const flat = defineCollection({
-  schema: z.looseObject({ title: z.string().min(1) }),
-  routes: { es: '/notas/:slug/', en: '/en/notes/:slug/' },
-})
-
-function helpSite(key: string): ResolvedSite {
-  const site = resolveConfig(
-    defineConfig({
-      sites: {
-        [key]: { locales: ['es', 'en'], defaultLocale: 'es', collections: { help, notes: flat } },
-      },
-    }),
-  ).sites.get(key)
-  if (site === undefined) throw new Error(`resolveConfig lost the site ${key}`)
-  return site
-}
-
-async function newHelp(label: string) {
-  const owner = await newTenant(env.DB, label)
-  const tenant = { ...owner, site: helpSite(owner.key) }
-  const time = fixedClock(START)
-  const store = createD1Store(env.DB, { clock: time.clock })
-  const context = (options: Partial<ContextOptions> = {}) =>
-    contextFor(tenant, store, { clock: time.clock, ...options })
-  const writer = agent(context())
-  const page = async (slug: string, parent?: string, collection = 'help') => {
-    const created = await writer.createDraft({
-      collection,
-      locale: 'es',
-      slug,
-      markdown: `---\ntitle: Página ${slug}\n---\n\nTexto de ${slug}.\n`,
-      ...(parent === undefined ? {} : { parent }),
-    })
-    if (created.outcome !== 'saved' || created.entry === undefined) {
-      throw new Error(`${slug} was not saved: ${JSON.stringify(created)}`)
-    }
-    return created.entry
-  }
-  const current = async (slug: string) => {
-    const found = await writer.getEntry({ collection: 'help', locale: 'es', slug })
-    if (found.entry === undefined) throw new Error(`${slug} is gone`)
-    return found.entry
-  }
-  const publishAll = async (...slugs: string[]) => {
-    for (const slug of slugs) {
-      const entry = await current(slug)
-      const published = await writer.publish({ id: entry.id, version: entry.version })
-      if (published.outcome !== 'published') {
-        throw new Error(`${slug} was not published: ${JSON.stringify(published)}`)
-      }
-    }
-  }
-  return {
-    tenant,
-    context,
-    writer,
-    reader: context({ view: 'published', principal: BINDING }),
-    page,
-    current,
-    publishAll,
-  }
-}
-
-async function rowsOf(site: string) {
-  const { results } = await env.DB.prepare(
-    `SELECT e.slug, e.slug_path, e.position, p.slug AS parent, p.slug_path AS parent_path
-       FROM entries AS e LEFT JOIN entries AS p ON p.id = e.parent_id
-      WHERE e.site_id = ?1 ORDER BY e.slug_path`,
-  )
-    .bind(site)
-    .all<{
-      slug: string
-      slug_path: string
-      position: number | null
-      parent: string | null
-      parent_path: string | null
-    }>()
-  return results
-}
 
 describe('create_draft in a nested collection', () => {
   it('puts an entry under its parent, last among its siblings, at the path of its ancestors', async () => {
@@ -220,7 +123,7 @@ describe('move_entry in a nested collection', () => {
     ])
   })
 
-  it('rewrites the paths of the descendants when an ancestor is renamed, with one redirect for it', async () => {
+  it('rewrites the paths of the descendants when an ancestor is renamed, with a redirect from each old path', async () => {
     const world = await newHelp('tree-rename')
     await world.page('facturacion')
     await world.page('pagos', 'facturacion')
@@ -239,13 +142,14 @@ describe('move_entry in a nested collection', () => {
       'cobros/pagos',
       'cobros/pagos/reembolsos',
     ])
-    expect((await world.writer.listRedirects()).redirects).toEqual([
-      expect.objectContaining({
-        from: 'facturacion',
-        to: 'cobros',
-        fromPath: '/ayuda/facturacion/',
-        toPath: '/ayuda/cobros/',
-      }),
+    expect(
+      (await world.writer.listRedirects()).redirects
+        .map((one) => [one.fromPath ?? '', one.toPath ?? ''])
+        .sort(([a = ''], [b = '']) => a.localeCompare(b)),
+    ).toEqual([
+      ['/ayuda/facturacion/', '/ayuda/cobros/'],
+      ['/ayuda/facturacion/pagos/', '/ayuda/cobros/pagos/'],
+      ['/ayuda/facturacion/pagos/reembolsos/', '/ayuda/cobros/pagos/reembolsos/'],
     ])
     const { results } = await env.DB.prepare(
       "SELECT payload FROM outbox WHERE site_id = ?1 AND kind = 'entry.published' AND json_extract(payload, '$.path') LIKE '/ayuda/cobros%' ORDER BY json_extract(payload, '$.path')",

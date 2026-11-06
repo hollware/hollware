@@ -123,16 +123,23 @@ async function memberProblems(
     }))
 }
 
+function lowered(current: SiteDefinitionData, next: SiteDefinitionData) {
+  return Object.entries(next.collections).flatMap(([name, collection]) => {
+    const before = current.collections[name]?.nesting?.maxDepth ?? 1
+    const after = collection.nesting?.maxDepth ?? 1
+    return current.collections[name] === undefined || after >= before
+      ? []
+      : [{ collection: name, maxDepth: after }]
+  })
+}
+
 async function nestingProblems(
   context: OperationContext,
   current: SiteDefinitionData,
   next: SiteDefinitionData,
 ) {
   const problems: { path: string; message: string; fix: string }[] = []
-  for (const [name, collection] of Object.entries(next.collections)) {
-    const before = current.collections[name]?.nesting?.maxDepth ?? 1
-    const after = collection.nesting?.maxDepth ?? 1
-    if (current.collections[name] === undefined || after >= before) continue
+  for (const { collection: name, maxDepth: after } of lowered(current, next)) {
     const deepest = await context.store.deepestDepth(context.site.key, name)
     if (deepest <= after) continue
     problems.push({
@@ -186,7 +193,14 @@ async function change(
     definition: next,
     actor: actor(context),
     event,
+    depths: lowered(current.definition, next),
   })
+  if (written === 'too_deep') {
+    const problems = await nestingProblems(context, current.definition, next)
+    return problems.length > 0
+      ? { outcome: 'invalid' as const, problems }
+      : conflict(version, (await currentOf(context)).version)
+  }
   if (written === 'conflict') {
     return conflict(version, (await currentOf(context)).version)
   }

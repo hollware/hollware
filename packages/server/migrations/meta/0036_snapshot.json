@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0864f278-84a0-4e57-8cb2-55adecb2c7db",
+  "id": "a9c41321-8de4-49f1-a2c0-e6b5927d7ea9",
   "prevId": "791459e7-9cc6-45aa-bed9-d0c416681636",
   "tables": {
     "agent_grants": {
@@ -2155,6 +2155,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "from_path": {
+          "name": "from_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "entry_id": {
           "name": "entry_id",
           "type": "text",
@@ -2178,6 +2186,16 @@
         }
       },
       "indexes": {
+        "redirects_from": {
+          "name": "redirects_from",
+          "columns": [
+            "site_id",
+            "collection",
+            "locale",
+            "from_slug"
+          ],
+          "isUnique": false
+        },
         "redirects_entry": {
           "name": "redirects_entry",
           "columns": [
@@ -2194,13 +2212,13 @@
           ],
           "isUnique": true
         },
-        "redirects_from": {
-          "name": "redirects_from",
+        "redirects_from_path": {
+          "name": "redirects_from_path",
           "columns": [
             "site_id",
             "collection",
             "locale",
-            "from_slug"
+            "from_path"
           ],
           "isUnique": true
         }

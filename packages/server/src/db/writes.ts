@@ -18,6 +18,7 @@ import type {
   StoredRedirect,
   StoredReview,
   StoredRevision,
+  TreeScope,
   UnpublishWrite,
   WriteRefusal,
 } from '../ports.ts'
@@ -40,6 +41,7 @@ import {
 } from './schema.ts'
 import { tooLarge } from './size.ts'
 import { valuesOf } from './statements.ts'
+import { chunk, rowsPerStatement } from './chunks.ts'
 import {
   distinctTags,
   insertPublishAtVersion,
@@ -213,7 +215,7 @@ export async function createEntry(
   | { readonly outcome: 'saved'; readonly view: EntryView }
   | WriteRefusal
   | InTrash
-  | { readonly outcome: 'parent_moved' }
+  | { readonly outcome: 'tree_changed' }
 > {
   const now = clock.now().toISOString()
   const entryId = newId('ent')
@@ -231,7 +233,10 @@ export async function createEntry(
     locale: entry.locale,
     slug: entry.slug,
     parentId: parent?.id ?? null,
-    position: entry.nested === true ? lastPosition(site, entry, parent?.id ?? null) : null,
+    position:
+      entry.tree === null || entry.tree === undefined
+        ? null
+        : lastPosition(site, entry, parent?.id ?? null),
     slugPath,
     translationGroup: entry.translationGroup,
     status: 'draft',
@@ -244,23 +249,17 @@ export async function createEntry(
     createdAt: now,
     updatedAt: now,
   })
-  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] =
-    parent === null
-      ? [
-          insert,
-          db.insert(revisions).values(row),
-          ...insertTags(db, { site, revisionId, tags, now }),
-        ]
-      : [
-          parentMoved(db, site, parent),
-          insert,
-          db.insert(revisions).values(row),
-          ...insertTags(db, { site, revisionId, tags, now }),
-        ]
+  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] = [
+    insert,
+    ...(parent === null ? [] : [parentMoved(db, site, parent)]),
+    db.insert(revisions).values(row),
+    ...insertTags(db, { site, revisionId, tags, now }),
+    ...treeGuards(db, site, [entry.tree]),
+  ]
   const outcome = await guarded(
     attempt(db.batch(statements), () => holderOfNewEntry(db, site, entry)),
   )
-  if ('guardFailed' in outcome) return { outcome: 'parent_moved' }
+  if ('guardFailed' in outcome) return { outcome: 'tree_changed' }
   const result = outcome.done
   if ('taken' in result) return result.taken
   const stored = await findEntryById(db, site, entryId, 'head')
@@ -399,17 +398,28 @@ export async function publish(
   clock: Clock,
   site: string,
   write: PublishWrite,
-): Promise<{ readonly outcome: 'published'; readonly view: EntryView } | WriteRefusal> {
+): Promise<
+  | { readonly outcome: 'published'; readonly view: EntryView }
+  | WriteRefusal
+  | { readonly outcome: 'tree_changed' }
+> {
   const now = clock.now().toISOString()
   const row = publicationOf(site, write, now)
   const refusal = tooLarge(row)
   if (refusal !== null) return refusal
-  const results = await db.batch([
+  const writes: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] = [
     insertPublishAtVersion(db, row, write.expectedVersion),
     ...beforePublish(db, site, write, now, true),
     publishedAt(db, site, write, now),
-  ])
-  const [changed] = results.at(-1) ?? []
+  ]
+  const done = await guarded(db.batch([...writes, ...treeGuards(db, site, [write.tree])]))
+  if ('guardFailed' in done) {
+    const why = await whyNothingChanged(db, site, write.entryId)
+    return why.outcome === 'conflict' && why.currentVersion === write.expectedVersion
+      ? { outcome: 'tree_changed' }
+      : why
+  }
+  const [changed] = done.done[writes.length - 1] ?? []
   if (changed === undefined) return whyNothingChanged(db, site, write.entryId)
   const entry = toEntry(changed)
   const revision =
@@ -468,6 +478,28 @@ function guardOf(db: Db, site: string, failed: SQL) {
     .where(and(eq(sites.id, site), failed))
 }
 
+function depthLimit(site: string, tree: TreeScope): SQL {
+  return sql`(select case when ${sites.definition} is null then ${tree.maxDepth} else coalesce(json_extract(${sites.definition}, ${`$.collections."${tree.collection}".nesting.maxDepth`}), 1) end from ${sites} where ${sites.id} = ${site})`
+}
+
+export function treeBroken(site: string, tree: TreeScope): SQL {
+  const scope = sql`"e"."site_id" = ${site} and "e"."collection" = ${tree.collection} and "e"."locale" = ${tree.locale}`
+  return sql`(exists (select 1 from "entries" as "e" left join "entries" as "p" on "p"."id" = "e"."parent_id" and "p"."site_id" = "e"."site_id" where ${scope} and (("e"."parent_id" is null and "e"."slug_path" <> "e"."slug") or ("e"."parent_id" is not null and ("p"."id" is null or "p"."collection" <> "e"."collection" or "p"."locale" <> "e"."locale" or "e"."slug_path" <> "p"."slug_path" || '/' || "e"."slug")) or ("e"."status" = 'published' and "p"."id" is not null and "p"."status" <> 'published') or (length("e"."slug_path") - length(replace("e"."slug_path", '/', '')) + 1 > ${depthLimit(site, tree)}))) or exists (select 1 from "entries" as "e" where ${scope} and "e"."deleted_at" is null and "e"."position" is not null group by "e"."parent_id", "e"."position" having count(*) > 1))`
+}
+
+function treeGuards(
+  db: Db,
+  site: string,
+  trees: readonly (TreeScope | null | undefined)[],
+): BatchItem<'sqlite'>[] {
+  const seen = new Map<string, TreeScope>()
+  for (const tree of trees) {
+    if (tree !== null && tree !== undefined)
+      seen.set(`${tree.collection}\u0000${tree.locale}`, tree)
+  }
+  return [...seen.values()].map((tree) => guardOf(db, site, treeBroken(site, tree)))
+}
+
 function publicationsMissing(site: string, ids: readonly string[]) {
   return sql`(select count(*) from ${publications} where ${and(eq(publications.siteId, site), inArray(publications.id, [...ids]))}) < ${ids.length}`
 }
@@ -494,6 +526,7 @@ export async function publishGroup(
 ): Promise<
   | { readonly outcome: 'published'; readonly views: readonly EntryView[] }
   | (WriteRefusal & { readonly entryId: string })
+  | { readonly outcome: 'tree_changed' }
 > {
   const now = clock.now().toISOString()
   const statements: BatchItem<'sqlite'>[] = []
@@ -513,15 +546,18 @@ export async function publishGroup(
     const [first, ...rest]: BatchItem<'sqlite'>[] = [
       ...statements,
       guardOf(db, site, publicationsMissing(site, appended)),
+      ...treeGuards(
+        db,
+        site,
+        group.map((write) => write.tree),
+      ),
     ]
     if (first !== undefined) await db.batch([first, ...rest])
   } catch (error) {
     if (!isGuardFailure(error)) throw error
     const moved = await movedOf(db, site, group)
     if (moved !== null) return moved
-    throw new Error('A group publish failed, and every entry of the group is at its version', {
-      cause: error,
-    })
+    return { outcome: 'tree_changed' }
   }
   const views: EntryView[] = []
   for (const write of group) {
@@ -546,6 +582,7 @@ export async function approveReview(
 ): Promise<
   | { readonly outcome: 'approved' | 'not_pending'; readonly review: StoredReview }
   | { readonly outcome: 'not_found' }
+  | { readonly outcome: 'tree_changed' }
   | (WriteRefusal & { readonly entryId: string })
 > {
   const now = clock.now().toISOString()
@@ -591,6 +628,10 @@ export async function approveReview(
       .set({ status: 'approved', decidedBy: write.userId, decidedAt: now, updatedAt: now })
       .where(pending),
     guardOf(db, site, publicationsMissing(site, appended)),
+    ...treeGuards(db, site, [
+      ...write.publishes.map((one) => one.tree),
+      ...write.unpublishes.map((one) => one.tree),
+    ]),
   ]
   try {
     if (first !== undefined) await db.batch([first, ...rest])
@@ -601,12 +642,7 @@ export async function approveReview(
     if (review.status !== 'pending') return { outcome: 'not_pending', review }
     const moved = await movedOf(db, site, [...write.publishes, ...write.unpublishes])
     if (moved !== null) return moved
-    const [unpublished] = write.unpublishes
-    if (unpublished === undefined) throw error
-    return {
-      ...(await whyNothingChanged(db, site, unpublished.entryId)),
-      entryId: unpublished.entryId,
-    }
+    return { outcome: 'tree_changed' }
   }
   const review = await findReview(db, site, write.reviewId)
   if (review === null) throw new Error(`The review ${write.reviewId} is gone after its approval`)
@@ -617,7 +653,12 @@ export async function unpublish(
   db: Db,
   clock: Clock,
   site: string,
-  write: { readonly entryId: string; readonly actor: Actor; readonly event?: OutboxEvent | null },
+  write: {
+    readonly entryId: string
+    readonly actor: Actor
+    readonly event?: OutboxEvent | null
+    readonly tree?: TreeScope | null
+  },
 ): Promise<
   { readonly outcome: 'unpublished' | 'has_children'; readonly view: EntryView } | WriteRefusal
 > {
@@ -657,6 +698,7 @@ export async function unpublish(
             inArray(entries.status, ['published', 'scheduled']),
           ),
         ),
+      ...treeGuards(db, site, [write.tree]),
     ]),
   )
   const view = await findEntryById(db, site, write.entryId, 'head')
@@ -668,7 +710,11 @@ export async function trashEntry(
   db: Db,
   clock: Clock,
   site: string,
-  write: { readonly entryId: string; readonly expectedVersion: number },
+  write: {
+    readonly entryId: string
+    readonly expectedVersion: number
+    readonly tree?: TreeScope | null
+  },
 ): Promise<
   | { readonly outcome: 'trashed' | 'not_draft' | 'has_children'; readonly view: EntryView }
   | Extract<WriteRefusal, { readonly outcome: 'conflict' | 'not_found' }>
@@ -691,6 +737,7 @@ export async function trashEntry(
           ),
         )
         .returning({ id: entries.id }),
+      ...treeGuards(db, site, [write.tree]),
     ]),
   )
   if ('guardFailed' in done || done.done[2].length === 0) {
@@ -716,23 +763,40 @@ export async function restoreEntry(
   clock: Clock,
   site: string,
   entryId: string,
+  treeOf: (ref: {
+    readonly collection: string
+    readonly locale: string
+  }) => TreeScope | null = () => null,
 ): Promise<
   | { readonly outcome: 'restored' | 'not_trashed' | 'parent_in_trash'; readonly view: EntryView }
   | { readonly outcome: 'not_found' }
 > {
   const now = clock.now().toISOString()
-  const updated = await db
-    .update(entries)
-    .set({ deletedAt: null, version: sql`${entries.version} + 1`, updatedAt: now })
-    .where(
-      and(
-        eq(entries.id, entryId),
-        eq(entries.siteId, site),
-        isNotNull(entries.deletedAt),
-        sql`("entries"."parent_id" is null or exists (select 1 from "entries" as "parent" where "parent"."id" = "entries"."parent_id" and "parent"."site_id" = ${site} and "parent"."deleted_at" is null))`,
-      ),
-    )
-    .returning({ id: entries.id })
+  const inTrash = await findTrashed(db, site, entryId)
+  const tree = inTrash === null ? null : treeOf(inTrash.entry)
+  const done = await guarded(
+    db.batch([
+      db
+        .update(entries)
+        .set({
+          deletedAt: null,
+          position: sql`case when "entries"."position" is null then null else (select coalesce(max("s"."position") + 1, 0) from "entries" as "s" where "s"."site_id" = ${site} and "s"."collection" = "entries"."collection" and "s"."locale" = "entries"."locale" and "s"."parent_id" is "entries"."parent_id" and "s"."deleted_at" is null and "s"."id" <> "entries"."id") end`,
+          version: sql`${entries.version} + 1`,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(entries.id, entryId),
+            eq(entries.siteId, site),
+            isNotNull(entries.deletedAt),
+            sql`("entries"."parent_id" is null or exists (select 1 from "entries" as "parent" where "parent"."id" = "entries"."parent_id" and "parent"."site_id" = ${site} and "parent"."deleted_at" is null))`,
+          ),
+        )
+        .returning({ id: entries.id }),
+      ...treeGuards(db, site, [tree]),
+    ]),
+  )
+  const updated = 'guardFailed' in done ? [] : done.done[0]
   if (updated.length > 0) {
     const view = await findEntryById(db, site, entryId, 'head')
     if (view === null) throw new Error(`Entry ${entryId} is not there after its restoring`)
@@ -795,6 +859,10 @@ function insertEventWhere(
     )
 }
 
+function descendantsChanged(site: string, entry: EntryRef, slugPath: string, expected: string) {
+  return sql`(select coalesce(group_concat("x", ','), '') from (select "d"."id" || ':' || "d"."status" || ':' || coalesce("d"."deleted_at", '') as "x" from "entries" as "d" where "d"."site_id" = ${site} and "d"."collection" = ${entry.collection} and "d"."locale" = ${entry.locale} and "d"."slug_path" >= ${`${slugPath}/`} and "d"."slug_path" < ${`${slugPath}0`} order by "x")) <> ${expected}`
+}
+
 export async function moveEntry(
   db: Db,
   clock: Clock,
@@ -803,7 +871,7 @@ export async function moveEntry(
 ): Promise<
   | { readonly outcome: 'moved'; readonly view: EntryView }
   | WriteRefusal
-  | { readonly outcome: 'parent_moved' }
+  | { readonly outcome: 'tree_changed' }
 > {
   const now = clock.now().toISOString()
   const before = await findEntryById(db, site, write.entryId, 'head')
@@ -843,49 +911,41 @@ export async function moveEntry(
     eq(entries.collection, entry.collection),
     eq(entries.locale, entry.locale),
   ]
-  const redirect = {
-    id: newId('rdr'),
-    siteId: site,
-    collection: entry.collection,
-    locale: entry.locale,
-    fromSlug: entry.slug,
-    entryId: write.entryId,
-    createdAt: now,
-    updatedAt: now,
-  }
+  const sameRedirects = [
+    eq(redirects.siteId, site),
+    eq(redirects.collection, entry.collection),
+    eq(redirects.locale, entry.locale),
+  ]
+  const livePaths = write.livePaths
   const statements: BatchItem<'sqlite'>[] = [
     guardOf(db, site, sql`not exists (select 1 from ${entries} where ${atVersion})`),
+    guardOf(db, site, descendantsChanged(site, entry, entry.slugPath, write.descendants)),
     ...(write.parent === null ? [] : [parentMoved(db, site, write.parent)]),
     ...(renamed
-      ? [
-          db
-            .delete(redirects)
-            .where(
-              and(
-                eq(redirects.siteId, site),
-                eq(redirects.collection, entry.collection),
-                eq(redirects.locale, entry.locale),
-                eq(redirects.fromSlug, write.slug),
-              ),
-            ),
-        ]
+      ? [db.delete(redirects).where(and(...sameRedirects, eq(redirects.fromSlug, write.slug)))]
       : []),
-    ...(renamed && write.redirect
-      ? [
-          db
-            .insert(redirects)
-            .values(redirect)
-            .onConflictDoUpdate({
-              target: [
-                redirects.siteId,
-                redirects.collection,
-                redirects.locale,
-                redirects.fromSlug,
-              ],
-              set: { entryId: write.entryId, updatedAt: now },
-            }),
-        ]
-      : []),
+    ...chunk(livePaths, rowsPerStatement(3, 1)).map((some) =>
+      db.delete(redirects).where(and(...sameRedirects, inArray(redirects.fromPath, some))),
+    ),
+    ...write.redirects.map((redirect) =>
+      db
+        .insert(redirects)
+        .values({
+          id: newId('rdr'),
+          siteId: site,
+          collection: entry.collection,
+          locale: entry.locale,
+          fromSlug: redirect.fromSlug,
+          fromPath: redirect.fromPath,
+          entryId: redirect.entryId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [redirects.siteId, redirects.collection, redirects.locale, redirects.fromPath],
+          set: { entryId: redirect.entryId, fromSlug: redirect.fromSlug, updatedAt: now },
+        }),
+    ),
     ...write.events.map(({ entryId, event }) =>
       insertEventWhere(db, site, entryId, event, 'entry.published', now, [
         eq(entries.status, 'published'),
@@ -902,27 +962,25 @@ export async function moveEntry(
             })
             .where(and(...sameRef, descendantRange(write.subtree.from))),
         ]),
-    ...(write.positions.length === 0
-      ? []
-      : [
-          db
-            .update(entries)
-            .set({
-              position: sql`case ${entries.id} ${sql.join(
-                write.positions.map(({ id, position }) => sql`when ${id} then ${position}`),
-                sql` `,
-              )} else ${entries.position} end`,
-            })
-            .where(
-              and(
-                ...sameRef,
-                inArray(
-                  entries.id,
-                  write.positions.map(({ id }) => id),
-                ),
-              ),
+    ...chunk(write.positions, rowsPerStatement(4, 3)).map((some) =>
+      db
+        .update(entries)
+        .set({
+          position: sql`case ${entries.id} ${sql.join(
+            some.map(({ id, position }) => sql`when ${id} then ${position}`),
+            sql` `,
+          )} else ${entries.position} end`,
+        })
+        .where(
+          and(
+            ...sameRef,
+            inArray(
+              entries.id,
+              some.map(({ id }) => id),
             ),
-        ]),
+          ),
+        ),
+    ),
     db
       .update(entries)
       .set({
@@ -934,6 +992,7 @@ export async function moveEntry(
         updatedAt: now,
       })
       .where(atVersion),
+    ...treeGuards(db, site, [write.tree]),
   ]
   const [first, ...rest] = statements
   if (first === undefined) throw new Error('A move has no statements')
@@ -941,7 +1000,7 @@ export async function moveEntry(
   if ('guardFailed' in done) {
     const why = await whyNothingChanged(db, site, write.entryId)
     if (why.outcome === 'not_found' || why.currentVersion !== write.expectedVersion) return why
-    return { outcome: 'parent_moved' }
+    return { outcome: 'tree_changed' }
   }
   if ('taken' in done.done) return done.done.taken
   const view = await findEntryById(db, site, write.entryId, 'head')
@@ -967,6 +1026,7 @@ export async function listRedirects(
       from: redirects.fromSlug,
       entryId: redirects.entryId,
       to: entries.slug,
+      fromSlugPath: redirects.fromPath,
       toSlugPath: entries.slugPath,
       createdAt: redirects.createdAt,
     })

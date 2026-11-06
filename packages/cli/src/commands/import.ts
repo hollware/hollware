@@ -4,6 +4,7 @@ import {
   describeSite,
   getEntry,
   isPersonalToken,
+  moveEntry,
   publish,
   schemas,
   updateDraft,
@@ -439,7 +440,7 @@ async function importFiles({
   try {
     const { corpus, images } = await load(session, out)
     if (early === undefined) checkCorpus(corpus, directory, out)
-    await checkNesting(session, corpus.files)
+    const nested = await checkNesting(session, corpus.files)
     const moved = await uploadImages(session, images, dryRun, out)
     const files = withAssetIds(corpus.files, moved)
     const checks = await validateAll(session, files)
@@ -465,6 +466,17 @@ async function importFiles({
         `${count(drafts.failed, 'file')} could not be imported (see above).${publishToo ? ' Nothing was published.' : ''} Fix ${drafts.failed === 1 ? 'it' : 'them'} and run the import again: what is already there stays unchanged.`,
       )
     }
+    const arranged = await arrange(session, drafts.entries, nested, out)
+    if (arranged.moved > 0 || arranged.failed > 0) {
+      out(
+        `Tree: ${arranged.moved} moved${arranged.failed === 0 ? '' : `, ${arranged.failed} could not move`}.`,
+      )
+    }
+    if (arranged.failed > 0) {
+      throw new CliError(
+        `${count(arranged.failed, 'entry', 'entries')} could not go to its place in the tree (see above).${publishToo ? ' Nothing was published.' : ''} Run the import again once what blocked ${arranged.failed === 1 ? 'it' : 'them'} is fixed.`,
+      )
+    }
     if (!publishToo) return 0
 
     const toPublish = drafts.entries.filter((imported) => imported.summary.hasUnpublishedChanges)
@@ -484,35 +496,113 @@ async function importFiles({
   }
 }
 
-async function checkNesting(session: Session, files: readonly ContentFile[]): Promise<void> {
-  const deep = files.filter((file) => file.parent !== undefined)
-  if (deep.length === 0) return
+async function checkNesting(
+  session: Session,
+  files: readonly ContentFile[],
+): Promise<ReadonlySet<string>> {
+  if (files.every((file) => file.parent === undefined && file.position === undefined)) {
+    return new Set()
+  }
   const { site } = await session.call(describeSite, {})
   const depths = new Map(
     site.collections.map((one) => [one.name, one.nesting?.maxDepth ?? null] as const),
   )
-  const problems = deep.flatMap((file) => {
+  const seen = new Set<string>()
+  const problems: string[] = []
+  for (const file of files) {
+    const at = (slug: string) => `${file.collection}\u0000${file.locale}\u0000${slug}`
+    seen.add(at(file.slug))
+    if (file.parent === undefined) continue
     const maxDepth = depths.get(file.collection) ?? null
     const levels = file.path.split('/').length - 2
     if (maxDepth === null) {
-      return [
+      problems.push(
         `  ${printable(file.path)}: it is in a folder below its locale, and collection ${printable(file.collection)} is not nested: move it up to ${printable(file.collection)}/${printable(file.locale)}/, or give the collection nesting.`,
-      ]
+      )
+      continue
     }
-    return levels > maxDepth
-      ? [
-          `  ${printable(file.path)}: it is ${levels} levels deep, and collection ${printable(file.collection)} allows ${maxDepth}: move it nearer the root, or raise its nesting.maxDepth.`,
-        ]
-      : []
-  })
-  if (problems.length === 0) return
-  throw new CliError(
-    [
-      `${count(problems.length, 'file')} cannot be imported, so nothing was sent:`,
-      ...problems,
-      'Fix them and run the import again.',
-    ].join('\n'),
-  )
+    if (levels > maxDepth) {
+      problems.push(
+        `  ${printable(file.path)}: it is ${levels} levels deep, and collection ${printable(file.collection)} allows ${maxDepth}: move it nearer the root, or raise its nesting.maxDepth.`,
+      )
+      continue
+    }
+    if (seen.has(at(file.parent))) continue
+    const there = await session.call(getEntry, {
+      collection: file.collection,
+      locale: file.locale,
+      slug: file.parent,
+    })
+    if (there.outcome === 'not_found') {
+      problems.push(
+        `  ${printable(file.path)}: its folder names ${printable(file.parent)}, which is neither a file of the import nor an entry of the site: add ${printable(file.parent)}.md beside the folder, or create it first.`,
+      )
+    }
+  }
+  if (problems.length > 0) {
+    throw new CliError(
+      [
+        `${count(problems.length, 'file')} cannot be imported, so nothing was sent:`,
+        ...problems,
+        'Fix them and run the import again.',
+      ].join('\n'),
+    )
+  }
+  return new Set(site.collections.filter((one) => one.nesting !== undefined).map((one) => one.name))
+}
+
+async function arrange(
+  session: Session,
+  entries: readonly Imported[],
+  nested: ReadonlySet<string>,
+  out: (message: string) => void,
+): Promise<{ readonly moved: number; readonly failed: number }> {
+  let moved = 0
+  let failed = 0
+  const placed = new Map<string, number>()
+  const touched = new Set<string>()
+  for (const { file, summary } of entries) {
+    if (!nested.has(file.collection)) continue
+    const parent = file.parent ?? null
+    const siblings = `${file.collection}\u0000${file.locale}\u0000${parent ?? ''}`
+    const index = placed.get(siblings) ?? 0
+    placed.set(siblings, index + 1)
+    const ordered = file.position !== undefined
+    const fits = (entry: { readonly parent: string | null; readonly position: number | null }) =>
+      entry.parent === parent && (!ordered || entry.position === index)
+    if (!touched.has(siblings) && fits(summary)) continue
+    const label = printable(file.path.replace(/\.md$/, ''))
+    try {
+      const current = await session.call(getEntry, {
+        collection: file.collection,
+        locale: file.locale,
+        slug: file.slug,
+      })
+      if (current.entry === undefined) throw new ToolFailure('get_entry not_found')
+      if (fits(current.entry)) continue
+      const answer = await session.call(moveEntry, {
+        id: current.entry.id,
+        version: current.entry.version,
+        ...(current.entry.parent === parent ? {} : { parent }),
+        ...(ordered ? { index } : {}),
+      })
+      if (answer.outcome !== 'moved' && answer.outcome !== 'unchanged') {
+        throw new ToolFailure(
+          `move_entry ${answer.outcome}${answer.reason === undefined ? '' : ` (${answer.reason})`}`,
+        )
+      }
+      touched.add(siblings)
+      if (current.entry.parent !== parent)
+        touched.add(`${file.collection}\u0000${file.locale}\u0000${current.entry.parent ?? ''}`)
+      moved += 1
+      out(`moved      ${label}  ${current.entry.id}`)
+    } catch (error) {
+      if (!(error instanceof ToolFailure)) throw error
+      failed += 1
+      out(`failed     ${label}  ${error.message}`)
+    }
+  }
+  return { moved, failed }
 }
 
 function checkCorpus(corpus: Corpus, directory: string, out: (message: string) => void): void {

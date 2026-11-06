@@ -191,8 +191,15 @@ describe('operation specs', () => {
       schedule_unpublish: {
         effect: 'destructive',
         scopes: ['content:publish'],
-        outcomes: ['scheduled', 'unpublished', 'cancelled', 'not_published', 'not_found'],
-        errors: ['not_published', 'not_found'],
+        outcomes: [
+          'scheduled',
+          'unpublished',
+          'cancelled',
+          'has_children',
+          'not_published',
+          'not_found',
+        ],
+        errors: ['has_children', 'not_published', 'not_found'],
       },
       list_backups: {
         effect: 'read',

@@ -20,6 +20,8 @@ export interface LinkTarget {
   readonly collection: string
   readonly locale: string
   readonly slug: string
+  /** In a nested collection, the slugs of the path the link names, joined by `/`. */
+  readonly slugPath?: string
 }
 
 /**

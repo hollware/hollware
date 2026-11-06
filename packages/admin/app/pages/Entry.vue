@@ -667,6 +667,14 @@ async function move() {
   }
 }
 
+function childNames(
+  children:
+    | readonly { readonly slug: string; readonly frontmatter: Readonly<Record<string, unknown>> }[]
+    | undefined,
+): string {
+  return (children ?? []).map((child) => titleOf(child)).join(', ')
+}
+
 async function scheduleUnpublish(at: string | null) {
   if (entry.value === null) return
   busy.value = true
@@ -674,6 +682,14 @@ async function scheduleUnpublish(at: string | null) {
   try {
     const answer = await api.call('schedule_unpublish', { id: entry.value.id, unpublishAt: at })
     await load()
+    if (answer.outcome === 'has_children') {
+      toast.add({
+        title: m.value.entry.notUnpublished,
+        description: m.value.entry.hasChildren(childNames(answer.children)),
+        color: 'error',
+      })
+      return
+    }
     toast.add({
       title:
         answer.outcome === 'scheduled'
@@ -696,8 +712,16 @@ async function unpublish() {
   busy.value = true
   unpublishOpen.value = false
   try {
-    await api.call('unpublish', { id: entry.value.id })
+    const answer = await api.call('unpublish', { id: entry.value.id })
     await load()
+    if (answer.outcome === 'has_children') {
+      toast.add({
+        title: m.value.entry.notUnpublished,
+        description: m.value.entry.hasChildren(childNames(answer.children)),
+        color: 'error',
+      })
+      return
+    }
     toast.add({
       title: wasScheduled ? m.value.entry.scheduleCancelled : m.value.entry.unpublished,
       description: m.value.entry.draftAgain,
@@ -731,6 +755,13 @@ async function trash() {
         break
       case 'conflict':
         conflictOpen.value = true
+        break
+      case 'has_children':
+        toast.add({
+          title: m.value.entry.notTrashed,
+          description: m.value.entry.hasChildren(childNames(answer.children)),
+          color: 'error',
+        })
         break
       case 'published':
       case 'not_found':

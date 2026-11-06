@@ -1,4 +1,4 @@
-import { HollwareError, type EntryLookup, type Verdict } from '@hollware/core'
+import { childrenViolation, HollwareError, type EntryLookup, type Verdict } from '@hollware/core'
 import type { PublishWrite, UnpublishWrite } from '../ports.ts'
 import { actorOf } from './actor.ts'
 import {
@@ -11,6 +11,7 @@ import {
 import { collectionOfEntry } from './collections.ts'
 import { judge, processFor, sortKeyOf } from './draft.ts'
 import { eventFor } from './event.ts'
+import { treeOf } from './tree.ts'
 import type { OperationContext } from './types.ts'
 
 export interface Member {
@@ -92,6 +93,7 @@ export async function checkChangeset(
     new Set(input.unpublish.map((member) => member.id)),
   )
   const unpublishes: UnpublishWrite[] = []
+  const leaving = new Set(input.unpublish.map((member) => member.id))
   for (const member of input.unpublish) {
     const found = await context.store.findEntryById(site, member.id, 'head')
     if (found === null) return { outcome: 'not_found' as const, failedEntry: member.id }
@@ -102,6 +104,23 @@ export async function checkChangeset(
       (member.revision !== undefined && entry.publishedRevision !== member.revision)
     ) {
       return moved(entry, member.id)
+    }
+    const children = (
+      await context.store.childrenOf(
+        site,
+        { collection: entry.collection, locale: entry.locale, parentId: entry.id },
+        'published',
+      )
+    ).filter((child) => !leaving.has(child.entry.id))
+    if (children.length > 0) {
+      return {
+        outcome: 'blocked' as const,
+        entry: entrySummary(found),
+        verdict: refusalVerdict('publish', [
+          childrenViolation(children.map((child) => child.entry.slug)),
+        ]),
+        failedEntry: member.id,
+      }
     }
     unpublishes.push({
       entryId: entry.id,
@@ -121,6 +140,7 @@ export async function checkChangeset(
         slugPath: entry.slugPath,
         at: now,
       }),
+      tree: treeOf(context.site, entry.collection, entry.locale),
     })
   }
   const checked: Checked[] = []
@@ -186,6 +206,7 @@ export async function checkChangeset(
         acknowledged: verdict.warnings.map(({ contract, path }) => ({ contract, path })),
         actor,
         sortKey: sortKeyOf(collection, processed.value.frontmatter) ?? entry.publishedAt ?? now,
+        tree: treeOf(context.site, entry.collection, entry.locale),
       },
     })
   }

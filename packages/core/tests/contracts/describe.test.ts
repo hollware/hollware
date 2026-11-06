@@ -278,6 +278,7 @@ describe('the module', () => {
       'REFUSAL_CONTRACT_IDS',
       'canonicalJson',
       'catalogRule',
+      'childrenViolation',
       'contracts',
       'describeBuiltInContracts',
       'describeCatalog',

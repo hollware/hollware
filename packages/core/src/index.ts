@@ -78,6 +78,7 @@ export {
   sizeLimitViolation,
   uniqueSlugViolation,
   parentViolation,
+  childrenViolation,
   uniqueTranslationViolation,
   type AcknowledgedWarning,
   type BuiltInContractId,

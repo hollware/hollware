@@ -616,6 +616,7 @@ export const CANNED: Canned = {
     scheduled: { outcome: 'scheduled', entry: SUMMARY, unpublishAt: '2026-11-01T00:00:00.000Z' },
     unpublished: { outcome: 'unpublished', entry: SUMMARY },
     cancelled: { outcome: 'cancelled', entry: SUMMARY, unpublishAt: null },
+    has_children: { outcome: 'has_children', entry: SUMMARY, children: [SUMMARY] },
     not_published: { outcome: 'not_published', entry: SUMMARY },
     not_found: { outcome: 'not_found' },
   },

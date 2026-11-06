@@ -1,3 +1,4 @@
+import { isGuardFailure } from '../db/errors.ts'
 import { newId } from '@hollware/core'
 import type { D1Like } from '../db/d1.ts'
 import type { StructureActor, StructureStore } from '../ports.ts'
@@ -38,32 +39,47 @@ export function createStructureStore(db: D1Like, now: () => Date): StructureStor
       }
     },
 
-    async write({ site, expected, definition, actor, event }) {
+    async write({ site, expected, definition, actor, event, depths = [] }) {
       const at = now().toISOString()
       const change = newId('sit')
       const before = await db
         .prepare('SELECT definition FROM sites WHERE id = ?1')
         .bind(site)
         .first<string | null>('definition')
-      const [moved] = await db.batch([
+      const deeper = depths.map(({ collection, maxDepth }) =>
         db
           .prepare(
-            'UPDATE sites SET definition = ?1, version = version + 1, updated_at = ?2 WHERE id = ?3 AND version = ?4 AND deleted_at IS NULL',
+            "SELECT json('hollware: an entry is deeper than its collection allows') FROM sites WHERE id = ?1 AND EXISTS (SELECT 1 FROM entries WHERE site_id = ?1 AND collection = ?2 AND length(slug_path) - length(replace(slug_path, '/', '')) + 1 > ?3)",
           )
-          .bind(JSON.stringify(definition), at, site, expected),
-        appendChange(db, site, actor, at, before ?? null, 'definition', change),
-        ...(event === undefined
-          ? []
-          : [
-              db
-                .prepare(
-                  `INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, created_at, updated_at)
+          .bind(site, collection, maxDepth),
+      )
+      let written
+      try {
+        written = await db.batch([
+          ...deeper,
+          db
+            .prepare(
+              'UPDATE sites SET definition = ?1, version = version + 1, updated_at = ?2 WHERE id = ?3 AND version = ?4 AND deleted_at IS NULL',
+            )
+            .bind(JSON.stringify(definition), at, site, expected),
+          appendChange(db, site, actor, at, before ?? null, 'definition', change),
+          ...(event === undefined
+            ? []
+            : [
+                db
+                  .prepare(
+                    `INSERT INTO outbox (id, site_id, kind, entry_id, payload, sent_at, created_at, updated_at)
                    SELECT ?1, ?2, 'site.changed', NULL, ?3, NULL, ?4, ?4
                    WHERE EXISTS (SELECT 1 FROM site_changes WHERE id = ?5 AND site_id = ?2)`,
-                )
-                .bind(event.id, site, event.payload, at, change),
-            ]),
-      ])
+                  )
+                  .bind(event.id, site, event.payload, at, change),
+              ]),
+        ])
+      } catch (error) {
+        if (deeper.length > 0 && isGuardFailure(error)) return 'too_deep'
+        throw error
+      }
+      const moved = written[deeper.length]
       return (moved?.meta.changes ?? 0) === 1 ? 'written' : 'conflict'
     },
 

@@ -1,5 +1,5 @@
-import type { ResolvedCollection } from '@hollware/core'
-import type { EntryParent, StoredEntry, View } from '../ports.ts'
+import type { ResolvedCollection, ResolvedSite } from '@hollware/core'
+import type { EntryParent, StoredEntry, TreeScope, View } from '../ports.ts'
 import { entrySummary } from './answers.ts'
 import type { OperationContext } from './types.ts'
 
@@ -49,4 +49,24 @@ export async function childrenView(context: OperationContext, entry: StoredEntry
     view,
   )
   return children.map((child) => entrySummary(child))
+}
+
+export const TREE_ATTEMPTS = 3
+
+export function treeOf(site: ResolvedSite, collection: string, locale: string): TreeScope | null {
+  const nesting = site.collections.get(collection)?.nesting ?? null
+  return nesting === null ? null : { collection, locale, maxDepth: nesting.maxDepth }
+}
+
+export function descendantsSnapshot(
+  rows: readonly {
+    readonly id: string
+    readonly status: string
+    readonly deletedAt: string | null
+  }[],
+): string {
+  return rows
+    .map((row) => `${row.id}:${row.status}:${row.deletedAt ?? ''}`)
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .join(',')
 }

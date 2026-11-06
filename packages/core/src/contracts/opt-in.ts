@@ -101,6 +101,22 @@ function internalLinksResolve(options: BuiltInOptions = {}): Contract<unknown> {
         for (const { link, target } of links) {
           const position = positions.get(keyOf(target))
           const found = (position === undefined ? undefined : facts[position]) ?? null
+          if (
+            found?.status === 'published' &&
+            target.slugPath !== undefined &&
+            found.slugPath !== undefined &&
+            found.slugPath !== target.slugPath
+          ) {
+            findings.push({
+              path: '/body',
+              message: `The link ${quote(link.href)} points at an old path of the entry ${clip(`${target.collection}/${target.locale}/${target.slug}`)}, which redirects to where it is now.`,
+              fix: `Point the link at the path of the entry now, which ends in ${quote(found.slugPath)}.`,
+              line: link.line,
+              code: 'internal-links-resolve.moved',
+              params: { href: link.href, slugPath: found.slugPath },
+            })
+            continue
+          }
           if (found?.status === 'published') continue
           const entry = `the entry ${clip(`${target.collection}/${target.locale}/${target.slug}`)}`
           findings.push({

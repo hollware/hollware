@@ -131,28 +131,28 @@ export async function runDueUnpublishes(input: {
     const requestId = `cron_${crypto.randomUUID()}`
     const scopes = await input.scopesOf(unpublication.actor)
     const allowed = scopes.includes('content:publish')
-    if (allowed) {
-      await handlers.unpublish(
-        { id: unpublication.entryId },
-        {
-          site,
-          principal: principalOf(unpublication.actor, site.key, scopes),
-          view: 'head',
-          store,
-          clock,
-          client: unpublication.actor.meta,
-          requestId,
-        },
-      )
-      published += 1
-    } else {
-      cancelled += 1
-    }
+    const answer = allowed
+      ? await handlers.unpublish(
+          { id: unpublication.entryId },
+          {
+            site,
+            principal: principalOf(unpublication.actor, site.key, scopes),
+            view: 'head',
+            store,
+            clock,
+            client: unpublication.actor.meta,
+            requestId,
+          },
+        )
+      : null
+    const outcome = answer === null ? 'insufficient_scope' : answer.outcome
+    if (outcome === 'unpublished') published += 1
+    else cancelled += 1
     await store.cancelUnpublish(site.key, unpublication.entryId)
     await input.audit?.(systemActor(unpublication.actor.userId), requestId).write(site, {
       action: 'schedule.unpublish',
-      outcome: allowed ? 'ok' : 'denied',
-      errorCode: allowed ? null : 'insufficient_scope',
+      outcome: outcome === 'unpublished' ? 'ok' : allowed ? 'failed' : 'denied',
+      errorCode: outcome === 'unpublished' ? null : outcome,
       target: { type: 'entry', id: unpublication.entryId },
       detail: {
         unpublishAt: unpublication.unpublishAt,
@@ -164,7 +164,7 @@ export async function runDueUnpublishes(input: {
       requestId,
       entryId: unpublication.entryId,
       unpublishAt: unpublication.unpublishAt,
-      outcome: allowed ? 'unpublished' : 'insufficient_scope',
+      outcome,
     })
   }
   return { published, cancelled }

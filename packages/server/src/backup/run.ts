@@ -1,6 +1,6 @@
 import type { ResolvedSite } from '@hollware/core'
 import { widthsOf } from '../media/cloudflare.ts'
-import { entryPath, movedFrom } from '../ops/event.ts'
+import { entryPath } from '../ops/event.ts'
 import type { Backups } from '../ports.ts'
 
 export const BACKUP_HOUR_UTC = 3
@@ -144,20 +144,25 @@ async function redirectsOf(
 ): Promise<BackupRedirect[]> {
   const { results } = await db
     .prepare(
-      `SELECT r.collection AS collection, r.locale AS locale, r.from_slug AS "from", e.slug AS "to", e.slug_path AS toSlugPath, r.entry_id AS entryId
+      `SELECT r.collection AS collection, r.locale AS locale, r.from_slug AS "from", r.from_path AS fromSlugPath, e.slug AS "to", e.slug_path AS toSlugPath, r.entry_id AS entryId
          FROM redirects AS r JOIN entries AS e ON e.id = r.entry_id AND e.site_id = r.site_id
         WHERE r.site_id = ?1
-        ORDER BY r.collection, r.locale, r.from_slug`,
+        ORDER BY r.collection, r.locale, r.from_path`,
     )
     .bind(site.key)
-    .all<Omit<BackupRedirect, 'fromPath' | 'toPath'> & { readonly toSlugPath: string }>()
-  return results.map(({ toSlugPath, ...redirect }) => {
+    .all<
+      Omit<BackupRedirect, 'fromPath' | 'toPath'> & {
+        readonly fromSlugPath: string
+        readonly toSlugPath: string
+      }
+    >()
+  return results.map(({ fromSlugPath, toSlugPath, ...redirect }) => {
     const collection = site.collections.get(redirect.collection)
     const path = (slugPath: string) =>
       collection === undefined ? null : entryPath(collection, redirect.locale, slugPath)
     return {
       ...redirect,
-      fromPath: path(movedFrom(toSlugPath, redirect.from)),
+      fromPath: path(fromSlugPath),
       toPath: path(toSlugPath),
     }
   })

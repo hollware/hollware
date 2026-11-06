@@ -6,6 +6,7 @@ import { checkChangeset } from './changeset.ts'
 import { unexpectedAnswer } from './errors.ts'
 import { publish } from './publish.ts'
 import { requiredAgents } from './review-agents.ts'
+import { TREE_ATTEMPTS } from './tree.ts'
 import type { OperationContext, OperationHandler } from './types.ts'
 
 async function itemsOf(context: OperationContext, review: StoredReview) {
@@ -95,7 +96,8 @@ async function approveChangeset(
   context: OperationContext,
   review: StoredReview,
   items: readonly StoredReviewItem[],
-) {
+  attempts = TREE_ATTEMPTS,
+): ReturnType<OperationHandler<'approve_review'>> {
   const excluded = new Set(input.exclude)
   const included = items.filter((item) => !excluded.has(item.entryId))
   if (included.length === 0) {
@@ -123,6 +125,11 @@ async function approveChangeset(
     excluded: [...excluded],
   })
   switch (written.outcome) {
+    case 'tree_changed': {
+      if (attempts > 1) return approveChangeset(input, context, review, items, attempts - 1)
+      const now = (await context.store.findReview(context.site.key, review.id)) ?? review
+      return { outcome: 'not_pending' as const, review: reviewView(now) }
+    }
     case 'approved': {
       context.notify?.([
         ...found.checked.flatMap(({ write }) => (write.event ? [write.event.id] : [])),

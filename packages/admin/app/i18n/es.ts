@@ -118,6 +118,9 @@ export const es: Messages = {
           : `${n} publicadas o programadas: despublícalas primero`,
       not_trashed: (n: number) =>
         n === 1 ? '1 no estaba en la papelera' : `${n} no estaban en la papelera`,
+      has_children: (n: number) => `${n} con hijas: muévelas u ocúpate de ellas primero`,
+      parent_in_trash: (n: number) =>
+        `${n} dentro de una entrada en la papelera: restáurala primero`,
       failed: (n: number) => (n === 1 ? '1 falló' : `${n} fallaron`),
     },
     publish: (n: number) => `Publicar ${n}`,
@@ -439,6 +442,8 @@ export const es: Messages = {
     trashed: 'Movida a la papelera',
     trashedBody: 'Restáurala desde la papelera, en la lista de entradas.',
     notTrashed: 'No se movió a la papelera',
+    hasChildren: (names: string) =>
+      `Tiene entradas dentro (${names}): muévelas, o despublícalas o envíalas a la papelera, primero.`,
   },
   reviews: {
     title: 'Revisiones',

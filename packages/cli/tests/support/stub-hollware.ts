@@ -1,5 +1,6 @@
 import {
   createDraft,
+  moveEntry,
   describeSite,
   getEntry,
   listEntries,
@@ -57,6 +58,7 @@ export interface StubEntry {
   locale: string
   slug: string
   slugPath?: string
+  position?: number
   version: number
   revisions: string[]
   published: number | null
@@ -225,6 +227,22 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     return { ok: errors.length === 0, phase, errors, warnings, contractsHash: 'stub' }
   }
 
+  function parentSlug(entry: StubEntry): string | null {
+    return entry.slugPath?.split('/').at(-2) ?? null
+  }
+
+  function siblingsOf(collection: string, locale: string, parent: string | null): StubEntry[] {
+    return [...entries.values()]
+      .filter(
+        (one) =>
+          one.collection === collection &&
+          one.locale === locale &&
+          parentSlug(one) === parent &&
+          (one.deletedAt ?? null) === null,
+      )
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+  }
+
   function summaryOf(entry: StubEntry) {
     return {
       id: entry.id,
@@ -233,7 +251,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       slug: entry.slug,
       parent: entry.slugPath?.split('/').at(-2) ?? null,
       slugPath: entry.slugPath ?? entry.slug,
-      position: null,
+      position: entry.position ?? null,
       translationGroup: null,
       status: entry.published === null ? ('draft' as const) : ('published' as const),
       version: entry.version,
@@ -532,6 +550,50 @@ export function startStub(options: StubOptions): Promise<StubServer> {
     )
 
     keep(
+      moveEntry.name,
+      server.registerTool(
+        moveEntry.name,
+        { ...describe(moveEntry), inputSchema: moveEntry.input, outputSchema: moveEntry.output },
+        guarded(moveEntry.name, (args) => {
+          const entry = [...entries.values()].find((one) => one.id === args.id)
+          if (entry === undefined) return reply(moveEntry.outcomes, { outcome: 'not_found' })
+          const from = parentSlug(entry)
+          const to = args.parent === undefined ? from : args.parent
+          const above =
+            to === null
+              ? undefined
+              : entries.get(key({ collection: entry.collection, locale: entry.locale, slug: to }))
+          const before = entry.slugPath ?? entry.slug
+          const after =
+            above === undefined ? entry.slug : `${above.slugPath ?? above.slug}/${entry.slug}`
+          for (const one of entries.values()) {
+            const path = one.slugPath ?? one.slug
+            if (
+              one.collection === entry.collection &&
+              one.locale === entry.locale &&
+              path.startsWith(`${before}/`)
+            ) {
+              one.slugPath = `${after}${path.slice(before.length)}`
+            }
+          }
+          entry.slugPath = after
+          const order = siblingsOf(entry.collection, entry.locale, to).filter(
+            (one) => one !== entry,
+          )
+          order.splice(Math.min(args.index ?? order.length, order.length), 0, entry)
+          order.forEach((one, at) => {
+            one.position = at
+          })
+          siblingsOf(entry.collection, entry.locale, from).forEach((one, at) => {
+            one.position = at
+          })
+          entry.version += 1
+          return reply(moveEntry.outcomes, { outcome: 'moved', entry: summaryOf(entry) })
+        }),
+      ),
+    )
+
+    keep(
       createDraft.name,
       server.registerTool(
         createDraft.name,
@@ -558,11 +620,24 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             })
           }
           nextId += 1
+          const parent =
+            args.parent === undefined
+              ? undefined
+              : entries.get(
+                  key({ collection: args.collection, locale: args.locale, slug: args.parent }),
+                )
+          const nestedHere = options.declared?.[args.collection]?.maxDepth !== undefined
           const entry: StubEntry = {
             id: `ent_${String(nextId).padStart(26, '0')}`,
             collection: args.collection,
             locale: args.locale,
             slug: args.slug,
+            ...(parent === undefined
+              ? {}
+              : { slugPath: `${parent.slugPath ?? parent.slug}/${args.slug}` }),
+            ...(nestedHere
+              ? { position: siblingsOf(args.collection, args.locale, parent?.slug ?? null).length }
+              : {}),
             version: 1,
             revisions: [args.markdown],
             published: null,

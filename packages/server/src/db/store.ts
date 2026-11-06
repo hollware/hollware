@@ -53,7 +53,8 @@ export function createD1Store(db: D1Like, options: StoreOptions = {}): ContentSt
     trashEntry: (site, write) => writes.trashEntry(database, clock, site, write),
     moveEntry: (site, write) => writes.moveEntry(database, clock, site, write),
     listRedirects: (site, query) => writes.listRedirects(database, site, query),
-    restoreEntry: (site, entryId) => writes.restoreEntry(database, clock, site, entryId),
+    restoreEntry: (site, entryId, treeOf) =>
+      writes.restoreEntry(database, clock, site, entryId, treeOf),
     requestReview: (site, write) =>
       reviews.requestReview(database, clock, site, write, (entryId) =>
         writes.whyNothingChanged(database, site, entryId),

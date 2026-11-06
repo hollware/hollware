@@ -235,6 +235,7 @@ describe('hollware export', () => {
         locale: 'es',
         slug,
         slugPath,
+        position: 0,
         version: 1,
         revisions: [post(slug)],
         published: null,
@@ -246,9 +247,13 @@ describe('hollware export', () => {
 
     expect(exported.code).toBe(0)
     expect(filesOf(join(base, 'out'))).toEqual([
+      '_order.json',
       'help/es/facturacion.md',
       'help/es/facturacion/pagos.md',
     ])
+    expect(JSON.parse(readFileSync(join(base, 'out', '_order.json'), 'utf8'))).toEqual({
+      'help/es': ['facturacion', 'facturacion/pagos'],
+    })
     expect(readCorpus(join(base, 'out')).files.map((file) => [file.slug, file.parent])).toEqual([
       ['facturacion', undefined],
       ['pagos', 'facturacion'],

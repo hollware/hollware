@@ -48,6 +48,7 @@ describe('lookup(site).lookupMany', () => {
               id: id(`ent_${pad(n)}`),
               status: 'draft',
               translationGroup: n % 2 === 0 ? `group-${pad(n)}` : null,
+              slugPath: `post-${pad(n)}`,
             },
       ),
     )
@@ -113,8 +114,8 @@ describe('lookup(site).lookupMany', () => {
         { collection: 'blog', locale: 'en', slug: 'c' },
       ]),
     ).toEqual([
-      { id: id('ent_a'), status: 'draft', translationGroup: 'g' },
-      { id: id('ent_b'), status: 'published', translationGroup: null },
+      { id: id('ent_a'), status: 'draft', translationGroup: 'g', slugPath: 'a' },
+      { id: id('ent_b'), status: 'published', translationGroup: null, slugPath: 'b' },
       null,
       null,
       null,

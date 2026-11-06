@@ -13,9 +13,27 @@ import { checkChangeset, distinctMembers, refuseOverlap, warningKey } from './ch
 import { collectionOfEntry } from './collections.ts'
 import { judge, processFor, sortKeyOf } from './draft.ts'
 import { unexpectedAnswer } from './errors.ts'
-import type { OperationHandler } from './types.ts'
+import { TREE_ATTEMPTS, treeOf } from './tree.ts'
+import type { OperationContext, OperationHandler } from './types.ts'
 
-export const publish: OperationHandler<'publish'> = async (input, context) => {
+export const publish: OperationHandler<'publish'> = (input, context) =>
+  publishAttempt(input, context, TREE_ATTEMPTS)
+
+async function stillChanging(context: OperationContext, id: string, failedEntry?: string) {
+  const found = await context.store.findEntryById(context.site.key, id, 'head')
+  if (found === null) return { outcome: 'not_found' as const }
+  return {
+    outcome: 'conflict' as const,
+    conflict: conflictAt(found.entry.version, found.entry.headRevision),
+    ...(failedEntry === undefined ? {} : { failedEntry }),
+  }
+}
+
+async function publishAttempt(
+  input: Parameters<OperationHandler<'publish'>>[0],
+  context: OperationContext,
+  attempts: number,
+): ReturnType<OperationHandler<'publish'>> {
   const granted: readonly Scope[] = context.principal.scopes
   const mayPublish = granted.includes('content:publish')
   if (!mayPublish && input.publishAt !== undefined) {
@@ -27,7 +45,7 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
   }
   if (!mayPublish && input.group.length > 0)
     return askForReview({ ...input, unpublish: [] }, context)
-  if (input.group.length > 0) return publishGroup(input, context)
+  if (input.group.length > 0) return publishGroup(input, context, attempts)
   const actor = actorOf(context)
   const found = await context.store.findEntryById(context.site.key, input.id, 'head')
   if (found === null) return { outcome: 'not_found' }
@@ -145,8 +163,13 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
       sortKeyOf(collection, processed.value.frontmatter) ??
       entry.publishedAt ??
       context.clock.now().toISOString(),
+    tree: treeOf(context.site, entry.collection, entry.locale),
   })
   switch (written.outcome) {
+    case 'tree_changed':
+      return attempts > 1
+        ? publishAttempt(input, context, attempts - 1)
+        : stillChanging(context, entry.id)
     case 'published':
       context.notify?.([event.id])
       return {
@@ -175,7 +198,7 @@ export const publish: OperationHandler<'publish'> = async (input, context) => {
 type PublishInput = Parameters<typeof publish>[0]
 type PublishContext = Parameters<typeof publish>[1]
 
-async function publishGroup(input: PublishInput, context: PublishContext) {
+async function publishGroup(input: PublishInput, context: PublishContext, attempts: number) {
   if (input.publishAt !== undefined) {
     throw new HollwareError(
       'invalid_input',
@@ -197,6 +220,10 @@ async function publishGroup(input: PublishInput, context: PublishContext) {
     checked.map(({ write }) => write),
   )
   switch (written.outcome) {
+    case 'tree_changed':
+      return attempts > 1
+        ? publishAttempt(input, context, attempts - 1)
+        : stillChanging(context, input.id, input.id)
     case 'published': {
       const [view] = written.views
       if (view === undefined) throw unexpectedAnswer(context, 'publish', written)

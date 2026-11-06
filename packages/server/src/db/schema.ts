@@ -348,12 +348,14 @@ export const redirects = sqliteTable(
     collection: text('collection').notNull(),
     locale: text('locale').notNull(),
     fromSlug: text('from_slug').notNull(),
+    fromPath: text('from_path').notNull().default(''),
     entryId: text('entry_id').notNull(),
     ...timestamps(),
   },
   (t) => [
     unique('redirects_id_site').on(t.id, t.siteId),
-    unique('redirects_from').on(t.siteId, t.collection, t.locale, t.fromSlug),
+    unique('redirects_from_path').on(t.siteId, t.collection, t.locale, t.fromPath),
+    index('redirects_from').on(t.siteId, t.collection, t.locale, t.fromSlug),
     index('redirects_entry').on(t.siteId, t.entryId),
     foreignKey({ name: 'redirects_site', columns: [t.siteId], foreignColumns: [sites.id] }),
     foreignKey({

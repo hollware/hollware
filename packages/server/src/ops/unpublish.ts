@@ -3,7 +3,7 @@ import { actorOf } from './actor.ts'
 import { collectionOfEntry } from './collections.ts'
 import { entrySummary } from './answers.ts'
 import { unexpectedAnswer } from './errors.ts'
-import { childrenView } from './tree.ts'
+import { childrenView, treeOf } from './tree.ts'
 import type { OperationHandler } from './types.ts'
 
 export const unpublish: OperationHandler<'unpublish'> = async (input, context) => {
@@ -29,6 +29,7 @@ export const unpublish: OperationHandler<'unpublish'> = async (input, context) =
     entryId: input.id,
     actor,
     event,
+    tree: treeOf(context.site, entry.collection, entry.locale),
   })
   switch (written.outcome) {
     case 'unpublished':

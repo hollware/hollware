@@ -283,20 +283,29 @@ export async function summariesBySlug(
   })
 }
 
-export async function redirectOf(db: Db, site: string, ref: EntryRef): Promise<string | null> {
+export async function redirectOf(
+  db: Db,
+  site: string,
+  ref: EntryRef & { readonly slugPath: string },
+): Promise<{ readonly entryId: string; readonly exact: boolean } | null> {
   const [row] = await db
-    .select({ entryId: redirects.entryId })
+    .select({ entryId: redirects.entryId, fromPath: redirects.fromPath })
     .from(redirects)
     .where(
       and(
         eq(redirects.siteId, site),
         eq(redirects.collection, ref.collection),
         eq(redirects.locale, ref.locale),
-        eq(redirects.fromSlug, ref.slug),
+        or(eq(redirects.fromPath, ref.slugPath), eq(redirects.fromSlug, ref.slug)),
       ),
     )
+    .orderBy(
+      desc(sql`${redirects.fromPath} = ${ref.slugPath}`),
+      desc(redirects.updatedAt),
+      desc(redirects.id),
+    )
     .limit(1)
-  return row?.entryId ?? null
+  return row === undefined ? null : { entryId: row.entryId, exact: row.fromPath === ref.slugPath }
 }
 
 export async function deepestDepth(db: Db, site: string, collection: string): Promise<number> {
@@ -417,6 +426,7 @@ const factFields = {
   slug: entries.slug,
   status: entries.status,
   translationGroup: entries.translationGroup,
+  slugPath: entries.slugPath,
 }
 
 function refKey(ref: EntryRef): string {
@@ -450,6 +460,7 @@ export function lookup(db: Db, site: string): EntryLookup {
           id: row.id,
           status: entryStatus(row.status),
           translationGroup: row.translationGroup,
+          slugPath: row.slugPath,
         })
       }
       return refs.map((ref) => found.get(refKey(ref)) ?? null)

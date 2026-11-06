@@ -36,7 +36,11 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
         ])
       : new Map()
   const imageOf = (id: string) => images.get(id)
-  const ancestors = await ancestorsOf(context, found, input.published ? 'published' : context.view)
+  const ancestors = await ancestorsOf(
+    context,
+    found,
+    input.published || context.reader === true ? 'published' : context.view,
+  )
   const related = input.related ? await relatedEntries(context, entry.id) : undefined
   const references = input.references ? await referencedEntries(context, found) : undefined
   return {

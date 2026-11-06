@@ -66,7 +66,7 @@ function matchesAt(path: readonly string[], route: CompiledRoute, depth: number)
 export function matchRoute(
   path: string,
   routes: readonly CompiledRoute[],
-): (LinkTarget & { readonly slugPath: string }) | undefined {
+): (LinkTarget & { readonly slugPath: string; readonly nested: boolean }) | undefined {
   const segments = segmentsOf(path)
   for (const route of routes) {
     for (let depth = 1; depth <= route.maxDepth; depth++) {
@@ -77,6 +77,7 @@ export function matchRoute(
         locale: route.locale,
         slug: slugs[slugs.length - 1] ?? '',
         slugPath: slugs.join('/'),
+        nested: route.maxDepth > 1,
       }
     }
   }
@@ -98,7 +99,12 @@ export function classifyLink(href: string, routes: readonly CompiledRoute[]): Cl
     if (matched !== undefined) {
       return {
         kind: 'internal',
-        target: { collection: matched.collection, locale: matched.locale, slug: matched.slug },
+        target: {
+          collection: matched.collection,
+          locale: matched.locale,
+          slug: matched.slug,
+          ...(matched.nested ? { slugPath: matched.slugPath } : {}),
+        },
       }
     }
   }

@@ -225,7 +225,12 @@ export function fakeEntries(entries: readonly StoredEntry[] = []): {
           )
           return found === undefined
             ? null
-            : { id: found.id, status: found.status, translationGroup: found.translationGroup }
+            : {
+                id: found.id,
+                status: found.status,
+                translationGroup: found.translationGroup,
+                ...(found.slugPath === undefined ? {} : { slugPath: found.slugPath }),
+              }
         }),
       )
     },

@@ -113,6 +113,8 @@ export const en = {
       purged: (n: number) => `${n} deleted for ever`,
       not_draft: (n: number) => `${n} published or scheduled: unpublish them first`,
       not_trashed: (n: number) => `${n} not in the trash`,
+      has_children: (n: number) => `${n} with children: move or deal with them first`,
+      parent_in_trash: (n: number) => `${n} inside an entry in the trash: restore it first`,
       failed: (n: number) => `${n} failed`,
     },
     publish: (n: number) => `Publish ${n}`,
@@ -433,6 +435,8 @@ export const en = {
     trashed: 'Moved to the trash',
     trashedBody: 'Restore it from the trash, in the list of entries.',
     notTrashed: 'Not moved to the trash',
+    hasChildren: (names: string) =>
+      `It has entries inside it (${names}): move them, or unpublish or trash them, first.`,
   },
   reviews: {
     title: 'Reviews',

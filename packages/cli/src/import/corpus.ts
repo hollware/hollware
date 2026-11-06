@@ -1,6 +1,7 @@
 import { schemas } from '@hollware/core'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { ORDER_FILE, readOrder } from './order.ts'
 
 export interface ContentFile {
   path: string
@@ -9,6 +10,7 @@ export interface ContentFile {
   slug: string
   markdown: string
   parent?: string
+  position?: number
 }
 
 export interface FileProblem {
@@ -25,10 +27,38 @@ export interface Corpus {
 export function readCorpus(root: string): Corpus {
   const corpus: Corpus = { files: [], skipped: [], problems: [] }
   walk(root, [], corpus)
+  let order: Record<string, readonly string[]> = {}
+  try {
+    order = readOrder(root)
+  } catch (error) {
+    corpus.problems.push({
+      path: ORDER_FILE,
+      reason: `it is not JSON: ${error instanceof Error ? error.message : String(error)}`,
+    })
+  }
+  const rank = new Map<string, number>()
+  const positions = new Map<string, number>()
+  for (const [key, paths] of Object.entries(order)) {
+    const siblings = new Map<string, number>()
+    paths.forEach((slugPath, index) => {
+      const parent = slugPath.includes('/') ? slugPath.slice(0, slugPath.lastIndexOf('/')) : ''
+      const at = siblings.get(parent) ?? 0
+      siblings.set(parent, at + 1)
+      rank.set(`${key}/${slugPath}.md`, index)
+      positions.set(`${key}/${slugPath}.md`, at)
+    })
+  }
+  corpus.files = corpus.files.map((file) => {
+    const position = positions.get(file.path)
+    return position === undefined ? file : { ...file, position }
+  })
   corpus.files.sort(
     (a, b) =>
       compare(a.collection, b.collection) ||
       compare(a.locale, b.locale) ||
+      a.path.split('/').length - b.path.split('/').length ||
+      (rank.get(a.path) ?? Number.MAX_SAFE_INTEGER) -
+        (rank.get(b.path) ?? Number.MAX_SAFE_INTEGER) ||
       compareSegments(a.path.split('/'), b.path.split('/')),
   )
   corpus.skipped.sort(compare)
