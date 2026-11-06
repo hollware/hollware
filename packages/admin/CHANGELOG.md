@@ -1,5 +1,15 @@
 # @hollware/admin
 
+## 1.8.0
+
+### Minor Changes
+
+- [#111](https://github.com/hollware/hollware/pull/111) [`73ec70a`](https://github.com/hollware/hollware/commit/73ec70a5d4d92cb595094827c45e92237bc1a46d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin shows the version of Hollware installed at the foot of its sidebar, and links to the notes of a newer release when npm has one. The Worker asks npm at most every six hours, through `GET /v1/admin/version`.
+
+- [#113](https://github.com/hollware/hollware/pull/113) [`6bc1ba3`](https://github.com/hollware/hollware/commit/6bc1ba39cfdd554a36414cb842b1097d51b50625) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Nested entries in the admin. A collection's settings turn nesting on and set its levels. The entries of a nested collection show as a tree in a locale: drag one onto another to put it inside, above or below, or move it from its menu with the keyboard (up, down, into the one above, out to its parent), and start a new entry inside it. An entry shows its ancestors in the breadcrumb, moves under another parent in the dialog that changes its URL, and opens on the site at its whole path.
+
+  Unpublishing, scheduling the end of, or trashing an entry with children says so, with the children it has, instead of reporting it done.
+
 ## 1.7.0
 
 ### Minor Changes

@@ -1,5 +1,18 @@
 # @hollware/server
 
+## 1.8.0
+
+### Minor Changes
+
+- [#111](https://github.com/hollware/hollware/pull/111) [`73ec70a`](https://github.com/hollware/hollware/commit/73ec70a5d4d92cb595094827c45e92237bc1a46d) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The admin shows the version of Hollware installed at the foot of its sidebar, and links to the notes of a newer release when npm has one. The Worker asks npm at most every six hours, through `GET /v1/admin/version`.
+
+- [#113](https://github.com/hollware/hollware/pull/113) [`6bc1ba3`](https://github.com/hollware/hollware/commit/6bc1ba39cfdd554a36414cb842b1097d51b50625) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Nested entries. A collection with `nesting: { maxDepth }` (2 to 10) lets an entry have a parent of its collection and locale: `create_draft` takes `parent`, and `move_entry` moves an entry, with its descendants, under another parent or to another place among its siblings. An entry's path holds the slugs of its ancestors in place of `:slug`, so `/help/billing/refunds/` is the entry `refunds` under `billing`. Slugs stay unique in a collection and locale: `resolvePath` (RPC, and `GET /v1/resolve?path=`) answers the entry a path names, or the path it has now for an older one. `getNavigation` answers a tree, and `get_entry` the ancestors of an entry for breadcrumbs. A child is published only with its ancestors; an entry with children is neither unpublished (now, on schedule or in a review), trashed nor deleted for ever, and one whose parent is in the trash is not restored, but after its siblings. Every write that changes the tree checks it whole in the same D1 batch, against the depth the site's definition has then, and is retried when another write got there first, so writes at the same time never leave it broken. A move keeps a redirect from the old path of the entry and of each published descendant, and a link to an old path is reported by internal-links-resolve. A preview token resolves no draft but its own. A collection's depth is never set below the deepest entry it has.
+
+### Patch Changes
+
+- Updated dependencies [[`6bc1ba3`](https://github.com/hollware/hollware/commit/6bc1ba39cfdd554a36414cb842b1097d51b50625)]:
+  - @hollware/core@1.8.0
+
 ## 1.7.0
 
 ### Patch Changes
