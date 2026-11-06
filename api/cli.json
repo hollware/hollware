@@ -210,6 +210,12 @@
         "section-field": {
           "type": "string"
         },
+        "sections": {
+          "type": "string"
+        },
+        "skip-root": {
+          "type": "boolean"
+        },
         "slug-map": {
           "type": "string"
         },

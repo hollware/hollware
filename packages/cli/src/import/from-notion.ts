@@ -27,6 +27,8 @@ export interface NotionOptions {
   readonly locale: string
   readonly sectionField: string
   readonly orderField: string
+  readonly sections: 'pages' | 'headings'
+  readonly skipRoot: boolean
   readonly callouts: 'components' | 'alerts'
   readonly toggles: 'details' | 'flatten'
   readonly slugMap: Readonly<Record<string, string>>
@@ -154,7 +156,7 @@ interface Page {
   title: string
   parent: string | undefined
   position: number
-  section: string
+  section: string | undefined
   recordMap: NotionRecordMap
 }
 
@@ -244,12 +246,43 @@ export class NotionReadError extends Error {
   }
 }
 
-async function crawl(rootId: string, loader: NotionLoader): Promise<Page[]> {
+const HEADINGS: ReadonlySet<string> = new Set([
+  'header',
+  'sub_header',
+  'sub_sub_header',
+  'header_4',
+])
+
+function headingAbove(recordMap: NotionRecordMap, page: Block): Map<string, string> {
+  const found = new Map<string, string>()
+  let heading: string | undefined
+  const walk = (ids: readonly string[]): void => {
+    for (const id of ids) {
+      const block = blockOf(recordMap, id)
+      if (block === undefined) continue
+      if (HEADINGS.has(block.type)) {
+        const text = plainText(block.properties['title']).replace(/\s+/g, ' ').trim()
+        heading = text === '' ? heading : text
+      } else if (block.type === 'page') {
+        if (heading !== undefined) found.set(block.id, heading)
+      } else walk(block.content)
+    }
+  }
+  walk(page.content)
+  return found
+}
+
+async function crawl(
+  rootId: string,
+  loader: NotionLoader,
+  sections: NotionOptions['sections'],
+): Promise<Page[]> {
   const pages: Page[] = []
   const seen = new Set([rootId])
   let level: { id: string; parent: Page | undefined; position: number }[] = [
     { id: rootId, parent: undefined, position: 1 },
   ]
+  let headings = new Map<string, string>()
   while (level.length > 0) {
     const loaded = await mapLimit(level, CONCURRENCY, async (item) => {
       let recordMap: NotionRecordMap
@@ -262,7 +295,15 @@ async function crawl(rootId: string, loader: NotionLoader): Promise<Page[]> {
       if (block === undefined) throw new NotionReadError(item.id, 'Notion gave no such page')
       const title = titleOf(block)
       const section =
-        item.parent === undefined || item.parent.parent === undefined ? title : item.parent.section
+        item.parent === undefined
+          ? sections === 'pages'
+            ? title
+            : undefined
+          : item.parent.parent !== undefined
+            ? item.parent.section
+            : sections === 'pages'
+              ? title
+              : headings.get(item.id)
       return {
         id: item.id,
         block,
@@ -274,6 +315,9 @@ async function crawl(rootId: string, loader: NotionLoader): Promise<Page[]> {
       }
     })
     pages.push(...loaded)
+    const root = loaded.find((page) => page.parent === undefined)
+    if (root !== undefined && sections === 'headings')
+      headings = headingAbove(root.recordMap, root.block)
     level = loaded.flatMap((page) =>
       childPages(page.recordMap, page.block)
         .filter((id) => {
@@ -478,6 +522,7 @@ type Downloaded = { ok: true; key: string } | { ok: false; reason: string }
 interface Shared {
   readonly options: NotionOptions
   readonly pages: ReadonlyMap<string, Page>
+  readonly skippedRoot: string | undefined
   readonly paths: ReadonlyMap<string, string>
   readonly images: Map<string, NotionImage>
   readonly downloads: Map<string, Promise<Downloaded>>
@@ -511,6 +556,9 @@ class PageWriter {
   pageHref(id: string): string {
     const slug = this.shared.paths.get(id)
     const { route } = this.shared.options.target
+    if (id === this.shared.skippedRoot && route !== undefined) {
+      return route.replace(/:slug\/?/, '')
+    }
     if (slug === undefined) {
       const url = this.notionUrl(id)
       this.note(`link to a Notion page outside the import kept as ${url}`)
@@ -548,7 +596,7 @@ class PageWriter {
     const absolute = relative ? `${NOTION_ORIGIN}${href}` : href
     const id = notionId(href)
     if (id === undefined) return absolute
-    if (!this.shared.paths.has(id)) {
+    if (!this.shared.paths.has(id) && id !== this.shared.skippedRoot) {
       this.note(`link to a Notion page outside the import kept as ${absolute}`)
       return absolute
     }
@@ -1009,11 +1057,13 @@ function escapeAlt(text: string): string {
   return text.replace(/[\\[\]]/g, '\\$&')
 }
 
-function frontmatter(fields: readonly (readonly [string, string | number])[]): string {
-  const lines = fields.map(
-    ([key, value]) =>
-      `${key}: ${typeof value === 'number' ? String(value) : JSON.stringify(value)}`,
-  )
+function frontmatter(fields: readonly (readonly [string, string | number | undefined])[]): string {
+  const lines = fields
+    .flatMap(([key, value]) => (value === undefined ? [] : [[key, value] as const]))
+    .map(
+      ([key, value]) =>
+        `${key}: ${typeof value === 'number' ? String(value) : JSON.stringify(value)}`,
+    )
   return `---\n${lines.join('\n')}\n---\n`
 }
 
@@ -1026,7 +1076,8 @@ const FIXES: Readonly<Record<string, string>> = {
 export async function corpusFromNotion(options: NotionOptions): Promise<NotionImport> {
   const rootId = notionId(options.root)
   if (rootId === undefined) throw new NotionReadError(options.root, 'it is not a Notion page id')
-  const pages = treeOrder(await crawl(rootId, options.loader))
+  const crawled = treeOrder(await crawl(rootId, options.loader, options.sections))
+  const pages = options.skipRoot ? crawled.filter((page) => page.id !== rootId) : crawled
   const problems: FileProblem[] = []
   const slugs = assignSlugs(pages, options.slugMap, problems)
   const maxDepth = options.target.maxDepth ?? null
@@ -1043,6 +1094,7 @@ export async function corpusFromNotion(options: NotionOptions): Promise<NotionIm
   }
   const shared: Shared = {
     options,
+    skippedRoot: options.skipRoot ? rootId : undefined,
     pages: new Map(pages.map((page) => [page.id, page])),
     paths,
     images: new Map(),
@@ -1068,7 +1120,13 @@ export async function corpusFromNotion(options: NotionOptions): Promise<NotionIm
             [options.sectionField, page.section],
             [options.orderField, page.position],
           ]
-        : [['title', page.title]],
+        : [
+            ['title', page.title],
+            [
+              options.sectionField,
+              parent === undefined && options.sections === 'headings' ? page.section : undefined,
+            ],
+          ],
     )
     const depth = slugPath.split('/').length
     if (maxDepth !== null && depth > maxDepth) {
