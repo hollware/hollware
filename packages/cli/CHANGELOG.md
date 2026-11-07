@@ -1,5 +1,12 @@
 # hollware
 
+## 1.10.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/core@1.10.0
+
 ## 1.9.0
 
 ### Minor Changes
