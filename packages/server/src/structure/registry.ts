@@ -21,6 +21,11 @@ interface VersionRow {
   readonly served: number
 }
 
+interface TagRow {
+  readonly version: number
+  readonly content_version: number
+}
+
 export interface SiteRegistryOptions {
   readonly seed?: Readonly<Record<string, SiteDefinitionInput>>
   readonly now: () => Date
@@ -32,6 +37,7 @@ export interface SiteRegistry {
   readonly sites: ReadonlyMap<string, ResolvedSite>
   readonly keys: ReadonlySet<string>
   refresh(db: D1Like, options?: { readonly force?: boolean }): Promise<void>
+  readTag(db: D1Like, site: string): Promise<string | undefined>
 }
 
 async function moveConfig(
@@ -128,7 +134,16 @@ export function createSiteRegistry(options: SiteRegistryOptions): SiteRegistry {
     polledAt = now.getTime()
   }
 
-  return { sites, keys, refresh }
+  const readTag = async (db: D1Like, site: string): Promise<string | undefined> => {
+    const row = await db
+      .prepare('SELECT version, content_version FROM sites WHERE id = ?1 AND deleted_at IS NULL')
+      .bind(site)
+      .first<TagRow>()
+    if (row === null || compiled.get(site)?.version !== row.version) return undefined
+    return `${row.version}.${row.content_version}`
+  }
+
+  return { sites, keys, refresh, readTag }
 }
 
 export function withoutStaleIndexNow(

@@ -20,6 +20,7 @@ export const sites = sqliteTable('sites', {
   id: text('id').primaryKey(),
   definition: text('definition'),
   version: integer('version').notNull().default(0),
+  contentVersion: integer('content_version').notNull().default(0),
   deletedAt: text('deleted_at'),
   ...timestamps(),
 })

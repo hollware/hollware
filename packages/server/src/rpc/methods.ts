@@ -23,6 +23,7 @@ import type { Handlers, OperationContext } from '../ops/types.ts'
 import type { Clock } from '../ports.ts'
 import { semanticOfEnv } from '../semantic/cloudflare.ts'
 import { mediaOfEnv } from '../media/cloudflare.ts'
+import type { ReadCache } from './read-cache.ts'
 
 export interface RpcLogEntry {
   readonly kind: 'rpc_error'
@@ -38,7 +39,13 @@ export interface RpcDeps {
   readonly handlers: Handlers
   readonly clock: Clock
   readonly log: (entry: RpcLogEntry) => void
+  readonly reads?: {
+    readonly cache: ReadCache
+    readonly tag: (db: D1Database, site: string) => Promise<string | undefined>
+  }
 }
+
+const UNCACHED_METHODS: ReadonlySet<string> = new Set(['search'])
 
 export type RpcEnv = Pick<
   HollwareEnv,
@@ -170,6 +177,8 @@ async function run<Schema extends z.ZodType, Output>(
   viewOf: (site: string) => Promise<OperationContext['view']> = () => Promise.resolve('published'),
 ): Promise<Output> {
   const requestId = crypto.randomUUID()
+  const reading = UNCACHED_METHODS.has(method) ? undefined : deps.reads?.tag(env.DB, site)
+  reading?.catch(() => undefined)
   try {
     await deps.refresh?.(env.DB)
   } catch (error) {
@@ -196,8 +205,12 @@ async function run<Schema extends z.ZodType, Output>(
     media: mediaOfEnv(env),
     reader: true,
   }
+  const answer = () => handler(input, context)
   try {
-    return await handler(input, context)
+    const tag = view === 'published' ? await reading : undefined
+    return deps.reads === undefined || tag === undefined
+      ? await answer()
+      : await deps.reads.cache.remember(JSON.stringify([site, tag, method, input]), answer)
   } catch (error) {
     throw forCaller(deps, requestId, method, error)
   }

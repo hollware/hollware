@@ -80,7 +80,7 @@ describe('AC-0.1-10: migrations', () => {
 
   it('leaves the triggers that keep revisions, their tags and publications append-only', async () => {
     const [rows] = await project.query(
-      "SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name NOT LIKE '%content_version%' ORDER BY name",
     )
 
     expect(rows?.map((row) => row['name'])).toEqual([

@@ -107,9 +107,9 @@ describe('createHollwareWith', () => {
   it('gives the handlers the system clock when none is passed, and reads it at each call', async () => {
     const times: number[] = []
     const { handlers } = fakeHandlers({
-      describe_site: async (_input, context) => {
+      search: async (_input, context) => {
         times.push(context.clock.now().getTime())
-        return CANNED.describe_site.ok
+        return CANNED.search.ok
       },
     })
     const { Hollware } = createHollwareWith(CONFIG, handlers)
@@ -120,9 +120,9 @@ describe('createHollwareWith', () => {
       HOLLWARE_PUBLIC_URL: PUBLIC_URL,
     })
 
-    await instance.describeSite(SITE_KEY)
+    await instance.search(SITE_KEY, 'words')
     await new Promise((resolve) => setTimeout(resolve, 50))
-    await instance.describeSite(SITE_KEY)
+    await instance.search(SITE_KEY, 'words')
 
     const [first, second] = times
     expect(times).toHaveLength(2)

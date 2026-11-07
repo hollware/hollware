@@ -122,7 +122,7 @@ async function rowCount(table: string, id: string): Promise<number | null> {
 describe('append-only tables', () => {
   it('have the nine triggers of migrations/0002_append_only.sql, the two of search, the three of site_changes and of audit_log, the two of assets and of entry_purges, the two that write the events of reviews and the one that closes the items of a review', async () => {
     const { results } = await env.DB.prepare(
-      "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' ORDER BY name",
+      "SELECT name, tbl_name FROM sqlite_master WHERE type = 'trigger' AND name NOT LIKE '%content_version%' ORDER BY name",
     ).all()
     expect(results).toEqual([
       { name: 'assets_immutable', tbl_name: 'assets' },

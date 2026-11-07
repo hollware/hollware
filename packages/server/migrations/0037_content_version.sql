@@ -1,0 +1,1 @@
+ALTER TABLE `sites` ADD `content_version` integer DEFAULT 0 NOT NULL;

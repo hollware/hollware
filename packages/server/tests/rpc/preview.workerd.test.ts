@@ -2,7 +2,7 @@ import { HollwareError, makePreviewToken } from '@hollware/core'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
-import { createRpc } from '../../src/rpc/index.ts'
+import { createReadCache, createRpc } from '../../src/rpc/index.ts'
 import { handlers } from '../../src/ops/index.ts'
 import { SITE, SITE_KEY, testClock } from '../http/support.ts'
 import { seedSite } from '../support/sites.ts'
@@ -12,11 +12,14 @@ const DRAFT = 'from-draft-to-published'
 
 let seededOnce: ReturnType<typeof seedSite> | undefined
 
-async function world(secret: string | null = SECRET) {
+async function world(secret: string | null = SECRET, { cached = false } = {}) {
   const seeded = await (seededOnce ??= seedSite(env.DB, SITE_KEY))
   const clock = testClock()
+  const reads = cached
+    ? { cache: createReadCache(), tag: () => Promise.resolve<string | undefined>('1.1') }
+    : undefined
   const rpc = createRpc(
-    { sites: new Map([[SITE.key, SITE]]), handlers, clock, log: () => {} },
+    { sites: new Map([[SITE.key, SITE]]), handlers, clock, log: () => {}, reads },
     secret === null ? { DB: env.DB } : { DB: env.DB, HOLLWARE_SECRET: secret },
   )
   const idOf = (slug: string) => {
@@ -54,6 +57,17 @@ describe('getEntry with a preview token', () => {
       DRAFT,
       'draft',
     ])
+  })
+
+  it('keeps a previewed draft out of the read cache, so the published read stays not found', async () => {
+    const { rpc, idOf, tokenFor } = await world(SECRET, { cached: true })
+
+    const previewed = await rpc.getEntry(SITE_KEY, 'blog', DRAFT, 'en', {
+      preview: await tokenFor(idOf(DRAFT)),
+    })
+    const published = await rpc.getEntry(SITE_KEY, 'blog', DRAFT, 'en')
+
+    expect([previewed.outcome, published.outcome]).toEqual(['ok', 'not_found'])
   })
 
   it('never lets the token widen another read: the list stays published-only', async () => {
