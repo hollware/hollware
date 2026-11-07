@@ -145,4 +145,32 @@ describe('the registry of sites', () => {
       { site_id: bare, version: 1, actor_user_id: null, before: null },
     ])
   })
+
+  it('reads the tag of a served site from D1 at each call: the version of its definition and its content version', async () => {
+    const site = key('tagged')
+    await write(site, BLOG, 1)
+    const registry = createSiteRegistry({ now: () => new Date(0), log: () => undefined })
+    await registry.refresh(env.DB)
+    const first = await registry.readTag(env.DB, site)
+
+    await env.DB.prepare('UPDATE sites SET content_version = content_version + 1 WHERE id = ?')
+      .bind(site)
+      .run()
+
+    expect(first).toBe('1.0')
+    expect(await registry.readTag(env.DB, site)).toBe('1.1')
+  })
+
+  it('gives no tag to a site whose definition moved since its last refresh, nor to one it does not serve', async () => {
+    const [moved, bare] = [key('moved'), key('untagged')]
+    await write(moved, BLOG, 1)
+    await write(bare, null, 0)
+    const registry = createSiteRegistry({ now: () => new Date(0), log: () => undefined })
+    await registry.refresh(env.DB)
+
+    await write(moved, withStyle('Two.'), 2)
+
+    expect(await registry.readTag(env.DB, moved)).toBeUndefined()
+    expect(await registry.readTag(env.DB, bare)).toBeUndefined()
+  })
 })

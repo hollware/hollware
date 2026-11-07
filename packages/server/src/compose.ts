@@ -21,7 +21,7 @@ import { createAuditLog, dropExpiredLines, systemActor, type AuditActor } from '
 import type { DeliveryDeps } from './events/deliver.ts'
 import { failAgentRuns } from './events/agents.ts'
 import { abandonEvents, consumeEvents, isDeadLetters, sweepOutbox } from './events/run.ts'
-import { createEntrypoint, createOpsEntrypoint, createRpc } from './rpc/index.ts'
+import { createEntrypoint, createOpsEntrypoint, createReadCache, createRpc } from './rpc/index.ts'
 import { backupBucketOf, backUpSite } from './backup/run.ts'
 import { reparseRevisions } from './derived/reparse.ts'
 import { scopesNow } from './schedule/standing.ts'
@@ -215,7 +215,14 @@ export function createHollwareWith(
         })
       })
     },
-    Hollware: createEntrypoint({ sites, refresh, handlers, clock, log: writeLog }),
+    Hollware: createEntrypoint({
+      sites,
+      refresh,
+      handlers,
+      clock,
+      log: writeLog,
+      reads: { cache: createReadCache(), tag: (db, site) => registry.readTag(db, site) },
+    }),
     HollwareOps: createOpsEntrypoint({
       sites,
       siteKeys: registry.keys,

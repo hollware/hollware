@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
 
 import type { HollwareRpc } from '../../src/index.ts'
-import { createRpc, type RpcLogEntry } from '../../src/rpc/index.ts'
+import { createReadCache, createRpc, type RpcLogEntry } from '../../src/rpc/index.ts'
 import { failure, onlyCall, SITE, SITE_KEY, testClock, watchDb } from '../http/support.ts'
 import { CANNED, ENTRY_ID, fakeHandlers, type Overrides } from '../mcp/support.ts'
 import { CALLS } from './support.ts'
@@ -430,5 +430,73 @@ describe('a handler that fails', () => {
         detail: expect.stringContaining('the replica is lagging (secret detail)'),
       },
     ])
+  })
+})
+
+function cachedRpc() {
+  const { handlers, seen } = fakeHandlers()
+  const tag: { value: string | undefined } = { value: '1.1' }
+  const rpc = createRpc(
+    {
+      sites: new Map([[SITE.key, SITE]]),
+      handlers,
+      clock: testClock(),
+      log: () => undefined,
+      reads: { cache: createReadCache(), tag: () => Promise.resolve(tag.value) },
+    },
+    { DB: env.DB },
+  )
+  return { rpc, tag, runs: () => seen.length }
+}
+
+describe('a published read over RPC with a read cache', () => {
+  it.each(CALLS)(
+    '$method answers a second call with the same arguments without running its handler',
+    async ({ call, output }) => {
+      const { rpc, runs } = cachedRpc()
+
+      const answers = [await call(rpc), await call(rpc)]
+
+      expect(answers).toEqual([output, output])
+      expect(runs()).toBe(1)
+    },
+  )
+
+  it('runs the handler again once the read tag of the site moves', async () => {
+    const { rpc, tag, runs } = cachedRpc()
+    await rpc.describeSite(SITE_KEY)
+
+    tag.value = '1.2'
+    await rpc.describeSite(SITE_KEY)
+
+    expect(runs()).toBe(2)
+  })
+
+  it('keeps nothing while the site has no read tag', async () => {
+    const { rpc, tag, runs } = cachedRpc()
+    tag.value = undefined
+
+    await rpc.describeSite(SITE_KEY)
+    await rpc.describeSite(SITE_KEY)
+
+    expect(runs()).toBe(2)
+  })
+
+  it('runs every search, whose answer moves when the index does', async () => {
+    const { rpc, runs } = cachedRpc()
+
+    await rpc.search(SITE_KEY, 'words')
+    await rpc.search(SITE_KEY, 'words')
+
+    expect(runs()).toBe(2)
+  })
+
+  it('keeps calls with different arguments apart', async () => {
+    const { rpc, runs } = cachedRpc()
+
+    await rpc.listEntries(SITE_KEY, 'blog', { limit: 5 })
+    await rpc.listEntries(SITE_KEY, 'blog', { limit: 6 })
+
+    expect(runs()).toBe(2)
   })
 })

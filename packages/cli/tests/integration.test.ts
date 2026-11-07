@@ -186,6 +186,7 @@ describe('hollware on a real local D1', () => {
         id: 'blog',
         definition: expect.any(String),
         version: 1,
+        content_version: 0,
         deleted_at: null,
         created_at: NOW,
         updated_at: NOW,
