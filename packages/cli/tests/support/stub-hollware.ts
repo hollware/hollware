@@ -67,6 +67,7 @@ export interface StubEntry {
   frontmatter?: Record<string, unknown>
   automatic?: Record<string, unknown>
   updatedAt?: string
+  tags?: string[]
 }
 
 export interface StubReview {
@@ -256,7 +257,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
       status: entry.published === null ? ('draft' as const) : ('published' as const),
       version: entry.version,
       frontmatter: entry.frontmatter ?? {},
-      tags: [],
+      tags: entry.tags ?? [],
       hasUnpublishedChanges: entry.published !== entry.revisions.length - 1,
       publishedAt: entry.published === null ? null : STUB_TIME,
       scheduledAt: null,
@@ -534,6 +535,7 @@ export function startStub(options: StubOptions): Promise<StubServer> {
                 entry.collection === args.collection &&
                 (args.locale === undefined || entry.locale === args.locale) &&
                 (args.status === undefined || summaryOf(entry).status === args.status) &&
+                (args.tag === undefined || (entry.tags ?? []).includes(args.tag)) &&
                 (args.changedSince === undefined ||
                   (entry.updatedAt ?? STUB_TIME) >= new Date(args.changedSince).toISOString()) &&
                 (args.trashed === true) === ((entry.deletedAt ?? null) !== null),
@@ -563,6 +565,12 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             to === null
               ? undefined
               : entries.get(key({ collection: entry.collection, locale: entry.locale, slug: to }))
+          if (to !== null && above === undefined) {
+            return reply(moveEntry.outcomes, { outcome: 'invalid_parent', reason: 'missing' })
+          }
+          if (entry.published !== null && above !== undefined && above.published === null) {
+            return reply(moveEntry.outcomes, { outcome: 'invalid_parent', reason: 'unpublished' })
+          }
           const before = entry.slugPath ?? entry.slug
           const after =
             above === undefined ? entry.slug : `${above.slugPath ?? above.slug}/${entry.slug}`
@@ -626,6 +634,18 @@ export function startStub(options: StubOptions): Promise<StubServer> {
               : entries.get(
                   key({ collection: args.collection, locale: args.locale, slug: args.parent }),
                 )
+          if (args.parent !== undefined && parent === undefined) {
+            const missing = violation(
+              'invalid-parent',
+              '/parent',
+              'The parent does not exist.',
+              'Create the parent first.',
+            )
+            return reply(createDraft.outcomes, {
+              outcome: 'refused',
+              verdict: { ...verdict, ok: false, errors: [missing] },
+            })
+          }
           const nestedHere = options.declared?.[args.collection]?.maxDepth !== undefined
           const entry: StubEntry = {
             id: `ent_${String(nextId).padStart(26, '0')}`,
@@ -830,6 +850,37 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             })),
             ...args.unpublish.map((member) => ({ ...member, action: 'unpublish' as const })),
           ]
+          const askedIds = new Set(asked.map((member) => member.id))
+          for (const member of asked) {
+            const entry = byId(member.id)
+            const above =
+              entry === undefined || member.action !== 'publish'
+                ? undefined
+                : entries.get(
+                    key({
+                      collection: entry.collection,
+                      locale: entry.locale,
+                      slug: parentSlug(entry) ?? '',
+                    }),
+                  )
+            if (above !== undefined && above.published === null && !askedIds.has(above.id)) {
+              return reply(requestReview.outcomes, { outcome: 'blocked', failedEntry: member.id })
+            }
+            const below =
+              entry === undefined || member.action !== 'unpublish'
+                ? []
+                : [...entries.values()].filter(
+                    (one) =>
+                      one.collection === entry.collection &&
+                      one.locale === entry.locale &&
+                      parentSlug(one) === entry.slug &&
+                      one.published !== null &&
+                      !askedIds.has(one.id),
+                  )
+            if (below.length > 0) {
+              return reply(requestReview.outcomes, { outcome: 'blocked', failedEntry: member.id })
+            }
+          }
           const items: StubReview['items'] = []
           for (const member of asked) {
             const entry = byId(member.id)
@@ -966,6 +1017,16 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         guarded(unpublish.name, (args) => {
           const entry = byId(args.id)
           if (entry === undefined) return reply(unpublish.outcomes, { outcome: 'not_found' })
+          const publishedChildren = [...entries.values()].filter(
+            (one) =>
+              one.collection === entry.collection &&
+              one.locale === entry.locale &&
+              parentSlug(one) === entry.slug &&
+              one.published !== null,
+          )
+          if (publishedChildren.length > 0) {
+            return reply(unpublish.outcomes, { outcome: 'has_children' })
+          }
           if (entry.published !== null) {
             entry.published = null
             entry.version += 1

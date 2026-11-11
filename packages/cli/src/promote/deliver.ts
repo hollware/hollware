@@ -4,12 +4,13 @@ import { printable } from '../format.ts'
 import type { Session } from '../import/session.ts'
 import { conflictComment, conflictOf, type Written } from './destination.ts'
 
-const REVIEW_SIZE = 100
+export const REVIEW_SIZE = 100
 
 export interface Member {
   path: string
   id: string
   version: number
+  parent?: string
 }
 
 export interface Previous {
@@ -70,19 +71,63 @@ interface Batch {
 }
 
 function batches(toPublish: readonly Member[], toUnpublish: readonly Member[]): Batch[] {
-  const all = [
-    ...toPublish.map((member) => ({ member, action: 'publish' as const })),
-    ...toUnpublish.map((member) => ({ member, action: 'unpublish' as const })),
+  const units = [
+    ...treesOf(toPublish).map((members) => ({ publish: members, unpublish: [] as Member[] })),
+    ...treesOf(toUnpublish).map((members) => ({ publish: [] as Member[], unpublish: members })),
   ]
   const out: Batch[] = []
-  for (let start = 0; start < all.length; start += REVIEW_SIZE) {
-    const slice = all.slice(start, start + REVIEW_SIZE)
-    out.push({
-      publish: slice.filter((one) => one.action === 'publish').map((one) => one.member),
-      unpublish: slice.filter((one) => one.action === 'unpublish').map((one) => one.member),
-    })
+  let current: Batch = { publish: [], unpublish: [] }
+  for (const unit of units) {
+    const size = unit.publish.length + unit.unpublish.length
+    const held = current.publish.length + current.unpublish.length
+    if (held > 0 && held + size > REVIEW_SIZE) {
+      out.push(current)
+      current = { publish: [], unpublish: [] }
+    }
+    current.publish.push(...unit.publish)
+    current.unpublish.push(...unit.unpublish)
   }
+  if (current.publish.length + current.unpublish.length > 0) out.push(current)
   return out
+}
+
+function leavesFirst(members: readonly Member[]): Member[] {
+  const byPath = new Map(members.map((member) => [member.path, member]))
+  const depth = (member: Member): number => {
+    let count = 0
+    for (
+      let above = byPath.get(member.parent ?? '');
+      above !== undefined;
+      above = byPath.get(above.parent ?? '')
+    ) {
+      count += 1
+    }
+    return count
+  }
+  return [...members].sort((a, b) => depth(b) - depth(a))
+}
+
+export function treesOf<One extends { path: string; parent?: string }>(
+  members: readonly One[],
+): One[][] {
+  const byPath = new Map(members.map((member) => [member.path, member]))
+  const rootOf = (member: One): string => {
+    let at = member
+    for (
+      let above = byPath.get(at.parent ?? '');
+      above !== undefined;
+      above = byPath.get(at.parent ?? '')
+    ) {
+      at = above
+    }
+    return at.path
+  }
+  const trees = new Map<string, One[]>()
+  for (const member of members) {
+    const root = rootOf(member)
+    trees.set(root, [...(trees.get(root) ?? []), member])
+  }
+  return [...trees.values()]
 }
 
 function refusal(
@@ -178,7 +223,7 @@ export async function publishNow(
     }
     for (const member of members) delivery.asked.add(member.path)
   }
-  for (const member of toUnpublish) {
+  for (const member of leavesFirst(toUnpublish)) {
     const answer = await to.call(unpublish, { id: member.id })
     if (answer.outcome === 'unpublished') delivery.unpublished += 1
     delivery.asked.add(member.path)

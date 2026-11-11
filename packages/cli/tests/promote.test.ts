@@ -499,3 +499,392 @@ describe('hollware promote', () => {
     expect(toolsOf(source, 'list_entries')).toEqual([])
   })
 })
+
+describe('hollware promote, in a nested collection', () => {
+  async function nestedPair(targetDepth: number | null = 2): Promise<Pair> {
+    const site = { locales: ['es'], collections: ['help'] }
+    const source = await startStub({
+      token: FROM_TOKEN,
+      site: { key: 'staging', ...site },
+      declared: { help: { maxDepth: 2 } },
+    })
+    const target = await startStub({
+      token: TO_TOKEN,
+      site: { key: 'production', ...site },
+      declared: targetDepth === null ? {} : { help: { maxDepth: targetDepth } },
+    })
+    stubs.push(source, target)
+    const cwd = temp.make({ 'from.token': `${FROM_TOKEN}\n`, 'to.token': `${TO_TOKEN}\n` })
+    const statePath = join(
+      cwd,
+      '.hollware',
+      `promote-${new URL(source.url).host.replace(':', '_')}-${new URL(target.url).host.replace(':', '_')}.json`,
+    )
+    return {
+      source,
+      target,
+      cwd,
+      statePath,
+      promote: (args = []) =>
+        run(
+          [
+            'promote',
+            '--from',
+            source.url,
+            '--from-token-file',
+            'from.token',
+            '--to',
+            target.url,
+            '--to-token-file',
+            'to.token',
+            ...args,
+          ],
+          { cwd },
+        ),
+      state: () => JSON.parse(readFileSync(statePath, 'utf8')),
+    }
+  }
+
+  function placed(stub: StubServer, path: string, n: number, slugPath: string, position: number) {
+    const entry = put(stub, path, n, [post(path.split('/').at(-1) ?? '')], 0)
+    entry.slugPath = slugPath
+    entry.position = position
+    return entry
+  }
+
+  function seedTree(source: StubServer): void {
+    placed(source, 'help/es/entra', 1, 'sso/entra', 1)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    placed(source, 'help/es/sso', 3, 'sso', 1)
+    placed(source, 'help/es/intro', 4, 'intro', 0)
+  }
+
+  function tree(stub: StubServer): string[] {
+    return [...stub.entries.values()]
+      .map((entry) => `${entry.slugPath ?? entry.slug} ${entry.position}`)
+      .sort()
+  }
+
+  it('creates each entry under its parent and in the order of the source, though the source lists a child before its parent', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+    expect(toolsOf(target, 'create_draft').map((args) => [args.slug, args.parent ?? null])).toEqual(
+      [
+        ['intro', null],
+        ['sso', null],
+        ['google', 'sso'],
+        ['entra', 'sso'],
+      ],
+    )
+  })
+
+  it('moves the entries the destination already holds to the place they have in the source, and a dry run says so', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/sso', 11, 'sso', 0)
+    placed(target, 'help/es/intro', 12, 'intro', 1)
+    placed(target, 'help/es/entra', 13, 'entra', 2)
+    placed(target, 'help/es/google', 14, 'google', 3)
+
+    const dry = await promote(['--dry-run'])
+
+    expect(dry.out.slice(0, 4)).toEqual([
+      'unchanged  help/es/intro  (moves to its place: intro, position 0)',
+      'unchanged  help/es/sso  (moves to its place: sso, position 1)',
+      'unchanged  help/es/google  (moves to its place: sso/google, position 0)',
+      'unchanged  help/es/entra  (moves to its place: sso/entra, position 1)',
+    ])
+    expect(tree(target)).toEqual(['entra 2', 'google 3', 'intro 1', 'sso 0'])
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+  })
+
+  it('puts each entry at the position it has in the source, before a sibling only the destination has', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/aviso', 11, 'aviso', 0)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['aviso 2', 'intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+  })
+
+  it('promotes an entry that moved in the source though its text stayed the same', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    await promote()
+    approveAll(target)
+    const intro = source.entries.get('help/es/intro')
+    const sso = source.entries.get('help/es/sso')
+    if (intro === undefined || sso === undefined) throw new Error('no roots')
+    intro.position = 1
+    sso.position = 0
+
+    const { code, out } = await promote()
+
+    expect(code).toBe(0)
+    expect(out.slice(0, 2)).toEqual([
+      'unchanged  help/es/sso  (moves to its place: sso, position 0)',
+      'unchanged  help/es/intro  (moves to its place: intro, position 1)',
+    ])
+    expect(tree(target)).toEqual(['intro 1', 'sso 0', 'sso/entra 1', 'sso/google 0'])
+    expect(state().entries['help/es/sso']).toMatchObject({ place: '#0' })
+    expect(state().entries['help/es/google']).toMatchObject({ place: 'sso#0' })
+  })
+
+  it('leaves a published entry where it is until the new parent it goes under is published, and moves it on the next run', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/intro', 11, 'intro', 0)
+    placed(target, 'help/es/google', 12, 'google', 1)
+    placed(target, 'help/es/entra', 13, 'entra', 2)
+
+    const first = await promote()
+
+    expect([first.code, first.err]).toEqual([0, []])
+    expect(first.out).toContain(
+      '2 published entries wait for a new parent to be published to move under it: approve the review, then promote again: help/es/google, help/es/entra.',
+    )
+    expect(state().entries['help/es/google']).not.toHaveProperty('place')
+    approveAll(target)
+
+    const second = await promote()
+
+    expect([second.code, second.err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+    expect(state().entries['help/es/google']).toMatchObject({ place: 'sso#0' })
+  })
+
+  it('brings the parent a filter left out when the destination does not have it', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    const google = source.entries.get('help/es/google')
+    if (google === undefined) throw new Error('no google')
+    google.tags = ['sso']
+
+    const { code, err } = await promote(['--tag', 'sso'])
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['sso 0', 'sso/google 0'])
+  })
+
+  it('reads a nested collection whole on an incremental run, since a move shifts siblings it does not touch', async () => {
+    const { source, promote, state } = await nestedPair()
+    seedTree(source)
+    await promote()
+    const intro = source.entries.get('help/es/intro')
+    const sso = source.entries.get('help/es/sso')
+    if (intro === undefined || sso === undefined) throw new Error('no roots')
+    intro.position = 1
+    intro.updatedAt = LATER
+    sso.position = 0
+
+    const { code } = await promote(['--since', LATER])
+
+    expect(code).toBe(0)
+    expect(state().entries['help/es/sso']).toMatchObject({ place: '#0' })
+  })
+
+  it('unpublishes an entry the source no longer has on an incremental run, since it reads a nested collection whole', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    await promote()
+    approveAll(target)
+    source.entries.delete('help/es/intro')
+
+    const { code, out } = await promote(['--since', LATER])
+
+    expect(code).toBe(0)
+    expect(out).toContain('unpublish  help/es/intro')
+  })
+
+  it('writes nothing when the destination nests the collection less deep than the source', async () => {
+    const { source, target, promote } = await nestedPair(null)
+    seedTree(source)
+
+    const { code, err } = await promote()
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware promote: the destination nests help less deep than the source, so its tree would not fit: give it the nesting of the source there first, then promote again. Nothing was written.',
+    ])
+    expect(toolsOf(target, 'create_draft')).toEqual([])
+  })
+
+  it('says in a JSON dry run where each entry that moves goes', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/sso', 11, 'sso', 0)
+    placed(target, 'help/es/intro', 12, 'intro', 1)
+    placed(target, 'help/es/google', 13, 'google', 2)
+    placed(target, 'help/es/entra', 14, 'sso/entra', 0)
+
+    const { code, out } = await promote(['--dry-run', '--json'])
+
+    expect(code).toBe(0)
+    expect(JSON.parse(out.join('\n')).entries).toEqual([
+      {
+        path: 'help/es/intro',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: null, position: 0 },
+      },
+      {
+        path: 'help/es/sso',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: null, position: 1 },
+      },
+      {
+        path: 'help/es/google',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: 'sso', position: 0 },
+      },
+      {
+        path: 'help/es/entra',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: 'sso', position: 1 },
+      },
+    ])
+  })
+
+  it('keeps a new parent and the entries under it in the same review when they do not fit in the first', async () => {
+    const { source, target, promote } = await nestedPair()
+    for (let n = 0; n < 98; n += 1) placed(source, `help/es/root-${n}`, 100 + n, `root-${n}`, n)
+    placed(source, 'help/es/sso', 1, 'sso', 98)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    placed(source, 'help/es/entra', 3, 'sso/entra', 1)
+    placed(source, 'help/es/okta', 4, 'sso/okta', 2)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    const slugOf = (id: string) =>
+      [...target.entries.values()].find((entry) => entry.id === id)?.slug
+    const reviews = [...target.reviews.values()].map((review) =>
+      review.items.map((item) => slugOf(item.entryId)),
+    )
+    expect(reviews.map((review) => review.length)).toEqual([98, 4])
+    expect(reviews[1]).toEqual(['sso', 'google', 'entra', 'okta'])
+  })
+
+  it('writes nothing when a new parent and the entries under it are more than one review holds', async () => {
+    const { source, target, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    for (let n = 0; n < 100; n += 1)
+      placed(source, `help/es/child-${n}`, 100 + n, `sso/child-${n}`, n)
+    source.assets.set('ast_0123456789abcdef0123456789', {
+      id: 'ast_0123456789abcdef0123456789',
+      format: 'image/webp',
+      originalFormat: 'image/png',
+      served: new TextEncoder().encode('webp'),
+      original: new TextEncoder().encode('png'),
+      alt: 'A cover',
+      filename: 'cover.png',
+    })
+    const cover = source.entries.get('help/es/child-0')
+    if (cover === undefined) throw new Error('no child-0')
+    cover.revisions = [post('child-0', '\n![A cover](asset:ast_0123456789abcdef0123456789)\n')]
+
+    const { code, err } = await promote()
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware promote: help/es/sso and the 100 entries under it publish together, more than the 100 one review holds: promote part of them first with --tag, then the rest. Nothing was written.',
+    ])
+    expect(toolsOf(target, 'create_draft')).toEqual([])
+    expect(target.assets.size).toBe(0)
+  })
+
+  it('brings a parent the destination holds only as a draft into the review of its child', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    const google = source.entries.get('help/es/google')
+    if (google === undefined) throw new Error('no google')
+    google.tags = ['sso']
+    const draft = placed(target, 'help/es/sso', 11, 'sso', 0)
+    draft.published = null
+
+    const { code, err } = await promote(['--tag', 'sso'])
+
+    expect([code, err]).toEqual([0, []])
+    const slugOf = (id: string) =>
+      [...target.entries.values()].find((entry) => entry.id === id)?.slug
+    expect(
+      [...target.reviews.values()].map((review) =>
+        review.items.map((item) => slugOf(item.entryId)),
+      ),
+    ).toEqual([['sso', 'google']])
+  })
+
+  it('keeps a parent and the entries under it that leave the source in the same review', async () => {
+    const { source, target, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    await promote()
+    approveAll(target)
+    source.entries.delete('help/es/sso')
+    source.entries.delete('help/es/google')
+    for (let n = 0; n < 99; n += 1) placed(source, `help/es/root-${n}`, 100 + n, `root-${n}`, n)
+
+    const { code, err, out } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(out).toContain(
+      '2 entries wait to be unpublished with the next promotion that has an entry to publish, or with --publish: help/es/sso, help/es/google.',
+    )
+  })
+
+  it('unpublishes the entries under a parent before the parent with --publish', async () => {
+    const { source, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    await promote(['--publish'])
+    source.entries.delete('help/es/sso')
+    source.entries.delete('help/es/google')
+
+    const { code, out } = await promote(['--publish'])
+
+    expect(code).toBe(0)
+    expect(out).toContain('Published 0, unpublished 2.')
+  })
+
+  it('leaves an entry for the next run while the review of its parent is pending, and promotes it after', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    const sso = source.entries.get('help/es/sso')
+    const google = source.entries.get('help/es/google')
+    if (sso === undefined || google === undefined) throw new Error('no sso')
+    sso.tags = ['first']
+    google.tags = ['second']
+    await promote(['--tag', 'first'])
+
+    const waiting = await promote(['--tag', 'second'])
+
+    expect([waiting.code, waiting.err]).toEqual([0, []])
+    expect(waiting.out).toContain(
+      '1 entry waits for the pending review of a parent: approve it, then promote again: help/es/google.',
+    )
+    expect(state().entries).not.toHaveProperty(['help/es/google'])
+    approveAll(target)
+
+    const after = await promote(['--tag', 'second'])
+
+    expect([after.code, after.err]).toEqual([0, []])
+    const googleThere = target.entries.get('help/es/google')
+    expect([...target.reviews.values()].at(-1)?.items.map((item) => item.entryId)).toEqual([
+      googleThere?.id,
+    ])
+  })
+})

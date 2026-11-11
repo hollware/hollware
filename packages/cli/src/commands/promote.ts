@@ -1,4 +1,4 @@
-import { describeSite, listEntries } from '@hollware/core'
+import { describeSite, getEntry, listEntries } from '@hollware/core'
 import { resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
@@ -9,7 +9,9 @@ import {
   askForReviews,
   pendingReviews,
   publishNow,
+  REVIEW_SIZE,
   stillPending,
+  treesOf,
   type Delivery,
   type Member,
 } from '../promote/deliver.ts'
@@ -21,10 +23,11 @@ import {
   type Promotion,
   type Written,
 } from '../promote/destination.ts'
-import { readSource, type Scope } from '../promote/source.ts'
+import { readSource, withAncestors, type Scope, type SourceEntry } from '../promote/source.ts'
 import {
   defaultStatePath,
   digest,
+  placeOf,
   readState,
   scopeOf,
   writeState,
@@ -44,7 +47,12 @@ export const PROMOTE_USAGE = [
   'remembers where it stopped and what it promoted. An entry the source no longer publishes is',
   'unpublished by the same review. An entry whose published version changed in the destination',
   'since the last promotion is still promoted, and the review says so on it, with the difference.',
-  'The images the entries show are copied when the destination does not have them.',
+  'The images the entries show are copied when the destination does not have them. In a nested',
+  'collection an entry takes the parent and the place among its siblings it has in the source,',
+  'parents first: a new one is created there, and one the destination holds is moved there at',
+  'once, not by the review (a published one takes content:publish; one that goes under a new parent',
+  'waits for the review to publish it). A parent the destination lacks is promoted with its children,',
+  'and a nested collection is read whole, since a move shifts siblings it does not change.',
   '',
   'Options:',
   '  --from <url>             The Hollware to read, such as https://staging.example.com',
@@ -226,6 +234,16 @@ async function promoteWith(
       `the destination has no collection ${absent.map((name) => printable(name)).join(', ')}: create ${absent.length === 1 ? 'it' : 'them'} there first (set_collection, or the config of the destination), then promote again. Nothing was written.`,
     )
   }
+  const shallower = collections.filter((name) => {
+    const nesting = from.collections.find((one) => one.name === name)?.nesting
+    const there = into.collections.find((one) => one.name === name)?.nesting
+    return nesting !== undefined && (there === undefined || there.maxDepth < nesting.maxDepth)
+  })
+  if (shallower.length > 0) {
+    throw new CliError(
+      `the destination nests ${shallower.map((name) => printable(name)).join(', ')} less deep than the source, so its tree would not fit: give ${shallower.length === 1 ? 'it' : 'them'} the nesting of the source there first, then promote again. Nothing was written.`,
+    )
+  }
   if (options.locale !== undefined && !from.locales.includes(options.locale)) {
     throw new CliError(
       `the source has no locale ${printable(options.locale)}: it has ${from.locales.map(printable).join(', ')}.`,
@@ -233,13 +251,15 @@ async function promoteWith(
   }
   const scopes: Scope[] = collections.map((collection) => ({
     collection,
+    nested: from.collections.some((one) => one.name === collection && one.nesting !== undefined),
     locale: options.locale,
     tag: options.tag,
     since: options.all
       ? undefined
       : (options.since ?? state.cursors[scopeOf(collection, options.locale, options.tag)]),
   }))
-  const changes = await readSource(source, scopes, state)
+  const read = await readSource(source, scopes, state)
+  const changes = { ...read, changed: await withAncestors(source, to, read.changed) }
   const foreign = [...new Set(changes.changed.map((entry) => entry.locale))].filter(
     (locale) => !into.locales.includes(locale),
   )
@@ -249,13 +269,14 @@ async function promoteWith(
     )
   }
 
+  await refuseOversizedTrees(to, inTreeOrder(changes.changed))
   const assets = await copyAssets(
     { session: source, endpoint: options.from, token: options.fromToken },
     to,
     changes.changed,
     dryRun,
   )
-  const promoted = withAssetIds(changes.changed, assets.moved)
+  const promoted = inTreeOrder(withAssetIds(changes.changed, assets.moved))
   const previous = dryRun ? [] : await pendingReviews(to, state.reviews)
   const promotions: Promotion[] = []
   for (const entry of promoted) promotions.push(await inspect(to, entry, state.entries[entry.path]))
@@ -267,7 +288,7 @@ async function promoteWith(
 
   for (const promotion of promotions) {
     say(
-      `${promotion.action.padEnd(10)} ${printable(promotion.source.path)}${promotion.conflict ? '  (changed in the destination since the last promotion)' : ''}`,
+      `${promotion.action.padEnd(10)} ${printable(promotion.source.path)}${promotion.moves ? `  (moves to its place: ${printable(promotion.source.slugPath)}, position ${promotion.source.position ?? 0})` : ''}${promotion.conflict ? '  (changed in the destination since the last promotion)' : ''}`,
     )
   }
   for (const member of leaving) say(`${'unpublish'.padEnd(10)} ${printable(member.path)}`)
@@ -285,6 +306,14 @@ async function promoteWith(
       path: promotion.source.path,
       action: promotion.action,
       conflict: promotion.conflict,
+      ...(promotion.moves
+        ? {
+            moves: {
+              parent: promotion.source.parent ?? null,
+              position: promotion.source.position ?? 0,
+            },
+          }
+        : {}),
     })),
     unpublish: leaving.map((member) => member.path),
     assets: { copied: assets.copied, present: assets.present },
@@ -330,9 +359,45 @@ async function promoteWith(
   const holding = new Set(
     held.flatMap((review) => [...review.publish, ...review.unpublish].map((member) => member.path)),
   )
+  const parentOf = new Map(
+    written.map((one) => [
+      one.promotion.source.path,
+      one.promotion.source.parent === undefined
+        ? undefined
+        : pathOf(one.promotion.source, one.promotion.source.parent),
+    ]),
+  )
+  const underHeld = (path: string): boolean => {
+    for (let above = parentOf.get(path); above !== undefined; above = parentOf.get(above)) {
+      if (holding.has(above)) return true
+    }
+    return false
+  }
+  const deferred = new Set(
+    written
+      .filter(
+        (one) =>
+          one.pending &&
+          !holding.has(one.promotion.source.path) &&
+          underHeld(one.promotion.source.path),
+      )
+      .map((one) => one.promotion.source.path),
+  )
   const toPublish: Member[] = written
-    .filter((one) => one.pending && !holding.has(one.promotion.source.path))
-    .map((one) => ({ path: one.promotion.source.path, id: one.id, version: one.version }))
+    .filter(
+      (one) =>
+        one.pending &&
+        !holding.has(one.promotion.source.path) &&
+        !deferred.has(one.promotion.source.path),
+    )
+    .map((one) => ({
+      path: one.promotion.source.path,
+      id: one.id,
+      version: one.version,
+      ...(one.promotion.source.parent === undefined
+        ? {}
+        : { parent: pathOf(one.promotion.source, one.promotion.source.parent) }),
+    }))
   const toUnpublish = leaving.filter((member) => !holding.has(member.path))
   for (const review of cancelled) {
     for (const member of review.publish) {
@@ -380,11 +445,15 @@ async function promoteWith(
   }
 
   for (const one of written) {
+    if (deferred.has(one.promotion.source.path)) continue
     state.entries[one.promotion.source.path] = {
       sourceEntry: one.promotion.source.entryId,
       sourceRevision: one.promotion.source.revision,
       destinationRevision: one.promotion.destinationRevision,
       promoted: digest(one.stored),
+      ...(placeOf(one.promotion.source) === undefined || !one.placed
+        ? {}
+        : { place: placeOf(one.promotion.source) }),
     }
   }
   for (const path of changes.gone) {
@@ -429,10 +498,58 @@ async function promoteWith(
       `${delivery.waiting.length} ${delivery.waiting.length === 1 ? 'entry waits' : 'entries wait'} to be unpublished with the next promotion that has an entry to publish, or with --publish: ${delivery.waiting.map(printable).join(', ')}.`,
     )
   }
+  if (deferred.size > 0) {
+    say(
+      `${deferred.size} ${deferred.size === 1 ? 'entry waits' : 'entries wait'} for the pending review of a parent: approve it, then promote again: ${[...deferred].map(printable).join(', ')}.`,
+    )
+  }
+  const unplaced = written.filter((one) => !one.placed)
+  if (unplaced.length > 0) {
+    say(
+      `${unplaced.length} published ${unplaced.length === 1 ? 'entry waits' : 'entries wait'} for a new parent to be published to move under it: approve the review, then promote again: ${unplaced.map((one) => printable(one.promotion.source.path)).join(', ')}.`,
+    )
+  }
   say(
     `Promoted from ${options.from.origin} to ${options.to.origin}: ${summary(promotions, leaving)}. State in ${printable(options.stateShown)}.`,
   )
   return 0
+}
+
+async function refuseOversizedTrees(to: Session, entries: readonly SourceEntry[]): Promise<void> {
+  const paths = new Set(entries.map((entry) => entry.path))
+  const unpublishedParents = new Set<string>()
+  for (const parent of new Set(
+    entries.flatMap((entry) => (entry.parent === undefined ? [] : [pathOf(entry, entry.parent)])),
+  )) {
+    if (!paths.has(parent)) continue
+    const [collection = '', locale = '', slug = ''] = parent.split('/')
+    const there = await to.call(getEntry, { collection, locale, slug })
+    if (there.outcome !== 'ok' || there.entry?.status !== 'published')
+      unpublishedParents.add(parent)
+  }
+  const tooBig = treesOf(
+    entries.map((entry) => {
+      const parent = entry.parent === undefined ? undefined : pathOf(entry, entry.parent)
+      return {
+        path: entry.path,
+        ...(parent !== undefined && unpublishedParents.has(parent) ? { parent } : {}),
+      }
+    }),
+  ).find((tree) => tree.length > REVIEW_SIZE)
+  if (tooBig !== undefined) {
+    throw new CliError(
+      `${printable(tooBig[0]?.path ?? '')} and the ${tooBig.length - 1} entries under it publish together, more than the ${REVIEW_SIZE} one review holds: promote part of them first with --tag, then the rest. Nothing was written.`,
+    )
+  }
+}
+
+function pathOf(entry: SourceEntry, slug: string): string {
+  return `${entry.collection}/${entry.locale}/${slug}`
+}
+
+function inTreeOrder(entries: readonly SourceEntry[]): SourceEntry[] {
+  const depth = (entry: SourceEntry) => entry.slugPath.split('/').length
+  return [...entries].sort((a, b) => depth(a) - depth(b) || (a.position ?? 0) - (b.position ?? 0))
 }
 
 function summary(promotions: readonly Promotion[], leaving: readonly Member[]): string {

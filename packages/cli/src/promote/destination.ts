@@ -1,5 +1,12 @@
 import { Buffer } from 'node:buffer'
-import { createDraft, getAsset, getEntry, unifiedDiff, updateDraft } from '@hollware/core'
+import {
+  createDraft,
+  getAsset,
+  getEntry,
+  moveEntry,
+  unifiedDiff,
+  updateDraft,
+} from '@hollware/core'
 import { CliError } from '../errors.ts'
 import { printable } from '../format.ts'
 import { ToolFailure, type Session } from '../import/session.ts'
@@ -76,6 +83,7 @@ export interface Promotion {
   destinationRevision: string | null
   publishedMarkdown: string | null
   conflict: boolean
+  moves: boolean
   head: { id: string; version: number; markdown: string; pending: boolean } | undefined
 }
 
@@ -93,6 +101,7 @@ export async function inspect(
       destinationRevision: null,
       publishedMarkdown: null,
       conflict: false,
+      moves: false,
       head: undefined,
     }
   }
@@ -113,6 +122,10 @@ export async function inspect(
     destinationRevision,
     publishedMarkdown,
     conflict,
+    moves:
+      source.position !== undefined &&
+      ((head.entry.parent ?? undefined) !== source.parent ||
+        head.entry.position !== source.position),
     head: {
       id: head.entry.id,
       version: head.entry.version,
@@ -128,6 +141,7 @@ export interface Written {
   version: number
   stored: string
   pending: boolean
+  placed: boolean
 }
 
 export async function write(to: Session, promotion: Promotion): Promise<Written> {
@@ -141,6 +155,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
       locale: source.locale,
       slug: source.slug,
       markdown: source.markdown,
+      ...(source.parent === undefined ? {} : { parent: source.parent }),
     })
     if (created.outcome !== 'saved' || created.entry === undefined) {
       return fail(`create_draft answered ${created.outcome}${reasons(created.verdict)}`)
@@ -148,7 +163,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: created.entry.id,
-      version: created.entry.version,
+      ...(await place(to, source, created.entry.id, fail, created.entry.version)),
       stored: created.markdown ?? source.markdown,
       pending: true,
     }
@@ -157,7 +172,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: head.id,
-      version: head.version,
+      ...(await place(to, source, head.id, fail, head.version)),
       stored: head.markdown,
       pending: head.pending,
     }
@@ -180,10 +195,48 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
   return {
     promotion,
     id: updated.entry.id,
-    version: updated.entry.version,
+    ...(await place(to, source, updated.entry.id, fail, updated.entry.version)),
     stored: updated.markdown ?? source.markdown,
     pending: updated.entry.status === 'draft' || updated.entry.hasUnpublishedChanges,
   }
+}
+
+async function place(
+  to: Session,
+  source: SourceEntry,
+  id: string,
+  fail: (why: string) => never,
+  version: number,
+): Promise<{ version: number; placed: boolean }> {
+  if (source.position === undefined) return { version, placed: true }
+  const now = await to.call(getEntry, {
+    collection: source.collection,
+    locale: source.locale,
+    slug: source.slug,
+  })
+  if (now.outcome !== 'ok' || now.entry === undefined) {
+    return fail('it was removed from the destination while promote ran')
+  }
+  const here = now.entry
+  if ((here.parent ?? undefined) === source.parent && here.position === source.position) {
+    return { version: here.version, placed: true }
+  }
+  const moved = await to.call(moveEntry, {
+    id,
+    version: here.version,
+    parent: source.parent ?? null,
+    index: source.position,
+  })
+  if (moved.outcome === 'unchanged') return { version: here.version, placed: true }
+  if (moved.outcome === 'invalid_parent' && moved.reason === 'unpublished') {
+    return { version: here.version, placed: false }
+  }
+  if (moved.outcome !== 'moved' || moved.entry === undefined) {
+    return fail(
+      `move_entry answered ${moved.outcome}${moved.reason === undefined ? '' : ` (${moved.reason})`}, so it could not take its place under ${source.parent === undefined ? 'the root' : printable(source.parent)}`,
+    )
+  }
+  return { version: moved.entry.version, placed: true }
 }
 
 function reasons(verdict: { errors: { contract: string; message: string }[] } | undefined): string {
@@ -228,7 +281,7 @@ export function conflictComment(conflict: Conflict): string {
 export async function destinationOf(
   to: Session,
   path: string,
-): Promise<{ id: string; version: number } | undefined> {
+): Promise<{ id: string; version: number; parent?: string } | undefined> {
   const [collection = '', locale = '', ...rest] = path.split('/')
   const answer = await to.call(getEntry, {
     collection,
@@ -238,5 +291,11 @@ export async function destinationOf(
   })
   if (answer.outcome !== 'ok' || answer.entry === undefined) return undefined
   if (answer.entry.status !== 'published') return undefined
-  return { id: answer.entry.id, version: answer.entry.version }
+  return {
+    id: answer.entry.id,
+    version: answer.entry.version,
+    ...(answer.entry.parent === null
+      ? {}
+      : { parent: `${collection}/${locale}/${answer.entry.parent}` }),
+  }
 }
