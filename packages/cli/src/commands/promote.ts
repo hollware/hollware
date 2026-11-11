@@ -9,7 +9,9 @@ import {
   askForReviews,
   pendingReviews,
   publishNow,
+  REVIEW_SIZE,
   stillPending,
+  treesOf,
   type Delivery,
   type Member,
 } from '../promote/deliver.ts'
@@ -232,6 +234,16 @@ async function promoteWith(
       `the destination has no collection ${absent.map((name) => printable(name)).join(', ')}: create ${absent.length === 1 ? 'it' : 'them'} there first (set_collection, or the config of the destination), then promote again. Nothing was written.`,
     )
   }
+  const shallower = collections.filter((name) => {
+    const nesting = from.collections.find((one) => one.name === name)?.nesting
+    const there = into.collections.find((one) => one.name === name)?.nesting
+    return nesting !== undefined && (there === undefined || there.maxDepth < nesting.maxDepth)
+  })
+  if (shallower.length > 0) {
+    throw new CliError(
+      `the destination nests ${shallower.map((name) => printable(name)).join(', ')} less deep than the source, so its tree would not fit: give ${shallower.length === 1 ? 'it' : 'them'} the nesting of the source there first, then promote again. Nothing was written.`,
+    )
+  }
   if (options.locale !== undefined && !from.locales.includes(options.locale)) {
     throw new CliError(
       `the source has no locale ${printable(options.locale)}: it has ${from.locales.map(printable).join(', ')}.`,
@@ -267,6 +279,21 @@ async function promoteWith(
   const previous = dryRun ? [] : await pendingReviews(to, state.reviews)
   const promotions: Promotion[] = []
   for (const entry of promoted) promotions.push(await inspect(to, entry, state.entries[entry.path]))
+  const tooBig = treesOf(
+    promotions
+      .filter((promotion) => promotion.action !== 'unchanged' || promotion.head?.pending === true)
+      .map((promotion) => ({
+        path: promotion.source.path,
+        ...(promotion.source.parent === undefined
+          ? {}
+          : { parent: pathOf(promotion.source, promotion.source.parent) }),
+      })),
+  ).find((tree) => tree.length > REVIEW_SIZE)
+  if (tooBig !== undefined) {
+    throw new CliError(
+      `${printable(tooBig[0]?.path ?? '')} and the ${tooBig.length - 1} entries under it publish together, more than the ${REVIEW_SIZE} one review holds: promote part of them first with --tag, then the rest. Nothing was written.`,
+    )
+  }
   const leaving: Member[] = []
   for (const path of changes.gone) {
     const there = await destinationOf(to, path)
@@ -293,6 +320,14 @@ async function promoteWith(
       path: promotion.source.path,
       action: promotion.action,
       conflict: promotion.conflict,
+      ...(promotion.moves
+        ? {
+            moves: {
+              parent: promotion.source.parent ?? null,
+              position: promotion.source.position ?? 0,
+            },
+          }
+        : {}),
     })),
     unpublish: leaving.map((member) => member.path),
     assets: { copied: assets.copied, present: assets.present },
@@ -340,7 +375,14 @@ async function promoteWith(
   )
   const toPublish: Member[] = written
     .filter((one) => one.pending && !holding.has(one.promotion.source.path))
-    .map((one) => ({ path: one.promotion.source.path, id: one.id, version: one.version }))
+    .map((one) => ({
+      path: one.promotion.source.path,
+      id: one.id,
+      version: one.version,
+      ...(one.promotion.source.parent === undefined
+        ? {}
+        : { parent: pathOf(one.promotion.source, one.promotion.source.parent) }),
+    }))
   const toUnpublish = leaving.filter((member) => !holding.has(member.path))
   for (const review of cancelled) {
     for (const member of review.publish) {
@@ -450,6 +492,10 @@ async function promoteWith(
     `Promoted from ${options.from.origin} to ${options.to.origin}: ${summary(promotions, leaving)}. State in ${printable(options.stateShown)}.`,
   )
   return 0
+}
+
+function pathOf(entry: SourceEntry, slug: string): string {
+  return `${entry.collection}/${entry.locale}/${slug}`
 }
 
 function inTreeOrder(entries: readonly SourceEntry[]): SourceEntry[] {

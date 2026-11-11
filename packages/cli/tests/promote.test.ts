@@ -501,18 +501,17 @@ describe('hollware promote', () => {
 })
 
 describe('hollware promote, in a nested collection', () => {
-  async function nestedPair(): Promise<Pair> {
+  async function nestedPair(targetDepth: number | null = 2): Promise<Pair> {
     const site = { locales: ['es'], collections: ['help'] }
-    const declared = { help: { maxDepth: 2 } }
     const source = await startStub({
       token: FROM_TOKEN,
       site: { key: 'staging', ...site },
-      declared,
+      declared: { help: { maxDepth: 2 } },
     })
     const target = await startStub({
       token: TO_TOKEN,
       site: { key: 'production', ...site },
-      declared,
+      declared: targetDepth === null ? {} : { help: { maxDepth: targetDepth } },
     })
     stubs.push(source, target)
     const cwd = temp.make({ 'from.token': `${FROM_TOKEN}\n`, 'to.token': `${TO_TOKEN}\n` })
@@ -706,5 +705,92 @@ describe('hollware promote, in a nested collection', () => {
 
     expect(code).toBe(0)
     expect(out).toContain('unpublish  help/es/intro')
+  })
+
+  it('writes nothing when the destination nests the collection less deep than the source', async () => {
+    const { source, target, promote } = await nestedPair(null)
+    seedTree(source)
+
+    const { code, err } = await promote()
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware promote: the destination nests help less deep than the source, so its tree would not fit: give it the nesting of the source there first, then promote again. Nothing was written.',
+    ])
+    expect(toolsOf(target, 'create_draft')).toEqual([])
+  })
+
+  it('says in a JSON dry run where each entry that moves goes', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/sso', 11, 'sso', 0)
+    placed(target, 'help/es/intro', 12, 'intro', 1)
+    placed(target, 'help/es/google', 13, 'google', 2)
+    placed(target, 'help/es/entra', 14, 'sso/entra', 0)
+
+    const { code, out } = await promote(['--dry-run', '--json'])
+
+    expect(code).toBe(0)
+    expect(JSON.parse(out.join('\n')).entries).toEqual([
+      {
+        path: 'help/es/intro',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: null, position: 0 },
+      },
+      {
+        path: 'help/es/sso',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: null, position: 1 },
+      },
+      {
+        path: 'help/es/google',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: 'sso', position: 0 },
+      },
+      {
+        path: 'help/es/entra',
+        action: 'unchanged',
+        conflict: false,
+        moves: { parent: 'sso', position: 1 },
+      },
+    ])
+  })
+
+  it('keeps a new parent and the entries under it in the same review when they do not fit in the first', async () => {
+    const { source, target, promote } = await nestedPair()
+    for (let n = 0; n < 98; n += 1) placed(source, `help/es/root-${n}`, 100 + n, `root-${n}`, n)
+    placed(source, 'help/es/sso', 1, 'sso', 98)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    placed(source, 'help/es/entra', 3, 'sso/entra', 1)
+    placed(source, 'help/es/okta', 4, 'sso/okta', 2)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    const slugOf = (id: string) =>
+      [...target.entries.values()].find((entry) => entry.id === id)?.slug
+    const reviews = [...target.reviews.values()].map((review) =>
+      review.items.map((item) => slugOf(item.entryId)),
+    )
+    expect(reviews.map((review) => review.length)).toEqual([98, 4])
+    expect(reviews[1]).toEqual(['sso', 'google', 'entra', 'okta'])
+  })
+
+  it('writes nothing when a new parent and the entries under it are more than one review holds', async () => {
+    const { source, target, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    for (let n = 0; n < 100; n += 1)
+      placed(source, `help/es/child-${n}`, 100 + n, `sso/child-${n}`, n)
+
+    const { code, err } = await promote()
+
+    expect(code).toBe(1)
+    expect(err).toEqual([
+      'hollware promote: help/es/sso and the 100 entries under it publish together, more than the 100 one review holds: promote part of them first with --tag, then the rest. Nothing was written.',
+    ])
+    expect(toolsOf(target, 'create_draft')).toEqual([])
   })
 })

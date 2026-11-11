@@ -850,6 +850,23 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             })),
             ...args.unpublish.map((member) => ({ ...member, action: 'unpublish' as const })),
           ]
+          const askedIds = new Set(asked.map((member) => member.id))
+          for (const member of asked) {
+            const entry = byId(member.id)
+            const above =
+              entry === undefined || member.action !== 'publish'
+                ? undefined
+                : entries.get(
+                    key({
+                      collection: entry.collection,
+                      locale: entry.locale,
+                      slug: parentSlug(entry) ?? '',
+                    }),
+                  )
+            if (above !== undefined && above.published === null && !askedIds.has(above.id)) {
+              return reply(requestReview.outcomes, { outcome: 'blocked', failedEntry: member.id })
+            }
+          }
           const items: StubReview['items'] = []
           for (const member of asked) {
             const entry = byId(member.id)

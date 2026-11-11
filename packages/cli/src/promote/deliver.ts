@@ -4,12 +4,13 @@ import { printable } from '../format.ts'
 import type { Session } from '../import/session.ts'
 import { conflictComment, conflictOf, type Written } from './destination.ts'
 
-const REVIEW_SIZE = 100
+export const REVIEW_SIZE = 100
 
 export interface Member {
   path: string
   id: string
   version: number
+  parent?: string
 }
 
 export interface Previous {
@@ -70,19 +71,47 @@ interface Batch {
 }
 
 function batches(toPublish: readonly Member[], toUnpublish: readonly Member[]): Batch[] {
-  const all = [
-    ...toPublish.map((member) => ({ member, action: 'publish' as const })),
-    ...toUnpublish.map((member) => ({ member, action: 'unpublish' as const })),
+  const units = [
+    ...treesOf(toPublish).map((members) => ({ publish: members, unpublish: [] as Member[] })),
+    ...toUnpublish.map((member) => ({ publish: [] as Member[], unpublish: [member] })),
   ]
   const out: Batch[] = []
-  for (let start = 0; start < all.length; start += REVIEW_SIZE) {
-    const slice = all.slice(start, start + REVIEW_SIZE)
-    out.push({
-      publish: slice.filter((one) => one.action === 'publish').map((one) => one.member),
-      unpublish: slice.filter((one) => one.action === 'unpublish').map((one) => one.member),
-    })
+  let current: Batch = { publish: [], unpublish: [] }
+  for (const unit of units) {
+    const size = unit.publish.length + unit.unpublish.length
+    const held = current.publish.length + current.unpublish.length
+    if (held > 0 && held + size > REVIEW_SIZE) {
+      out.push(current)
+      current = { publish: [], unpublish: [] }
+    }
+    current.publish.push(...unit.publish)
+    current.unpublish.push(...unit.unpublish)
   }
+  if (current.publish.length + current.unpublish.length > 0) out.push(current)
   return out
+}
+
+export function treesOf<One extends { path: string; parent?: string }>(
+  members: readonly One[],
+): One[][] {
+  const byPath = new Map(members.map((member) => [member.path, member]))
+  const rootOf = (member: One): string => {
+    let at = member
+    for (
+      let above = byPath.get(at.parent ?? '');
+      above !== undefined;
+      above = byPath.get(at.parent ?? '')
+    ) {
+      at = above
+    }
+    return at.path
+  }
+  const trees = new Map<string, One[]>()
+  for (const member of members) {
+    const root = rootOf(member)
+    trees.set(root, [...(trees.get(root) ?? []), member])
+  }
+  return [...trees.values()]
 }
 
 function refusal(
