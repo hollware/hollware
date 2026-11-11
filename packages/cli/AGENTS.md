@@ -112,7 +112,10 @@ The `hollware` command. Boundary rules for this package:
   changes a review). Its state file, `.hollware/promote-<from>-<to>.json`, holds a cursor per
   collection (the newest `updatedAt` the source listed, read again with `changedSince`, which is
   inclusive) and, per entry, the revisions and the SHA-256 of what was promoted: a destination whose
-  published revision and Markdown both differ from those is a conflict. Bound by `tests/promote.test.ts`.
+  published revision and Markdown both differ from those is a conflict. In a nested collection it
+  reads the collection whole, writes parents first and puts each entry at its source parent and
+  position (`move_entry`), and a review never splits a new parent from the entries under it; the
+  state keeps each entry's place. Bound by `tests/promote.test.ts`.
 
 ## Tests
 
