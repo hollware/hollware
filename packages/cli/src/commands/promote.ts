@@ -21,10 +21,11 @@ import {
   type Promotion,
   type Written,
 } from '../promote/destination.ts'
-import { readSource, type Scope } from '../promote/source.ts'
+import { readSource, type Scope, type SourceEntry } from '../promote/source.ts'
 import {
   defaultStatePath,
   digest,
+  placeOf,
   readState,
   scopeOf,
   writeState,
@@ -44,7 +45,10 @@ export const PROMOTE_USAGE = [
   'remembers where it stopped and what it promoted. An entry the source no longer publishes is',
   'unpublished by the same review. An entry whose published version changed in the destination',
   'since the last promotion is still promoted, and the review says so on it, with the difference.',
-  'The images the entries show are copied when the destination does not have them.',
+  'The images the entries show are copied when the destination does not have them. In a nested',
+  'collection an entry takes the parent and the place among its siblings it has in the source,',
+  'parents first: a new one is created there, and one the destination holds is moved there at',
+  'once, not by the review (a published one takes content:publish).',
   '',
   'Options:',
   '  --from <url>             The Hollware to read, such as https://staging.example.com',
@@ -255,7 +259,7 @@ async function promoteWith(
     changes.changed,
     dryRun,
   )
-  const promoted = withAssetIds(changes.changed, assets.moved)
+  const promoted = inTreeOrder(withAssetIds(changes.changed, assets.moved))
   const previous = dryRun ? [] : await pendingReviews(to, state.reviews)
   const promotions: Promotion[] = []
   for (const entry of promoted) promotions.push(await inspect(to, entry, state.entries[entry.path]))
@@ -267,7 +271,7 @@ async function promoteWith(
 
   for (const promotion of promotions) {
     say(
-      `${promotion.action.padEnd(10)} ${printable(promotion.source.path)}${promotion.conflict ? '  (changed in the destination since the last promotion)' : ''}`,
+      `${promotion.action.padEnd(10)} ${printable(promotion.source.path)}${promotion.moves ? `  (moves to its place: ${printable(promotion.source.slugPath)}, position ${promotion.source.position ?? 0})` : ''}${promotion.conflict ? '  (changed in the destination since the last promotion)' : ''}`,
     )
   }
   for (const member of leaving) say(`${'unpublish'.padEnd(10)} ${printable(member.path)}`)
@@ -385,6 +389,9 @@ async function promoteWith(
       sourceRevision: one.promotion.source.revision,
       destinationRevision: one.promotion.destinationRevision,
       promoted: digest(one.stored),
+      ...(placeOf(one.promotion.source) === undefined
+        ? {}
+        : { place: placeOf(one.promotion.source) }),
     }
   }
   for (const path of changes.gone) {
@@ -433,6 +440,11 @@ async function promoteWith(
     `Promoted from ${options.from.origin} to ${options.to.origin}: ${summary(promotions, leaving)}. State in ${printable(options.stateShown)}.`,
   )
   return 0
+}
+
+function inTreeOrder(entries: readonly SourceEntry[]): SourceEntry[] {
+  const depth = (entry: SourceEntry) => entry.slugPath.split('/').length
+  return [...entries].sort((a, b) => depth(a) - depth(b) || (a.position ?? 0) - (b.position ?? 0))
 }
 
 function summary(promotions: readonly Promotion[], leaving: readonly Member[]): string {

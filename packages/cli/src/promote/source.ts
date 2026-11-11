@@ -2,7 +2,7 @@ import { getEntry, listEntries } from '@hollware/core'
 import { CliError } from '../errors.ts'
 import { printable } from '../format.ts'
 import { ToolFailure, type Session } from '../import/session.ts'
-import { scopeOf, type PromoteState } from './state.ts'
+import { placeOf, scopeOf, type PromoteState } from './state.ts'
 
 const PAGE_SIZE = 100
 
@@ -21,6 +21,9 @@ export interface SourceEntry {
   entryId: string
   revision: string
   markdown: string
+  parent?: string
+  position?: number
+  slugPath: string
   acknowledged: { contract: string; path: string }[]
 }
 
@@ -92,7 +95,13 @@ export async function readSource(
       if (!one.published) continue
       const read = await readPublished(session, one)
       const known = state.entries[one.path]
-      if (known?.sourceRevision === read.revision && known.unpublish !== true) continue
+      if (
+        known?.sourceRevision === read.revision &&
+        known.place === placeOf(read) &&
+        known.unpublish !== true
+      ) {
+        continue
+      }
       changed.push(read)
     }
     for (const [path, known] of Object.entries(state.entries)) {
@@ -137,6 +146,9 @@ async function readPublished(session: Session, listed: Listed): Promise<SourceEn
     entryId: entry.id,
     revision: entry.revision,
     markdown: entry.markdown,
+    ...(entry.parent === null ? {} : { parent: entry.parent }),
+    ...(entry.position === null ? {} : { position: entry.position }),
+    slugPath: entry.slugPath,
     acknowledged: entry.lastPublication?.acknowledged ?? [],
   }
 }

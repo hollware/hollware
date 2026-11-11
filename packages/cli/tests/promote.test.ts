@@ -499,3 +499,146 @@ describe('hollware promote', () => {
     expect(toolsOf(source, 'list_entries')).toEqual([])
   })
 })
+
+describe('hollware promote, in a nested collection', () => {
+  async function nestedPair(): Promise<Pair> {
+    const site = { locales: ['es'], collections: ['help'] }
+    const declared = { help: { maxDepth: 2 } }
+    const source = await startStub({
+      token: FROM_TOKEN,
+      site: { key: 'staging', ...site },
+      declared,
+    })
+    const target = await startStub({
+      token: TO_TOKEN,
+      site: { key: 'production', ...site },
+      declared,
+    })
+    stubs.push(source, target)
+    const cwd = temp.make({ 'from.token': `${FROM_TOKEN}\n`, 'to.token': `${TO_TOKEN}\n` })
+    const statePath = join(
+      cwd,
+      '.hollware',
+      `promote-${new URL(source.url).host.replace(':', '_')}-${new URL(target.url).host.replace(':', '_')}.json`,
+    )
+    return {
+      source,
+      target,
+      cwd,
+      statePath,
+      promote: (args = []) =>
+        run(
+          [
+            'promote',
+            '--from',
+            source.url,
+            '--from-token-file',
+            'from.token',
+            '--to',
+            target.url,
+            '--to-token-file',
+            'to.token',
+            ...args,
+          ],
+          { cwd },
+        ),
+      state: () => JSON.parse(readFileSync(statePath, 'utf8')),
+    }
+  }
+
+  function placed(stub: StubServer, path: string, n: number, slugPath: string, position: number) {
+    const entry = put(stub, path, n, [post(path.split('/').at(-1) ?? '')], 0)
+    entry.slugPath = slugPath
+    entry.position = position
+    return entry
+  }
+
+  function seedTree(source: StubServer): void {
+    placed(source, 'help/es/entra', 1, 'sso/entra', 1)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    placed(source, 'help/es/sso', 3, 'sso', 1)
+    placed(source, 'help/es/intro', 4, 'intro', 0)
+  }
+
+  function tree(stub: StubServer): string[] {
+    return [...stub.entries.values()]
+      .map((entry) => `${entry.slugPath ?? entry.slug} ${entry.position}`)
+      .sort()
+  }
+
+  it('creates each entry under its parent and in the order of the source, though the source lists a child before its parent', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+    expect(toolsOf(target, 'create_draft').map((args) => [args.slug, args.parent ?? null])).toEqual(
+      [
+        ['intro', null],
+        ['sso', null],
+        ['google', 'sso'],
+        ['entra', 'sso'],
+      ],
+    )
+  })
+
+  it('moves the entries the destination already holds to the place they have in the source, and a dry run says so', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/sso', 11, 'sso', 0)
+    placed(target, 'help/es/intro', 12, 'intro', 1)
+    placed(target, 'help/es/entra', 13, 'entra', 2)
+    placed(target, 'help/es/google', 14, 'google', 3)
+
+    const dry = await promote(['--dry-run'])
+
+    expect(dry.out.slice(0, 4)).toEqual([
+      'unchanged  help/es/intro  (moves to its place: intro, position 0)',
+      'unchanged  help/es/sso  (moves to its place: sso, position 1)',
+      'unchanged  help/es/google  (moves to its place: sso/google, position 0)',
+      'unchanged  help/es/entra  (moves to its place: sso/entra, position 1)',
+    ])
+    expect(tree(target)).toEqual(['entra 2', 'google 3', 'intro 1', 'sso 0'])
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+  })
+
+  it('puts each entry at the position it has in the source, before a sibling only the destination has', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/aviso', 11, 'aviso', 0)
+
+    const { code, err } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['aviso 2', 'intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+  })
+
+  it('promotes an entry that moved in the source though its text stayed the same', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    await promote()
+    approveAll(target)
+    const intro = source.entries.get('help/es/intro')
+    const sso = source.entries.get('help/es/sso')
+    if (intro === undefined || sso === undefined) throw new Error('no roots')
+    intro.position = 1
+    sso.position = 0
+
+    const { code, out } = await promote()
+
+    expect(code).toBe(0)
+    expect(out.slice(0, 2)).toEqual([
+      'unchanged  help/es/sso  (moves to its place: sso, position 0)',
+      'unchanged  help/es/intro  (moves to its place: intro, position 1)',
+    ])
+    expect(tree(target)).toEqual(['intro 1', 'sso 0', 'sso/entra 1', 'sso/google 0'])
+    expect(state().entries['help/es/sso']).toMatchObject({ place: '#0' })
+    expect(state().entries['help/es/google']).toMatchObject({ place: 'sso#0' })
+  })
+})

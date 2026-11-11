@@ -10,6 +10,7 @@ const promotedEntry = z.strictObject({
   sourceRevision: z.string(),
   destinationRevision: z.string().nullable(),
   promoted: z.string(),
+  place: z.string().optional(),
   unpublish: z.literal(true).optional(),
 })
 
@@ -77,4 +78,8 @@ export function scopeOf(collection: string, locale: string | undefined, tag: str
 
 export function digest(markdown: string): string {
   return createHash('sha256').update(markdown).digest('hex')
+}
+
+export function placeOf(entry: { parent?: string; position?: number }): string | undefined {
+  return entry.position === undefined ? undefined : `${entry.parent ?? ''}#${entry.position}`
 }

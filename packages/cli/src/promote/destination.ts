@@ -1,5 +1,12 @@
 import { Buffer } from 'node:buffer'
-import { createDraft, getAsset, getEntry, unifiedDiff, updateDraft } from '@hollware/core'
+import {
+  createDraft,
+  getAsset,
+  getEntry,
+  moveEntry,
+  unifiedDiff,
+  updateDraft,
+} from '@hollware/core'
 import { CliError } from '../errors.ts'
 import { printable } from '../format.ts'
 import { ToolFailure, type Session } from '../import/session.ts'
@@ -76,6 +83,7 @@ export interface Promotion {
   destinationRevision: string | null
   publishedMarkdown: string | null
   conflict: boolean
+  moves: boolean
   head: { id: string; version: number; markdown: string; pending: boolean } | undefined
 }
 
@@ -93,6 +101,7 @@ export async function inspect(
       destinationRevision: null,
       publishedMarkdown: null,
       conflict: false,
+      moves: false,
       head: undefined,
     }
   }
@@ -113,6 +122,10 @@ export async function inspect(
     destinationRevision,
     publishedMarkdown,
     conflict,
+    moves:
+      source.position !== undefined &&
+      ((head.entry.parent ?? undefined) !== source.parent ||
+        head.entry.position !== source.position),
     head: {
       id: head.entry.id,
       version: head.entry.version,
@@ -141,6 +154,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
       locale: source.locale,
       slug: source.slug,
       markdown: source.markdown,
+      ...(source.parent === undefined ? {} : { parent: source.parent }),
     })
     if (created.outcome !== 'saved' || created.entry === undefined) {
       return fail(`create_draft answered ${created.outcome}${reasons(created.verdict)}`)
@@ -148,7 +162,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: created.entry.id,
-      version: created.entry.version,
+      version: await place(to, source, created.entry.id, fail, created.entry.version),
       stored: created.markdown ?? source.markdown,
       pending: true,
     }
@@ -157,7 +171,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: head.id,
-      version: head.version,
+      version: await place(to, source, head.id, fail, head.version),
       stored: head.markdown,
       pending: head.pending,
     }
@@ -180,10 +194,45 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
   return {
     promotion,
     id: updated.entry.id,
-    version: updated.entry.version,
+    version: await place(to, source, updated.entry.id, fail, updated.entry.version),
     stored: updated.markdown ?? source.markdown,
     pending: updated.entry.status === 'draft' || updated.entry.hasUnpublishedChanges,
   }
+}
+
+async function place(
+  to: Session,
+  source: SourceEntry,
+  id: string,
+  fail: (why: string) => never,
+  version: number,
+): Promise<number> {
+  if (source.position === undefined) return version
+  const now = await to.call(getEntry, {
+    collection: source.collection,
+    locale: source.locale,
+    slug: source.slug,
+  })
+  if (now.outcome !== 'ok' || now.entry === undefined) {
+    return fail('it was removed from the destination while promote ran')
+  }
+  const here = now.entry
+  if ((here.parent ?? undefined) === source.parent && here.position === source.position) {
+    return here.version
+  }
+  const moved = await to.call(moveEntry, {
+    id,
+    version: here.version,
+    parent: source.parent ?? null,
+    index: source.position,
+  })
+  if (moved.outcome === 'unchanged') return here.version
+  if (moved.outcome !== 'moved' || moved.entry === undefined) {
+    return fail(
+      `move_entry answered ${moved.outcome}${moved.reason === undefined ? '' : ` (${moved.reason})`}, so it could not take its place under ${source.parent === undefined ? 'the root' : printable(source.parent)}`,
+    )
+  }
+  return moved.entry.version
 }
 
 function reasons(verdict: { errors: { contract: string; message: string }[] } | undefined): string {
