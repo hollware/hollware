@@ -1017,6 +1017,16 @@ export function startStub(options: StubOptions): Promise<StubServer> {
         guarded(unpublish.name, (args) => {
           const entry = byId(args.id)
           if (entry === undefined) return reply(unpublish.outcomes, { outcome: 'not_found' })
+          const publishedChildren = [...entries.values()].filter(
+            (one) =>
+              one.collection === entry.collection &&
+              one.locale === entry.locale &&
+              parentSlug(one) === entry.slug &&
+              one.published !== null,
+          )
+          if (publishedChildren.length > 0) {
+            return reply(unpublish.outcomes, { outcome: 'has_children' })
+          }
           if (entry.published !== null) {
             entry.published = null
             entry.version += 1

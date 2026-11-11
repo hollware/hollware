@@ -845,4 +845,46 @@ describe('hollware promote, in a nested collection', () => {
       '2 entries wait to be unpublished with the next promotion that has an entry to publish, or with --publish: help/es/sso, help/es/google.',
     )
   })
+
+  it('unpublishes the entries under a parent before the parent with --publish', async () => {
+    const { source, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    await promote(['--publish'])
+    source.entries.delete('help/es/sso')
+    source.entries.delete('help/es/google')
+
+    const { code, out } = await promote(['--publish'])
+
+    expect(code).toBe(0)
+    expect(out).toContain('Published 0, unpublished 2.')
+  })
+
+  it('leaves an entry for the next run while the review of its parent is pending, and promotes it after', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    const sso = source.entries.get('help/es/sso')
+    const google = source.entries.get('help/es/google')
+    if (sso === undefined || google === undefined) throw new Error('no sso')
+    sso.tags = ['first']
+    google.tags = ['second']
+    await promote(['--tag', 'first'])
+
+    const waiting = await promote(['--tag', 'second'])
+
+    expect([waiting.code, waiting.err]).toEqual([0, []])
+    expect(waiting.out).toContain(
+      '1 entry waits for the pending review of a parent: approve it, then promote again: help/es/google.',
+    )
+    expect(state().entries).not.toHaveProperty(['help/es/google'])
+    approveAll(target)
+
+    const after = await promote(['--tag', 'second'])
+
+    expect([after.code, after.err]).toEqual([0, []])
+    const googleThere = target.entries.get('help/es/google')
+    expect([...target.reviews.values()].at(-1)?.items.map((item) => item.entryId)).toEqual([
+      googleThere?.id,
+    ])
+  })
 })

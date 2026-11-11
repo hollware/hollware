@@ -359,8 +359,37 @@ async function promoteWith(
   const holding = new Set(
     held.flatMap((review) => [...review.publish, ...review.unpublish].map((member) => member.path)),
   )
+  const parentOf = new Map(
+    written.map((one) => [
+      one.promotion.source.path,
+      one.promotion.source.parent === undefined
+        ? undefined
+        : pathOf(one.promotion.source, one.promotion.source.parent),
+    ]),
+  )
+  const underHeld = (path: string): boolean => {
+    for (let above = parentOf.get(path); above !== undefined; above = parentOf.get(above)) {
+      if (holding.has(above)) return true
+    }
+    return false
+  }
+  const deferred = new Set(
+    written
+      .filter(
+        (one) =>
+          one.pending &&
+          !holding.has(one.promotion.source.path) &&
+          underHeld(one.promotion.source.path),
+      )
+      .map((one) => one.promotion.source.path),
+  )
   const toPublish: Member[] = written
-    .filter((one) => one.pending && !holding.has(one.promotion.source.path))
+    .filter(
+      (one) =>
+        one.pending &&
+        !holding.has(one.promotion.source.path) &&
+        !deferred.has(one.promotion.source.path),
+    )
     .map((one) => ({
       path: one.promotion.source.path,
       id: one.id,
@@ -416,6 +445,7 @@ async function promoteWith(
   }
 
   for (const one of written) {
+    if (deferred.has(one.promotion.source.path)) continue
     state.entries[one.promotion.source.path] = {
       sourceEntry: one.promotion.source.entryId,
       sourceRevision: one.promotion.source.revision,
@@ -466,6 +496,11 @@ async function promoteWith(
   if (delivery.waiting.length > 0) {
     say(
       `${delivery.waiting.length} ${delivery.waiting.length === 1 ? 'entry waits' : 'entries wait'} to be unpublished with the next promotion that has an entry to publish, or with --publish: ${delivery.waiting.map(printable).join(', ')}.`,
+    )
+  }
+  if (deferred.size > 0) {
+    say(
+      `${deferred.size} ${deferred.size === 1 ? 'entry waits' : 'entries wait'} for the pending review of a parent: approve it, then promote again: ${[...deferred].map(printable).join(', ')}.`,
     )
   }
   const unplaced = written.filter((one) => !one.placed)

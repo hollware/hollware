@@ -91,6 +91,22 @@ function batches(toPublish: readonly Member[], toUnpublish: readonly Member[]): 
   return out
 }
 
+function leavesFirst(members: readonly Member[]): Member[] {
+  const byPath = new Map(members.map((member) => [member.path, member]))
+  const depth = (member: Member): number => {
+    let count = 0
+    for (
+      let above = byPath.get(member.parent ?? '');
+      above !== undefined;
+      above = byPath.get(above.parent ?? '')
+    ) {
+      count += 1
+    }
+    return count
+  }
+  return [...members].sort((a, b) => depth(b) - depth(a))
+}
+
 export function treesOf<One extends { path: string; parent?: string }>(
   members: readonly One[],
 ): One[][] {
@@ -207,7 +223,7 @@ export async function publishNow(
     }
     for (const member of members) delivery.asked.add(member.path)
   }
-  for (const member of toUnpublish) {
+  for (const member of leavesFirst(toUnpublish)) {
     const answer = await to.call(unpublish, { id: member.id })
     if (answer.outcome === 'unpublished') delivery.unpublished += 1
     delivery.asked.add(member.path)
