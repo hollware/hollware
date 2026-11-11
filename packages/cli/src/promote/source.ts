@@ -8,6 +8,7 @@ const PAGE_SIZE = 100
 
 export interface Scope {
   collection: string
+  nested: boolean
   locale: string | undefined
   tag: string | undefined
   since: string | undefined
@@ -62,7 +63,7 @@ export async function readSource(
             collection: scope.collection,
             ...(scope.locale === undefined ? {} : { locale: scope.locale }),
             ...(scope.tag === undefined ? {} : { tag: scope.tag }),
-            ...(scope.since === undefined ? {} : { changedSince: scope.since }),
+            ...(scope.since === undefined || scope.nested ? {} : { changedSince: scope.since }),
             ...(trashed ? { trashed } : {}),
             limit: PAGE_SIZE,
             ...(cursor === undefined ? {} : { cursor }),
@@ -109,14 +110,38 @@ export async function readSource(
       if (collection !== scope.collection) continue
       if (scope.locale !== undefined && locale !== scope.locale) continue
       if (published.has(path)) continue
-      const complete = scope.since === undefined && scope.tag === undefined
+      const complete = (scope.since === undefined || scope.nested) && scope.tag === undefined
       if (known.unpublish === true || seen.has(known.sourceEntry) || complete) gone.push(path)
     }
   }
   return { changed, gone, latest }
 }
 
-async function readPublished(session: Session, listed: Listed): Promise<SourceEntry> {
+export async function withAncestors(
+  from: Session,
+  to: Session,
+  entries: readonly SourceEntry[],
+): Promise<SourceEntry[]> {
+  const all = [...entries]
+  const seen = new Set(all.map((entry) => entry.path))
+  for (let at = 0; at < all.length; at += 1) {
+    const entry = all[at]
+    if (entry?.parent === undefined) continue
+    const path = `${entry.collection}/${entry.locale}/${entry.parent}`
+    if (seen.has(path)) continue
+    seen.add(path)
+    const where = { collection: entry.collection, locale: entry.locale, slug: entry.parent }
+    const there = await to.call(getEntry, where)
+    if (there.outcome === 'ok') continue
+    all.push(await readPublished(from, { ...where, path }))
+  }
+  return all
+}
+
+async function readPublished(
+  session: Session,
+  listed: Pick<Listed, 'path' | 'collection' | 'locale' | 'slug'>,
+): Promise<SourceEntry> {
   let answer
   try {
     answer = await session.call(getEntry, {

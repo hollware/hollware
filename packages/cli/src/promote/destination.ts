@@ -141,6 +141,7 @@ export interface Written {
   version: number
   stored: string
   pending: boolean
+  placed: boolean
 }
 
 export async function write(to: Session, promotion: Promotion): Promise<Written> {
@@ -162,7 +163,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: created.entry.id,
-      version: await place(to, source, created.entry.id, fail, created.entry.version),
+      ...(await place(to, source, created.entry.id, fail, created.entry.version)),
       stored: created.markdown ?? source.markdown,
       pending: true,
     }
@@ -171,7 +172,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
     return {
       promotion,
       id: head.id,
-      version: await place(to, source, head.id, fail, head.version),
+      ...(await place(to, source, head.id, fail, head.version)),
       stored: head.markdown,
       pending: head.pending,
     }
@@ -194,7 +195,7 @@ export async function write(to: Session, promotion: Promotion): Promise<Written>
   return {
     promotion,
     id: updated.entry.id,
-    version: await place(to, source, updated.entry.id, fail, updated.entry.version),
+    ...(await place(to, source, updated.entry.id, fail, updated.entry.version)),
     stored: updated.markdown ?? source.markdown,
     pending: updated.entry.status === 'draft' || updated.entry.hasUnpublishedChanges,
   }
@@ -206,8 +207,8 @@ async function place(
   id: string,
   fail: (why: string) => never,
   version: number,
-): Promise<number> {
-  if (source.position === undefined) return version
+): Promise<{ version: number; placed: boolean }> {
+  if (source.position === undefined) return { version, placed: true }
   const now = await to.call(getEntry, {
     collection: source.collection,
     locale: source.locale,
@@ -218,7 +219,7 @@ async function place(
   }
   const here = now.entry
   if ((here.parent ?? undefined) === source.parent && here.position === source.position) {
-    return here.version
+    return { version: here.version, placed: true }
   }
   const moved = await to.call(moveEntry, {
     id,
@@ -226,13 +227,16 @@ async function place(
     parent: source.parent ?? null,
     index: source.position,
   })
-  if (moved.outcome === 'unchanged') return here.version
+  if (moved.outcome === 'unchanged') return { version: here.version, placed: true }
+  if (moved.outcome === 'invalid_parent' && moved.reason === 'unpublished') {
+    return { version: here.version, placed: false }
+  }
   if (moved.outcome !== 'moved' || moved.entry === undefined) {
     return fail(
       `move_entry answered ${moved.outcome}${moved.reason === undefined ? '' : ` (${moved.reason})`}, so it could not take its place under ${source.parent === undefined ? 'the root' : printable(source.parent)}`,
     )
   }
-  return moved.entry.version
+  return { version: moved.entry.version, placed: true }
 }
 
 function reasons(verdict: { errors: { contract: string; message: string }[] } | undefined): string {

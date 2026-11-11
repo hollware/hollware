@@ -641,4 +641,70 @@ describe('hollware promote, in a nested collection', () => {
     expect(state().entries['help/es/sso']).toMatchObject({ place: '#0' })
     expect(state().entries['help/es/google']).toMatchObject({ place: 'sso#0' })
   })
+
+  it('leaves a published entry where it is until the new parent it goes under is published, and moves it on the next run', async () => {
+    const { source, target, promote, state } = await nestedPair()
+    seedTree(source)
+    placed(target, 'help/es/intro', 11, 'intro', 0)
+    placed(target, 'help/es/google', 12, 'google', 1)
+    placed(target, 'help/es/entra', 13, 'entra', 2)
+
+    const first = await promote()
+
+    expect([first.code, first.err]).toEqual([0, []])
+    expect(first.out).toContain(
+      '2 published entries wait for a new parent to be published to move under it: approve the review, then promote again: help/es/google, help/es/entra.',
+    )
+    expect(state().entries['help/es/google']).not.toHaveProperty('place')
+    approveAll(target)
+
+    const second = await promote()
+
+    expect([second.code, second.err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['intro 0', 'sso 1', 'sso/entra 1', 'sso/google 0'])
+    expect(state().entries['help/es/google']).toMatchObject({ place: 'sso#0' })
+  })
+
+  it('brings the parent a filter left out when the destination does not have it', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    const google = source.entries.get('help/es/google')
+    if (google === undefined) throw new Error('no google')
+    google.tags = ['sso']
+
+    const { code, err } = await promote(['--tag', 'sso'])
+
+    expect([code, err]).toEqual([0, []])
+    expect(tree(target)).toEqual(['sso 0', 'sso/google 0'])
+  })
+
+  it('reads a nested collection whole on an incremental run, since a move shifts siblings it does not touch', async () => {
+    const { source, promote, state } = await nestedPair()
+    seedTree(source)
+    await promote()
+    const intro = source.entries.get('help/es/intro')
+    const sso = source.entries.get('help/es/sso')
+    if (intro === undefined || sso === undefined) throw new Error('no roots')
+    intro.position = 1
+    intro.updatedAt = LATER
+    sso.position = 0
+
+    const { code } = await promote(['--since', LATER])
+
+    expect(code).toBe(0)
+    expect(state().entries['help/es/sso']).toMatchObject({ place: '#0' })
+  })
+
+  it('unpublishes an entry the source no longer has on an incremental run, since it reads a nested collection whole', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    await promote()
+    approveAll(target)
+    source.entries.delete('help/es/intro')
+
+    const { code, out } = await promote(['--since', LATER])
+
+    expect(code).toBe(0)
+    expect(out).toContain('unpublish  help/es/intro')
+  })
 })

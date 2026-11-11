@@ -21,7 +21,7 @@ import {
   type Promotion,
   type Written,
 } from '../promote/destination.ts'
-import { readSource, type Scope, type SourceEntry } from '../promote/source.ts'
+import { readSource, withAncestors, type Scope, type SourceEntry } from '../promote/source.ts'
 import {
   defaultStatePath,
   digest,
@@ -48,7 +48,9 @@ export const PROMOTE_USAGE = [
   'The images the entries show are copied when the destination does not have them. In a nested',
   'collection an entry takes the parent and the place among its siblings it has in the source,',
   'parents first: a new one is created there, and one the destination holds is moved there at',
-  'once, not by the review (a published one takes content:publish).',
+  'once, not by the review (a published one takes content:publish; one that goes under a new parent',
+  'waits for the review to publish it). A parent the destination lacks is promoted with its children,',
+  'and a nested collection is read whole, since a move shifts siblings it does not change.',
   '',
   'Options:',
   '  --from <url>             The Hollware to read, such as https://staging.example.com',
@@ -237,13 +239,15 @@ async function promoteWith(
   }
   const scopes: Scope[] = collections.map((collection) => ({
     collection,
+    nested: from.collections.some((one) => one.name === collection && one.nesting !== undefined),
     locale: options.locale,
     tag: options.tag,
     since: options.all
       ? undefined
       : (options.since ?? state.cursors[scopeOf(collection, options.locale, options.tag)]),
   }))
-  const changes = await readSource(source, scopes, state)
+  const read = await readSource(source, scopes, state)
+  const changes = { ...read, changed: await withAncestors(source, to, read.changed) }
   const foreign = [...new Set(changes.changed.map((entry) => entry.locale))].filter(
     (locale) => !into.locales.includes(locale),
   )
@@ -389,7 +393,7 @@ async function promoteWith(
       sourceRevision: one.promotion.source.revision,
       destinationRevision: one.promotion.destinationRevision,
       promoted: digest(one.stored),
-      ...(placeOf(one.promotion.source) === undefined
+      ...(placeOf(one.promotion.source) === undefined || !one.placed
         ? {}
         : { place: placeOf(one.promotion.source) }),
     }
@@ -434,6 +438,12 @@ async function promoteWith(
   if (delivery.waiting.length > 0) {
     say(
       `${delivery.waiting.length} ${delivery.waiting.length === 1 ? 'entry waits' : 'entries wait'} to be unpublished with the next promotion that has an entry to publish, or with --publish: ${delivery.waiting.map(printable).join(', ')}.`,
+    )
+  }
+  const unplaced = written.filter((one) => !one.placed)
+  if (unplaced.length > 0) {
+    say(
+      `${unplaced.length} published ${unplaced.length === 1 ? 'entry waits' : 'entries wait'} for a new parent to be published to move under it: approve the review, then promote again: ${unplaced.map((one) => printable(one.promotion.source.path)).join(', ')}.`,
     )
   }
   say(
