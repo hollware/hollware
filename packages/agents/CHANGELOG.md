@@ -1,5 +1,12 @@
 # @hollware/agents
 
+## 1.10.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/core@1.10.1
+
 ## 1.10.0
 
 ### Patch Changes
