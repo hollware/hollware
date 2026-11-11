@@ -132,7 +132,7 @@ export async function withAncestors(
     seen.add(path)
     const where = { collection: entry.collection, locale: entry.locale, slug: entry.parent }
     const there = await to.call(getEntry, where)
-    if (there.outcome === 'ok') continue
+    if (there.outcome === 'ok' && there.entry?.status === 'published') continue
     all.push(await readPublished(from, { ...where, path }))
   }
   return all

@@ -784,6 +784,18 @@ describe('hollware promote, in a nested collection', () => {
     placed(source, 'help/es/sso', 1, 'sso', 0)
     for (let n = 0; n < 100; n += 1)
       placed(source, `help/es/child-${n}`, 100 + n, `sso/child-${n}`, n)
+    source.assets.set('ast_0123456789abcdef0123456789', {
+      id: 'ast_0123456789abcdef0123456789',
+      format: 'image/webp',
+      originalFormat: 'image/png',
+      served: new TextEncoder().encode('webp'),
+      original: new TextEncoder().encode('png'),
+      alt: 'A cover',
+      filename: 'cover.png',
+    })
+    const cover = source.entries.get('help/es/child-0')
+    if (cover === undefined) throw new Error('no child-0')
+    cover.revisions = [post('child-0', '\n![A cover](asset:ast_0123456789abcdef0123456789)\n')]
 
     const { code, err } = await promote()
 
@@ -792,5 +804,45 @@ describe('hollware promote, in a nested collection', () => {
       'hollware promote: help/es/sso and the 100 entries under it publish together, more than the 100 one review holds: promote part of them first with --tag, then the rest. Nothing was written.',
     ])
     expect(toolsOf(target, 'create_draft')).toEqual([])
+    expect(target.assets.size).toBe(0)
+  })
+
+  it('brings a parent the destination holds only as a draft into the review of its child', async () => {
+    const { source, target, promote } = await nestedPair()
+    seedTree(source)
+    const google = source.entries.get('help/es/google')
+    if (google === undefined) throw new Error('no google')
+    google.tags = ['sso']
+    const draft = placed(target, 'help/es/sso', 11, 'sso', 0)
+    draft.published = null
+
+    const { code, err } = await promote(['--tag', 'sso'])
+
+    expect([code, err]).toEqual([0, []])
+    const slugOf = (id: string) =>
+      [...target.entries.values()].find((entry) => entry.id === id)?.slug
+    expect(
+      [...target.reviews.values()].map((review) =>
+        review.items.map((item) => slugOf(item.entryId)),
+      ),
+    ).toEqual([['sso', 'google']])
+  })
+
+  it('keeps a parent and the entries under it that leave the source in the same review', async () => {
+    const { source, target, promote } = await nestedPair()
+    placed(source, 'help/es/sso', 1, 'sso', 0)
+    placed(source, 'help/es/google', 2, 'sso/google', 0)
+    await promote()
+    approveAll(target)
+    source.entries.delete('help/es/sso')
+    source.entries.delete('help/es/google')
+    for (let n = 0; n < 99; n += 1) placed(source, `help/es/root-${n}`, 100 + n, `root-${n}`, n)
+
+    const { code, err, out } = await promote()
+
+    expect([code, err]).toEqual([0, []])
+    expect(out).toContain(
+      '2 entries wait to be unpublished with the next promotion that has an entry to publish, or with --publish: help/es/sso, help/es/google.',
+    )
   })
 })

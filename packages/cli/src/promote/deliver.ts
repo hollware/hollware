@@ -73,7 +73,7 @@ interface Batch {
 function batches(toPublish: readonly Member[], toUnpublish: readonly Member[]): Batch[] {
   const units = [
     ...treesOf(toPublish).map((members) => ({ publish: members, unpublish: [] as Member[] })),
-    ...toUnpublish.map((member) => ({ publish: [] as Member[], unpublish: [member] })),
+    ...treesOf(toUnpublish).map((members) => ({ publish: [] as Member[], unpublish: members })),
   ]
   const out: Batch[] = []
   let current: Batch = { publish: [], unpublish: [] }

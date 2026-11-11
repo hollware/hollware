@@ -281,7 +281,7 @@ export function conflictComment(conflict: Conflict): string {
 export async function destinationOf(
   to: Session,
   path: string,
-): Promise<{ id: string; version: number } | undefined> {
+): Promise<{ id: string; version: number; parent?: string } | undefined> {
   const [collection = '', locale = '', ...rest] = path.split('/')
   const answer = await to.call(getEntry, {
     collection,
@@ -291,5 +291,11 @@ export async function destinationOf(
   })
   if (answer.outcome !== 'ok' || answer.entry === undefined) return undefined
   if (answer.entry.status !== 'published') return undefined
-  return { id: answer.entry.id, version: answer.entry.version }
+  return {
+    id: answer.entry.id,
+    version: answer.entry.version,
+    ...(answer.entry.parent === null
+      ? {}
+      : { parent: `${collection}/${locale}/${answer.entry.parent}` }),
+  }
 }

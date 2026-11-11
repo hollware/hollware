@@ -866,6 +866,20 @@ export function startStub(options: StubOptions): Promise<StubServer> {
             if (above !== undefined && above.published === null && !askedIds.has(above.id)) {
               return reply(requestReview.outcomes, { outcome: 'blocked', failedEntry: member.id })
             }
+            const below =
+              entry === undefined || member.action !== 'unpublish'
+                ? []
+                : [...entries.values()].filter(
+                    (one) =>
+                      one.collection === entry.collection &&
+                      one.locale === entry.locale &&
+                      parentSlug(one) === entry.slug &&
+                      one.published !== null &&
+                      !askedIds.has(one.id),
+                  )
+            if (below.length > 0) {
+              return reply(requestReview.outcomes, { outcome: 'blocked', failedEntry: member.id })
+            }
           }
           const items: StubReview['items'] = []
           for (const member of asked) {

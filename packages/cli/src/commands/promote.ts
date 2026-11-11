@@ -1,4 +1,4 @@
-import { describeSite, listEntries } from '@hollware/core'
+import { describeSite, getEntry, listEntries } from '@hollware/core'
 import { resolve } from 'node:path'
 import { parseFlags } from '../args.ts'
 import { CliError, UsageError } from '../errors.ts'
@@ -269,6 +269,7 @@ async function promoteWith(
     )
   }
 
+  await refuseOversizedTrees(to, inTreeOrder(changes.changed))
   const assets = await copyAssets(
     { session: source, endpoint: options.from, token: options.fromToken },
     to,
@@ -279,21 +280,6 @@ async function promoteWith(
   const previous = dryRun ? [] : await pendingReviews(to, state.reviews)
   const promotions: Promotion[] = []
   for (const entry of promoted) promotions.push(await inspect(to, entry, state.entries[entry.path]))
-  const tooBig = treesOf(
-    promotions
-      .filter((promotion) => promotion.action !== 'unchanged' || promotion.head?.pending === true)
-      .map((promotion) => ({
-        path: promotion.source.path,
-        ...(promotion.source.parent === undefined
-          ? {}
-          : { parent: pathOf(promotion.source, promotion.source.parent) }),
-      })),
-  ).find((tree) => tree.length > REVIEW_SIZE)
-  if (tooBig !== undefined) {
-    throw new CliError(
-      `${printable(tooBig[0]?.path ?? '')} and the ${tooBig.length - 1} entries under it publish together, more than the ${REVIEW_SIZE} one review holds: promote part of them first with --tag, then the rest. Nothing was written.`,
-    )
-  }
   const leaving: Member[] = []
   for (const path of changes.gone) {
     const there = await destinationOf(to, path)
@@ -492,6 +478,34 @@ async function promoteWith(
     `Promoted from ${options.from.origin} to ${options.to.origin}: ${summary(promotions, leaving)}. State in ${printable(options.stateShown)}.`,
   )
   return 0
+}
+
+async function refuseOversizedTrees(to: Session, entries: readonly SourceEntry[]): Promise<void> {
+  const paths = new Set(entries.map((entry) => entry.path))
+  const unpublishedParents = new Set<string>()
+  for (const parent of new Set(
+    entries.flatMap((entry) => (entry.parent === undefined ? [] : [pathOf(entry, entry.parent)])),
+  )) {
+    if (!paths.has(parent)) continue
+    const [collection = '', locale = '', slug = ''] = parent.split('/')
+    const there = await to.call(getEntry, { collection, locale, slug })
+    if (there.outcome !== 'ok' || there.entry?.status !== 'published')
+      unpublishedParents.add(parent)
+  }
+  const tooBig = treesOf(
+    entries.map((entry) => {
+      const parent = entry.parent === undefined ? undefined : pathOf(entry, entry.parent)
+      return {
+        path: entry.path,
+        ...(parent !== undefined && unpublishedParents.has(parent) ? { parent } : {}),
+      }
+    }),
+  ).find((tree) => tree.length > REVIEW_SIZE)
+  if (tooBig !== undefined) {
+    throw new CliError(
+      `${printable(tooBig[0]?.path ?? '')} and the ${tooBig.length - 1} entries under it publish together, more than the ${REVIEW_SIZE} one review holds: promote part of them first with --tag, then the rest. Nothing was written.`,
+    )
+  }
 }
 
 function pathOf(entry: SourceEntry, slug: string): string {
