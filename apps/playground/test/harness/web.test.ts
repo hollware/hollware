@@ -270,7 +270,7 @@ describe('hollware.com', () => {
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/png'])
   })
 
-  it('shows the admin at home as an image the site serves, and sends /home/ to the home', async () => {
+  it('shows the admin at home as an image the site serves, and sends /home/ to the home for good', async () => {
     const home = await (await webFetch(server, '/')).text()
     const image = await webFetch(server, '/admin-review.webp')
     const preview = await webFetch(server, '/home/?hollware-preview=x', 'manual')
@@ -279,7 +279,11 @@ describe('hollware.com', () => {
       /<img src="\/admin-review\.webp" alt="The Reviews page of the Hollware admin"/,
     )
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/webp'])
-    expect([preview.status, preview.headers.get('location')]).toEqual([302, '/?hollware-preview=x'])
+    const location = new URL(preview.headers.get('location') ?? '')
+    expect([preview.status, `${location.pathname}${location.search}`]).toEqual([
+      301,
+      '/?hollware-preview=x',
+    ])
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {
