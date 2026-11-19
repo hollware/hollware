@@ -62,6 +62,9 @@ export const en = {
   docs: {
     label: 'Docs',
     navigation: 'Documentation',
+    title: 'Hollware documentation',
+    description:
+      'How to install Hollware, connect an agent, shape your content with contracts and read it from a site: guides, frameworks, concepts and the reference.',
     sections: {
       start: 'Getting started',
       guides: 'Guides',

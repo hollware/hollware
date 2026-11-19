@@ -64,6 +64,9 @@ export const es: Messages = {
   docs: {
     label: 'Documentación',
     navigation: 'Documentación',
+    title: 'Documentación de Hollware',
+    description:
+      'Cómo instalar Hollware, conectar un agente, dar forma a tu contenido con contratos y leerlo desde un sitio: guías, frameworks, conceptos y la referencia.',
     sections: {
       start: 'Primeros pasos',
       guides: 'Guías',

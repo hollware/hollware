@@ -33,6 +33,8 @@ export default defineEventHandler(async (event) => {
       ? 'Install with `npm create hollware <dir> --owner-email <address>`. Each page below is Markdown.'
       : `To install it, an agent follows ${ORIGIN}/install.md. Each page below is Markdown.`,
     '',
+    `Every page in one file: ${ORIGIN}/llms-full.txt`,
+    '',
     ...(product.length === 0 ? [] : ['## Product', '', ...product.map(line), '']),
     ...(glossary.length === 0 ? [] : ['## Glossary', '', ...glossary.map(line), '']),
     '## Docs',

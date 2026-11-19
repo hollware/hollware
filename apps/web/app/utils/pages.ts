@@ -127,7 +127,7 @@ export function formatDay(day: string, locale: string): string {
 }
 
 const OWN_HEAD =
-  /^(\/es)?(?:\/|\/(?:glossary(?:\/.*)?|features\/?|compare\/?|install\/?|media-kit\/?))?$/
+  /^(\/es)?(?:\/|\/(?:glossary(?:\/.*)?|docs\/[a-z0-9-]+\/?|features\/?|compare\/?|install\/?|media-kit\/?))?$/
 
 export function ownsHead(path: string): boolean {
   return OWN_HEAD.test(path)

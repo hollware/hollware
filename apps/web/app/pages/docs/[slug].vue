@@ -28,15 +28,53 @@ const section = computed(() => {
 const markdown = computed(
   () => `${entry.value?.locale === 'es' ? '/es' : ''}/docs/${slug.value}.md`,
 )
+const spanish = await useHollwareNavigation('docs', { locale: 'es' })
+const translated = computed(() =>
+  docLinks(spanish.data.value, 'es').some((doc) => doc.slug === slug.value),
+)
+const links = computed(() => {
+  const en = pathOf('docs', slug.value, 'en')
+  const shown = untranslated.value ? en : pathOf('docs', slug.value, locale.value)
+  return linksOf({
+    path: shown,
+    alternates: translated.value ? { en, es: pathOf('docs', slug.value, 'es') } : null,
+    markdown: markdown.value,
+  })
+})
 
 useSeoMeta({
   title: () => page.value?.title ?? m.value.docs.label,
   description: () => page.value?.description ?? '',
   ogTitle: () => `${page.value?.title ?? m.value.docs.label} · Hollware`,
   ogDescription: () => page.value?.description ?? '',
+  ogUrl: () => links.value[0]?.href,
+  ogType: 'article',
 })
 useHead({
-  link: [{ rel: 'alternate', type: 'text/markdown', href: markdown.value }],
+  link: () => links.value.map((link) => ({ ...link })),
+  script: () =>
+    entry.value === null || page.value === null
+      ? []
+      : [
+          {
+            key: 'jsonld-page',
+            type: 'application/ld+json',
+            innerHTML: jsonLdOf([
+              techArticle({
+                title: page.value.title,
+                description: page.value.description,
+                path: links.value[0]?.href ?? pathOf('docs', slug.value, locale.value),
+                locale: entry.value.locale,
+                modified: entry.value.updatedAt,
+              }),
+              breadcrumbs([
+                { name: 'Hollware', path: pathIn(locale.value, '/') },
+                { name: m.value.docs.label, path: pathIn(locale.value, '/docs/') },
+                { name: page.value.title, path: pathOf('docs', slug.value, locale.value) },
+              ]),
+            ]),
+          },
+        ],
 })
 
 const components = { callout: resolveComponent('DocsCallout') }
