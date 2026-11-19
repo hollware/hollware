@@ -447,7 +447,7 @@ describe('an access token', () => {
   })
 
   it('comes with a refresh token that is refused thirty days after the code, refreshed or not', async () => {
-    vi.useFakeTimers({ toFake: ['Date'], now: Date.parse(NOW) })
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.parse('2036-10-13T12:00:00.000Z') })
     const worker = boot({ config: WITH_REGISTRATION })
     const { clientId, tokens } = await tokenFor(worker, 'editor')
     const at = (iso: string) => {
@@ -455,10 +455,10 @@ describe('an access token', () => {
       worker.clock.set(iso)
     }
 
-    at('2026-11-12T11:58:00.000Z')
+    at('2036-11-12T11:58:00.000Z')
     const early = await refreshWith(worker, clientId, tokens.refresh_token)
     const rotated = await early.clone().json<{ refresh_token: string }>()
-    at('2026-11-12T12:00:00.000Z')
+    at('2036-11-12T12:00:00.000Z')
     const late = await refreshWith(worker, clientId, rotated.refresh_token)
 
     expect([early.status, late.status, (await late.json<{ error: string }>()).error]).toEqual([
