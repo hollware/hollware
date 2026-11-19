@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import {
   breadcrumbs,
+  canonicalLinkOf,
   faqPage,
   imageOf,
   jsonLdOf,
@@ -31,6 +32,10 @@ describe('the head of a page', () => {
     expect(linksOf({ path: '/compare/wordpress/', alternates: null })).toEqual([
       { rel: 'canonical', href: 'https://hollware.com/compare/wordpress/' },
     ])
+  })
+
+  it('names the page of a Markdown file as its canonical, in a Link header', () => {
+    expect(canonicalLinkOf('/docs/cli/')).toBe('<https://hollware.com/docs/cli/>; rel="canonical"')
   })
 
   it('keeps a page out of search only when it asks, and gives an absolute image', () => {

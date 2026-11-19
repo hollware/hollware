@@ -30,6 +30,10 @@ export function linksOf(head: PageHead): HeadLink[] {
   return links
 }
 
+export function canonicalLinkOf(path: string): string {
+  return `<${absolute(path)}>; rel="canonical"`
+}
+
 export function robotsOf(head: PageHead): string | undefined {
   return head.noindex === true ? 'noindex, follow' : undefined
 }
@@ -46,18 +50,18 @@ export function organization(): Record<string, unknown> {
     '@id': `${ORIGIN}/#organization`,
     name: 'Hollware',
     url: `${ORIGIN}/`,
-    logo: `${ORIGIN}/favicon.svg`,
+    logo: `${ORIGIN}/brand/hollware-mark.png`,
     sameAs: [REPOSITORY],
   }
 }
 
-export function website(locale: string): Record<string, unknown> {
+export function website(): Record<string, unknown> {
   return {
     '@type': 'WebSite',
     '@id': `${ORIGIN}/#website`,
     name: 'Hollware',
     url: `${ORIGIN}/`,
-    inLanguage: locale,
+    inLanguage: ['en', 'es'],
     publisher: { '@id': `${ORIGIN}/#organization` },
   }
 }

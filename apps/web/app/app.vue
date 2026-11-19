@@ -8,7 +8,9 @@ const { locale, m } = useLocale()
 useSeoMeta({
   titleTemplate: (title) => (title ? `${title} · Hollware` : m.value.seo.home),
   ogSiteName: 'Hollware',
-  ogLocale: () => (locale.value === 'es' ? 'es' : 'en'),
+  ogLocale: () => (locale.value === 'es' ? 'es_ES' : 'en_US'),
+  ogLocaleAlternate: () => [locale.value === 'es' ? 'en_US' : 'es_ES'],
+  ogUrl: () => (ownsHead(route.path) ? undefined : `${ORIGIN}${route.path}`),
   ogType: 'website',
   ogImage: OG_IMAGE,
   ogImageWidth: 1200,
@@ -23,18 +25,15 @@ useHead({
     {
       key: 'jsonld-site',
       type: 'application/ld+json',
-      innerHTML: jsonLdOf([organization(), website('en')]),
+      innerHTML: jsonLdOf([organization(), website()]),
     },
   ],
   link: () => {
     if (ownsHead(route.path)) return []
     const path = basePath(route.path)
-    return [
-      { rel: 'canonical', href: `https://hollware.com${route.path}` },
-      { rel: 'alternate', hreflang: 'en', href: `https://hollware.com${path}` },
-      { rel: 'alternate', hreflang: 'es', href: `https://hollware.com${pathIn('es', path)}` },
-      { rel: 'alternate', hreflang: 'x-default', href: `https://hollware.com${path}` },
-    ]
+    return linksOf({ path: route.path, alternates: { en: path, es: pathIn('es', path) } }).map(
+      (link) => ({ ...link }),
+    )
   },
 })
 </script>

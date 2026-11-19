@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, getRequestURL, setResponseHeader } from 'h3'
-import { markdownTarget, withFacts } from '../../app/utils/pages'
+import { markdownTarget, pathOf, withFacts } from '../../app/utils/pages'
+import { canonicalLinkOf } from '../../app/utils/seo'
 
 export default defineEventHandler(async (event) => {
   const target = markdownTarget(getRequestURL(event).pathname)
@@ -12,5 +13,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'No such page' })
   }
   setResponseHeader(event, 'content-type', 'text/markdown; charset=utf-8')
+  setResponseHeader(
+    event,
+    'link',
+    canonicalLinkOf(pathOf(target.collection, target.slug, target.locale)),
+  )
   return withFacts(found.entry.markdown)
 })

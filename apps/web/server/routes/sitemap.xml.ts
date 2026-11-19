@@ -8,11 +8,15 @@ const REFERENCE = ['/reference/mcp-tools/', '/reference/read-api/', '/reference/
 
 export default defineEventHandler(async (event) => {
   const { site, reader } = useHollware(event)
-  const [pages, english, spanish] = await Promise.all([
+  const [pages, english, spanish, docs] = await Promise.all([
     listedPages(reader, site),
     reader.getNavigation(site, 'docs', { locale: 'en' }),
     reader.getNavigation(site, 'docs', { locale: 'es' }),
+    reader.listEntries(site, 'docs', { locale: 'en', limit: 100 }).catch(() => null),
   ])
+  const modified = new Map(
+    docs?.outcome === 'ok' ? docs.entries.map((entry) => [entry.slug, entry.updatedAt]) : [],
+  )
   const translated = new Set(docLinks(spanish, 'es').map((doc) => doc.slug))
   const both = (en: string, es: string): SitemapUrl['alternates'] => ({ en, es })
   const urls: SitemapUrl[] = [
@@ -29,11 +33,17 @@ export default defineEventHandler(async (event) => {
       }),
     { path: '/', alternates: both('/', '/es/') },
     { path: '/es/', alternates: both('/', '/es/') },
+    { path: '/docs/', alternates: both('/docs/', '/es/docs/') },
+    { path: '/es/docs/', alternates: both('/docs/', '/es/docs/') },
     ...docLinks(english).flatMap((doc) => {
       const en = `/docs/${doc.slug}/`
       const es = `/es/docs/${doc.slug}/`
       const alternates = translated.has(doc.slug) ? both(en, es) : null
-      return [{ path: en, alternates }, ...(alternates === null ? [] : [{ path: es, alternates }])]
+      const day = modified.get(doc.slug) ?? null
+      return [
+        { path: en, modified: day, alternates },
+        ...(alternates === null ? [] : [{ path: es, modified: day, alternates }]),
+      ]
     }),
     ...REFERENCE.flatMap((path) => {
       const alternates = both(path, `/es${path}`)

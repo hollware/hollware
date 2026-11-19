@@ -67,12 +67,15 @@ describe('the path of a page', () => {
       '/es/glossary/content-contracts/',
       '/install/',
       '/es/media-kit/',
+      '/docs/deploy/',
+      '/es/docs/deploy',
     ]) {
       expect(ownsHead(path), path).toBe(true)
     }
     for (const path of [
-      '/docs/deploy/',
+      '/docs/',
       '/es/docs/',
+      '/docs/a/b/',
       '/reference/events/',
       '/featuresx/',
       '/home/',
