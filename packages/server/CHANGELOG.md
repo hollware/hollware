@@ -1,5 +1,28 @@
 # @hollware/server
 
+## 1.11.0
+
+### Minor Changes
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Two people, or a person and an agent, can work on one entry without losing each other's changes. The admin beats `POST /v1/admin/presence` every 15 seconds while an entry is open (and when its tab comes back), which keeps who has it open (migration `0040_presence.sql`, rows of a person kept 45 seconds, forgotten after two minutes or when they leave) and answers the version and author of its latest revision. The editor shows the others as avatars; when someone saves a newer version, it loads it when nothing is unsaved, and otherwise offers to combine. A save that meets a newer version, by a person or an agent, combines the two by lines against the version that was opened: what does not clash joins on its own, and a clash opens both sides to keep one's own or theirs there.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Reads give each entry its public `path`: `getEntry`, `listEntries`, `getTranslations`, `search` and the references of an entry, over RPC, HTTP and MCP, by the route of its collection in its locale, or `null` without one. A site builds its sitemap and hreflang links without repeating its routes.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A preview of a page that reads several entries shows the draft of the previewed one and the published version of the others, instead of no entry. A link with `hollware-embed=1`, which `POST /v1/admin/preview` gives as `embedUrl`, renders the page in place for the admin's live preview: the token reaches that request alone, with no cookie, `no-store`, `Referrer-Policy: no-referrer` and, in `@hollware/nuxt` with `hollware.url`, `frame-ancestors` of Hollware. The admin page lets the origins of the sites be framed.
+
+  The headers of an embedded preview hold for every answer of the site, its error pages included: Nitro answers an error with `X-Frame-Options: DENY` after every hook, which left the live preview blank, and now a missing page or a refused token shows in the pane as the site answers it, framed by Hollware alone and never cached.
+
+  The live preview follows the writing without a reload. `POST /v1/admin/preview/document` answers what an unsaved Markdown makes, as the site reads it (images resolved), and saves nothing. In the admin's frame, `@hollware/nuxt` says it is ready (`PREVIEW_READY_MESSAGE`) and takes an entry from its parent window (`PREVIEW_ENTRY_MESSAGE`) in place of the one the page read with the same id; it also keeps the page's scroll when the pane reloads it. A site without this reloads after each save.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - `publish` takes `publishAt` with `group`: the entries are checked now, wait as scheduled, and the cron publishes them in one step at that time, all of them or none, so the translations of a page go live together.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A collection may be a singleton (`singleton: true`): one entry per locale at most, such as a home page or the settings of a site. A second `create_draft` in a locale is refused with its fix. Its routes are fixed paths without `:slug` (`{ en: '/', es: '/es/' }`), which links, `resolvePath` and preview links find, or there are none. `describe_site`, `get_structure`, `set_collection` and `update_site` carry the flag, and a stored definition without it is no singleton.
+
+### Patch Changes
+
+- Updated dependencies [[`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187)]:
+  - @hollware/core@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes

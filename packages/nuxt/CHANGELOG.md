@@ -1,5 +1,24 @@
 # @hollware/nuxt
 
+## 1.11.0
+
+### Minor Changes
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Reads give each entry its public `path`: `getEntry`, `listEntries`, `getTranslations`, `search` and the references of an entry, over RPC, HTTP and MCP, by the route of its collection in its locale, or `null` without one. A site builds its sitemap and hreflang links without repeating its routes.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A preview of a page that reads several entries shows the draft of the previewed one and the published version of the others, instead of no entry. A link with `hollware-embed=1`, which `POST /v1/admin/preview` gives as `embedUrl`, renders the page in place for the admin's live preview: the token reaches that request alone, with no cookie, `no-store`, `Referrer-Policy: no-referrer` and, in `@hollware/nuxt` with `hollware.url`, `frame-ancestors` of Hollware. The admin page lets the origins of the sites be framed.
+
+  The headers of an embedded preview hold for every answer of the site, its error pages included: Nitro answers an error with `X-Frame-Options: DENY` after every hook, which left the live preview blank, and now a missing page or a refused token shows in the pane as the site answers it, framed by Hollware alone and never cached.
+
+  The live preview follows the writing without a reload. `POST /v1/admin/preview/document` answers what an unsaved Markdown makes, as the site reads it (images resolved), and saves nothing. In the admin's frame, `@hollware/nuxt` says it is ready (`PREVIEW_READY_MESSAGE`) and takes an entry from its parent window (`PREVIEW_ENTRY_MESSAGE`) in place of the one the page read with the same id; it also keeps the page's scroll when the pane reloads it. A site without this reloads after each save.
+
+### Patch Changes
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Comark 0.9.2 parses the Markdown. Braces in the middle of prose, `Use {x} here`, stay in the text instead of being taken as attributes and reported as left out; braces that end an element are still attributes, and still reported. Formatting writes such braces escaped, `\{x}`, which reads the same. Linkify is registered as Comark's own plugin, with fuzzy links off as before. Every stored revision names Comark 0.8.1, so the reparse rebuilds them with 0.9.2; the documents of the shared fixtures are the same.
+- Updated dependencies [[`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187)]:
+  - @hollware/core@1.11.0
+  - @hollware/client@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes
