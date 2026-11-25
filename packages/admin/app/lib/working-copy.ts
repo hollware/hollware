@@ -9,8 +9,6 @@ export interface CopyStorage {
   removeItem(key: string): void
 }
 
-export const SAVE_AFTER_MS = 8_000
-export const SAVE_AT_MOST_MS = 60_000
 export const KEEP_AFTER_MS = 300
 
 export const workingCopyKey = (site: string, entryId: string): string =>
@@ -104,8 +102,4 @@ export function restoreOf(
 
 export function isOlderCopy(copy: WorkingCopy | null, version: number): boolean {
   return copy !== null && copy.version < version
-}
-
-export function saveDelay(firstChangeAt: number, now: number): number {
-  return Math.max(0, Math.min(SAVE_AFTER_MS, firstChangeAt + SAVE_AT_MOST_MS - now))
 }

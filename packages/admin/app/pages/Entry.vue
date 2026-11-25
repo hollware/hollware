@@ -50,7 +50,6 @@ import {
   isOlderCopy,
   readWorkingCopy,
   restoreOf,
-  saveDelay,
   workingCopyKey,
   type Restore,
 } from '../lib/working-copy.ts'
@@ -365,7 +364,6 @@ async function persist(): Promise<boolean> {
         if (text.value === sent) text.value = stored
         saveState.value = text.value === saved.value ? 'saved' : 'unsaved'
         if (saveState.value === 'saved') {
-          firstChange = null
           restored.value = { kind: 'none' }
           if (copyKey.value !== null) copies.drop(copyKey.value)
         }
@@ -485,17 +483,13 @@ function save(): Promise<boolean> {
   return saving
 }
 
-let autosave: ReturnType<typeof setTimeout> | undefined
 let validation: ReturnType<typeof setTimeout> | undefined
 const validations = newestOnly()
-let firstChange: number | null = null
 watch(text, (markdown) => {
-  clearTimeout(autosave)
   clearTimeout(validation)
   validations.skip()
   if (markdown === saved.value) {
     if (saveState.value === 'unsaved') saveState.value = 'saved'
-    firstChange = null
     if (
       copyKey.value !== null &&
       entry.value !== null &&
@@ -508,9 +502,6 @@ watch(text, (markdown) => {
     return
   }
   saveState.value = 'unsaved'
-  const now = Date.now()
-  firstChange ??= now
-  autosave = setTimeout(() => void save(), saveDelay(firstChange, now))
   if (copyKey.value !== null) {
     copies.keep(copyKey.value, () =>
       entry.value === null ? null : { markdown, version: entry.value.version },
@@ -526,37 +517,47 @@ async function validate(markdown: string) {
 
 const leaveOpen = ref(false)
 let leavingTo: RouteLocationNormalized | null = null
-let leaveUnsaved = false
+let leaveAllowed = false
 
-async function saveBeforeLeaving(to: RouteLocationNormalized) {
-  clearTimeout(autosave)
-  if (leaveUnsaved) {
-    leaveUnsaved = false
+function askBeforeLeaving(to: RouteLocationNormalized) {
+  if (leaveAllowed) {
+    leaveAllowed = false
     return true
   }
-  if (!dirty.value || (await save()) || missing.value || heldOpen.value) return true
-  if (!conflictOpen.value) {
-    leavingTo = to
-    leaveOpen.value = true
-  }
+  if (!dirty.value || missing.value || !writable.value) return true
+  leavingTo = to
+  leaveOpen.value = true
   return false
 }
-onBeforeRouteLeave(saveBeforeLeaving)
-onBeforeRouteUpdate((to, from) => (to.path === from.path ? true : saveBeforeLeaving(to)))
+onBeforeRouteLeave(askBeforeLeaving)
+onBeforeRouteUpdate((to, from) => (to.path === from.path ? true : askBeforeLeaving(to)))
 
-function leaveWithoutSaving() {
+function leave() {
   leaveOpen.value = false
   if (leavingTo === null) return
-  leaveUnsaved = true
+  leaveAllowed = true
   void router.push(leavingTo.fullPath)
 }
 
+function leaveWithoutSaving() {
+  if (copyKey.value !== null) copies.drop(copyKey.value)
+  leave()
+}
+
+async function saveAndLeave() {
+  leaveOpen.value = false
+  if (await save()) leave()
+}
+
+function warnBeforeUnload(event: BeforeUnloadEvent) {
+  if (dirty.value && writable.value) event.preventDefault()
+}
+window.addEventListener('beforeunload', warnBeforeUnload)
+
 function discardChange() {
-  clearTimeout(autosave)
   heldOpen.value = false
   text.value = saved.value
   saveState.value = 'saved'
-  firstChange = null
   restored.value = { kind: 'none' }
   if (copyKey.value !== null) copies.drop(copyKey.value)
 }
@@ -565,11 +566,6 @@ function restoreOlder() {
   if (restored.value.kind === 'older') text.value = restored.value.markdown
   restored.value = { kind: 'none' }
 }
-
-function saveWhenHidden() {
-  if (document.visibilityState === 'hidden' && dirty.value) void save()
-}
-document.addEventListener('visibilitychange', saveWhenHidden)
 
 async function saveOverReview() {
   overrideReview.value = true
@@ -950,7 +946,7 @@ onBeforeUnmount(() => {
   clearTimeout(validation)
   validations.skip()
   openEntry.value = null
-  document.removeEventListener('visibilitychange', saveWhenHidden)
+  window.removeEventListener('beforeunload', warnBeforeUnload)
 })
 
 const more = computed<DropdownMenuItem[][]>(() => {
@@ -1192,6 +1188,16 @@ const stateLabel = computed(
               :aria-label="m.entry.more"
             />
           </UDropdownMenu>
+          <UTooltip v-if="writable" :text="m.entry.save" :kbds="['meta', 's']">
+            <UButton
+              :label="m.entry.save"
+              color="neutral"
+              variant="outline"
+              :loading="saveState === 'saving'"
+              :disabled="!dirty"
+              @click="save()"
+            />
+          </UTooltip>
           <UButton
             v-if="writable"
             :label="m.entry.publish"
@@ -1637,7 +1643,13 @@ const stateLabel = computed(
       </template>
       <template #footer>
         <UButton :label="m.entry.leaveAnyway" variant="ghost" @click="leaveWithoutSaving" />
-        <UButton :label="m.entry.stay" color="neutral" @click="leaveOpen = false" />
+        <UButton
+          :label="m.entry.keepEditing"
+          color="neutral"
+          variant="outline"
+          @click="leaveOpen = false"
+        />
+        <UButton :label="m.entry.saveAndLeave" @click="saveAndLeave" />
       </template>
     </UModal>
 

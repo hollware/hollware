@@ -380,11 +380,11 @@ export const en = {
     conflictBody:
       'The entry is at a newer version than the one you edited. Copy what you wrote if you need it, then load the newer version.',
     keepEditing: 'Keep editing',
-    leaveTitle: 'Your change is not saved',
+    leaveTitle: 'You have unsaved changes',
     leaveBody:
-      'Hollware could not save what you wrote. Stay and save it again, or leave without it.',
+      'What you wrote since the last save is not in the entry. Save it to keep it in the history, or leave without it.',
     leaveAnyway: 'Leave without saving',
-    stay: 'Stay',
+    saveAndLeave: 'Save and leave',
     loadNewer: 'Load the newer version',
     presence: {
       here: (names: readonly string[]) =>
@@ -1249,7 +1249,7 @@ export const en = {
     previous: 'Previous row',
     select: 'Select the row',
     clear: 'Clear the selection',
-    save: 'Save now',
+    save: 'Save',
     markdown: 'Markdown or visual editing',
     history: 'History',
     properties: 'Properties',
