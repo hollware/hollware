@@ -1,5 +1,21 @@
 # @hollware/admin
 
+## 1.11.0
+
+### Minor Changes
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The visual editor builds pages out of the components a collection declares. A component's props open as a form made from their JSON Schema: a list for an enum, a switch for a boolean, a number field, the image picker for an asset, a text area for long text, with required props checked and defaults shown; numbers and booleans are written as bound props, and a prop the schema does not know stays editable as written. Each component block has a menu, with shortcuts, to duplicate it, move it up or down, delete it, add one more of the items it repeats (a `card` of `capabilities`, from its example) and insert another component inside it, chosen in a large dialog that searches the components by name and description; nested components show inside their parent and move up or down within it from their menu. Inline components such as `:mark[Skyward]{tone="serif"}` show as chips whose text and props open in a popover, and the bubble menu wraps the selected words in a component.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The entry page edits nested frontmatter: an object is a group of fields and a list of objects a list of cards to add, remove and reorder, two levels down and more; a list of choices is a multi-select. A singleton collection opens its one entry, created on first visit, and shows as a page or as settings. A side pane shows the site's page as you write, reloaded after each save, at desktop, tablet or phone width (⌘⇧P), or another translation read only beside the editor (⌘⇧L).
+
+  Opening the side pane closes the properties panel, which comes back with ⌘⇧I. A review and a compared translation show each component of the body as a block with its name, its props and its named slots, instead of nothing.
+
+  The menu of an entry groups what it does: publishing first, then the ways to see it ("Show the draft beside the editor", "Open the draft in a new tab", "Open the published version", "Compare with the es version"), then the tools ("Check for errors", "Change URL"), with each label saying which version it shows.
+
+  The live preview follows the writing as it happens, without saving and without reloading: on a site whose integration answers the pane (`@hollware/nuxt`), the admin sends the page what the unsaved Markdown makes (`POST /v1/admin/preview/document`, read as the site reads it) a moment after each change, and the page takes it in place. On another site, the pane reloads after each save.
+
+- [#122](https://github.com/hollware/hollware/pull/122) [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Two people, or a person and an agent, can work on one entry without losing each other's changes. The admin beats `POST /v1/admin/presence` every 15 seconds while an entry is open (and when its tab comes back), which keeps who has it open (migration `0040_presence.sql`, rows of a person kept 45 seconds, forgotten after two minutes or when they leave) and answers the version and author of its latest revision. The editor shows the others as avatars; when someone saves a newer version, it loads it when nothing is unsaved, and otherwise offers to combine. A save that meets a newer version, by a person or an agent, combines the two by lines against the version that was opened: what does not clash joins on its own, and a clash opens both sides to keep one's own or theirs there.
+
 ## 1.10.1
 
 No changes in this release.

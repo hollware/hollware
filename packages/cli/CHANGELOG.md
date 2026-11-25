@@ -1,5 +1,12 @@
 # hollware
 
+## 1.11.0
+
+### Patch Changes
+
+- Updated dependencies [[`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187), [`6fdadca`](https://github.com/hollware/hollware/commit/6fdadcaa0951a7829b298cb5996a5d37a0221187)]:
+  - @hollware/core@1.11.0
+
 ## 1.10.1
 
 ### Patch Changes
