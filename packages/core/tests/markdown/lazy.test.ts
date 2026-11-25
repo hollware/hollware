@@ -48,6 +48,7 @@ describe('the modules of the Markdown pipeline', () => {
       'comark/plugins/attributes',
       'comark/plugins/task-list',
       'comark/plugins/alert',
+      'comark/plugins/linkify',
     ])
     expect(byFile['render.ts']).toStrictEqual(['@comark/html'])
     expect(byFile['format.ts']).toStrictEqual(['comark/render', 'js-yaml'])

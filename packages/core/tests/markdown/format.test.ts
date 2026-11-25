@@ -50,6 +50,35 @@ describe('the canonical Markdown', () => {
     expect(await canonicalMarkdown(broken)).toBe(broken)
   })
 
+  it('writes the props of a block component inline however many it has, so they read back', async () => {
+    const body =
+      '::hero{visual="mark" background="dark" :columns="2" framed}\n#title\nThe title\n\n  :::callout{type="tip" tone="calm" size="large" :count="3"}\n  Inside\n  :::\n::\n'
+
+    const written = await stringifyBody(await parseForEditing(body))
+    const read = await processMarkdown(written, {
+      ...BLOG_OPTIONS,
+      components: ['hero', 'callout'],
+    })
+
+    expect(written).toBe(body)
+    expect(written).not.toContain('[props]')
+    expect(read.ok && read.value.extracted.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'hero',
+          props: { visual: 'mark', background: 'dark', columns: 2, framed: true },
+        }),
+        expect.objectContaining({
+          name: 'callout',
+          props: { type: 'tip', tone: 'calm', size: 'large', count: 3 },
+        }),
+      ]),
+    )
+    expect(await canonicalMarkdown(`---\ntitle: T\n---\n\n${body}`)).toBe(
+      `---\ntitle: T\n---\n\n${body}`,
+    )
+  })
+
   it('writes a body back from its document, which is how the editor saves', async () => {
     expect(await stringifyBody(await parseForEditing('Some _em_.\n\n* a\n'))).toBe(
       'Some *em*.\n\n- a\n',
@@ -109,8 +138,11 @@ describe('formatting a write', () => {
     expect(tail.processed.ok && tail.processed.value.extracted.disallowed).toEqual([
       { kind: 'disallowed-attribute', name: 'card[junk]', line: 1 },
     ])
-    const braces = 'Text with {braces} and :badge[x]{color="red"}\n'
+    const braces = 'Text and :badge[x]{color="red"} with {braces}\n'
     expect((await formatMarkdown(braces, options)).markdown).toBe(braces)
+    expect((await formatMarkdown('Text with {braces} here\n', options)).markdown).toBe(
+      'Text with \\{braces} here\n',
+    )
     expect((await formatMarkdown('A [l](/x){ target="_blank" } and *b*\n', options)).markdown).toBe(
       'A [l](/x){target="_blank"} and *b*\n',
     )

@@ -29,6 +29,7 @@ export function collectionPreset(
   const translated = locales.length > 1
   const base = {
     routes: routesFor(name, locales, defaultLocale),
+    singleton: false,
     translationGroupField: null,
     tagsField: null,
     sortByField: null,

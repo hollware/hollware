@@ -63,7 +63,7 @@ to leave it out.
 
 ## Previews
 
-"Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`, a
+"Open the draft in a new tab" in the admin opens the entry's page with `?hollware-preview=<token>`, a
 signed link for one entry that works for one hour. The module answers that request with a `303` to
 the same URL without the parameter (other parameters kept) and keeps the token in the
 `hollware_preview` cookie: `HttpOnly`, `SameSite=Lax`, `Path=/`, an hour, and `Secure` on every
@@ -75,12 +75,29 @@ A request with the cookie reads the latest revision of that entry through `useHo
 draft included, and nothing keeps what it answers: no cache tag, `Cache-Control: no-store`, and the
 cache of `hollware.cache` neither serves nor stores it. A token that is expired or not valid is
 refused by Hollware: the page is what it is without a token (a 404 for a draft) and the response
-clears the cookie. A token for another entry is answered as no entry and keeps the cookie. It needs
-the Worker secret `HOLLWARE_SECRET` in Hollware.
+clears the cookie. Any other entry the page reads is answered published, as without a token, so a
+page made of several entries previews the one; the cookie stays. It needs the Worker secret
+`HOLLWARE_SECRET` in Hollware.
 
 The redirect adds `hollware-view=<random>` to the URL: a value of no secret, new for each link, so
 the previewed page is at a URL no cache holds, and Workers Cache in front of the site (`cache:
 'purge'`) cannot answer it with the published page before the Worker reads the cookie.
+
+### The admin's live preview
+
+The admin shows the page next to the editor, in a frame, and reloads it after each saved draft. Its
+link adds `hollware-embed=1`: `?hollware-preview=<token>&hollware-embed=1`. The module renders that
+request in place instead of the `303`: the server-side reads of that request alone carry the token,
+no cookie is set, the token never goes into the page's payload, and the answer is
+`Cache-Control: no-store` and `Referrer-Policy: no-referrer`, with no cache tag, and the cache of
+`hollware.cache` neither serves nor stores it. Reads in the browser after hydration are published.
+
+The site must let the admin frame it. With `hollware.url` set, the module adds
+`Content-Security-Policy: frame-ancestors <origin of hollware.url>` to that answer and drops any
+`X-Frame-Options`. A site that reads over the service binding alone has no Hollware URL in its
+config: it adds `frame-ancestors https://cms.example.com` (the origin of its Hollware) itself, for
+requests with `hollware-embed=1`. A policy of the site's own that sets `frame-ancestors` must allow
+that origin too: browsers apply every policy a page carries.
 
 ## Links
 

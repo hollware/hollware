@@ -13,12 +13,17 @@ import {
 import EntryEditor from '../components/EntryEditor.vue'
 import FrontmatterForm from '../components/FrontmatterForm.vue'
 import MarkdownEditor from '../components/MarkdownEditor.vue'
+import DiffView from '../components/DiffView.vue'
+import PreviewPane from '../components/PreviewPane.vue'
 import RevisionHistory from '../components/RevisionHistory.vue'
 import SourceChanges from '../components/SourceChanges.vue'
+import TranslationPane from '../components/TranslationPane.vue'
 import VerdictList from '../components/VerdictList.vue'
 import { formatDateTime, useMessages } from '../i18n/index.ts'
 import { ApiError, type Output } from '../lib/api.ts'
 import { diagnosticsOf } from '../lib/diagnostics.ts'
+import { mergeText, type Side } from '../lib/merge.ts'
+import { editorName, initialsOf, isNewer, usePresence } from '../lib/presence.ts'
 import type { ComponentDefinition } from '../lib/editor/components.ts'
 import { entryPath, STATUS_COLOR, titleOf } from '../lib/entries.ts'
 import {
@@ -368,7 +373,7 @@ async function persist(): Promise<boolean> {
       }
       case 'conflict':
         saveState.value = 'failed'
-        conflictOpen.value = true
+        void combine()
         return false
       case 'refused':
         saveState.value = 'failed'
@@ -388,6 +393,89 @@ async function persist(): Promise<boolean> {
     report(error, m.value.entry.notSaved)
     return false
   }
+}
+
+const { editors: coEditors, latest } = usePresence(
+  api,
+  computed(() => entry.value?.id ?? null),
+)
+const behind = computed(() => isNewer(latest.value, entry.value?.version ?? null))
+const savedByName = computed(() => {
+  const by = latest.value?.savedBy ?? null
+  return by !== null && by.id === me.value?.user?.id
+    ? m.value.entry.presence.you
+    : editorName(by, m.value.entry.presence.someone)
+})
+const othersLabel = computed(() =>
+  m.value.entry.presence.here(
+    coEditors.value.map((editor) => editorName(editor, m.value.entry.presence.someone)),
+  ),
+)
+watch(behind, (isBehind) => {
+  if (isBehind && !dirty.value && saveState.value === 'saved') void load()
+})
+
+interface Merging {
+  readonly base: string
+  readonly mine: string
+  readonly theirs: string
+  readonly read: Output<'get_entry'>
+}
+const merging = ref<Merging | null>(null)
+const mergingOpen = computed({
+  get: () => merging.value !== null,
+  set: (open: boolean) => {
+    if (!open) merging.value = null
+  },
+})
+const mergedPreview = computed(() =>
+  merging.value === null
+    ? null
+    : mergeText(merging.value.base, merging.value.mine, merging.value.theirs, 'mine'),
+)
+
+function adopt(read: Output<'get_entry'>, markdown: string) {
+  if (read.entry === undefined) return
+  entry.value = read.entry
+  saved.value = read.entry.markdown ?? ''
+  verdict.value = read.entry.verdict
+  text.value = markdown
+}
+
+async function combine() {
+  if (entry.value === null) return
+  let read: Output<'get_entry'>
+  try {
+    read = await api.call('get_entry', { ...ref_.value, formats: ['markdown'] })
+  } catch (error) {
+    report(error, m.value.entry.notSaved)
+    return
+  }
+  if (read.entry === undefined) {
+    conflictOpen.value = true
+    return
+  }
+  const theirs = read.entry.markdown ?? ''
+  const merged = mergeText(saved.value, text.value, theirs, 'mine')
+  if (merged.conflicts > 0) {
+    merging.value = { base: saved.value, mine: text.value, theirs, read }
+    return
+  }
+  adopt(read, merged.text)
+  toast.add({
+    title: m.value.entry.presence.combined(savedByName.value),
+    icon: 'i-lucide-git-merge',
+    color: 'success',
+  })
+  await save()
+}
+
+async function settle(side: Side) {
+  const pending = merging.value
+  if (pending === null) return
+  merging.value = null
+  adopt(pending.read, mergeText(pending.base, pending.mine, pending.theirs, side).text)
+  await save()
 }
 
 function save(): Promise<boolean> {
@@ -795,6 +883,36 @@ function openMarkdown() {
   if (!source.value) toggleSource()
 }
 
+type Pane = 'preview' | 'compare'
+const pane = computed<Pane | null>(() =>
+  route.query['pane'] === 'preview' || route.query['pane'] === 'compare'
+    ? route.query['pane']
+    : null,
+)
+const others = computed(() => translations.value.filter((other) => other.id !== entry.value?.id))
+const compared = computed(
+  () =>
+    others.value.find((other) => other.locale === route.query['with']) ??
+    others.value.find((other) => other.locale === site.value?.defaultLocale) ??
+    others.value[0] ??
+    null,
+)
+
+function setPane(next: Pane | null, other?: string) {
+  const query = { ...route.query }
+  delete query['pane']
+  delete query['with']
+  if (next !== null) query['pane'] = next
+  if (next !== null && !narrow.value) query['panel'] = 'none'
+  if (other !== undefined) query['with'] = other
+  void router.replace({ query })
+}
+
+function togglePane(next: Pane, other?: string) {
+  const same = pane.value === next && (other === undefined || compared.value?.locale === other)
+  setPane(same ? null : next, same ? undefined : other)
+}
+
 function showPanel(next: 'properties' | 'history') {
   const closing = panelOpen.value && panel.value === next
   if (narrow.value) setQuery('panel', closing ? null : next)
@@ -806,6 +924,8 @@ defineShortcuts({
   meta_shift_m: { usingInput: true, handler: toggleSource },
   meta_shift_i: { usingInput: true, handler: () => showPanel('properties') },
   meta_shift_h: { usingInput: true, handler: () => showPanel('history') },
+  meta_shift_p: { usingInput: true, handler: () => togglePane('preview') },
+  meta_shift_l: { usingInput: true, handler: () => togglePane('compare') },
 })
 
 watchEffect(() => {
@@ -823,6 +943,7 @@ watchEffect(() => {
           schedule: () => void openSchedule('publish'),
           toggleSource,
           preview: () => void previewOnSite(),
+          livePreview: () => togglePane('preview'),
         }
 })
 onBeforeUnmount(() => {
@@ -840,7 +961,7 @@ const more = computed<DropdownMenuItem[][]>(() => {
       ...(current.status === 'draft'
         ? [
             {
-              label: m.value.entry.schedule,
+              label: m.value.entry.schedulePublishing,
               icon: 'i-lucide-calendar-clock',
               onSelect: () => void openSchedule('publish'),
             },
@@ -849,7 +970,7 @@ const more = computed<DropdownMenuItem[][]>(() => {
       ...(current.status === 'published' && current.unpublishAt === null
         ? [
             {
-              label: m.value.entry.unpublishLater,
+              label: m.value.entry.scheduleUnpublishing,
               icon: 'i-lucide-calendar-x',
               onSelect: () => void openSchedule('unpublish'),
             },
@@ -860,7 +981,7 @@ const more = computed<DropdownMenuItem[][]>(() => {
             {
               label:
                 current.status === 'scheduled'
-                  ? m.value.entry.cancelSchedule
+                  ? m.value.entry.cancelScheduled
                   : m.value.entry.unpublish,
               icon: 'i-lucide-eye-off',
               onSelect: () => {
@@ -871,6 +992,52 @@ const more = computed<DropdownMenuItem[][]>(() => {
         : []),
     ],
     [
+      {
+        label: m.value.entry.previewBeside,
+        icon: 'i-lucide-columns-2',
+        kbds: ['meta', 'shift', 'p'],
+        type: 'checkbox' as const,
+        checked: pane.value === 'preview',
+        onSelect: () => togglePane('preview'),
+      },
+      {
+        label: m.value.entry.previewOnSite,
+        icon: 'i-lucide-eye',
+        disabled: !canPreviewOnSite.value,
+        onSelect: () => void previewOnSite(),
+      },
+      ...(liveUrl.value !== null
+        ? [
+            {
+              label: m.value.entry.viewOnSite,
+              icon: 'i-lucide-external-link',
+              to: liveUrl.value,
+              target: '_blank',
+            },
+          ]
+        : []),
+      ...others.value.map((other, index) => ({
+        label: m.value.entry.compareWith(other.locale),
+        icon: 'i-lucide-languages',
+        ...(index === 0 ? { kbds: ['meta', 'shift', 'l'] } : {}),
+        type: 'checkbox' as const,
+        checked: pane.value === 'compare' && compared.value?.locale === other.locale,
+        onSelect: () => togglePane('compare', other.locale),
+      })),
+    ],
+    [
+      {
+        label: source.value ? m.value.entry.editVisually : m.value.entry.viewMarkdown,
+        icon: source.value ? 'i-lucide-pen-line' : 'i-lucide-code',
+        kbds: ['meta', 'shift', 'm'],
+        disabled: lossy.value,
+        onSelect: toggleSource,
+      },
+      {
+        label: m.value.entry.validate,
+        icon: 'i-lucide-list-checks',
+        onSelect: () => void check(),
+      },
       {
         label: m.value.entry.changeUrl,
         icon: 'i-lucide-link',
@@ -888,34 +1055,6 @@ const more = computed<DropdownMenuItem[][]>(() => {
             },
           ]
         : []),
-      {
-        label: m.value.entry.previewOnSite,
-        icon: 'i-lucide-eye',
-        disabled: !canPreviewOnSite.value,
-        onSelect: () => void previewOnSite(),
-      },
-      ...(liveUrl.value !== null
-        ? [
-            {
-              label: m.value.entry.viewOnSite,
-              icon: 'i-lucide-external-link',
-              to: liveUrl.value,
-              target: '_blank',
-            },
-          ]
-        : []),
-      {
-        label: m.value.entry.validate,
-        icon: 'i-lucide-list-checks',
-        onSelect: () => void check(),
-      },
-      {
-        label: source.value ? m.value.entry.editVisually : m.value.entry.viewMarkdown,
-        icon: source.value ? 'i-lucide-pen-line' : 'i-lucide-code',
-        kbds: ['meta', 'shift', 'm'],
-        disabled: lossy.value,
-        onSelect: toggleSource,
-      },
     ],
     ...(current.status === 'draft'
       ? [
@@ -951,7 +1090,7 @@ const stateLabel = computed(
     role="main"
     tabindex="-1"
     class="focus:outline-none"
-    :class="entry !== null && panelOpen ? 'max-sm:hidden' : undefined"
+    :class="entry !== null && (panelOpen || pane !== null) ? 'max-sm:hidden' : undefined"
     :ui="{ body: 'p-0 sm:p-0' }"
   >
     <template #header>
@@ -963,7 +1102,8 @@ const stateLabel = computed(
           <UDashboardSidebarCollapse />
           <nav
             :aria-label="m.nav.breadcrumb"
-            class="flex min-w-0 items-center gap-1 text-sm text-muted max-sm:hidden"
+            class="flex min-w-0 items-center gap-1 overflow-hidden text-sm text-muted max-sm:hidden"
+            :class="pane !== null ? 'hidden' : undefined"
           >
             <ULink to="/entries" class="hover:text-highlighted">{{ m.nav.entries }}</ULink>
             <UIcon name="i-lucide-chevron-right" class="size-3.5 shrink-0 text-dimmed" />
@@ -1009,6 +1149,17 @@ const stateLabel = computed(
             />
             {{ stateLabel }}
           </span>
+          <UTooltip v-if="coEditors.length > 0" :text="othersLabel">
+            <UAvatarGroup size="2xs" :max="3" :aria-label="othersLabel">
+              <UAvatar
+                v-for="editor in coEditors"
+                :key="editor.id"
+                :text="initialsOf(editor)"
+                :icon="editor.kind === 'agent' ? 'i-lucide-bot' : undefined"
+                :alt="editorName(editor, m.entry.presence.someone)"
+              />
+            </UAvatarGroup>
+          </UTooltip>
           <UTooltip
             :text="source ? m.entry.editVisually : m.entry.viewMarkdown"
             :kbds="['meta', 'shift', 'm']"
@@ -1087,6 +1238,16 @@ const stateLabel = computed(
           ]"
         />
         <UAlert
+          v-if="behind && dirty"
+          :title="m.entry.presence.newerTitle(savedByName)"
+          :description="m.entry.presence.newerBody"
+          icon="i-lucide-users"
+          color="info"
+          variant="subtle"
+          class="mb-6 ms-16"
+          :actions="[{ label: m.entry.presence.combine, variant: 'outline', onClick: combine }]"
+        />
+        <UAlert
           v-if="!writable"
           :title="m.entry.readOnly"
           icon="i-lucide-eye"
@@ -1137,6 +1298,80 @@ const stateLabel = computed(
         </div>
       </div>
       <p v-else class="p-8 text-muted">{{ m.common.loading }}</p>
+    </template>
+  </UDashboardPanel>
+
+  <UDashboardPanel
+    v-if="entry !== null && pane !== null"
+    id="entry-pane"
+    role="complementary"
+    :aria-label="m.pane.label"
+    :default-size="40"
+    :min-size="25"
+    :max-size="60"
+    resizable
+    class="border-l border-default"
+    :ui="{ body: 'p-0 sm:p-0 gap-0' }"
+  >
+    <template #header>
+      <UDashboardNavbar :ui="{ title: 'text-sm' }">
+        <template #title>
+          <UTabs
+            :model-value="pane"
+            :items="[
+              { label: m.pane.preview, value: 'preview' },
+              ...(compared === null ? [] : [{ label: m.pane.compareShort, value: 'compare' }]),
+            ]"
+            :content="false"
+            variant="link"
+            size="sm"
+            @update:model-value="
+              (value) =>
+                setPane(
+                  value === 'compare' ? 'compare' : 'preview',
+                  value === 'compare' ? compared?.locale : undefined,
+                )
+            "
+          />
+        </template>
+        <template #right>
+          <USelect
+            v-if="pane === 'compare' && others.length > 1"
+            :model-value="compared?.locale"
+            :items="others.map((other) => other.locale)"
+            :aria-label="m.pane.compareShort"
+            size="xs"
+            class="w-20"
+            @update:model-value="(value) => setPane('compare', String(value))"
+          />
+          <UTooltip :text="m.pane.close">
+            <UButton
+              icon="i-lucide-x"
+              color="neutral"
+              variant="ghost"
+              :aria-label="m.pane.close"
+              @click="setPane(null)"
+            />
+          </UTooltip>
+        </template>
+      </UDashboardNavbar>
+    </template>
+    <template #body>
+      <PreviewPane
+        v-if="pane === 'preview'"
+        :entry-id="entry.id"
+        :version="entry.version"
+        :title="titleOf(entry)"
+        :markdown="text"
+      />
+      <TranslationPane
+        v-else-if="compared !== null"
+        :key="compared.id"
+        :collection="compared.collection"
+        :locale="compared.locale"
+        :slug="compared.slug"
+      />
+      <p v-else class="p-6 text-sm text-muted">{{ m.pane.noTranslation }}</p>
     </template>
   </UDashboardPanel>
 
@@ -1403,6 +1638,33 @@ const stateLabel = computed(
       <template #footer>
         <UButton :label="m.entry.leaveAnyway" variant="ghost" @click="leaveWithoutSaving" />
         <UButton :label="m.entry.stay" color="neutral" @click="leaveOpen = false" />
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="mergingOpen"
+      :title="m.entry.merge.title(savedByName)"
+      :description="m.entry.merge.body(mergedPreview?.conflicts ?? 0)"
+      :ui="{ content: 'max-w-5xl' }"
+    >
+      <template #body>
+        <DiffView
+          v-if="merging !== null && mergedPreview !== null"
+          :original="merging.theirs"
+          :modified="mergedPreview.text"
+          :original-label="m.entry.merge.theirsLabel(savedByName)"
+          :modified-label="m.entry.merge.mineLabel"
+        />
+      </template>
+      <template #footer>
+        <UButton :label="m.common.cancel" variant="ghost" @click="mergingOpen = false" />
+        <UButton
+          :label="m.entry.merge.keepTheirs"
+          color="neutral"
+          variant="outline"
+          @click="settle('theirs')"
+        />
+        <UButton :label="m.entry.merge.keepMine" @click="settle('mine')" />
       </template>
     </UModal>
 

@@ -328,6 +328,8 @@ export interface StoredSchedule {
   readonly scheduledAt: string
   /** The version the entry had once scheduled; another one means it changed since. */
   readonly version: number
+  /** The schedules of a group published together share it; `null` for an entry alone. */
+  readonly group: string | null
   readonly acknowledged: readonly AcknowledgedWarning[]
   readonly actor: Actor
 }
@@ -573,6 +575,25 @@ export interface ContentStore {
       readonly actor: Actor
     },
   ): Promise<{ readonly outcome: 'scheduled'; readonly view: EntryView } | WriteRefusal>
+  /**
+   * Schedules the publication of a group at one time, all of them or none: each entry, still at
+   * its `expectedVersion` and not published, becomes `scheduled` at the next version, and their
+   * schedules share a group, which the cron trigger publishes in one step.
+   */
+  scheduleGroup(
+    site: string,
+    write: {
+      readonly members: readonly { readonly entryId: string; readonly expectedVersion: number }[]
+      readonly scheduledAt: string
+      readonly acknowledged: readonly AcknowledgedWarning[]
+      readonly actor: Actor
+    },
+  ): Promise<
+    | { readonly outcome: 'scheduled'; readonly views: readonly EntryView[] }
+    | (WriteRefusal & { readonly entryId: string })
+  >
+  /** The schedules of a group, the first scheduled first. */
+  groupSchedules(site: string, group: string): Promise<readonly StoredSchedule[]>
   /** The schedules whose time has come, at most 50, oldest first. */
   dueSchedules(site: string, now: string): Promise<readonly StoredSchedule[]>
   /** Takes a scheduled entry back to a draft and drops its schedule. */

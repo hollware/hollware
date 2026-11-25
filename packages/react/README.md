@@ -99,14 +99,20 @@ Markdown parser: the document is already parsed.
 
 ## Previews
 
-"Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`: a signed
+"Open the draft in a new tab" in the admin opens the entry's page with `?hollware-preview=<token>`: a signed
 link for one entry, valid for one hour. `previewRedirect` answers it with a `303` to the same URL
 without the parameter and the token in the `hollware_preview` cookie (`HttpOnly`, `SameSite=Lax`,
 an hour, `Secure` but on `http://localhost`). `getEntry({ request })` then reads the latest revision
 of that entry, a draft included, and the answer has `preview: true`: the page must not be kept, so
 send it `previewHeaders(request)`. A token that is expired or not valid is an error from `getEntry`,
-never the published version; `previewHeaders(request, error)` clears the cookie for it. A token for
-another entry is answered as no entry.
+never the published version; `previewHeaders(request, error)` clears the cookie for it. Any other
+entry read with the token is answered published, so a page made of several entries previews the one.
+
+The admin's live preview frames the page with `?hollware-preview=<token>&hollware-embed=1`:
+`previewRedirect` lets it through, `getEntry({ request })` reads that token from the URL for that
+request alone, and `previewHeaders(request)` answers it `no-store` and `Referrer-Policy:
+no-referrer`. The site must let the admin's origin frame it (`Content-Security-Policy:
+frame-ancestors`).
 
 There is no hook for the browser: it would need a read token there and CORS on Hollware, and
 published content is already in the page the server sent.

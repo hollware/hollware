@@ -63,6 +63,8 @@ export interface SourceEntry {
 export interface Translation {
   readonly locale: string
   readonly slug: string
+  /** Its public path, for an hreflang link; `null` when the collection has no route there. */
+  readonly path: string | null
 }
 
 /** What a listing narrows to. */
@@ -149,7 +151,11 @@ export function createSource(options: SourceOptions & ReaderOptions): Source {
     },
     async translations(group) {
       const answer = await readerOf(options).getTranslations(site, collection, group)
-      return (answer.entries ?? []).map((entry) => ({ locale: entry.locale, slug: entry.slug }))
+      return (answer.entries ?? []).map((entry) => ({
+        locale: entry.locale,
+        slug: entry.slug,
+        path: entry.path ?? null,
+      }))
     },
     async navigation() {
       const answer = await readerOf(options).getNavigation(site, collection, { locale })

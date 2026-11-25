@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { propEntries, propsFrom } from '../app/lib/editor/components.ts'
 import { groupRows, matches, nextIndex, toggled, visibleRows } from '../app/lib/entry-list.ts'
 
 const row = (
@@ -50,33 +49,5 @@ describe('the list of entries', () => {
     expect(matches(entry, 'cloud')).toBe(true)
     expect(matches(entry, 'workers')).toBe(false)
     expect(matches(entry, '  ')).toBe(true)
-  })
-})
-
-describe('the props of a component in the editor', () => {
-  const schema = {
-    type: 'object',
-    properties: {
-      type: { type: 'string', description: 'The tone of it' },
-      count: { type: 'integer' },
-    },
-  }
-
-  it('lists what is given and what the collection allows, typed props written with a colon', () => {
-    expect(propEntries({ type: 'tip', extra: 'x' }, schema)).toEqual([
-      { key: 'type', label: 'type', description: 'The tone of it', value: 'tip' },
-      { key: 'extra', label: 'extra', description: null, value: 'x' },
-      { key: ':count', label: 'count', description: null, value: '' },
-    ])
-  })
-
-  it('keeps the props that have a value, and none when every one is empty', () => {
-    expect(
-      propsFrom([
-        { key: 'type', label: 'type', description: null, value: 'tip' },
-        { key: ':count', label: 'count', description: null, value: ' ' },
-      ]),
-    ).toEqual({ type: 'tip' })
-    expect(propsFrom([{ key: 'type', label: 'type', description: null, value: '' }])).toBeNull()
   })
 })

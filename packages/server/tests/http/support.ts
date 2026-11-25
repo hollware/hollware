@@ -71,6 +71,9 @@ export function fakeContext() {
     props: {},
     tracing,
     abort: () => {},
+    mapVirtualHost: () => {
+      throw new Error('no test maps a virtual host')
+    },
   }
   return { ctx, waited }
 }

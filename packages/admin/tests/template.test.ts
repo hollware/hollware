@@ -45,3 +45,20 @@ it('names the group of the entry a translation translates', () => {
     }),
   ).toBe('---\ntitle: "Hola"\ngroup: "hello"\n---\n\n')
 })
+
+it('writes no title when the collection has none and none is given, and an object as empty', () => {
+  const schema = {
+    type: 'object',
+    properties: { footer: { type: 'object' } },
+    required: ['footer'],
+  }
+
+  expect(
+    newEntryMarkdown(schema, {
+      title: '',
+      slug: 'settings',
+      today: '2026-11-25',
+      translationGroupField: null,
+    }),
+  ).toBe('---\nfooter: {}\n---\n\n')
+})

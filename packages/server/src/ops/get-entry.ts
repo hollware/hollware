@@ -17,6 +17,14 @@ export const getEntry: OperationHandler<'get_entry'> = async (input, context) =>
     input.published ? 'published' : context.view,
   )
   if (found === null) return { outcome: 'not_found' }
+  return entryAnswer(input, context, found)
+}
+
+export async function entryAnswer(
+  input: Parameters<OperationHandler<'get_entry'>>[0],
+  context: OperationContext,
+  found: EntryView,
+): ReturnType<OperationHandler<'get_entry'>> {
   const { entry, revision } = found
   const [publication, unpublishAt, outdated] = await Promise.all([
     context.store.lastPublication(context.site.key, entry.id),

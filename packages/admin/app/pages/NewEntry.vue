@@ -8,6 +8,8 @@ import { ApiError, type Output } from '../lib/api.ts'
 import { useMessages } from '../i18n/index.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
+import { entryPath } from '../lib/entries.ts'
+import { kindOf } from '../lib/singleton.ts'
 import { newEntryMarkdown } from '../lib/template.ts'
 
 const m = useMessages()
@@ -45,6 +47,23 @@ watch(
         : described.defaultLocale
   },
   { immediate: true },
+)
+
+const chosen = computed(() => site.value?.collections.find((c) => c.name === collection.value))
+const singleton = computed(() => chosen.value !== undefined && kindOf(chosen.value) !== 'list')
+watch(
+  () => (singleton.value ? collection.value : null),
+  (name) => {
+    if (name !== null) slug.value = name
+  },
+  { immediate: true },
+)
+const existingQuery = useQuery(() => ({
+  ...operation('list_entries', { collection: collection.value, locale: locale.value, limit: 1 }),
+  enabled: singleton.value && locale.value !== '',
+}))
+const existing = computed(() =>
+  singleton.value ? (existingQuery.data.value?.entries[0] ?? null) : null,
 )
 
 const validSlug = computed(() => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.value))
@@ -88,14 +107,16 @@ async function create() {
 
 <template>
   <Page :title="group === undefined ? m.newEntry.title : m.newEntry.translation">
-    <form v-if="site !== null" class="max-w-lg space-y-4" @submit.prevent="create">
+    <form
+      v-if="site !== null"
+      class="max-w-lg space-y-4"
+      @submit.prevent="existing === null && create()"
+    >
       <p v-if="group !== undefined" class="text-sm text-muted">
-        {{ m.newEntry.joins }}<span class="font-mono">{{ group }}</span
-        >.
+        {{ m.newEntry.joins }}<span class="font-mono">{{ group }}</span>.
       </p>
       <p v-if="parent !== undefined" class="text-sm text-muted">
-        {{ m.newEntry.inside }}<span class="font-mono">{{ parent }}</span
-        >.
+        {{ m.newEntry.inside }}<span class="font-mono">{{ parent }}</span>.
       </p>
       <UFormField :label="m.newEntry.collection">
         <USelect v-model="collection" :items="site.collections.map((c) => c.name)" class="w-full" />
@@ -111,9 +132,23 @@ async function create() {
         :help="m.newEntry.slugHelp"
         :error="slug !== '' && !validSlug ? m.newEntry.notSlug : undefined"
       >
-        <UInput v-model="slug" class="w-full" required />
+        <UInput v-model="slug" class="w-full" required :readonly="singleton" />
       </UFormField>
-      <UButton type="submit" :label="m.newEntry.create" :loading="saving" :disabled="!validSlug" />
+      <UAlert
+        v-if="existing !== null"
+        color="neutral"
+        variant="subtle"
+        icon="i-lucide-file-check"
+        :title="m.singleton.exists(locale)"
+        :actions="[{ label: m.singleton.openIt, variant: 'outline', to: entryPath(existing) }]"
+      />
+      <UButton
+        v-else
+        type="submit"
+        :label="m.newEntry.create"
+        :loading="saving"
+        :disabled="!validSlug"
+      />
       <UAlert
         v-if="failure !== null"
         color="error"

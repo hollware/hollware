@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { boot, PUBLIC_URL } from './support.ts'
+import { adminPolicy } from '../../src/http/admin.ts'
+import { boot, CONFIG, PUBLIC_URL } from './support.ts'
 
 const PAGE = '<!doctype html><title>Hollware</title><div id="app"></div>'
 
@@ -42,7 +43,7 @@ describe('the admin', () => {
       expect(await response.text()).toBe(PAGE)
       expect(Object.fromEntries(response.headers)).toMatchObject({
         'content-security-policy':
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; font-src 'self' data:; frame-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
         'cross-origin-opener-policy': 'same-origin',
         'cross-origin-resource-policy': 'same-origin',
         'permissions-policy':
@@ -53,6 +54,37 @@ describe('the admin', () => {
       })
     }
     expect(asked).toEqual(['/admin/', '/admin/'])
+  })
+
+  it('lets its page frame the origin of every site with a URL, for the live preview', async () => {
+    const [key, site] = Object.entries(CONFIG.sites ?? {})[0] ?? []
+    if (key === undefined || site === undefined) throw new Error('no site in CONFIG')
+    const { fetcher } = assets()
+    const worker = boot({
+      assets: fetcher,
+      config: { ...CONFIG, sites: { [key]: { ...site, url: 'https://www.example.com' } } },
+    })
+
+    const page = await worker.send('/admin/')
+
+    expect(page.headers.get('content-security-policy')).toContain(
+      "frame-src 'self' https://www.example.com; base-uri 'none'",
+    )
+  })
+
+  it('names each origin once, sorted, keeps http://localhost as it is, and skips a site without a URL', () => {
+    expect(
+      adminPolicy([
+        'https://b.example.com/x',
+        null,
+        'http://localhost:3000/',
+        'https://b.example.com',
+        'not a url',
+        'https://a.example.com',
+      ]),
+    ).toContain(
+      "frame-src 'self' http://localhost:3000 https://a.example.com https://b.example.com;",
+    )
   })
 
   it('lives at the root of its origin with path /, and sends /admin there', async () => {

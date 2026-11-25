@@ -80,7 +80,7 @@ reaches the browser.
 
 ## Previews
 
-"Preview on the site" in the admin opens the entry's page with `?hollware-preview=<token>`: a
+"Open the draft in a new tab" in the admin opens the entry's page with `?hollware-preview=<token>`: a
 signed link for one entry, valid for one hour. `hollwarePreview()`, a middleware, exchanges the link
 for a cookie: a `303` to the same URL without the parameter (other parameters kept), with the token
 in `hollware_preview` (`HttpOnly`, `SameSite=Lax`, `Path=/`, an hour, and `Secure` on every request
@@ -119,7 +119,11 @@ if (error) refusePreview(Astro.locals, error)
 
 A token that is expired, forged or for another entry is an `error`, never the published version.
 `refusePreview` makes the response clear the cookie when Hollware says the token expired or is not
-valid; a token for another entry is answered as no entry and keeps it.
+valid; any other entry read with the token is answered published, and the cookie stays. The admin's
+live preview, `?hollware-preview=<token>&hollware-embed=1`, is rendered in place: the token is on
+`Astro.locals.hollwarePreview` for that request only, with no cookie, `no-store` and
+`Referrer-Policy: no-referrer`; the site must let the admin's origin frame it
+(`Content-Security-Policy: frame-ancestors`).
 The build-time `hollwareLoader` has no preview: a static page is built once, for everyone, so it
 only ever holds published content.
 

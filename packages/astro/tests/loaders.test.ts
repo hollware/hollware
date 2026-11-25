@@ -25,6 +25,7 @@ function post(slug: string, title: string): Published {
     slug,
     parent: null,
     slugPath: slug,
+    path: `/blog/${slug}/`,
     position: null,
     translationGroup: null,
     status: 'published',
@@ -372,8 +373,8 @@ describe('hollwareTranslations', () => {
     const found = await hollwareTranslations({ ...base, reader }, 'greeting')
 
     expect(found).toEqual([
-      { locale: 'en', slug: 'hello' },
-      { locale: 'es', slug: 'hola' },
+      { locale: 'en', slug: 'hello', path: '/blog/hello/' },
+      { locale: 'es', slug: 'hola', path: '/blog/hola/' },
     ])
     expect(calls).toEqual(['translations playground blog greeting'])
   })

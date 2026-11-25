@@ -37,5 +37,7 @@
   "0035_upload_claims.sql": "44e71195a421eb76209031a3698b248bac1d411cb13da1c2dd62f14fcb86436b",
   "0036_entry_tree.sql": "b202ae5a518d096433f7f13fdfecf6a3b32a144969d1271b9edcc2b7be37d509",
   "0037_content_version.sql": "46387cfccbbb8840cfa059e30aba27f4d3df4ec95e2ddda005a54909e3efa56a",
-  "0038_content_version_triggers.sql": "90f71fcc8027ffd8ded648b404d1379965dd556ae862f7b3b298f9636542344e"
+  "0038_content_version_triggers.sql": "90f71fcc8027ffd8ded648b404d1379965dd556ae862f7b3b298f9636542344e",
+  "0039_schedule_groups.sql": "903be132c9136a2bd2b1a2a41c9eaaa078b8fa763d9f030a334b1667b937df6b",
+  "0040_presence.sql": "ffb8d8cb9c3d5de6f6e5730723a45df7685f16ebf620cc47edbd786301e6fa19"
 }

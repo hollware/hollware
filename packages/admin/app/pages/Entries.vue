@@ -17,6 +17,7 @@ import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import type { MoveTarget } from '../lib/entry-tree.ts'
 import { pageUrl } from '../lib/site.ts'
+import { kindOf, openSingleton } from '../lib/singleton.ts'
 
 type Entry = Output<'list_entries'>['entries'][number]
 type Status = Entry['status']
@@ -139,6 +140,36 @@ function liveUrl(entry: Entry): string | null {
 }
 
 const toast = useToast()
+const singleton = computed(() =>
+  definition.value === undefined ? false : kindOf(definition.value) !== 'list',
+)
+let opening = false
+watch(
+  [definition, locale, status],
+  async () => {
+    const current = definition.value
+    if (current === undefined || !singleton.value || status.value === TRASH || opening) return
+    opening = true
+    try {
+      const target = await openSingleton(
+        api,
+        current,
+        locale.value === ALL ? (site.value?.defaultLocale ?? '') : locale.value,
+        new Date().toISOString().slice(0, 10),
+      )
+      if (target.kind === 'open') await router.replace(target.to)
+      else if (target.kind === 'new')
+        await router.replace({ path: '/entries/new', query: target.query })
+      else status.value = TRASH
+    } catch (error) {
+      toast.add({ title: m.value.singleton.notOpened, description: String(error), color: 'error' })
+    } finally {
+      opening = false
+    }
+  },
+  { immediate: true },
+)
+
 const maxDepth = computed(() => definition.value?.nesting?.maxDepth ?? null)
 const treeLocale = computed(() =>
   locale.value === ALL ? (site.value?.defaultLocale ?? '') : locale.value,
@@ -328,6 +359,7 @@ const locales = computed(() => [
   <Page :title="m.entries.title" flush>
     <template #actions>
       <UButton
+        v-if="!singleton"
         :label="m.entries.newEntry"
         icon="i-lucide-plus"
         size="sm"

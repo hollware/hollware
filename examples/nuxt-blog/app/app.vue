@@ -24,12 +24,7 @@
 html {
   background: var(--ground);
   color: var(--text);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.65;
 }
 body {

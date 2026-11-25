@@ -34,6 +34,7 @@ function collectionOf(
   return {
     schema: toJsonSchema(collection.schema),
     routes: { ...collection.routes },
+    ...(collection.singleton === true ? { singleton: true } : {}),
     translationGroupField: collection.translations?.groupBy ?? null,
     tagsField: collection.tags ?? null,
     sortByField: collection.sortBy ?? null,

@@ -83,6 +83,7 @@ export function collectionOf(parts: CollectionParts = {}): ResolvedCollection {
     name: 'blog',
     schema: parts.schema ?? blogSchema,
     routes: { es: '/blog/:slug/', en: '/en/blog/:slug/' },
+    singleton: false,
     translationGroupField: parts.translationGroupField ?? null,
     tagsField: 'tags',
     sortByField: null,

@@ -164,14 +164,15 @@ describe('a React Router site with @hollware/react', () => {
     ])
   })
 
-  it('never answers the published version in place of a token that does not hold', async () => {
+  it('answers another entry with its published version for the token of a draft, and keeps nothing', async () => {
     const path = '/blog/from-draft-to-published'
     const token = await previewTokenFor(draftId)
 
     const answer = await reactRouterFetch(server, path, cookie(token))
 
-    expect(answer.status).toBe(404)
-    expect(await answer.text()).not.toContain('From draft to published')
+    expect(answer.status).toBe(200)
+    expect(await answer.text()).toContain('From draft to published')
+    expect(answer.headers.get('cache-control')).toBe('no-store')
   })
 
   it('keeps Hollware’s server helpers out of the browser bundle', () => {

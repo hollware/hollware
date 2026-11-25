@@ -23,6 +23,7 @@ export {
 } from '@hollware/core'
 export {
   clearedPreviewCookie,
+  embeddedPreviewToken,
   exchangeHeaders,
   exchangePreviewLink,
   isPreviewRefusal,
@@ -110,8 +111,10 @@ export interface HollwareReader {
       /**
        * A preview token (`hw_prv_…`, made in the admin, or the `hollware-preview` of a page's
        * URL): the entry it names is read in its latest revision, a draft included, and the answer
-       * must never be cached. A token that does not hold is an `invalid_preview` error (a
-       * `HollwareClientError` over HTTP), never the published version in its place.
+       * must never be cached; any other entry is read published, as without a token, so a page
+       * that reads several entries previews the one. A token that does not hold is an
+       * `invalid_preview` error (a `HollwareClientError` over HTTP), never the published version
+       * in its place.
        */
       readonly preview?: string
     },

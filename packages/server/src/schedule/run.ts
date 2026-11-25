@@ -45,69 +45,79 @@ export async function runDueSchedules(input: {
   const due = await store.dueSchedules(site.key, clock.now().toISOString())
   let published = 0
   let cancelled = 0
+  const groups = new Set<string>()
   for (const schedule of due) {
+    if (schedule.group !== null) {
+      if (groups.has(schedule.group)) continue
+      groups.add(schedule.group)
+    }
+    const members =
+      schedule.group === null ? [schedule] : await store.groupSchedules(site.key, schedule.group)
+    const [main = schedule, ...rest] = members
     const requestId = `cron_${crypto.randomUUID()}`
-    const scopes = await input.scopesOf(schedule.actor)
+    const scopes = await input.scopesOf(main.actor)
+    const audit = async (outcome: 'ok' | 'failed' | 'denied', errorCode: string | null) => {
+      for (const member of members) {
+        await input.audit?.(systemActor(member.actor.userId), requestId).write(site, {
+          action: 'schedule.publish',
+          outcome,
+          errorCode,
+          target: { type: 'entry', id: member.entryId },
+          detail: {
+            scheduledAt: member.scheduledAt,
+            scheduledBy: { kind: member.actor.kind, tokenId: member.actor.tokenId },
+          },
+        })
+      }
+    }
+    const cancel = async () => {
+      for (const member of members) await store.cancelSchedule(site.key, member.entryId)
+    }
     if (!scopes.includes('content:publish')) {
-      await store.cancelSchedule(site.key, schedule.entryId)
-      cancelled += 1
-      await input.audit?.(systemActor(schedule.actor.userId), requestId).write(site, {
-        action: 'schedule.publish',
-        outcome: 'denied',
-        errorCode: 'insufficient_scope',
-        target: { type: 'entry', id: schedule.entryId },
-        detail: {
-          scheduledAt: schedule.scheduledAt,
-          scheduledBy: { kind: schedule.actor.kind, tokenId: schedule.actor.tokenId },
-        },
-      })
+      await cancel()
+      cancelled += members.length
+      await audit('denied', 'insufficient_scope')
       log({
         kind: 'schedule',
         requestId,
-        entryId: schedule.entryId,
-        scheduledAt: schedule.scheduledAt,
+        entryId: main.entryId,
+        scheduledAt: main.scheduledAt,
         outcome: 'insufficient_scope',
       })
       continue
     }
     const answer = await handlers.publish(
       {
-        id: schedule.entryId,
-        version: schedule.version,
-        acknowledgeWarnings: [...schedule.acknowledged],
-        group: [],
+        id: main.entryId,
+        version: main.version,
+        acknowledgeWarnings: members.flatMap((member) => member.acknowledged),
+        group: rest.map((member) => ({ id: member.entryId, version: member.version })),
       },
       {
         site,
-        principal: principalOf(schedule.actor, site.key, scopes),
+        principal: principalOf(main.actor, site.key, scopes),
         view: 'head',
         store,
         clock,
-        client: schedule.actor.meta,
+        client: main.actor.meta,
         requestId,
       },
     )
     if (answer.outcome === 'published') {
-      published += 1
+      published += members.length
     } else {
-      await store.cancelSchedule(site.key, schedule.entryId)
-      cancelled += 1
+      await cancel()
+      cancelled += members.length
     }
-    await input.audit?.(systemActor(schedule.actor.userId), requestId).write(site, {
-      action: 'schedule.publish',
-      outcome: answer.outcome === 'published' ? 'ok' : 'failed',
-      errorCode: answer.outcome === 'published' ? null : answer.outcome,
-      target: { type: 'entry', id: schedule.entryId },
-      detail: {
-        scheduledAt: schedule.scheduledAt,
-        scheduledBy: { kind: schedule.actor.kind, tokenId: schedule.actor.tokenId },
-      },
-    })
+    await audit(
+      answer.outcome === 'published' ? 'ok' : 'failed',
+      answer.outcome === 'published' ? null : answer.outcome,
+    )
     log({
       kind: 'schedule',
       requestId,
-      entryId: schedule.entryId,
-      scheduledAt: schedule.scheduledAt,
+      entryId: main.entryId,
+      scheduledAt: main.scheduledAt,
       outcome: answer.outcome,
     })
   }

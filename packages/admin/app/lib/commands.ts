@@ -31,6 +31,7 @@ export interface EntryCommands {
   readonly schedule: () => void
   readonly toggleSource: () => void
   readonly preview: () => void
+  readonly livePreview: () => void
 }
 
 interface Found {
@@ -78,7 +79,13 @@ export function entryCommands(entry: EntryCommands, m: Messages): Command[] {
       ? [{ label: m.entry.publish, icon: 'i-lucide-send', onSelect: entry.publish }]
       : []),
     ...(entry.status === 'draft'
-      ? [{ label: m.entry.schedule, icon: 'i-lucide-calendar-clock', onSelect: entry.schedule }]
+      ? [
+          {
+            label: m.entry.schedulePublishing,
+            icon: 'i-lucide-calendar-clock',
+            onSelect: entry.schedule,
+          },
+        ]
       : []),
     ...(entry.lossy
       ? []
@@ -93,6 +100,12 @@ export function entryCommands(entry: EntryCommands, m: Messages): Command[] {
     ...(entry.canPreview
       ? [{ label: m.entry.previewOnSite, icon: 'i-lucide-eye', onSelect: entry.preview }]
       : []),
+    {
+      label: m.entry.previewBeside,
+      icon: 'i-lucide-columns-2',
+      kbds: ['meta', 'shift', 'p'],
+      onSelect: entry.livePreview,
+    },
   ]
 }
 

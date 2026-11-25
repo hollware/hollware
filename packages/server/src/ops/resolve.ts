@@ -23,6 +23,16 @@ function routesOf(site: ResolvedSite) {
   )
 }
 
+async function singletonOf(context: OperationContext, collection: string, locale: string) {
+  const page = await context.store.listEntries(context.site.key, {
+    collection,
+    locale,
+    view: context.view,
+    limit: 1,
+  })
+  return page.entries[0]
+}
+
 function pathnameOf(path: string): string {
   const end = path.search(/[?#]/)
   return end === -1 ? path : path.slice(0, end)
@@ -37,9 +47,25 @@ export async function resolvePath(
   if (matched === undefined) return { outcome: 'not_found' }
   const collection = context.site.collections.get(matched.collection)
   if (collection === undefined) return { outcome: 'not_found' }
+  const visible = <V extends Pick<EntryView, 'entry'>>(view: V | null | undefined) =>
+    view !== null &&
+    view !== undefined &&
+    (view.entry.status === 'published' || view.entry.id === preview)
+      ? view
+      : null
+  if (matched.slug === '') {
+    const single = visible(await singletonOf(context, matched.collection, matched.locale))
+    return single === null
+      ? { outcome: 'not_found' }
+      : {
+          outcome: 'ok',
+          collection: single.entry.collection,
+          locale: single.entry.locale,
+          slug: single.entry.slug,
+          path: entryPath(collection, single.entry.locale, single.entry.slugPath) ?? input.path,
+        }
+  }
   const ref = { collection: matched.collection, locale: matched.locale, slug: matched.slug }
-  const visible = (view: EntryView | null) =>
-    view !== null && (view.entry.status === 'published' || view.entry.id === preview) ? view : null
   const live = visible(await context.store.findEntry(context.site.key, ref, context.view))
   const here = live !== null && live.entry.slugPath === matched.slugPath
   const moved = here

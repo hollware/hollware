@@ -17,6 +17,7 @@ export const ID_PREFIXES = {
   invitation: 'inv',
   member: 'mbr',
   passkey: 'pky',
+  presence: 'prs',
   publication: 'pub',
   purge: 'prg',
   redirect: 'rdr',

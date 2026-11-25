@@ -51,7 +51,7 @@ const { data, error, pending } = useHollwareEntry('blog', 'en', () => props.slug
 When an argument changes, the composable reads again, keeps the previous `data` meanwhile, and
 drops the answer of a read that a newer one replaced.
 
-There is **no preview in the browser**: "Preview on the site" exchanges its link for a cookie that is
+There is **no preview in the browser**: "Open the draft in a new tab" exchanges its link for a cookie that is
 `HttpOnly` on the site's server, so a page in the browser never holds the token. Previews need a
 server that renders the page.
 

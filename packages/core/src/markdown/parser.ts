@@ -26,7 +26,7 @@ interface InlineState {
 interface MarkdownIt {
   set(options: { html: boolean }): unknown
   validateLink: (url: string) => boolean
-  linkify: { set(options: { fuzzyLink: boolean }): unknown; pretest: (text: string) => boolean }
+  linkify: { test: (text: string) => boolean }
   block: { ruler: { disable(name: string): unknown } }
   inline: {
     ruler: { at(name: string, rule: (state: InlineState, silent: boolean) => boolean): unknown }
@@ -227,9 +227,8 @@ const LINK_HINT = /@|\/\//
 function readAsHollware(md: MarkdownIt): void {
   md.set({ html: true })
   md.validateLink = () => true
-  md.linkify.set({ fuzzyLink: false })
-  const pretest = md.linkify.pretest.bind(md.linkify)
-  md.linkify.pretest = (text) => LINK_HINT.test(text) && pretest(text)
+  const test = md.linkify.test.bind(md.linkify)
+  md.linkify.test = (text) => LINK_HINT.test(text) && test(text)
   md.block.ruler.disable('comark_block_yaml')
 }
 
@@ -259,18 +258,26 @@ export interface Parser {
 }
 
 async function createParser(own: ComarkPlugin): Promise<Parser> {
-  const [comark, components, attributes, taskList, alert] = await Promise.all([
+  const [comark, components, attributes, taskList, alert, linkify] = await Promise.all([
     import('comark'),
     import('comark/plugins/components'),
     import('comark/plugins/attributes'),
     import('comark/plugins/task-list'),
     import('comark/plugins/alert'),
+    import('comark/plugins/linkify'),
   ])
   const parse = comark.createMarkdownParser({
     autoClose: false,
     registerDefaultPlugins: false,
     headingIds: false,
-    plugins: [components.default(), attributes.default(), taskList.default(), own, alert.default()],
+    plugins: [
+      components.default(),
+      attributes.default(),
+      taskList.default(),
+      linkify.default({ fuzzyLink: false }),
+      own,
+      alert.default(),
+    ],
   })
   return {
     splitFrontmatter: (markdown) => comark.parseFrontmatter(markdown),

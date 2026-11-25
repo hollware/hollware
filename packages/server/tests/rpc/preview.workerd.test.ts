@@ -97,18 +97,30 @@ describe('getEntry with a preview token', () => {
       'This preview link has expired.',
     ])
     expect(error.fix).toBe(
-      'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
+      'Ask for a new preview link: in the admin, open the entry and choose "Open the draft in a new tab".',
     )
   })
 
-  it('answers another entry with the token of this one as no entry, as it answers a slug of none', async () => {
+  it('answers another entry with the token of this one as it is published, and a slug of none as none', async () => {
     const { rpc, idOf, tokenFor } = await world()
     const preview = await tokenFor(idOf(DRAFT))
 
     const another = await rpc.getEntry(SITE_KEY, 'blog', 'edge-caching-basics', 'en', { preview })
+    const published = await rpc.getEntry(SITE_KEY, 'blog', 'edge-caching-basics', 'en')
     const none = await rpc.getEntry(SITE_KEY, 'blog', 'no-such-entry', 'en', { preview })
 
-    expect([another, none]).toEqual([{ outcome: 'not_found' }, { outcome: 'not_found' }])
+    expect(another.entry?.slug).toBe('edge-caching-basics')
+    expect(another).toEqual(published)
+    expect(none).toEqual({ outcome: 'not_found' })
+  })
+
+  it('answers a draft of another entry with the token of this one as no entry', async () => {
+    const { rpc, idOf, tokenFor } = await world()
+    const preview = await tokenFor(idOf('edge-caching-basics'))
+
+    const draft = await rpc.getEntry(SITE_KEY, 'blog', DRAFT, 'en', { preview })
+
+    expect(draft).toEqual({ outcome: 'not_found' })
   })
 
   it('refuses the token of another site and a token that was changed', async () => {

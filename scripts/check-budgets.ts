@@ -407,7 +407,7 @@ function findWorkerDirectory(outDir: string): string {
 function buildPlayground(root: string, outDir: string, env: NodeJS.ProcessEnv): string {
   const result = spawnSync(
     join(root, 'node_modules/.bin/vp'),
-    ['build', '--sourcemap', 'hidden', '--outDir', outDir],
+    ['build', '--sourcemap', 'hidden', '--manifest', '--outDir', outDir],
     { cwd: join(root, 'apps/playground'), env, encoding: 'utf8', timeout: 300_000 },
   )
   if (result.status !== 0) {

@@ -94,6 +94,7 @@ describe('describeResolvedSite', () => {
             required: ['title'],
           },
           routes: { en: '/guides/:slug/', es: '/es/guias/:slug/' },
+          singleton: false,
           translationGroupField: null,
           tagsField: 'tags',
           sortByField: null,
@@ -182,6 +183,7 @@ describe('describeResolvedSite', () => {
             required: ['title'],
           },
           routes: { en: '/posts/:slug/' },
+          singleton: false,
           translationGroupField: null,
           tagsField: null,
           sortByField: null,
@@ -216,6 +218,7 @@ describe('describeResolvedSite', () => {
       'name',
       'schema',
       'routes',
+      'singleton',
       'translationGroupField',
       'tagsField',
       'sortByField',
@@ -224,6 +227,22 @@ describe('describeResolvedSite', () => {
       'maxMarkdownBytes',
       'styleGuide',
     ])
+  })
+
+  it('says which collection is a singleton, with its fixed routes', () => {
+    const site = siteOfDocs(
+      docsConfig({
+        home: {
+          schema: z.object({ title: z.string() }),
+          singleton: true,
+          routes: { en: '/' },
+        },
+      }),
+    )
+    const home = describeResolvedSite(site).collections[1]
+
+    expect([home?.name, home?.singleton, home?.routes]).toEqual(['home', true, { en: '/' }])
+    expect(describeResolvedSite(site).collections[0]?.singleton).toBe(false)
   })
 
   it('shows the navigation of a collection that has one, with the groups of its enum', () => {

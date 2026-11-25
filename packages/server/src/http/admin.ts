@@ -1,21 +1,33 @@
 import { PAGE_ISOLATION } from '../identity/pages.ts'
-import { SCOPES, type AdminPath } from '@hollware/core'
+import { SCOPES, type AdminPath, type ResolvedSite } from '@hollware/core'
 import type { Context, Hono } from 'hono'
 import { adminClient } from '../oauth/admin.ts'
 import type { OAuth } from '../oauth/server.ts'
 import type { GatewayEnv } from './types.ts'
 
-const POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
-  "connect-src 'self'",
-  "font-src 'self' data:",
-  "base-uri 'none'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ')
+export function adminPolicy(siteUrls: Iterable<string | null>): string {
+  const origins = new Set<string>()
+  for (const url of siteUrls) {
+    if (url === null) continue
+    try {
+      origins.add(new URL(url).origin)
+    } catch {
+      continue
+    }
+  }
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "connect-src 'self'",
+    "font-src 'self' data:",
+    ["frame-src 'self'", ...[...origins].sort()].join(' '),
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ')
+}
 
 function notInstalled(): Response {
   return Response.json(
@@ -67,6 +79,7 @@ export function installAdmin(
     readonly oauth: (publicUrl: string) => OAuth
     readonly favicon: string | null
     readonly path: AdminPath
+    readonly sites: (c: Context<GatewayEnv>) => Promise<Iterable<ResolvedSite>>
   },
 ): void {
   app.get('/admin/config.json', async (c) => {
@@ -92,7 +105,8 @@ export function installAdmin(
     const answer = await assets.fetch(new Request(`${origin}/admin/`))
     if (!answer.ok) return notInstalled()
     const headers = new Headers(answer.headers)
-    headers.set('content-security-policy', POLICY)
+    const sites = await options.sites(c)
+    headers.set('content-security-policy', adminPolicy([...sites].map((site) => site.url)))
     headers.set('cache-control', 'no-store')
     headers.set('x-content-type-options', 'nosniff')
     headers.set('referrer-policy', 'no-referrer')

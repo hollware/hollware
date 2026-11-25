@@ -46,6 +46,8 @@ const groups = computed(() => {
         { label: s.markdown, keys: ['meta', 'shift', 'm'] },
         { label: s.history, keys: ['meta', 'shift', 'h'] },
         { label: s.properties, keys: ['meta', 'shift', 'i'] },
+        { label: s.preview, keys: ['meta', 'shift', 'p'] },
+        { label: s.compare, keys: ['meta', 'shift', 'l'] },
         { label: s.blocks, keys: ['/'] },
         { label: s.bold, keys: ['meta', 'b'] },
         { label: s.italic, keys: ['meta', 'i'] },

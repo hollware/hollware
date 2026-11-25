@@ -52,6 +52,7 @@ interface Made {
   token: string
   expiresAt: string
   url: string | null
+  embedUrl: string | null
 }
 
 describe('POST /v1/admin/preview', () => {
@@ -68,6 +69,9 @@ describe('POST /v1/admin/preview', () => {
     expect(answer.headers.get('cache-control')).toBe('no-store')
     expect(made.expiresAt).toBe('2026-10-13T13:00:00.000Z')
     expect(made.url).toBe(`https://site.example/blog/${DRAFT}/?hollware-preview=${made.token}`)
+    expect(made.embedUrl).toBe(
+      `https://site.example/blog/${DRAFT}/?hollware-preview=${made.token}&hollware-embed=1`,
+    )
     expect(
       await verifyPreviewToken({
         secret: SECRET,
@@ -115,6 +119,7 @@ describe('POST /v1/admin/preview', () => {
     ).json<Made>()
 
     expect(made.url).toBeNull()
+    expect(made.embedUrl).toBeNull()
     expect(made.token.startsWith('hw_prv_')).toBe(true)
   })
 
@@ -185,8 +190,70 @@ describe('POST /v1/admin/preview', () => {
   })
 })
 
+describe('POST /v1/admin/preview/document', () => {
+  interface Rendered {
+    outcome: string
+    entry: { id: string; frontmatter: { title?: string }; document: { nodes: unknown[] } }
+  }
+
+  it('answers the page an unsaved Markdown makes, as the site reads it, and saves nothing', async () => {
+    const { worker, seeded, idOf } = await world()
+    const author = await adminPerson(worker, 'author')
+    const made = await (
+      await call(worker, author.access, '/v1/admin/preview', { entryId: idOf(DRAFT) })
+    ).json<Made>()
+
+    const answer = await call(worker, author.access, '/v1/admin/preview/document', {
+      entryId: idOf(DRAFT),
+      markdown: '---\ntitle: Written live\n---\n\n# Hello\n\nNot saved yet.\n',
+    })
+    const rendered = await answer.json<Rendered>()
+    const stored = await (
+      await worker.send(`/v1/blog/en/${DRAFT}?preview=${made.token}`, { token: seeded.token })
+    ).json<Rendered>()
+
+    expect(answer.status).toBe(200)
+    expect(answer.headers.get('cache-control')).toBe('no-store')
+    expect(rendered.entry.id).toBe(idOf(DRAFT))
+    expect(rendered.entry.frontmatter.title).toBe('Written live')
+    expect(rendered.entry.document.nodes).toEqual([
+      ['h1', { id: 'hello' }, 'Hello'],
+      ['p', {}, 'Not saved yet.'],
+    ])
+    expect(stored.entry.frontmatter.title).not.toBe('Written live')
+  })
+
+  it('refuses Markdown that makes no page, an entry of another site and a body without both', async () => {
+    const { worker, idOf, other } = await world()
+    const editor = await adminPerson(worker, 'editor')
+    const send = async (body: unknown) => {
+      const answer = await call(worker, editor.access, '/v1/admin/preview/document', body)
+      return [answer.status, (await answer.json<{ code: string }>()).code]
+    }
+
+    expect(await send({ entryId: idOf(DRAFT), markdown: '---\ntitle: [\n---\n' })).toEqual([
+      400,
+      'invalid_input',
+    ])
+    expect(await send({ entryId: idOf(DRAFT, other), markdown: '# A' })).toEqual([404, 'not_found'])
+    expect(await send({ entryId: idOf(DRAFT) })).toEqual([400, 'invalid_input'])
+  })
+
+  it('is the admin only: a personal token is refused', async () => {
+    const { worker, idOf } = await world()
+    const owner = await adminPerson(worker, 'owner')
+
+    const answer = await call(worker, owner.token, '/v1/admin/preview/document', {
+      entryId: idOf(DRAFT),
+      markdown: '# A',
+    })
+
+    expect(answer.status).toBe(403)
+  })
+})
+
 describe('the read API with a preview token', () => {
-  it('refuses an expired token with a 400 that nothing keeps, and answers another entry with its token as no entry', async () => {
+  it('refuses an expired token with a 400 that nothing keeps, and answers another entry with its token as it is published', async () => {
     const { worker, seeded, idOf } = await world()
     const owner = await adminPerson(worker, 'owner')
     const made = await (
@@ -208,15 +275,19 @@ describe('the read API with a preview token', () => {
       headers: { 'hollware-preview': made.token },
     })
 
-    expect([another.status, missing.status, expired.status]).toEqual([404, 404, 400])
+    const published = await worker.send(`/v1/blog/en/${PUBLISHED}`, { token: seeded.token })
+
+    expect([another.status, missing.status, expired.status]).toEqual([200, 404, 400])
+    expect(another.headers.get('cache-control')).toBe('no-store')
+    expect(another.headers.get('etag')).toBeNull()
     expect(expiredInHeader.status).toBe(400)
     expect(expiredInHeader.headers.get('cache-control')).toBe('no-store')
-    expect(await another.json()).toEqual(await missing.json())
+    expect(await another.json()).toEqual(await published.json())
     expect(expired.headers.get('cache-control')).toBe('no-store')
     expect(await expired.json()).toEqual({
       code: 'invalid_preview',
       message: 'This preview link has expired.',
-      fix: 'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
+      fix: 'Ask for a new preview link: in the admin, open the entry and choose "Open the draft in a new tab".',
     })
   })
 

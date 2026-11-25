@@ -17,6 +17,7 @@ function describeCollection(
     name: collection.name,
     schema: toJsonSchema(collection.schema),
     routes: { ...collection.routes },
+    singleton: collection.singleton,
     translationGroupField: collection.translationGroupField,
     tagsField: collection.tagsField,
     sortByField: collection.sortByField,

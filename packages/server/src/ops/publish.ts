@@ -9,7 +9,13 @@ import {
   verdictView,
   violationOf,
 } from './answers.ts'
-import { checkChangeset, distinctMembers, refuseOverlap, warningKey } from './changeset.ts'
+import {
+  checkChangeset,
+  distinctMembers,
+  refuseOverlap,
+  warningKey,
+  type Checked,
+} from './changeset.ts'
 import { collectionOfEntry } from './collections.ts'
 import { judge, processFor, sortKeyOf } from './draft.ts'
 import { unexpectedAnswer } from './errors.ts'
@@ -102,10 +108,7 @@ async function publishAttempt(
         throw unexpectedAnswer(context, 'publish', asked)
     }
   }
-  if (
-    input.publishAt !== undefined &&
-    Date.parse(input.publishAt) > context.clock.now().getTime()
-  ) {
+  if (isLater(context, input.publishAt)) {
     if (entry.status === 'published') {
       throw new HollwareError(
         'invalid_input',
@@ -198,14 +201,58 @@ async function publishAttempt(
 type PublishInput = Parameters<typeof publish>[0]
 type PublishContext = Parameters<typeof publish>[1]
 
-async function publishGroup(input: PublishInput, context: PublishContext, attempts: number) {
-  if (input.publishAt !== undefined) {
+function isLater(context: PublishContext, publishAt: string | undefined): publishAt is string {
+  return publishAt !== undefined && Date.parse(publishAt) > context.clock.now().getTime()
+}
+
+async function scheduleGroup(
+  input: PublishInput & { readonly publishAt: string },
+  context: PublishContext,
+  checked: readonly Checked[],
+) {
+  const [main] = checked
+  if (main === undefined) throw unexpectedAnswer(context, 'publish', { outcome: 'empty group' })
+  const live = checked.find(({ summary }) => summary.status === 'published')
+  if (live !== undefined) {
     throw new HollwareError(
       'invalid_input',
-      'A group cannot be scheduled: publishAt schedules one entry.',
-      'Publish the group now, without publishAt, or schedule its entries one by one.',
+      `The entry ${live.summary.id} of the group is published, so its publication cannot be scheduled.`,
+      'Leave the published entries out of a scheduled group and publish their changes now, or unpublish them first.',
     )
   }
+  const scheduled = await context.store.scheduleGroup(context.site.key, {
+    members: checked.map(({ write }) => ({
+      entryId: write.entryId,
+      expectedVersion: write.expectedVersion,
+    })),
+    scheduledAt: new Date(input.publishAt).toISOString(),
+    acknowledged: checked.flatMap(({ write }) => write.acknowledged),
+    actor: actorOf(context),
+  })
+  switch (scheduled.outcome) {
+    case 'scheduled': {
+      const [view] = scheduled.views
+      if (view === undefined) throw unexpectedAnswer(context, 'publish', scheduled)
+      return {
+        outcome: 'scheduled' as const,
+        entry: entrySummary(view),
+        verdict: verdictView(main.verdict),
+      }
+    }
+    case 'conflict':
+      return {
+        outcome: 'conflict' as const,
+        conflict: conflictAt(scheduled.currentVersion, scheduled.headRevision),
+        failedEntry: scheduled.entryId,
+      }
+    case 'not_found':
+      return { outcome: 'not_found' as const, failedEntry: scheduled.entryId }
+    default:
+      throw unexpectedAnswer(context, 'publish', scheduled)
+  }
+}
+
+async function publishGroup(input: PublishInput, context: PublishContext, attempts: number) {
   const found = await checkChangeset(context, {
     publish: distinctMembers([{ id: input.id, version: input.version }, ...input.group]),
     unpublish: [],
@@ -213,6 +260,8 @@ async function publishGroup(input: PublishInput, context: PublishContext, attemp
   })
   if (found.outcome !== 'checked') return found
   const { checked } = found
+  const { publishAt } = input
+  if (isLater(context, publishAt)) return scheduleGroup({ ...input, publishAt }, context, checked)
   const [main] = checked
   if (main === undefined) throw unexpectedAnswer(context, 'publish', { outcome: 'empty group' })
   const written = await context.store.publishGroup(

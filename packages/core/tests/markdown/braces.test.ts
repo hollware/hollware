@@ -17,33 +17,28 @@ async function reported(markdown: string): Promise<[string, number | undefined][
 
 describe('braces in prose', () => {
   it.each([
-    [
-      'one in the middle of a line',
-      'Use {x} here and {a=b} there',
-      [
-        ['p[{x}]', 1],
-        ['p[{a=b}]', 1],
-      ],
-    ],
+    ['in the middle of a line', 'Use {x} here and {a=b} there'],
     [
       'a set, a JSON object and a condition',
       'Set {a, b, c} = 3 and {"k": "v"} and f(x) = {x | x > 0}.',
-      [
-        ['p[{a, b, c}]', 1],
-        ['p[{"k": "v"}]', 1],
-        ['p[{x | x > 0}]', 1],
-      ],
     ],
-    ['a block of CSS', 'CSS: body { color: red; } and more text.', [['p[{ color: red; }]', 1]]],
-    [
-      'a price',
-      'Price is {$5} or {5}',
-      [
-        ['p[{$5}]', 1],
-        ['p[{5}]', 1],
-      ],
-    ],
-    ['a heading', '# Heading {a} and more', [['h1[{a}]', 1]]],
+    ['a block of CSS', 'CSS: body { color: red; } and more text.'],
+    ['on a heading, before more words', '# Heading {a} and more'],
+    ['in link text and an image alt', '[a {x}](/u) and ![alt {y}](/i.png)'],
+    ['between two words', 'a{x}b'],
+    ['on the second line of a paragraph', 'line one\nline two {x} here\nline three'],
+    ['on the second item of a list', '- item\n- item two {y} more'],
+  ] as const)('stay in the text, and are not reported, %s', async (_name, markdown) => {
+    expect(await reported(markdown)).toStrictEqual([])
+  })
+
+  it('stay in the document as they were written when other words follow them', async () => {
+    const { document } = await accepted('Use {x} here and {a=b} there', OPTIONS)
+    expect(document.nodes).toStrictEqual([['p', {}, 'Use {x} here and {a=b} there']])
+  })
+
+  it.each([
+    ['a price that ends the paragraph', 'Price is {$5} or {5}', [['p[{5}]', 1]]],
     [
       'table cells',
       '| a {x} | b |\n|---|---|\n| c | d {y} |',
@@ -52,12 +47,6 @@ describe('braces in prose', () => {
         ['td[{y}]', 3],
       ],
     ],
-    [
-      'link text, where an image alt keeps its own',
-      '[a {x}](/u) and ![alt {y}](/i.png)',
-      [['p[{x}]', 1]],
-    ],
-    ['the text between two words', 'a{x}b', [['p[{x}]', 1]]],
     ['a brace that is alone', '{', [['p[{]', 1]]],
     [
       'braces after emphasis that hold no attribute',
@@ -67,22 +56,20 @@ describe('braces in prose', () => {
         ['p[{"a": 1}]', 1],
       ],
     ],
-    ['the second line of a paragraph', 'line one\nline two {x} here\nline three', [['p[{x}]', 2]]],
-    ['the second item of a list', '- item\n- item two {y} more', [['p[{y}]', 2]]],
-  ] as const)('are reported when %s', async (_name, markdown, found) => {
-    expect(await reported(markdown)).toStrictEqual(found)
-  })
+  ] as const)(
+    'are reported when Comark takes them off the end of %s',
+    async (_name, markdown, found) => {
+      expect(await reported(markdown)).toStrictEqual(found)
+    },
+  )
 
   it('leave the document as Comark makes it, so that what was lost is what the report names', async () => {
-    const { document } = await accepted('Use {x} here and {a=b} there', OPTIONS)
-    expect(document.nodes).toStrictEqual([['p', {}, 'Use  here and  there']])
+    const { document } = await accepted('Price is {$5} or {5}', OPTIONS)
+    expect(document.nodes).toStrictEqual([['p', {}, 'Price is {$5} or']])
   })
 
   it('are reported on the line where the element that took them starts, when one took them', async () => {
-    expect(await reported('line one\nline two {x} here\nline three {y}')).toStrictEqual([
-      ['p[y]', 1],
-      ['p[{x}]', 2],
-    ])
+    expect(await reported('line one\nline two\nline three {y}')).toStrictEqual([['p[y]', 1]])
   })
 
   it('are reported for the words of an unclosed one, which Comark makes attributes of the paragraph', async () => {

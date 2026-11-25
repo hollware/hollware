@@ -11,6 +11,42 @@ const routes = compileRoutes(
   { help: 3, talks: 2 },
 )
 
+describe('a site path, matched against the fixed routes of a singleton', () => {
+  const fixed = compileRoutes({
+    pages: { en: '/:slug/', es: '/es/:slug/' },
+    welcome: { en: '/', es: '/es/' },
+  })
+
+  it('names the one entry of the locale, with no slug, at the root and at a locale prefix', () => {
+    expect(matchRoute('/', fixed)).toEqual({
+      collection: 'welcome',
+      locale: 'en',
+      slug: '',
+      slugPath: '',
+      nested: false,
+    })
+    expect(matchRoute('/es/', fixed)).toEqual({
+      collection: 'welcome',
+      locale: 'es',
+      slug: '',
+      slugPath: '',
+      nested: false,
+    })
+  })
+
+  it('leaves every other path to the routes with :slug', () => {
+    expect(matchRoute('/es/pricing/', fixed)?.collection).toBe('pages')
+    expect(matchRoute('/about/', fixed)?.slug).toBe('about')
+  })
+
+  it('makes a link to the fixed path an internal link to the singleton', () => {
+    expect(classifyLink('/es/#top', fixed)).toEqual({
+      kind: 'internal',
+      target: { collection: 'welcome', locale: 'es', slug: '' },
+    })
+  })
+})
+
 describe('a site path, matched against routes of nested collections', () => {
   it('names the entry by the last slug of a path as deep as the collection allows', () => {
     expect(matchRoute('/help/billing/payments/refunds/', routes)).toEqual({

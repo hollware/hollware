@@ -49,7 +49,16 @@ export const collectionDefinitionData = z.strictObject({
   schema: jsonSchema.describe('The JSON Schema of the frontmatter.'),
   routes: z
     .record(z.string(), z.string())
-    .describe('The public path of an entry in each locale, with :slug: { "en": "/blog/:slug/" }.'),
+    .default({})
+    .describe(
+      'The public path of an entry in each locale, with :slug: { "en": "/blog/:slug/" }. A singleton takes a fixed path per locale without :slug, { "en": "/", "es": "/es/" }, or none for an entry with no page.',
+    ),
+  singleton: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Whether the collection holds one entry per locale at most, such as the home page or the settings of the site: create_draft refuses a second one in a locale, its routes are fixed paths, and it may have none.',
+    ),
   translationGroupField: z.string().min(1).nullable().default(null),
   tagsField: z.string().min(1).nullable().default(null),
   sortByField: z.string().min(1).nullable().default(null),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import { secondsCacheRules } from '../src/route-rules.ts'
-import { markPreviewRequest } from '../src/runtime/tags.ts'
+import { markPreviewRequest, withoutPreviewToken } from '../src/runtime/tags.ts'
 
 const TOKEN = 'hw_prv_eyJzIjoicyJ9.c2ln-_9'
 
@@ -27,5 +27,15 @@ describe('the cache of `hollware.cache: <seconds>`', () => {
       '/**': { cache: { swr: true, maxAge: 60, varies: ['x-hollware-preview'] } },
       '/_hollware/**': { swr: false, cache: false },
     })
+  })
+})
+
+describe('the path of a page rendered for an embedded preview', () => {
+  it('keeps its other parameters and loses the token, which never reaches the payload', () => {
+    expect(withoutPreviewToken(`/en/?a=1&hollware-preview=${TOKEN}&hollware-embed=1`)).toBe(
+      '/en/?a=1&hollware-embed=1',
+    )
+    expect(withoutPreviewToken(`/en/?hollware%2Dpreview=${TOKEN}`)).toBe('/en/')
+    expect(withoutPreviewToken('/en/')).toBe('/en/')
   })
 })

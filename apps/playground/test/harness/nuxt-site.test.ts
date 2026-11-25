@@ -216,14 +216,36 @@ describe('a Nuxt site with @hollware/nuxt', () => {
     ])
   })
 
-  it('never answers the published version in place of a token that does not hold', async () => {
+  it('answers another entry with its published version for the token of a draft, and keeps nothing', async () => {
     const path = '/en/blog/from-draft-to-published/'
     const token = await previewTokenFor(draftId)
 
     const answer = await nuxtFetch(server, path, cookie(token))
 
-    expect(answer.status).toBe(404)
-    expect(await answer.text()).not.toContain('From draft to published')
+    expect(answer.status).toBe(200)
+    expect(await answer.text()).toContain('<title>From draft to published</title>')
+    expect(answer.headers.get('cache-control')).toBe('no-store')
+    expect(answer.headers.get('cache-tag')).toBeNull()
+  })
+
+  it('renders an embedded preview in place, with the draft, no cookie and no token in the page', async () => {
+    const path = '/en/blog/markdown-as-source-of-truth/'
+    const token = await previewTokenFor(draftId)
+
+    const answer = await nuxtFetch(
+      server,
+      `${path}?hollware-preview=${token}&hollware-embed=1`,
+      MANUAL,
+    )
+    const html = await answer.text()
+
+    expect(answer.status).toBe(200)
+    expect(html).toContain('Markdown as the source of truth</title>')
+    expect(html).not.toContain(token)
+    expect(answer.headers.get('set-cookie')).toBeNull()
+    expect(answer.headers.get('cache-control')).toBe('no-store')
+    expect(answer.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(answer.headers.get('cache-tag')).toBeNull()
   })
 })
 

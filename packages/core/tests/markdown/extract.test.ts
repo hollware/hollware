@@ -127,7 +127,7 @@ describe('links', () => {
     }
   })
 
-  it('match a route written without its trailing slash, and ignore a route without a slug', async () => {
+  it('match a route written without its trailing slash, and a fixed route to its singleton entry', async () => {
     const routes = {
       docs: { en: '/en/docs/:slug' },
       about: { en: '/en/about/' },
@@ -138,7 +138,11 @@ describe('links', () => {
       locale: 'en',
       slug: 'start',
     })
-    expect((await kind('/en/about/', { ...BLOG_OPTIONS, routes }))?.kind).toBe('site')
+    expect((await kind('/en/about', { ...BLOG_OPTIONS, routes }))?.target).toStrictEqual({
+      collection: 'about',
+      locale: 'en',
+      slug: '',
+    })
     expect((await kind('/docs/x/', { ...BLOG_OPTIONS, routes }))?.kind).toBe('site')
   })
 

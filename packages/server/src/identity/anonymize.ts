@@ -55,6 +55,7 @@ const GONE = [
   .join(' AND ')
 
 const EVERYWHERE = [
+  `DELETE FROM presence WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM passkeys WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM sessions WHERE user_id = ?1 AND ${GONE}`,
   `DELETE FROM auth_challenges WHERE user_id = ?1 AND ${GONE}`,

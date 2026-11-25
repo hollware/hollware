@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { previewCookieClear, previewHeaders, previewRedirect } from '../src/index.ts'
+import {
+  embeddedPreviewToken,
+  exchangePreviewLink,
+  isPreviewRequest,
+  previewCookieClear,
+  previewHeaders,
+  previewRedirect,
+} from '../src/index.ts'
 
 const TOKEN = 'hw_prv_AAAA.BBBB'
 const CLEARED = 'hollware_preview=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
@@ -94,5 +101,39 @@ describe('previewHeaders', () => {
     const bad = [...previewHeaders(get('https://site.test/p', { cookie: 'hollware_preview=x' }))]
 
     expect([none, bad]).toEqual([[], []])
+  })
+})
+
+describe('the live preview of the admin, embedded in a frame', () => {
+  const embedded = `https://site.test/en/?hollware-preview=${TOKEN}&hollware-embed=1`
+
+  it('is read from the URL, only with hollware-embed=1 and a value shaped like a token', () => {
+    expect(embeddedPreviewToken(embedded)).toBe(TOKEN)
+    expect(embeddedPreviewToken(`https://site.test/?hollware-preview=${TOKEN}`)).toBeUndefined()
+    expect(
+      embeddedPreviewToken(`https://site.test/?hollware-preview=${TOKEN}&hollware-embed=0`),
+    ).toBeUndefined()
+    expect(
+      embeddedPreviewToken('https://site.test/?hollware-preview=nonsense&hollware-embed=1'),
+    ).toBeUndefined()
+  })
+
+  it('is rendered in place: no exchange, no 303 and no cookie', () => {
+    expect(exchangePreviewLink(embedded)).toBeUndefined()
+    expect(previewRedirect(get(embedded))).toBeNull()
+  })
+
+  it('is a preview, answered no-store and with no Referer, and a cookie preview has no such policy', () => {
+    const headers = previewHeaders(get(embedded))
+    const byCookie = previewHeaders(
+      get('https://site.test/p', { cookie: `hollware_preview=${TOKEN}` }),
+    )
+
+    expect(isPreviewRequest(get(embedded))).toBe(true)
+    expect([...headers]).toEqual([
+      ['cache-control', 'no-store'],
+      ['referrer-policy', 'no-referrer'],
+    ])
+    expect(byCookie.get('referrer-policy')).toBeNull()
   })
 })

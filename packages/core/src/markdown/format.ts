@@ -28,14 +28,20 @@ function inlineCode(node: ElementNode): string {
 async function createFormatter(): Promise<Formatter> {
   const [render, yaml] = await Promise.all([import('comark/render'), import('js-yaml')])
   const components = { code: inlineCode }
+  const inline = { maxInlineAttributes: Number.POSITIVE_INFINITY }
   const ending = (text: string) => (text === '' ? '' : `${text}\n`)
   return {
     body: async (document) =>
-      ending((await render.render(document, { format: 'markdown/comark', components })).trim()),
+      ending(
+        (
+          await render.render(document, { format: 'markdown/comark', components, ...inline })
+        ).trim(),
+      ),
     file: async (document) =>
       ending(
         await render.renderMarkdown(document, {
           components,
+          ...inline,
           frontmatterOptions: { schema: yaml.JSON_SCHEMA },
         }),
       ),

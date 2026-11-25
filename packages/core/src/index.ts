@@ -260,6 +260,9 @@ export {
 export {
   canSignPreviews,
   makePreviewToken,
+  PREVIEW_EMBED_PARAM,
+  PREVIEW_ENTRY_MESSAGE,
+  PREVIEW_READY_MESSAGE,
   PREVIEW_QUERY_PARAM,
   verifyPreviewToken,
   type PreviewCheck,
