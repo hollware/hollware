@@ -1,5 +1,12 @@
 # @hollware/vue
 
+## 1.12.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.12.0
+
 ## 1.11.0
 
 ### Minor Changes
