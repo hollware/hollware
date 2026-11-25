@@ -101,6 +101,13 @@ export const entrySummary = z.object({
     .int()
     .nullable()
     .describe('In a nested collection, its place among its siblings, from 0; null in a flat one.'),
+  path: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "Where reads give it: its public path by the collection's route in its locale (the slugs of its ancestors and its own in place of :slug, or the fixed path of a singleton), for a sitemap or hreflang links; null when the collection has no route for its locale.",
+    ),
   translationGroup: z.string().nullable(),
   status: entryStatus,
   version: z.number().int().min(1),
@@ -293,7 +300,17 @@ export const contractDescription = z.object({
 export const collectionDescription = z.object({
   name: z.string(),
   schema: z.record(z.string(), z.unknown()).describe('The JSON Schema of the frontmatter.'),
-  routes: z.record(z.string(), z.string()).describe('The public path of an entry, per locale.'),
+  routes: z
+    .record(z.string(), z.string())
+    .describe(
+      'The public path of an entry, per locale: with :slug, or a fixed path for a singleton, which may have none.',
+    ),
+  singleton: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether the collection holds one entry per locale at most (a home page, the settings of the site). Create it once per locale, then change it with update_draft.',
+    ),
   translationGroupField: z
     .string()
     .nullable()

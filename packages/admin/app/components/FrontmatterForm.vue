@@ -4,14 +4,18 @@ import { computed, ref } from 'vue'
 import { useMessages } from '../i18n/index.ts'
 import { titleOf } from '../lib/entries.ts'
 import {
+  addItem,
   fieldsOf,
   markdownOnly,
+  moveItem,
   readFrontmatter,
+  removeItem,
   setField,
-  type Field,
+  type Path,
   type Reference,
 } from '../lib/frontmatter.ts'
 import { api } from '../lib/session.ts'
+import FrontmatterFields from './FrontmatterFields.vue'
 import ImagePicker from './editor/ImagePicker.vue'
 
 const props = defineProps<{
@@ -28,7 +32,7 @@ const fields = computed(() =>
 )
 const hidden = computed(() => markdownOnly(props.schema))
 const values = computed(() => readFrontmatter(props.modelValue))
-const picking = ref<string | null>(null)
+const picking = ref<Path | null>(null)
 const pickerOpen = computed({
   get: () => picking.value !== null,
   set: (open: boolean) => {
@@ -72,22 +76,12 @@ function pick(image: { src: string }) {
   picking.value = null
 }
 
-function set(key: string, value: unknown) {
+function write(next: (markdown: string) => string) {
   if (values.value === null) return
-  emit('update:modelValue', setField(props.modelValue, key, value))
+  emit('update:modelValue', next(props.modelValue))
 }
-
-function text(field: Field): string {
-  const value = values.value?.[field.key]
-  return value === undefined || value === null ? '' : String(value)
-}
-function list(field: Field): string[] {
-  const value = values.value?.[field.key]
-  return Array.isArray(value) ? value.map(String) : []
-}
-function number(field: Field): number | undefined {
-  const value = values.value?.[field.key]
-  return typeof value === 'number' ? value : undefined
+function set(path: Path, value: unknown) {
+  write((markdown) => setField(markdown, path, value))
 }
 </script>
 
@@ -109,90 +103,18 @@ function number(field: Field): number | undefined {
         { label: m.frontmatter.openMarkdown, variant: 'outline', onClick: () => emit('markdown') },
       ]"
     />
-    <UFormField
-      v-for="field in fields"
-      :key="field.key"
-      :label="field.key"
-      :required="field.required"
-      :help="field.description ?? undefined"
-      :hint="
-        field.maxLength !== null && (field.kind === 'text' || field.kind === 'long')
-          ? `${text(field).length} / ${field.maxLength}`
-          : undefined
-      "
-    >
-      <USelectMenu
-        v-if="
-          references?.[field.key] !== undefined && (field.kind === 'text' || field.kind === 'list')
-        "
-        :model-value="field.kind === 'list' ? list(field) : text(field)"
-        :items="choices[field.key] ?? []"
-        value-key="value"
-        :multiple="field.kind === 'list'"
-        :placeholder="m.frontmatter.pickEntry"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <div v-else-if="field.kind === 'image'" class="flex items-center gap-2">
-        <UInput
-          :model-value="text(field)"
-          class="min-w-0 flex-1 font-mono"
-          @update:model-value="set(field.key, $event === '' ? undefined : $event)"
-        />
-        <UButton
-          :label="m.frontmatter.chooseImage"
-          icon="i-lucide-image"
-          color="neutral"
-          variant="outline"
-          @click="picking = field.key"
-        />
-      </div>
-      <UTextarea
-        v-else-if="field.kind === 'long'"
-        :model-value="text(field)"
-        :rows="3"
-        autoresize
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <UInput
-        v-else-if="field.kind === 'date'"
-        type="date"
-        :model-value="text(field)"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <USelect
-        v-else-if="field.kind === 'choice'"
-        :model-value="text(field)"
-        :items="[...field.options]"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <UInputTags
-        v-else-if="field.kind === 'list'"
-        :model-value="list(field)"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <UInputNumber
-        v-else-if="field.kind === 'number'"
-        :model-value="number(field)"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-      <USwitch
-        v-else-if="field.kind === 'switch'"
-        :model-value="values[field.key] === true"
-        @update:model-value="set(field.key, $event)"
-      />
-      <UInput
-        v-else
-        :model-value="text(field)"
-        class="w-full"
-        @update:model-value="set(field.key, $event)"
-      />
-    </UFormField>
+    <FrontmatterFields
+      :fields="fields"
+      :values="values"
+      :path="[]"
+      :references="references ?? {}"
+      :choices="choices"
+      @set="set"
+      @add="(path, item) => write((markdown) => addItem(markdown, path, item))"
+      @remove="(path, index) => write((markdown) => removeItem(markdown, path, index))"
+      @move="(path, from, to) => write((markdown) => moveItem(markdown, path, from, to))"
+      @pick="(path) => (picking = path)"
+    />
   </form>
   <ImagePicker v-model:open="pickerOpen" @pick="pick" />
 </template>

@@ -573,7 +573,7 @@ test('the owner schedules the end of an entry, unpublishes it, then schedules it
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByRole('heading', { name: 'Hola mundo, otra vez', level: 1 })).toBeVisible()
   await expect(owner.getByRole('navigation', { name: 'Translations' })).toContainText('en')
-  await entryAction(owner, 'Unpublish later')
+  await entryAction(owner, 'Schedule unpublishing')
   await expect(owner.getByRole('dialog')).toContainText('Take it off the site at a time')
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish later' }).click()
   await expect(owner.getByText('It will leave the site at that time').first()).toBeVisible()
@@ -588,11 +588,13 @@ test('the owner schedules the end of an entry, unpublishes it, then schedules it
   await owner.getByRole('dialog').getByRole('button', { name: 'Unpublish', exact: true }).click()
   await expect(owner.getByText('Unpublished', { exact: true }).first()).toBeVisible()
 
-  await entryAction(owner, 'Schedule')
+  await entryAction(owner, 'Schedule publishing')
   await owner.getByRole('dialog').getByRole('button', { name: 'Schedule', exact: true }).click()
   await expect(owner.getByText('Scheduled', { exact: true }).first()).toBeVisible()
   await owner.getByRole('button', { name: 'More actions' }).click()
-  await expect(owner.getByRole('menuitem', { name: 'Cancel schedule' })).toBeVisible()
+  await expect(
+    owner.getByRole('menuitem', { name: 'Cancel the scheduled publishing' }),
+  ).toBeVisible()
   await owner.keyboard.press('Escape')
   await shot(owner, 'scheduled')
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  slug: 'install' | 'media-kit' | 'features' | 'compare'
+  slug: string
   wide?: boolean
 }>()
 const { locale, m, to } = useLocale()

@@ -3,6 +3,16 @@ export const PREVIEW_TOKEN_PREFIX = 'hw_prv_'
 /** The query parameter a site's page takes the token from. */
 export const PREVIEW_QUERY_PARAM = 'hollware-preview'
 
+/**
+ * The query parameter, `1`, that asks a site to render a preview link in place for the admin's
+ * frame, reading the token for that request only, instead of exchanging it for a cookie.
+ */
+export const PREVIEW_EMBED_PARAM = 'hollware-embed'
+
+export const PREVIEW_READY_MESSAGE = 'hollware:preview-ready'
+
+export const PREVIEW_ENTRY_MESSAGE = 'hollware:preview-entry'
+
 export const PREVIEW_TTL_SECONDS = 3600
 
 export const PREVIEW_SECRET_MIN_LENGTH = 32

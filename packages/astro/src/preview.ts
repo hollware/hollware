@@ -1,5 +1,6 @@
 import {
   clearedPreviewCookie,
+  embeddedPreviewToken,
   exchangeHeaders,
   exchangePreviewLink,
   isPreviewRefusal,
@@ -31,16 +32,19 @@ export interface HollwarePreviewLocals {
  * The middleware of previews, for `src/middleware.ts`: `export const onRequest =
  * hollwarePreview()`, or `sequence(hollwarePreview(), ...)`.
  *
- * - A GET with `?hollware-preview=<token>` (the link of the admin's "Preview on the site") is
+ * - A GET with `?hollware-preview=<token>` (the link of the admin's "Open the draft in a new tab") is
  *   answered `303` to the same URL without the parameter, with the token in the `hollware_preview`
  *   cookie (HttpOnly, SameSite=Lax, an hour, Secure but on http://localhost and
  *   http://127.0.0.1), `no-store` and `Referrer-Policy: no-referrer`. The token is not checked:
  *   Hollware does, when the page reads. A value not shaped like a token sets no cookie.
  * - Any later request puts the cookie's token on `Astro.locals.hollwarePreview`, and its response
  *   is `no-store`.
+ * - A GET with `?hollware-preview=<token>&hollware-embed=1` (the admin's live preview, in a frame)
+ *   is rendered in place: the token goes on `Astro.locals.hollwarePreview` for that request only,
+ *   no cookie is set, and the response is `no-store` with `Referrer-Policy: no-referrer`.
  * - A page that gets a refusal from Hollware calls `refusePreview(Astro.locals, error)`: when
  *   the token expired or is not valid, the response clears the cookie. A token for another entry
- *   is answered as no entry and is no refusal.
+ *   is no refusal: Hollware answers that entry published.
  */
 export function hollwarePreview(): MiddlewareHandler {
   return async (context, next) => {
@@ -51,14 +55,21 @@ export function hollwarePreview(): MiddlewareHandler {
         return new Response(null, { status: 303, headers: exchangeHeaders(exchange, url) })
       }
     }
-    const token = previewTokenFromCookie(request.headers.get('cookie'))
+    const embedded = embeddedPreviewToken(url)
+    const token = embedded ?? previewTokenFromCookie(request.headers.get('cookie'))
     const slot: HollwarePreviewLocals = Object.assign(locals, {
       hollwarePreview: token,
       hollwarePreviewRefused: false,
     })
     const response = await next()
     if (token === undefined) return response
-    return previewResponse(response, slot.hollwarePreviewRefused, url)
+    const answer = previewResponse(
+      response,
+      slot.hollwarePreviewRefused && embedded === undefined,
+      url,
+    )
+    if (embedded !== undefined) answer.headers.set('referrer-policy', 'no-referrer')
+    return answer
   }
 }
 

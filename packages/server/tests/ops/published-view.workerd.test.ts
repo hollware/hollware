@@ -54,10 +54,16 @@ async function site(label: string) {
   return { world, live, drafts: { betaEs, gamma } }
 }
 
-const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
-  summary.locale === 'es' || summary.translationGroup === null
-    ? summary
-    : { ...summary, translationOutdated: false }
+const ROUTE_PREFIX: Readonly<Record<string, string>> = { es: '/blog/', en: '/en/blog/' }
+
+const listed = <T extends { locale: string; slugPath: string; translationGroup: string | null }>(
+  summary: T,
+) => {
+  const routed = { ...summary, path: `${ROUTE_PREFIX[summary.locale] ?? ''}${summary.slugPath}/` }
+  return summary.locale === 'es' || summary.translationGroup === null
+    ? routed
+    : { ...routed, translationOutdated: false }
+}
 
 describe('get_entry in the published view', () => {
   it('finds a published entry, and answers not_found for a draft that the head view finds', async () => {
@@ -148,7 +154,7 @@ describe('list_entries in the published view', () => {
     expect(first.entries).toEqual([live.betaEn, live.alphaEs].map(listed))
     expect(first.nextCursor).toEqual(expect.any(String))
     expect(second).toEqual({ outcome: 'ok', entries: [live.alphaEn].map(listed), nextCursor: null })
-    expect(spanish.entries).toEqual([live.alphaEs])
+    expect(spanish.entries).toEqual([live.alphaEs].map(listed))
   })
 
   it('does not list an entry that was unpublished', async () => {

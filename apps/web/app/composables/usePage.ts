@@ -12,12 +12,13 @@ export async function usePage(
   slug: MaybeRefOrGetter<string>,
   options: { readonly home?: boolean } = {},
 ): Promise<LoadedPage> {
+  const nuxtApp = useNuxtApp()
   const route = useRoute()
   const { locale, m } = useLocale()
   const own = await useHollwareEntry(collection, locale.value, slug)
   const english =
     own.error.value?.statusCode === 404 && locale.value !== 'en'
-      ? await useHollwareEntry(collection, 'en', slug)
+      ? await nuxtApp.runWithContext(() => useHollwareEntry(collection, 'en', slug))
       : null
   const found = english ?? own
   const error = found.error.value

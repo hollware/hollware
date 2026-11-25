@@ -332,6 +332,10 @@ export function createGateway(options: GatewayOptions): Gateway {
     oauth,
     favicon: options.admin?.favicon ?? null,
     path: options.admin?.path ?? '/admin',
+    sites: async (c) => {
+      await options.refresh?.(c.env.DB)
+      return sites.values()
+    },
   })
 
   installAdminApi(app, {

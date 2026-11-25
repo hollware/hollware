@@ -236,7 +236,7 @@ export const createDraft = defineOperation({
   name: 'create_draft',
   title: 'Create a draft',
   description:
-    'Creates an entry from a Markdown file and saves it as a draft at version 1. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back. Hollware stores the canonical Markdown of Comark, which means what you wrote: keep editing from the markdown of the answer.',
+    'Creates an entry from a Markdown file and saves it as a draft at version 1. A singleton collection holds one entry per locale: a second one in a locale is refused, so change the one it has with update_draft. Contract errors do not stop the draft: it is saved, and the verdict says what to fix before publishing. It is refused only when it cannot be stored: the file is too large, its frontmatter or syntax does not parse, or the slug or translation is taken. An entry in the trash keeps its slug and translation: the answer is in_trash with that entry, and restore_entry brings it back. Hollware stores the canonical Markdown of Comark, which means what you wrote: keep editing from the markdown of the answer.',
   input: z.strictObject({
     collection: collectionName,
     locale,
@@ -369,7 +369,7 @@ export const publish = defineOperation({
   name: 'publish',
   title: 'Publish an entry',
   description:
-    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group. Without content:publish, the same checks run and the answer is pending_review: a person who may publish approves the revision, with its group, or asks for changes, and a new revision of any of them cancels the request. A review is for now: never with publishAt.',
+    'Publishes the latest revision of an entry, if the entry is still at the version you read, and with group, other entries in the same step. It is blocked while the contracts report errors. Warnings have to be acknowledged: an answer of needs_acknowledgement lists them, and publish again with them in acknowledgeWarnings. Publish entries that link to each other as one group. Without content:publish, the same checks run and the answer is pending_review: a person who may publish approves the revision, with its group, or asks for changes, and a new revision of any of them cancels the request. A review is for now: never with publishAt. With publishAt, the entry and its group are checked now and published together at that time.',
   input: z.strictObject({
     id: entryId,
     version,
@@ -388,7 +388,7 @@ export const publish = defineOperation({
       .datetime({ offset: true })
       .optional()
       .describe(
-        'Publish at this time instead of now, as an ISO 8601 date and time: the entry is checked now and waits as scheduled, and it is published within a minute of the time, if nobody changes it before. One entry at a time, never with group.',
+        'Publish at this time instead of now, as an ISO 8601 date and time: the entry is checked now and waits as scheduled, and it is published within a minute of the time, if nobody changes it before. With group, every entry of it waits as scheduled and they are published in one step at that time, all of them or none: the translations of a page go live together. An entry already published cannot be scheduled.',
       ),
   }),
   output: z.object({

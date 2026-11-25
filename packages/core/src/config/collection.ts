@@ -160,6 +160,82 @@ function claimRoute(route: string, path: string, site: SiteContext, problems: Pr
   )
 }
 
+const FIXED_ROUTE_FIX =
+  'Write the one path of its entry in this locale, without :slug, such as "/" or "/en/".'
+
+function isFixedRoute(path: string, route: string, problems: Problems): boolean {
+  let valid = true
+  if (!route.startsWith('/')) {
+    problems.add(
+      path,
+      `${quote(route)} does not start with "/"`,
+      'Write the path from the root of the site, such as "/" or "/en/".',
+    )
+    valid = false
+  }
+  if ([...route.matchAll(SLUG_PLACEHOLDER)].length > 0) {
+    problems.add(
+      path,
+      `${quote(route)} has :slug, but a singleton has one entry per locale and no slug in its path`,
+      FIXED_ROUTE_FIX,
+    )
+    valid = false
+  }
+  return valid
+}
+
+function readSingletonRoutes(
+  path: string,
+  raw: unknown,
+  site: SiteContext,
+  problems: Problems,
+): Record<string, string> {
+  if (raw === undefined) return {}
+  if (!isRecord(raw)) {
+    problems.add(
+      path,
+      wrongType(raw, 'an object with one fixed path per locale'),
+      'Give the fixed path of its entry per locale, such as routes: { es: "/", en: "/en/" }, or remove routes for an entry with no page.',
+    )
+    return {}
+  }
+  const routes: Record<string, string> = {}
+  for (const locale of Object.keys(raw)) {
+    const routePath = keyPath(path, locale)
+    const route = raw[locale]
+    const known = !site.localesOk || site.locales.includes(locale)
+    if (!known) {
+      problems.add(
+        routePath,
+        `is a route for ${quote(locale)}, which is not a locale of the site (${site.locales.join(', ')})`,
+        `Remove it, or add ${quote(locale)} to the locales of the site.`,
+      )
+    }
+    if (typeof route !== 'string') {
+      problems.add(routePath, wrongType(route, 'a path such as "/"'), FIXED_ROUTE_FIX)
+    } else if (isFixedRoute(routePath, route, problems) && known) {
+      claimRoute(route, routePath, site, problems)
+      routes[locale] = route
+    }
+  }
+  return Object.fromEntries(
+    site.locales.flatMap((locale) => {
+      const route = routes[locale]
+      return route === undefined ? [] : [[locale, route]]
+    }),
+  )
+}
+
+function readSingleton(path: string, raw: unknown, problems: Problems): boolean {
+  if (raw === undefined || typeof raw === 'boolean') return raw === true
+  problems.add(
+    path,
+    wrongType(raw, 'true or false'),
+    'Set singleton: true for a collection of one entry per locale, or remove it.',
+  )
+  return false
+}
+
 function readRoutes(
   path: string,
   raw: unknown,
@@ -513,7 +589,10 @@ export function readCollection(
     return null
   }
   const schema = readSchema(keyPath(path, 'schema'), raw['schema'], 'frontmatter', problems)
-  const routes = readRoutes(keyPath(path, 'routes'), raw['routes'], name, site, problems)
+  const singleton = readSingleton(keyPath(path, 'singleton'), raw['singleton'], problems)
+  const routes = singleton
+    ? readSingletonRoutes(keyPath(path, 'routes'), raw['routes'], site, problems)
+    : readRoutes(keyPath(path, 'routes'), raw['routes'], name, site, problems)
   const translationGroupField = readTranslations(
     keyPath(path, 'translations'),
     raw['translations'],
@@ -554,11 +633,19 @@ export function readCollection(
     problems,
   )
   const nesting = readNesting(keyPath(path, 'nesting'), raw['nesting'], problems)
+  if (singleton && nesting !== null) {
+    problems.add(
+      keyPath(path, 'nesting'),
+      'nests entries, but a singleton holds one entry per locale',
+      'Remove nesting, or remove singleton for a collection of many entries.',
+    )
+  }
   if (schema === null) return null
   return {
     name,
     schema: schema.schema,
     routes,
+    singleton,
     translationGroupField,
     tagsField,
     sortByField,

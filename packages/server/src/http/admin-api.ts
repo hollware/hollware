@@ -11,6 +11,7 @@ import {
   newId,
   parseHollwareEvent,
   PERSONAL_TOKEN_TTL_DAYS,
+  PREVIEW_EMBED_PARAM,
   PREVIEW_QUERY_PARAM,
   emailAddress,
   type ResolvedAuth,
@@ -34,6 +35,11 @@ import { purgeEntry } from '../db/purge.ts'
 import { entryPath } from '../ops/event.ts'
 import { enqueue } from '../events/run.ts'
 import { createD1Store } from '../db/index.ts'
+import { editorById, leavePresence, touchPresence } from '../db/presence.ts'
+import { collectionOfEntry } from '../ops/collections.ts'
+import { processFor } from '../ops/draft.ts'
+import { entryAnswer } from '../ops/get-entry.ts'
+import { mediaOfEnv } from '../media/cloudflare.ts'
 import { invitations, members, tokens, users } from '../db/schema.ts'
 import {
   cleanName,
@@ -106,7 +112,10 @@ function pageUrlOf(
   entry: { readonly collection: string; readonly locale: string; readonly slugPath: string },
 ): string | null {
   const collection = site.collections.get(entry.collection)
-  const path = collection === undefined ? null : entryPath(collection, entry.locale, entry.slugPath)
+  const path =
+    collection === undefined
+      ? null
+      : (entryPath(collection, entry.locale, entry.slugPath) ?? (collection.singleton ? '/' : null))
   if (site.url === null || path === null) return null
   return `${withoutTrailingSlashes(site.url)}${path}`
 }
@@ -388,10 +397,123 @@ export function installAdminApi(app: Hono<GatewayEnv>, options: AdminApiOptions)
         })
         const page = pageUrlOf(site, found.entry)
         note.detail = { expiresAt: made.expiresAt }
+        const url = page === null ? null : `${page}?${PREVIEW_QUERY_PARAM}=${made.token}`
         return json({
           token: made.token,
           expiresAt: made.expiresAt,
-          url: page === null ? null : `${page}?${PREVIEW_QUERY_PARAM}=${made.token}`,
+          url,
+          embedUrl: url === null ? null : `${url}&${PREVIEW_EMBED_PARAM}=1`,
+        })
+      },
+      { anyone: true },
+    ),
+  )
+
+  app.post(
+    '/v1/admin/preview/document',
+    admin(
+      null,
+      async (c, person) => {
+        const sent = await body(c)
+        const entryId = sent['entryId']
+        const markdown = sent['markdown']
+        if (typeof entryId !== 'string' || !isId('ent', entryId) || typeof markdown !== 'string') {
+          return refused(
+            'Give the id of an entry and its Markdown.',
+            'Send { "entryId": "ent_…", "markdown": "…" }.',
+          )
+        }
+        const site = options.site(person.site)
+        const store = createD1Store(c.env.DB)
+        const found = await store.findEntryById(person.site, entryId, 'head')
+        if (site === undefined || found === null) {
+          return refused(
+            'This site has no such entry.',
+            'Open the entry from its collection in the admin.',
+            404,
+          )
+        }
+        const processed = await processFor(site, collectionOfEntry(site, found.entry), markdown)
+        if (!processed.ok) {
+          return json(
+            {
+              code: 'invalid_input',
+              message: 'This Markdown does not make a page yet.',
+              fix: 'Keep writing: the preview follows once the Markdown is whole again.',
+              violations: processed.violations,
+            },
+            400,
+          )
+        }
+        const answer = await entryAnswer(
+          {
+            collection: found.entry.collection,
+            locale: found.entry.locale,
+            slug: found.entry.slug,
+            formats: ['document'],
+            published: false,
+            related: false,
+            references: false,
+          },
+          {
+            site,
+            principal: person,
+            view: 'head',
+            store,
+            clock: options.clock,
+            client: null,
+            requestId: crypto.randomUUID(),
+            media: mediaOfEnv(c.env),
+            reader: true,
+          },
+          {
+            entry: found.entry,
+            revision: {
+              ...found.revision,
+              markdown,
+              frontmatter: processed.value.frontmatter,
+              document: processed.value.document,
+            },
+          },
+        )
+        return json(answer)
+      },
+      { anyone: true },
+    ),
+  )
+
+  app.post(
+    '/v1/admin/presence',
+    admin(
+      null,
+      async (c, person) => {
+        const sent = await body(c)
+        const entryId = sent['entryId']
+        if (typeof entryId !== 'string' || !isId('ent', entryId)) {
+          return refused('Give the id of an entry.', 'Send { "entryId": "ent_…" }.')
+        }
+        const place = { site: person.site, entryId, userId: person.userId }
+        if (sent['leaving'] === true) {
+          await leavePresence(c.env.DB, place)
+          return json({ editors: [] })
+        }
+        const found = await createD1Store(c.env.DB).findEntryById(person.site, entryId, 'head')
+        if (found === null) {
+          return refused(
+            'This site has no such entry.',
+            'Open the entry from its collection in the admin.',
+            404,
+          )
+        }
+        const [editors, savedBy] = await Promise.all([
+          touchPresence(c.env.DB, place, options.clock.now()),
+          editorById(c.env.DB, found.revision.actor.userId),
+        ])
+        return json({
+          version: found.entry.version,
+          savedAt: found.revision.createdAt,
+          savedBy,
+          editors,
         })
       },
       { anyone: true },

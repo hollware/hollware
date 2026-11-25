@@ -22,6 +22,7 @@ export function compileRoutes(
   depths: Readonly<Record<string, number>> = {},
 ): CompiledRoute[] {
   const compiled: CompiledRoute[] = []
+  const fixed: CompiledRoute[] = []
   for (const collection of Object.keys(routes).sort()) {
     const byLocale = routes[collection] ?? {}
     const maxDepth = depths[collection] ?? 1
@@ -31,9 +32,19 @@ export function compileRoutes(
       const segments = segmentsOf(pattern)
       const slugAt = segments.indexOf(SLUG)
       if (slugAt !== -1) compiled.push({ collection, locale, segments, slugAt, maxDepth })
+      else if (!pattern.includes(SLUG)) {
+        fixed.push({ collection, locale, segments, slugAt, maxDepth: 0 })
+      }
     }
   }
-  return compiled
+  return [...fixed, ...compiled]
+}
+
+function isFixedAt(path: readonly string[], route: CompiledRoute): boolean {
+  return (
+    path.length === route.segments.length &&
+    route.segments.every((segment, at) => path[at] === segment)
+  )
 }
 
 function safeDecode(segment: string): string {
@@ -61,7 +72,8 @@ function matchesAt(path: readonly string[], route: CompiledRoute, depth: number)
 
 /**
  * The entry a site path names, by the routes: the collection, the locale and the slug, the last
- * of the segments that take the place of `:slug`; `slugPath` holds them all, joined by `/`.
+ * of the segments that take the place of `:slug`; `slugPath` holds them all, joined by `/`. The
+ * fixed path of a singleton names its one entry of the locale, with an empty slug.
  */
 export function matchRoute(
   path: string,
@@ -69,6 +81,16 @@ export function matchRoute(
 ): (LinkTarget & { readonly slugPath: string; readonly nested: boolean }) | undefined {
   const segments = segmentsOf(path)
   for (const route of routes) {
+    if (route.slugAt === -1) {
+      if (!isFixedAt(segments, route)) continue
+      return {
+        collection: route.collection,
+        locale: route.locale,
+        slug: '',
+        slugPath: '',
+        nested: false,
+      }
+    }
     for (let depth = 1; depth <= route.maxDepth; depth++) {
       if (!matchesAt(segments, route, depth)) continue
       const slugs = segments.slice(route.slugAt, route.slugAt + depth).map(safeDecode)

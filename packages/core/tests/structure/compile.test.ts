@@ -175,6 +175,51 @@ describe('compileSites', () => {
     expect(await hashOf(60)).not.toBe(await hashOf(70))
   })
 
+  it('keeps a singleton with fixed routes or none, and reads a stored collection without the flag as no singleton', () => {
+    const definition = (collections: Record<string, unknown>) => ({
+      locales: ['en', 'es'],
+      defaultLocale: 'en',
+      collections,
+    })
+    const site = compileSites({
+      web: definition({
+        home: { schema: { type: 'object' }, singleton: true, routes: { en: '/', es: '/es/' } },
+        settings: { schema: { type: 'object' }, singleton: true },
+        posts: { schema: { type: 'object' }, routes: { en: '/:slug/', es: '/es/:slug/' } },
+      }),
+    }).sites.get('web')
+
+    expect(
+      [...(site?.collections.values() ?? [])].map(({ name, singleton, routes }) => [
+        name,
+        singleton,
+        routes,
+      ]),
+    ).toEqual([
+      ['home', true, { en: '/', es: '/es/' }],
+      ['settings', true, {}],
+      ['posts', false, { en: '/:slug/', es: '/es/:slug/' }],
+    ])
+  })
+
+  it('moves the singleton of a config to its definition', () => {
+    const definitions = definitionsFromConfig({
+      sites: {
+        web: {
+          locales: ['en'],
+          defaultLocale: 'en',
+          collections: {
+            settings: { schema: z.object({ title: z.string() }), singleton: true },
+            posts: { schema: z.object({ title: z.string() }), routes: { en: '/:slug/' } },
+          },
+        },
+      },
+    })
+
+    expect(definitions['web']?.collections['settings']?.singleton).toBe(true)
+    expect(definitions['web']?.collections['posts']?.singleton).toBeUndefined()
+  })
+
   it('compiles no site to none', () => {
     expect(compileSites({}).sites.size).toBe(0)
   })

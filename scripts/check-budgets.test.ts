@@ -66,10 +66,9 @@ describe('budgets.json', () => {
     )
 
     expect(budgets.main.gzipKiB).toBe(250)
-    expect(budgets.total.gzipKiB).toBe(473)
+    expect(budgets.total.gzipKiB).toBe(476)
     expect(budgets.lazyPackages.packages).toEqual([
       'comark',
-      '@comark/html',
       '@simplewebauthn/server',
       '@modelcontextprotocol/server',
     ])

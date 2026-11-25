@@ -11,8 +11,15 @@ The Nuxt module of Hollware. Boundary rules for this package:
   `useHollwareEntry` adds nothing to the URL), and nothing may keep what it answers: no cache tag,
   `no-store`, and Nitro's cache (`cache: <seconds>`) varies on a header that only
   `src/runtime/server/preview.ts` sets, fresh for each preview. The cookie is cleared only when
-  Hollware says the token expired or is not valid, never for another entry's token. The shape, the
-  cookie and the URL without the parameter are pure functions of `@hollware/client`.
+  Hollware says the token expired or is not valid, never for another entry's token, whose entries
+  Hollware answers published. The shape, the cookie and the URL without the parameter are pure
+  functions of `@hollware/client`.
+- `?hollware-preview=<token>&hollware-embed=1` is the admin's live preview, in a frame: no `303`; the
+  Nitro plugin (`src/runtime/server/preview.ts`) puts the token in the request's own `Cookie` header,
+  so the server-side reads of that request carry it and the browser gets no cookie and no token in
+  the payload, and answers `no-store`, `Referrer-Policy: no-referrer`, no cache tag, no `X-Frame-Options`, and
+  `frame-ancestors` of the origin of `hollware.url` when it is set; over a binding alone the site
+  adds it.
 - A page gets an entry trimmed to what readers see (`forPage`): no verdict, revision or
   publication record goes into the payload.
 - The runtime (`src/runtime`) is built file by file (`unbundle`), because Nuxt adds each file to

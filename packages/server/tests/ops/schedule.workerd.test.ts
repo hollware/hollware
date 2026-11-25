@@ -7,6 +7,7 @@ import { scopesNow } from '../../src/schedule/standing.ts'
 import { createAuditLog, type AuditActor } from '../../src/audit/log.ts'
 import { agent as agentFor, blogFrontmatter, warmUpComark } from './support.ts'
 import { createPost, entryColumns, newWorld, publicationsOf, type World } from './world.ts'
+import type { ContentStore } from '../../src/ports.ts'
 
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
@@ -310,17 +311,157 @@ describe('publishAt', () => {
     expect(await publicationsOf(world.db, id)).toEqual([])
   })
 
-  it('is refused with a group, and for an entry that is published', async () => {
+  it('is refused for an entry that is published', async () => {
     const world = await newWorld(env.DB, 'schedule-refused')
     const id = await post(world)
 
-    await expect(
-      world.agent.publish({ id, version: 1, publishAt: LATER, group: [{ id, version: 1 }] }),
-    ).rejects.toThrow('A group cannot be scheduled')
     await world.agent.publish({ id, version: 1, acknowledgeWarnings: [TITLE_ACK] })
     await expect(
       world.agent.publish({ id, version: 2, publishAt: LATER, acknowledgeWarnings: [TITLE_ACK] }),
     ).rejects.toThrow('The entry is published')
+  })
+})
+
+describe('publishAt with a group', () => {
+  async function pair(world: World) {
+    await mayPublish(world)
+    const en = await createPost(world, { slug: 'launch', group: 'launch' })
+    const es = await createPost(world, { slug: 'lanzamiento', locale: 'es', group: 'launch' })
+    return { en, es }
+  }
+
+  it('schedules every entry of the group, and the cron run publishes them in one step at the time', async () => {
+    const world = await newWorld(env.DB, 'schedule-group')
+    const { en, es } = await pair(world)
+
+    const scheduled = await world.agent.publish({
+      id: en.id,
+      version: 1,
+      group: [{ id: es.id, version: 1 }],
+      publishAt: LATER,
+    })
+
+    expect([scheduled.outcome, scheduled.entry?.id, scheduled.entry?.status]).toEqual([
+      'scheduled',
+      en.id,
+      'scheduled',
+    ])
+    expect([
+      (await entryColumns(world.db, en.id))?.status,
+      (await entryColumns(world.db, es.id))?.status,
+    ]).toEqual(['scheduled', 'scheduled'])
+    expect(await run(world)).toEqual({ published: 0, cancelled: 0 })
+
+    world.time.set(LATER)
+    const lines: object[] = []
+
+    expect(
+      await runDueSchedules({
+        site: world.tenant.site,
+        store: world.store,
+        handlers,
+        clock: world.time.clock,
+        log: (line) => lines.push(line),
+        scopesOf: (actor) =>
+          scopesNow(
+            { db: env.DB, kv: env.OAUTH_KV },
+            actor,
+            world.tenant.key,
+            world.time.clock.now(),
+          ),
+      }),
+    ).toEqual({ published: 2, cancelled: 0 })
+    expect(lines).toEqual([expect.objectContaining({ kind: 'schedule', outcome: 'published' })])
+    expect([
+      (await entryColumns(world.db, en.id))?.status,
+      (await entryColumns(world.db, es.id))?.status,
+    ]).toEqual(['published', 'published'])
+    expect(await run(world)).toEqual({ published: 0, cancelled: 0 })
+  })
+
+  it('publishes none of the group when one of them changed since, and takes them all back to drafts', async () => {
+    const world = await newWorld(env.DB, 'schedule-group-changed')
+    const { en, es } = await pair(world)
+    await world.agent.publish({
+      id: en.id,
+      version: 1,
+      group: [{ id: es.id, version: 1 }],
+      publishAt: LATER,
+    })
+    await world.agent.updateDraft({
+      id: es.id,
+      version: 2,
+      markdown: `${blogFrontmatter({ translationGroup: 'launch' })}\nCambiado.\n`,
+    })
+
+    world.time.set(LATER)
+
+    expect(await run(world)).toEqual({ published: 0, cancelled: 2 })
+    expect(await publicationsOf(world.db, en.id)).toEqual([])
+    expect(await publicationsOf(world.db, es.id)).toEqual([])
+    expect([
+      (await entryColumns(world.db, en.id))?.status,
+      (await entryColumns(world.db, es.id))?.status,
+    ]).toEqual(['draft', 'draft'])
+    expect(await world.store.dueSchedules(world.tenant.key, LATER)).toEqual([])
+  })
+
+  it('schedules nothing when an entry of the group is not at the version given', async () => {
+    const world = await newWorld(env.DB, 'schedule-group-stale')
+    const { en, es } = await pair(world)
+
+    const answer = await world.agent.publish({
+      id: en.id,
+      version: 1,
+      group: [{ id: es.id, version: 7 }],
+      publishAt: LATER,
+    })
+
+    expect([answer.outcome, answer.failedEntry]).toEqual(['conflict', es.id])
+    expect((await entryColumns(world.db, en.id))?.status).toBe('draft')
+  })
+
+  it('schedules none of the group when an entry changes between the checks and the write', async () => {
+    const world = await newWorld(env.DB, 'schedule-group-race')
+    const { en, es } = await pair(world)
+    const racing: ContentStore = {
+      ...world.store,
+      scheduleGroup: async (site, write) => {
+        await world.agent.updateDraft({
+          id: es.id,
+          version: 1,
+          markdown: `${blogFrontmatter({ translationGroup: 'launch' })}\nOtra vez.\n`,
+        })
+        return world.store.scheduleGroup(site, write)
+      },
+    }
+
+    const answer = await agentFor(world.context({}, racing)).publish({
+      id: en.id,
+      version: 1,
+      group: [{ id: es.id, version: 1 }],
+      publishAt: LATER,
+    })
+
+    expect([answer.outcome, answer.failedEntry]).toEqual(['conflict', es.id])
+    expect((await entryColumns(world.db, en.id))?.status).toBe('draft')
+    expect(await world.store.dueSchedules(world.tenant.key, LATER)).toEqual([])
+  })
+
+  it('refuses a group with an entry already published', async () => {
+    const world = await newWorld(env.DB, 'schedule-group-live')
+    const { en, es } = await pair(world)
+    await world.agent.publish({ id: es.id, version: 1 })
+
+    await expect(
+      world.agent.publish({
+        id: en.id,
+        version: 1,
+        group: [{ id: es.id, version: 2 }],
+        publishAt: LATER,
+      }),
+    ).rejects.toThrow('of the group is published, so its publication cannot be scheduled')
+    expect((await entryColumns(world.db, en.id))?.status).toBe('draft')
   })
 })
 

@@ -112,6 +112,8 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolve('./runtime/components/HollwareImage'),
     })
     if (options.generator) addPlugin(resolve('./runtime/generator'))
+    addPlugin({ src: resolve('./runtime/embed'), mode: 'server' })
+    addPlugin({ src: resolve('./runtime/embed-client'), mode: 'client' })
     addServerPlugin(resolve('./runtime/server/preview'))
     addServerHandler({ middleware: true, handler: resolve('./runtime/server/preview-exchange') })
     if (options.cache === 'purge') {

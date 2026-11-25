@@ -12,6 +12,7 @@ import { collectionPreset, type Preset } from '@hollware/core'
 import { useMessages } from '../i18n/index.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
+import { kindOf, type CollectionKind } from '../lib/singleton.ts'
 import { useStructureChange } from '../lib/structure.ts'
 
 const toast = useToast()
@@ -23,10 +24,11 @@ const name = ref('')
 const preset = ref<Preset>('blog')
 
 const collections = computed(() => Object.entries(structure.value?.definition.collections ?? {}))
-type Row = { name: string; fields: number; rules: number; path: string }
+type Row = { name: string; kind: CollectionKind; fields: number; rules: number; path: string }
 const rows = computed<Row[]>(() =>
   collections.value.map(([name, collection]) => ({
     name,
+    kind: kindOf(collection),
     fields: fieldCount(collection.schema),
     rules: collection.rules.length,
     path: Object.values(collection.routes)[0] ?? '',
@@ -94,6 +96,14 @@ const PRESETS = computed(() => [
             class="font-medium hover:underline"
             >{{ row.original.name }}</RouterLink
           >
+          <UBadge
+            v-if="row.original.kind !== 'list'"
+            :label="m.singleton.kinds[row.original.kind]"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+            class="ms-2"
+          />
         </template>
         <template #path-cell="{ row }">
           <span class="font-mono text-xs text-muted">{{ row.original.path }}</span>

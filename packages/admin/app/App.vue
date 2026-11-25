@@ -13,6 +13,7 @@ import { openEntry } from './lib/open-entry.ts'
 import { releaseNotesUrl, type Release } from './lib/release.ts'
 import { admin, operation } from './lib/queries.ts'
 import { settingsGroups } from './lib/settings.ts'
+import { KIND_ICON, kindOf } from './lib/singleton.ts'
 import { api, auth } from './lib/session.ts'
 
 const route = useRoute()
@@ -92,12 +93,18 @@ const links = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     { label: m.value.nav.collections, type: 'label' },
-    ...collections.value.map((name) => ({
-      label: name,
-      icon: 'i-lucide-layers',
-      to: { path: '/entries', query: { collection: name } },
-      active: route.path === '/entries' && route.query['collection'] === name,
-    })),
+    ...(siteQuery.data.value?.site.collections ?? []).map((collection) => {
+      const kind = kindOf(collection)
+      return {
+        label: collection.name,
+        icon: KIND_ICON[kind],
+        ...(kind === 'list' ? {} : { badge: m.value.singleton.kinds[kind] }),
+        to: { path: '/entries', query: { collection: collection.name } },
+        active:
+          (route.path === '/entries' && route.query['collection'] === collection.name) ||
+          (kind !== 'list' && route.path.startsWith(`/entries/${collection.name}/`)),
+      }
+    }),
   ],
   [
     {

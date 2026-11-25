@@ -180,6 +180,22 @@ describe('the internal-links-resolve contract', () => {
     expect(calls).toStrictEqual([])
   })
 
+  it('lets a singleton link to its own fixed path, which names it with no slug', async () => {
+    const { verdict, calls } = await runLinks([], {
+      slug: 'home',
+      links: [
+        {
+          href: '/',
+          kind: 'internal',
+          line: 2,
+          target: { collection: 'blog', locale: 'es', slug: '' },
+        },
+      ],
+    })
+    expect(verdict.errors).toStrictEqual([])
+    expect(calls).toStrictEqual([])
+  })
+
   it('asks about the other locale of the entry itself, which is another entry', async () => {
     const { verdict, calls } = await runLinks([], {
       slug: 'edge-caching-guide',

@@ -86,6 +86,7 @@ describe('D1 schema', () => {
       'members',
       'outbox',
       'passkeys',
+      'presence',
       'publications',
       'redirects',
       'review_agent_runs',

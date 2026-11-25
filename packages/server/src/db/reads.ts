@@ -437,7 +437,7 @@ function refMatches(ref: EntryRef): SQL | undefined {
   return and(
     eq(entries.collection, ref.collection),
     eq(entries.locale, ref.locale),
-    eq(entries.slug, ref.slug),
+    ref.slug === '' ? undefined : eq(entries.slug, ref.slug),
   )
 }
 
@@ -456,12 +456,14 @@ export function lookup(db: Db, site: string): EntryLookup {
       if (first === undefined) return []
       const found = new Map<string, EntryFacts>()
       for (const row of (await db.batch([first, ...rest])).flat()) {
-        found.set(refKey(row), {
+        const facts = {
           id: row.id,
           status: entryStatus(row.status),
           translationGroup: row.translationGroup,
           slugPath: row.slugPath,
-        })
+        }
+        found.set(refKey(row), facts)
+        found.set(refKey({ ...row, slug: '' }), facts)
       }
       return refs.map((ref) => found.get(refKey(ref)) ?? null)
     },

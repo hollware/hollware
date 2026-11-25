@@ -71,7 +71,7 @@ function previewRefused(message: string): HollwareError {
   return new HollwareError(
     'invalid_preview',
     message,
-    'Ask for a new preview link: in the admin, open the entry and choose "Preview on the site".',
+    'Ask for a new preview link: in the admin, open the entry and choose "Open the draft in a new tab".',
   )
 }
 
@@ -241,14 +241,8 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         },
         async (input, context) => {
           const answer = await deps.handlers.get_entry(input, context)
-          if (
-            read.entryId !== null &&
-            answer.entry !== undefined &&
-            answer.entry.id !== read.entryId
-          ) {
-            return { outcome: 'not_found' as const }
-          }
-          return answer
+          if (read.entryId === null || answer.entry?.id === read.entryId) return answer
+          return deps.handlers.get_entry(input, { ...context, view: 'published' })
         },
         async (key) => {
           if (read.preview === undefined) return 'published'
@@ -278,7 +272,10 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
         (input, context) => getNavigation(input, context),
       ),
     resolvePath: (site, path, options) => {
-      const read: { preview: unknown } = { preview: undefined }
+      const read: { preview: unknown; entryId: string | null } = {
+        preview: undefined,
+        entryId: null,
+      }
       return run(
         deps,
         env,
@@ -290,10 +287,10 @@ export function createRpc(deps: RpcDeps, env: RpcEnv): HollwareRpc {
           read.preview = preview
           return { path }
         },
-        (input, context) => resolvePath(input, context),
+        (input, context) => resolvePath(input, context, read.entryId),
         async (key) => {
           if (read.preview === undefined) return 'published'
-          await checkPreview(deps, env, key, read.preview)
+          read.entryId = await checkPreview(deps, env, key, read.preview)
           return 'head'
         },
       )

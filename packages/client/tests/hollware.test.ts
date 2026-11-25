@@ -14,6 +14,7 @@ function entry(slug: string): Found {
     slug,
     parent: null,
     slugPath: slug,
+    path: `/blog/${slug}/`,
     position: null,
     translationGroup: 'g1',
     status: 'published',
@@ -65,7 +66,10 @@ function fakeReader(missing: readonly string[] = []) {
     },
     async getTranslations(...args) {
       calls.push(['translations', ...args])
-      return { outcome: 'ok', entries: [entry('uno'), { ...entry('one'), locale: 'es' }] }
+      return {
+        outcome: 'ok',
+        entries: [entry('uno'), { ...entry('one'), locale: 'es', path: null }],
+      }
     },
     async getNavigation(...args) {
       calls.push(['navigation', ...args])
@@ -202,6 +206,7 @@ describe('createHollware', () => {
         slug: 'hello',
         parent: null,
         slugPath: 'hello',
+        path: '/blog/hello/',
         translationGroup: 'g1',
         frontmatter: { title: 'hello' },
         tags: ['a'],
@@ -276,6 +281,7 @@ describe('createHollware', () => {
         slug: 'one',
         parent: null,
         slugPath: 'one',
+        path: '/blog/one/',
         translationGroup: 'g1',
         frontmatter: { title: 'one' },
         tags: ['a'],
@@ -293,8 +299,8 @@ describe('createHollware', () => {
 
     expect(calls).toEqual([['translations', 's', 'blog', 'g1']])
     expect(found).toEqual([
-      { locale: 'en', slug: 'uno' },
-      { locale: 'es', slug: 'one' },
+      { locale: 'en', slug: 'uno', path: '/blog/uno/' },
+      { locale: 'es', slug: 'one', path: null },
     ])
   })
 
@@ -360,6 +366,23 @@ describe('hollwareBinding', () => {
 })
 
 describe('getPage', () => {
+  it('reads with the token of the URL of an embedded preview, before the one of the cookie', async () => {
+    const { reader, calls } = fakeReader()
+    const request = new Request(
+      `https://site.test/en/?hollware-preview=${TOKEN}&hollware-embed=1`,
+      { headers: { cookie: 'hollware_preview=hw_prv_CC.DD' } },
+    )
+
+    const answer = await createHollware({ site: 's', reader }).getEntry('blog', 'en', 'home', {
+      request,
+    })
+
+    expect(calls).toEqual([
+      ['get', 's', 'blog', 'home', 'en', { formats: ['document'], preview: TOKEN }],
+    ])
+    expect(answer?.preview).toBe(true)
+  })
+
   it('reads the entry a path names, with the preview of the request', async () => {
     const { reader, calls } = fakeReader()
     const hollware = createHollware({ site: 's', reader })

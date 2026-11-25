@@ -14,6 +14,7 @@ function valueFor(field: string, schema: JsonSchema, entry: NewEntry): string {
     return entry.translationGroup === undefined ? entry.slug : yamlString(entry.translationGroup)
   if (schema['format'] === 'date') return entry.today
   if (schema['type'] === 'array') return '[]'
+  if (schema['type'] === 'object') return '{}'
   if (schema['type'] === 'boolean') return 'false'
   if (schema['type'] === 'number' || schema['type'] === 'integer') return '0'
   return '""'
@@ -34,7 +35,7 @@ export function newEntryMarkdown(collectionSchema: JsonSchema, entry: NewEntry):
     : []
   const group = entry.translationGroupField
   const fields = [
-    'title',
+    ...(entry.title !== '' || 'title' in properties ? ['title'] : []),
     ...required.filter((name) => name !== 'title'),
     ...(group !== null && entry.translationGroup !== undefined && !required.includes(group)
       ? [group]

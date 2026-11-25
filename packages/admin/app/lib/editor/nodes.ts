@@ -3,7 +3,9 @@ import Image from '@tiptap/extension-image'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import StarterKit, { type StarterKitOptions } from '@tiptap/starter-kit'
+import type { Transaction } from '@tiptap/pm/state'
 import type { Node as ComarkNode } from 'comark'
+import { componentAround, duplicateNode, moveNode } from './tree.ts'
 
 function comarkText(node: ComarkNode): string {
   if (typeof node === 'string') return node
@@ -112,6 +114,18 @@ export const ComarkComponent = Node.create({
       }),
       0,
     ]
+  },
+  addKeyboardShortcuts() {
+    const around = (change: (tr: Transaction, pos: number) => boolean) => () =>
+      this.editor.commands.command(({ tr }) => {
+        const pos = componentAround(tr.selection.$from)
+        return pos !== null && change(tr, pos)
+      })
+    return {
+      'Mod-Shift-ArrowUp': around((tr, pos) => moveNode(tr, pos, -1)),
+      'Mod-Shift-ArrowDown': around((tr, pos) => moveNode(tr, pos, 1)),
+      'Mod-Shift-d': around(duplicateNode),
+    }
   },
 })
 

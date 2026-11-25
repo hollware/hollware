@@ -8,6 +8,8 @@ export interface PageEntry {
   readonly parent?: string | null
   /** The slugs of its ancestors and its own, joined by `/`. */
   readonly slugPath?: string
+  /** Its public path by the collection's route in its locale; `null` without a route there. */
+  readonly path?: string | null
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]

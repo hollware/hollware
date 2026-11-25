@@ -1,5 +1,5 @@
 import { createClient, type HollwareReader, type NavigationGroup } from './index.ts'
-import { isPreviewToken, previewTokenFromCookie } from './preview.ts'
+import { embeddedPreviewToken, isPreviewToken, previewTokenFromCookie } from './preview.ts'
 
 /** Where to read from: a reader (a service binding is one), or a Hollware URL and a read token. */
 export type ReaderOptions =
@@ -87,6 +87,11 @@ export interface PageSummary {
   readonly parent: string | null
   /** The slugs of its ancestors and its own, joined by `/`: what takes the place of `:slug`. */
   readonly slugPath: string
+  /**
+   * Its public path by the collection's route in its locale (the fixed path of a singleton), for
+   * a sitemap or hreflang links; `null` when the collection has no route for that locale.
+   */
+  readonly path: string | null
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]
@@ -181,6 +186,8 @@ export interface EntryPage {
 export interface Translation {
   readonly locale: string
   readonly slug: string
+  /** Its public path, for an hreflang link; `null` when the collection has no route there. */
+  readonly path: string | null
 }
 
 /** What a search narrows to. */
@@ -289,6 +296,7 @@ interface SummaryFields {
   readonly slug: string
   readonly parent: string | null
   readonly slugPath: string
+  readonly path?: string | null
   readonly translationGroup: string | null
   readonly frontmatter: Record<string, unknown>
   readonly tags: readonly string[]
@@ -305,6 +313,7 @@ function summaryOf(entry: SummaryFields): PageSummary {
     slug: entry.slug,
     parent: entry.parent,
     slugPath: entry.slugPath,
+    path: entry.path ?? null,
     translationGroup: entry.translationGroup,
     frontmatter: entry.frontmatter,
     tags: entry.tags,
@@ -315,9 +324,10 @@ function summaryOf(entry: SummaryFields): PageSummary {
 }
 
 function previewOf(getOptions: GetEntryOptions): string | undefined {
-  return isPreviewToken(getOptions.preview)
-    ? getOptions.preview
-    : previewTokenFromCookie(getOptions.request?.headers.get('cookie'))
+  if (isPreviewToken(getOptions.preview)) return getOptions.preview
+  const { request } = getOptions
+  if (request === undefined) return undefined
+  return embeddedPreviewToken(request.url) ?? previewTokenFromCookie(request.headers.get('cookie'))
 }
 
 /**
@@ -385,7 +395,11 @@ export function createHollware(options: HollwareOptions): Hollware {
     },
     async getTranslations(collection, group) {
       const answer = await readerOf(options).getTranslations(site, collection, group)
-      return (answer.entries ?? []).map((entry) => ({ locale: entry.locale, slug: entry.slug }))
+      return (answer.entries ?? []).map((entry) => ({
+        locale: entry.locale,
+        slug: entry.slug,
+        path: entry.path ?? null,
+      }))
     },
     async getNavigation(collection, navigationOptions = {}) {
       const answer = await readerOf(options).getNavigation(site, collection, navigationOptions)

@@ -51,6 +51,9 @@ const COMARK_CASES: readonly string[] = [
   '_a **b**_ and **a _b_ c**\n',
   '::callout{type="info" :count="5"}\nHi\n::\n',
   '::youtube{id="x"}\n::\n',
+  'Our :mark[Skyward]{tone="serif"} is :badge[new], :mark[**b** c]{:n="3"} and :icon{name="a"}.\n',
+  '::capabilities{title="X"}\nIntro\n\n:::card{icon="a"}\nOne\n:::\n\n:::card\nTwo\n\n::::inner\ndeep\n::::\n:::\n::\n',
+  '::hero{visual="heatmap" :dark="true" :count="3"}\n# Hi\n::\n',
 ]
 
 describe('the editor', () => {

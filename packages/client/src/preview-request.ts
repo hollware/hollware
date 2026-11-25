@@ -1,5 +1,6 @@
 import {
   clearedPreviewCookie,
+  embeddedPreviewToken,
   exchangeHeaders,
   exchangePreviewLink,
   isPreviewRefusal,
@@ -25,29 +26,37 @@ export function previewRedirect(request: Request): Response | null {
 /**
  * The `Set-Cookie` that removes the preview cookie when `error` says Hollware refused the token
  * as expired or not valid, and `null` for any other error. A token for another entry is no
- * refusal: Hollware answers it as no entry, and the cookie stays.
+ * refusal: Hollware answers that entry published, and the cookie stays.
  */
 export function previewCookieClear(error: unknown, request: Request): string | null {
   if (!isPreviewRefusal(error)) return null
   return clearedPreviewCookie({ secure: isSecureRequest(request.url) })
 }
 
-/** Whether the request carries a preview token in its cookie. */
+function previewTokenOf(request: Request): string | undefined {
+  return embeddedPreviewToken(request.url) ?? previewTokenFromCookie(request.headers.get('cookie'))
+}
+
+/** Whether the request carries a preview token, in its cookie or embedded in its URL. */
 export function isPreviewRequest(request: Request): boolean {
-  return previewTokenFromCookie(request.headers.get('cookie')) !== undefined
+  return previewTokenOf(request) !== undefined
 }
 
 /**
  * The headers a page of a visitor who previews must carry: `Cache-Control: no-store` for any
- * request that holds a token, whatever Hollware answered, and the `Set-Cookie` that clears it
- * when `error` is a refusal. Without a token it is empty, so a published page is cached as
- * usual. Merge it into the headers of the response (a `Headers` is what `data()`, `Response`
- * and `NextResponse` take).
+ * request that holds a token, whatever Hollware answered, `Referrer-Policy: no-referrer` when the
+ * token is in the URL (the admin's live preview), and the `Set-Cookie` that clears it when `error`
+ * is a refusal. Without a token it is empty, so a published page is cached as usual. Merge it
+ * into the headers of the response (a `Headers` is what `data()`, `Response` and `NextResponse`
+ * take).
  */
 export function previewHeaders(request: Request, error?: unknown): Headers {
   const headers = new Headers()
   if (!isPreviewRequest(request)) return headers
   headers.set('cache-control', 'no-store')
+  if (embeddedPreviewToken(request.url) !== undefined) {
+    headers.set('referrer-policy', 'no-referrer')
+  }
   const clear = previewCookieClear(error, request)
   if (clear !== null) headers.append('set-cookie', clear)
   return headers

@@ -289,13 +289,38 @@ const glossary = defineCollection({
   styleGuide: `${PAGE_STYLE} A term is defined in its first sentence, plainly enough to be quoted.`,
 })
 
+const home = defineCollection({
+  singleton: true,
+  schema: z.object({ ...pageFields, noindex: z.boolean().optional() }),
+  routes: { en: '/', es: '/es/' },
+  components: PAGE_COMPONENTS,
+  contracts: PAGE_CONTRACTS,
+  styleGuide: PAGE_STYLE,
+})
+
+const link = z.strictObject({ label: z.string().min(1).max(60), href: z.string().min(1) })
+
+const settings = defineCollection({
+  singleton: true,
+  schema: z.object({
+    title: z.string().min(1).max(90),
+    navigation: z.array(link).max(12),
+    footer: z.strictObject({
+      tagline: z.string().min(1).max(160),
+      columns: z
+        .array(z.strictObject({ title: z.string().min(1).max(60), links: z.array(link).max(12) }))
+        .max(6),
+    }),
+  }),
+})
+
 export default defineConfig({
   sites: {
     docs: {
       locales: ['en', 'es'],
       defaultLocale: 'en',
       url: 'https://hollware.com',
-      collections: { docs, pages, glossary },
+      collections: { docs, pages, glossary, home, settings },
       styleGuide:
         'Plain international English, and neutral Spanish with tú and no regional idioms. A page in Spanish keeps the slug of its English page.',
     },

@@ -84,6 +84,8 @@ export const STORE: ContentStore = {
   publish: unused,
   publishGroup: unused,
   schedule: unused,
+  scheduleGroup: unused,
+  groupSchedules: unused,
   dueSchedules: unused,
   cancelSchedule: unused,
   unpublish: unused,

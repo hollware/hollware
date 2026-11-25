@@ -1,15 +1,16 @@
-import { parentViolation } from '@hollware/core'
+import { HollwareError, parentViolation, type ResolvedCollection } from '@hollware/core'
 import { actorOf } from './actor.ts'
 import { entrySummary, refusalVerdict, verdictView, violationOf } from './answers.ts'
 import { requireCollection, requireLocale } from './collections.ts'
 import { formatFor, judge, revisionOf, translationGroupOf } from './draft.ts'
 import { unexpectedAnswer } from './errors.ts'
 import { parentFor, TREE_ATTEMPTS, treeOf } from './tree.ts'
-import type { OperationHandler } from './types.ts'
+import type { OperationContext, OperationHandler } from './types.ts'
 
 export const createDraft: OperationHandler<'create_draft'> = async (input, context) => {
   const collection = requireCollection(context.site, input.collection)
   requireLocale(context.site, input.locale)
+  if (collection.singleton) await refuseSecondSingleton(context, collection, input.locale)
   const actor = actorOf(context)
   const { markdown, processed } = await formatFor(context.site, collection, input.markdown)
   if (!processed.ok) {
@@ -76,4 +77,24 @@ export const createDraft: OperationHandler<'create_draft'> = async (input, conte
     }
   }
   return refusedUnder('changed')
+}
+
+async function refuseSecondSingleton(
+  context: OperationContext,
+  collection: ResolvedCollection,
+  locale: string,
+): Promise<void> {
+  const page = await context.store.listEntries(context.site.key, {
+    collection: collection.name,
+    locale,
+    view: 'head',
+    limit: 1,
+  })
+  const held = page.entries[0]
+  if (held === undefined) return
+  throw new HollwareError(
+    'invalid_input',
+    `The collection ${JSON.stringify(collection.name)} is a singleton and already holds its entry in ${locale}: ${JSON.stringify(held.entry.slug)}.`,
+    `Change that entry with update_draft (read it with get_entry, slug ${JSON.stringify(held.entry.slug)}), or create the entry in another locale of the site.`,
+  )
 }

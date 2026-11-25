@@ -1,4 +1,4 @@
-import { PREVIEW_QUERY_PARAM } from '@hollware/core'
+import { PREVIEW_EMBED_PARAM, PREVIEW_QUERY_PARAM } from '@hollware/core'
 
 /** The cookie that holds the token of a preview, on the site's own origin. */
 export const PREVIEW_COOKIE = 'hollware_preview'
@@ -26,6 +26,18 @@ export function previewTokenFromCookie(header: string | null | undefined): strin
   return undefined
 }
 
+/**
+ * The token of a link for the admin's live preview, `?hollware-preview=<token>&hollware-embed=1`,
+ * or `undefined`: the page renders in place with it, for that request only, and no cookie is set.
+ * A value not shaped like a token is no embedded preview.
+ */
+export function embeddedPreviewToken(url: URL | string): string | undefined {
+  const { searchParams } = typeof url === 'string' ? new URL(url) : url
+  if (searchParams.get(PREVIEW_EMBED_PARAM) !== '1') return undefined
+  const token = searchParams.get(PREVIEW_QUERY_PARAM)
+  return isPreviewToken(token) ? token : undefined
+}
+
 /** What to answer a request that carries `?hollware-preview=`. */
 export interface PreviewExchange {
   /** The path and query of the same URL without the parameter, other parameters kept in order. */
@@ -36,13 +48,15 @@ export interface PreviewExchange {
 
 /**
  * The exchange of a URL that carries `?hollware-preview=<token>`: where to redirect (`303`) and
- * the token to keep in a cookie, or `undefined` when the URL has no such parameter. The token is
- * not checked here: only Hollware can, when the page reads.
+ * the token to keep in a cookie, or `undefined` when the URL has no such parameter, or embeds the
+ * preview (`embeddedPreviewToken`), which renders in place. The token is not checked here: only
+ * Hollware can, when the page reads.
  */
 export function exchangePreviewLink(
   url: URL | string,
   makeNonce: () => string = nonce,
 ): PreviewExchange | undefined {
+  if (embeddedPreviewToken(url) !== undefined) return undefined
   const { pathname: asked, search } = typeof url === 'string' ? new URL(url) : url
   const pathname = pathOnThisHost(asked)
   const kept: string[] = []
@@ -130,8 +144,8 @@ export function exchangeHeaders(
 /**
  * Whether an error is Hollware's refusal of a token as expired or invalid, its code
  * `invalid_preview` (over the binding, or over HTTP as a `HollwareClientError`), looking through
- * `cause`. A token for another entry is no refusal: Hollware answers it as no entry, and it must
- * stay so.
+ * `cause`. A token for another entry is no refusal: Hollware answers that entry published, and
+ * the cookie stays.
  */
 export function isPreviewRefusal(error: unknown): boolean {
   let current: unknown = error

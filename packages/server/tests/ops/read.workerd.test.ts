@@ -7,10 +7,16 @@ import { createPost, newWorld, publicationsOf, publishPost } from './world.ts'
 vi.setConfig({ testTimeout: 60_000 })
 beforeAll(warmUpComark, 120_000)
 
-const listed = <T extends { locale: string; translationGroup: string | null }>(summary: T) =>
-  summary.locale === 'es' || summary.translationGroup === null
-    ? summary
-    : { ...summary, translationOutdated: false }
+const ROUTE_PREFIX: Readonly<Record<string, string>> = { es: '/blog/', en: '/en/blog/' }
+
+const listed = <T extends { locale: string; slugPath: string; translationGroup: string | null }>(
+  summary: T,
+) => {
+  const routed = { ...summary, path: `${ROUTE_PREFIX[summary.locale] ?? ''}${summary.slugPath}/` }
+  return summary.locale === 'es' || summary.translationGroup === null
+    ? routed
+    : { ...routed, translationOutdated: false }
+}
 
 describe('describe_site', () => {
   it('describes the site, its collections and the contracts that every collection is checked against', async () => {
@@ -128,6 +134,7 @@ describe('list_entries', () => {
       slug: 'agents-write',
       parent: null,
       slugPath: 'agents-write',
+      path: '/en/blog/agents-write/',
       position: null,
       translationGroup: 'agents',
       status: 'draft',
@@ -252,6 +259,7 @@ describe('get_entry', () => {
     expect(read.outcome).toBe('ok')
     expect(read.entry).toEqual({
       ...created.entry,
+      path: '/en/blog/edge-caching-guide/',
       translationOutdated: false,
       revision: expect.stringMatching(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/),
       unpublishAt: null,

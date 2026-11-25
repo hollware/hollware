@@ -95,6 +95,7 @@ function compileCollection(
   return {
     schema: describedSchemaOf(withAutomatic(collection.schema, collection.automaticFields)),
     routes: collection.routes,
+    ...(collection.singleton ? { singleton: true } : {}),
     ...(collection.translationGroupField === null
       ? {}
       : { translations: { groupBy: collection.translationGroupField } }),

@@ -280,6 +280,7 @@ export const schedules = sqliteTable(
     entryId: text('entry_id').notNull(),
     scheduledAt: text('scheduled_at').notNull(),
     version: integer('version').notNull(),
+    groupId: text('group_id'),
     acknowledged: text('acknowledged').notNull(),
     actorKind: text('actor_kind').notNull(),
     actorUserId: text('actor_user_id').notNull(),
@@ -918,5 +919,23 @@ export const reviewAgentRuns = sqliteTable(
       foreignColumns: [reviews.id, reviews.siteId],
     }),
     check('review_agent_runs_status', sql`${t.status} IN ('queued', 'commented', 'failed')`),
+  ],
+)
+
+export const presence = sqliteTable(
+  'presence',
+  {
+    id: id('prs'),
+    siteId: siteId(),
+    entryId: text('entry_id').notNull(),
+    userId: text('user_id').notNull(),
+    seenAt: text('seen_at').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    unique('presence_id_site').on(t.id, t.siteId),
+    unique('presence_editor').on(t.siteId, t.entryId, t.userId),
+    index('presence_user').on(t.userId),
+    foreignKey({ name: 'presence_site', columns: [t.siteId], foreignColumns: [sites.id] }),
   ],
 )

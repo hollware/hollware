@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import {
   edgeHeaders,
+  embedScrollKey,
   entryTags,
   groupTags,
   listTags,
@@ -38,5 +39,15 @@ describe('the tags of a response', () => {
       edgeHeaders(['entry:ent_1'], 200, 'POST'),
       edgeHeaders([], 200, 'GET'),
     ]).toEqual([null, null, null])
+  })
+})
+
+describe('where an embedded preview keeps its scroll', () => {
+  it('keys the scroll by the path of a page in the live preview, and keeps none for a visitor', () => {
+    expect(embedScrollKey('https://site.test/es/install/?hollware-embed=1')).toBe(
+      'hollware-embed-scroll:/es/install/',
+    )
+    expect(embedScrollKey('https://site.test/es/install/')).toBeNull()
+    expect(embedScrollKey('https://site.test/es/install/?hollware-embed=0')).toBeNull()
   })
 })

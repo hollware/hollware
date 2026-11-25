@@ -39,6 +39,7 @@ const open = (over: Partial<EntryCommands> = {}): EntryCommands => ({
   schedule: () => calls.push('schedule'),
   toggleSource: () => calls.push('source'),
   preview: () => calls.push('preview'),
+  livePreview: () => calls.push('live'),
   ...over,
 })
 
@@ -59,12 +60,13 @@ describe('the commands of ⌘K', () => {
     const items = group({ ...base, entry: open() }, 'entry')?.items ?? []
     expect(items.map((item) => [item.label, item.icon])).toEqual([
       ['Publish', 'i-lucide-send'],
-      ['Schedule', 'i-lucide-calendar-clock'],
+      ['Schedule publishing', 'i-lucide-calendar-clock'],
       ['View Markdown', 'i-lucide-code'],
-      ['Preview on the site', 'i-lucide-eye'],
+      ['Open the draft in a new tab', 'i-lucide-eye'],
+      ['Show the draft beside the editor', 'i-lucide-columns-2'],
     ])
     for (const item of items) item.onSelect?.()
-    expect(calls).toEqual(['publish', 'schedule', 'source', 'preview'])
+    expect(calls).toEqual(['publish', 'schedule', 'source', 'preview', 'live'])
   })
 
   it('leave out what the open entry cannot do', () => {
@@ -76,9 +78,9 @@ describe('the commands of ⌘K', () => {
         },
         'entry',
       ),
-    ).toEqual(['Edit visually'])
+    ).toEqual(['Edit visually', 'Show the draft beside the editor'])
     expect(labels({ ...base, entry: open({ status: 'scheduled', lossy: true }) }, 'entry')).toEqual(
-      ['Publish', 'Preview on the site'],
+      ['Publish', 'Open the draft in a new tab', 'Show the draft beside the editor'],
     )
   })
 
@@ -170,9 +172,10 @@ describe('the commands of ⌘K', () => {
   it('speak the language of the admin', () => {
     expect(labels({ ...base, entry: open() }, 'entry', es)).toEqual([
       'Publicar',
-      'Programar',
+      'Programar la publicación',
       'Ver Markdown',
-      'Vista previa en el sitio',
+      'Ver el borrador en una pestaña',
+      'Ver el borrador junto al editor',
     ])
     expect(labels(base, 'go', es)).toContain('Configuración: Zona de peligro')
     expect(group(base, 'sites', es)?.label).toBe('Cambiar de sitio')

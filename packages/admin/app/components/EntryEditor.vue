@@ -9,6 +9,7 @@ import { useMessages } from '../i18n/index.ts'
 import type { Output } from '../lib/api.ts'
 import { customHandlers, slashItems, type SlashComponent } from '../lib/editor/blocks.ts'
 import {
+  COMPONENT_CONTENT_KEY,
   componentContent,
   COMPONENTS_KEY,
   type ComponentDefinition,
@@ -19,6 +20,7 @@ import {
   COMARK_EXTENSIONS,
   ComarkBlock,
   ComarkComponent,
+  ComarkInline,
   imageWithAssets,
   STARTER_KIT,
 } from '../lib/editor/nodes.ts'
@@ -26,8 +28,11 @@ import { api } from '../lib/session.ts'
 import CalloutView from './editor/CalloutView.vue'
 import ComponentView from './editor/ComponentView.vue'
 import ImagePicker from './editor/ImagePicker.vue'
+import InlineComponentView from './editor/InlineComponentView.vue'
 import { needsAssets } from '../lib/images.ts'
 import RawView from './editor/RawView.vue'
+import { wrapInline } from '../lib/editor/inline.ts'
+import { componentDragDeduction } from '../lib/editor/tree.ts'
 
 type Asset = Output<'list_assets'>['assets'][number]
 
@@ -46,12 +51,22 @@ const assets = new Map<string, string>()
 const pickerOpen = ref(false)
 const editorRef = shallowRef<Editor | null>(null)
 const slashComponents = ref<SlashComponent[]>([])
+provide(
+  COMPONENT_CONTENT_KEY,
+  computed(() =>
+    Object.fromEntries(
+      slashComponents.value.map((component) => [component.name, component.content]),
+    ),
+  ),
+)
 let emitted: string | null = null
 let opened: readonly ComarkNode[] = []
 let version = 0
 
-const viewed = (node: typeof Callout, view: Parameters<typeof VueNodeViewRenderer>[0]) =>
-  node.extend({ addNodeView: () => VueNodeViewRenderer(view) })
+const viewed = (
+  node: typeof Callout | typeof ComarkInline,
+  view: Parameters<typeof VueNodeViewRenderer>[0],
+) => node.extend({ addNodeView: () => VueNodeViewRenderer(view) })
 
 const extensions = [
   imageWithAssets((src) => assets.get(src) ?? src),
@@ -59,6 +74,7 @@ const extensions = [
     if (extension.name === Callout.name) return viewed(Callout, CalloutView)
     if (extension.name === ComarkComponent.name) return viewed(ComarkComponent, ComponentView)
     if (extension.name === ComarkBlock.name) return viewed(ComarkBlock, RawView)
+    if (extension.name === ComarkInline.name) return viewed(ComarkInline, InlineComponentView)
     return extension
   }),
 ]
@@ -214,8 +230,38 @@ const toolbar = computed<EditorToolbarItem[][]>(() => [
       tooltip: { text: m.value.editor.toolbar.code, kbds: ['meta', 'e'] },
     },
   ],
-  [{ slot: 'link' as const, icon: 'i-lucide-link', 'aria-label': m.value.editor.toolbar.link }],
+  [
+    { slot: 'link' as const, icon: 'i-lucide-link', 'aria-label': m.value.editor.toolbar.link },
+    ...(props.components.length > 0
+      ? [
+          {
+            slot: 'component' as const,
+            icon: 'i-lucide-puzzle',
+            'aria-label': m.value.editor.inline.wrap,
+          },
+        ]
+      : []),
+  ],
 ])
+
+function inlineMenu(editor: Editor): DropdownMenuItem[] {
+  return props.components.map((component) => ({
+    label: component.name,
+    description: component.description ?? undefined,
+    icon: 'i-lucide-puzzle',
+    onSelect: () =>
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => wrapInline(tr, tr.selection.from, tr.selection.to, component.name))
+        .run(),
+  }))
+}
+
+const nested = {
+  allowedContainers: [ComarkComponent.name],
+  rules: [{ id: 'components', evaluate: componentDragDeduction }],
+}
 
 const link = ref('')
 function openLink(editor: Editor, isOpen: boolean) {
@@ -317,9 +363,20 @@ const blockAt = ref(0)
             </template>
           </UPopover>
         </template>
+        <template #component>
+          <UDropdownMenu :items="inlineMenu(editor)" :content="{ align: 'start' }">
+            <UButton
+              icon="i-lucide-puzzle"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :aria-label="m.editor.inline.wrap"
+            />
+          </UDropdownMenu>
+        </template>
       </UEditorToolbar>
       <UEditorSuggestionMenu :editor="editor" :items="slash" />
-      <UEditorDragHandle v-slot="{ ui, onClick }" :editor="editor">
+      <UEditorDragHandle v-slot="{ ui, onClick }" :editor="editor" :nested="nested">
         <UButton
           icon="i-lucide-plus"
           color="neutral"

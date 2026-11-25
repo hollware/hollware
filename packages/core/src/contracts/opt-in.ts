@@ -158,7 +158,7 @@ function isThisEntry(target: Target, context: ContractContext<unknown>): boolean
   return (
     target.collection === context.collection &&
     target.locale === context.locale &&
-    target.slug === context.slug
+    (target.slug === context.slug || target.slug === '')
   )
 }
 

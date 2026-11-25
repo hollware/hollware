@@ -33,8 +33,14 @@ export interface CollectionDefinition<Schema extends DescribedSchema = Described
   /**
    * The public path of an entry in each locale of the site, with `:slug`:
    * `{ es: '/blog/:slug/', en: '/en/blog/:slug/' }`. Links that match one are internal links.
+   * A singleton takes a fixed path per locale instead (`{ es: '/', en: '/en/' }`), or none at all.
    */
-  readonly routes: Readonly<Record<string, string>>
+  readonly routes?: Readonly<Record<string, string>>
+  /**
+   * One entry per locale at most, such as a home page or the settings of the site: its routes
+   * are fixed paths without `:slug`, or there are none. `false` by default.
+   */
+  readonly singleton?: boolean
   /**
    * Translations: the frontmatter field that holds the key the translations of an entry share.
    * Without it, the entries of the collection have no translations.
@@ -262,6 +268,8 @@ export interface ResolvedCollection {
   readonly name: string
   readonly schema: DescribedSchema
   readonly routes: Readonly<Record<string, string>>
+  /** Whether it holds one entry per locale at most, whose routes are fixed paths. */
+  readonly singleton: boolean
   readonly translationGroupField: string | null
   readonly tagsField: string | null
   readonly sortByField: string | null

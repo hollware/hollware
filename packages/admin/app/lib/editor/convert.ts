@@ -348,7 +348,7 @@ function inlineNode(node: JSONContent): ComarkNode | null {
   }
 }
 
-function inlineFromEditor(content: readonly JSONContent[] = []): ComarkNode[] {
+export function inlineFromEditor(content: readonly JSONContent[] = []): ComarkNode[] {
   const root: ComarkNode[] = []
   const stack: { mark: Mark; element: ElementNode }[] = []
   const top = () => (stack.length === 0 ? root : stack[stack.length - 1]!.element)
