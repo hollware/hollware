@@ -11,7 +11,6 @@ import { editorExtensions } from '../app/lib/editor/nodes.ts'
 import {
   addChild,
   componentAround,
-  componentDragDeduction,
   deleteNode,
   duplicateNode,
   insertInside,
@@ -180,13 +179,6 @@ describe('the items of a component', () => {
     expect(
       await changed(CAPABILITIES, (tr, doc) => deleteNode(tr, positions(doc, 'card')[0]!)),
     ).toBe('::capabilities\nIntro\n\n  :::card{icon="b"}\n  Two\n  :::\n::\n')
-  })
-
-  it('are what the drag handle takes inside a component, not the blocks they hold', () => {
-    const named = (name: string) => ({ type: { name } })
-    expect(componentDragDeduction({ node: named('paragraph'), depth: 1 })).toBe(0)
-    expect(componentDragDeduction({ node: named('comarkComponent'), depth: 2 })).toBe(0)
-    expect(componentDragDeduction({ node: named('paragraph'), depth: 2 })).toBe(1000)
   })
 })
 

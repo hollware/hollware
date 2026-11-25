@@ -87,12 +87,3 @@ export function addChild(tr: Transaction, pos: number, content: JSONContent): bo
   tr.insert(after, tr.doc.type.schema.nodeFromJSON(content))
   return true
 }
-
-export interface DragTarget {
-  readonly node: { readonly type: { readonly name: string } }
-  readonly depth: number
-}
-
-export function componentDragDeduction({ node, depth }: DragTarget): number {
-  return depth <= 1 || node.type.name === COMPONENT ? 0 : 1000
-}

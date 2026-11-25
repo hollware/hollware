@@ -32,7 +32,6 @@ import InlineComponentView from './editor/InlineComponentView.vue'
 import { needsAssets } from '../lib/images.ts'
 import RawView from './editor/RawView.vue'
 import { wrapInline } from '../lib/editor/inline.ts'
-import { componentDragDeduction } from '../lib/editor/tree.ts'
 
 type Asset = Output<'list_assets'>['assets'][number]
 
@@ -258,11 +257,6 @@ function inlineMenu(editor: Editor): DropdownMenuItem[] {
   }))
 }
 
-const nested = {
-  allowedContainers: [ComarkComponent.name],
-  rules: [{ id: 'components', evaluate: componentDragDeduction }],
-}
-
 const link = ref('')
 function openLink(editor: Editor, isOpen: boolean) {
   if (isOpen) link.value = String(editor.getAttributes('link')['href'] ?? '')
@@ -376,7 +370,7 @@ const blockAt = ref(0)
         </template>
       </UEditorToolbar>
       <UEditorSuggestionMenu :editor="editor" :items="slash" />
-      <UEditorDragHandle v-slot="{ ui, onClick }" :editor="editor" :nested="nested">
+      <UEditorDragHandle v-slot="{ ui, onClick }" :editor="editor">
         <UButton
           icon="i-lucide-plus"
           color="neutral"
