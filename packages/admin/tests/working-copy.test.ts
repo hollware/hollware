@@ -7,7 +7,6 @@ import {
   keepWorkingCopy,
   readWorkingCopy,
   restoreOf,
-  saveDelay,
   workingCopyKey,
   type CopyStorage,
 } from '../app/lib/working-copy.ts'
@@ -91,17 +90,6 @@ describe('the working copy of an entry in the browser', () => {
       { kind: 'older', markdown: '# Mine\n', version: 2 },
       { kind: 'none' },
     ])
-  })
-})
-
-describe('the save of a draft', () => {
-  it('waits 8 s after a change, and never past a minute from the first change it has not saved', () => {
-    expect([
-      saveDelay(0, 0),
-      saveDelay(0, 30_000),
-      saveDelay(0, 55_000),
-      saveDelay(0, 70_000),
-    ]).toEqual([8_000, 8_000, 5_000, 0])
   })
 })
 

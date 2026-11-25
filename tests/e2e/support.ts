@@ -81,7 +81,7 @@ export async function writeMarkdown(page: Page, markdown: string): Promise<void>
 }
 
 export async function saveNow(page: Page): Promise<void> {
-  await page.keyboard.press('ControlOrMeta+S')
+  await page.keyboard.press('Control+s')
   await expect(
     page.getByRole('status').filter({ hasText: /^\s*(Saved|Guardado)\s*$/ }),
   ).toBeVisible()

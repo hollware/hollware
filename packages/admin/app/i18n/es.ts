@@ -386,11 +386,11 @@ export const es: Messages = {
     conflictBody:
       'La entrada está en una versión más nueva que la que editaste. Copia lo que escribiste si lo necesitas y luego carga la versión más nueva.',
     keepEditing: 'Seguir editando',
-    leaveTitle: 'Tu cambio no está guardado',
+    leaveTitle: 'Tienes cambios sin guardar',
     leaveBody:
-      'Hollware no pudo guardar lo que escribiste. Quédate y guárdalo de nuevo, o sal sin él.',
+      'Lo que escribiste desde el último guardado no está en la entrada. Guárdalo para que quede en el historial, o sal sin él.',
     leaveAnyway: 'Salir sin guardar',
-    stay: 'Quedarme',
+    saveAndLeave: 'Guardar y salir',
     loadNewer: 'Cargar la versión más nueva',
     presence: {
       here: (names: readonly string[]) =>
@@ -1492,7 +1492,7 @@ export const es: Messages = {
     previous: 'Fila anterior',
     select: 'Seleccionar la fila',
     clear: 'Quitar la selección',
-    save: 'Guardar ahora',
+    save: 'Guardar',
     markdown: 'Markdown o edición visual',
     history: 'Historial',
     properties: 'Propiedades',

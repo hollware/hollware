@@ -148,7 +148,7 @@ test('the owner writes in the visual editor, and finds the Markdown an agent wri
   await owner.getByRole('button', { name: 'Edit visually' }).click()
 })
 
-test('the owner types in bursts, which this browser keeps until one save, and gets kept changes back', async ({
+test('the owner types in bursts, which this browser keeps until they save, and gets kept changes back', async ({
   browser,
 }) => {
   await owner.goto('/admin/entries/blog/en/a-long-post?panel=history')
@@ -160,9 +160,13 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
   await owner.keyboard.press('End')
   for (const word of [' One.', ' Two.', ' Three.']) {
     await owner.keyboard.type(word)
-    await owner.waitForTimeout(2_000)
+    await owner.waitForTimeout(3_000)
   }
 
+  await expect(
+    owner.getByRole('status').filter({ hasText: /^\s*Unsaved changes\s*$/ }),
+  ).toBeVisible()
+  await expect(history.getByRole('button')).toHaveCount(revisions)
   const copies = await keptCopies(owner)
   expect(copies).toHaveLength(1)
   const [key, copy] = copies[0] ?? []
@@ -252,22 +256,33 @@ test('the owner types in bursts, which this browser keeps until one save, and ge
   expect(await keptCopies(owner)).toEqual([])
 })
 
-test('the editor saves what the owner typed before it opens a translation, and not for a tab', async () => {
+test('the editor saves only when the owner asks, and asks before it leaves an entry with changes', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo?panel=history')
   const history = owner.getByRole('list', { name: 'History of the entry' })
   await expect(history.getByRole('button').first()).toContainText('Latest')
   const revisions = await history.getByRole('button').count()
+  const save = owner.getByRole('button', { name: 'Save', exact: true })
+  await expect(save).toBeDisabled()
   const body = owner.getByRole('textbox', { name: 'Body of the entry' })
   await body.getByText('Plain words, one idea, and nothing that links anywhere.').click()
   await owner.keyboard.press('End')
   await owner.keyboard.type(' Y algo más.')
+  await expect(save).toBeEnabled()
   await owner.getByRole('tab', { name: 'Properties' }).click()
   await owner.getByRole('tab', { name: 'History' }).click()
   await expect(history.getByRole('button').first()).toContainText('Latest')
   await owner.waitForTimeout(600)
   await expect(history.getByRole('button')).toHaveCount(revisions)
   await owner.getByRole('tab', { name: 'Properties' }).click()
-  await owner.getByRole('link', { name: 'en · Hello world', exact: true }).click()
+  const english = owner.getByRole('link', { name: 'en · Hello world', exact: true })
+  await english.click()
+  const unsaved = owner.getByRole('dialog', { name: 'You have unsaved changes' })
+  await expect(unsaved).toBeVisible()
+  await expectAccessible(owner)
+  await unsaved.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
+  await english.click()
+  await unsaved.getByRole('button', { name: 'Save and leave' }).click()
   await expect(owner.getByRole('heading', { name: 'Hello world', level: 1 })).toBeVisible()
   expect(await keptCopies(owner)).toEqual([])
   await owner.getByRole('link', { name: 'es · Hola mundo', exact: true }).click()
@@ -279,12 +294,18 @@ test('the editor saves what the owner typed before it opens a translation, and n
     owner.getByText('Restored the changes this browser kept since the last save'),
   ).toBeHidden()
   expect(await keptCopies(owner)).toEqual([])
+  await body.getByText('nothing that links anywhere. Y algo más.').click()
+  await owner.keyboard.press('End')
+  await owner.keyboard.type(' Con el botón.')
+  await save.click()
+  await expect(save).toBeDisabled()
+  await expect(history.getByRole('button')).toHaveCount(revisions + 2)
 })
 
 test('the editor keeps the owner on an entry it could not save, until they choose to leave', async () => {
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   const body = owner.getByRole('textbox', { name: 'Body of the entry' })
-  await body.getByText('Plain words, one idea, and nothing that links anywhere.').click()
+  await body.getByText('Con el botón.').click()
   await owner.route('**/v1/ops/update_draft', (route) => route.abort('internetdisconnected'))
   await owner.keyboard.press('End')
   await owner.keyboard.type(' Sin red.')
@@ -292,22 +313,18 @@ test('the editor keeps the owner on an entry it could not save, until they choos
     .getByRole('navigation', { name: 'Admin' })
     .getByRole('link', { name: 'Entries' })
   await entries.click()
-  const unsaved = owner.getByRole('dialog', { name: 'Your change is not saved' })
-  await expect(unsaved).toBeVisible()
-  await unsaved.getByRole('button', { name: 'Stay' }).click()
+  const unsaved = owner.getByRole('dialog', { name: 'You have unsaved changes' })
+  await unsaved.getByRole('button', { name: 'Save and leave' }).click()
+  await expect(owner.getByText('Not saved').first()).toBeVisible()
   await expect(owner).toHaveURL(/\/admin\/entries\/blog\/es\/hola-mundo$/)
-  await expect(body).toContainText('Y algo más. Sin red.')
+  await expect(body).toContainText('Con el botón. Sin red.')
   await entries.click()
   await unsaved.getByRole('button', { name: 'Leave without saving' }).click()
   await expect(owner).toHaveURL(/\/admin\/entries$/)
+  expect(await keptCopies(owner)).toEqual([])
   await owner.unroute('**/v1/ops/update_draft')
-  await owner.evaluate(() => {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('hollware:working-copy:')) localStorage.removeItem(key)
-    }
-  })
   await owner.goto('/admin/entries/blog/es/hola-mundo')
-  await expect(body).toContainText('Y algo más.')
+  await expect(body).toContainText('Con el botón.')
   await expect(body).not.toContainText('Sin red.')
 })
 
@@ -439,6 +456,7 @@ test('the owner who changes an entry that waits for review is asked first, and t
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await expect(owner.getByText(/^Bea asked to publish this version/)).toBeVisible()
   await writeMarkdown(owner, post('Hola mundo, de la dueña', 'hello-world'))
+  await owner.keyboard.press('Control+s')
   const held = owner.getByRole('dialog', { name: 'This version waits for review' })
   await expect(held).toBeVisible()
   await expectAccessible(owner)
@@ -453,6 +471,10 @@ test('the owner who changes an entry that waits for review is asked first, and t
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await writeMarkdown(owner, post('Hola mundo, de paso', 'hello-world'))
   await owner.getByRole('link', { name: 'Reviews' }).first().click()
+  await owner
+    .getByRole('dialog', { name: 'You have unsaved changes' })
+    .getByRole('button', { name: 'Leave without saving' })
+    .click()
   await expect(
     owner.getByRole('button', { name: /Hola mundo, de Bea.*asked by Bea/ }),
   ).toBeVisible()
@@ -500,6 +522,7 @@ test('the owner who changes an entry that waits for review is asked first, and t
 
   await owner.goto('/admin/entries/blog/es/hola-mundo')
   await writeMarkdown(owner, post('Hola mundo, otra vez', 'hello-world'))
+  await owner.keyboard.press('Control+s')
   await held.getByRole('button', { name: 'Save and cancel the request' }).click()
   await expect(owner.getByRole('status').filter({ hasText: /^\s*Saved\s*$/ })).toBeVisible()
   await owner.goto('/admin/reviews')
