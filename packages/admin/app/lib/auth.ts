@@ -77,6 +77,7 @@ export function createAuth(deps: AuthDeps) {
         resource: settings.resource,
       }),
     })
+    if (response.status === 429) throw new SignInError(text().tooMany)
     if (!response.ok) return null
     return (await response.json()) as {
       access_token: string

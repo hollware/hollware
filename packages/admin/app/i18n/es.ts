@@ -1641,6 +1641,8 @@ export const es: Messages = {
     noSettings: (status: number) => `El admin no pudo leer su configuración (${status}).`,
     lost: 'El inicio de sesión no se completó. Inicia sesión de nuevo.',
     refused: 'Se rechazó el inicio de sesión. Inicia sesión de nuevo.',
+    tooMany:
+      'Demasiados inicios de sesión desde esta dirección en el último minuto. Espera un minuto e inicia sesión de nuevo.',
   },
   api: {
     answered: (status: number) => `El servidor respondió ${status}.`,

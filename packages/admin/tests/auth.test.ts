@@ -117,6 +117,14 @@ describe('the sign-in of the admin', () => {
     expect(w.posts).toEqual([])
   })
 
+  it('says to wait a minute when the token endpoint limits this address, instead of a refusal', async () => {
+    const w = world([new Response(null, { status: 429 })])
+
+    await expect(signedIn(w)).rejects.toThrow(
+      'Too many sign-ins from this address in the last minute. Wait a minute, then sign in again.',
+    )
+  })
+
   it('renews the token a minute before it expires, and forgets one that cannot be renewed', async () => {
     const w = world([tokens('access-1'), tokens('access-2', 'refresh-2')])
     await signedIn(w)

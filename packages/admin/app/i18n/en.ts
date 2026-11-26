@@ -1394,6 +1394,8 @@ export const en = {
     noSettings: (status: number) => `The admin could not read its settings (${status}).`,
     lost: 'The sign-in did not come back as it left. Sign in again.',
     refused: 'The sign-in was refused. Sign in again.',
+    tooMany:
+      'Too many sign-ins from this address in the last minute. Wait a minute, then sign in again.',
   },
   api: {
     answered: (status: number) => `The server answered ${status}.`,

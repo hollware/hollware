@@ -9,7 +9,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     cwd: join(root, 'apps', 'playground'),
     stdio: 'inherit',
   })
-  const project = createProject()
+  const project = createProject({ rateLimited: false })
   const migrated = await project.hollware('migrate', '--local')
   if (migrated.code !== 0) throw new Error(`migrate failed: ${migrated.output}`)
   const port = await freePort()
