@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 1.13.0
+
+### Minor Changes
+
+- [#126](https://github.com/hollware/hollware/pull/126) [`4a9953d`](https://github.com/hollware/hollware/commit/4a9953d4f52a5e598d5989e881132a7b757b2933) Thanks [@sergioazoc](https://github.com/sergioazoc)! - The rule `reserved-slugs` of the catalog, and `contracts.reservedSlugs` in a config, keep an entry off the slugs a collection may not take, such as the paths a site serves from its own code: `{ "rule": "reserved-slugs", "params": { "slugs": ["blog", "demo"], "reason": "the site serves them" } }`. A draft with one of them is saved with the error, and it cannot be published until its slug changes. The admin shows the error in Spanish too.
+
 ## 1.12.0
 
 ### Minor Changes

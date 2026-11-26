@@ -1,5 +1,12 @@
 # @hollware/server
 
+## 1.13.0
+
+### Patch Changes
+
+- Updated dependencies [[`4a9953d`](https://github.com/hollware/hollware/commit/4a9953d4f52a5e598d5989e881132a7b757b2933)]:
+  - @hollware/core@1.13.0
+
 ## 1.12.0
 
 ### Patch Changes
