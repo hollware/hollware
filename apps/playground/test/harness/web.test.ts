@@ -296,14 +296,12 @@ describe('hollware.com', () => {
     const home = await (await webFetch(server, '/')).text()
     const spanish = await (await webFetch(server, '/es/')).text()
 
-    expect(home).toMatch(/<a[^>]*href="\/features\/"[^>]*>(?:<!--[^>]*-->|<[^>]+>|\s)*Features/)
+    expect(home).toMatch(/<a[^>]*href="\/features\/"[^>]*>(?:<[^>]*>|\s)*Features/)
     expect(home).toMatch(/<a[^>]*href="https:\/\/demo\.hollware\.com"[^>]*target="_blank"/)
     expect(home).toContain('Open source, MIT')
     expect(home).toMatch(/<a[^>]*href="\/media-kit\/"/)
     expect(spanish).toContain('Código abierto, MIT')
-    expect(spanish).toMatch(
-      /<a[^>]*href="\/es\/docs\/"[^>]*>(?:<!--[^>]*-->|<[^>]+>|\s)*Documentación/,
-    )
+    expect(spanish).toMatch(/<a[^>]*href="\/es\/docs\/"[^>]*>(?:<[^>]*>|\s)*Documentación/)
     expect(spanish).not.toContain('href="/features/"')
   })
 
