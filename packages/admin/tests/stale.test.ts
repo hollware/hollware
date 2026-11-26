@@ -24,7 +24,9 @@ describe('a file of the code that failed to load', () => {
       setItem: (key: string, value: string) => void kept.set(key, value),
     }
     let loads = 0
-    const load = () => void loads++
+    const load = () => {
+      loads += 1
+    }
 
     expect(loadAgainOnce(storage, 100_000, load)).toBe(true)
     expect(loadAgainOnce(storage, 109_999, load)).toBe(false)

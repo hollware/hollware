@@ -45,6 +45,15 @@ function consumesWithDeadLetters(bindings: Record<string, unknown>): boolean {
   )
 }
 
+function declaresSecret(bindings: Record<string, unknown>): boolean {
+  const secrets = bindings.secrets
+  return (
+    isRecord(secrets) &&
+    Array.isArray(secrets.required) &&
+    secrets.required.includes('HOLLWARE_SECRET')
+  )
+}
+
 export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
   const violations: Violation[] = []
   const excusedWithReason = new Set<string>()
@@ -93,6 +102,12 @@ export function checkWranglerFlags(input: WranglerFlagsInput): Violation[] {
       )
       if (excused && lacksEvents) excusedWithReason.add(config.path)
       for (const [place, bindings] of places) {
+        if (environments.length > 0 && !declaresSecret(bindings)) {
+          report(
+            'secrets',
+            `${place} must declare "secrets": { "required": ["HOLLWARE_SECRET"] }: without it, wrangler types reads the secrets of a local .dev.vars, and the types of the Worker depend on the machine`,
+          )
+        }
         if (!bindsOAuthKv(bindings)) {
           report(
             'oauth',

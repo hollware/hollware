@@ -52,7 +52,7 @@ describe('the handler table', () => {
   it('pairs one handler with each operation, and nothing else', () => {
     expect(defineHandlers(handlers)).toBe(handlers)
     const { validate, ...missingOne } = handlers
-    void validate
+    expect(validate).toBe(handlers.validate)
     // @ts-expect-error -- `validate` has no handler.
     defineHandlers(missingOne)
     // @ts-expect-error -- `purge_entry` is no operation.
