@@ -1436,6 +1436,10 @@ export const es: Messages = {
         message: `El cuerpo usa ${q(param(p, 'word'))}.`,
         fix: `Reescribe el cuerpo sin ${q(param(p, 'word'))}.`,
       }),
+      'reserved-slugs': (p) => ({
+        message: `El slug ${q(param(p, 'slug'))} está reservado.`,
+        fix: `Elige otro slug que no sea ${q(param(p, 'slug'))}.`,
+      }),
       'reference.missing': (p) => ({
         message: `${q(param(p, 'field'))} nombra ${q(param(p, 'slug'))}, y ${q(param(p, 'collection'))} no tiene esa entrada en ${param(p, 'locale')}.`,
         fix: `Usa el slug de una entrada de ${q(param(p, 'collection'))}, o crea ${q(param(p, 'slug'))} primero.`,

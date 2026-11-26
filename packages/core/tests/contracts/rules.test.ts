@@ -120,3 +120,26 @@ describe('banned-words', () => {
     ])
   })
 })
+
+describe('reserved-slugs', () => {
+  const collection = collectionOf({
+    contracts: [
+      contracts.reservedSlugs({ slugs: ['blog', 'demo'], reason: 'the site serves them' }),
+    ],
+  })
+
+  it('finds a reserved slug, and lets any other be', async () => {
+    expect((await run({ collection, slug: 'demo' })).errors).toEqual([
+      {
+        contract: 'reserved-slugs',
+        severity: 'error',
+        path: '',
+        message: 'The slug "demo" is reserved (the site serves them).',
+        fix: 'Choose another slug than "demo".',
+        code: 'reserved-slugs',
+        params: { slug: 'demo' },
+      },
+    ])
+    expect((await run({ collection, slug: 'demos' })).errors).toEqual([])
+  })
+})

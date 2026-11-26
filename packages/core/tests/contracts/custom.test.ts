@@ -183,6 +183,7 @@ describe('the contracts namespace', () => {
       'imagesHaveAlt',
       'internalLinksResolve',
       'requiredToPublish',
+      'reservedSlugs',
       'translationPair',
     ])
   })

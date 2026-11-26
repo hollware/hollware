@@ -208,6 +208,40 @@ export function bannedWords(
   )
 }
 
+export interface ReservedSlugsParams {
+  readonly slugs: readonly string[]
+  readonly reason?: string
+}
+
+export function reservedSlugs(
+  params: ReservedSlugsParams,
+  options: RuleOptions = {},
+): Contract<unknown> {
+  const reserved = new Set(params.slugs)
+  const because = params.reason === undefined ? '' : ` (${params.reason})`
+  return registerBuiltIn(
+    {
+      id: options.id ?? 'reserved-slugs',
+      severity: options.severity ?? 'error',
+      description: `The slug is none of these: ${params.slugs.map(quote).join(', ')}${because}.`,
+      rule: { name: 'reserved-slugs', params: { ...params, slugs: [...params.slugs] } },
+      check: ({ slug }) =>
+        reserved.has(slug)
+          ? [
+              {
+                path: '',
+                message: `The slug ${quote(slug)} is reserved${because}.`,
+                fix: `Choose another slug than ${quote(slug)}.`,
+                code: 'reserved-slugs',
+                params: { slug },
+              },
+            ]
+          : [],
+    },
+    { readsFrontmatter: false },
+  )
+}
+
 export interface ReferenceParams {
   /** The field that holds the slug of the entry it refers to, or a list of slugs. */
   readonly field: string

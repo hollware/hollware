@@ -1,6 +1,13 @@
 import * as z from 'zod'
 import { contracts } from './opt-in.ts'
-import { bannedWords, fieldLength, fieldPattern, reference, requiredToPublish } from './rules.ts'
+import {
+  bannedWords,
+  fieldLength,
+  fieldPattern,
+  reference,
+  requiredToPublish,
+  reservedSlugs,
+} from './rules.ts'
 import type { Contract, Severity } from './types.ts'
 
 const fieldName = z.string().min(1).describe('A field of the frontmatter, by its name.')
@@ -127,6 +134,15 @@ export const CATALOG: readonly CatalogRule[] = [
     'Fields a draft may leave empty and a published entry must fill.',
     z.strictObject({ fields: z.array(fieldName).min(1) }),
     (params, options) => requiredToPublish(params, options),
+  ),
+  rule(
+    'reserved-slugs',
+    'Slugs an entry may not take, such as the paths a site serves from its own code.',
+    z.strictObject({
+      slugs: z.array(z.string().min(1)).min(1).max(200),
+      reason: z.string().min(1).max(200).optional().describe('Why, for the fix.'),
+    }),
+    (params, options) => reservedSlugs(params, options),
   ),
   rule(
     'translation-pair',

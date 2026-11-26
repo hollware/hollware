@@ -1,6 +1,12 @@
 import { assetIdIn } from '../media/index.ts'
 import { registerBuiltIn } from './registry.ts'
-import { bannedWords, fieldLength, fieldPattern, requiredToPublish } from './rules.ts'
+import {
+  bannedWords,
+  fieldLength,
+  fieldPattern,
+  requiredToPublish,
+  reservedSlugs,
+} from './rules.ts'
 import { runtimeOf } from './runtime.ts'
 import { clip, isRecord, pointer, quote } from './text.ts'
 import type {
@@ -237,5 +243,6 @@ export const contracts = {
   imagesHaveAlt,
   internalLinksResolve,
   requiredToPublish,
+  reservedSlugs,
   translationPair,
 } as const
