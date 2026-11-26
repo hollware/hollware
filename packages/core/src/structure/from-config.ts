@@ -20,7 +20,7 @@ function collectionOf(
       problems.add(
         itemPath(keyPath(path, 'contracts'), index),
         `the contract "${contract.id}" is code of the config's own, which a definition cannot hold`,
-        'Replace it with a rule of the catalog (contracts.fieldLength, contracts.fieldPattern, contracts.requiredToPublish, contracts.bannedWords, or the built-in ones), then deploy again.',
+        'Replace it with a rule of the catalog (contracts.fieldLength, contracts.fieldPattern, contracts.requiredToPublish, contracts.bannedWords, contracts.reservedSlugs, or the built-in ones), then deploy again.',
       )
       return
     }

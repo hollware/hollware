@@ -22,6 +22,10 @@ describe('paramInputs', () => {
       ['words', 'texts', true],
       ['reason', 'text', false],
     ])
+    expect(params('reserved-slugs')).toEqual([
+      ['slugs', 'texts', true],
+      ['reason', 'text', false],
+    ])
     expect(params('images-have-alt')).toEqual([])
   })
 })
