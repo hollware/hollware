@@ -1,7 +1,7 @@
 <script setup lang="ts">
-const page = await usePage('pages', 'home', { home: true })
+const page = await usePage('home', '')
 
-usePageHead('pages', page, (entry) => [
+usePageHead('home', page, (entry) => [
   softwareApplication({
     description:
       typeof entry.frontmatter['description'] === 'string' ? entry.frontmatter['description'] : '',

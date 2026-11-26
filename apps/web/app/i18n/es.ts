@@ -7,16 +7,7 @@ export const es: Messages = {
     description:
       'Hollware es un CMS headless de código abierto en Cloudflare Workers. Los agentes escriben Markdown por MCP, los contratos revisan cada escritura y tus sitios lo leen por Workers RPC.',
   },
-  nav: {
-    docs: 'Documentación',
-    features: 'Funciones',
-    compare: 'Comparar',
-    mediaKit: 'Media kit',
-    tools: 'Herramientas',
-    demo: 'Demo',
-    github: 'Hollware en GitHub',
-  },
-  footer: { license: 'Código abierto, MIT', by: 'Hecho por', author: 'Sergio Azócar' },
+  nav: { github: 'Hollware en GitHub' },
   pages: {
     notFound: 'Página no encontrada',
     unavailable: 'Hollware no responde en este momento: intenta de nuevo en un minuto',

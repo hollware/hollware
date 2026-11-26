@@ -9,7 +9,7 @@ import { useMessages } from '../i18n/index.ts'
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { entryPath } from '../lib/entries.ts'
-import { kindOf } from '../lib/singleton.ts'
+import { humanName, kindOf } from '../lib/singleton.ts'
 import { newEntryMarkdown } from '../lib/template.ts'
 
 const m = useMessages()
@@ -54,7 +54,9 @@ const singleton = computed(() => chosen.value !== undefined && kindOf(chosen.val
 watch(
   () => (singleton.value ? collection.value : null),
   (name) => {
-    if (name !== null) slug.value = name
+    if (name === null) return
+    slug.value = name
+    if (title.value === '') title.value = humanName(name)
   },
   { immediate: true },
 )
@@ -117,6 +119,9 @@ async function create() {
       </p>
       <p v-if="parent !== undefined" class="text-sm text-muted">
         {{ m.newEntry.inside }}<span class="font-mono">{{ parent }}</span>.
+      </p>
+      <p v-if="singleton && existing === null" class="text-sm text-muted">
+        {{ m.singleton.none(collection, locale) }}
       </p>
       <UFormField :label="m.newEntry.collection">
         <USelect v-model="collection" :items="site.collections.map((c) => c.name)" class="w-full" />

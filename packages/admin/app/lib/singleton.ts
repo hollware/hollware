@@ -1,6 +1,5 @@
 import type { Api } from './api.ts'
 import { entryPath } from './entries.ts'
-import { newEntryMarkdown } from './template.ts'
 
 export interface SingletonCollection {
   readonly name: string
@@ -34,7 +33,7 @@ export type Opening =
       readonly query: Readonly<Record<string, string>>
     }
 
-function humanName(name: string): string {
+export function humanName(name: string): string {
   const words = name.replace(/-/g, ' ')
   return `${words.charAt(0).toUpperCase()}${words.slice(1)}`
 }
@@ -43,34 +42,19 @@ export async function openSingleton(
   api: Pick<Api, 'call'>,
   collection: SingletonCollection,
   locale: string,
-  today: string,
 ): Promise<Opening> {
   const here = await api.call('list_entries', { collection: collection.name, locale, limit: 1 })
   const found = here.entries[0]
   if (found !== undefined) return { kind: 'open', to: entryPath(found) }
-  const anywhere = await api.call('list_entries', { collection: collection.name, limit: 1 })
-  const group = anywhere.entries[0]?.translationGroup ?? null
-  const properties = collection.schema['properties']
-  const titled = typeof properties === 'object' && properties !== null && 'title' in properties
-  const created = await api.call('create_draft', {
+  const trashed = await api.call('list_entries', {
     collection: collection.name,
     locale,
-    slug: collection.name,
-    markdown: newEntryMarkdown(collection.schema, {
-      title: titled ? humanName(collection.name) : '',
-      slug: collection.name,
-      today,
-      translationGroupField: collection.translationGroupField,
-      ...(group === null ? {} : { translationGroup: group }),
-    }),
+    trashed: true,
+    limit: 1,
   })
-  if (created.outcome === 'saved') {
-    return {
-      kind: 'open',
-      to: entryPath({ collection: collection.name, locale, slug: collection.name }),
-    }
-  }
-  if (created.outcome === 'in_trash') return { kind: 'trash' }
+  if (trashed.entries[0] !== undefined) return { kind: 'trash' }
+  const anywhere = await api.call('list_entries', { collection: collection.name, limit: 1 })
+  const group = anywhere.entries[0]?.translationGroup ?? null
   return {
     kind: 'new',
     query: {

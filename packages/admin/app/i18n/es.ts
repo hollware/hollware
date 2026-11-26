@@ -1226,6 +1226,8 @@ export const es: Messages = {
     notOpened: 'No se abrió',
     exists: (locale: string) => `Ya tiene su entrada en ${locale}.`,
     openIt: 'Abrirla',
+    none: (collection: string, locale: string) =>
+      `${collection} todavía no tiene entrada en ${locale}. Créala para empezar a editarla; nada se guarda hasta que lo hagas.`,
   },
   pane: {
     preview: 'Vista previa en vivo',

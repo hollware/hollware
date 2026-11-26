@@ -4,6 +4,8 @@ const { m } = useLocale()
 const compact = inject('install-compact', false)
 const tab = ref<'claude' | 'codex' | 'cursor' | 'other'>('claude')
 const copied = ref(false)
+const label = () =>
+  textOfVNodes(slots.label?.()).replace(/\s+/g, ' ').trim() || m.value.pages.install.button
 const prompt = () => textOfVNodes(slots.default?.()).replace(/\s+/g, ' ').trim()
 const quoted = () => `"${prompt().replace(/(["\\$`])/g, '\\$1')}"`
 
@@ -41,7 +43,7 @@ const tabs = computed(() =>
         color="secondary"
         size="xl"
         :icon="copied ? 'i-lucide-check' : 'i-lucide-sparkles'"
-        :label="copied ? m.pages.install.copied : m.pages.install.button"
+        :label="copied ? m.pages.install.copied : label()"
         @click="copy"
       />
       <div v-if="!compact" class="flex gap-1" role="tablist" :aria-label="m.pages.install.agents">

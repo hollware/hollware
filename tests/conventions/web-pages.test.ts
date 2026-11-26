@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import config from '../../apps/playground/hollware.config.ts'
+import { PAGE_COLLECTIONS } from '../../apps/web/app/utils/pages.ts'
 import { webCollections } from '../../scripts/web-structure.ts'
 import { VOICE_WORDS } from '../guards/voice.ts'
 import { readText } from '../support/repo.ts'
@@ -17,7 +18,12 @@ interface Collection {
   readonly rules: readonly { readonly rule: string; readonly params: Record<string, unknown> }[]
 }
 
-const collections: Record<string, Collection> = JSON.parse(JSON.stringify(webCollections(config)))
+const all: Record<string, Collection> = JSON.parse(JSON.stringify(webCollections(config)))
+const collections = PAGE_COLLECTIONS.map((name) => {
+  const collection = all[name]
+  if (collection === undefined) throw new Error(`the structure of hollware.com has no ${name}`)
+  return collection
+})
 const rendered = [
   ...readText('apps/web/app/components/page/PageBody.vue').matchAll(
     /^\s+'?([a-z-]+)'?: resolveComponent\(/gm,
@@ -26,14 +32,14 @@ const rendered = [
 
 describe('the pages of hollware.com, read from Hollware', () => {
   it('render every component their collections declare, and only those', () => {
-    for (const collection of Object.values(collections)) {
+    for (const collection of collections) {
       const byName = (a: string, b: string) => a.localeCompare(b)
       expect(Object.keys(collection.components).sort(byName)).toEqual([...rendered].sort(byName))
     }
   })
 
   it('give no component a prop of free text: copy goes in slots, where the contracts read it', () => {
-    for (const collection of Object.values(collections)) {
+    for (const collection of collections) {
       for (const [name, component] of Object.entries(collection.components)) {
         for (const [prop, schema] of Object.entries(component.props.properties ?? {})) {
           expect(
@@ -46,7 +52,7 @@ describe('the pages of hollware.com, read from Hollware', () => {
   })
 
   it('refuse the words the voice guard refuses in the repository', () => {
-    for (const collection of Object.values(collections)) {
+    for (const collection of collections) {
       const banned = collection.rules.find((rule) => rule.rule === 'banned-words')
       expect(banned?.params['words']).toEqual(VOICE_WORDS)
     }

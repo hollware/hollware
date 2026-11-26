@@ -1,11 +1,8 @@
 const FILE = /\/[^/]*\.[^/]*$/
-const HOME = /^(\/es)?\/home\/?$/
 
 export function canonicalRedirectOf(url: URL): string | null {
   const target = new URL(url)
   if (target.hostname.startsWith('www.')) target.hostname = target.hostname.slice('www.'.length)
-  const home = HOME.exec(target.pathname)
-  if (home !== null) target.pathname = `${home[1] ?? ''}/`
   const internal = target.pathname.split('/').some((segment) => segment.startsWith('_'))
   if (!internal && !target.pathname.endsWith('/') && !FILE.test(target.pathname)) {
     target.pathname = `${target.pathname}/`

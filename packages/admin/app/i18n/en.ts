@@ -1203,6 +1203,8 @@ export const en = {
     notOpened: 'It did not open',
     exists: (locale: string) => `It already has its entry in ${locale}.`,
     openIt: 'Open it',
+    none: (collection: string, locale: string) =>
+      `${collection} has no entry in ${locale} yet. Create it to start editing; nothing is saved until you do.`,
   },
   pane: {
     preview: 'Live preview',

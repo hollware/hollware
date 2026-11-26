@@ -15,11 +15,6 @@ describe('the one URL of a page', () => {
     expect(of('https://www.hollware.com/features?x=1')).toBe('https://hollware.com/features/?x=1')
   })
 
-  it('sends the old home to the root in one step', () => {
-    expect(of('https://hollware.com/home')).toBe('https://hollware.com/')
-    expect(of('https://hollware.com/es/home/')).toBe('https://hollware.com/es/')
-  })
-
   it('leaves files, internal routes and canonical pages alone', () => {
     for (const url of [
       'https://hollware.com/',

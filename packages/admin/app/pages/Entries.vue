@@ -155,7 +155,6 @@ watch(
         api,
         current,
         locale.value === ALL ? (site.value?.defaultLocale ?? '') : locale.value,
-        new Date().toISOString().slice(0, 10),
       )
       if (target.kind === 'open') await router.replace(target.to)
       else if (target.kind === 'new')

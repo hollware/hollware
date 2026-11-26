@@ -158,11 +158,11 @@ export async function publishNew(agent: Agent, draft: Draft): Promise<string> {
 
 export async function previewTokenFor(
   entryId: string,
-  options: { readonly secret?: string; readonly ageSeconds?: number } = {},
+  options: { readonly secret?: string; readonly ageSeconds?: number; readonly site?: string } = {},
 ): Promise<string> {
   const { token } = await makePreviewToken({
     secret: options.secret ?? HARNESS_SECRET,
-    site: SITE_KEY,
+    site: options.site ?? SITE_KEY,
     entryId,
     now: new Date(Date.now() - (options.ageSeconds ?? 0) * 1000),
   })

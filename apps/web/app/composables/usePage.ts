@@ -7,31 +7,42 @@ export interface LoadedPage {
   readonly untranslated: ComputedRef<boolean>
 }
 
+async function readOf(collection: PageCollection, locale: string, slug: MaybeRefOrGetter<string>) {
+  if (collection === 'home') {
+    const read = await useHollwarePage(pathOf('home', '', locale))
+    return {
+      error: read.error,
+      entry: computed(() => (read.data.value?.outcome === 'ok' ? read.data.value.entry : null)),
+    }
+  }
+  const read = await useHollwareEntry(collection, locale, slug)
+  return { error: read.error, entry: computed(() => read.data.value?.entry ?? null) }
+}
+
 export async function usePage(
   collection: PageCollection,
   slug: MaybeRefOrGetter<string>,
-  options: { readonly home?: boolean } = {},
 ): Promise<LoadedPage> {
   const nuxtApp = useNuxtApp()
   const route = useRoute()
   const { locale, m } = useLocale()
-  const own = await useHollwareEntry(collection, locale.value, slug)
+  const own = await readOf(collection, locale.value, slug)
   const english =
     own.error.value?.statusCode === 404 && locale.value !== 'en'
-      ? await nuxtApp.runWithContext(() => useHollwareEntry(collection, 'en', slug))
+      ? await nuxtApp.runWithContext(() => readOf(collection, 'en', slug))
       : null
   const found = english ?? own
   const error = found.error.value
   if (error) {
     failRead(
-      options.home === true && error.statusCode === 404
+      collection === 'home' && error.statusCode === 404
         ? Object.assign(error, { statusCode: 503, statusMessage: m.value.pages.unavailable })
         : error,
       route.fullPath,
       m.value.pages.notFound,
     )
   }
-  const entry = computed(() => found.data.value?.entry ?? null)
+  const entry = found.entry
   return {
     entry,
     front: computed(() => entry.value?.frontmatter ?? {}),
@@ -72,8 +83,7 @@ export function usePageHead(
     }
   })
   useSeoMeta({
-    title: () =>
-      collection === 'pages' && head.value?.entry.slug === 'home' ? '' : head.value?.title,
+    title: () => (collection === 'home' ? '' : head.value?.title),
     description: () => head.value?.description,
     ogTitle: () => head.value?.title,
     ogDescription: () => head.value?.description,

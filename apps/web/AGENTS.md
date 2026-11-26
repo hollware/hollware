@@ -1,10 +1,11 @@
 # hollware.com
 
 The landing page and the docs. The pages read the `docs` site of Hollware over the `HOLLWARE`
-service binding: the docs, and the collections `pages` (home, install, media kit), `features`,
-`compare` and `glossary`, defined in `apps/playground/hollware.config.ts` and applied to the demo
-with `set_collection` from `node scripts/web-structure.ts`. Only the words of the interface live in
-`app/i18n`.
+service binding: the docs, the singleton `home` (read by its path, `/` and `/es/`), the singleton
+`settings` (the header and the footer, slug `settings`), and the collections `pages` (install,
+features, compare, media kit) and `glossary`, defined in `apps/playground/hollware.config.ts` and
+applied to the demo with `set_collection` from `node scripts/web-structure.ts`. Only the words of
+the interface live in `app/i18n`.
 
 - Copy goes in the body and the slots of a component, never in its props: the contracts, search,
   the Markdown of a page and llms.txt read the body. A prop is an enum, a pattern or an id.

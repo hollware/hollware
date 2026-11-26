@@ -12,12 +12,13 @@ import {
 
 describe('the path of a page', () => {
   it('puts the home at the root, a page at its slug and an entry under its collection', () => {
-    expect(pathOf('pages', 'home', 'en')).toBe('/')
-    expect(pathOf('pages', 'home', 'es')).toBe('/es/')
+    expect(pathOf('home', 'home', 'en')).toBe('/')
+    expect(pathOf('home', 'whatever', 'es')).toBe('/es/')
+    expect(pathOf('pages', 'home', 'en')).toBe('/home/')
     expect(pathOf('pages', 'install', 'es')).toBe('/es/install/')
     expect(pathOf('glossary', 'content-contracts', 'en')).toBe('/glossary/content-contracts/')
     expect(pathOf('pages', 'compare', 'es')).toBe('/es/compare/')
-    expect(markdownPathOf('pages', 'home', 'es')).toBe('/es/index.md')
+    expect(markdownPathOf('home', 'home', 'es')).toBe('/es/index.md')
     expect(markdownPathOf('glossary', 'content-contracts', 'en')).toBe(
       '/glossary/content-contracts.md',
     )
@@ -41,17 +42,11 @@ describe('the path of a page', () => {
       locale: 'en',
     })
     expect(markdownTarget('/es/index.md')).toEqual({
-      collection: 'pages',
-      slug: 'home',
+      collection: 'home',
+      slug: '',
       locale: 'es',
     })
-    for (const path of [
-      '/llms.md',
-      '/home.md',
-      '/docs/deploy/',
-      '/reference/events.md',
-      '/a/b.md',
-    ]) {
+    for (const path of ['/llms.md', '/docs/deploy/', '/reference/events.md', '/a/b.md']) {
       expect(markdownTarget(path)).toBeNull()
     }
   })

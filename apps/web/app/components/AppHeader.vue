@@ -1,36 +1,32 @@
 <script setup lang="ts">
 const route = useRoute()
 const { locale, m, to } = useLocale()
+const settings = await useSettings()
 const { data } = useHollwareNavigation('docs', () => ({ locale: locale.value }), { lazy: true })
 const { data: english } = useHollwareNavigation('docs', { locale: 'en' }, { lazy: true })
 const pages = computed(() =>
   docLinks(data.value, locale.value, locale.value === 'en' ? null : (english.value ?? null)),
 )
 
-const links = computed(() => [
-  { label: m.value.nav.features, to: to('/features/'), icon: 'i-lucide-layers' },
-  { label: m.value.nav.compare, to: to('/compare/'), icon: 'i-lucide-scale' },
-  { label: m.value.nav.docs, to: to('/docs/'), icon: 'i-lucide-book-open' },
-  { label: m.value.nav.tools, to: to('/reference/mcp-tools/'), icon: 'i-lucide-wrench' },
-  {
-    label: m.value.nav.demo,
-    to: 'https://demo.hollware.com',
-    target: '_blank',
-    icon: 'i-lucide-globe',
-  },
-])
+const links = computed(() =>
+  settings.value.navigation.map((link) => ({
+    label: link.label,
+    to: link.href,
+    ...(isExternal(link.href) ? { target: '_blank' } : {}),
+  })),
+)
 
 const other = computed(() => pathIn(locale.value === 'en' ? 'es' : 'en', basePath(route.path)))
 const inDocs = computed(() => /^\/(es\/)?(docs|reference)/.test(route.path))
 </script>
 
 <template>
-  <UHeader :to="to('/')" title="Hollware" class="backdrop-blur-md bg-default/70">
+  <UHeader :to="to('/')" :title="settings.title" class="backdrop-blur-md bg-default/70">
     <template #title>
       <AppLogo />
     </template>
 
-    <UNavigationMenu :items="links" variant="link" :ui="{ linkLeadingIcon: 'hidden' }" />
+    <UNavigationMenu :items="links" variant="link" />
 
     <template #right>
       <UButton

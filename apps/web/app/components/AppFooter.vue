@@ -1,34 +1,23 @@
 <script setup lang="ts">
-const { m, to } = useLocale()
+const { m } = useLocale()
+const settings = await useSettings()
 </script>
 
 <template>
   <UFooter class="border-t border-default">
     <template #left>
-      <p class="text-sm text-muted">
-        {{ m.footer.license }} · {{ m.footer.by }}
-        <a
-          href="https://sergioazocar.com"
-          class="text-highlighted underline decoration-(--ui-border-accented) underline-offset-4 hover:decoration-current"
-          >{{ m.footer.author }}</a
-        >
-      </p>
+      <p class="text-sm text-muted">{{ settings.footer.tagline }}</p>
     </template>
     <template #right>
       <UButton
-        :to="to('/media-kit/')"
-        :label="m.nav.mediaKit"
+        v-for="link in settings.footer.links"
+        :key="link.href"
+        :to="link.href"
+        :target="isExternal(link.href) ? '_blank' : undefined"
+        :label="link.label"
         color="neutral"
         variant="ghost"
         size="sm"
-      />
-      <UButton
-        to="/llms.txt"
-        label="llms.txt"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        class="font-mono"
       />
       <UButton
         to="https://github.com/hollware/hollware"

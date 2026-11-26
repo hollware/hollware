@@ -149,7 +149,7 @@ const PAGE_COMPONENTS = {
   'install-prompt': defineComponent({
     props: NONE,
     description:
-      'The button that copies the sentence of its default slot, a prompt for an agent, with a tab for each agent; #note goes under it.',
+      'The button that copies the sentence of its default slot, a prompt for an agent, with a tab for each agent; #label is the text of the button, #note goes under it.',
     example:
       '::install-prompt\nInstall Hollware in my Cloudflare account following https://hollware.com/install.md\n::',
   }),
@@ -298,20 +298,23 @@ const home = defineCollection({
   styleGuide: PAGE_STYLE,
 })
 
-const link = z.strictObject({ label: z.string().min(1).max(60), href: z.string().min(1) })
+const link = z.strictObject({
+  label: z.string().min(1).max(60),
+  href: z.string().regex(/^(\/|https:\/\/)/),
+})
 
 const settings = defineCollection({
   singleton: true,
   schema: z.object({
     title: z.string().min(1).max(90),
-    navigation: z.array(link).max(12),
+    navigation: z.array(link).max(8),
     footer: z.strictObject({
       tagline: z.string().min(1).max(160),
-      columns: z
-        .array(z.strictObject({ title: z.string().min(1).max(60), links: z.array(link).max(12) }))
-        .max(6),
+      links: z.array(link).max(8),
     }),
   }),
+  styleGuide:
+    'The header and the footer of every page, one entry per locale with the slug settings. A link of the Spanish entry points at the /es/ page.',
 })
 
 export default defineConfig({
