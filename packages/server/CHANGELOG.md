@@ -1,5 +1,12 @@
 # @hollware/server
 
+## 1.13.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/core@1.13.1
+
 ## 1.13.0
 
 ### Patch Changes
