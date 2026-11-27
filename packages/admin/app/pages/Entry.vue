@@ -41,6 +41,8 @@ import { holdsSave, reviewLink, type PendingReview } from '../lib/pending-review
 import { operation } from '../lib/queries.ts'
 import { api } from '../lib/session.ts'
 import { pageUrl } from '../lib/site.ts'
+import { kindOf } from '../lib/singleton.ts'
+import { translationsOf } from '../lib/translations.ts'
 import { openPreview } from '../lib/site-preview.ts'
 import { useNarrow } from '../lib/narrow.ts'
 import { usePageTitle } from '../lib/title.ts'
@@ -80,16 +82,6 @@ const references = computed<Record<string, Reference> | null>(() =>
 )
 const entry = ref<Entry | null>(null)
 const related = ref<Summary[]>([])
-const translationsQuery = useQuery(() => ({
-  ...operation('get_translations', {
-    collection: props.collection,
-    translationGroup: entry.value?.translationGroup ?? '',
-  }),
-  enabled: (entry.value?.translationGroup ?? null) !== null,
-}))
-const translations = computed<Summary[]>(() =>
-  entry.value?.translationGroup === null ? [] : (translationsQuery.data.value?.entries ?? []),
-)
 const missing = ref(false)
 const text = ref('')
 const saved = ref('')
@@ -195,6 +187,21 @@ const ref_ = computed(() => ({
 const definition = computed(() =>
   site.value?.collections.find((candidate) => candidate.name === props.collection),
 )
+const translationsQuery = useQuery(() => ({
+  key: [
+    'translations',
+    props.collection,
+    entry.value?.slugPath ?? '',
+    entry.value?.translationGroup ?? '',
+    entry.value?.updatedAt ?? '',
+  ],
+  query: ({ signal }: { signal: AbortSignal }) =>
+    entry.value === null || definition.value === undefined
+      ? Promise.resolve([])
+      : translationsOf(api, entry.value, definition.value, site.value?.locales ?? [], signal),
+  enabled: entry.value !== null && definition.value !== undefined,
+}))
+const translations = computed<Summary[]>(() => translationsQuery.data.value ?? [])
 const components = computed<ComponentDefinition[]>(() =>
   (definition.value?.components ?? []).map(({ name, description, example, props: schema }) => ({
     name,
@@ -203,6 +210,8 @@ const components = computed<ComponentDefinition[]>(() =>
     props: schema,
   })),
 )
+const kind = computed(() => (definition.value === undefined ? 'list' : kindOf(definition.value)))
+const settingsForm = computed(() => kind.value === 'settings' && !source.value)
 const hasTitle = computed(() => {
   const properties = definition.value?.schema['properties']
   return typeof properties === 'object' && properties !== null && 'title' in properties
@@ -245,7 +254,8 @@ const canPreviewOnSite = computed(
     ) !== null,
 )
 const untranslated = computed(() =>
-  entry.value?.translationGroup === null || entry.value === null
+  entry.value === null ||
+  (entry.value.translationGroup === null && definition.value?.singleton !== true)
     ? []
     : (site.value?.locales ?? []).filter(
         (locale) => !translations.value.some((other) => other.locale === locale),
@@ -1293,6 +1303,16 @@ const stateLabel = computed(
             :diagnostics="diagnostics"
             :readonly="!writable"
           />
+          <fieldset v-else-if="settingsForm" :disabled="!writable" class="ps-16">
+            <legend class="sr-only">{{ m.entry.tabs.fields }}</legend>
+            <FrontmatterForm
+              v-model="text"
+              :schema="definition?.schema ?? {}"
+              :omit="hasTitle ? ['title'] : []"
+              :references="references ?? {}"
+              @markdown="openMarkdown"
+            />
+          </fieldset>
           <EntryEditor
             v-else
             :body="body"
@@ -1485,7 +1505,7 @@ const stateLabel = computed(
           <dt class="text-muted">{{ m.entry.translations }}</dt>
           <dd>
             <nav :aria-label="m.entry.translations" class="flex flex-wrap items-center gap-1.5">
-              <template v-if="entry.translationGroup !== null">
+              <template v-if="translations.length > 0 || untranslated.length > 0">
                 <template v-for="other in translations" :key="other.id">
                   <span
                     v-if="other.id === entry.id"
@@ -1509,7 +1529,7 @@ const stateLabel = computed(
                     query: {
                       collection: entry.collection,
                       locale: other,
-                      group: entry.translationGroup,
+                      ...(entry.translationGroup === null ? {} : { group: entry.translationGroup }),
                     },
                   }"
                   :label="m.entry.translateTo(other)"
@@ -1539,7 +1559,7 @@ const stateLabel = computed(
           <dd class="font-mono text-xs text-muted">{{ m.entry.version(entry.version) }}</dd>
         </dl>
 
-        <section :aria-labelledby="'fields'" class="space-y-3">
+        <section v-if="!settingsForm" :aria-labelledby="'fields'" class="space-y-3">
           <h2 id="fields" class="text-xs font-semibold tracking-wide text-muted uppercase">
             {{ m.entry.tabs.fields }}
           </h2>
@@ -1578,7 +1598,7 @@ const stateLabel = computed(
           <VerdictList :verdict="verdict" />
         </section>
 
-        <section :aria-labelledby="'related'" class="space-y-2">
+        <section v-if="kind !== 'settings'" :aria-labelledby="'related'" class="space-y-2">
           <h2 id="related" class="text-xs font-semibold tracking-wide text-muted uppercase">
             {{ m.entry.tabs.related }}
           </h2>
