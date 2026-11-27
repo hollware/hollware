@@ -1,5 +1,13 @@
 # @hollware/astro
 
+## 1.13.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.13.2
+  - @hollware/core@1.13.2
+
 ## 1.13.1
 
 ### Patch Changes

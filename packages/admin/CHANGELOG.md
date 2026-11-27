@@ -1,5 +1,11 @@
 # @hollware/admin
 
+## 1.13.2
+
+### Patch Changes
+
+- [#130](https://github.com/hollware/hollware/pull/130) [`1234128`](https://github.com/hollware/hollware/commit/1234128ec08fa61a511598761e65f6a63de765e9) Thanks [@sergioazoc](https://github.com/sergioazoc)! - A settings singleton, one without a route, opens as a form: its fields fill the page instead of a side panel beside an empty body, and Markdown view still shows the whole file. The properties of an entry link its translations when its collection names no translation group: the entry with the same slug in each other locale, or the one entry of each locale in a singleton. A component inside another loses its colored left border.
+
 ## 1.13.1
 
 ### Patch Changes
