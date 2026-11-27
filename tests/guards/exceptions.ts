@@ -149,12 +149,8 @@ export const ADMIN_TEXT_LITERALS: ExceptionList = {
 }
 
 export const WEB_TEXT_LITERALS: ExceptionList = {
-  max: 2,
+  max: 1,
   entries: [
-    {
-      value: 'llms.txt',
-      reason: 'The name of a file of the site for language models, the same in every language.',
-    },
     {
       value: 'Hollware',
       reason: 'The name of the product, the title of the header in every language.',

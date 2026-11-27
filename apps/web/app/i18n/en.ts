@@ -5,16 +5,7 @@ export const en = {
     description:
       'Hollware is an open-source headless CMS on Cloudflare Workers. Agents write Markdown over MCP, contracts check every write, and your sites read it over Workers RPC.',
   },
-  nav: {
-    docs: 'Docs',
-    features: 'Features',
-    compare: 'Compare',
-    mediaKit: 'Media kit',
-    tools: 'Tools',
-    demo: 'Demo',
-    github: 'Hollware on GitHub',
-  },
-  footer: { license: 'Open source, MIT', by: 'Made by', author: 'Sergio Azócar' },
+  nav: { github: 'Hollware on GitHub' },
   pages: {
     notFound: 'Page not found',
     unavailable: 'Hollware is not answering right now: try again in a minute',

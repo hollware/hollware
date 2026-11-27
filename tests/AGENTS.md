@@ -34,7 +34,7 @@ What each guard binds, one line per file of `tests/conventions/` and `tests/meta
 - `tests/conventions/changesets.test.ts`: `fixed` is one group, the published packages; public access.
 - `tests/conventions/pnpm-policy.test.ts`: release age, trust policy, reasoned builds, excludes, ignored advisories, exact catalog.
 - `tests/conventions/wrangler-dates.test.ts`: no `compatibility_date` newer than the bundled workerd.
-- `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` has `no_nodejs_compat` and `no_nodejs_compat_v2`, no positive Node.js flag, `send_metrics: false` outside `templates/`; a Hollware Worker (D1 `DB`) has `global_fetch_strictly_public` and, per environment with bindings, `OAUTH_KV`, a cron, a queue consumer whose `dead_letter_queue` `<queue>-dlq` is consumed, but `WORKERS_WITHOUT_EVENTS`.
+- `tests/conventions/wrangler-flags.test.ts`: every `wrangler.jsonc` has `no_nodejs_compat` and `no_nodejs_compat_v2`, no positive Node.js flag, `send_metrics: false` outside `templates/`; a Hollware Worker (D1 `DB`) has `global_fetch_strictly_public` and, per environment, `OAUTH_KV`, `HOLLWARE_SECRET` in `secrets.required` if deployed, a cron, a consumer whose `<queue>-dlq` is consumed, but `WORKERS_WITHOUT_EVENTS`.
 - `tests/conventions/worker-projects.test.ts`: every Wrangler config sits in a workspace package that defines `build` and a `types:check` that names a config inside it.
 - `tests/conventions/dev-port.test.ts`: the playground and the starter serve `vp dev` on a fixed port with `strictPort`, which their `HOLLWARE_PUBLIC_URL` names.
 - `tests/conventions/conformance-baselines.test.ts`: each revision's baseline names single checks with a class and reason, none must-pass, at its recorded size; the profile keeps its claims.

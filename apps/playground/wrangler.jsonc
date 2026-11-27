@@ -30,6 +30,7 @@
   "vars": {
     "HOLLWARE_PUBLIC_URL": "http://localhost:5199",
   },
+  "secrets": { "required": ["HOLLWARE_SECRET"] },
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
   "ratelimits": [
     {
@@ -55,6 +56,7 @@
   "env": {
     "demo": {
       "name": "hollware-demo",
+      "secrets": { "required": ["HOLLWARE_SECRET"] },
       "placement": { "mode": "smart", "hint": "enam" },
       "vars": {
         "HOLLWARE_PUBLIC_URL": "https://cms.demo.hollware.com",
@@ -101,6 +103,7 @@
     },
     "staging": {
       "name": "hollware-staging",
+      "secrets": { "required": ["HOLLWARE_SECRET"] },
       "workers_dev": true,
       "placement": { "mode": "smart", "hint": "enam" },
       "vars": {

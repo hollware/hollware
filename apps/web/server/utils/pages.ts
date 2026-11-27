@@ -16,7 +16,7 @@ const text = (value: unknown) => (typeof value === 'string' ? value : '')
 type Reader = ReturnType<typeof useHollware>['reader']
 
 export async function listedPages(reader: Reader, site: string): Promise<ListedPage[]> {
-  const collections = ['pages', ...LISTED]
+  const collections = ['home', 'pages', ...LISTED]
   const found = await Promise.all(
     collections.flatMap((collection) =>
       ['en', 'es'].map(async (locale) => {

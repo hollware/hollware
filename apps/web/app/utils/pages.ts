@@ -3,7 +3,7 @@ import hollwarePackage from '@hollware/core/package.json'
 
 export const ORIGIN = 'https://hollware.com'
 
-export const PAGE_COLLECTIONS = ['pages', 'glossary'] as const
+export const PAGE_COLLECTIONS = ['home', 'pages', 'glossary'] as const
 export type PageCollection = (typeof PAGE_COLLECTIONS)[number]
 
 export const LISTED = ['glossary'] as const
@@ -28,13 +28,14 @@ export function withFacts(markdown: string): string {
 const prefix = (locale: string) => (locale === 'en' ? '' : `/${locale}`)
 
 export function pathOf(collection: string, slug: string, locale: string): string {
-  if (collection === 'pages')
-    return slug === 'home' ? `${prefix(locale)}/` : `${prefix(locale)}/${slug}/`
+  if (collection === 'home') return `${prefix(locale)}/`
+  if (collection === 'pages') return `${prefix(locale)}/${slug}/`
   return `${prefix(locale)}/${collection}/${slug}/`
 }
 
 export function markdownPathOf(collection: string, slug: string, locale: string): string {
-  if (collection === 'pages') return `${prefix(locale)}/${slug === 'home' ? 'index' : slug}.md`
+  if (collection === 'home') return `${prefix(locale)}/index.md`
+  if (collection === 'pages') return `${prefix(locale)}/${slug}.md`
   return `${prefix(locale)}/${collection}/${slug}.md`
 }
 
@@ -61,10 +62,10 @@ export function markdownTarget(pathname: string): MarkdownTarget | null {
   const page = A_PAGE.exec(pathname)
   if (page === null) return null
   const [, es, name] = page
-  if (name === 'llms' || name === 'home') return null
+  if (name === 'llms') return null
   return {
-    collection: 'pages',
-    slug: name === 'index' ? 'home' : (name ?? ''),
+    collection: name === 'index' ? 'home' : 'pages',
+    slug: name === 'index' ? '' : (name ?? ''),
     locale: es === undefined ? 'en' : 'es',
   }
 }

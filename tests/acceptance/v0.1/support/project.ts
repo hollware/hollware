@@ -52,7 +52,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function pointAtMigrations(directory: string): void {
+function pointAtMigrations(directory: string, rateLimited: boolean): void {
   const path = join(directory, 'wrangler.json')
   const config: unknown = JSON.parse(readFileSync(path, 'utf8'))
   const databases = isRecord(config) ? config['d1_databases'] : undefined
@@ -63,16 +63,17 @@ function pointAtMigrations(directory: string): void {
   database['migrations_dir'] = MIGRATIONS
   const assets = config['assets']
   if (isRecord(assets)) assets['directory'] = ASSETS
+  if (!rateLimited) delete config['ratelimits']
   writeFileSync(path, JSON.stringify(config))
 }
 
-export function createProject(): Project {
+export function createProject(options: { readonly rateLimited?: boolean } = {}): Project {
   const scratch = mkdtempSync(join(tmpdir(), 'hollware-acceptance-'))
   const directory = join(scratch, 'project')
   cpSync(BUILT, directory, { recursive: true })
   rmSync(join(directory, '.wrangler'), { recursive: true, force: true })
   symlinkSync(join(REPOSITORY, 'node_modules'), join(directory, 'node_modules'))
-  pointAtMigrations(directory)
+  pointAtMigrations(directory, options.rateLimited ?? true)
   cpSync(
     join(REPOSITORY, 'apps', 'playground', 'hollware.config.ts'),
     join(directory, 'hollware.config.ts'),

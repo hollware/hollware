@@ -97,7 +97,9 @@ describe('wrangler flags', () => {
     const flags = '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2"]'
     const hollwareFlags =
       '"compatibility_flags": ["no_nodejs_compat", "no_nodejs_compat_v2", "global_fetch_strictly_public"]'
-    const db = '"d1_databases": [{ "binding": "DB" }]'
+    const database = '"d1_databases": [{ "binding": "DB" }]'
+    const secret = '"secrets": { "required": ["HOLLWARE_SECRET"] }'
+    const db = `${database}, ${secret}`
     const kv = '"kv_namespaces": [{ "binding": "OAUTH_KV" }]'
     const cron = '"triggers": { "crons": ["* * * * *"] }'
     const consumer =
@@ -160,6 +162,33 @@ describe('wrangler flags', () => {
       ).toEqual([
         'the top of the config must declare a cron trigger: it publishes the scheduled entries whose time has come',
       ])
+    })
+
+    it('holds a deployed Worker of Hollware to declaring its secret in every environment, so its types never read .dev.vars', () => {
+      const all = `${kv}, ${cron}, ${consumer}`
+      expect(
+        check('apps/x/wrangler.jsonc', worker(`${database}, ${all}`, `${db}, ${all}`)),
+      ).toEqual([
+        {
+          rule: 'wrangler-flags/secrets',
+          file: 'apps/x/wrangler.jsonc',
+          message:
+            'the top of the config must declare "secrets": { "required": ["HOLLWARE_SECRET"] }: without it, wrangler types reads the secrets of a local .dev.vars, and the types of the Worker depend on the machine',
+        },
+      ])
+      const other = '"secrets": { "required": ["OTHER_SECRET"] }'
+      expect(
+        check(
+          'apps/x/wrangler.jsonc',
+          worker(`${database}, ${other}, ${all}`, `${db}, ${all}`),
+        ).map((violation) => violation.rule),
+      ).toEqual(['wrangler-flags/secrets'])
+      expect(
+        check(
+          'apps/x/wrangler.jsonc',
+          `{ ${hollwareFlags}, "send_metrics": false, ${database}, ${all} }`,
+        ),
+      ).toEqual([])
     })
 
     it('reports a dead-letter queue nobody consumes, or not named after its queue', () => {

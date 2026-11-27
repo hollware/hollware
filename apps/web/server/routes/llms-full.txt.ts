@@ -4,7 +4,7 @@ import { ORIGIN, pathOf, withFacts } from '../../app/utils/pages'
 import { listedPages } from '../utils/pages'
 import { REFERENCE_PATHS, referenceMarkdownOf } from '../utils/reference'
 
-const PRODUCT = ['home', 'features', 'compare', 'install'] as const
+const PRODUCT = ['features', 'compare', 'install'] as const
 
 type Reader = ReturnType<typeof useHollware>['reader']
 
@@ -33,9 +33,12 @@ export default defineEventHandler(async (event) => {
   ])
   const shown = pages.filter((page) => !page.noindex)
   const sources = [
-    ...PRODUCT.flatMap((slug) =>
-      shown.filter((page) => page.collection === 'pages' && page.slug === slug),
-    ).map((page) => ({ collection: page.collection, slug: page.slug })),
+    ...[
+      ...shown.filter((page) => page.collection === 'home'),
+      ...PRODUCT.flatMap((slug) =>
+        shown.filter((page) => page.collection === 'pages' && page.slug === slug),
+      ),
+    ].map((page) => ({ collection: page.collection, slug: page.slug })),
     ...docLinks(navigation).map((doc) => ({ collection: 'docs', slug: doc.slug })),
     ...shown
       .filter((page) => page.collection === 'glossary')

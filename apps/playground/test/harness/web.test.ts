@@ -5,12 +5,16 @@ import {
   ALL_SCOPES,
   createDraft,
   migrate,
+  previewTokenFor,
   publishNew,
   seedOwnerToken,
+  type Agent,
 } from './support.ts'
 import { createWebHarness, webFetch } from './workers.ts'
 
 const server = createWebHarness()
+const settingsIds: Partial<Record<'en' | 'es', string>> = {}
+let writer: Agent
 
 const page = (title: string, section: string, order: number, body: string) =>
   [
@@ -90,6 +94,35 @@ const HOME = {
   ].join('\n'),
 }
 
+const settings = (nav: readonly [string, string][], tagline: string, links: [string, string][]) =>
+  [
+    '---',
+    'title: Hollware',
+    'navigation:',
+    ...nav.flatMap(([label, href]) => [`  - label: ${label}`, `    href: ${href}`]),
+    'footer:',
+    `  tagline: ${tagline}`,
+    '  links:',
+    ...links.flatMap(([label, href]) => [`    - label: ${label}`, `      href: ${href}`]),
+    '---',
+    '',
+  ].join('\n')
+
+const SETTINGS = {
+  en: settings(
+    [
+      ['Features', '/features/'],
+      ['Docs', '/docs/'],
+      ['Demo', 'https://demo.hollware.com'],
+    ],
+    'Open source, MIT',
+    [['Media kit', '/media-kit/']],
+  ),
+  es: settings([['Documentación', '/es/docs/']], 'Código abierto, MIT', [
+    ['Kit de prensa', '/es/media-kit/'],
+  ]),
+}
+
 const TERM = [
   '---',
   'title: Content contracts',
@@ -158,8 +191,15 @@ beforeAll(async () => {
     markdown: page('Unfinished', 'guides', 1, 'Not yet.'),
   })
   for (const locale of ['en', 'es'] as const) {
-    await publishNew(agent, { collection: 'pages', locale, slug: 'home', markdown: HOME[locale] })
+    await publishNew(agent, { collection: 'home', locale, slug: 'landing', markdown: HOME[locale] })
+    settingsIds[locale] = await publishNew(agent, {
+      collection: 'settings',
+      locale,
+      slug: 'settings',
+      markdown: SETTINGS[locale],
+    })
   }
+  writer = agent
   await publishNew(agent, {
     collection: 'glossary',
     locale: 'en',
@@ -240,6 +280,64 @@ describe('hollware.com', () => {
     expect(text).not.toContain('unfinished')
   })
 
+  it('reads the home from its singleton by its path, whatever its slug, and serves its Markdown at /index.md', async () => {
+    const markdown = await webFetch(server, '/index.md')
+    const old = await webFetch(server, '/home/')
+
+    expect(markdown.headers.get('content-type')).toBe('text/markdown; charset=utf-8')
+    expect(markdown.headers.get('link')).toBe('<https://hollware.com/>; rel="canonical"')
+    expect(await markdown.text()).toMatch(
+      /^---\ntitle: Let your agents publish\.\n[\s\S]*41 tools\./,
+    )
+    expect(old.status).toBe(404)
+  })
+
+  it('draws the header and the footer from the settings of the locale', async () => {
+    const home = await (await webFetch(server, '/')).text()
+    const spanish = await (await webFetch(server, '/es/')).text()
+
+    expect(home).toMatch(/<a[^>]*href="\/features\/"[^>]*>(?:<[^>]*>|\s)*Features/)
+    expect(home).toMatch(/<a[^>]*href="https:\/\/demo\.hollware\.com"[^>]*target="_blank"/)
+    expect(home).toContain('Open source, MIT')
+    expect(home).toMatch(/<a[^>]*href="\/media-kit\/"/)
+    expect(spanish).toContain('Código abierto, MIT')
+    expect(spanish).toMatch(/<a[^>]*href="\/es\/docs\/"[^>]*>(?:<[^>]*>|\s)*Documentación/)
+    expect(spanish).not.toContain('href="/features/"')
+  })
+
+  it('previews a draft of the settings on the home, and keeps it from everyone else', async () => {
+    const read = await writer.call('get_entry', {
+      collection: 'settings',
+      locale: 'en',
+      slug: 'settings',
+    })
+    const entry = read.output['entry']
+    if (typeof entry !== 'object' || entry === null || !('version' in entry)) {
+      throw new Error(`no settings to change: ${JSON.stringify(read.output)}`)
+    }
+    const saved = await writer.call('update_draft', {
+      id: settingsIds.en,
+      version: entry.version,
+      markdown: settings([['Pricing', '/pricing/']], 'Open source, MIT', [
+        ['Media kit', '/media-kit/'],
+      ]),
+    })
+    expect(saved.output['outcome']).toBe('saved')
+    const token = await previewTokenFor(settingsIds.en ?? '', { site: 'docs' })
+
+    const exchanged = await webFetch(server, `/?hollware-preview=${token}`, 'manual')
+    const cookie = (exchanged.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+    const location = exchanged.headers.get('location') ?? ''
+    const previewed = await (await webFetch(server, location, 'manual', { cookie })).text()
+    const published = await (await webFetch(server, '/')).text()
+
+    expect(exchanged.status).toBe(303)
+    expect(previewed).toMatch(/<a[^>]*href="\/pricing\/"/)
+    expect(previewed).toContain('Let your agents publish.')
+    expect(published).not.toContain('href="/pricing/"')
+    expect(published).toMatch(/<a[^>]*href="\/features\/"/)
+  })
+
   it('generates the reference of the MCP tools, and reads the home from the pages of Hollware', async () => {
     const tools = await (await webFetch(server, '/reference/mcp-tools/')).text()
     const home = await (await webFetch(server, '/')).text()
@@ -270,20 +368,14 @@ describe('hollware.com', () => {
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/png'])
   })
 
-  it('shows the admin at home as an image the site serves, and sends /home/ to the home for good', async () => {
+  it('shows the admin at home as an image the site serves', async () => {
     const home = await (await webFetch(server, '/')).text()
     const image = await webFetch(server, '/admin-review.webp')
-    const preview = await webFetch(server, '/home/?hollware-preview=x', 'manual')
 
     expect(home).toMatch(
       /<img src="\/admin-review\.webp" alt="The Reviews page of the Hollware admin"/,
     )
     expect([image.status, image.headers.get('content-type')]).toEqual([200, 'image/webp'])
-    const location = new URL(preview.headers.get('location') ?? '')
-    expect([preview.status, `${location.pathname}${location.search}`]).toEqual([
-      301,
-      '/?hollware-preview=x',
-    ])
   })
 
   it('speaks Spanish under /es/: its words, its language and the alternates of each page', async () => {
@@ -309,6 +401,9 @@ describe('hollware.com', () => {
     expect(sitemap).toContain('<loc>https://hollware.com/glossary/content-contracts/</loc>')
     expect(sitemap).toContain('<loc>https://hollware.com/docs/first-steps/</loc>')
     expect(sitemap).not.toContain('media-kit')
+    expect(sitemap).toContain('<loc>https://hollware.com/</loc>')
+    expect(sitemap).toContain('<loc>https://hollware.com/es/</loc>')
+    expect(llms).toContain('> Hollware is an open-source headless CMS, written by a test.')
     expect(robots).toContain('Sitemap: https://hollware.com/sitemap.xml')
     expect(await term.text()).toBe(TERM)
     expect(llms).toContain(

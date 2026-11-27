@@ -6,7 +6,7 @@ import { listedPages, type ListedPage } from '../utils/pages'
 const SUMMARY =
   'An open-source headless CMS for the agent era, native to Cloudflare Workers. Agents write Markdown over MCP, contracts validate every write, D1 is the single source of truth, and sites read published content over Workers RPC.'
 
-const PRODUCT = ['home', 'features', 'compare', 'install'] as const
+const PRODUCT = ['features', 'compare', 'install'] as const
 
 const line = (page: ListedPage) =>
   `- [${page.title}](${ORIGIN}${markdownPathOf(page.collection, page.slug, 'en')}): ${page.description}`
@@ -18,11 +18,14 @@ export default defineEventHandler(async (event) => {
     reader.getNavigation(site, 'docs', { locale: 'en' }),
   ])
   const shown = pages.filter((page) => !page.noindex)
-  const home = shown.find((page) => page.collection === 'pages' && page.slug === 'home')
+  const home = shown.find((page) => page.collection === 'home')
   const install = shown.find((page) => page.collection === 'pages' && page.slug === 'install')
-  const product = PRODUCT.flatMap((slug) =>
-    shown.filter((page) => page.collection === 'pages' && page.slug === slug),
-  )
+  const product = [
+    ...(home === undefined ? [] : [home]),
+    ...PRODUCT.flatMap((slug) =>
+      shown.filter((page) => page.collection === 'pages' && page.slug === slug),
+    ),
+  ]
   const glossary = shown.filter((page) => page.collection === 'glossary')
   const lines = [
     '# Hollware',

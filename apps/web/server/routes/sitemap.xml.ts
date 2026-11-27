@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   const both = (en: string, es: string): SitemapUrl['alternates'] => ({ en, es })
   const urls: SitemapUrl[] = [
     ...pages
-      .filter((page) => !page.noindex && page.slug !== 'home')
+      .filter((page) => !page.noindex)
       .flatMap((page) => {
         const en = pathOf(page.collection, page.slug, 'en')
         const es = pathOf(page.collection, page.slug, 'es')
@@ -31,8 +31,6 @@ export default defineEventHandler(async (event) => {
           ...(alternates === null ? [] : [{ path: es, modified: page.modified, alternates }]),
         ]
       }),
-    { path: '/', alternates: both('/', '/es/') },
-    { path: '/es/', alternates: both('/', '/es/') },
     { path: '/docs/', alternates: both('/docs/', '/es/docs/') },
     { path: '/es/docs/', alternates: both('/docs/', '/es/docs/') },
     ...docLinks(english).flatMap((doc) => {

@@ -45,10 +45,16 @@ export function createWebHarness() {
   })
 }
 
-export function webFetch(server: TestHarness, path: string, redirect?: 'manual') {
-  return server
-    .getWorker(WEB_WORKER)
-    .fetch(`${SITE_URL}${path}`, redirect === undefined ? undefined : { redirect })
+export function webFetch(
+  server: TestHarness,
+  path: string,
+  redirect?: 'manual',
+  headers?: Record<string, string>,
+) {
+  return server.getWorker(WEB_WORKER).fetch(`${SITE_URL}${path}`, {
+    ...(redirect === undefined ? {} : { redirect }),
+    ...(headers === undefined ? {} : { headers }),
+  })
 }
 
 export const NUXT_WORKER = 'hollware-nuxt-blog'
