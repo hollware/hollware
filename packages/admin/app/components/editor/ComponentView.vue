@@ -50,7 +50,6 @@ const place = computed(() => {
   if (typeof pos !== 'number') return null
   const $pos = props.editor.state.doc.resolve(pos)
   return {
-    nested: $pos.depth > 0,
     first: $pos.index() === 0,
     last: $pos.index() === $pos.parent.childCount - 1,
   }
@@ -168,7 +167,6 @@ const menu = computed<DropdownMenuItem[][]>(() => {
   <NodeViewWrapper
     as="section"
     class="hw-component my-3 rounded-lg border border-default bg-elevated/40"
-    :class="{ 'border-s-2 border-s-secondary/50': place?.nested }"
     :aria-label="m.editor.componentNamed(name)"
   >
     <header
