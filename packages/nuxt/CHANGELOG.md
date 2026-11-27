@@ -1,5 +1,13 @@
 # @hollware/nuxt
 
+## 1.13.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @hollware/client@1.13.1
+  - @hollware/core@1.13.1
+
 ## 1.13.0
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @hollware/admin
 
+## 1.13.1
+
+### Patch Changes
+
+- [#128](https://github.com/hollware/hollware/pull/128) [`ea527aa`](https://github.com/hollware/hollware/commit/ea527aa382528a4d9d632b3f41d0d2d3a3a4a069) Thanks [@sergioazoc](https://github.com/sergioazoc)! - Opening a singleton with no entry in the locale no longer creates a draft: the admin shows the form to create it, named after the collection, and writes nothing until the person creates it.
+
+  When the token endpoint limits the address (429), the admin says to wait a minute and sign in again, instead of calling the sign-in refused.
+
 ## 1.13.0
 
 ### Minor Changes
